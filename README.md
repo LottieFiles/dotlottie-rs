@@ -1,4 +1,4 @@
-## Fist get up and running with Thorvg
+## First get up and running with Thorvg
 
 
 ### 1. Clone the repo

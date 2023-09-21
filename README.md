@@ -1,13 +1,13 @@
-## Getting up an running with Thorvg
+## Fist get up and running with Thorvg
 
 
-### 1. Cloning the repo
+### 1. Clone the repo
 
 ```bash
 git clone git@github.com:thorvg/thorvg.git
 ```
 
-### 2. Building and installing
+### 2. Build and install
 
 ```bash
 meson . builddir -Dbindings=capi
@@ -31,7 +31,7 @@ cat /usr/local/lib/libthorvg.a
 cat /usr/local/lib/libthorvg.dylib
 ```
 
-### 4. Cargo run
+### 4. Run this project
 
 Inside this project run
 

@@ -45,7 +45,8 @@ impl LottiePlayer {
         unsafe { tvg_animation_get_frame(self.animation, &mut self.current_frame as *mut u32) };
 
         if self.direction == 1 {
-            if self.current_frame >= self.total_frames {
+            // Thorvg doesnt allow you ot go to total_frames
+            if self.current_frame >= self.total_frames - 1 {
                 self.current_frame = 0;
             } else {
                 self.current_frame += 1;

@@ -8,6 +8,7 @@ links = "thorvg"
 
 [dependencies]
 minifb = "0.25"
+thiserror = "1.0.48"
 
 [build-dependencies]
 bindgen = "0.65.1"

@@ -44,19 +44,30 @@ impl LottiePlayer {
     pub fn tick(&mut self) {
         unsafe { tvg_animation_get_frame(self.animation, &mut self.current_frame as *mut u32) };
 
-        self.current_frame += 1;
-
-        if self.current_frame >= self.total_frames {
-            self.current_frame = 0;
+        if self.direction == 1 {
+            if self.current_frame >= self.total_frames {
+                self.current_frame = 0;
+            } else {
+                self.current_frame += 1;
+            }
+        } else if self.direction == -1 {
+            if self.current_frame == 0 {
+                // If we set to total_frames, thorvg goes to frame 0
+                self.current_frame = self.total_frames - 1;
+            } else {
+                self.current_frame -= 1;
+            }
         }
 
-        unsafe { tvg_animation_set_frame(self.animation, self.current_frame) };
+        unsafe {
+            tvg_animation_set_frame(self.animation, self.current_frame);
 
-        unsafe { tvg_canvas_update_paint(self.canvas, tvg_animation_get_picture(self.animation)) };
+            tvg_canvas_update_paint(self.canvas, tvg_animation_get_picture(self.animation));
 
-        //Draw the canvas
-        unsafe { tvg_canvas_draw(self.canvas) };
-        unsafe { tvg_canvas_sync(self.canvas) };
+            //Draw the canvas
+            tvg_canvas_draw(self.canvas);
+            tvg_canvas_sync(self.canvas);
+        }
     }
 
     pub fn load_animation(
@@ -70,8 +81,6 @@ impl LottiePlayer {
 
         // let mut duration: f32 = 0.0;
         let mimetype = CString::new("lottie").expect("Failed to create CString");
-
-        println!("Loading up : {}", animation_data);
 
         unsafe {
             tvg_engine_init(Tvg_Engine_TVG_ENGINE_SW, 0);

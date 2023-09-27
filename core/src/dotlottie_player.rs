@@ -4,9 +4,10 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 
-pub struct LottiePlayer {
+#[repr(C)]
+pub struct DotLottiePlayer {
     // Playback related
     autoplay: bool,
     loop_animation: bool,
@@ -23,9 +24,9 @@ pub struct LottiePlayer {
     canvas: *mut Tvg_Canvas,
 }
 
-impl LottiePlayer {
+impl DotLottiePlayer {
     pub fn new(autoplay: bool, loop_animation: bool, direction: i8, speed: i32) -> Self {
-        LottiePlayer {
+        DotLottiePlayer {
             autoplay,
             loop_animation,
             speed,
@@ -73,7 +74,7 @@ impl LottiePlayer {
 
     pub fn load_animation(
         &mut self,
-        buffer: &mut Vec<u32>,
+        buffer: *mut u32,
         animation_data: &str,
         width: u32,
         height: u32,
@@ -90,7 +91,7 @@ impl LottiePlayer {
 
             tvg_swcanvas_set_target(
                 self.canvas,
-                buffer.as_mut_ptr(),
+                buffer,
                 width,
                 width,
                 height,
@@ -133,64 +134,58 @@ impl LottiePlayer {
     }
 }
 
-/*
-    Fill the buffer with animation data.
-    Returns the buffer filled with the first frame.
-    Todo: Test on wasm - this is because im not sure if classes will be usable
-*/
-pub fn load_animation(buffer: &mut Vec<u32>, animation_data: &str, width: u32, height: u32) {
-    let mut animation = std::ptr::null_mut();
-    let mut canvas = std::ptr::null_mut();
-    let mut frame_image = std::ptr::null_mut();
-    let mut duration: f32 = 0.0;
-    let mimetype = CString::new("lottie").expect("Failed to create CString");
+#[no_mangle]
+pub extern "C" fn create_dotlottie_player(
+    autoplay: bool,
+    loop_animation: bool,
+    direction: i8,
+    speed: i32,
+) -> *mut DotLottiePlayer {
+    Box::into_raw(Box::new(DotLottiePlayer {
+        autoplay,
+        loop_animation,
+        direction,
+        speed,
+        duration: 0.0,
+        current_frame: 0,
+        total_frames: 0,
+        animation: std::ptr::null_mut(),
+        canvas: std::ptr::null_mut(),
+    }))
+}
 
+#[no_mangle]
+pub extern "C" fn tick(ptr: *mut DotLottiePlayer) {
     unsafe {
-        tvg_engine_init(Tvg_Engine_TVG_ENGINE_SW, 0);
+        let rust_struct = &mut *ptr;
 
-        canvas = tvg_swcanvas_create();
-
-        tvg_swcanvas_set_target(
-            canvas,
-            buffer.as_mut_ptr(),
-            width,
-            width,
-            height,
-            Tvg_Colorspace_TVG_COLORSPACE_ARGB8888,
-        );
-    }
-
-    unsafe {
-        animation = tvg_animation_new();
-        frame_image = tvg_animation_get_picture(animation);
-
-        let load_result = tvg_picture_load_data(
-            frame_image,
-            animation_data.as_ptr() as *const i8,
-            animation_data.len() as u32,
-            mimetype.as_ptr(),
-            false,
-        );
-
-        if load_result != Tvg_Result_TVG_RESULT_SUCCESS {
-            tvg_animation_del(animation);
-
-            // DotLottieError::LoadContentError;
-        } else {
-            tvg_paint_scale(frame_image, 1.0);
-
-            let mut total_frame: u32 = 0;
-            tvg_animation_get_total_frame(animation, &mut total_frame as *mut u32);
-            tvg_animation_get_duration(animation, &mut duration);
-            tvg_animation_set_frame(animation, 0);
-            tvg_canvas_push(canvas, frame_image);
-            tvg_canvas_draw(canvas);
-            tvg_canvas_sync(canvas);
-        }
+        rust_struct.tick();
     }
 }
 
-/*
-todo: Put this inside a class so that it has access to the canvas and animation.
-*/
-fn tick() {}
+#[no_mangle]
+pub extern "C" fn load_animation(
+    ptr: *mut DotLottiePlayer,
+    buffer: *mut u32,
+    animation_data: *const ::std::os::raw::c_char,
+    width: u32,
+    height: u32,
+) {
+    unsafe {
+        let rust_struct = &mut *ptr;
+
+        let animation_data_str = CStr::from_ptr(animation_data).to_str().unwrap();
+
+        rust_struct.load_animation(buffer, animation_data_str, width, height);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn destroy_dotlottie_player(ptr: *mut DotLottiePlayer) {
+    if ptr.is_null() {
+        return;
+    }
+    unsafe {
+        drop(Box::from_raw(ptr));
+    }
+}

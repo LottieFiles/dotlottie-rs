@@ -505,6 +505,7 @@ dependencies = [
  "bindgen",
  "minifb",
  "thiserror",
+ "wasm-bindgen",
 ]
 
 [[package]]

@@ -3,7 +3,7 @@
 #![allow(non_snake_case)]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-mod animation_loader;
+mod dotlottie_player;
 
 use std::{
     fs::File,
@@ -11,7 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use animation_loader::LottiePlayer;
+use dotlottie_player::DotLottiePlayer;
 use minifb::{Key, Window, WindowOptions};
 
 pub const WIDTH: usize = 1200;
@@ -82,7 +82,7 @@ impl Timer {
         }
     }
 
-    fn tick(&mut self, animation: &mut LottiePlayer) {
+    fn tick(&mut self, animation: &mut DotLottiePlayer) {
         let now = Instant::now();
         let elapsed = now.duration_since(self.last_update);
         // Parse this from the animation 'fr' value
@@ -169,14 +169,20 @@ fn main() {
         panic!("{}", e);
     });
 
-    let path = "/Users/sam/Projects/LottieFiles/Github/@rust/thorvg-rust-wrapper/src/cartoon.json";
+    let path =
+        "/Users/sam/Projects/LottieFiles/Github/@rust/thorvg-rust-wrapper/core/src/cartoon.json";
 
     let result = load_file(path);
 
     // load_animation(&mut buffer, result.1.as_str(), WIDTH as u32, HEIGHT as u32);
 
-    let mut lottie_player: LottiePlayer = LottiePlayer::new(true, true, 1, 1);
-    lottie_player.load_animation(&mut buffer, result.1.as_str(), WIDTH as u32, HEIGHT as u32);
+    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(true, true, 1, 1);
+    lottie_player.load_animation(
+        buffer.as_mut_ptr(),
+        result.1.as_str(),
+        WIDTH as u32,
+        HEIGHT as u32,
+    );
 
     let mut timer = Timer::new();
 

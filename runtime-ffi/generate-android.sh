@@ -1,15 +1,15 @@
 #!/bin/bash
 
-library_name="dotlottie-utils"
-BASE_PATH="./android"
-BINDINGS=./toolkit-ffi/uniffi-bindings
-ASSETS=./toolkit-ffi/assets
+library_name="dotlottie-player"
+BASE_PATH="../android"
+BINDINGS=./uniffi-bindings
+ASSETS=./assets
 
 rm -rf  $BASE_PATH
 
 src=$BASE_PATH/$library_name/src/main/kotlin
 jni=$BASE_PATH/$library_name/src/main/jniLibs
-package=com/dotlottie/dlutils
+package=com/dotlottie/dlplayer
 
 echo "Generating library $library_name"
 mkdir -p $BASE_PATH/$library_name
@@ -17,9 +17,9 @@ mkdir -p $src/$package
 mkdir -p $jni
 
 # Copying .kt file
-touch $src/$package/DotLottieUtils.kt
-cp $BINDINGS/$package/*.kt $src/$package/DotLottieUtils.kt
-test -e $src/$package/DotLottieUtils.kt || exit 1
+touch $src/$package/DotLottiePlayer.kt
+cp $BINDINGS/$package/*.kt $src/$package/DotLottiePlayer.kt
+test -e $src/$package/DotLottiePlayer.kt || exit 1
 
 jna_architectures=(
   "arm64-v8a"
@@ -39,9 +39,9 @@ do
   echo "Extracting for architecture $arch_name"
 
   mkdir -p $jni/"$arch_name"
-  touch $jni/"$arch_name"/libuniffi_dotlottie_utils.so
-  cp ./target/"$target_triple"/release/*.so $jni/"$arch_name"/libuniffi_dotlottie_utils.so
-  test -e $jni/"$arch_name"/libuniffi_dotlottie_utils.so || exit 1
+  touch $jni/"$arch_name"/libuniffi_dotlottie_player.so
+  cp ./target/"$target_triple"/release/*.so $jni/"$arch_name"/libuniffi_dotlottie_player.so
+  test -e $jni/"$arch_name"/libuniffi_dotlottie_player.so || exit 1
 done
 
 # Initialise Gradle project
@@ -54,4 +54,4 @@ ret_version=$(grep -m 1 version $toml | awk -F= '{print $2}' | tr -d '" ')
 commit_hash=$(git rev-parse --short HEAD)
 version="$ret_version-$commit_hash"
 touch $BASE_PATH/$library_name/gradle.properties
-echo -e "dlutils-version=$version" >> $BASE_PATH/$library_name/gradle.properties
+echo -e "dlplayer-version=$version" >> $BASE_PATH/$library_name/gradle.properties

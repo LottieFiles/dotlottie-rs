@@ -1,5 +1,5 @@
 
-namespace dotlottie_utils {
+namespace dotlottie_player {
 };
 
 interface DotLottiePlayer {

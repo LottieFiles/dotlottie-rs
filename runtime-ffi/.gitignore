@@ -3,3 +3,4 @@ uniffi-bindings
 **/*.rs.bk
 Cargo.lock
 bin/
+/artifacts

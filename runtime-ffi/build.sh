@@ -14,7 +14,7 @@ cargo +nightly run --features=uniffi/cli --bin uniffi-bindgen generate src/dlpla
 
 # Genreate Bindings for Swift
 echo "Gnerating bindings for Swift"
-cargo +nightly run --features=uniffi/cli --bin uniffi-bindgen generate src/dlplayer.udl  --language swift --out-dir uniffi-bindings
+# cargo +nightly run --features=uniffi/cli --bin uniffi-bindgen generate src/dlplayer.udl  --language swift --out-dir uniffi-bindings
 # cargo +nightly run --features=uniffi/cli generate --library ./target/x86_64-unknown-linux-gnu/release/libdlutils.so --language swift --out-dir uniffi-bindings
 # cargo +nightly run generate ./src/dlutils.udl  --language swift --out-dir ./uniffi-bindings --lib-file ./target/x86_64-unknown-linux-gnu/release/libdlutils.so
 
@@ -29,10 +29,10 @@ android_target_triples=(
 )
 
 # Build IOS targets
-for TARGET_TRIPLE in "${ios_target_triples[@]}"; do
-  echo "Building ios target $TARGET_TRIPLE"
-  cargo build --target $TARGET_TRIPLE --release
-done;
+# for TARGET_TRIPLE in "${ios_target_triples[@]}"; do
+#   echo "Building ios target $TARGET_TRIPLE"
+#   cargo build --target $TARGET_TRIPLE --release
+# done;
 
 
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android21-clang

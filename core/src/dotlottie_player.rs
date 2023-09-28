@@ -4,7 +4,9 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use std::ffi::{CStr, CString};
+use std::sync::Arc;
+use std::ffi::CString;
+use std::sync::atomic::AtomicU32;
 
 #[repr(C)]
 pub struct DotLottiePlayer {
@@ -16,8 +18,8 @@ pub struct DotLottiePlayer {
 
     // Animation information related
     duration: f32,
-    current_frame: u32,
-    total_frames: u32,
+    current_frame: AtomicU32,
+    total_frames: AtomicU32,
 
     // Data
     animation: *mut Tvg_Animation,
@@ -25,15 +27,15 @@ pub struct DotLottiePlayer {
 }
 
 impl DotLottiePlayer {
-    pub fn new(autoplay: bool, loop_animation: bool, direction: i8, speed: i32) -> Self {
+    pub fn new() -> Self {
         DotLottiePlayer {
-            autoplay,
-            loop_animation,
-            speed,
-            direction,
+            autoplay: false,
+            loop_animation: false,
+            speed: 1,
+            direction: 1,
             duration: 0.0,
-            current_frame: 0,
-            total_frames: 0,
+            current_frame: AtomicU32::new(0),
+            total_frames: AtomicU32::new(0),
             animation: std::ptr::null_mut(),
             canvas: std::ptr::null_mut(),
             // For some reason initializing here doesn't work
@@ -42,8 +44,8 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn tick(&mut self) {
-        unsafe { tvg_animation_get_frame(self.animation, &mut self.current_frame as *mut u32) };
+    pub fn tick(&self) {
+        unsafe { tvg_animation_get_frame(self.animation, self.current_frame.get_mut()) };
 
         if self.direction == 1 {
             // Thorvg doesnt allow you ot go to total_frames
@@ -134,58 +136,62 @@ impl DotLottiePlayer {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn create_dotlottie_player(
-    autoplay: bool,
-    loop_animation: bool,
-    direction: i8,
-    speed: i32,
-) -> *mut DotLottiePlayer {
-    Box::into_raw(Box::new(DotLottiePlayer {
-        autoplay,
-        loop_animation,
-        direction,
-        speed,
-        duration: 0.0,
-        current_frame: 0,
-        total_frames: 0,
-        animation: std::ptr::null_mut(),
-        canvas: std::ptr::null_mut(),
-    }))
-}
+unsafe impl Send for DotLottiePlayer  {}
+unsafe impl Sync for DotLottiePlayer  {}
 
-#[no_mangle]
-pub extern "C" fn tick(ptr: *mut DotLottiePlayer) {
-    unsafe {
-        let rust_struct = &mut *ptr;
+// #[no_mangle]
+// pub extern "C" fn create_dotlottie_player(
+//     autoplay: bool,
+//     loop_animation: bool,
+//     direction: i8,
+//     speed: i32,
+// ) -> *mut DotLottiePlayer {
+//     Box::into_raw(Box::new(DotLottiePlayer {
+//         autoplay,
+//         loop_animation,
+//         direction,
+//         speed,
+//         duration: 0.0,
+//         current_frame: 0,
+//         total_frames: 0,
+//         animation: std::ptr::null_mut(),
+//         canvas: std::ptr::null_mut(),
+//     }))
+// }
 
-        rust_struct.tick();
-    }
-}
 
-#[no_mangle]
-pub extern "C" fn load_animation(
-    ptr: *mut DotLottiePlayer,
-    buffer: *mut u32,
-    animation_data: *const ::std::os::raw::c_char,
-    width: u32,
-    height: u32,
-) {
-    unsafe {
-        let rust_struct = &mut *ptr;
+// #[no_mangle]
+// pub extern "C" fn tick(ptr: *mut DotLottiePlayer) {
+//     unsafe {
+//         let rust_struct = &mut *ptr;
 
-        let animation_data_str = CStr::from_ptr(animation_data).to_str().unwrap();
+//         rust_struct.tick();
+//     }
+// }
 
-        rust_struct.load_animation(buffer, animation_data_str, width, height);
-    }
-}
+// #[no_mangle]
+// pub extern "C" fn load_animation(
+//     ptr: *mut DotLottiePlayer,
+//     buffer: *mut u32,
+//     animation_data: *const ::std::os::raw::c_char,
+//     width: u32,
+//     height: u32,
+// ) {
+//     unsafe {
+//         let rust_struct = &mut *ptr;
 
-#[no_mangle]
-pub extern "C" fn destroy_dotlottie_player(ptr: *mut DotLottiePlayer) {
-    if ptr.is_null() {
-        return;
-    }
-    unsafe {
-        drop(Box::from_raw(ptr));
-    }
-}
+//         let animation_data_str = CStr::from_ptr(animation_data).to_str().unwrap();
+
+//         rust_struct.load_animation(buffer, animation_data_str, width, height);
+//     }
+// }
+
+// #[no_mangle]
+// pub extern "C" fn destroy_dotlottie_player(ptr: *mut DotLottiePlayer) {
+//     if ptr.is_null() {
+//         return;
+//     }
+//     unsafe {
+//         drop(Box::from_raw(ptr));
+//     }
+// }

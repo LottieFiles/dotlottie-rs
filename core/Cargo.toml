@@ -1,12 +1,12 @@
 [package]
-name = "rust-bindings"
+name = "dotlottie_player"
 version = "0.1.0"
 edition = "2021"
 links = "thorvg"
 
 [lib]
 # crate-type = ["cdylib", "rlib"]
-crate-type = ["staticlib", "cdylib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
 name = "dotlottie_player"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

@@ -9,6 +9,8 @@ use std::{
     fs::File,
     io::Read,
     time::{Duration, Instant},
+    env,
+    path
 };
 
 use dotlottie_player::DotLottiePlayer;
@@ -169,14 +171,15 @@ fn main() {
         panic!("{}", e);
     });
 
-    let path =
-        "/Users/sam/Projects/LottieFiles/Github/@rust/thorvg-rust-wrapper/core/src/cartoon.json";
+    let base_path = env::var("CARGO_MANIFEST_DIR").unwrap_or("/Users/sam/Projects/LottieFiles/Github/@rust/thorvg-rust-wrapper/core".to_string());
+    let mut path = path::PathBuf::from(base_path);
+    path.push("src/cartoon.json");
 
-    let result = load_file(path);
+    let result = load_file(path.to_str().expect("Animation file to exist"));
 
     // load_animation(&mut buffer, result.1.as_str(), WIDTH as u32, HEIGHT as u32);
 
-    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(true, true, 1, 1);
+    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new();
     lottie_player.load_animation(
         buffer.as_mut_ptr(),
         result.1.as_str(),

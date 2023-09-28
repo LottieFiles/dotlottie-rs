@@ -2,7 +2,7 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    println!("cargo:rustc-link-search=/usr/local/lib/");
+    println!("cargo:rustc-link-search=/opt/homebrew/lib");
     // Tell cargo to tell rustc to link the system
     // shared library.
     println!("cargo:rustc-link-lib=thorvg");
@@ -17,6 +17,7 @@ fn main() {
         // The input header we would like to generate
         // bindings for.
         .header("wrapper.h")
+        .clang_arg("-I/opt/homebrew/include")  
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))

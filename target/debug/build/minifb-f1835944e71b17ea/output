@@ -1,0 +1,61 @@
+TARGET = Some("aarch64-apple-darwin")
+OPT_LEVEL = Some("0")
+HOST = Some("aarch64-apple-darwin")
+cargo:rerun-if-env-changed=CC_aarch64-apple-darwin
+CC_aarch64-apple-darwin = None
+cargo:rerun-if-env-changed=CC_aarch64_apple_darwin
+CC_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+DEBUG = Some("true")
+CARGO_CFG_TARGET_FEATURE = Some("aes,crc,dit,dotprod,dpb,dpb2,fcma,fhm,flagm,fp16,frintts,jsconv,lor,lse,neon,paca,pacg,pan,pmuv3,ras,rcpc,rcpc2,rdm,sb,sha2,sha3,ssbs,vh")
+cargo:rerun-if-env-changed=CFLAGS_aarch64-apple-darwin
+CFLAGS_aarch64-apple-darwin = None
+cargo:rerun-if-env-changed=CFLAGS_aarch64_apple_darwin
+CFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+running: "cc" "-O0" "-ffunction-sections" "-fdata-sections" "-fPIC" "-gdwarf-2" "-fno-omit-frame-pointer" "-arch" "arm64" "-Wall" "-Wextra" "-mmacosx-version-min=10.10" "-o" "/Users/afsal/repos/rust/dotlottie-thorvg/target/debug/build/minifb-f1835944e71b17ea/out/src/native/macosx/MacMiniFB.o" "-c" "src/native/macosx/MacMiniFB.m"
+cargo:warning=src/native/macosx/MacMiniFB.m:426:38: warning: unused parameter 'window' [-Wunused-parameter]
+
+cargo:warning=void mfb_set_cursor_visibility(void *window, bool visibility)
+
+cargo:warning=                                     ^
+
+cargo:warning=1 warning generated.
+
+exit status: 0
+running: "cc" "-O0" "-ffunction-sections" "-fdata-sections" "-fPIC" "-gdwarf-2" "-fno-omit-frame-pointer" "-arch" "arm64" "-Wall" "-Wextra" "-mmacosx-version-min=10.10" "-o" "/Users/afsal/repos/rust/dotlottie-thorvg/target/debug/build/minifb-f1835944e71b17ea/out/src/native/macosx/OSXWindow.o" "-c" "src/native/macosx/OSXWindow.m"
+exit status: 0
+running: "cc" "-O0" "-ffunction-sections" "-fdata-sections" "-fPIC" "-gdwarf-2" "-fno-omit-frame-pointer" "-arch" "arm64" "-Wall" "-Wextra" "-mmacosx-version-min=10.10" "-o" "/Users/afsal/repos/rust/dotlottie-thorvg/target/debug/build/minifb-f1835944e71b17ea/out/src/native/macosx/OSXWindowFrameView.o" "-c" "src/native/macosx/OSXWindowFrameView.m"
+exit status: 0
+cargo:rerun-if-env-changed=AR_aarch64-apple-darwin
+AR_aarch64-apple-darwin = None
+cargo:rerun-if-env-changed=AR_aarch64_apple_darwin
+AR_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=HOST_AR
+HOST_AR = None
+cargo:rerun-if-env-changed=AR
+AR = None
+cargo:rerun-if-env-changed=ARFLAGS_aarch64-apple-darwin
+ARFLAGS_aarch64-apple-darwin = None
+cargo:rerun-if-env-changed=ARFLAGS_aarch64_apple_darwin
+ARFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=HOST_ARFLAGS
+HOST_ARFLAGS = None
+cargo:rerun-if-env-changed=ARFLAGS
+ARFLAGS = None
+running: ZERO_AR_DATE="1" "ar" "cq" "/Users/afsal/repos/rust/dotlottie-thorvg/target/debug/build/minifb-f1835944e71b17ea/out/libminifb_native.a" "/Users/afsal/repos/rust/dotlottie-thorvg/target/debug/build/minifb-f1835944e71b17ea/out/src/native/macosx/MacMiniFB.o" "/Users/afsal/repos/rust/dotlottie-thorvg/target/debug/build/minifb-f1835944e71b17ea/out/src/native/macosx/OSXWindow.o" "/Users/afsal/repos/rust/dotlottie-thorvg/target/debug/build/minifb-f1835944e71b17ea/out/src/native/macosx/OSXWindowFrameView.o"
+exit status: 0
+running: "ar" "s" "/Users/afsal/repos/rust/dotlottie-thorvg/target/debug/build/minifb-f1835944e71b17ea/out/libminifb_native.a"
+exit status: 0
+cargo:rustc-link-lib=static=minifb_native
+cargo:rustc-link-search=native=/Users/afsal/repos/rust/dotlottie-thorvg/target/debug/build/minifb-f1835944e71b17ea/out
+cargo:rustc-link-lib=framework=Metal
+cargo:rustc-link-lib=framework=MetalKit

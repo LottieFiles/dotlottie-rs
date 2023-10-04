@@ -8,7 +8,6 @@ use std::ffi::CString;
 use std::sync::atomic::{AtomicI8, AtomicU32};
 use std::sync::{Arc, RwLock};
 
-#[repr(C)]
 pub struct DotLottiePlayer {
     // Playback related
     autoplay: bool,

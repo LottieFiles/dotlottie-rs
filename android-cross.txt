@@ -1,0 +1,20 @@
+[binaries]
+cpp = ['clang++']
+ar = 'AR:'
+strip = 'STRIP:'
+
+[properties]
+root = 'SYSROOT:'
+has_function_printf = true
+
+[built-in options]
+cpp_args = ['--sysroot=SYSROOT:']
+cpp_link_args = ['--sysroot=SYSROOT:']
+
+[host_machine]
+system = 'linux'
+subsystem = 'android'
+kernel = 'linux'
+cpu_family = 'CPU_FAMILY:'
+cpu = 'CPU:'
+endian = 'little'

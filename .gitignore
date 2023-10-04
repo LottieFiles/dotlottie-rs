@@ -8,3 +8,5 @@ bin/
 pkg/
 wasm-pack.log
 **/.DS_Store
+/thorvg
+/build

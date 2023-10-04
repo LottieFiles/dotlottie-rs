@@ -1,0 +1,9 @@
+prefix=/
+includedir=${prefix}/include
+libdir=${prefix}/lib
+
+Name: libthorvg
+Description: A Thor library for rendering vector graphics
+Version: 0.11.99
+Libs: -L${libdir} -lthorvg
+Cflags: -I${includedir}

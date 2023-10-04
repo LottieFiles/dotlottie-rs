@@ -3,7 +3,6 @@
 # Clone ThorVG repo if it doesn't exist
 if [ ! -d "thorvg" ]; then
   git clone git@github.com:thorvg/thorvg.git
-  git checkout hermet/ios
 fi
 
 ANDROID_NDK_HOME=/opt/homebrew/share/android-ndk

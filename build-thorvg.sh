@@ -87,8 +87,8 @@ for target in "${targets[@]}"; do
   fi
 
   if [[ $target == *"ios"* ]]; then
-        -e "s|CPU_FAMILY:|$CPU_FAMILY|g" \
-        -e "s|CPU:|$CPU|g" $BASE_PATH/ios_cross.txt > "/tmp/.$target-cross.txt"
+    sed -e "s|CPU_FAMILY:|$CPU_FAMILY|g" \
+        -e "s|CPU:|$CPU|g" $BASE_PATH/ios-cross.txt > "/tmp/.$target-cross.txt"
   else
     sed -e "s|SYSROOT:|$SYSROOT|g" \
         -e "s|CPP:|$CPP|g" \
@@ -113,9 +113,11 @@ for target in "${targets[@]}"; do
   if [[ $target == *"android"* ]]; then
     # meson setup --prefix=/ -Ddefault_library=static -Dstatic=true -Dbindings=capi --cross-file "/tmp/.$target-cross.txt" builddir
     meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="all" -Ddefault_library=static -Dstatic=true -Dsavers="all" -Dbindings="capi" --cross-file "/tmp/.$target-cross.txt"
+  elif [[ $target == *"darwin"* ]]; then
+    meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="lottie, png, jpg" -Ddefault_library=static -Dstatic=true -Dsavers="all" -Dbindings="capi"
   else
     # meson setup --prefix=/ -Dbindings=capi --cross-file "/tmp/.$target-cross.txt" builddir
-    meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="all" -Dstatic=true -Dsavers="all" -Dbindings="capi" --cross-file ./ios_cross.txt
+    meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="all" -Ddefault_library=static -Dstatic=true -Dsavers="all" -Dbindings="capi" --cross-file ./ios_cross.txt
   fi
 
   DESTDIR=$build_dir ninja -C builddir install

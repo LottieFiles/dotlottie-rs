@@ -1,9 +1,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-
-mod dotlottie_player;
+// include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use std::{
     env,
@@ -23,35 +21,35 @@ pub const HEIGHT: usize = 1200;
 // - Accept a buffer containg json data
 // - Accept an image buffer
 
-fn update_lottie(animation: *mut Tvg_Animation, canvas: *mut Tvg_Canvas, go_to_frame: &mut u32) {
-    let mut total_frame: u32 = 0;
-    let mut curr_frame: u32 = 0;
+// fn update_lottie(animation: *mut Tvg_Animation, canvas: *mut Tvg_Canvas, go_to_frame: &mut u32) {
+//     let mut total_frame: u32 = 0;
+//     let mut curr_frame: u32 = 0;
 
-    unsafe { tvg_animation_get_total_frame(animation, &mut total_frame as *mut u32) };
-    unsafe { tvg_animation_get_frame(animation, &mut curr_frame as *mut u32) };
+//     unsafe { tvg_animation_get_total_frame(animation, &mut total_frame as *mut u32) };
+//     unsafe { tvg_animation_get_frame(animation, &mut curr_frame as *mut u32) };
 
-    // let new_frame = total_frame * *go_to_frame;
+//     // let new_frame = total_frame * *go_to_frame;
 
-    if *go_to_frame == curr_frame {
-        return;
-    }
-    // println!("new frame {}", new_frame);
-    println!("go_to_frame {}", *go_to_frame);
+//     if *go_to_frame == curr_frame {
+//         return;
+//     }
+//     // println!("new frame {}", new_frame);
+//     println!("go_to_frame {}", *go_to_frame);
 
-    unsafe { tvg_animation_set_frame(animation, *go_to_frame) };
-    unsafe { tvg_canvas_update_paint(canvas, tvg_animation_get_picture(animation)) };
+//     unsafe { tvg_animation_set_frame(animation, *go_to_frame) };
+//     unsafe { tvg_canvas_update_paint(canvas, tvg_animation_get_picture(animation)) };
 
-    //Draw the canvas
-    unsafe { tvg_canvas_draw(canvas) };
-    unsafe { tvg_canvas_sync(canvas) };
+//     //Draw the canvas
+//     unsafe { tvg_canvas_draw(canvas) };
+//     unsafe { tvg_canvas_sync(canvas) };
 
-    println!("curr frmae: {} ", curr_frame);
-    println!("total frame: {} ", total_frame);
+//     println!("curr frmae: {} ", curr_frame);
+//     println!("total frame: {} ", total_frame);
 
-    if *go_to_frame >= total_frame {
-        *go_to_frame = 0;
-    }
-}
+//     if *go_to_frame >= total_frame {
+//         *go_to_frame = 0;
+//     }
+// }
 
 fn load_file(file_path: &str) -> (*const ::std::os::raw::c_char, String, u32) {
     println!("Loading file: {}", file_path);
@@ -159,7 +157,7 @@ impl Timer {
 // }
 
 fn main() {
-    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+    let buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
     let mut window = Window::new(
         "Thorvg inside Rust - ESC to exit",

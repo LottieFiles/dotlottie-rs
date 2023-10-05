@@ -50,19 +50,28 @@ for target in "${targets[@]}"; do
   # Creating crossfile
   # For iOS targets
   if [[ $target == *"ios"* ]]; then
-    SYSROOT=$(xcrun --sdk iphoneos --show-sdk-path)
     SYSTEM="darwin"
     if [[ $target == *"x86_64"* ]]; then
+      SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/"
+      SDKROOT="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer"
       ARCH="x86_64"
       CPU_FAMILY="x86_64"
       CPU="x86_64"
-    elif [[ $target == *"aarch64"* ]]; then
+    elif [[ $target == "aarch64-apple-ios-sim" ]]; then
+      SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator16.4.sdk"
+      SDKROOT="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer"
+      ARCH="arm64"
+      CPU_FAMILY="aarch64"
+      CPU="aarch64"
+    elif [[ $target == "aarch64-apple-ios" ]]; then
+      SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/"
+      SDKROOT="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer"
       ARCH="arm64"
       CPU_FAMILY="aarch64"
       CPU="aarch64"
     fi
   elif [[ $target == "aarch64-apple-darwin" ]]; then
-    SYSROOT=$(xcrun --sdk macosx --show-sdk-path)
+    # SYSROOT=$(xcrun --sdk macosx --show-sdk-path)
     SYSTEM="darwin"
     CPU_FAMILY="arm"
     CPU="aarch64"
@@ -87,10 +96,14 @@ for target in "${targets[@]}"; do
 
   if [[ $target == *"ios"* ]]; then
     sed -e "s|CPU_FAMILY:|$CPU_FAMILY|g" \
+        -e "s|ARCH:|$ARCH|g" \
+        -e "s|SDKROOT:|$SDKROOT|g" \
+        -e "s|SYSROOT:|$SYSROOT|g" \
         -e "s|CPU:|$CPU|g" $BASE_PATH/ios-cross.txt > "/tmp/.$target-cross.txt"
   else
     sed -e "s|SYSROOT:|$SYSROOT|g" \
         -e "s|CPP:|$CPP|g" \
+        -e "s|ARCH:|$ARCH|g" \
         -e "s|AR:|$AR|g" \
         -e "s|STRIP:|$STRIP|g" \
         -e "s|CPU_FAMILY:|$CPU_FAMILY|g" \
@@ -114,9 +127,12 @@ for target in "${targets[@]}"; do
     meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="all" -Ddefault_library=static -Dstatic=true -Dsavers="all" -Dbindings="capi" --cross-file "/tmp/.$target-cross.txt"
   elif [[ $target == *"darwin"* ]]; then
     meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="lottie, png, jpg" -Ddefault_library=static -Dstatic=true -Dsavers="all" -Dbindings="capi"
+  elif [[ $target == *"x86_64"* || $target == *"ios-sim"* ]]; then
+    # Static ios
+    meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="all" -Ddefault_library=static -Dstatic=true -Dsavers="all" -Dbindings="capi" --cross-file "/tmp/.$target-cross.txt"
   else
     # meson setup --prefix=/ -Dbindings=capi --cross-file "/tmp/.$target-cross.txt" builddir
-    meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="all" -Ddefault_library=static -Dstatic=true -Dsavers="all" -Dbindings="capi" --cross-file ./ios_cross.txt
+    meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="all" -Dstatic=true -Dsavers="all" -Dbindings="capi" --cross-file "/tmp/.$target-cross.txt"
   fi
 
   DESTDIR=$build_dir ninja -C builddir install

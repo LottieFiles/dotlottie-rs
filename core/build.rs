@@ -10,10 +10,19 @@ fn main() {
     let root_path = manifest_path.parent().unwrap();
 
     // Determine the library path based on the target
-    let lib_path = root_path.join("build").join(target);
+    let lib_path = root_path.join("build").join(&target);
 
     println!("cargo:rustc-link-search=native={}", lib_path.join("lib").display());
-    println!("cargo:rustc-link-lib=static=thorvg");
+    
+    // Adjust linking type based on target
+    // "aarch64-apple-darwin" "x86_64-apple-ios" "aarch64-apple-ios-sim" "aarch64-apple-ios" "aarch64-linux-android" "armv7-linux-androideabi"
+    match target.as_str() {
+        // "x86_64-apple-ios" => println!("cargo:rustc-link-lib=dylib=thorvg"),
+        // "aarch64-apple-ios-sim" => println!("cargo:rustc-link-lib=dylib=thorvg"),
+        "aarch64-apple-ios" => println!("cargo:rustc-link-lib=dylib=thorvg"),
+        _ => println!("cargo:rustc-link-lib=static=thorvg"),
+    }
+    
     println!("cargo:rerun-if-changed=wrapper.h");
 
     let bindings = bindgen::Builder::default()

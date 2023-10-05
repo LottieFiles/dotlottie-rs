@@ -1,10 +1,10 @@
 [binaries]
-cpp = ['clang++', '-arch', 'ARCH:', '-isysroot', '/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk']
+cpp = ['clang++', '-arch', 'ARCH:', '-isysroot', 'SYSROOT:']
 ar = 'ar'
 strip = 'strip'
 
 [properties]
-root = '/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer'
+root = 'SDKROOT:'
 has_function_printf = true
 
 [built-in options]
@@ -17,4 +17,4 @@ subsystem = 'ios'
 kernel = 'xnu'
 cpu_family = 'CPU_FAMILY:'
 cpu = 'CPU:'
-endian = 'littlPU
+endian = 'little'

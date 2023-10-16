@@ -43,8 +43,8 @@ for target in "${targets[@]}"; do
     fi
     # aarch64-linux-android21-clang
     # armv7a-linux-androideabi21-clang
-    export CC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/bin/$target_name-clang"
-    export CXX="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/bin/$target_name-clang++"
+    # export CC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/bin/$target_name-clang"
+    # export CXX="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/bin/$target_name-clang++"
   fi
 
   # Creating crossfile
@@ -58,8 +58,8 @@ for target in "${targets[@]}"; do
       CPU_FAMILY="x86_64"
       CPU="x86_64"
     elif [[ $target == "aarch64-apple-ios-sim" ]]; then
-      SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator16.4.sdk"
-      SDKROOT="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer"
+      SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
+      SDKROOT="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
       ARCH="arm64"
       CPU_FAMILY="aarch64"
       CPU="aarch64"
@@ -78,16 +78,24 @@ for target in "${targets[@]}"; do
   # For Android targets
   elif [[ $target == *"android"* ]]; then
     if [[ $target == *"aarch64"* ]]; then
-      SYSROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/21"
-      CPP="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android21-clang++"
+      # SYSROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/sysroot"
+      SYSROOT="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24"
+      CPP="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android24-clang++"
       AR="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+      AS="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-as"
+      RANLIB="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ranlib"
+      LD="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld"
       STRIP="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-strip"
-      CPU_FAMILY="aarch64"
+      CPU_FAMILY="arm"
       CPU="aarch64"
     elif [[ $target == *"armv7"* ]]; then
-      SYSROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/arm-linux-androideabi/21"
-      CPP="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/armv7a-linux-androideabi21-clang++"
+      # SYSROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/sysroot"
+      SYSROOT="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24"
+      CPP="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/armv7a-linux-androideabi24-clang++"
       AR="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+      AS="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-as"
+      RANLIB="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ranlib"
+      LD="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld"
       STRIP="/opt/homebrew/share/android-ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-strip"
       CPU_FAMILY="arm"
       CPU="armv7"
@@ -105,6 +113,9 @@ for target in "${targets[@]}"; do
         -e "s|CPP:|$CPP|g" \
         -e "s|ARCH:|$ARCH|g" \
         -e "s|AR:|$AR|g" \
+        -e "s|AS:|$AS|g" \
+        -e "s|RANLIB:|$RANLIB|g" \
+        -e "s|LD:|$LD|g" \
         -e "s|STRIP:|$STRIP|g" \
         -e "s|CPU_FAMILY:|$CPU_FAMILY|g" \
         -e "s|CPU:|$CPU|g" $BASE_PATH/android-cross.txt > "/tmp/.$target-cross.txt"
@@ -129,7 +140,7 @@ for target in "${targets[@]}"; do
     meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="lottie, png, jpg" -Ddefault_library=static -Dstatic=true -Dsavers="all" -Dbindings="capi"
   elif [[ $target == *"x86_64"* || $target == *"ios-sim"* ]]; then
     # Static ios
-    meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="all" -Ddefault_library=static -Dstatic=true -Dsavers="all" -Dbindings="capi" --cross-file "/tmp/.$target-cross.txt"
+    meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="all" -Dstatic=true -Dsavers="all" -Dbindings="capi" --cross-file "/tmp/.$target-cross.txt"
   else
     # meson setup --prefix=/ -Dbindings=capi --cross-file "/tmp/.$target-cross.txt" builddir
     meson setup --backend=ninja builddir --prefix=/ -Dlog=true -Dloaders="all" -Dstatic=true -Dsavers="all" -Dbindings="capi" --cross-file "/tmp/.$target-cross.txt"

@@ -16,8 +16,8 @@ pub struct DotLottiePlayer {
 
     // Animation information related
     duration: f32,
-    current_frame: u32,
-    total_frames: u32,
+    current_frame: f32,
+    total_frames: f32,
 
     // Data
     animation: *mut Tvg_Animation,
@@ -32,8 +32,8 @@ impl DotLottiePlayer {
             speed,
             direction,
             duration: 0.0,
-            current_frame: 0,
-            total_frames: 0,
+            current_frame: 0.0,
+            total_frames: 0.0,
             animation: std::ptr::null_mut(),
             canvas: std::ptr::null_mut(),
             // For some reason initializing here doesn't work
@@ -43,29 +43,28 @@ impl DotLottiePlayer {
     }
 
     pub fn tick(&mut self) {
-        unsafe { tvg_animation_get_frame(self.animation, &mut self.current_frame as *mut u32) };
+        unsafe { tvg_animation_get_frame(self.animation, &mut self.current_frame as *mut f32) };
 
         if self.direction == 1 {
             // Thorvg doesnt allow you ot go to total_frames
-            if self.current_frame >= self.total_frames - 1 {
-                self.current_frame = 0;
+            if self.current_frame >= self.total_frames - 1.0 {
+                self.current_frame = 0.0;
             } else {
-                self.current_frame += 1;
+                self.current_frame += 1.0;
             }
         } else if self.direction == -1 {
             if self.current_frame == 0 {
                 // If we set to total_frames, thorvg goes to frame 0
-                self.current_frame = self.total_frames - 1;
+                self.current_frame = self.total_frames - 1.0;
             } else {
-                self.current_frame -= 1;
+                self.current_frame -= 1.0;
             }
         }
 
         unsafe {
-            tvg_animation_set_frame(self.animation, self.current_frame);
-
-            tvg_canvas_update_paint(self.canvas, tvg_animation_get_picture(self.animation));
-
+            if tvg_animation_set_frame(self.animation, self.current_frame) == Tvg_Result_TVG_RESULT_SUCCESS {
+                tvg_canvas_update_paint(self.canvas, tvg_animation_get_picture(self.animation));
+            }
             //Draw the canvas
             tvg_canvas_draw(self.canvas);
             tvg_canvas_sync(self.canvas);
@@ -120,7 +119,7 @@ impl DotLottiePlayer {
 
                 tvg_paint_scale(frame_image, 1.0);
 
-                tvg_animation_get_total_frame(self.animation, &mut self.total_frames as *mut u32);
+                tvg_animation_get_total_frame(self.animation, &mut self.total_frames as *mut f32);
                 tvg_animation_get_duration(self.animation, &mut self.duration);
                 tvg_animation_set_frame(self.animation, 0);
                 tvg_canvas_push(self.canvas, frame_image);

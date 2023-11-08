@@ -21,12 +21,12 @@ pub const HEIGHT: usize = 1200;
 // - Accept a buffer containg json data
 // - Accept an image buffer
 
-fn update_lottie(animation: *mut Tvg_Animation, canvas: *mut Tvg_Canvas, go_to_frame: &mut u32) {
-    let mut total_frame: u32 = 0;
-    let mut curr_frame: u32 = 0;
+fn update_lottie(animation: *mut Tvg_Animation, canvas: *mut Tvg_Canvas, go_to_frame: &mut f32) {
+    let mut total_frame: f32 = 0.0;
+    let mut curr_frame: f32 = 0.0;
 
-    unsafe { tvg_animation_get_total_frame(animation, &mut total_frame as *mut u32) };
-    unsafe { tvg_animation_get_frame(animation, &mut curr_frame as *mut u32) };
+    unsafe { tvg_animation_get_total_frame(animation, &mut total_frame as *mut f32) };
+    unsafe { tvg_animation_get_frame(animation, &mut curr_frame as *mut f32) };
 
     // let new_frame = total_frame * *go_to_frame;
 
@@ -47,7 +47,7 @@ fn update_lottie(animation: *mut Tvg_Animation, canvas: *mut Tvg_Canvas, go_to_f
     println!("total frame: {} ", total_frame);
 
     if *go_to_frame >= total_frame {
-        *go_to_frame = 0;
+        *go_to_frame = 0.0;
     }
 }
 

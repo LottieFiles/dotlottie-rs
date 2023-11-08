@@ -53,7 +53,7 @@ impl DotLottiePlayer {
                 self.current_frame += 1.0;
             }
         } else if self.direction == -1 {
-            if self.current_frame == 0 {
+            if self.current_frame == 0.0 {
                 // If we set to total_frames, thorvg goes to frame 0
                 self.current_frame = self.total_frames - 1.0;
             } else {
@@ -117,11 +117,16 @@ impl DotLottiePlayer {
             } else {
                 println!("Animation loaded successfully");
 
-                tvg_paint_scale(frame_image, 1.0);
+                //resize the animation with the given aspect ratio.
+                let mut w: f32 = 0.0;
+                let mut h: f32 = 0.0;
+                tvg_picture_get_size(frame_image, &mut w as *mut f32, &mut h as *mut f32);
+                let scale =  (width as f32) / w;
+                tvg_picture_set_size(frame_image, w * scale, h * scale);
 
                 tvg_animation_get_total_frame(self.animation, &mut self.total_frames as *mut f32);
                 tvg_animation_get_duration(self.animation, &mut self.duration);
-                tvg_animation_set_frame(self.animation, 0);
+                tvg_animation_set_frame(self.animation, 0.0);
                 tvg_canvas_push(self.canvas, frame_image);
                 tvg_canvas_draw(self.canvas);
                 tvg_canvas_sync(self.canvas);
@@ -146,8 +151,8 @@ pub extern "C" fn create_dotlottie_player(
         direction,
         speed,
         duration: 0.0,
-        current_frame: 0,
-        total_frames: 0,
+        current_frame: 0.0,
+        total_frames: 0.0,
         animation: std::ptr::null_mut(),
         canvas: std::ptr::null_mut(),
     }))

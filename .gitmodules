@@ -1,0 +1,12 @@
+[submodule "deps/modules/thorvg"]
+	path = deps/modules/thorvg
+	url = https://github.com/thorvg/thorvg.git
+[submodule "deps/modules/libjpeg-turbo"]
+	path = deps/modules/libjpeg-turbo
+	url = https://github.com/libjpeg-turbo/libjpeg-turbo.git
+[submodule "deps/modules/libpng"]
+	path = deps/modules/libpng
+	url = https://github.com/glennrp/libpng.git
+[submodule "deps/modules/zlib"]
+	path = deps/modules/zlib
+	url = https://github.com/madler/zlib.git

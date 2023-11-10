@@ -5,9 +5,10 @@
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use std::ffi::CString;
-use std::sync::atomic::{AtomicI8, AtomicU32};
+use std::sync::atomic::AtomicI8;
 use std::sync::{Arc, RwLock};
 
+#[allow(dead_code)]
 pub struct DotLottiePlayer {
     // Playback related
     autoplay: bool,
@@ -17,8 +18,8 @@ pub struct DotLottiePlayer {
 
     // Animation information related
     duration: f32,
-    current_frame: Arc<RwLock<AtomicU32>>,
-    total_frames: Arc<RwLock<AtomicU32>>,
+    current_frame: Arc<RwLock<f32>>,
+    total_frames: Arc<RwLock<f32>>,
 
     // Data
     animation: Arc<RwLock<*mut Tvg_Animation>>,
@@ -33,9 +34,9 @@ impl DotLottiePlayer {
             speed: 1,
             direction: Arc::new(RwLock::new(AtomicI8::new(1))),
             duration: 0.0,
-            current_frame: Arc::new(RwLock::new(AtomicU32::new(0))),
+            current_frame: Arc::new(RwLock::new(0.0)),
 
-            total_frames: Arc::new(RwLock::new(AtomicU32::new(0))),
+            total_frames: Arc::new(RwLock::new(0.0)),
             animation: Arc::new(RwLock::new(std::ptr::null_mut())),
             canvas: Arc::new(RwLock::new(std::ptr::null_mut())),
             // For some reason initializing here doesn't work
@@ -46,32 +47,29 @@ impl DotLottiePlayer {
 
     pub fn tick(&self) {
         unsafe {
-            let current_frame = self.current_frame.read().unwrap().as_ptr();
-            let total_frames = self.total_frames.read().unwrap().as_ptr();
+            let current_frame = &mut *self.current_frame.write().unwrap();
+            let total_frames = &mut *self.total_frames.write().unwrap();
             let direction = self.direction.read().unwrap().as_ptr();
             let canvas = self.canvas.read().unwrap().as_mut().unwrap();
             let animation = self.animation.read().unwrap().as_mut().unwrap();
 
-            tvg_animation_get_frame(animation, current_frame);
+            tvg_animation_get_frame(animation, current_frame as *mut f32);
 
             if *direction == 1 {
                 // Thorvg doesnt allow you ot go to total_frames
                 println!("Current frame : {}", *current_frame);
 
-                if *current_frame >= *total_frames - 1 {
-                    *current_frame = 0;
+                if *current_frame >= *total_frames - 1.0 {
+                    *current_frame = 0.0;
                 } else {
-                    *current_frame += 1;
+                    *current_frame += 1.0;
                 }
             } else if *direction == -1 {
-                if *current_frame == 0 {
+                if *current_frame == 0.0 {
                     // If we set to total_frames, thorvg goes to frame 0
-                    self.current_frame
-                        .write()
-                        .unwrap()
-                        .store(*total_frames - 1, std::sync::atomic::Ordering::Relaxed);
+                    *current_frame = *total_frames - 1.0;
                 } else {
-                    *current_frame -= 1;
+                    *current_frame -= 1.0;
                 }
             }
 
@@ -86,8 +84,6 @@ impl DotLottiePlayer {
     }
 
     pub fn load_animation(&self, buffer: &Vec<u32>, animation_data: &str, width: u32, height: u32) {
-        let mut frame_image = std::ptr::null_mut();
-
         let mimetype = CString::new("lottie").expect("Failed to create CString");
 
         unsafe {
@@ -110,7 +106,7 @@ impl DotLottiePlayer {
 
             let animation = self.animation.read().unwrap().as_mut().unwrap();
 
-            frame_image = tvg_animation_get_picture(animation);
+            let frame_image = tvg_animation_get_picture(animation);
 
             let load_result = tvg_picture_load_data(
                 frame_image,
@@ -126,23 +122,18 @@ impl DotLottiePlayer {
                 // DotLottieError::LoadContentError;
             } else {
                 println!("Animation loaded successfully");
+                let total_frames = &mut *self.total_frames.write().unwrap();
 
                 tvg_paint_scale(frame_image, 1.0);
 
-                tvg_animation_get_total_frame(
-                    animation,
-                    self.total_frames.read().unwrap().as_ptr(),
-                );
+                tvg_animation_get_total_frame(animation, total_frames as *mut f32);
                 // tvg_animation_get_duration(animation, &mut self.duration);
-                tvg_animation_set_frame(animation, 0);
+                tvg_animation_set_frame(animation, 0.0);
                 tvg_canvas_push(canvas, frame_image);
                 tvg_canvas_draw(canvas);
                 tvg_canvas_sync(canvas);
 
-                println!(
-                    "Total frames: {}",
-                    *self.current_frame.read().unwrap().as_ptr()
-                );
+                println!("Total frames: {}", *total_frames);
                 println!("Duration: {}", self.duration);
             }
         }

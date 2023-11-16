@@ -1,12 +1,14 @@
 #!/bin/bash
 # Genreate Bindings for Swift
 echo "Gnerating bindings for Swift"
-cargo +nightly run --target aarch64-apple-ios --features=uniffi/cli --bin uniffi-bindgen generate src/dlplayer.udl  --language swift --out-dir uniffi-bindings
+cargo +nightly run --target x86_64-apple-darwin --features=uniffi/cli --bin uniffi-bindgen generate src/dlplayer.udl  --language swift --out-dir uniffi-bindings
 
 ios_target_triples=(
-  "x86_64-apple-ios"
-  "aarch64-apple-ios-sim"
-  "aarch64-apple-ios"
+  # "x86_64-apple-ios"
+    "x86_64-apple-darwin"
+
+  # "aarch64-apple-ios-sim"
+  # "aarch64-apple-ios"
 )
 
 #Build IOS targets

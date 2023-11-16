@@ -1,0 +1,19 @@
+# build for the ios simulator(Intel)
+
+[binaries]
+cpp = ['clang++', '-arch', 'x86_64', '-isysroot', '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.sdk']
+ar = 'ar'
+strip = 'strip'
+pthread = 'pthread'
+
+[properties]
+root = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer'
+has_function_printf = true
+
+[host_machine]
+system = 'darwin'
+subsystem = 'macosx'
+kernel = 'xnu'
+cpu_family = 'x86_64'
+cpu = 'x86_64'
+endian = 'little'

@@ -9,18 +9,19 @@ ANDROID_NDK_HOME=/opt/homebrew/share/android-ndk
 
 # List of target triples
 targets=(
-  "aarch64-apple-darwin"
+  # "aarch64-apple-darwin"
   "x86_64-apple-ios"
-  "aarch64-apple-ios-sim"
-  "aarch64-apple-ios"
-  "aarch64-linux-android"
-  "armv7-linux-androideabi"
+  # "x86_64-apple-darwin"
+  # "aarch64-apple-ios-sim"
+  # "aarch64-apple-ios"
+  # "aarch64-linux-android"
+  # "armv7-linux-androideabi"
 )
 
 BASE_PATH=$(pwd)
 # Path to the ThorVG source code
 thorvg_path=$BASE_PATH/thorvg
-cross_file=$BASE_PATH/cross-file.txt
+# cross_file=$BASE_PATH/cross-file.txt
 
 rm -rf "$BASE_PATH/build"
 

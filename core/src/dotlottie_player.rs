@@ -43,7 +43,10 @@ impl DotLottiePlayer {
     }
 
     pub fn tick(&mut self) {
-        unsafe { tvg_animation_get_frame(self.animation, &mut self.current_frame as *mut f32) };
+        unsafe {
+            tvg_canvas_clear(self.canvas, false, true);
+            tvg_animation_get_frame(self.animation, &mut self.current_frame as *mut f32);
+        }
 
         if self.direction == 1 {
             // Thorvg doesnt allow you ot go to total_frames
@@ -107,7 +110,8 @@ impl DotLottiePlayer {
                 animation_data.as_ptr() as *const i8,
                 animation_data.len() as u32,
                 mimetype.as_ptr(),
-                false,
+                std::ptr::null_mut(),
+                false
             );
 
             if load_result != Tvg_Result_TVG_RESULT_SUCCESS {

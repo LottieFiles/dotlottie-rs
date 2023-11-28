@@ -9,4 +9,6 @@ pkg/
 wasm-pack.log
 **/.DS_Store
 /thorvg
-/build
+/deps/build
+/deps/artifacts
+/release

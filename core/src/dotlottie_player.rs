@@ -53,6 +53,7 @@ impl DotLottiePlayer {
             let canvas = self.canvas.read().unwrap().as_mut().unwrap();
             let animation = self.animation.read().unwrap().as_mut().unwrap();
 
+            tvg_canvas_clear(canvas, false, true);
             tvg_animation_get_frame(animation, current_frame as *mut f32);
 
             if *direction == 1 {

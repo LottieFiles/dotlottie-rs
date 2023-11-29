@@ -1,4 +1,5 @@
-uniffi-bindings
+/uniffi-bindings
+/build
 /target
 **/*.rs.bk
 Cargo.lock

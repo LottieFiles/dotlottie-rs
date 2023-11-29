@@ -10,3 +10,6 @@
 [submodule "deps/modules/zlib"]
 	path = deps/modules/zlib
 	url = https://github.com/madler/zlib.git
+[submodule "deps/modules/ios-cmake"]
+	path = deps/modules/ios-cmake
+	url = https://github.com/leetal/ios-cmake.git

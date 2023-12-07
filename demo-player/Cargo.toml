@@ -6,4 +6,3 @@ edition = "2021"
 [dependencies]
 minifb = "0.25"
 dotlottie_player = { path = "../core" }
-

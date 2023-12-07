@@ -6,7 +6,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use std::ffi::CString;
 use std::sync::atomic::AtomicI8;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, Mutex};
 
 #[allow(dead_code)]
 pub struct DotLottiePlayer {
@@ -24,6 +24,7 @@ pub struct DotLottiePlayer {
     // Data
     animation: Arc<RwLock<*mut Tvg_Animation>>,
     canvas: Arc<RwLock<*mut Tvg_Canvas>>,
+    buffer: Mutex<Vec<u32>>,
 }
 
 impl DotLottiePlayer {
@@ -39,6 +40,7 @@ impl DotLottiePlayer {
             total_frames: Arc::new(RwLock::new(0.0)),
             animation: Arc::new(RwLock::new(std::ptr::null_mut())),
             canvas: Arc::new(RwLock::new(std::ptr::null_mut())),
+            buffer: Mutex::new(vec![]),
             // For some reason initializing here doesn't work
             // animation: tvg_animation_new(),
             // canvas: tvg_swcanvas_create(),
@@ -84,7 +86,26 @@ impl DotLottiePlayer {
         };
     }
 
-    pub fn load_animation(&self, buffer: &Vec<u32>, animation_data: &str, width: u32, height: u32) {
+    pub fn get_total_frame(&self) -> f32 {
+        return  self.total_frames.read().unwrap().clone();
+    }
+
+    pub fn get_current_frame(&self) -> f32 {
+        return  self.current_frame.read().unwrap().clone();
+    }
+
+    pub fn get_buffer(&self) -> i64 {
+        let buffer_lock = self.buffer.lock().unwrap();
+        return buffer_lock.as_ptr().cast::<u32>() as i64;
+    }
+
+    pub fn get_buffer_size(&self) -> i64 {
+        let buffer_lock = self.buffer.lock().unwrap();
+
+        buffer_lock.len() as i64
+    }
+
+    pub fn load_animation(&self, animation_data: &str, width: u32, height: u32) {
         let mimetype = CString::new("lottie").expect("Failed to create CString");
 
         unsafe {
@@ -94,13 +115,19 @@ impl DotLottiePlayer {
 
             let canvas = self.canvas.read().unwrap().as_mut().unwrap();
 
+            let mut buffer_lock = self.buffer.lock().unwrap();
+
+            *buffer_lock = vec![0; (width * height * 4) as usize];
+
+            // self.buffer.as = vec![width * height];
+
             tvg_swcanvas_set_target(
                 canvas,
-                buffer.as_ptr() as *mut u32,
+                buffer_lock.as_ptr() as *mut u32,
                 width,
                 width,
                 height,
-                Tvg_Colorspace_TVG_COLORSPACE_ARGB8888,
+                Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
             );
 
             *self.animation.write().unwrap() = tvg_animation_new();
@@ -124,8 +151,24 @@ impl DotLottiePlayer {
             } else {
                 println!("Animation loaded successfully");
                 let total_frames = &mut *self.total_frames.write().unwrap();
+                let mut pw: f32 = 0.0;
+                let mut ph: f32 = 0.0;
+                let scale: f32;
+                let mut shiftY: f32 = 0.0;
+                let mut shiftX: f32 = 0.0;
 
-                tvg_paint_scale(frame_image, 1.0);
+                tvg_picture_get_size(frame_image, &mut pw as *mut f32, &mut ph as *mut f32);
+
+                if pw > ph {
+                    scale = width as f32 / pw;
+                    shiftY = (height as f32 / ph * scale) * 0.5;
+                } else {
+                    scale = height as f32 / ph;
+                    shiftX = (width as f32 - pw * scale) * 0.5;
+                }
+
+                tvg_paint_scale(frame_image, scale);
+                tvg_paint_translate(frame_image, shiftX, shiftY);
 
                 tvg_animation_get_total_frame(animation, total_frames as *mut f32);
                 // tvg_animation_get_duration(animation, &mut self.duration);

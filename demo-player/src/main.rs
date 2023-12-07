@@ -157,7 +157,7 @@ impl Timer {
 // }
 
 fn main() {
-    let buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+    let mut buffer: *const u32;
 
     let mut window = Window::new(
         "Thorvg inside Rust - ESC to exit",
@@ -180,14 +180,19 @@ fn main() {
     // load_animation(&mut buffer, result.1.as_str(), WIDTH as u32, HEIGHT as u32);
 
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new();
-    lottie_player.load_animation(&buffer, result.1.as_str(), WIDTH as u32, HEIGHT as u32);
+    lottie_player.load_animation(result.1.as_str(), WIDTH as u32, HEIGHT as u32);
+
+    let buffer_slice = unsafe {
+        std::slice::from_raw_parts(lottie_player.get_buffer() as *const u32, WIDTH * HEIGHT * 4)
+    };
+
 
     let mut timer = Timer::new();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         timer.tick(&mut lottie_player);
 
-        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
+        window.update_with_buffer(buffer_slice, WIDTH, HEIGHT).unwrap();
     }
 }
 

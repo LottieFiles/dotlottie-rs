@@ -308,7 +308,7 @@ define APPLE_RELEASE
 	rm -rf $(RELEASE)/$(APPLE)
 	mkdir -p $(RELEASE)/$(APPLE)
   $(XCODEBUILD) -create-xcframework \
-                $(foreach framework_type,$(FRAMEWORK_TYPES),-framework $(framework_type)/$(DOTLOTTIE_PLAYER_FRAMEWORK) ) \
+                $$(find $(RUNTIME_FFI)/$(APPLE_BUILD) -type d -depth 2 | sed 's/^/-framework /' | tr '\n' ' ') \
                 -output $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
 	cp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(SWIFT)/$(DOTLOTTIE_PLAYER_SWIFT) $(RELEASE)/$(APPLE)/.
 endef
@@ -532,12 +532,11 @@ endef
 define NEW_APPLE_FRAMEWORK
 # Build lipo library
 $(RUNTIME_FFI)/$(APPLE_BUILD)/$1/$(RUNTIME_FFI_DYLIB): ALL_LIBS := $$(foreach target,$2,$(RUNTIME_FFI)/target/$$(target)/release/$(RUNTIME_FFI_DYLIB))
-$(RUNTIME_FFI)/$(APPLE_BUILD)/$1/$(RUNTIME_FFI_DYLIB): LIBS := $$(foreach lib,$$(ALL_LIBS),$$(wildcard $$(lib)))
+$(RUNTIME_FFI)/$(APPLE_BUILD)/$1/$(RUNTIME_FFI_DYLIB): LIBS = $$(foreach lib,$$(ALL_LIBS),$$(wildcard $$(lib)))
 $(RUNTIME_FFI)/$(APPLE_BUILD)/$1/$(RUNTIME_FFI_DYLIB):
 	$$(LIPO_CREATE)
 
 # Build framework & xcframework
-$(RUNTIME_FFI)/$(APPLE_BUILD)/$1/$(DOTLOTTIE_PLAYER_FRAMEWORK): FRAMEWORK_TYPES = $(foreach framework_type,$(APPLE_FRAMEWORK_TYPES),$(wildcard $(RUNTIME_FFI)/$(APPLE_BUILD)/$(framework_type)))
 $(RUNTIME_FFI)/$(APPLE_BUILD)/$1/$(DOTLOTTIE_PLAYER_FRAMEWORK): BASE_DIR := $(RUNTIME_FFI)/$(APPLE_BUILD)/$1
 $(RUNTIME_FFI)/$(APPLE_BUILD)/$1/$(DOTLOTTIE_PLAYER_FRAMEWORK): PLIST_ENABLE := $3
 $(RUNTIME_FFI)/$(APPLE_BUILD)/$1/$(DOTLOTTIE_PLAYER_FRAMEWORK): PLIST_DISABLE := $4

@@ -1,20 +1,19 @@
 [package]
-name = "rust-bindings"
+name = "dotlottie_player"
 version = "0.1.0"
 edition = "2021"
 links = "thorvg"
 
 [lib]
-# crate-type = ["cdylib", "rlib"]
-crate-type = ["staticlib", "cdylib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
 name = "dotlottie_player"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-minifb = "0.25"
 thiserror = "1.0.48"
 wasm-bindgen = "0.2.84"
 
 [build-dependencies]
 bindgen = "0.65.1"
+lazy_static = "1.4"

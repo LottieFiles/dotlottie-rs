@@ -1,0 +1,16 @@
+[binaries]
+cpp     = 'CPP:'
+ar      = 'AR:'
+as      = 'AS:'
+ranlib  = 'RANLIB:'
+ld      = 'LD:'
+strip   = 'STRIP:'
+
+[properties]
+sys_root = 'SYSROOT:'
+
+[host_machine]
+system = 'android'
+cpu_family = 'CPU_FAMILY:'
+cpu = 'CPU:'
+endian = 'little'

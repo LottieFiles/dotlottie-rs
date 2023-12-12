@@ -1,0 +1,20 @@
+[binaries]
+cpp = ['clang++', '-arch', 'ARCH:', '-isysroot', 'SYSROOT:']
+ar = 'ar'
+strip = 'strip'
+
+[properties]
+root = 'SDKROOT:'
+has_function_printf = true
+
+[built-in options]
+cpp_args = ['-miphoneos-version-min=11.0']
+cpp_link_args = ['-miphoneos-version-min=11.0']
+
+[host_machine]
+system = 'darwin'
+subsystem = 'ios'
+kernel = 'xnu'
+cpu_family = 'CPU_FAMILY:'
+cpu = 'CPU:'
+endian = 'little'

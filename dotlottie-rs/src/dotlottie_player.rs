@@ -47,45 +47,6 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn tick(&self) {
-        unsafe {
-            let current_frame = &mut *self.current_frame.write().unwrap();
-            let total_frames = &mut *self.total_frames.write().unwrap();
-            let direction = self.direction.read().unwrap().as_ptr();
-            let canvas = self.canvas.read().unwrap().as_mut().unwrap();
-            let animation = self.animation.read().unwrap().as_mut().unwrap();
-
-            tvg_canvas_clear(canvas, false, true);
-            tvg_animation_get_frame(animation, current_frame as *mut f32);
-
-            if *direction == 1 {
-                // Thorvg doesnt allow you ot go to total_frames
-                println!("Current frame : {}", *current_frame);
-
-                if *current_frame >= *total_frames - 1.0 {
-                    *current_frame = 0.0;
-                } else {
-                    *current_frame += 1.0;
-                }
-            } else if *direction == -1 {
-                if *current_frame == 0.0 {
-                    // If we set to total_frames, thorvg goes to frame 0
-                    *current_frame = *total_frames - 1.0;
-                } else {
-                    *current_frame -= 1.0;
-                }
-            }
-
-            tvg_animation_set_frame(animation, *current_frame);
-
-            tvg_canvas_update_paint(canvas, tvg_animation_get_picture(animation));
-
-            //Draw the canvas
-            tvg_canvas_draw(canvas);
-            tvg_canvas_sync(canvas);
-        };
-    }
-
     pub fn frame(&self, no: f32) {
         unsafe {
             let current_frame = &mut *self.current_frame.write().unwrap();
@@ -137,7 +98,7 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn load_animation_from_path(&self, path: &str, width: u32, height: u32) {
+    pub fn load_animation_from_path(&self, path: &str, width: u32, height: u32) -> bool {
         unsafe {
             tvg_engine_init(Tvg_Engine_TVG_ENGINE_SW, 0);
 
@@ -172,9 +133,8 @@ impl DotLottiePlayer {
             if load_result != Tvg_Result_TVG_RESULT_SUCCESS {
                 tvg_animation_del(animation);
 
-                // DotLottieError::LoadContentError;
+                return false;
             } else {
-                println!("Animation loaded successfully");
                 let total_frames = &mut *self.total_frames.write().unwrap();
                 let duration = &mut *self.duration.write().unwrap();
                 let mut pw: f32 = 0.0;
@@ -202,14 +162,13 @@ impl DotLottiePlayer {
                 tvg_canvas_push(canvas, frame_image);
                 tvg_canvas_draw(canvas);
                 tvg_canvas_sync(canvas);
-
-                println!("Total frames: {}", *total_frames);
-                println!("Duration: {}", *duration);
             }
         }
+
+        true
     }
 
-    pub fn load_animation(&self, animation_data: &str, width: u32, height: u32) {
+    pub fn load_animation(&self, animation_data: &str, width: u32, height: u32) -> bool {
         let mimetype = CString::new("lottie").expect("Failed to create CString");
 
         unsafe {
@@ -222,8 +181,6 @@ impl DotLottiePlayer {
             let mut buffer_lock = self.buffer.lock().unwrap();
 
             *buffer_lock = vec![0; (width * height * 4) as usize];
-
-            // self.buffer.as = vec![width * height];
 
             tvg_swcanvas_set_target(
                 canvas,
@@ -251,9 +208,8 @@ impl DotLottiePlayer {
             if load_result != Tvg_Result_TVG_RESULT_SUCCESS {
                 tvg_animation_del(animation);
 
-                // DotLottieError::LoadContentError;
+                return false;
             } else {
-                println!("Animation loaded successfully");
                 let total_frames = &mut *self.total_frames.write().unwrap();
                 let duration = &mut *self.duration.write().unwrap();
                 let mut pw: f32 = 0.0;
@@ -281,69 +237,12 @@ impl DotLottiePlayer {
                 tvg_canvas_push(canvas, frame_image);
                 tvg_canvas_draw(canvas);
                 tvg_canvas_sync(canvas);
-
-                println!("Total frames: {}", *total_frames);
-                println!("Duration: {}", *duration);
             }
         }
+
+        true
     }
 }
 
 unsafe impl Send for DotLottiePlayer {}
 unsafe impl Sync for DotLottiePlayer {}
-
-// #[no_mangle]
-// pub extern "C" fn create_dotlottie_player(
-//     autoplay: bool,
-//     loop_animation: bool,
-//     direction: i8,
-//     speed: i32,
-// ) -> *mut DotLottiePlayer {
-//     Box::into_raw(Box::new(DotLottiePlayer {
-//         autoplay,
-//         loop_animation,
-//         direction,
-//         speed,
-//         duration: 0.0,
-//         current_frame: 0,
-//         total_frames: 0,
-//         animation: std::ptr::null_mut(),
-//         canvas: std::ptr::null_mut(),
-//     }))
-// }
-
-// #[no_mangle]
-// pub extern "C" fn tick(ptr: *mut DotLottiePlayer) {
-//     unsafe {
-//         let rust_struct = &mut *ptr;
-
-//         rust_struct.tick();
-//     }
-// }
-
-// #[no_mangle]
-// pub extern "C" fn load_animation(
-//     ptr: *mut DotLottiePlayer,
-//     buffer: *mut u32,
-//     animation_data: *const ::std::os::raw::c_char,
-//     width: u32,
-//     height: u32,
-// ) {
-//     unsafe {
-//         let rust_struct = &mut *ptr;
-
-//         let animation_data_str = CStr::from_ptr(animation_data).to_str().unwrap();
-
-//         rust_struct.load_animation(buffer, animation_data_str, width, height);
-//     }
-// }
-
-// #[no_mangle]
-// pub extern "C" fn destroy_dotlottie_player(ptr: *mut DotLottiePlayer) {
-//     if ptr.is_null() {
-//         return;
-//     }
-//     unsafe {
-//         drop(Box::from_raw(ptr));
-//     }
-// }

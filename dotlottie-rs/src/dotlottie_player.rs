@@ -98,7 +98,7 @@ impl DotLottiePlayer {
 
             tvg_animation_set_frame(animation, *current_frame);
 
-            tvg_canvas_update_paint(canvas, tvg_animation_get_picture(animation));
+            tvg_canvas_update(canvas);
 
             tvg_canvas_draw(canvas);
 

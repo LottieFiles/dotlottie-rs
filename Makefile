@@ -107,8 +107,8 @@ ZLIB_LIB := libz.a
 RELEASE := release
 
 # Build artifact types
-CORE := core
-RUNTIME_FFI := runtime-ffi
+CORE := dotlottie-rs
+RUNTIME_FFI := dotlottie-ffi
 DOTLOTTIE_PLAYER := dotlottie-player
 
 # Build artifacts
@@ -476,7 +476,7 @@ define NEW_ANDROID_BUILD
 $1_RUNTIME_FFI_DEPS_BUILD_DIR := $(RUNTIME_FFI)/target/$$($1)/release
 $1_DOTLOTTIE_PLAYER_LIB_DIR := $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/jniLibs/$$($1_ABI)
 
-# Build runtime-ffi
+# Build dotlottie-ffi
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_INCLUDE_DIR := ../$$($1_DEPS_INCLUDE_DIR)
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_LIB_DIR := ../$$($1_DEPS_LIB_DIR)
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_LIB64_DIR := ../$$($1_DEPS_LIB_DIR)64
@@ -505,7 +505,7 @@ define NEW_APPLE_BUILD
 # Setup final artifact variables
 $1_RUNTIME_FFI_DEPS_BUILD_DIR := $(RUNTIME_FFI)/target/$$($1)/release
 
-# Build runtime-ffi
+# Build dotlottie-ffi
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_INCLUDE_DIR := ../$$($1_DEPS_INCLUDE_DIR)
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_LIB_DIR := ../$$($1_DEPS_LIB_DIR)
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_LIB64_DIR := ../$$($1_DEPS_LIB_DIR)64

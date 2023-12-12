@@ -1,5 +1,5 @@
 [package]
-name = "runtime-ffi"
+name = "dotlottie-ffi"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
@@ -15,7 +15,7 @@ path = "uniffi-bindgen.rs"
 [dependencies]
 uniffi = { version = "0.24.3", features = ["cli"] }
 # Core runtime
-dotlottie_player = { path = "../core" }
+dotlottie_player = { path = "../dotlottie-rs" }
 
 [build-dependencies]
 uniffi = { version = "0.24.3", features = ["build"] }

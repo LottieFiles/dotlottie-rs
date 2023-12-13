@@ -8,6 +8,75 @@ use std::ffi::CString;
 use std::sync::atomic::AtomicI8;
 use std::sync::{Arc, Mutex, RwLock};
 
+pub mod thorvg {
+    use super::*;
+
+    pub struct Canvas {
+        raw_canvas: *mut Tvg_Canvas,
+    }
+
+    impl Canvas {
+        pub fn new(engine_method: Tvg_Engine, threads: u32) -> Self {
+            Canvas {
+                raw_canvas: unsafe {
+                    tvg_engine_init(engine_method, threads);
+
+                    tvg_swcanvas_create()
+                },
+            }
+        }
+
+        pub fn set_target(
+            &self,
+            buffer: *mut u32,
+            stride: u32,
+            width: u32,
+            height: u32,
+            color_space: Tvg_Colorspace,
+        ) -> Tvg_Result {
+            unsafe {
+                tvg_swcanvas_set_target(self.raw_canvas, buffer, stride, width, height, color_space)
+            }
+        }
+
+        pub fn clear(&self, paints: bool, buffer: bool) -> Tvg_Result {
+            unsafe { tvg_canvas_clear(self.raw_canvas, false, true) }
+        }
+
+        pub fn push(&self, picture: *mut Tvg_Paint) -> Tvg_Result {
+            unsafe { tvg_canvas_push(self.raw_canvas, picture) }
+        }
+
+        pub fn draw(&self) -> Tvg_Result {
+            unsafe { tvg_canvas_draw(self.raw_canvas) }
+        }
+
+        pub fn sync(&self) -> Tvg_Result {
+            unsafe { tvg_canvas_sync(self.raw_canvas) }
+        }
+
+        pub fn update(&self) -> Tvg_Result {
+            unsafe { tvg_canvas_update(self.raw_canvas) }
+        }
+
+        pub fn destroy(&self) -> Tvg_Result {
+            unsafe { tvg_canvas_destroy(self.raw_canvas) }
+        }
+
+        pub fn set_mempool(&self, policy: Tvg_Mempool_Policy) -> Tvg_Result {
+            unsafe { tvg_swcanvas_set_mempool(self.raw_canvas, policy) }
+        }
+    }
+
+    impl Drop for Canvas {
+        fn drop(&mut self) {
+            self.destroy();
+
+            self.raw_canvas = std::ptr::null_mut();
+        }
+    }
+}
+
 #[allow(dead_code)]
 pub struct DotLottiePlayer {
     // Playback related
@@ -23,7 +92,7 @@ pub struct DotLottiePlayer {
 
     // Data
     animation: Arc<RwLock<*mut Tvg_Animation>>,
-    canvas: Arc<RwLock<*mut Tvg_Canvas>>,
+    canvas: thorvg::Canvas,
     buffer: Mutex<Vec<u32>>,
 }
 
@@ -39,7 +108,7 @@ impl DotLottiePlayer {
             total_frames: Arc::new(RwLock::new(0.0)),
             duration: Arc::new(RwLock::new(0.0)),
             animation: Arc::new(RwLock::new(std::ptr::null_mut())),
-            canvas: Arc::new(RwLock::new(std::ptr::null_mut())),
+            canvas: thorvg::Canvas::new(Tvg_Engine_TVG_ENGINE_SW, 0),
             buffer: Mutex::new(vec![]),
             // For some reason initializing here doesn't work
             // animation: tvg_animation_new(),
@@ -51,19 +120,16 @@ impl DotLottiePlayer {
         unsafe {
             let current_frame = &mut *self.current_frame.write().unwrap();
             let animation = self.animation.read().unwrap().as_mut().unwrap();
-            let canvas = self.canvas.read().unwrap().as_mut().unwrap();
 
             *current_frame = no;
 
-            tvg_canvas_clear(canvas, false, true);
+            self.canvas.clear(false, true);
 
             tvg_animation_set_frame(animation, *current_frame);
 
-            tvg_canvas_update(canvas);
-
-            tvg_canvas_draw(canvas);
-
-            tvg_canvas_sync(canvas);
+            self.canvas.update();
+            self.canvas.draw();
+            self.canvas.sync();
         }
     }
 
@@ -91,20 +157,12 @@ impl DotLottiePlayer {
     }
 
     pub fn clear(&self) {
-        unsafe {
-            let canvas = self.canvas.read().unwrap().as_mut().unwrap();
-
-            tvg_canvas_clear(canvas, false, true);
-        }
+        self.canvas.clear(false, true);
     }
 
     pub fn load_animation_from_path(&self, path: &str, width: u32, height: u32) -> bool {
         unsafe {
             tvg_engine_init(Tvg_Engine_TVG_ENGINE_SW, 0);
-
-            *self.canvas.write().unwrap() = tvg_swcanvas_create();
-
-            let canvas = self.canvas.read().unwrap().as_mut().unwrap();
 
             let mut buffer_lock = self.buffer.lock().unwrap();
 
@@ -112,8 +170,7 @@ impl DotLottiePlayer {
 
             // self.buffer.as = vec![width * height];
 
-            tvg_swcanvas_set_target(
-                canvas,
+            self.canvas.set_target(
                 buffer_lock.as_ptr() as *mut u32,
                 width,
                 width,
@@ -159,9 +216,10 @@ impl DotLottiePlayer {
                 tvg_animation_get_total_frame(animation, total_frames as *mut f32);
                 tvg_animation_get_duration(animation, duration as *mut f32);
                 tvg_animation_set_frame(animation, 0.0);
-                tvg_canvas_push(canvas, frame_image);
-                tvg_canvas_draw(canvas);
-                tvg_canvas_sync(canvas);
+
+                self.canvas.push(frame_image);
+                self.canvas.draw();
+                self.canvas.sync();
             }
         }
 
@@ -172,18 +230,11 @@ impl DotLottiePlayer {
         let mimetype = CString::new("lottie").expect("Failed to create CString");
 
         unsafe {
-            tvg_engine_init(Tvg_Engine_TVG_ENGINE_SW, 0);
-
-            *self.canvas.write().unwrap() = tvg_swcanvas_create();
-
-            let canvas = self.canvas.read().unwrap().as_mut().unwrap();
-
             let mut buffer_lock = self.buffer.lock().unwrap();
 
             *buffer_lock = vec![0; (width * height * 4) as usize];
 
-            tvg_swcanvas_set_target(
-                canvas,
+            self.canvas.set_target(
                 buffer_lock.as_ptr() as *mut u32,
                 width,
                 width,
@@ -238,9 +289,10 @@ impl DotLottiePlayer {
                 tvg_animation_get_total_frame(animation, total_frames as *mut f32);
                 tvg_animation_get_duration(animation, duration as *mut f32);
                 tvg_animation_set_frame(animation, 0.0);
-                tvg_canvas_push(canvas, frame_image);
-                tvg_canvas_draw(canvas);
-                tvg_canvas_sync(canvas);
+
+                self.canvas.push(frame_image);
+                self.canvas.draw();
+                self.canvas.sync();
             }
         }
 

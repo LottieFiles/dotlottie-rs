@@ -14,7 +14,7 @@ pub struct DotLottiePlayer {
     autoplay: bool,
     loop_animation: bool,
     speed: i32,
-    direction: Arc<RwLock<AtomicI8>>,
+    direction: AtomicI8,
 
     // Animation information related
     current_frame: Arc<RwLock<f32>>,
@@ -33,7 +33,7 @@ impl DotLottiePlayer {
             autoplay: false,
             loop_animation: false,
             speed: 1,
-            direction: Arc::new(RwLock::new(AtomicI8::new(1))),
+            direction: AtomicI8::new(1),
             current_frame: Arc::new(RwLock::new(0.0)),
 
             total_frames: Arc::new(RwLock::new(0.0)),

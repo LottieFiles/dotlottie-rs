@@ -92,7 +92,13 @@ impl Timer {
         if elapsed >= Duration::from_millis(frame_duration) {
             self.last_update = now; // Update the last update time
 
-            animation.tick();
+            let nextFrame = if animation.get_current_frame() >= animation.get_total_frame() {
+                0.0
+            } else {
+                animation.get_current_frame() + 1.0
+            };
+
+            animation.frame(nextFrame);
         }
     }
 }
@@ -186,13 +192,14 @@ fn main() {
         std::slice::from_raw_parts(lottie_player.get_buffer() as *const u32, WIDTH * HEIGHT * 4)
     };
 
-
     let mut timer = Timer::new();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         timer.tick(&mut lottie_player);
 
-        window.update_with_buffer(buffer_slice, WIDTH, HEIGHT).unwrap();
+        window
+            .update_with_buffer(buffer_slice, WIDTH, HEIGHT)
+            .unwrap();
     }
 }
 

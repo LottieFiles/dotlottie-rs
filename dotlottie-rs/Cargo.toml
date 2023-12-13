@@ -15,5 +15,5 @@ thiserror = "1.0.48"
 wasm-bindgen = "0.2.84"
 
 [build-dependencies]
-bindgen = "0.65.1"
+bindgen = "0.69.1"
 lazy_static = "1.4"

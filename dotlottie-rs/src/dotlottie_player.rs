@@ -6,7 +6,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use std::ffi::CString;
 use std::sync::atomic::AtomicI8;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::Mutex;
 
 pub mod thorvg {
     use super::*;
@@ -40,7 +40,7 @@ pub mod thorvg {
         }
 
         pub fn clear(&self, paints: bool, buffer: bool) -> Tvg_Result {
-            unsafe { tvg_canvas_clear(self.raw_canvas, false, true) }
+            unsafe { tvg_canvas_clear(self.raw_canvas, paints, buffer) }
         }
 
         pub fn push(&self, picture: *mut Tvg_Paint) -> Tvg_Result {
@@ -75,6 +75,83 @@ pub mod thorvg {
             self.raw_canvas = std::ptr::null_mut();
         }
     }
+
+    pub struct Animation {
+        raw_animation: *mut Tvg_Animation,
+    }
+
+    impl Animation {
+        pub fn new() -> Self {
+            Animation {
+                raw_animation: unsafe { tvg_animation_new() },
+            }
+        }
+
+        pub fn get_picture(&self) -> *mut Tvg_Paint {
+            unsafe { tvg_animation_get_picture(self.raw_animation) }
+        }
+
+        pub fn get_total_frame(&self) -> Result<f32, Tvg_Result> {
+            unsafe {
+                let mut total_frame: f32 = 0.0;
+
+                let result =
+                    tvg_animation_get_total_frame(self.raw_animation, &mut total_frame as *mut f32);
+
+                if result != Tvg_Result_TVG_RESULT_SUCCESS {
+                    return Err(result);
+                }
+
+                return Ok(total_frame);
+            }
+        }
+
+        pub fn get_duration(&self) -> Result<f32, Tvg_Result> {
+            unsafe {
+                let mut duration: f32 = 0.0;
+
+                let result =
+                    tvg_animation_get_duration(self.raw_animation, &mut duration as *mut f32);
+
+                if result != Tvg_Result_TVG_RESULT_SUCCESS {
+                    return Err(result);
+                }
+
+                return Ok(duration);
+            }
+        }
+
+        pub fn set_frame(&self, frame_no: f32) -> Tvg_Result {
+            unsafe { tvg_animation_set_frame(self.raw_animation, frame_no) }
+        }
+
+        pub fn get_frame(&self) -> Result<f32, Tvg_Result> {
+            unsafe {
+                let mut curr_frame: f32 = 0.0;
+
+                let result =
+                    tvg_animation_get_frame(self.raw_animation, &mut curr_frame as *mut f32);
+
+                if result != Tvg_Result_TVG_RESULT_SUCCESS {
+                    return Err(result);
+                }
+
+                Ok(curr_frame)
+            }
+        }
+
+        pub fn del(&self) -> Tvg_Result {
+            unsafe { tvg_animation_del(self.raw_animation) }
+        }
+    }
+
+    impl Drop for Animation {
+        fn drop(&mut self) {
+            self.del();
+
+            self.raw_animation = std::ptr::null_mut();
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -85,64 +162,64 @@ pub struct DotLottiePlayer {
     speed: i32,
     direction: AtomicI8,
 
-    // Animation information related
-    current_frame: Arc<RwLock<f32>>,
-    total_frames: Arc<RwLock<f32>>,
-    duration: Arc<RwLock<f32>>,
-
     // Data
-    animation: Arc<RwLock<*mut Tvg_Animation>>,
+    animation: thorvg::Animation,
     canvas: thorvg::Canvas,
     buffer: Mutex<Vec<u32>>,
 }
 
 impl DotLottiePlayer {
     pub fn new() -> Self {
+        let canvas = thorvg::Canvas::new(Tvg_Engine_TVG_ENGINE_SW, 0);
+        let animation = thorvg::Animation::new();
+        let buffer = Mutex::new(vec![]);
+
         DotLottiePlayer {
             autoplay: false,
             loop_animation: false,
             speed: 1,
             direction: AtomicI8::new(1),
-            current_frame: Arc::new(RwLock::new(0.0)),
-
-            total_frames: Arc::new(RwLock::new(0.0)),
-            duration: Arc::new(RwLock::new(0.0)),
-            animation: Arc::new(RwLock::new(std::ptr::null_mut())),
-            canvas: thorvg::Canvas::new(Tvg_Engine_TVG_ENGINE_SW, 0),
-            buffer: Mutex::new(vec![]),
-            // For some reason initializing here doesn't work
-            // animation: tvg_animation_new(),
-            // canvas: tvg_swcanvas_create(),
+            animation,
+            canvas,
+            buffer,
         }
     }
 
     pub fn frame(&self, no: f32) {
-        unsafe {
-            let current_frame = &mut *self.current_frame.write().unwrap();
-            let animation = self.animation.read().unwrap().as_mut().unwrap();
+        self.canvas.clear(false, true);
 
-            *current_frame = no;
+        self.animation.set_frame(no);
 
-            self.canvas.clear(false, true);
-
-            tvg_animation_set_frame(animation, *current_frame);
-
-            self.canvas.update();
-            self.canvas.draw();
-            self.canvas.sync();
-        }
+        self.canvas.update();
+        self.canvas.draw();
+        self.canvas.sync();
     }
 
     pub fn get_total_frame(&self) -> f32 {
-        return self.total_frames.read().unwrap().clone();
+        let total_frames = self.animation.get_total_frame();
+
+        match total_frames {
+            Ok(total_frames) => total_frames,
+            Err(_) => 0.0,
+        }
     }
 
     pub fn get_duration(&self) -> f32 {
-        return self.duration.read().unwrap().clone();
+        let duration = self.animation.get_duration();
+
+        match duration {
+            Ok(duration) => duration,
+            Err(_) => 0.0,
+        }
     }
 
     pub fn get_current_frame(&self) -> f32 {
-        return self.current_frame.read().unwrap().clone();
+        let result = self.animation.get_frame();
+
+        match result {
+            Ok(frame) => frame,
+            Err(_) => 0.0,
+        }
     }
 
     pub fn get_buffer(&self) -> i64 {
@@ -162,13 +239,9 @@ impl DotLottiePlayer {
 
     pub fn load_animation_from_path(&self, path: &str, width: u32, height: u32) -> bool {
         unsafe {
-            tvg_engine_init(Tvg_Engine_TVG_ENGINE_SW, 0);
-
             let mut buffer_lock = self.buffer.lock().unwrap();
 
             *buffer_lock = vec![0; (width * height * 4) as usize];
-
-            // self.buffer.as = vec![width * height];
 
             self.canvas.set_target(
                 buffer_lock.as_ptr() as *mut u32,
@@ -178,22 +251,16 @@ impl DotLottiePlayer {
                 Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
             );
 
-            *self.animation.write().unwrap() = tvg_animation_new();
-
-            let animation = self.animation.read().unwrap().as_mut().unwrap();
-
-            let frame_image = tvg_animation_get_picture(animation);
+            let frame_image = self.animation.get_picture();
 
             let load_result =
                 tvg_picture_load(frame_image, path.as_ptr() as *const std::os::raw::c_char);
 
             if load_result != Tvg_Result_TVG_RESULT_SUCCESS {
-                tvg_animation_del(animation);
+                self.animation.del();
 
                 return false;
             } else {
-                let total_frames = &mut *self.total_frames.write().unwrap();
-                let duration = &mut *self.duration.write().unwrap();
                 let mut pw: f32 = 0.0;
                 let mut ph: f32 = 0.0;
                 let scale: f32;
@@ -213,9 +280,7 @@ impl DotLottiePlayer {
                 tvg_paint_scale(frame_image, scale);
                 tvg_paint_translate(frame_image, shiftX, shiftY);
 
-                tvg_animation_get_total_frame(animation, total_frames as *mut f32);
-                tvg_animation_get_duration(animation, duration as *mut f32);
-                tvg_animation_set_frame(animation, 0.0);
+                self.animation.set_frame(0.0);
 
                 self.canvas.push(frame_image);
                 self.canvas.draw();
@@ -242,11 +307,7 @@ impl DotLottiePlayer {
                 Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
             );
 
-            *self.animation.write().unwrap() = tvg_animation_new();
-
-            let animation = self.animation.read().unwrap().as_mut().unwrap();
-
-            let frame_image = tvg_animation_get_picture(animation);
+            let frame_image = self.animation.get_picture();
 
             // resource path (null if not needed)
             let rpath = std::ptr::null();
@@ -261,12 +322,10 @@ impl DotLottiePlayer {
             );
 
             if load_result != Tvg_Result_TVG_RESULT_SUCCESS {
-                tvg_animation_del(animation);
+                self.animation.del();
 
                 return false;
             } else {
-                let total_frames = &mut *self.total_frames.write().unwrap();
-                let duration = &mut *self.duration.write().unwrap();
                 let mut pw: f32 = 0.0;
                 let mut ph: f32 = 0.0;
                 let scale: f32;
@@ -286,9 +345,7 @@ impl DotLottiePlayer {
                 tvg_paint_scale(frame_image, scale);
                 tvg_paint_translate(frame_image, shiftX, shiftY);
 
-                tvg_animation_get_total_frame(animation, total_frames as *mut f32);
-                tvg_animation_get_duration(animation, duration as *mut f32);
-                tvg_animation_set_frame(animation, 0.0);
+                self.animation.set_frame(0.0);
 
                 self.canvas.push(frame_image);
                 self.canvas.draw();

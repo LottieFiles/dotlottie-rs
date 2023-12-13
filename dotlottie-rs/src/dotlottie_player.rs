@@ -197,11 +197,15 @@ impl DotLottiePlayer {
 
             let frame_image = tvg_animation_get_picture(animation);
 
+            // resource path (null if not needed)
+            let rpath = std::ptr::null();
+
             let load_result = tvg_picture_load_data(
                 frame_image,
                 animation_data.as_ptr() as *const std::os::raw::c_char,
                 animation_data.len() as u32,
                 mimetype.as_ptr(),
+                rpath,
                 false,
             );
 

@@ -19,7 +19,7 @@ pub struct DotLottiePlayer {
 
 impl DotLottiePlayer {
     pub fn new() -> Self {
-        let canvas = thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 3);
+        let canvas = thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 0);
         let animation = thorvg::Animation::new();
         let buffer = Mutex::new(vec![]);
 
@@ -34,7 +34,7 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn frame(&mut self, no: f32) {
+    pub fn frame(&self, no: f32) {
         self.canvas.clear(false, true);
 
         self.animation.set_frame(no);
@@ -82,11 +82,11 @@ impl DotLottiePlayer {
         buffer_lock.len() as i64
     }
 
-    pub fn clear(&mut self) {
+    pub fn clear(&self) {
         self.canvas.clear(false, true);
     }
 
-    pub fn load_animation_from_path(&mut self, path: &str, width: u32, height: u32) -> bool {
+    pub fn load_animation_from_path(&self, path: &str, width: u32, height: u32) -> bool {
         let mut buffer_lock = self.buffer.lock().unwrap();
 
         *buffer_lock = vec![0; (width * height * 4) as usize];
@@ -99,7 +99,7 @@ impl DotLottiePlayer {
             thorvg::TvgColorspace::ABGR8888,
         );
 
-        if let Some(mut frame_image) = self.animation.get_picture() {
+        if let Some(frame_image) = self.animation.get_picture() {
             if frame_image.load(path).is_err() {
                 return false;
             }
@@ -124,7 +124,7 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn load_animation(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
+    pub fn load_animation(&self, animation_data: &str, width: u32, height: u32) -> bool {
         let mut buffer_lock = self.buffer.lock().unwrap();
 
         *buffer_lock = vec![0; (width * height * 4) as usize];

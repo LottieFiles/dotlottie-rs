@@ -5,6 +5,23 @@ use std::path::{Path, PathBuf};
 // Path for all default artifacts
 const DEFAULT_ARTIFACTS_DIR: &str = "../deps/artifacts/local-arch/usr";
 
+// Target triple for WASM
+const WASM32_UNKNOWN_EMSCRIPTEN: &str = "wasm32-unknown-emscripten";
+
+// Target-specifc build settings
+struct BuildSettings {
+    static_libs: Vec<String>,
+    dynamic_libs: Vec<String>,
+    link_args: Vec<String>,
+}
+
+fn is_wasm_build() -> bool {
+    match std::env::var("TARGET") {
+        Ok(target) => target == WASM32_UNKNOWN_EMSCRIPTEN,
+        Err(_) => panic!("TARGET environment variable not set"),
+    }
+}
+
 lazy_static! {
     // The project root directory
     static ref PROJECT_DIR: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -15,8 +32,18 @@ lazy_static! {
     static ref DEFAULT_LIB64_DIR: PathBuf = PathBuf::from(&format!("{DEFAULT_ARTIFACTS_DIR}/lib64"));
 
     // Native library dependencies
-    static ref NATIVE_STATIC_LIBS: Vec<String> = vec![String::from("thorvg"), String::from("turbojpeg"), String::from("png"), String::from("z")];
-    static ref NATIVE_DYNAMIC_LIBS: Vec<String> = vec![String::from("c++")];
+    static ref TARGET_BUILD_SETTINGS: BuildSettings = match is_wasm_build() {
+        true => BuildSettings{
+            static_libs: vec![String::from("thorvg")],
+            dynamic_libs: vec![],
+            link_args: vec![String::from("--no-entry")],
+        },
+        _ => BuildSettings{
+            static_libs: vec![String::from("thorvg"), String::from("turbojpeg"), String::from("png"), String::from("z")],
+            dynamic_libs: vec![String::from("c++")],
+            link_args: vec![],
+        },
+   };
 }
 
 fn find_path(var: &str, default: &Path, required: bool) -> PathBuf {
@@ -43,6 +70,19 @@ fn register_dylib(lib: &String) {
     println!("cargo:rustc-link-lib=dylib={}", lib);
 }
 
+fn register_link_arg(arg: &String) {
+    println!("cargo:rustc-link-arg={}", arg);
+}
+
+fn apply_build_settings(build_settings: &BuildSettings) {
+    build_settings
+        .static_libs
+        .iter()
+        .for_each(register_static_lib);
+    build_settings.dynamic_libs.iter().for_each(register_dylib);
+    build_settings.link_args.iter().for_each(register_link_arg);
+}
+
 fn main() {
     let include_dir = find_path("ARTIFACTS_INCLUDE_DIR", &DEFAULT_INCLUDE_DIR, true);
     let lib_dir = find_path("ARTIFACTS_LIB_DIR", &DEFAULT_LIB_DIR, true);
@@ -53,10 +93,8 @@ fn main() {
     register_link_path(&lib_dir);
     register_link_path(&lib64_dir);
 
-    // Ensure libraries are made available
-    NATIVE_STATIC_LIBS.iter().for_each(register_static_lib);
-    NATIVE_DYNAMIC_LIBS.iter().for_each(register_dylib);
-    println!("cargo:rustc-link-lib=static=thorvg");
+    // Apply build settings
+    apply_build_settings(&TARGET_BUILD_SETTINGS);
 
     println!("cargo:rerun-if-changed=wrapper.h");
     let bindings = bindgen::Builder::default()

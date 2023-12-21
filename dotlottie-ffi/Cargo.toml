@@ -6,7 +6,7 @@ build = "build.rs"
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
-name = "dlplayer"
+name = "dotlottie_player"
 
 [[bin]]
 name = "uniffi-bindgen"
@@ -19,3 +19,4 @@ dotlottie_player = { path = "../dotlottie-rs" }
 
 [build-dependencies]
 uniffi = { version = "0.24.3", features = ["build"] }
+lazy_static = "1.4"

@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+
 # Formatting
 RED=$(tput setaf 1)
 YELLOW=$(tput setaf 3)
 GREEN=$(tput setaf 2)
 WHITE=$(tput setaf 15)
 NC=$(tput sgr0)
+
+# Environment
+EMSDK_VERSION=${EMSDK_VERSION:-latest}
+UNIFFI_BINDGEN_CPP_VERSION={UNIFFI_BINDGEN_CPP_VERSION:-"v0.1.0+v0.25.0"}
+
+die() { printf %s "${@+$@$'\n'}" 1>&2 ; exit 1; }
 
 check_for() {
   local -r app=$1
@@ -57,11 +65,24 @@ rustup target add aarch64-linux-android \
   x86_64-apple-darwin \
   aarch64-apple-ios \
   x86_64-apple-ios \
-  aarch64-apple-ios-sim
+  aarch64-apple-ios-sim \
+  wasm32-unknown-emscripten
+
+echo
+echo "Install cargo dependencies"
+cargo install cargo install uniffi-bindgen-cpp \
+  --git https://github.com/NordSecurity/uniffi-bindgen-cpp \
+  --tag "${UNIFFI_BINDGEN_CPP_VERSION}"
 
 echo
 echo "Setting up project ..."
 make deps
+
+echo
+echo "Setting up emsdk"
+cd "${SCRIPT_DIR}/deps/modules/emsdk" || die "Could not find Emscripten SDK under ${RED}deps/modules/emsdk${NC}!"
+./emsdk install "${EMSDK_VERSION}"
+./emsdk activate "${EMSDK_VERSION}"
 
 echo
 echo "${WHITE}Setup completed!${NC}"

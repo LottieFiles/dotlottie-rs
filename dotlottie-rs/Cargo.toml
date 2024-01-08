@@ -6,7 +6,7 @@ links = "thorvg"
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
-name = "dotlottie_player"
+name = "dotlottie_player_core"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

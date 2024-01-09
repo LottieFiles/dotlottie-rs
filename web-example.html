@@ -47,9 +47,8 @@
         if (!lastFrameTime || timestamp - lastFrameTime >= timePerFrame) {
           player.frame(currentFrame);
           const buffer = player.getBuffer();
-          const pixels = new Uint8ClampedArray(buffer);
 
-          imageData.data.set(pixels);
+          imageData.data.set(buffer);
           ctx.putImageData(imageData, 0, 0);
 
           currentFrame++;

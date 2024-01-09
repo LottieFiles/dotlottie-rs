@@ -365,7 +365,7 @@ define UNIFFI_BINDINGS_CPP_BUILD
 		--out-dir $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS) \
 		$(RUNTIME_FFI)/src/dotlottie_player.udl
 	sed -i .bak 's/uint8_t/char/g' $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/*
-	$(RUNTIME_FFI)/uniffi-emscripten-bindings.sh
+	cp $(RUNTIME_FFI)/emscripten_bindings.cpp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/.
 endef
 
 define ANDROID_RELEASE

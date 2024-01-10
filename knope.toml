@@ -21,14 +21,30 @@ name = "dotlottie-player.wasm.tar.gz"
 name = "prepare-release"
 
 [[workflows.steps]]
+type = "Command"
+command = "git switch -c release"
+
+[[workflows.steps]]
 type = "PrepareRelease"
 
 [[workflows.steps]]
 type = "Command"
-command = "git commit -m \"chore: prepare release $version\" && git push"
+command = "git commit -m \"chore: Release $version\" && git push --force --set-upstream origin release"
 
 [workflows.steps.variables]
 "$version" = "Version"
+
+[[workflows.steps]]
+type = "CreatePullRequest"
+base = "main"
+
+[workflows.steps.title]
+template = "chore: Release $version"
+variables = { "$version" = "Version" }
+
+[workflows.steps.body]
+template = "This PR was created by Knope. Merging it will create a new release\n\n$changelog"
+variables = { "$changelog" = "ChangelogEntry" }
 
 [[workflows]]
 name = "release"

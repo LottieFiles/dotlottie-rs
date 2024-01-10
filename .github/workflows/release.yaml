@@ -1,32 +1,11 @@
 name: Release
-on: workflow_dispatch
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
 jobs:
-  prepare-release:
-    runs-on: ubuntu-latest
-    outputs:
-      sha: ${{ steps.commit.outputs.sha }}
-    steps:
-      - uses: actions/checkout@v4
-        name: Fetch entire history (for conventional commits)
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Configure Git
-        run: |
-          git config --global user.name GitHub Actions
-          git config user.email github-actions@github.com
-      - name: Install Knope
-        uses: knope-dev/action@v2.0.0
-        with:
-          version: 0.11.0
-      - run: knope prepare-release --verbose
-        name: Update versioned files and changelog
-      - name: Store commit
-        id: commit
-        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-
   build-artifacts:
-    needs: prepare-release
+    if: github.head_ref == 'release' && github.event.pull_request.merged == true
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,12 +39,10 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: [build-artifacts, prepare-release]
+    needs: [build-artifacts]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.prepare-release.outputs.sha }}
       - uses: actions/download-artifact@v4.1.0
         with:
           path: release
@@ -73,7 +50,7 @@ jobs:
       - name: Install Knope
         uses: knope-dev/action@v2.0.0
         with:
-          version: 0.11.0
+          version: 0.13.0
       - run: knope release --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

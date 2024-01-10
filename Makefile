@@ -61,6 +61,7 @@ STRIP := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(ANDROID_BUILD_PLATFORM)/
 
 # Apple
 APPLE := apple
+DARWIN := darwin
 APPLE_BUILD := $(BUILD)/$(APPLE)
 
 APPLE_IOS := ios
@@ -374,6 +375,9 @@ define ANDROID_RELEASE
   cp $(RUNTIME_FFI_TARGET_LIB) $(DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB)
   cp $(RUNTIME_FFI)/$(RUNTIME_FFI_ANDROID_ASSETS)/$(ANDROID)/* $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)
   echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_GRADLE_PROPERTIES)
+	cd $(RELEASE)/$(ANDROID) && \
+		rm -f $(DOTLOTTIE_PLAYER).$(ANDROID).tar.gz && \
+		tar zcf $(DOTLOTTIE_PLAYER).$(ANDROID).tar.gz *
 endef
 
 define LIPO_CREATE
@@ -414,6 +418,9 @@ define APPLE_RELEASE
                 $$(find $(RUNTIME_FFI)/$(APPLE_BUILD) -type d -depth 2 | sed 's/^/-framework /' | tr '\n' ' ') \
                 -output $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
 	cp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(SWIFT)/$(DOTLOTTIE_PLAYER_SWIFT) $(RELEASE)/$(APPLE)/.
+	cd $(RELEASE)/$(APPLE) && \
+		rm -f $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz && \
+		tar zcf $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz *
 endef
 
 define WASM_RELEASE
@@ -422,6 +429,9 @@ define WASM_RELEASE
 	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).wasm \
 		$(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).js \
 		$(RELEASE)/$(WASM)
+	cd $(RELEASE)/$(WASM) && \
+		rm -f $(DOTLOTTIE_PLAYER).$(WASM).tar.gz && \
+		tar zcf $(DOTLOTTIE_PLAYER).$(WASM).tar.gz *
 endef
 
 # $1: rust target triple, e.g. aarch64-linux-android

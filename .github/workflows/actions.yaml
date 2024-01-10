@@ -1,0 +1,79 @@
+name: Release
+on: workflow_dispatch
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        name: Fetch entire history (for conventional commits)
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure Git
+        run: |
+          git config --global user.name GitHub Actions
+          git config user.email github-actions@github.com
+      - name: Install Knope
+        uses: knope-dev/action@v2.0.0
+        with:
+          version: 0.11.0
+      - run: knope prepare-release --verbose
+        name: Update versioned files and changelog
+      - name: Store commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+  build-artifacts:
+    needs: prepare-release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.sha }}
+      - uses: Homebrew/actions/setup-homebrew@master
+      - uses: ningenMe/setup-rustup@v1.1.0
+      - name: Install Make
+        run: brew install make
+      - name: Build Setup
+        run: make mac-setup
+      - name: Build Artifacts
+        run: make all
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4.0.0
+        with:
+          name: dotlottie-player.android.tar.gz
+          path: release/android/dotlottie-player.android.tar.gz
+          if-no-files-found: error
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4.0.0
+        with:
+          name: dotlottie-player.darwin.tar.gz
+          path: release/darwin/dotlottie-player.darwin.tar.gz
+          if-no-files-found: error
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4.0.0
+        with:
+          name: dotlottie-player.wasm.tar.gz
+          path: release/wasm/dotlottie-player.wasm.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: [build-artifacts, prepare-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.sha }}
+      - uses: actions/download-artifact@v4.1.0
+        with:
+          path: release
+          merge-multiple: true
+      - name: Install Knope
+        uses: knope-dev/action@v2.0.0
+        with:
+          version: 0.11.0
+      - run: knope release --verbose
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

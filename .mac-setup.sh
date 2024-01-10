@@ -70,7 +70,7 @@ rustup target add aarch64-linux-android \
 
 echo
 echo "Install cargo dependencies"
-cargo install cargo install uniffi-bindgen-cpp \
+cargo install uniffi-bindgen-cpp \
   --git https://github.com/NordSecurity/uniffi-bindgen-cpp \
   --tag "${UNIFFI_BINDGEN_CPP_VERSION}"
 

@@ -9,9 +9,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.prepare-release.outputs.sha }}
       - uses: Homebrew/actions/setup-homebrew@master
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
       - uses: ningenMe/setup-rustup@v1.1.0
       - name: Install Make
         run: brew install make

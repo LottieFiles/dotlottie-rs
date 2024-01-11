@@ -10,4 +10,10 @@ pub enum DotLottieError {
 
     #[error("Unable to read the contents")]
     ReadContentError,
+
+    #[error("Unable to lock the animations mutex")]
+    MutexLockError,
+
+    #[error("Animation not found")]
+    AnimationNotFound { animation_id: String },
 }

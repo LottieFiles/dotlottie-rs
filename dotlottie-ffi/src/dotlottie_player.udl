@@ -39,5 +39,6 @@ interface DotLottiePlayer {
     boolean set_frame(f32 no);
     boolean render();
     boolean resize(u32 width, u32 height);
+    boolean load_dotlottie([ByRef] bytes file_data);
     void clear();
 };

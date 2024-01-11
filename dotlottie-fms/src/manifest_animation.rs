@@ -2,7 +2,7 @@ use json::object;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ManifestAnimation {
     pub autoplay: Option<bool>,
     pub default_theme: Option<String>,

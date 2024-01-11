@@ -1,8 +1,9 @@
-use crate::{errors::*, AnimationData, Manifest};
+use crate::{errors::*, Animation, Manifest};
 use std::io::{self, Read};
 use std::path::Path;
 
 use base64::{engine::general_purpose, Engine};
+// use json::JsonValue;
 use serde_json::{json, Value};
 use zip::ZipArchive;
 
@@ -36,7 +37,8 @@ pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotL
     let animation_data = String::from_utf8_lossy(&content).to_string();
 
     // Untyped JSON value
-    let mut lottie_animation: Value = serde_json::from_str(&animation_data).unwrap();
+    // let mut lottie_animation: Value = serde_json::from_str(&animation_data).unwrap();
+    let mut lottie_animation = jzon::parse(&animation_data).unwrap();
 
     // Loop through the parsed lottie animation and check for image assets
     if let Some(assets) = lottie_animation["assets"].as_array_mut() {
@@ -68,24 +70,40 @@ pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotL
                 // Write the image data to the lottie
                 let image_data_base64 = general_purpose::STANDARD.encode(&content);
 
-                assets[i]["u"] = json!("".to_string());
-                assets[i]["p"] = json!(format!(
-                    "data:image/{};base64,{}",
-                    image_ext, image_data_base64
-                )
-                .to_string());
+                // assets[i]["u"] = serde_json::Value::String("".to_string());
+                // assets[i]["p"] = serde_json::Value::String(
+                //     format!("data:image/{};base64,{}", image_ext, image_data_base64).to_string(),
+                // );
+
+                assets[i]["u"] = "".into();
+                assets[i]["p"] =
+                    format!("data:image/{};base64,{}", image_ext, image_data_base64).into();
             }
         }
     }
+    // let mut ad = serde_json::to_string(&animation_data).unwrap();
 
-    Ok(lottie_animation.to_string())
+    // ad = ad.replace("\\", "");
+    // ad.remove(0);
+    // ad.remove(ad.len() - 1);
+
+    // Ok(ad)
+
+    // Ok(animation_data)
+
+    // Ok(lottie_animation.to_string())
+
+    // Ok(serde_json::to_string(&lottie_animation.clone()).unwrap())
+
+    //works
+    Ok(jzon::stringify(lottie_animation))
 }
 
 /// Extract every animation with its image assets inlined.
 ///
 /// bytes: The bytes of the dotLottie file
 /// Result<Vec<AnimationData>, DotLottieError>: The extracted animations, or an error
-pub fn get_animations(bytes: &Vec<u8>) -> Result<Vec<AnimationData>, DotLottieError> {
+pub fn get_animations(bytes: &Vec<u8>) -> Result<Vec<Animation>, DotLottieError> {
     let mut archive =
         ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
     let mut file_contents = Vec::new();
@@ -102,7 +120,7 @@ pub fn get_animations(bytes: &Vec<u8>) -> Result<Vec<AnimationData>, DotLottieEr
                 if let Some(file_stem_str) = file_stem.to_str() {
                     let animation = get_animation(bytes, file_stem_str).unwrap();
 
-                    let item = AnimationData {
+                    let item = Animation {
                         id: String::from(file.name()),
                         animation_data: animation,
                     };

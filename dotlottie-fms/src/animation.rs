@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub struct AnimationData {
+pub struct Animation {
     pub id: String,
     pub animation_data: String,
 }

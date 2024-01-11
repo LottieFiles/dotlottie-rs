@@ -127,6 +127,25 @@ impl DotLottieRuntime {
         }
     }
 
+    pub fn load_dotlottie(&self, file_data: &Vec<u8>) -> bool {
+        let animations = dotlottie_fms::get_animations(&file_data);
+
+        match animations {
+            Ok(animation_data) => {
+                let first_animation = &animation_data[0];
+
+                return self.load_animation(&first_animation.animation_data, 512, 512);
+            }
+            Err(error) => {
+                // Handle the error case
+                eprintln!("Error: {:?}", error);
+
+                false
+                // Perform error handling or return early, depending on your needs
+            }
+        }
+    }
+
     pub fn request_frame(&mut self) -> f32 {
         if !self.is_loaded || !self.is_playing() {
             return self.current_frame();

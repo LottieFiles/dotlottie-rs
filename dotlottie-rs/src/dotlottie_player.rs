@@ -35,7 +35,7 @@ impl DotLottiePlayer {
     }
 
     pub fn frame(&self, no: f32) {
-        self.canvas.clear(false, true);
+        self.canvas.clear(true);
 
         self.animation.set_frame(no);
 
@@ -83,7 +83,7 @@ impl DotLottiePlayer {
     }
 
     pub fn clear(&self) {
-        self.canvas.clear(false, true);
+        self.canvas.clear(true);
     }
 
     pub fn load_animation_from_path(&self, path: &str, width: u32, height: u32) -> bool {

@@ -76,8 +76,8 @@ impl Canvas {
         convert_tvg_result(result)
     }
 
-    pub fn clear(&self, paints: bool, buffer: bool) -> Result<(), TvgError> {
-        let result = unsafe { tvg_canvas_clear(self.raw_canvas, paints, buffer) };
+    pub fn clear(&self, free: bool) -> Result<(), TvgError> {
+        let result = unsafe { tvg_canvas_clear(self.raw_canvas, free) };
 
         convert_tvg_result(result)
     }
@@ -151,7 +151,6 @@ impl Picture {
                 data.as_ptr() as *const std::os::raw::c_char,
                 data.len() as u32,
                 mimetype.as_ptr(),
-                std::ptr::null(),
                 false,
             )
         };

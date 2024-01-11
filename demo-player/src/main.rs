@@ -1,21 +1,12 @@
 use std::fs::read_to_string;
-use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
-use std::{
-    env,
-    fs::File,
-    io::Read,
-    path,
-    time::{Duration, Instant},
-};
+use std::{env, path, time::Instant};
 
-use dotlottie_player_core::DotLottiePlayer;
+use dotlottie_player_core::{DotLottiePlayer, Mode};
 use minifb::{Key, Window, WindowOptions};
 
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-// Tick will update the Lottie once a second has passed since last being called
 struct Timer {
     last_update: Instant,
 }
@@ -40,8 +31,6 @@ impl Timer {
 }
 
 fn main() {
-    let mut buffer: *const u32;
-
     let mut window = Window::new(
         "Thorvg inside Rust - ESC to exit",
         WIDTH,
@@ -59,13 +48,10 @@ fn main() {
 
     let animation_data = read_to_string(path.to_str().unwrap()).unwrap();
 
-    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(true, false);
-    lottie_player.load_animation(animation_data.as_str(), WIDTH as u32, HEIGHT as u32);
-    lottie_player.play();
+    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Mode::Forward, true, true, 1.0);
+    lottie_player.load_animation_data(animation_data.as_str(), WIDTH as u32, HEIGHT as u32);
 
-    let buffer_slice = unsafe {
-        std::slice::from_raw_parts(lottie_player.get_buffer() as *const u32, WIDTH * HEIGHT * 4)
-    };
+    lottie_player.play();
 
     let mut timer = Timer::new();
 
@@ -73,7 +59,7 @@ fn main() {
         timer.tick(&mut lottie_player);
 
         window
-            .update_with_buffer(buffer_slice, WIDTH, HEIGHT)
+            .update_with_buffer(lottie_player.buffer(), WIDTH, HEIGHT)
             .unwrap();
     }
 }

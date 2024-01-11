@@ -8,11 +8,9 @@ enum PlaybackState {
     Stopped,
 }
 
-struct Config {
-    use_frame_interpolation: bool,
-    auto_play: bool,
-    _loop: bool,
-    speed: f32,
+pub enum Mode {
+    Forward,
+    Reverse,
 }
 
 pub struct DotLottiePlayer {
@@ -23,10 +21,12 @@ pub struct DotLottiePlayer {
     _loop: bool,
     loop_count: u32,
     use_frame_interpolation: bool,
+    speed: f32,
+    mode: Mode,
 }
 
 impl DotLottiePlayer {
-    pub fn new(_loop: bool, use_frame_interpolation: bool) -> Self {
+    pub fn new(mode: Mode, _loop: bool, use_frame_interpolation: bool, speed: f32) -> Self {
         DotLottiePlayer {
             renderer: LottieRenderer::new(),
             playback_state: PlaybackState::Stopped,
@@ -35,6 +35,8 @@ impl DotLottiePlayer {
             _loop,
             loop_count: 0,
             use_frame_interpolation,
+            speed: if speed < 0.0 { 0.0 } else { speed },
+            mode,
         }
     }
 
@@ -102,7 +104,7 @@ impl DotLottiePlayer {
             Err(_) => 0,
         } as f32;
 
-        let duration = self.duration() * 1000.0;
+        let duration = (self.duration() * 1000.0) / self.speed as f32;
         let total_frames = self.total_frames() - 1.0;
 
         let raw_next_frame = elapsed_time / duration * total_frames;
@@ -113,15 +115,39 @@ impl DotLottiePlayer {
             raw_next_frame.round()
         };
 
-        if next_frame >= total_frames {
-            if self._loop {
-                self.loop_count += 1;
-                self.start_time = SystemTime::now();
-                self.set_frame(0_f32);
-            } else {
-                return total_frames - 1.0;
+        let next_frame = match self.mode {
+            Mode::Forward => next_frame,
+            Mode::Reverse => total_frames - next_frame,
+        };
+
+        let next_frame = match self.mode {
+            Mode::Forward => {
+                if next_frame >= total_frames {
+                    if self._loop {
+                        self.loop_count += 1;
+                        self.start_time = SystemTime::now();
+                        0.0
+                    } else {
+                        total_frames
+                    }
+                } else {
+                    next_frame
+                }
             }
-        }
+            Mode::Reverse => {
+                if next_frame <= 0.0 {
+                    if self._loop {
+                        self.loop_count += 1;
+                        self.start_time = SystemTime::now();
+                        total_frames
+                    } else {
+                        0.0
+                    }
+                } else {
+                    next_frame
+                }
+            }
+        };
 
         next_frame
     }
@@ -146,6 +172,14 @@ impl DotLottiePlayer {
         self.renderer.current_frame().unwrap_or(0.0)
     }
 
+    pub fn set_speed(&mut self, speed: f32) {
+        self.speed = if speed < 0.0 { 0.0 } else { speed };
+    }
+
+    pub fn speed(&self) -> f32 {
+        self.speed
+    }
+
     pub fn buffer(&self) -> &[u32] {
         &self.renderer.buffer
     }
@@ -154,13 +188,24 @@ impl DotLottiePlayer {
         self.renderer.clear(false, true).is_ok()
     }
 
-    pub fn load_animation(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
+    pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
         let loaded = self
             .renderer
             .load_data(animation_data, width, height, true)
             .is_ok();
 
         self.is_loaded = loaded;
+
+        let total_frames = self.total_frames();
+
+        match self.mode {
+            Mode::Forward => {
+                self.set_frame(0_f32);
+            }
+            Mode::Reverse => {
+                self.set_frame(total_frames);
+            }
+        }
 
         loaded
     }

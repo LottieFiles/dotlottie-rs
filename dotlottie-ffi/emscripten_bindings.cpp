@@ -15,10 +15,10 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 {
     class_<DotLottiePlayer>("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init)
-        .function("frame", &DotLottiePlayer::frame)
-        .function("getCurrentFrame", &DotLottiePlayer::get_current_frame)
-        .function("getDuration", &DotLottiePlayer::get_duration)
-        .function("getTotalFrame", &DotLottiePlayer::get_total_frame)
-        .function("loadAnimation", &DotLottiePlayer::load_animation)
+        .function("setFrame", &DotLottiePlayer::set_frame)
+        .function("currentFrame", &DotLottiePlayer::current_frame)
+        .function("duration", &DotLottiePlayer::duration)
+        .function("totalFrames", &DotLottiePlayer::total_frames)
+        .function("loadAnimationData", &DotLottiePlayer::load_animation_data)
         .function("getBuffer", &getBuffer);
 }

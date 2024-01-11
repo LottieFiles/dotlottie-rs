@@ -4,13 +4,41 @@ namespace dotlottie_player {
 
 interface DotLottiePlayer {
     constructor();
-    void frame(f32 no);
-    boolean load_animation([ByRef] string animation_data, u32 width, u32 height);
-    boolean load_animation_from_path([ByRef] string path, u32 width, u32 height);
-    void clear();
+    boolean load_animation_data([ByRef] string animation_data, u32 width, u32 height);
+
+    boolean clear();
+    boolean render();
+    
     i64 get_buffer();
     i64 get_buffer_size();
-    f32 get_total_frame();
-    f32 get_duration();
-    f32 get_current_frame();
+    [ByRef] u32 buffer();
+    
+    f32 total_frames();
+    f32 duration();
+    
+    boolean set_frame(f32 no);
+    f32 current_frame();
+    
+    void play();
+    void pause();
+    void stop();
+
+    boolean is_playing();
+    boolean is_paused();
+    boolean is_stopped();
+
+    void set_loop(boolean loop);
+    boolean loop();
+    u32 loop_count();
+
+    void set_use_frame_interpolation(boolean use);
+    boolean use_frame_interpolation();
+
+    u32 width();
+    u32 height();
+
+    bool resize(u32 width, u32 height);
+
+    void set_speed(f32 speed);
+    f32 speed();
 };

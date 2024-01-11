@@ -1,7 +1,7 @@
 mod dotlottie_player;
-mod errors;
+mod lottie_renderer;
 mod thorvg;
 
-pub use crate::dotlottie_player::*;
-pub use crate::errors::*;
-pub use crate::thorvg::*;
+pub use dotlottie_player::*;
+pub use lottie_renderer::*;
+pub use thorvg::*;

@@ -35,7 +35,7 @@ impl DotLottiePlayer {
     }
 
     pub fn frame(&self, no: f32) {
-        self.canvas.clear(true);
+        // self.canvas.clear(true);
 
         self.animation.set_frame(no);
 

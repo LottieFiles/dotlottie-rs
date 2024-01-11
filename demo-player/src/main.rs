@@ -11,7 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use dotlottie_player::DotLottiePlayer;
+use dotlottie_player_core::DotLottiePlayer;
 use minifb::{Key, Window, WindowOptions};
 
 pub const WIDTH: usize = 1200;

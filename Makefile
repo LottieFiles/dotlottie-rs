@@ -342,10 +342,11 @@ define CMAKE_BUILD
 endef
 
 define CARGO_BUILD
-	cargo build \
-	--manifest-path $(PROJECT_DIR)/Cargo.toml \
-	--target $(CARGO_TARGET) \
-	--release
+	source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
+		cargo build \
+		--manifest-path $(PROJECT_DIR)/Cargo.toml \
+		--target $(CARGO_TARGET) \
+		--release
 endef
 
 define UNIFFI_BINDINGS_BUILD
@@ -854,7 +855,7 @@ $(RUNTIME_FFI)/$(APPLE_BUILD)/$(MODULE_MAP): $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI
 	$(CREATE_OUTPUT_FILE)
 
 .PHONY: demo-player
-demo-player:
+demo-player: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
 	cargo build --manifest-path demo-player/Cargo.toml
 
 .PHONY: $(ANDROID)
@@ -891,8 +892,8 @@ clean: clean-build
 	@rm -rf $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)
 	@rm -rf $(RUNTIME_FFI)/$(BUILD)
 
-.PHONY: clean-all
-clean-all: clean clean-deps
+.PHONY: distclean
+distclean: clean clean-deps
 
 .PHONY: mac-setup
 mac-setup: export EMSDK_VERSION := $(EMSDK_VERSION)
@@ -938,6 +939,6 @@ help:
 	@echo "  - $(YELLOW)clean$(NC)       - clean up all cargo & release files"
 	@echo "  - $(YELLOW)clean-deps$(NC)  - clean up all native dependency builds & artifacts"
 	@echo "  - $(YELLOW)clean-build$(NC) - clean up any extraneous build files (useful for ensuring a clean working directory)"
-	@echo "  - $(YELLOW)clean-all$(NC)   - clean up everything"
+	@echo "  - $(YELLOW)distclean$(NC)   - clean up everything"
 	@echo
 	@echo

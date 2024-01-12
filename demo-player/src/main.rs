@@ -45,8 +45,6 @@ fn main() {
     let mut path = path::PathBuf::from(base_path);
     path.push("src/cartoon.json");
 
-    let animation_data = read_to_string(path.to_str().unwrap()).unwrap();
-
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         mode: Mode::Reverse,
         loop_animation: true,
@@ -54,7 +52,7 @@ fn main() {
         use_frame_interpolation: true,
         autoplay: true,
     });
-    lottie_player.load_animation_data(animation_data.as_str(), WIDTH as u32, HEIGHT as u32);
+    lottie_player.load_animation_path(path.to_str().unwrap(), WIDTH as u32, HEIGHT as u32);
 
     let mut timer = Timer::new();
 

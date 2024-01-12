@@ -246,7 +246,7 @@ impl DotLottieRuntime {
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
         let loaded = self
             .renderer
-            .load_data(animation_data, width, height, true)
+            .load_data(animation_data, width, height, false)
             .is_ok();
 
         self.is_loaded = loaded;
@@ -305,7 +305,7 @@ impl DotLottiePlayer {
     }
 
     pub fn buffer_ptr(&self) -> u64 {
-        self.runtime.read().unwrap().buffer().as_ptr() as u64
+        self.runtime.read().unwrap().buffer().as_ptr().cast::<u32>() as u64
     }
 
     pub fn buffer_len(&self) -> u64 {

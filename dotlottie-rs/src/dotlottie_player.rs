@@ -1,183 +1,397 @@
-use std::sync::atomic::AtomicI8;
-use std::sync::Mutex;
+use std::{sync::RwLock, time::SystemTime};
 
-use crate::thorvg;
+use crate::LottieRenderer;
 
-#[allow(dead_code)]
+pub enum PlaybackState {
+    Playing,
+    Paused,
+    Stopped,
+}
+
+#[derive(Clone, Copy)]
+pub enum Mode {
+    Forward,
+    Reverse,
+    Bounce,
+    ReverseBounce,
+}
+
+#[derive(Clone, Copy)]
+pub struct Config {
+    pub mode: Mode,
+    pub loop_animation: bool,
+    pub speed: f32,
+    pub use_frame_interpolation: bool,
+    pub autoplay: bool,
+}
+
+struct DotLottieRuntime {
+    renderer: LottieRenderer,
+    playback_state: PlaybackState,
+    is_loaded: bool,
+    start_time: SystemTime,
+    loop_count: u32,
+    config: Config,
+}
+
+impl DotLottieRuntime {
+    pub fn new(config: Config) -> Self {
+        DotLottieRuntime {
+            renderer: LottieRenderer::new(),
+            playback_state: PlaybackState::Stopped,
+            is_loaded: false,
+            start_time: SystemTime::now(),
+            loop_count: 0,
+            config,
+        }
+    }
+
+    pub fn is_loaded(&self) -> bool {
+        self.is_loaded
+    }
+
+    pub fn is_playing(&self) -> bool {
+        match self.playback_state {
+            PlaybackState::Playing => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_paused(&self) -> bool {
+        match self.playback_state {
+            PlaybackState::Paused => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        match self.playback_state {
+            PlaybackState::Stopped => true,
+            _ => false,
+        }
+    }
+
+    pub fn play(&mut self) -> bool {
+        if self.is_loaded && !self.is_playing() {
+            self.playback_state = PlaybackState::Playing;
+            self.start_time = SystemTime::now();
+
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn pause(&mut self) -> bool {
+        if self.is_loaded {
+            self.playback_state = PlaybackState::Paused;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn stop(&mut self) -> bool {
+        if self.is_loaded {
+            self.playback_state = PlaybackState::Stopped;
+            match self.config.mode {
+                Mode::Forward => {
+                    self.set_frame(0_f32);
+                }
+                Mode::Reverse => {
+                    self.set_frame(self.total_frames());
+                }
+                _ => {}
+            }
+
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn request_frame(&mut self) -> f32 {
+        if !self.is_loaded || !self.is_playing() {
+            return self.current_frame();
+        }
+
+        let current_time = SystemTime::now();
+
+        let elapsed_time = match current_time.duration_since(self.start_time) {
+            Ok(n) => n.as_millis(),
+            Err(_) => 0,
+        } as f32;
+
+        let duration = (self.duration() * 1000.0) / self.config.speed as f32;
+        let total_frames = self.total_frames() - 1.0;
+
+        let raw_next_frame = elapsed_time / duration * total_frames;
+
+        let next_frame = if self.config.use_frame_interpolation {
+            raw_next_frame
+        } else {
+            raw_next_frame.round()
+        };
+
+        let next_frame = match self.config.mode {
+            Mode::Forward => next_frame,
+            Mode::Reverse => total_frames - next_frame,
+            _ => next_frame,
+        };
+
+        let next_frame = match self.config.mode {
+            Mode::Forward => {
+                if next_frame >= total_frames {
+                    if self.config.loop_animation {
+                        self.loop_count += 1;
+                        self.start_time = SystemTime::now();
+                        0.0
+                    } else {
+                        total_frames
+                    }
+                } else {
+                    next_frame
+                }
+            }
+            Mode::Reverse => {
+                if next_frame <= 0.0 {
+                    if self.config.loop_animation {
+                        self.loop_count += 1;
+                        self.start_time = SystemTime::now();
+                        total_frames
+                    } else {
+                        0.0
+                    }
+                } else {
+                    next_frame
+                }
+            }
+            _ => next_frame,
+        };
+
+        next_frame
+    }
+
+    pub fn set_frame(&mut self, no: f32) -> bool {
+        self.renderer.set_frame(no).is_ok()
+    }
+
+    pub fn render(&mut self) -> bool {
+        self.renderer.render().is_ok()
+    }
+
+    pub fn total_frames(&self) -> f32 {
+        self.renderer.total_frames().unwrap_or(0.0)
+    }
+
+    pub fn duration(&self) -> f32 {
+        self.renderer.duration().unwrap_or(0.0)
+    }
+
+    pub fn current_frame(&self) -> f32 {
+        self.renderer.current_frame().unwrap_or(0.0)
+    }
+
+    pub fn loop_count(&self) -> u32 {
+        self.loop_count
+    }
+
+    pub fn set_speed(&mut self, speed: f32) {
+        self.config.speed = if speed < 0.0 { 0.0 } else { speed };
+    }
+
+    pub fn speed(&self) -> f32 {
+        self.config.speed
+    }
+
+    pub fn buffer(&self) -> &[u32] {
+        &self.renderer.buffer
+    }
+
+    pub fn clear(&mut self) {
+        self.renderer.clear()
+    }
+
+    pub fn set_config(&mut self, config: Config) {
+        self.config = config;
+    }
+
+    pub fn load_animation_path(&mut self, animation_path: &str, width: u32, height: u32) -> bool {
+        let loaded = self
+            .renderer
+            .load_path(animation_path, width, height)
+            .is_ok();
+
+        self.is_loaded = loaded;
+
+        let total_frames = self.total_frames();
+
+        match self.config.mode {
+            Mode::Forward => {
+                self.set_frame(0_f32);
+            }
+            Mode::Reverse => {
+                self.set_frame(total_frames);
+            }
+            _ => {}
+        }
+
+        if self.config.autoplay && loaded {
+            return self.play();
+        }
+
+        loaded
+    }
+
+    pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
+        let loaded = self
+            .renderer
+            .load_data(animation_data, width, height, false)
+            .is_ok();
+
+        self.is_loaded = loaded;
+
+        let total_frames = self.total_frames();
+
+        match self.config.mode {
+            Mode::Forward => {
+                self.set_frame(0_f32);
+            }
+            Mode::Reverse => {
+                self.set_frame(total_frames);
+            }
+            _ => {}
+        }
+
+        if self.config.autoplay && loaded {
+            return self.play();
+        }
+
+        loaded
+    }
+
+    pub fn resize(&mut self, width: u32, height: u32) -> bool {
+        self.renderer.resize(width, height).is_ok()
+    }
+
+    pub fn config(&self) -> Config {
+        self.config.clone()
+    }
+}
+
 pub struct DotLottiePlayer {
-    // Playback related
-    autoplay: bool,
-    loop_animation: bool,
-    speed: i32,
-    direction: AtomicI8,
-
-    // Data
-    animation: thorvg::Animation,
-    canvas: thorvg::Canvas,
-    buffer: Mutex<Vec<u32>>,
+    runtime: RwLock<DotLottieRuntime>,
 }
 
 impl DotLottiePlayer {
-    pub fn new() -> Self {
-        let canvas = thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 0);
-        let animation = thorvg::Animation::new();
-        let buffer = Mutex::new(vec![]);
-
+    pub fn new(config: Config) -> Self {
         DotLottiePlayer {
-            autoplay: false,
-            loop_animation: false,
-            speed: 1,
-            direction: AtomicI8::new(1),
-            animation,
-            canvas,
-            buffer,
+            runtime: RwLock::new(DotLottieRuntime::new(config)),
         }
     }
 
-    pub fn frame(&self, no: f32) {
-        // self.canvas.clear(true);
-
-        self.animation.set_frame(no);
-
-        self.canvas.update();
-        self.canvas.draw();
-        self.canvas.sync();
+    pub fn load_animation_data(&self, animation_data: &str, width: u32, height: u32) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .load_animation_data(animation_data, width, height)
     }
 
-    pub fn get_total_frame(&self) -> f32 {
-        let total_frames = self.animation.get_total_frame();
-
-        match total_frames {
-            Ok(total_frames) => total_frames,
-            Err(_) => 0.0,
-        }
+    pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .load_animation_path(animation_path, width, height)
     }
 
-    pub fn get_duration(&self) -> f32 {
-        let duration = self.animation.get_duration();
-
-        match duration {
-            Ok(duration) => duration,
-            Err(_) => 0.0,
-        }
+    pub fn buffer_ptr(&self) -> u64 {
+        self.runtime.read().unwrap().buffer().as_ptr().cast::<u32>() as u64
     }
 
-    pub fn get_current_frame(&self) -> f32 {
-        let result = self.animation.get_frame();
-
-        match result {
-            Ok(frame) => frame,
-            Err(_) => 0.0,
-        }
-    }
-
-    pub fn get_buffer(&self) -> i64 {
-        let buffer_lock = self.buffer.lock().unwrap();
-        return buffer_lock.as_ptr().cast::<u32>() as i64;
-    }
-
-    pub fn get_buffer_size(&self) -> i64 {
-        let buffer_lock = self.buffer.lock().unwrap();
-
-        buffer_lock.len() as i64
+    pub fn buffer_len(&self) -> u64 {
+        self.runtime.read().unwrap().buffer().len() as u64
     }
 
     pub fn clear(&self) {
-        self.canvas.clear(true);
+        self.runtime.write().unwrap().clear();
     }
 
-    pub fn load_animation_from_path(&self, path: &str, width: u32, height: u32) -> bool {
-        let mut buffer_lock = self.buffer.lock().unwrap();
-
-        *buffer_lock = vec![0; (width * height * 4) as usize];
-
-        self.canvas.set_target(
-            buffer_lock.as_ptr() as *mut u32,
-            width,
-            width,
-            height,
-            thorvg::TvgColorspace::ABGR8888,
-        );
-
-        if let Some(frame_image) = self.animation.get_picture() {
-            if frame_image.load(path).is_err() {
-                return false;
-            }
-
-            let (pw, ph) = frame_image.get_size().unwrap();
-
-            let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);
-
-            frame_image.scale(scale);
-            frame_image.translate(shift_x, shift_y);
-
-            self.canvas.push(&frame_image);
-
-            self.animation.set_frame(0.0);
-
-            self.canvas.draw();
-            self.canvas.sync();
-        } else {
-            return false;
-        }
-
-        true
+    pub fn set_config(&self, config: Config) {
+        self.runtime.write().unwrap().set_config(config);
     }
 
-    pub fn load_animation(&self, animation_data: &str, width: u32, height: u32) -> bool {
-        let mut buffer_lock = self.buffer.lock().unwrap();
+    pub fn set_speed(&self, speed: f32) {
+        self.runtime.write().unwrap().set_speed(speed);
+    }
 
-        *buffer_lock = vec![0; (width * height * 4) as usize];
+    pub fn speed(&self) -> f32 {
+        self.runtime.read().unwrap().speed()
+    }
 
-        self.canvas.set_target(
-            buffer_lock.as_ptr() as *mut u32,
-            width,
-            width,
-            height,
-            thorvg::TvgColorspace::ABGR8888,
-        );
+    pub fn total_frames(&self) -> f32 {
+        self.runtime.read().unwrap().total_frames()
+    }
 
-        if let Some(mut frame_image) = self.animation.get_picture() {
-            if frame_image
-                .load_data(animation_data.as_bytes(), "lottie")
-                .is_err()
-            {
-                return false;
-            }
+    pub fn duration(&self) -> f32 {
+        self.runtime.read().unwrap().duration()
+    }
 
-            let (pw, ph) = frame_image.get_size().unwrap();
+    pub fn current_frame(&self) -> f32 {
+        self.runtime.read().unwrap().current_frame()
+    }
 
-            let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);
+    pub fn loop_count(&self) -> u32 {
+        self.runtime.read().unwrap().loop_count()
+    }
 
-            frame_image.scale(scale);
-            frame_image.translate(shift_x, shift_y);
+    pub fn is_loaded(&self) -> bool {
+        self.runtime.read().unwrap().is_loaded()
+    }
 
-            self.canvas.push(&frame_image);
+    pub fn is_playing(&self) -> bool {
+        self.runtime.read().unwrap().is_playing()
+    }
 
-            self.animation.set_frame(0.0);
+    pub fn is_paused(&self) -> bool {
+        self.runtime.read().unwrap().is_paused()
+    }
 
-            self.canvas.draw();
-            self.canvas.sync();
-        } else {
-            return false;
-        }
+    pub fn is_stopped(&self) -> bool {
+        self.runtime.read().unwrap().is_stopped()
+    }
 
-        true
+    pub fn play(&self) -> bool {
+        self.runtime.write().unwrap().play()
+    }
+
+    pub fn pause(&self) -> bool {
+        self.runtime.write().unwrap().pause()
+    }
+
+    pub fn stop(&self) -> bool {
+        self.runtime.write().unwrap().stop()
+    }
+
+    pub fn request_frame(&self) -> f32 {
+        self.runtime.write().unwrap().request_frame()
+    }
+
+    pub fn set_frame(&self, no: f32) -> bool {
+        self.runtime.write().unwrap().set_frame(no)
+    }
+
+    pub fn render(&self) -> bool {
+        self.runtime.write().unwrap().render()
+    }
+
+    pub fn resize(&self, width: u32, height: u32) -> bool {
+        self.runtime.write().unwrap().resize(width, height)
+    }
+
+    pub fn config(&self) -> Config {
+        self.runtime.read().unwrap().config()
     }
 }
 
 unsafe impl Send for DotLottiePlayer {}
 unsafe impl Sync for DotLottiePlayer {}
-
-fn calculate_scale_and_shift(pw: f32, ph: f32, width: u32, height: u32) -> (f32, f32, f32) {
-    let scale = if pw > ph {
-        width as f32 / pw
-    } else {
-        height as f32 / ph
-    };
-
-    let shift_x = (width as f32 - pw * scale) / 2.0;
-    let shift_y = (height as f32 - ph * scale) / 2.0;
-
-    (scale, shift_x, shift_y)
-}

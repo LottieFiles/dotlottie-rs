@@ -1,7 +1,8 @@
 {
   "rust-analyzer.linkedProjects": [
     "./dotlottie-rs/Cargo.toml",
-    "./dotlottie-ffi/Cargo.toml"
+    "./dotlottie-ffi/Cargo.toml",
+    "./demo-player/Cargo.toml"
   ],
   "C_Cpp.errorSquiggles": "disabled"
 }

@@ -47,15 +47,13 @@ fn main() {
 
     let animation_data = read_to_string(path.to_str().unwrap()).unwrap();
 
-    let config = Config::new()
-        .autoplay(true)
-        .speed(2.0)
-        ._loop(false)
-        .mode(Mode::Reverse)
-        .use_frame_interpolation(false)
-        .build();
-
-    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(config);
+    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
+        mode: Mode::Reverse,
+        loop_animation: true,
+        speed: 10.0,
+        use_frame_interpolation: true,
+        autoplay: false,
+    });
     lottie_player.load_animation_data(animation_data.as_str(), WIDTH as u32, HEIGHT as u32);
 
     let mut timer = Timer::new();
@@ -63,8 +61,11 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         timer.tick(&mut lottie_player);
 
-        window
-            .update_with_buffer(lottie_player.buffer(), WIDTH, HEIGHT)
-            .unwrap();
+        let (buffer_ptr, buffer_len) = (lottie_player.buffer_ptr(), lottie_player.buffer_len());
+
+        let buffer =
+            unsafe { std::slice::from_raw_parts(buffer_ptr as *const u32, buffer_len as usize) };
+
+        window.update_with_buffer(buffer, WIDTH, HEIGHT).unwrap();
     }
 }

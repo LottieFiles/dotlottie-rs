@@ -120,17 +120,8 @@ impl LottieRenderer {
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
 
-    pub fn clear(&mut self, free: bool) -> Result<(), LottieRendererError> {
-        let thorvg_canvas = self
-            .thorvg_canvas
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
-        thorvg_canvas
-            .clear(free)
-            .map_err(|e| LottieRendererError::ThorvgError(e))?;
-
-        Ok(())
+    pub fn clear(&mut self) {
+        self.buffer.clear()
     }
 
     pub fn render(&mut self) -> Result<(), LottieRendererError> {
@@ -194,6 +185,14 @@ impl LottieRenderer {
         }
 
         Ok(())
+    }
+
+    pub fn buffer_ptr(&self) -> *const u32 {
+        self.buffer.as_ptr()
+    }
+
+    pub fn buffer_len(&self) -> usize {
+        self.buffer.len()
     }
 }
 

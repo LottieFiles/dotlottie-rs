@@ -92,9 +92,9 @@ mod tests {
 
         assert!(result.is_ok());
 
-        let result = renderer.clear(true, true);
+        renderer.clear();
 
-        assert!(result.is_ok());
+        assert_eq!(renderer.buffer.len(), 0);
     }
 
     #[test]

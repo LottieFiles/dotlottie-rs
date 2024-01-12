@@ -1,43 +1,40 @@
-
 namespace dotlottie_player {
 };
 
-interface DotLottiePlayer {
-    constructor();
-    boolean load_animation_data([ByRef] string animation_data, u32 width, u32 height);
+enum Mode {
+    "Forward",
+    "Reverse",
+};
 
-    boolean clear();
-    boolean render();
-    
-    i64 get_buffer();
-    i64 get_buffer_size();
-    
+dictionary Config {
+    boolean autoplay;
+    boolean loop_animation;
+    Mode mode;
+    f32 speed;
+    boolean use_frame_interpolation;
+};
+
+interface DotLottiePlayer {
+    constructor(Config config);
+    boolean load_animation_data([ByRef] string animation_data, u32 width, u32 height);
+    u64 buffer_ptr();
+    u64 buffer_len();
+    void set_config(Config config);
+    Config config();
     f32 total_frames();
     f32 duration();
-    
-    boolean set_frame(f32 no);
     f32 current_frame();
-    
-    void play();
-    void pause();
-    void stop();
-
+    u32 loop_count();
+    boolean is_loaded();
     boolean is_playing();
     boolean is_paused();
     boolean is_stopped();
-
-    void set_loop(boolean loop);
-    boolean loop();
-    u32 loop_count();
-
-    void set_use_frame_interpolation(boolean use);
-    boolean use_frame_interpolation();
-
-    u32 width();
-    u32 height();
-
-    bool resize(u32 width, u32 height);
-
-    void set_speed(f32 speed);
-    f32 speed();
+    boolean play();
+    boolean pause();
+    boolean stop();
+    f32 request_frame();
+    boolean set_frame(f32 no);
+    boolean render();
+    boolean resize(u32 width, u32 height);
+    void clear();
 };

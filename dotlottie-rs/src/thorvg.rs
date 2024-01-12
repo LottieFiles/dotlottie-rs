@@ -1,7 +1,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
 
-use std::{ffi::CString, marker::PhantomData, ptr::null};
+use std::{ffi::CString, marker::PhantomData};
 use thiserror::Error;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -183,7 +183,7 @@ impl<'a> Picture<'a> {
                 data.as_ptr() as *const std::ffi::c_char,
                 data.len() as u32,
                 mimetype.as_ptr(),
-                false,
+                copy,
             )
         };
 

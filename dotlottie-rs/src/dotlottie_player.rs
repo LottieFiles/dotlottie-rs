@@ -1,8 +1,8 @@
-use std::time::SystemTime;
+use std::{sync::Mutex, time::SystemTime};
 
 use crate::LottieRenderer;
 
-enum PlaybackState {
+pub enum PlaybackState {
     Playing,
     Paused,
     Stopped,
@@ -14,68 +14,16 @@ pub enum Mode {
     Reverse,
 }
 
+#[derive(Clone, Copy)]
 pub struct Config {
-    mode: Mode,
-    _loop: bool,
-    speed: f32,
-    use_frame_interpolation: bool,
-    autoplay: bool,
+    pub mode: Mode,
+    pub loop_animation: bool,
+    pub speed: f32,
+    pub use_frame_interpolation: bool,
+    pub autoplay: bool,
 }
 
-impl Config {
-    pub fn new() -> Self {
-        Config {
-            autoplay: false,
-            mode: Mode::Forward,
-            _loop: false,
-            speed: 1.0,
-            use_frame_interpolation: true,
-        }
-    }
-
-    pub fn mode(&mut self, mode: Mode) -> &mut Self {
-        self.mode = mode;
-        self
-    }
-
-    pub fn _loop(&mut self, _loop: bool) -> &mut Self {
-        self._loop = _loop;
-        self
-    }
-
-    pub fn use_frame_interpolation(&mut self, use_frame_interpolation: bool) -> &mut Self {
-        self.use_frame_interpolation = use_frame_interpolation;
-        self
-    }
-
-    pub fn speed(&mut self, speed: f32) -> &mut Self {
-        self.speed = speed;
-        self
-    }
-
-    pub fn autoplay(&mut self, autoplay: bool) -> &mut Self {
-        self.autoplay = autoplay;
-        self
-    }
-
-    pub fn build(&self) -> Self {
-        Config {
-            autoplay: self.autoplay,
-            mode: self.mode,
-            _loop: self._loop,
-            speed: self.speed,
-            use_frame_interpolation: self.use_frame_interpolation,
-        }
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config::new()
-    }
-}
-
-pub struct DotLottiePlayer {
+struct DotLottieRuntime {
     renderer: LottieRenderer,
     playback_state: PlaybackState,
     is_loaded: bool,
@@ -84,9 +32,9 @@ pub struct DotLottiePlayer {
     config: Config,
 }
 
-impl DotLottiePlayer {
+impl DotLottieRuntime {
     pub fn new(config: Config) -> Self {
-        DotLottiePlayer {
+        DotLottieRuntime {
             renderer: LottieRenderer::new(),
             playback_state: PlaybackState::Stopped,
             is_loaded: false,
@@ -190,7 +138,7 @@ impl DotLottiePlayer {
         let next_frame = match self.config.mode {
             Mode::Forward => {
                 if next_frame >= total_frames {
-                    if self.config._loop {
+                    if self.config.loop_animation {
                         self.loop_count += 1;
                         self.start_time = SystemTime::now();
                         0.0
@@ -203,7 +151,7 @@ impl DotLottiePlayer {
             }
             Mode::Reverse => {
                 if next_frame <= 0.0 {
-                    if self.config._loop {
+                    if self.config.loop_animation {
                         self.loop_count += 1;
                         self.start_time = SystemTime::now();
                         total_frames
@@ -255,8 +203,8 @@ impl DotLottiePlayer {
         &self.renderer.buffer
     }
 
-    pub fn clear(&mut self, free: bool) -> bool {
-        self.renderer.clear(free).is_ok()
+    pub fn clear(&mut self) {
+        self.renderer.clear()
     }
 
     pub fn set_config(&mut self, config: Config) {
@@ -287,6 +235,123 @@ impl DotLottiePlayer {
         }
 
         loaded
+    }
+
+    pub fn resize(&mut self, width: u32, height: u32) -> bool {
+        self.renderer.resize(width, height).is_ok()
+    }
+
+    pub fn config(&self) -> Config {
+        self.config.clone()
+    }
+}
+
+pub struct DotLottiePlayer {
+    runtime: Mutex<DotLottieRuntime>,
+}
+
+impl DotLottiePlayer {
+    pub fn new(config: Config) -> Self {
+        DotLottiePlayer {
+            runtime: Mutex::new(DotLottieRuntime::new(config)),
+        }
+    }
+
+    pub fn load_animation_data(&self, animation_data: &str, width: u32, height: u32) -> bool {
+        self.runtime
+            .lock()
+            .unwrap()
+            .load_animation_data(animation_data, width, height)
+    }
+
+    pub fn buffer_ptr(&self) -> u64 {
+        let ptr = self.runtime.lock().unwrap().buffer().as_ptr();
+
+        ptr as u64
+    }
+
+    pub fn buffer_len(&self) -> u64 {
+        self.runtime.lock().unwrap().buffer().len() as u64
+    }
+
+    pub fn clear(&self) {
+        self.runtime.lock().unwrap().clear()
+    }
+
+    pub fn set_config(&self, config: Config) {
+        self.runtime.lock().unwrap().set_config(config);
+    }
+
+    pub fn set_speed(&self, speed: f32) {
+        self.runtime.lock().unwrap().set_speed(speed);
+    }
+
+    pub fn speed(&self) -> f32 {
+        self.runtime.lock().unwrap().speed()
+    }
+
+    pub fn total_frames(&self) -> f32 {
+        self.runtime.lock().unwrap().total_frames()
+    }
+
+    pub fn duration(&self) -> f32 {
+        self.runtime.lock().unwrap().duration()
+    }
+
+    pub fn current_frame(&self) -> f32 {
+        self.runtime.lock().unwrap().current_frame()
+    }
+
+    pub fn loop_count(&self) -> u32 {
+        self.runtime.lock().unwrap().loop_count()
+    }
+
+    pub fn is_loaded(&self) -> bool {
+        self.runtime.lock().unwrap().is_loaded()
+    }
+
+    pub fn is_playing(&self) -> bool {
+        self.runtime.lock().unwrap().is_playing()
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.runtime.lock().unwrap().is_paused()
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        self.runtime.lock().unwrap().is_stopped()
+    }
+
+    pub fn play(&self) -> bool {
+        self.runtime.lock().unwrap().play()
+    }
+
+    pub fn pause(&self) -> bool {
+        self.runtime.lock().unwrap().pause()
+    }
+
+    pub fn stop(&self) -> bool {
+        self.runtime.lock().unwrap().stop()
+    }
+
+    pub fn request_frame(&self) -> f32 {
+        self.runtime.lock().unwrap().request_frame()
+    }
+
+    pub fn set_frame(&self, no: f32) -> bool {
+        self.runtime.lock().unwrap().set_frame(no)
+    }
+
+    pub fn render(&self) -> bool {
+        self.runtime.lock().unwrap().render()
+    }
+
+    pub fn resize(&self, width: u32, height: u32) -> bool {
+        self.runtime.lock().unwrap().resize(width, height)
+    }
+
+    pub fn config(&self) -> Config {
+        self.runtime.lock().unwrap().config()
     }
 }
 

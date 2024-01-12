@@ -211,6 +211,32 @@ impl DotLottieRuntime {
         self.config = config;
     }
 
+    pub fn load_animation_path(&mut self, animation_path: &str, width: u32, height: u32) -> bool {
+        let loaded = self
+            .renderer
+            .load_path(animation_path, width, height)
+            .is_ok();
+
+        self.is_loaded = loaded;
+
+        let total_frames = self.total_frames();
+
+        match self.config.mode {
+            Mode::Forward => {
+                self.set_frame(0_f32);
+            }
+            Mode::Reverse => {
+                self.set_frame(total_frames);
+            }
+        }
+
+        if self.config.autoplay && loaded {
+            return self.play();
+        }
+
+        loaded
+    }
+
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
         let loaded = self
             .renderer
@@ -262,6 +288,13 @@ impl DotLottiePlayer {
             .lock()
             .unwrap()
             .load_animation_data(animation_data, width, height)
+    }
+
+    pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
+        self.runtime
+            .lock()
+            .unwrap()
+            .load_animation_path(animation_path, width, height)
     }
 
     pub fn buffer_ptr(&self) -> u64 {

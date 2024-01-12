@@ -36,6 +36,56 @@ impl LottieRenderer {
         }
     }
 
+    pub fn load_path(
+        &mut self,
+        path: &str,
+        width: u32,
+        height: u32,
+    ) -> Result<(), LottieRendererError> {
+        self.thorvg_animation = Some(thorvg::Animation::new());
+        self.thorvg_canvas = Some(thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 0));
+        self.buffer = vec![0; (width * height * 4) as usize];
+        self.width = width;
+        self.height = height;
+
+        let thorvg_animation = self
+            .thorvg_animation
+            .as_mut()
+            .ok_or(LottieRendererError::AnimationNotLoaded)?;
+
+        let thorvg_canvas = self
+            .thorvg_canvas
+            .as_mut()
+            .ok_or(LottieRendererError::AnimationNotLoaded)?;
+
+        thorvg_canvas
+            .set_target(
+                &mut self.buffer,
+                width,
+                width,
+                height,
+                thorvg::TvgColorspace::ABGR8888,
+            )
+            .map_err(LottieRendererError::ThorvgError)?;
+
+        if let Some(picture) = &mut thorvg_animation.get_picture() {
+            picture.load(path)?;
+
+            thorvg_canvas.push(picture)?;
+
+            let (pw, ph) = picture.get_size()?;
+            let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);
+
+            picture.scale(scale)?;
+            picture.translate(shift_x, shift_y)?;
+
+            self.picture_width = pw;
+            self.picture_height = ph;
+        }
+
+        Ok(())
+    }
+
     pub fn load_data(
         &mut self,
         data: &str,

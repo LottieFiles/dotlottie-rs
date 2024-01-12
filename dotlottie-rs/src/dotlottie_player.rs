@@ -1,4 +1,4 @@
-use std::{sync::Mutex, time::SystemTime};
+use std::{sync::RwLock, time::SystemTime};
 
 use crate::LottieRenderer;
 
@@ -12,6 +12,8 @@ pub enum PlaybackState {
 pub enum Mode {
     Forward,
     Reverse,
+    Bounce,
+    ReverseBounce,
 }
 
 #[derive(Clone, Copy)]
@@ -99,6 +101,7 @@ impl DotLottieRuntime {
                 Mode::Reverse => {
                     self.set_frame(self.total_frames());
                 }
+                _ => {}
             }
 
             true
@@ -133,6 +136,7 @@ impl DotLottieRuntime {
         let next_frame = match self.config.mode {
             Mode::Forward => next_frame,
             Mode::Reverse => total_frames - next_frame,
+            _ => next_frame,
         };
 
         let next_frame = match self.config.mode {
@@ -162,6 +166,7 @@ impl DotLottieRuntime {
                     next_frame
                 }
             }
+            _ => next_frame,
         };
 
         next_frame
@@ -228,6 +233,7 @@ impl DotLottieRuntime {
             Mode::Reverse => {
                 self.set_frame(total_frames);
             }
+            _ => {}
         }
 
         if self.config.autoplay && loaded {
@@ -254,6 +260,7 @@ impl DotLottieRuntime {
             Mode::Reverse => {
                 self.set_frame(total_frames);
             }
+            _ => {}
         }
 
         if self.config.autoplay && loaded {
@@ -273,118 +280,116 @@ impl DotLottieRuntime {
 }
 
 pub struct DotLottiePlayer {
-    runtime: Mutex<DotLottieRuntime>,
+    runtime: RwLock<DotLottieRuntime>,
 }
 
 impl DotLottiePlayer {
     pub fn new(config: Config) -> Self {
         DotLottiePlayer {
-            runtime: Mutex::new(DotLottieRuntime::new(config)),
+            runtime: RwLock::new(DotLottieRuntime::new(config)),
         }
     }
 
     pub fn load_animation_data(&self, animation_data: &str, width: u32, height: u32) -> bool {
         self.runtime
-            .lock()
+            .write()
             .unwrap()
             .load_animation_data(animation_data, width, height)
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
         self.runtime
-            .lock()
+            .write()
             .unwrap()
             .load_animation_path(animation_path, width, height)
     }
 
     pub fn buffer_ptr(&self) -> u64 {
-        let ptr = self.runtime.lock().unwrap().buffer().as_ptr();
-
-        ptr as u64
+        self.runtime.read().unwrap().buffer().as_ptr() as u64
     }
 
     pub fn buffer_len(&self) -> u64 {
-        self.runtime.lock().unwrap().buffer().len() as u64
+        self.runtime.read().unwrap().buffer().len() as u64
     }
 
     pub fn clear(&self) {
-        self.runtime.lock().unwrap().clear()
+        self.runtime.write().unwrap().clear();
     }
 
     pub fn set_config(&self, config: Config) {
-        self.runtime.lock().unwrap().set_config(config);
+        self.runtime.write().unwrap().set_config(config);
     }
 
     pub fn set_speed(&self, speed: f32) {
-        self.runtime.lock().unwrap().set_speed(speed);
+        self.runtime.write().unwrap().set_speed(speed);
     }
 
     pub fn speed(&self) -> f32 {
-        self.runtime.lock().unwrap().speed()
+        self.runtime.read().unwrap().speed()
     }
 
     pub fn total_frames(&self) -> f32 {
-        self.runtime.lock().unwrap().total_frames()
+        self.runtime.read().unwrap().total_frames()
     }
 
     pub fn duration(&self) -> f32 {
-        self.runtime.lock().unwrap().duration()
+        self.runtime.read().unwrap().duration()
     }
 
     pub fn current_frame(&self) -> f32 {
-        self.runtime.lock().unwrap().current_frame()
+        self.runtime.read().unwrap().current_frame()
     }
 
     pub fn loop_count(&self) -> u32 {
-        self.runtime.lock().unwrap().loop_count()
+        self.runtime.read().unwrap().loop_count()
     }
 
     pub fn is_loaded(&self) -> bool {
-        self.runtime.lock().unwrap().is_loaded()
+        self.runtime.read().unwrap().is_loaded()
     }
 
     pub fn is_playing(&self) -> bool {
-        self.runtime.lock().unwrap().is_playing()
+        self.runtime.read().unwrap().is_playing()
     }
 
     pub fn is_paused(&self) -> bool {
-        self.runtime.lock().unwrap().is_paused()
+        self.runtime.read().unwrap().is_paused()
     }
 
     pub fn is_stopped(&self) -> bool {
-        self.runtime.lock().unwrap().is_stopped()
+        self.runtime.read().unwrap().is_stopped()
     }
 
     pub fn play(&self) -> bool {
-        self.runtime.lock().unwrap().play()
+        self.runtime.write().unwrap().play()
     }
 
     pub fn pause(&self) -> bool {
-        self.runtime.lock().unwrap().pause()
+        self.runtime.write().unwrap().pause()
     }
 
     pub fn stop(&self) -> bool {
-        self.runtime.lock().unwrap().stop()
+        self.runtime.write().unwrap().stop()
     }
 
     pub fn request_frame(&self) -> f32 {
-        self.runtime.lock().unwrap().request_frame()
+        self.runtime.write().unwrap().request_frame()
     }
 
     pub fn set_frame(&self, no: f32) -> bool {
-        self.runtime.lock().unwrap().set_frame(no)
+        self.runtime.write().unwrap().set_frame(no)
     }
 
     pub fn render(&self) -> bool {
-        self.runtime.lock().unwrap().render()
+        self.runtime.write().unwrap().render()
     }
 
     pub fn resize(&self, width: u32, height: u32) -> bool {
-        self.runtime.lock().unwrap().resize(width, height)
+        self.runtime.write().unwrap().resize(width, height)
     }
 
     pub fn config(&self) -> Config {
-        self.runtime.lock().unwrap().config()
+        self.runtime.read().unwrap().config()
     }
 }
 

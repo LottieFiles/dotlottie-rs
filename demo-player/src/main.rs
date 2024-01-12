@@ -50,9 +50,9 @@ fn main() {
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         mode: Mode::Reverse,
         loop_animation: true,
-        speed: 10.0,
+        speed: 2.5,
         use_frame_interpolation: true,
-        autoplay: false,
+        autoplay: true,
     });
     lottie_player.load_animation_data(animation_data.as_str(), WIDTH as u32, HEIGHT as u32);
 

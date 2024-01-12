@@ -4,6 +4,8 @@ namespace dotlottie_player {
 enum Mode {
     "Forward",
     "Reverse",
+    "Bounce",
+    "ReverseBounce"
 };
 
 dictionary Config {

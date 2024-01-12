@@ -120,14 +120,14 @@ impl LottieRenderer {
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
 
-    pub fn clear(&mut self, paints: bool, buffer: bool) -> Result<(), LottieRendererError> {
+    pub fn clear(&mut self, free: bool) -> Result<(), LottieRendererError> {
         let thorvg_canvas = self
             .thorvg_canvas
             .as_mut()
             .ok_or(LottieRendererError::AnimationNotLoaded)?;
 
         thorvg_canvas
-            .clear(paints, buffer)
+            .clear(free)
             .map_err(|e| LottieRendererError::ThorvgError(e))?;
 
         Ok(())

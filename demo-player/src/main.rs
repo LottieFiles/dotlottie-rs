@@ -1,7 +1,7 @@
 use std::fs::read_to_string;
 use std::{env, path, time::Instant};
 
-use dotlottie_player_core::{DotLottiePlayer, Mode};
+use dotlottie_player_core::{Config, DotLottiePlayer, Mode};
 use minifb::{Key, Window, WindowOptions};
 
 pub const WIDTH: usize = 500;
@@ -22,7 +22,6 @@ impl Timer {
         let next_frame = animation.request_frame();
 
         println!("next_frame: {}", next_frame);
-        animation.clear();
         animation.set_frame(next_frame);
         animation.render();
 
@@ -48,10 +47,16 @@ fn main() {
 
     let animation_data = read_to_string(path.to_str().unwrap()).unwrap();
 
-    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Mode::Forward, true, true, 1.0);
-    lottie_player.load_animation_data(animation_data.as_str(), WIDTH as u32, HEIGHT as u32);
+    let config = Config::new()
+        .autoplay(true)
+        .speed(2.0)
+        ._loop(false)
+        .mode(Mode::Reverse)
+        .use_frame_interpolation(false)
+        .build();
 
-    lottie_player.play();
+    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(config);
+    lottie_player.load_animation_data(animation_data.as_str(), WIDTH as u32, HEIGHT as u32);
 
     let mut timer = Timer::new();
 

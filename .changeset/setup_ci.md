@@ -1,5 +1,0 @@
----
-default: minor
----
-
-# Setup CI

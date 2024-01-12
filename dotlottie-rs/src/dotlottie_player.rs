@@ -127,20 +127,99 @@ impl DotLottieRuntime {
         }
     }
 
-    pub fn load_dotlottie(&self, file_data: &Vec<u8>) -> bool {
-        let animations = dotlottie_fms::get_animations(&file_data);
+    pub fn load_dotlottie(&self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
+        self.dotlottie_manager
+            .write()
+            .unwrap()
+            .init(file_data.clone());
 
-        match animations {
+        // let animations = self.dotlottie_manager.read().unwrap().get_animations();
+
+        let first_animation = self
+            .dotlottie_manager
+            .write()
+            .unwrap()
+            .get_current_animation();
+
+        match first_animation {
             Ok(animation_data) => {
-                let first_animation = &animation_data[0];
+                // let (width, height) = get_width_height(&animation_data);
 
-                return self.load_animation(&first_animation.animation_data, 512, 512);
+                println!("{}", animation_data);
+
+                return self.load_animation(&animation_data, width, height);
             }
             Err(error) => {
                 // Handle the error case
                 eprintln!("Error: {:?}", error);
 
                 false
+                // Perform error handling or return early, depending on your needs
+            }
+        }
+    }
+
+    pub fn next_animation(&self, width: u32, height: u32) -> bool {
+        let animation_data = self.dotlottie_manager.write().unwrap().next_animation();
+
+        match animation_data {
+            Ok(animation_data) => {
+                // let (width, height) = get_width_height(&animsation_data);
+
+                self.clear();
+                let mut canvas = self.canvas.write().unwrap();
+                *canvas = thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 0);
+
+                let mut animation = self.animation.write().unwrap();
+                *animation = thorvg::Animation::new();
+
+                let mut buffer_lock = self.buffer.lock().unwrap();
+                *buffer_lock = vec![];
+
+                std::mem::drop(buffer_lock);
+                std::mem::drop(canvas);
+                std::mem::drop(animation);
+
+                return self.load_animation(&animation_data, width, height);
+            }
+            Err(error) => {
+                // Handle the error case
+                eprintln!("Error: {:?}", error);
+
+                return false;
+                // Perform error handling or return early, depending on your needs
+            }
+        }
+    }
+
+    pub fn previous_animation(&self, width: u32, height: u32) -> bool {
+        let animation_data = self.dotlottie_manager.write().unwrap().previous_animation();
+
+        match animation_data {
+            Ok(animation_data) => {
+                // let (width, height) = get_width_height(&animsation_data);
+
+                self.clear();
+                let mut canvas = self.canvas.write().unwrap();
+                *canvas = thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 0);
+
+                let mut animation = self.animation.write().unwrap();
+                *animation = thorvg::Animation::new();
+
+                let mut buffer_lock = self.buffer.lock().unwrap();
+                *buffer_lock = vec![];
+
+                std::mem::drop(buffer_lock);
+                std::mem::drop(canvas);
+                std::mem::drop(animation);
+
+                return self.load_animation(&animation_data, width, height);
+            }
+            Err(error) => {
+                // Handle the error case
+                eprintln!("Error: {:?}", error);
+
+                return false;
                 // Perform error handling or return early, depending on your needs
             }
         }

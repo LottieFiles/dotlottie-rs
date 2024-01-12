@@ -162,3 +162,13 @@ pub fn get_manifest(bytes: &Vec<u8>) -> Result<Manifest, DotLottieError> {
 
     Ok(manifest)
 }
+
+/// Get the width and height of a dotLottie file.
+pub fn get_width_height(animation_data: &str) -> (u32, u32) {
+    let lottie_animation: Value = serde_json::from_str(animation_data).unwrap();
+
+    let width = lottie_animation["w"].as_u64().unwrap() as u32;
+    let height = lottie_animation["h"].as_u64().unwrap() as u32;
+
+    (width, height)
+}

@@ -282,8 +282,8 @@ impl DotLottiePlayer {
             }
         }
 
-        if self.config.autoplay {
-            self.play();
+        if self.config.autoplay && loaded {
+            return self.play();
         }
 
         loaded

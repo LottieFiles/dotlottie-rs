@@ -19,7 +19,13 @@
         },
       });
 
-      const player = new module.DotLottiePlayer();
+      const player = new module.DotLottiePlayer({
+        autoplay: true,
+        loop_animation: true,
+        mode: module.Mode.values[1],
+        speed: 1,
+        use_frame_interpolation: false,
+      });
 
       const data = await fetch(
         "https://lottie.host/647eb023-6040-4b60-a275-e2546994dd7f/zDCfp5lhLe.json"
@@ -29,39 +35,59 @@
       const width = canvas.width;
       const height = canvas.height;
 
-      const loaded = player.loadAnimation(data, width, height);
+      const loaded = player.load_animation_data(data, width, height);
 
       const ctx = canvas.getContext("2d");
       const imageData = ctx.createImageData(width, height);
 
-      const duration = player.getDuration(); // duration in seconds
-      const totalFrames = player.getTotalFrame();
-      const fps = totalFrames / duration;
-      const timePerFrame = 1000 / fps; // time per frame in milliseconds
+      // const duration = player.duration(); // duration in seconds
+      // const totalFrames = player.total_frames();
+      // const fps = totalFrames / duration;
+      // const timePerFrame = 1000 / fps; // time per frame in milliseconds
 
-      let lastFrameTime = 0;
+      // let lastFrameTime = 0;
 
-      let currentFrame = 0;
+      // let currentFrame = 0;
 
-      const animationLoop = (timestamp) => {
-        if (!lastFrameTime || timestamp - lastFrameTime >= timePerFrame) {
-          player.frame(currentFrame);
-          const buffer = player.getBuffer();
+      // const animationLoop = (timestamp) => {
+      //   if (!lastFrameTime || timestamp - lastFrameTime >= timePerFrame) {
+      //     player.set_frame(currentFrame);
 
-          imageData.data.set(buffer);
-          ctx.putImageData(imageData, 0, 0);
+      //     const rendered = player.render();
+      //     if (rendered) {
+      //       const buffer = player.buffer();
 
-          currentFrame++;
+      //       imageData.data.set(buffer);
+      //       ctx.putImageData(imageData, 0, 0);
+      //     }
 
-          if (currentFrame >= totalFrames) {
-            currentFrame = 0;
-          }
+      //     currentFrame++;
 
-          lastFrameTime = timestamp;
-        }
+      //     if (currentFrame >= totalFrames) {
+      //       currentFrame = 0;
+      //     }
+
+      //     lastFrameTime = timestamp;
+      //   }
+
+      //   requestAnimationFrame(animationLoop);
+      // };
+
+      // requestAnimationFrame(animationLoop);
+
+      function animationLoop() {
+        const frame = player.request_frame();
+
+        player.set_frame(frame);
+        player.render();
+
+        const buffer = player.buffer();
+
+        imageData.data.set(buffer);
+        ctx.putImageData(imageData, 0, 0);
 
         requestAnimationFrame(animationLoop);
-      };
+      }
 
       requestAnimationFrame(animationLoop);
     </script>

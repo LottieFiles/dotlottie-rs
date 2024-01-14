@@ -14,10 +14,10 @@ val buffer(DotLottiePlayer &player)
 EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 {
     enum_<Mode>("Mode")
-        .value("FORWARD", Mode::FORWARD)
-        .value("REVERSE", Mode::REVERSE)
-        .value("BOUNCE", Mode::BOUNCE)
-        .value("REVERSE_BOUNCE", Mode::REVERSE_BOUNCE);
+        .value("Forward", Mode::FORWARD)
+        .value("Reverse", Mode::REVERSE)
+        .value("Bounce", Mode::BOUNCE)
+        .value("ReverseBounce", Mode::REVERSE_BOUNCE);
 
     value_object<Config>("Config")
         .field("autoplay", &Config::autoplay)

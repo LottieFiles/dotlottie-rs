@@ -1,4 +1,5 @@
-use std::{sync::RwLock, time::SystemTime};
+use instant::Instant;
+use std::sync::RwLock;
 
 use crate::LottieRenderer;
 
@@ -29,7 +30,7 @@ struct DotLottieRuntime {
     renderer: LottieRenderer,
     playback_state: PlaybackState,
     is_loaded: bool,
-    start_time: SystemTime,
+    start_time: Instant,
     loop_count: u32,
     config: Config,
 }
@@ -40,7 +41,7 @@ impl DotLottieRuntime {
             renderer: LottieRenderer::new(),
             playback_state: PlaybackState::Stopped,
             is_loaded: false,
-            start_time: SystemTime::now(),
+            start_time: Instant::now(),
             loop_count: 0,
             config,
         }
@@ -74,7 +75,7 @@ impl DotLottieRuntime {
     pub fn play(&mut self) -> bool {
         if self.is_loaded && !self.is_playing() {
             self.playback_state = PlaybackState::Playing;
-            self.start_time = SystemTime::now();
+            self.start_time = Instant::now();
 
             true
         } else {
@@ -115,17 +116,12 @@ impl DotLottieRuntime {
             return self.current_frame();
         }
 
-        let current_time = SystemTime::now();
+        let elapsed_time = self.start_time.elapsed().as_secs_f32();
 
-        let elapsed_time = match current_time.duration_since(self.start_time) {
-            Ok(n) => n.as_millis(),
-            Err(_) => 0,
-        } as f32;
-
-        let duration = (self.duration() * 1000.0) / self.config.speed as f32;
+        let duration = self.duration() / self.config.speed;
         let total_frames = self.total_frames() - 1.0;
 
-        let raw_next_frame = elapsed_time / duration * total_frames;
+        let raw_next_frame = (elapsed_time / duration) * total_frames;
 
         let next_frame = if self.config.use_frame_interpolation {
             raw_next_frame
@@ -144,7 +140,7 @@ impl DotLottieRuntime {
                 if next_frame >= total_frames {
                     if self.config.loop_animation {
                         self.loop_count += 1;
-                        self.start_time = SystemTime::now();
+                        self.start_time = Instant::now();
                         0.0
                     } else {
                         total_frames
@@ -157,7 +153,7 @@ impl DotLottieRuntime {
                 if next_frame <= 0.0 {
                     if self.config.loop_animation {
                         self.loop_count += 1;
-                        self.start_time = SystemTime::now();
+                        self.start_time = Instant::now();
                         total_frames
                     } else {
                         0.0

@@ -10,7 +10,7 @@ git clone git@github.com:thorvg/thorvg.git
 ### 2. Build and install
 
 ```bash
-meson . builddir -Dbindings=capi -Dloaders="lottie, png, jpg"
+meson . builddir -Dbindings=capi -Dloaders="lottie, png, jpg" -Dthreads=false
 ninja -C builddir install
 ```
 

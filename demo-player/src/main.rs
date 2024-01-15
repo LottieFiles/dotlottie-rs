@@ -1,4 +1,3 @@
-use std::fs::read_to_string;
 use std::{env, path, time::Instant};
 
 use dotlottie_player_core::{Config, DotLottiePlayer, Mode};
@@ -46,9 +45,9 @@ fn main() {
     path.push("src/cartoon.json");
 
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        mode: Mode::Reverse,
+        mode: Mode::ReverseBounce,
         loop_animation: true,
-        speed: 2.5,
+        speed: 1.0,
         use_frame_interpolation: true,
         autoplay: true,
     });

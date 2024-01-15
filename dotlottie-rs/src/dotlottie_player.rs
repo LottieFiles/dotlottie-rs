@@ -1,7 +1,7 @@
 use instant::Instant;
 use std::sync::RwLock;
 
-use crate::LottieRenderer;
+use crate::lottie_renderer::{LottieRenderer, LottieRendererError};
 
 pub enum PlaybackState {
     Playing,
@@ -13,8 +13,14 @@ pub enum PlaybackState {
 pub enum Mode {
     Forward,
     Reverse,
-    Bounce,
+    ForwardBounce,
     ReverseBounce,
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum Direction {
+    Forward,
+    Reverse,
 }
 
 #[derive(Clone, Copy)]
@@ -33,10 +39,18 @@ struct DotLottieRuntime {
     start_time: Instant,
     loop_count: u32,
     config: Config,
+    direction: Direction,
 }
 
 impl DotLottieRuntime {
     pub fn new(config: Config) -> Self {
+        let direction = match config.mode {
+            Mode::Forward => Direction::Forward,
+            Mode::Reverse => Direction::Reverse,
+            Mode::ForwardBounce => Direction::Forward,
+            Mode::ReverseBounce => Direction::Reverse,
+        };
+
         DotLottieRuntime {
             renderer: LottieRenderer::new(),
             playback_state: PlaybackState::Stopped,
@@ -44,7 +58,12 @@ impl DotLottieRuntime {
             start_time: Instant::now(),
             loop_count: 0,
             config,
+            direction,
         }
+    }
+
+    pub fn direction(&self) -> Direction {
+        self.direction
     }
 
     pub fn is_loaded(&self) -> bool {
@@ -95,14 +114,16 @@ impl DotLottieRuntime {
     pub fn stop(&mut self) -> bool {
         if self.is_loaded {
             self.playback_state = PlaybackState::Stopped;
+            let start_frame = 0_f32;
+            let end_frame = self.total_frames() - 1.0;
+
             match self.config.mode {
-                Mode::Forward => {
-                    self.set_frame(0_f32);
+                Mode::Forward | Mode::ForwardBounce => {
+                    self.set_frame(start_frame);
                 }
-                Mode::Reverse => {
-                    self.set_frame(self.total_frames());
+                Mode::Reverse | Mode::ReverseBounce => {
+                    self.set_frame(end_frame);
                 }
-                _ => {}
             }
 
             true
@@ -129,10 +150,10 @@ impl DotLottieRuntime {
             raw_next_frame.round()
         };
 
-        let next_frame = match self.config.mode {
-            Mode::Forward => next_frame,
-            Mode::Reverse => total_frames - next_frame,
-            _ => next_frame,
+        // update the next frame based on the direction
+        let next_frame = match self.direction {
+            Direction::Forward => next_frame,
+            Direction::Reverse => total_frames - next_frame,
         };
 
         let next_frame = match self.config.mode {
@@ -162,7 +183,54 @@ impl DotLottieRuntime {
                     next_frame
                 }
             }
-            _ => next_frame,
+            Mode::ForwardBounce => match self.direction {
+                Direction::Forward => {
+                    if next_frame >= total_frames {
+                        self.direction = Direction::Reverse;
+                        self.start_time = SystemTime::now();
+                        total_frames
+                    } else {
+                        next_frame
+                    }
+                }
+                Direction::Reverse => {
+                    if next_frame <= 0.0 {
+                        if self.config.loop_animation {
+                            self.loop_count += 1;
+                            self.direction = Direction::Forward;
+                            self.start_time = SystemTime::now();
+                        }
+
+                        0.0
+                    } else {
+                        next_frame
+                    }
+                }
+            },
+            Mode::ReverseBounce => match self.direction {
+                Direction::Reverse => {
+                    if next_frame <= 0.0 {
+                        self.direction = Direction::Forward;
+                        self.start_time = SystemTime::now();
+                        0.0
+                    } else {
+                        next_frame
+                    }
+                }
+                Direction::Forward => {
+                    if next_frame >= total_frames {
+                        if self.config.loop_animation {
+                            self.loop_count += 1;
+                            self.direction = Direction::Reverse;
+                            self.start_time = SystemTime::now();
+                        }
+
+                        total_frames
+                    } else {
+                        next_frame
+                    }
+                }
+            },
         };
 
         next_frame
@@ -212,58 +280,48 @@ impl DotLottieRuntime {
         self.config = config;
     }
 
-    pub fn load_animation_path(&mut self, animation_path: &str, width: u32, height: u32) -> bool {
-        let loaded = self
-            .renderer
-            .load_path(animation_path, width, height)
-            .is_ok();
-
+    fn load_animation_common<F>(&mut self, loader: F, width: u32, height: u32) -> bool
+    where
+        F: FnOnce(&mut LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
+    {
+        let loaded = loader(&mut self.renderer, width, height).is_ok();
         self.is_loaded = loaded;
 
-        let total_frames = self.total_frames();
+        let first_frame = 0_f32;
+        let end_frame = self.total_frames() - 1.0;
 
         match self.config.mode {
-            Mode::Forward => {
-                self.set_frame(0_f32);
+            Mode::Forward | Mode::ForwardBounce => {
+                self.set_frame(first_frame);
+                self.direction = Direction::Forward;
             }
-            Mode::Reverse => {
-                self.set_frame(total_frames);
+            Mode::Reverse | Mode::ReverseBounce => {
+                self.set_frame(end_frame);
+                self.direction = Direction::Reverse;
             }
-            _ => {}
         }
 
         if self.config.autoplay && loaded {
-            return self.play();
+            self.play();
         }
 
         loaded
     }
 
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
-        let loaded = self
-            .renderer
-            .load_data(animation_data, width, height, false)
-            .is_ok();
+        self.load_animation_common(
+            |renderer, w, h| renderer.load_data(animation_data, w, h, false),
+            width,
+            height,
+        )
+    }
 
-        self.is_loaded = loaded;
-
-        let total_frames = self.total_frames();
-
-        match self.config.mode {
-            Mode::Forward => {
-                self.set_frame(0_f32);
-            }
-            Mode::Reverse => {
-                self.set_frame(total_frames);
-            }
-            _ => {}
-        }
-
-        if self.config.autoplay && loaded {
-            return self.play();
-        }
-
-        loaded
+    pub fn load_animation_path(&mut self, animation_path: &str, width: u32, height: u32) -> bool {
+        self.load_animation_common(
+            |renderer, w, h| renderer.load_path(animation_path, w, h),
+            width,
+            height,
+        )
     }
 
     pub fn resize(&mut self, width: u32, height: u32) -> bool {
@@ -386,6 +444,10 @@ impl DotLottiePlayer {
 
     pub fn config(&self) -> Config {
         self.runtime.read().unwrap().config()
+    }
+
+    pub fn direction(&self) -> Direction {
+        self.runtime.read().unwrap().direction()
     }
 }
 

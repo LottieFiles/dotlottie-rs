@@ -4,13 +4,8 @@ namespace dotlottie_player {
 enum Mode {
     "Forward",
     "Reverse",
-    "ForwardBounce",
+    "Bounce",
     "ReverseBounce"
-};
-
-enum Direction {
-    "Forward",
-    "Reverse"
 };
 
 dictionary Config {
@@ -45,5 +40,4 @@ interface DotLottiePlayer {
     boolean render();
     boolean resize(u32 width, u32 height);
     void clear();
-    Direction direction();
 };

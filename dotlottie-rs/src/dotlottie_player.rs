@@ -13,12 +13,11 @@ pub enum PlaybackState {
 pub enum Mode {
     Forward,
     Reverse,
-    ForwardBounce,
+    Bounce,
     ReverseBounce,
 }
 
-#[derive(PartialEq, Clone, Copy)]
-pub enum Direction {
+enum Direction {
     Forward,
     Reverse,
 }
@@ -47,7 +46,7 @@ impl DotLottieRuntime {
         let direction = match config.mode {
             Mode::Forward => Direction::Forward,
             Mode::Reverse => Direction::Reverse,
-            Mode::ForwardBounce => Direction::Forward,
+            Mode::Bounce => Direction::Forward,
             Mode::ReverseBounce => Direction::Reverse,
         };
 
@@ -60,10 +59,6 @@ impl DotLottieRuntime {
             config,
             direction,
         }
-    }
-
-    pub fn direction(&self) -> Direction {
-        self.direction
     }
 
     pub fn is_loaded(&self) -> bool {
@@ -118,7 +113,7 @@ impl DotLottieRuntime {
             let end_frame = self.total_frames() - 1.0;
 
             match self.config.mode {
-                Mode::Forward | Mode::ForwardBounce => {
+                Mode::Forward | Mode::Bounce => {
                     self.set_frame(start_frame);
                 }
                 Mode::Reverse | Mode::ReverseBounce => {
@@ -183,7 +178,7 @@ impl DotLottieRuntime {
                     next_frame
                 }
             }
-            Mode::ForwardBounce => match self.direction {
+            Mode::Bounce => match self.direction {
                 Direction::Forward => {
                     if next_frame >= total_frames {
                         self.direction = Direction::Reverse;
@@ -291,7 +286,7 @@ impl DotLottieRuntime {
         let end_frame = self.total_frames() - 1.0;
 
         match self.config.mode {
-            Mode::Forward | Mode::ForwardBounce => {
+            Mode::Forward | Mode::Bounce => {
                 self.set_frame(first_frame);
                 self.direction = Direction::Forward;
             }
@@ -444,10 +439,6 @@ impl DotLottiePlayer {
 
     pub fn config(&self) -> Config {
         self.runtime.read().unwrap().config()
-    }
-
-    pub fn direction(&self) -> Direction {
-        self.runtime.read().unwrap().direction()
     }
 }
 

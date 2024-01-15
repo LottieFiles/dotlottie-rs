@@ -1,13 +1,18 @@
 name: Check PR
+
 on:
   pull_request:
-    types: [opened]
     branches: [main]
+
 jobs:
   check-pr:
     if: github.head_ref != 'release'
     runs-on: macos-latest
     steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
       - uses: actions/checkout@v4
       - uses: Homebrew/actions/setup-homebrew@master
       - uses: maxim-lobanov/setup-xcode@v1

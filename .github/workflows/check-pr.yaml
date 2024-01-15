@@ -1,0 +1,24 @@
+name: Check PR
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+jobs:
+  check-pr:
+    if: github.head_ref != 'release'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@master
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: ningenMe/setup-rustup@v1.1.0
+      - name: Install Make
+        run: brew install make
+      - name: Build Setup
+        run: make mac-setup
+      - name: Build Artifacts
+        env:
+          APPLE_MACOSX_SDK: MacOSX13
+        run: make demo-player

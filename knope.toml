@@ -4,6 +4,7 @@ repo = 'dotlottie-rs'
 
 [package]
 versioned_files = ["dotlottie-ffi/Cargo.toml"]
+changelog = "CHANGELOG.md"
 
 [[package.assets]]
 path = "release/dotlottie-player.darwin.tar.gz"

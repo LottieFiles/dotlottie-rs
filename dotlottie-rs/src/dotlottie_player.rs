@@ -152,83 +152,103 @@ impl DotLottieRuntime {
         };
 
         let next_frame = match self.config.mode {
-            Mode::Forward => {
-                if next_frame >= total_frames {
-                    if self.config.loop_animation {
-                        self.loop_count += 1;
-                        self.start_time = Instant::now();
-                        0.0
-                    } else {
-                        total_frames
-                    }
-                } else {
-                    next_frame
-                }
-            }
-            Mode::Reverse => {
-                if next_frame <= 0.0 {
-                    if self.config.loop_animation {
-                        self.loop_count += 1;
-                        self.start_time = Instant::now();
-                        total_frames
-                    } else {
-                        0.0
-                    }
-                } else {
-                    next_frame
-                }
-            }
-            Mode::Bounce => match self.direction {
-                Direction::Forward => {
-                    if next_frame >= total_frames {
-                        self.direction = Direction::Reverse;
-                        self.start_time = SystemTime::now();
-                        total_frames
-                    } else {
-                        next_frame
-                    }
-                }
-                Direction::Reverse => {
-                    if next_frame <= 0.0 {
-                        if self.config.loop_animation {
-                            self.loop_count += 1;
-                            self.direction = Direction::Forward;
-                            self.start_time = SystemTime::now();
-                        }
-
-                        0.0
-                    } else {
-                        next_frame
-                    }
-                }
-            },
-            Mode::ReverseBounce => match self.direction {
-                Direction::Reverse => {
-                    if next_frame <= 0.0 {
-                        self.direction = Direction::Forward;
-                        self.start_time = SystemTime::now();
-                        0.0
-                    } else {
-                        next_frame
-                    }
-                }
-                Direction::Forward => {
-                    if next_frame >= total_frames {
-                        if self.config.loop_animation {
-                            self.loop_count += 1;
-                            self.direction = Direction::Reverse;
-                            self.start_time = SystemTime::now();
-                        }
-
-                        total_frames
-                    } else {
-                        next_frame
-                    }
-                }
-            },
+            Mode::Forward => self.handle_forward_mode(next_frame),
+            Mode::Reverse => self.handle_reverse_mode(next_frame),
+            Mode::Bounce => self.handle_bounce_mode(next_frame),
+            Mode::ReverseBounce => self.handle_reverse_bounce_mode(next_frame),
         };
 
         next_frame
+    }
+
+    fn handle_forward_mode(&mut self, next_frame: f32) -> f32 {
+        let total_frames = self.total_frames() - 1.0;
+
+        if next_frame >= total_frames {
+            if self.config.loop_animation {
+                self.loop_count += 1;
+                self.start_time = SystemTime::now();
+
+                0.0
+            } else {
+                total_frames
+            }
+        } else {
+            next_frame
+        }
+    }
+
+    fn handle_reverse_mode(&mut self, next_frame: f32) -> f32 {
+        let total_frames = self.total_frames() - 1.0;
+        if next_frame <= 0.0 {
+            if self.config.loop_animation {
+                self.loop_count += 1;
+                self.start_time = SystemTime::now();
+                total_frames
+            } else {
+                0.0
+            }
+        } else {
+            next_frame
+        }
+    }
+
+    fn handle_bounce_mode(&mut self, next_frame: f32) -> f32 {
+        let total_frames = self.total_frames() - 1.0;
+
+        match self.direction {
+            Direction::Forward => {
+                if next_frame >= total_frames {
+                    self.direction = Direction::Reverse;
+                    self.start_time = SystemTime::now();
+                    total_frames
+                } else {
+                    next_frame
+                }
+            }
+            Direction::Reverse => {
+                if next_frame <= 0.0 {
+                    if self.config.loop_animation {
+                        self.loop_count += 1;
+                        self.direction = Direction::Forward;
+                        self.start_time = SystemTime::now();
+                    }
+
+                    0.0
+                } else {
+                    next_frame
+                }
+            }
+        }
+    }
+
+    fn handle_reverse_bounce_mode(&mut self, next_frame: f32) -> f32 {
+        let total_frames = self.total_frames() - 1.0;
+
+        match self.direction {
+            Direction::Reverse => {
+                if next_frame <= 0.0 {
+                    self.direction = Direction::Forward;
+                    self.start_time = SystemTime::now();
+                    0.0
+                } else {
+                    next_frame
+                }
+            }
+            Direction::Forward => {
+                if next_frame >= total_frames {
+                    if self.config.loop_animation {
+                        self.loop_count += 1;
+                        self.direction = Direction::Reverse;
+                        self.start_time = SystemTime::now();
+                    }
+
+                    total_frames
+                } else {
+                    next_frame
+                }
+            }
+        }
     }
 
     pub fn set_frame(&mut self, no: f32) -> bool {

@@ -14,6 +14,7 @@ dictionary Config {
     Mode mode;
     f32 speed;
     boolean use_frame_interpolation;
+    sequence<f32>? segments;
 };
 
 interface DotLottiePlayer {

@@ -17,13 +17,14 @@ pub enum Mode {
     ReverseBounce,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Config {
     pub mode: Mode,
     pub loop_animation: bool,
     pub speed: f32,
     pub use_frame_interpolation: bool,
     pub autoplay: bool,
+    pub segments: Option<Vec<f32>>,
 }
 
 struct DotLottieRuntime {
@@ -44,6 +45,20 @@ impl DotLottieRuntime {
             start_time: Instant::now(),
             loop_count: 0,
             config,
+        }
+    }
+
+    fn start_frame(&self) -> f32 {
+        match &self.config.segments {
+            Some(segments) => segments[0],
+            None => 0.0,
+        }
+    }
+
+    fn end_frame(&self) -> f32 {
+        match &self.config.segments {
+            Some(segments) => segments[1],
+            None => self.total_frames(),
         }
     }
 
@@ -95,12 +110,16 @@ impl DotLottieRuntime {
     pub fn stop(&mut self) -> bool {
         if self.is_loaded {
             self.playback_state = PlaybackState::Stopped;
+
+            let start_frame = self.start_frame();
+            let end_frame = self.end_frame();
+
             match self.config.mode {
                 Mode::Forward => {
-                    self.set_frame(0_f32);
+                    self.set_frame(start_frame);
                 }
                 Mode::Reverse => {
-                    self.set_frame(self.total_frames());
+                    self.set_frame(end_frame);
                 }
                 _ => {}
             }
@@ -118,10 +137,23 @@ impl DotLottieRuntime {
 
         let elapsed_time = self.start_time.elapsed().as_secs_f32();
 
-        let duration = self.duration() / self.config.speed;
-        let total_frames = self.total_frames() - 1.0;
+        // the animation total frames
+        let total_frames = self.total_frames();
+        // the animation duration in seconds
+        let duration = self.duration();
 
-        let raw_next_frame = (elapsed_time / duration) * total_frames;
+        // the animation start & end frames (considering the segments)
+        let start_frame = self.start_frame();
+        let end_frame = self.end_frame();
+
+        // the effective total frames (considering the segments)
+        let effective_total_frames = end_frame - start_frame;
+
+        // the effective duration in milliseconds (considering the segments & speed)
+        let effective_duration =
+            (1000.0 * duration * effective_total_frames / total_frames) / self.config.speed;
+
+        let raw_next_frame = elapsed_time / effective_duration * effective_total_frames;
 
         let next_frame = if self.config.use_frame_interpolation {
             raw_next_frame
@@ -131,19 +163,19 @@ impl DotLottieRuntime {
 
         let next_frame = match self.config.mode {
             Mode::Forward => next_frame,
-            Mode::Reverse => total_frames - next_frame,
+            Mode::Reverse => effective_total_frames - next_frame,
             _ => next_frame,
         };
 
         let next_frame = match self.config.mode {
             Mode::Forward => {
-                if next_frame >= total_frames {
+                if next_frame >= effective_total_frames {
                     if self.config.loop_animation {
                         self.loop_count += 1;
                         self.start_time = Instant::now();
                         0.0
                     } else {
-                        total_frames
+                        effective_total_frames
                     }
                 } else {
                     next_frame
@@ -154,7 +186,7 @@ impl DotLottieRuntime {
                     if self.config.loop_animation {
                         self.loop_count += 1;
                         self.start_time = Instant::now();
-                        total_frames
+                        effective_total_frames
                     } else {
                         0.0
                     }
@@ -193,7 +225,7 @@ impl DotLottieRuntime {
     }
 
     pub fn set_speed(&mut self, speed: f32) {
-        self.config.speed = if speed < 0.0 { 0.0 } else { speed };
+        self.config.speed = if speed < 0.0 { 1.0 } else { speed };
     }
 
     pub fn speed(&self) -> f32 {
@@ -220,14 +252,15 @@ impl DotLottieRuntime {
 
         self.is_loaded = loaded;
 
-        let total_frames = self.total_frames();
+        let start_frame = self.start_frame();
+        let end_frame = self.end_frame();
 
         match self.config.mode {
             Mode::Forward => {
-                self.set_frame(0_f32);
+                self.set_frame(start_frame);
             }
             Mode::Reverse => {
-                self.set_frame(total_frames);
+                self.set_frame(end_frame);
             }
             _ => {}
         }
@@ -247,14 +280,15 @@ impl DotLottieRuntime {
 
         self.is_loaded = loaded;
 
-        let total_frames = self.total_frames();
+        let start_frame = self.start_frame();
+        let end_frame = self.end_frame();
 
         match self.config.mode {
             Mode::Forward => {
-                self.set_frame(0_f32);
+                self.set_frame(start_frame);
             }
             Mode::Reverse => {
-                self.set_frame(total_frames);
+                self.set_frame(end_frame);
             }
             _ => {}
         }

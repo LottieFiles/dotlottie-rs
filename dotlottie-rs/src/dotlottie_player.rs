@@ -110,7 +110,7 @@ impl DotLottieRuntime {
         if self.is_loaded {
             self.playback_state = PlaybackState::Stopped;
             let start_frame = 0_f32;
-            let end_frame = self.total_frames() - 1.0;
+            let end_frame = self.total_frames();
 
             match self.config.mode {
                 Mode::Forward | Mode::Bounce => {
@@ -134,8 +134,8 @@ impl DotLottieRuntime {
 
         let elapsed_time = self.start_time.elapsed().as_secs_f32();
 
-        let duration = self.duration() / self.config.speed;
-        let total_frames = self.total_frames() - 1.0;
+        let duration = (self.duration() * 1000.0) / self.config.speed as f32;
+        let total_frames = self.total_frames();
 
         let raw_next_frame = (elapsed_time / duration) * total_frames;
 
@@ -162,12 +162,12 @@ impl DotLottieRuntime {
     }
 
     fn handle_forward_mode(&mut self, next_frame: f32) -> f32 {
-        let total_frames = self.total_frames() - 1.0;
+        let total_frames = self.total_frames();
 
         if next_frame >= total_frames {
             if self.config.loop_animation {
                 self.loop_count += 1;
-                self.start_time = SystemTime::now();
+                self.start_time = Instant::now();
 
                 0.0
             } else {
@@ -179,11 +179,11 @@ impl DotLottieRuntime {
     }
 
     fn handle_reverse_mode(&mut self, next_frame: f32) -> f32 {
-        let total_frames = self.total_frames() - 1.0;
+        let total_frames = self.total_frames();
         if next_frame <= 0.0 {
             if self.config.loop_animation {
                 self.loop_count += 1;
-                self.start_time = SystemTime::now();
+                self.start_time = Instant::now();
                 total_frames
             } else {
                 0.0
@@ -194,13 +194,13 @@ impl DotLottieRuntime {
     }
 
     fn handle_bounce_mode(&mut self, next_frame: f32) -> f32 {
-        let total_frames = self.total_frames() - 1.0;
+        let total_frames = self.total_frames();
 
         match self.direction {
             Direction::Forward => {
                 if next_frame >= total_frames {
                     self.direction = Direction::Reverse;
-                    self.start_time = SystemTime::now();
+                    self.start_time = Instant::now();
                     total_frames
                 } else {
                     next_frame
@@ -211,7 +211,7 @@ impl DotLottieRuntime {
                     if self.config.loop_animation {
                         self.loop_count += 1;
                         self.direction = Direction::Forward;
-                        self.start_time = SystemTime::now();
+                        self.start_time = Instant::now();
                     }
 
                     0.0
@@ -223,13 +223,13 @@ impl DotLottieRuntime {
     }
 
     fn handle_reverse_bounce_mode(&mut self, next_frame: f32) -> f32 {
-        let total_frames = self.total_frames() - 1.0;
+        let total_frames = self.total_frames();
 
         match self.direction {
             Direction::Reverse => {
                 if next_frame <= 0.0 {
                     self.direction = Direction::Forward;
-                    self.start_time = SystemTime::now();
+                    self.start_time = Instant::now();
                     0.0
                 } else {
                     next_frame
@@ -240,7 +240,7 @@ impl DotLottieRuntime {
                     if self.config.loop_animation {
                         self.loop_count += 1;
                         self.direction = Direction::Reverse;
-                        self.start_time = SystemTime::now();
+                        self.start_time = Instant::now();
                     }
 
                     total_frames
@@ -260,7 +260,7 @@ impl DotLottieRuntime {
     }
 
     pub fn total_frames(&self) -> f32 {
-        self.renderer.total_frames().unwrap_or(0.0)
+        self.renderer.total_frames().unwrap_or(0.0) - 1.0
     }
 
     pub fn duration(&self) -> f32 {
@@ -303,7 +303,7 @@ impl DotLottieRuntime {
         self.is_loaded = loaded;
 
         let first_frame = 0_f32;
-        let end_frame = self.total_frames() - 1.0;
+        let end_frame = self.total_frames();
 
         match self.config.mode {
             Mode::Forward | Mode::Bounce => {

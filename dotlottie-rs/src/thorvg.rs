@@ -177,6 +177,9 @@ impl<'a> Picture<'a> {
     pub fn load_data(&mut self, data: &[u8], mimetype: &str, copy: bool) -> Result<(), TvgError> {
         let mimetype = CString::new(mimetype).expect("Failed to create CString");
 
+        // println!("{:?}", self.raw_paint);
+        println!("{}", mimetype.to_str().unwrap());
+
         let result = unsafe {
             tvg_picture_load_data(
                 self.raw_paint,
@@ -186,6 +189,8 @@ impl<'a> Picture<'a> {
                 copy,
             )
         };
+
+        println!("Result : {}", result);
 
         convert_tvg_result(result, "tvg_picture_load_data")?;
 

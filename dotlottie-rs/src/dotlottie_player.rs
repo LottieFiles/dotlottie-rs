@@ -1,6 +1,8 @@
 use instant::Instant;
 use std::sync::RwLock;
 
+use dotlottie_fms::DotLottieManager;
+
 use crate::lottie_renderer::{LottieRenderer, LottieRendererError};
 
 pub enum PlaybackState {
@@ -38,6 +40,7 @@ struct DotLottieRuntime {
     start_time: Instant,
     loop_count: u32,
     config: Config,
+    dotlottie_manager: DotLottieManager,
     direction: Direction,
 }
 
@@ -57,6 +60,7 @@ impl DotLottieRuntime {
             start_time: Instant::now(),
             loop_count: 0,
             config,
+            dotlottie_manager: DotLottieManager::new(None),
             direction,
         }
     }
@@ -127,27 +131,21 @@ impl DotLottieRuntime {
         }
     }
 
-    pub fn load_dotlottie(&self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
-        self.dotlottie_manager
-            .write()
-            .unwrap()
-            .init(file_data.clone());
+    pub fn load_dotlottie(&mut self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
+        self.dotlottie_manager.init(file_data.clone());
 
         // let animations = self.dotlottie_manager.read().unwrap().get_animations();
 
-        let first_animation = self
-            .dotlottie_manager
-            .write()
-            .unwrap()
-            .get_current_animation();
+        let first_animation = self.dotlottie_manager.get_current_animation();
 
         match first_animation {
             Ok(animation_data) => {
                 // let (width, height) = get_width_height(&animation_data);
 
-                println!("{}", animation_data);
+                // println!("{}", animation_data);
+                println!("Animation data loaded");
 
-                return self.load_animation(&animation_data, width, height);
+                return self.load_animation_data(&animation_data, width, height);
             }
             Err(error) => {
                 // Handle the error case
@@ -159,28 +157,15 @@ impl DotLottieRuntime {
         }
     }
 
-    pub fn next_animation(&self, width: u32, height: u32) -> bool {
-        let animation_data = self.dotlottie_manager.write().unwrap().next_animation();
+    pub fn next_animation(&mut self, width: u32, height: u32) -> bool {
+        let animation_data = self.dotlottie_manager.next_animation();
 
         match animation_data {
             Ok(animation_data) => {
-                // let (width, height) = get_width_height(&animsation_data);
+                // std::mem::drop(animation);
+                println!("2. animation data OK .. sending to load function");
 
-                self.clear();
-                let mut canvas = self.canvas.write().unwrap();
-                *canvas = thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 0);
-
-                let mut animation = self.animation.write().unwrap();
-                *animation = thorvg::Animation::new();
-
-                let mut buffer_lock = self.buffer.lock().unwrap();
-                *buffer_lock = vec![];
-
-                std::mem::drop(buffer_lock);
-                std::mem::drop(canvas);
-                std::mem::drop(animation);
-
-                return self.load_animation(&animation_data, width, height);
+                return self.load_animation_data(&animation_data, width, height);
             }
             Err(error) => {
                 // Handle the error case
@@ -192,28 +177,28 @@ impl DotLottieRuntime {
         }
     }
 
-    pub fn previous_animation(&self, width: u32, height: u32) -> bool {
-        let animation_data = self.dotlottie_manager.write().unwrap().previous_animation();
+    pub fn previous_animation(&mut self, width: u32, height: u32) -> bool {
+        let animation_data = self.dotlottie_manager.previous_animation();
 
         match animation_data {
             Ok(animation_data) => {
                 // let (width, height) = get_width_height(&animsation_data);
 
-                self.clear();
-                let mut canvas = self.canvas.write().unwrap();
-                *canvas = thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 0);
+                // self.clear();
+                // let mut canvas = self.canvas.write().unwrap();
+                // *canvas = thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 0);
 
-                let mut animation = self.animation.write().unwrap();
-                *animation = thorvg::Animation::new();
+                // let mut animation = self.animation.write().unwrap();
+                // *animation = thorvg::Animation::new();
 
-                let mut buffer_lock = self.buffer.lock().unwrap();
-                *buffer_lock = vec![];
+                // let mut buffer_lock = self.buffer.lock().unwrap();
+                // *buffer_lock = vec![];
 
-                std::mem::drop(buffer_lock);
-                std::mem::drop(canvas);
-                std::mem::drop(animation);
+                // std::mem::drop(buffer_lock);
+                // std::mem::drop(canvas);
+                // std::mem::drop(animation);
 
-                return self.load_animation(&animation_data, width, height);
+                return self.load_animation_data(&animation_data, width, height);
             }
             Err(error) => {
                 // Handle the error case
@@ -544,6 +529,25 @@ impl DotLottiePlayer {
 
     pub fn request_frame(&self) -> f32 {
         self.runtime.write().unwrap().request_frame()
+    }
+
+    pub fn load_dotlottie(&self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .load_dotlottie(file_data, width, height)
+    }
+
+    pub fn next_animation(&self, width: u32, height: u32) -> bool {
+        println!("1. next animation");
+        self.runtime.write().unwrap().next_animation(width, height)
+    }
+
+    pub fn previous_animation(&self, width: u32, height: u32) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .previous_animation(width, height)
     }
 
     pub fn set_frame(&self, no: f32) -> bool {

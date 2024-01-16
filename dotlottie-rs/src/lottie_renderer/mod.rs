@@ -86,6 +86,17 @@ impl LottieRenderer {
         Ok(())
     }
 
+    pub fn clear_canvas(&mut self) -> Result<(), LottieRendererError> {
+        let thorvg_canvas = self
+            .thorvg_canvas
+            .as_mut()
+            .ok_or(LottieRendererError::AnimationNotLoaded)?;
+
+        thorvg_canvas.clear(true)?;
+
+        Ok(())
+    }
+
     pub fn load_data(
         &mut self,
         data: &str,
@@ -120,6 +131,7 @@ impl LottieRenderer {
             .map_err(LottieRendererError::ThorvgError)?;
 
         if let Some(picture) = &mut thorvg_animation.get_picture() {
+            // println!("{:?}", data.as_bytes());
             picture.load_data(data.as_bytes(), "lottie", copy)?;
 
             thorvg_canvas.push(picture)?;

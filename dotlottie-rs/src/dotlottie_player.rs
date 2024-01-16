@@ -132,7 +132,7 @@ impl DotLottieRuntime {
             return self.current_frame();
         }
 
-        let elapsed_time = self.start_time.elapsed().as_secs_f32();
+        let elapsed_time = self.start_time.elapsed().as_secs_f32() * 1000.0;
 
         let duration = (self.duration() * 1000.0) / self.config.speed as f32;
         let total_frames = self.total_frames();
@@ -260,7 +260,10 @@ impl DotLottieRuntime {
     }
 
     pub fn total_frames(&self) -> f32 {
-        self.renderer.total_frames().unwrap_or(0.0) - 1.0
+        match self.renderer.total_frames() {
+            Ok(total_frames) => total_frames - 1.0,
+            Err(_) => 0.0,
+        }
     }
 
     pub fn duration(&self) -> f32 {

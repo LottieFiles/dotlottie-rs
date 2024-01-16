@@ -1,7 +1,6 @@
-use std::fs::read_to_string;
-use std::{env, path, time::Instant};
+use std::{env, path, sync::Arc, time::Instant};
 
-use dotlottie_player_core::{Config, DotLottiePlayer, Mode};
+use dotlottie_player_core::{Config, DotLottiePlayer, Mode, Observer};
 use minifb::{Key, Window, WindowOptions};
 
 pub const WIDTH: usize = 500;
@@ -29,6 +28,32 @@ impl Timer {
     }
 }
 
+struct DummyObserver;
+
+impl Observer for DummyObserver {
+    fn on_play(&self) {
+        println!("on_play");
+    }
+    fn on_pause(&self) {
+        println!("on_pause");
+    }
+    fn on_stop(&self) {
+        println!("on_stop");
+    }
+    fn on_frame(&self, frame_no: f32) {
+        println!("on_frame: {}", frame_no);
+    }
+    fn on_render(&self, frame_no: f32) {
+        println!("on_render: {}", frame_no);
+    }
+    fn on_load(&self) {
+        println!("on_load");
+    }
+    fn on_loop(&self, loop_count: u32) {
+        println!("on_loop: {}", loop_count);
+    }
+}
+
 fn main() {
     let mut window = Window::new(
         "Thorvg inside Rust - ESC to exit",
@@ -52,6 +77,7 @@ fn main() {
         use_frame_interpolation: true,
         autoplay: true,
     });
+    lottie_player.subscribe(Arc::new(DummyObserver));
     lottie_player.load_animation_path(path.to_str().unwrap(), WIDTH as u32, HEIGHT as u32);
 
     let mut timer = Timer::new();

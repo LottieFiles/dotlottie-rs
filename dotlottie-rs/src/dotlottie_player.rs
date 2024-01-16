@@ -1,7 +1,17 @@
 use instant::Instant;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use crate::LottieRenderer;
+
+pub trait Observer: Send + Sync {
+    fn on_load(&self);
+    fn on_play(&self);
+    fn on_pause(&self);
+    fn on_stop(&self);
+    fn on_frame(&self, frame_no: f32);
+    fn on_render(&self, frame_no: f32);
+    fn on_loop(&self, loop_count: u32);
+}
 
 pub enum PlaybackState {
     Playing,
@@ -33,6 +43,7 @@ struct DotLottieRuntime {
     start_time: Instant,
     loop_count: u32,
     config: Config,
+    observers: Vec<Arc<dyn Observer>>,
 }
 
 impl DotLottieRuntime {
@@ -44,6 +55,7 @@ impl DotLottieRuntime {
             start_time: Instant::now(),
             loop_count: 0,
             config,
+            observers: Vec::new(),
         }
     }
 
@@ -273,6 +285,10 @@ impl DotLottieRuntime {
     pub fn config(&self) -> Config {
         self.config.clone()
     }
+
+    pub fn subscribe(&mut self, observer: Arc<dyn Observer>) {
+        self.observers.push(observer);
+    }
 }
 
 pub struct DotLottiePlayer {
@@ -386,6 +402,10 @@ impl DotLottiePlayer {
 
     pub fn config(&self) -> Config {
         self.runtime.read().unwrap().config()
+    }
+
+    pub fn subscribe(&self, observer: Arc<dyn Observer>) {
+        self.runtime.write().unwrap().subscribe(observer);
     }
 }
 

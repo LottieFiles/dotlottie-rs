@@ -1,6 +1,17 @@
 namespace dotlottie_player {
 };
 
+[Trait]
+interface Observer {
+    void on_load();
+    void on_play();
+    void on_pause();
+    void on_stop();
+    void on_frame(f32 frame_no);
+    void on_render(f32 frame_no);
+    void on_loop(u32 loop_count);
+};
+
 enum Mode {
     "Forward",
     "Reverse",
@@ -40,4 +51,5 @@ interface DotLottiePlayer {
     boolean render();
     boolean resize(u32 width, u32 height);
     void clear();
+    void subscribe(Observer observer);
 };

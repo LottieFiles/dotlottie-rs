@@ -6,11 +6,13 @@
     <title>WASM test</title>
   </head>
   <body>
-    <canvas width="500" height="500"></canvas>
+    <div style="max-width: 500px">
+      <canvas style="width: 100%"></canvas>
+    </div>
     <script type="module">
-      import createModule from "./release/wasm/DotLottiePlayer.js";
+      import createDotLottiePlayerModule from "./release/wasm/DotLottiePlayer.js";
 
-      const module = await createModule({
+      const Module = await createDotLottiePlayerModule({
         locateFile: (path, prefix) => {
           if (path.endsWith(".wasm")) {
             return `./release/wasm/${path}`;
@@ -19,49 +21,46 @@
         },
       });
 
-      const player = new module.DotLottiePlayer();
+      const dotLottie = new Module.DotLottiePlayer({
+        autoplay: true,
+        loop_animation: true,
+        mode: Module.Mode.values[1],
+        speed: 1,
+        use_frame_interpolation: true,
+      });
 
       const data = await fetch(
         "https://lottie.host/647eb023-6040-4b60-a275-e2546994dd7f/zDCfp5lhLe.json"
       ).then((res) => res.text());
       const canvas = document.querySelector("canvas");
 
-      const width = canvas.width;
-      const height = canvas.height;
+      const { width: client_width, height: client_height } =
+        canvas.getBoundingClientRect();
 
-      const loaded = player.loadAnimation(data, width, height);
+      const width = client_width * (window.devicePixelRatio || 1);
+      const height = client_height * (window.devicePixelRatio || 1);
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const loaded = dotLottie.load_animation_data(data, width, height);
 
       const ctx = canvas.getContext("2d");
       const imageData = ctx.createImageData(width, height);
 
-      const duration = player.getDuration(); // duration in seconds
-      const totalFrames = player.getTotalFrame();
-      const fps = totalFrames / duration;
-      const timePerFrame = 1000 / fps; // time per frame in milliseconds
+      function animationLoop() {
+        const next_frame_number = dotLottie.request_frame();
+        dotLottie.set_frame(next_frame_number);
+        const rendered = dotLottie.render();
 
-      let lastFrameTime = 0;
-
-      let currentFrame = 0;
-
-      const animationLoop = (timestamp) => {
-        if (!lastFrameTime || timestamp - lastFrameTime >= timePerFrame) {
-          player.frame(currentFrame);
-          const buffer = player.getBuffer();
-
-          imageData.data.set(buffer);
+        if (rendered) {
+          const frame_buffer = dotLottie.buffer();
+          imageData.data.set(frame_buffer);
           ctx.putImageData(imageData, 0, 0);
-
-          currentFrame++;
-
-          if (currentFrame >= totalFrames) {
-            currentFrame = 0;
-          }
-
-          lastFrameTime = timestamp;
         }
 
         requestAnimationFrame(animationLoop);
-      };
+      }
 
       requestAnimationFrame(animationLoop);
     </script>

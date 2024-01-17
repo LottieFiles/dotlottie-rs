@@ -13,6 +13,10 @@ val buffer(DotLottiePlayer &player)
 
 EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 {
+
+    // Register std::vector<float> as VectorFloat for the Config::segments field
+    register_vector<float>("VectorFloat");
+
     enum_<Mode>("Mode")
         .value("Forward", Mode::FORWARD)
         .value("Reverse", Mode::REVERSE)
@@ -24,7 +28,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("loop_animation", &Config::loop_animation)
         .field("mode", &Config::mode)
         .field("speed", &Config::speed)
-        .field("use_frame_interpolation", &Config::use_frame_interpolation);
+        .field("use_frame_interpolation", &Config::use_frame_interpolation)
+        .field("segments", &Config::segments);
 
     class_<DotLottiePlayer>("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init, allow_raw_pointers())

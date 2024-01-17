@@ -1,7 +1,7 @@
 use instant::Instant;
 use std::sync::RwLock;
 
-use crate::LottieRenderer;
+use crate::lottie_renderer::{LottieRenderer, LottieRendererError};
 
 pub enum PlaybackState {
     Playing,
@@ -15,6 +15,11 @@ pub enum Mode {
     Reverse,
     Bounce,
     ReverseBounce,
+}
+
+enum Direction {
+    Forward,
+    Reverse,
 }
 
 #[derive(Clone)]
@@ -34,10 +39,18 @@ struct DotLottieRuntime {
     start_time: Instant,
     loop_count: u32,
     config: Config,
+    direction: Direction,
 }
 
 impl DotLottieRuntime {
     pub fn new(config: Config) -> Self {
+        let direction = match config.mode {
+            Mode::Forward => Direction::Forward,
+            Mode::Reverse => Direction::Reverse,
+            Mode::Bounce => Direction::Forward,
+            Mode::ReverseBounce => Direction::Reverse,
+        };
+
         DotLottieRuntime {
             renderer: LottieRenderer::new(),
             playback_state: PlaybackState::Stopped,
@@ -45,6 +58,7 @@ impl DotLottieRuntime {
             start_time: Instant::now(),
             loop_count: 0,
             config,
+            direction,
         }
     }
 
@@ -117,13 +131,12 @@ impl DotLottieRuntime {
             let end_frame = self.end_frame();
 
             match self.config.mode {
-                Mode::Forward => {
+                Mode::Forward | Mode::Bounce => {
                     self.set_frame(start_frame);
                 }
-                Mode::Reverse => {
+                Mode::Reverse | Mode::ReverseBounce => {
                     self.set_frame(end_frame);
                 }
-                _ => {}
             }
 
             true
@@ -141,6 +154,7 @@ impl DotLottieRuntime {
 
         // the animation total frames
         let total_frames = self.total_frames();
+
         // the animation duration in seconds
         let duration = self.duration();
 
@@ -157,10 +171,10 @@ impl DotLottieRuntime {
 
         let raw_next_frame = (elapsed_time / effective_duration) * effective_total_frames;
 
-        let next_frame = match self.config.mode {
-            Mode::Forward => start_frame + raw_next_frame,
-            Mode::Reverse => end_frame - raw_next_frame,
-            _ => raw_next_frame,
+        // update the next frame based on the direction
+        let next_frame = match self.direction {
+            Direction::Forward => start_frame + raw_next_frame,
+            Direction::Reverse => end_frame - raw_next_frame,
         };
 
         let next_frame = if self.config.use_frame_interpolation {
@@ -170,36 +184,105 @@ impl DotLottieRuntime {
         };
 
         let next_frame = match self.config.mode {
-            Mode::Forward => {
-                if next_frame >= end_frame {
-                    if self.config.loop_animation {
-                        self.loop_count += 1;
-                        self.start_time = Instant::now();
-                        start_frame
-                    } else {
-                        end_frame
-                    }
-                } else {
-                    next_frame
-                }
+            Mode::Forward => self.handle_forward_mode(next_frame, start_frame, end_frame),
+            Mode::Reverse => self.handle_reverse_mode(next_frame, start_frame, end_frame),
+            Mode::Bounce => self.handle_bounce_mode(next_frame, start_frame, end_frame),
+            Mode::ReverseBounce => {
+                self.handle_reverse_bounce_mode(next_frame, start_frame, end_frame)
             }
-            Mode::Reverse => {
-                if next_frame <= start_frame {
-                    if self.config.loop_animation {
-                        self.loop_count += 1;
-                        self.start_time = Instant::now();
-                        end_frame
-                    } else {
-                        start_frame
-                    }
-                } else {
-                    next_frame
-                }
-            }
-            _ => next_frame,
         };
 
         next_frame
+    }
+
+    fn handle_forward_mode(&mut self, next_frame: f32, start_frame: f32, end_frame: f32) -> f32 {
+        if next_frame >= end_frame {
+            if self.config.loop_animation {
+                self.loop_count += 1;
+                self.start_time = Instant::now();
+
+                start_frame
+            } else {
+                end_frame
+            }
+        } else {
+            next_frame
+        }
+    }
+
+    fn handle_reverse_mode(&mut self, next_frame: f32, start_frame: f32, end_frame: f32) -> f32 {
+        if next_frame <= start_frame {
+            if self.config.loop_animation {
+                self.loop_count += 1;
+                self.start_time = Instant::now();
+
+                end_frame
+            } else {
+                start_frame
+            }
+        } else {
+            next_frame
+        }
+    }
+
+    fn handle_bounce_mode(&mut self, next_frame: f32, start_frame: f32, end_frame: f32) -> f32 {
+        match self.direction {
+            Direction::Forward => {
+                if next_frame >= end_frame {
+                    self.direction = Direction::Reverse;
+                    self.start_time = Instant::now();
+
+                    end_frame
+                } else {
+                    next_frame
+                }
+            }
+            Direction::Reverse => {
+                if next_frame <= start_frame {
+                    if self.config.loop_animation {
+                        self.loop_count += 1;
+                        self.direction = Direction::Forward;
+                        self.start_time = Instant::now();
+                    }
+
+                    start_frame
+                } else {
+                    next_frame
+                }
+            }
+        }
+    }
+
+    fn handle_reverse_bounce_mode(
+        &mut self,
+        next_frame: f32,
+        start_frame: f32,
+        end_frame: f32,
+    ) -> f32 {
+        match self.direction {
+            Direction::Reverse => {
+                if next_frame <= start_frame {
+                    self.direction = Direction::Forward;
+                    self.start_time = Instant::now();
+                    start_frame
+                } else {
+                    next_frame
+                }
+            }
+            Direction::Forward => {
+                if next_frame >= end_frame {
+                    if self.config.loop_animation {
+                        self.loop_count += 1;
+                        self.direction = Direction::Reverse;
+                        self.start_time = Instant::now();
+                    }
+
+                    end_frame
+                } else {
+                    next_frame
+                }
+            }
+        }
     }
 
     pub fn set_frame(&mut self, no: f32) -> bool {
@@ -211,7 +294,10 @@ impl DotLottieRuntime {
     }
 
     pub fn total_frames(&self) -> f32 {
-        self.renderer.total_frames().unwrap_or(0.0)
+        match self.renderer.total_frames() {
+            Ok(total_frames) => total_frames - 1.0,
+            Err(_) => 0.0,
+        }
     }
 
     pub fn duration(&self) -> f32 {
@@ -246,11 +332,11 @@ impl DotLottieRuntime {
         self.config = config;
     }
 
-    pub fn load_animation_path(&mut self, animation_path: &str, width: u32, height: u32) -> bool {
-        let loaded = self
-            .renderer
-            .load_path(animation_path, width, height)
-            .is_ok();
+    fn load_animation_common<F>(&mut self, loader: F, width: u32, height: u32) -> bool
+    where
+        F: FnOnce(&mut LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
+    {
+        let loaded = loader(&mut self.renderer, width, height).is_ok();
 
         self.is_loaded = loaded;
 
@@ -258,48 +344,37 @@ impl DotLottieRuntime {
         let end_frame = self.end_frame();
 
         match self.config.mode {
-            Mode::Forward => {
+            Mode::Forward | Mode::Bounce => {
                 self.set_frame(start_frame);
+                self.direction = Direction::Forward;
             }
-            Mode::Reverse => {
+            Mode::Reverse | Mode::ReverseBounce => {
                 self.set_frame(end_frame);
+                self.direction = Direction::Reverse;
             }
-            _ => {}
         }
 
         if self.config.autoplay && loaded {
-            return self.play();
+            self.play();
         }
 
         loaded
     }
 
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
-        let loaded = self
-            .renderer
-            .load_data(animation_data, width, height, false)
-            .is_ok();
+        self.load_animation_common(
+            |renderer, w, h| renderer.load_data(animation_data, w, h, false),
+            width,
+            height,
+        )
+    }
 
-        self.is_loaded = loaded;
-
-        let start_frame = self.start_frame();
-        let end_frame = self.end_frame();
-
-        match self.config.mode {
-            Mode::Forward => {
-                self.set_frame(start_frame);
-            }
-            Mode::Reverse => {
-                self.set_frame(end_frame);
-            }
-            _ => {}
-        }
-
-        if self.config.autoplay && loaded {
-            return self.play();
-        }
-
-        loaded
+    pub fn load_animation_path(&mut self, animation_path: &str, width: u32, height: u32) -> bool {
+        self.load_animation_common(
+            |renderer, w, h| renderer.load_path(animation_path, w, h),
+            width,
+            height,
+        )
     }
 
     pub fn resize(&mut self, width: u32, height: u32) -> bool {

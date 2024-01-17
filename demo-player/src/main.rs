@@ -1,4 +1,3 @@
-use std::fs::read_to_string;
 use std::{env, path, time::Instant};
 
 use dotlottie_player_core::{Config, DotLottiePlayer, Mode};
@@ -51,7 +50,7 @@ fn main() {
         speed: 2.5,
         use_frame_interpolation: true,
         autoplay: true,
-        segments: Some(vec![10.0, 45.0]),
+        segments: vec![10.0, 45.0],
     });
     lottie_player.load_animation_path(path.to_str().unwrap(), WIDTH as u32, HEIGHT as u32);
 

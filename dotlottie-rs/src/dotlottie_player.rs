@@ -24,7 +24,7 @@ pub struct Config {
     pub speed: f32,
     pub use_frame_interpolation: bool,
     pub autoplay: bool,
-    pub segments: Option<Vec<f32>>,
+    pub segments: Vec<f32>,
 }
 
 struct DotLottieRuntime {
@@ -49,16 +49,18 @@ impl DotLottieRuntime {
     }
 
     fn start_frame(&self) -> f32 {
-        match &self.config.segments {
-            Some(segments) => segments[0],
-            None => 0.0,
+        if self.config.segments.len() == 2 {
+            self.config.segments[0]
+        } else {
+            0.0
         }
     }
 
     fn end_frame(&self) -> f32 {
-        match &self.config.segments {
-            Some(segments) => segments[1],
-            None => self.total_frames(),
+        if self.config.segments.len() == 2 {
+            self.config.segments[1]
+        } else {
+            self.total_frames()
         }
     }
 
@@ -151,44 +153,44 @@ impl DotLottieRuntime {
 
         // the effective duration in milliseconds (considering the segments & speed)
         let effective_duration =
-            (1000.0 * duration * effective_total_frames / total_frames) / self.config.speed;
+            (duration * effective_total_frames / total_frames) / self.config.speed;
 
-        let raw_next_frame = elapsed_time / effective_duration * effective_total_frames;
-
-        let next_frame = if self.config.use_frame_interpolation {
-            raw_next_frame
-        } else {
-            raw_next_frame.round()
-        };
+        let raw_next_frame = (elapsed_time / effective_duration) * effective_total_frames;
 
         let next_frame = match self.config.mode {
-            Mode::Forward => next_frame,
-            Mode::Reverse => effective_total_frames - next_frame,
-            _ => next_frame,
+            Mode::Forward => start_frame + raw_next_frame,
+            Mode::Reverse => end_frame - raw_next_frame,
+            _ => raw_next_frame,
+        };
+
+        let next_frame = if self.config.use_frame_interpolation {
+            next_frame
+        } else {
+            next_frame.round()
         };
 
         let next_frame = match self.config.mode {
             Mode::Forward => {
-                if next_frame >= effective_total_frames {
+                if next_frame >= end_frame {
                     if self.config.loop_animation {
                         self.loop_count += 1;
                         self.start_time = Instant::now();
-                        0.0
+                        start_frame
                     } else {
-                        effective_total_frames
+                        end_frame
                     }
                 } else {
                     next_frame
                 }
             }
             Mode::Reverse => {
-                if next_frame <= 0.0 {
+                if next_frame <= start_frame {
                     if self.config.loop_animation {
                         self.loop_count += 1;
                         self.start_time = Instant::now();
-                        effective_total_frames
+                        end_frame
                     } else {
-                        0.0
+                        start_frame
                     }
                 } else {
                     next_frame

@@ -21,12 +21,22 @@
         },
       });
 
+      function create_Segments(start_frame, end_frame) {
+        const vector = new Module.VectorFloat();
+
+        vector.push_back(start_frame);
+        vector.push_back(end_frame);
+
+        return vector;
+      }
+
       const dotLottie = new Module.DotLottiePlayer({
         autoplay: true,
         loop_animation: true,
         mode: Module.Mode.values[1],
         speed: 1,
         use_frame_interpolation: true,
+        segments: create_Segments(0, 22),
       });
 
       const data = await fetch(
@@ -50,6 +60,7 @@
 
       function animationLoop() {
         const next_frame_number = dotLottie.request_frame();
+        console.log(next_frame_number);
         dotLottie.set_frame(next_frame_number);
         const rendered = dotLottie.render();
 

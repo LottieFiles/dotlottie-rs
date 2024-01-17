@@ -131,7 +131,6 @@ impl LottieRenderer {
             .map_err(LottieRendererError::ThorvgError)?;
 
         if let Some(picture) = &mut thorvg_animation.get_picture() {
-            // println!("{:?}", data.as_bytes());
             picture.load_data(data.as_bytes(), "lottie", copy)?;
 
             thorvg_canvas.push(picture)?;

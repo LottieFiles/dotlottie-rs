@@ -64,7 +64,7 @@ impl DotLottieRuntime {
 
     fn start_frame(&self) -> f32 {
         if self.config.segments.len() == 2 {
-            self.config.segments[0]
+            self.config.segments[0].max(0.0)
         } else {
             0.0
         }
@@ -72,7 +72,7 @@ impl DotLottieRuntime {
 
     fn end_frame(&self) -> f32 {
         if self.config.segments.len() == 2 {
-            self.config.segments[1]
+            self.config.segments[1].min(self.total_frames())
         } else {
             self.total_frames()
         }

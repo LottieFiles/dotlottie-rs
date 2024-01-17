@@ -23,7 +23,7 @@ fn get_animation_test() {
 
     animation_file.read_to_end(&mut buffer).unwrap();
 
-    let dotlottie = DotLottieManager::new(Some(buffer));
+    let mut dotlottie = DotLottieManager::new(Some(buffer));
 
     let mut anger_animation_file = File::open(anger_file_path).unwrap();
     let mut anger_buffer = Vec::new();
@@ -61,8 +61,8 @@ fn get_animations_test() {
 
     assert_eq!(animation.len(), 62);
 
-    assert_eq!(animation[0].id, "animations/anger.json");
-    assert_eq!(animation[5].id, "animations/confused.json");
+    assert_eq!(animation[0].id, "anger");
+    assert_eq!(animation[5].id, "confused");
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn get_manifest_test() {
     let manifest = dotlottie.manifest();
 
     // First and last animations
-    let first_animation_lock = manifest.animations.lock().unwrap();
+    let first_animation_lock = manifest.animations.read().unwrap();
 
     let first_animation = first_animation_lock.first().unwrap();
 

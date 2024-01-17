@@ -3,8 +3,7 @@ use std::io::{self, Read};
 use std::path::Path;
 
 use base64::{engine::general_purpose, Engine};
-// use json::JsonValue;
-use serde_json::{json, Value};
+use serde_json::Value;
 use zip::ZipArchive;
 
 /// Extract a single animation with its image assets inlined.
@@ -12,6 +11,7 @@ use zip::ZipArchive;
 /// bytes: The bytes of the dotLottie file
 /// animation_id: The id of the animation to extract
 /// Result<String, DotLottieError>: The extracted animation, or an error
+/// Notes: This function uses jzon rather than serde as serde was exporting invalid JSON
 pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotLottieError> {
     let mut archive =
         ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
@@ -34,10 +34,9 @@ pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotL
     // We can drop result so that we can use archive later, everything has been read in to content variable
     drop(result);
 
-    let animation_data = String::from_utf8_lossy(&content).to_string();
+    let animation_data = String::from_utf8(content).unwrap();
 
     // Untyped JSON value
-    // let mut lottie_animation: Value = serde_json::from_str(&animation_data).unwrap();
     let mut lottie_animation = jzon::parse(&animation_data).unwrap();
 
     // Loop through the parsed lottie animation and check for image assets
@@ -70,32 +69,13 @@ pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotL
                 // Write the image data to the lottie
                 let image_data_base64 = general_purpose::STANDARD.encode(&content);
 
-                // assets[i]["u"] = serde_json::Value::String("".to_string());
-                // assets[i]["p"] = serde_json::Value::String(
-                //     format!("data:image/{};base64,{}", image_ext, image_data_base64).to_string(),
-                // );
-
                 assets[i]["u"] = "".into();
                 assets[i]["p"] =
                     format!("data:image/{};base64,{}", image_ext, image_data_base64).into();
             }
         }
     }
-    // let mut ad = serde_json::to_string(&animation_data).unwrap();
 
-    // ad = ad.replace("\\", "");
-    // ad.remove(0);
-    // ad.remove(ad.len() - 1);
-
-    // Ok(ad)
-
-    // Ok(animation_data)
-
-    // Ok(lottie_animation.to_string())
-
-    // Ok(serde_json::to_string(&lottie_animation.clone()).unwrap())
-
-    //works
     Ok(jzon::stringify(lottie_animation))
 }
 
@@ -121,7 +101,7 @@ pub fn get_animations(bytes: &Vec<u8>) -> Result<Vec<Animation>, DotLottieError>
                     let animation = get_animation(bytes, file_stem_str).unwrap();
 
                     let item = Animation {
-                        id: String::from(file.name()),
+                        id: file_stem_str.to_string(),
                         animation_data: animation,
                     };
 
@@ -129,7 +109,7 @@ pub fn get_animations(bytes: &Vec<u8>) -> Result<Vec<Animation>, DotLottieError>
                 }
             } else {
                 // Handle the case where the path has no file stem
-                println!("Invalid file path");
+                return Err(DotLottieError::ReadContentError);
             }
         }
     }

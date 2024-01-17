@@ -16,7 +16,7 @@ fn manifest_has_correct_default_values() {
 #[test]
 fn display() {
     use json::object;
-    use std::sync::Mutex;
+    use std::sync::RwLock;
 
     let mut animations: Vec<ManifestAnimation> = Vec::new();
     let mut multi_animations: Vec<ManifestAnimation> = Vec::new();
@@ -68,7 +68,7 @@ fn display() {
     let mut manifest = Manifest::new();
     manifest.active_animation_id = Some("default_animation_id".to_string());
     manifest.author = Some("test_author".to_string());
-    manifest.animations = Mutex::new(animations);
+    manifest.animations = RwLock::new(animations);
 
     let dis = manifest.to_json();
 
@@ -102,7 +102,7 @@ fn display() {
 
     let mut manifest_with_two_animations = Manifest::new();
     manifest_with_two_animations.active_animation_id = Some("default_animation_id".to_string());
-    manifest_with_two_animations.animations = Mutex::new(multi_animations);
+    manifest_with_two_animations.animations = RwLock::new(multi_animations);
     manifest_with_two_animations.author = Some("test_author".to_string());
     manifest_with_two_animations.description = Some("Multi animation".to_string());
     manifest_with_two_animations.generator = Some("dotLottie-utils".to_string());

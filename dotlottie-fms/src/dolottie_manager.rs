@@ -14,23 +14,39 @@ impl DotLottieManager {
     pub fn new(dotlottie: Option<Vec<u8>>) -> Self {
         if let Some(dotlottie) = dotlottie {
             // Initialize the manager with the dotLottie file
-            let manifest = get_manifest(&dotlottie).unwrap();
-            let mut id = String::new();
+            let manifest = get_manifest(&dotlottie);
 
-            if let Some(first_animation) = &manifest.active_animation_id {
-                id = first_animation.clone();
-            } else if let Ok(animations) = manifest.animations.lock() {
-                id = animations.index(0).id.clone();
-            } else {
-                panic!("No animations found in dotLottie file");
-            }
+            match manifest {
+                Ok(manifest) => {
+                    let mut id = String::new();
 
-            DotLottieManager {
-                current_animation_id: id,
-                manifest,
-                zip_data: dotlottie,
-                animation_settings_cache: HashMap::new(),
-                animation_data_cache: HashMap::new(),
+                    if let Some(first_animation) = &manifest.active_animation_id {
+                        id = first_animation.clone();
+                    } else if let Ok(animations) = manifest.animations.read() {
+                        id = animations.index(0).id.clone();
+                    } else {
+                        panic!("No animations found in dotLottie file");
+                    }
+
+                    DotLottieManager {
+                        current_animation_id: id,
+                        manifest,
+                        zip_data: dotlottie,
+                        animation_settings_cache: HashMap::new(),
+                        animation_data_cache: HashMap::new(),
+                    }
+                }
+                Err(error) => {
+                    eprintln!("Unable to initialize dotLottie manager: {}", error);
+
+                    DotLottieManager {
+                        current_animation_id: String::new(),
+                        manifest: Manifest::new(),
+                        zip_data: vec![],
+                        animation_settings_cache: HashMap::new(),
+                        animation_data_cache: HashMap::new(),
+                    }
+                }
             }
         } else {
             DotLottieManager {
@@ -45,42 +61,47 @@ impl DotLottieManager {
 
     pub fn init(&mut self, dotlottie: Vec<u8>) {
         // Initialize the manager with the dotLottie file
-        let manifest = get_manifest(&dotlottie).unwrap();
-        let mut id = String::new();
+        let manifest = get_manifest(&dotlottie);
 
-        if let Some(first_animation) = &manifest.active_animation_id {
-            id = first_animation.clone();
-        } else if let Ok(animations) = manifest.animations.lock() {
-            id = animations.index(0).id.clone();
-        } else {
-            panic!("No animations found in dotLottie file");
+        match manifest {
+            Ok(manifest) => {
+                let mut id = String::new();
+
+                if let Some(first_animation) = &manifest.active_animation_id {
+                    id = first_animation.clone();
+                } else if let Ok(animations) = manifest.animations.read() {
+                    id = animations.index(0).id.clone();
+                } else {
+                    panic!("No animations found in dotLottie file");
+                }
+
+                self.current_animation_id = id;
+                self.manifest = manifest;
+                self.zip_data = dotlottie;
+            }
+            Err(error) => {
+                eprintln!("Unable to initialize dotLottie manager: {}", error);
+            }
         }
-
-        self.current_animation_id = id;
-        self.manifest = manifest;
-        self.zip_data = dotlottie;
     }
 
     /// Advances to the next animation and returns it's animation data as a string.
     pub fn next_animation(&mut self) -> Result<String, DotLottieError> {
         let mut i = 0;
         let mut new_current_animation_id = self.current_animation_id.clone();
-        let animations = self.manifest.animations.lock().unwrap();
+        let animations = match self.manifest.animations.read() {
+            Ok(animations) => animations,
+            Err(_) => return Err(DotLottieError::MutexLockError),
+        };
 
-        // match animations {
-        // Ok(animations) => {
         for anim in animations.iter() {
-            println!("Animation ID {}", anim.id);
-
             if anim.id == self.current_animation_id {
-                // return Result::Ok(true);
                 if i + 1 < animations.len() {
                     self.current_animation_id = animations[i + 1].id.clone();
 
                     new_current_animation_id = animations[i + 1].id.clone();
-                    std::mem::drop(animations);
 
-                    println!("Found next animation : {}", new_current_animation_id);
+                    std::mem::drop(animations);
 
                     return self.get_animation(&new_current_animation_id);
                 }
@@ -98,32 +119,30 @@ impl DotLottieManager {
     /// Reverses to the previous animation and returns it's animation data as a string.
     pub fn previous_animation(&mut self) -> Result<String, DotLottieError> {
         let mut new_current_animation_id = self.current_animation_id.clone();
-        let animations = self.manifest.animations.lock().unwrap();
+        let animations = match self.manifest.animations.read() {
+            Ok(animations) => animations,
+            Err(_) => return Err(DotLottieError::MutexLockError),
+        };
         let mut i = 0;
 
         for anim in animations.iter() {
-            println!("Animation ID {}", anim.id);
-
             if anim.id == self.current_animation_id {
-                // return Result::Ok(true);
                 if i > 0 {
                     self.current_animation_id = animations[i - 1].id.clone();
 
                     new_current_animation_id = animations[i - 1].id.clone();
                     std::mem::drop(animations);
 
-                    println!("Found next animation : {}", new_current_animation_id);
-
                     return self.get_animation(&new_current_animation_id);
                 }
             }
             i += 1;
         }
+
         std::mem::drop(animations);
 
         let current_animation_id = self.current_animation_id.clone();
 
-        println!("PREVIOUS ANIMATION ID {}", current_animation_id);
         self.get_animation(&current_animation_id)
     }
 
@@ -139,7 +158,7 @@ impl DotLottieManager {
             return Result::Ok(cloned_animation);
         }
 
-        if let Ok(animations) = self.manifest.animations.lock() {
+        if let Ok(animations) = self.manifest.animations.read() {
             for anim in animations.iter() {
                 if &anim.id == animation_id {
                     self.animation_settings_cache
@@ -154,7 +173,7 @@ impl DotLottieManager {
     }
 
     pub fn contains_animation(&self, animation_id: &str) -> Result<bool, DotLottieError> {
-        if let Ok(animations) = self.manifest.animations.lock() {
+        if let Ok(animations) = self.manifest.animations.read() {
             for anim in animations.iter() {
                 if anim.id == animation_id {
                     return Result::Ok(true);

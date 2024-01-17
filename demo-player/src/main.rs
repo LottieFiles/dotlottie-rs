@@ -50,6 +50,7 @@ fn main() {
         speed: 1.0,
         use_frame_interpolation: true,
         autoplay: true,
+        background_color: (255, 0, 0, 0),
     });
     lottie_player.load_animation_path(path.to_str().unwrap(), WIDTH as u32, HEIGHT as u32);
 

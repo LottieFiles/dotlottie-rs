@@ -14,6 +14,7 @@ dictionary Config {
     Mode mode;
     f32 speed;
     boolean use_frame_interpolation;
+    
 };
 
 interface DotLottiePlayer {
@@ -40,4 +41,5 @@ interface DotLottiePlayer {
     boolean render();
     boolean resize(u32 width, u32 height);
     void clear();
+    boolean set_background_color(u8 r, u8 g, u8 b, u8 a);
 };

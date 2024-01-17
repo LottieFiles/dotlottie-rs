@@ -1,3 +1,4 @@
+use rgba_simple::{Hex, RGBA};
 use thiserror::Error;
 
 mod tests;
@@ -11,16 +12,21 @@ pub enum LottieRendererError {
 
     #[error("Animation not loaded")]
     AnimationNotLoaded,
+
+    #[error("Invalid color: {0}")]
+    InvalidColor(String),
 }
 
 pub struct LottieRenderer {
     thorvg_animation: Option<thorvg::Animation>,
     thorvg_canvas: Option<thorvg::Canvas>,
+    thorvg_background_shape: Option<thorvg::Shape>,
     picture_width: f32,
     picture_height: f32,
     pub width: u32,
     pub height: u32,
     pub buffer: Vec<u32>,
+    pub background_color: String,
 }
 
 impl LottieRenderer {
@@ -28,11 +34,13 @@ impl LottieRenderer {
         Self {
             thorvg_animation: None,
             thorvg_canvas: None,
+            thorvg_background_shape: None,
             buffer: vec![],
             width: 0,
             height: 0,
             picture_width: 0.0,
             picture_height: 0.0,
+            background_color: String::from("#000000"),
         }
     }
 
@@ -43,20 +51,16 @@ impl LottieRenderer {
         height: u32,
     ) -> Result<(), LottieRendererError> {
         self.thorvg_animation = Some(thorvg::Animation::new());
+        self.thorvg_background_shape = Some(thorvg::Shape::new());
         self.thorvg_canvas = Some(thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 0));
+
         self.buffer = vec![0; (width * height * 4) as usize];
         self.width = width;
         self.height = height;
 
-        let thorvg_animation = self
-            .thorvg_animation
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
-        let thorvg_canvas = self
-            .thorvg_canvas
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
+        let thorvg_animation = self.thorvg_animation.as_mut().unwrap();
+        let thorvg_canvas = self.thorvg_canvas.as_mut().unwrap();
+        let thorvg_background_shape = self.thorvg_background_shape.as_mut().unwrap();
 
         thorvg_canvas
             .set_target(
@@ -71,8 +75,6 @@ impl LottieRenderer {
         if let Some(picture) = &mut thorvg_animation.get_picture() {
             picture.load(path)?;
 
-            thorvg_canvas.push(picture)?;
-
             let (pw, ph) = picture.get_size()?;
             let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);
 
@@ -81,6 +83,19 @@ impl LottieRenderer {
 
             self.picture_width = pw;
             self.picture_height = ph;
+
+            let color = RGBA::<u8>::from_hex(&self.background_color).map_err(|e| {
+                LottieRendererError::InvalidColor(format!(
+                    "Invalid background color: {} - {}",
+                    self.background_color, e
+                ))
+            })?;
+
+            thorvg_background_shape.append_rect(0.0, 0.0, pw, ph, 0.0, 0.0)?;
+            thorvg_background_shape.fill((color.red, color.green, color.blue, color.alpha))?;
+
+            thorvg_canvas.push(thorvg_background_shape)?;
+            thorvg_canvas.push(picture)?;
         }
 
         Ok(())
@@ -243,6 +258,30 @@ impl LottieRenderer {
 
     pub fn buffer_len(&self) -> usize {
         self.buffer.len()
+    }
+
+    pub fn set_background_color(&mut self, hex_string: String) -> Result<(), LottieRendererError> {
+        if hex_string == self.background_color {
+            return Ok(());
+        }
+
+        let color = RGBA::<u8>::from_hex(&hex_string).map_err(|e| {
+            LottieRendererError::InvalidColor(format!(
+                "Invalid background color: {} - {}",
+                hex_string, e
+            ))
+        })?;
+
+        self.background_color = hex_string;
+
+        let thorvg_background_shape = self
+            .thorvg_background_shape
+            .as_mut()
+            .ok_or(LottieRendererError::AnimationNotLoaded)?;
+
+        thorvg_background_shape
+            .fill((color.red, color.green, color.blue, color.alpha))
+            .map_err(|e| LottieRendererError::ThorvgError(e))
     }
 }
 

@@ -1,7 +1,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
 
-use std::{ffi::CString, marker::PhantomData};
+use std::ffi::CString;
 use thiserror::Error;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -63,6 +63,10 @@ fn convert_tvg_result(result: Tvg_Result, function_name: &str) -> Result<(), Tvg
     }
 }
 
+pub trait Drawable {
+    fn as_raw_paint(&self) -> *mut Tvg_Paint;
+}
+
 pub struct Canvas {
     raw_canvas: *mut Tvg_Canvas,
 }
@@ -118,8 +122,8 @@ impl Canvas {
         convert_tvg_result(result, "tvg_canvas_clear")
     }
 
-    pub fn push(&self, picture: &Picture) -> Result<(), TvgError> {
-        let result = unsafe { tvg_canvas_push(self.raw_canvas, picture.raw_paint()) };
+    pub fn push<T: Drawable>(&self, drawable: &T) -> Result<(), TvgError> {
+        let result = unsafe { tvg_canvas_push(self.raw_canvas, drawable.as_raw_paint()) };
 
         convert_tvg_result(result, "tvg_canvas_push")
     }
@@ -149,18 +153,13 @@ impl Canvas {
     }
 }
 
-pub struct Picture<'a> {
+pub struct Picture {
     raw_paint: *mut Tvg_Paint,
-    // Ensure `Picture` does not outlive the `Animation` it is associated with.
-    _lifetime: PhantomData<&'a Animation>,
 }
 
-impl<'a> Picture<'a> {
+impl Picture {
     pub fn from_raw(raw: *mut Tvg_Paint) -> Self {
-        Picture {
-            raw_paint: raw,
-            _lifetime: PhantomData,
-        }
+        Picture { raw_paint: raw }
     }
 
     fn raw_paint(&self) -> *mut Tvg_Paint {
@@ -228,6 +227,12 @@ impl<'a> Picture<'a> {
     }
 }
 
+impl<'a> Drawable for Picture {
+    fn as_raw_paint(&self) -> *mut Tvg_Paint {
+        self.raw_paint
+    }
+}
+
 pub struct Animation {
     raw_animation: *mut Tvg_Animation,
 }
@@ -239,7 +244,7 @@ impl Animation {
         }
     }
 
-    pub fn get_picture<'a>(&'a self) -> Option<Picture<'a>> {
+    pub fn get_picture(&self) -> Option<Picture> {
         let raw_picture = unsafe { tvg_animation_get_picture(self.raw_animation) };
 
         if raw_picture.is_null() {
@@ -286,5 +291,51 @@ impl Animation {
         convert_tvg_result(result, "tvg_animation_get_frame")?;
 
         Ok(curr_frame)
+    }
+}
+
+pub struct Shape {
+    raw_shape: *mut Tvg_Paint,
+}
+
+impl Shape {
+    pub fn new() -> Self {
+        Shape {
+            raw_shape: unsafe { tvg_shape_new() },
+        }
+    }
+
+    pub fn fill(&self, color: (u8, u8, u8, u8)) -> Result<(), TvgError> {
+        let (r, g, b, a) = color;
+
+        let result = unsafe { tvg_shape_set_fill_color(self.raw_shape, r, g, b, a) };
+
+        convert_tvg_result(result, "tvg_shape_set_fill_color")
+    }
+
+    pub fn append_rect(
+        &self,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        rx: f32,
+        ry: f32,
+    ) -> Result<(), TvgError> {
+        let result = unsafe { tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry) };
+
+        convert_tvg_result(result, "tvg_shape_append_rect")
+    }
+
+    pub fn destroy(&self) -> Result<(), TvgError> {
+        let result = unsafe { tvg_paint_del(self.raw_shape) };
+
+        convert_tvg_result(result, "tvg_paint_del")
+    }
+}
+
+impl Drawable for Shape {
+    fn as_raw_paint(&self) -> *mut Tvg_Paint {
+        self.raw_shape
     }
 }

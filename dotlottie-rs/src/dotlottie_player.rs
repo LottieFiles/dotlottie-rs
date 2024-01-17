@@ -29,6 +29,7 @@ pub struct Config {
     pub speed: f32,
     pub use_frame_interpolation: bool,
     pub autoplay: bool,
+    pub background_color: String,
 }
 
 struct DotLottieRuntime {
@@ -59,6 +60,12 @@ impl DotLottieRuntime {
             config,
             direction,
         }
+    }
+
+    pub fn set_background_color(&mut self, hex_string: String) -> bool {
+        self.config.background_color = hex_string.clone();
+
+        self.renderer.set_background_color(hex_string).is_ok()
     }
 
     pub fn is_loaded(&self) -> bool {
@@ -462,6 +469,13 @@ impl DotLottiePlayer {
 
     pub fn config(&self) -> Config {
         self.runtime.read().unwrap().config()
+    }
+
+    pub fn set_background_color(&self, hex_string: String) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_background_color(hex_string)
     }
 }
 

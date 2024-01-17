@@ -1,48 +1,54 @@
-## First get up and running with Thorvg
+## Build Instructions
 
-
-### 1. Clone the repo
-
-```bash
-git clone git@github.com:thorvg/thorvg.git
-```
-
-### 2. Build and install
+To build for all target platforms, it would be best to use a Mac. You will also need GNU `make`
+installed, at a bare minimum. To ensure that your local machine has all the other necessary
+tools installed to build the project, run the following from the root of the repo:
 
 ```bash
-meson . builddir -Dbindings=capi -Dloaders="lottie, png, jpg" -Dthreads=false
-ninja -C builddir install
+$ make mac-setup
 ```
 
-This will build and install the project with C bindings - This is needed for Rust.
+### Performing builds
 
-### 3. Assure that the correct header and library files are installed
+Builds can be performed for the following groups of targets:
 
-You should have
+- `android`
+- `apple`
+- `WASM`
+
+For `android` and `apple`, builds will be performed for all supported architectures, whereas
+for `WASM`, only a single target will be built. These names refer to Makefile targets that can be
+used to build them. For example, to build all `android` targets, execute the following:
 
 ```bash
-cat /usr/local/include/thorvg_capi.h
+$ make android
 ```
 
-And 
+To build all targets, execute the following:
 
 ```bash
-cat /usr/local/lib/libthorvg.a
-cat /usr/local/lib/libthorvg.dylib
+$ make all
 ```
 
-### 4. Run this project
+### Other useful targets
 
-Inside this project run
+- `demo-player`: Build the demo player
+- `clean`: Cleanup rust build artifacts
+- `distclean`: Cleanup ALL build artifacts
+
+More information can be found by using the `help` target:
 
 ```bash
-cargo run
+$ make help
 ```
 
-This will use bindgen to create bindings inside 'bindings.rs' which will be in the build folder.
+## Creating a Release
 
-It will then build the project, you should have access to the C Api methods.
+Manually execute the `Create Release PR` Github Action workflow to create a release PR. This will
+include all changes since the last release. This repo uses [changesets](https://github.com/changesets/changesets)
+to determine the new release version. The [knope](https://github.com/knope-dev/knope) tool can be installed locally
+and used to simply the creation of changeset files.
 
-# Important remarks
-
-The Thorvg C api is different than the C++ api. The header files are also outdated and doesn't every feature of the library mapped out, this include Lottie support.
+The release PR should be checked for correctness and then merged. Once that is done, the `Release`
+Github Actions workflow will be started automatically to do the work of actually creating the new
+release and building & uploading the related release artifacts.

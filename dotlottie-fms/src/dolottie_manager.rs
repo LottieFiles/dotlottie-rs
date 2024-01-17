@@ -86,7 +86,7 @@ impl DotLottieManager {
     }
 
     /// Advances to the next animation and returns it's animation data as a string.
-    pub fn next_animation(&mut self) -> Result<String, DotLottieError> {
+    fn next_animation(&mut self) -> Result<String, DotLottieError> {
         let mut i = 0;
         let mut new_current_animation_id = self.current_animation_id.clone();
         let animations = match self.manifest.animations.read() {
@@ -117,7 +117,7 @@ impl DotLottieManager {
     }
 
     /// Reverses to the previous animation and returns it's animation data as a string.
-    pub fn previous_animation(&mut self) -> Result<String, DotLottieError> {
+    fn previous_animation(&mut self) -> Result<String, DotLottieError> {
         let mut new_current_animation_id = self.current_animation_id.clone();
         let animations = match self.manifest.animations.read() {
             Ok(animations) => animations,
@@ -241,11 +241,24 @@ impl DotLottieManager {
         });
     }
 
-    pub fn manifest(&self) -> &Manifest {
-        &self.manifest
+    pub fn manifest(&self) -> Manifest {
+        let mut manifest = Manifest::new();
+
+        manifest.active_animation_id = Some(self.current_animation_id.clone());
+        manifest.animations = self.manifest.animations.read().unwrap().clone().into();
+        manifest.author = self.manifest.author.clone();
+        manifest.description = self.manifest.description.clone();
+        manifest.generator = self.manifest.generator.clone();
+        manifest.keywords = self.manifest.keywords.clone();
+        manifest.revision = self.manifest.revision;
+        manifest.themes = self.manifest.themes.clone();
+        manifest.states = self.manifest.states.clone();
+        manifest.version = self.manifest.version.clone();
+
+        manifest
     }
 
-    pub fn current_animation_id(&self) -> &str {
-        &self.current_animation_id.as_str()
+    pub fn current_animation_id(&self) -> String {
+        self.current_animation_id.clone()
     }
 }

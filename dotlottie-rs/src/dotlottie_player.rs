@@ -1,7 +1,7 @@
 use instant::Instant;
 use std::sync::RwLock;
 
-use dotlottie_fms::DotLottieManager;
+use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 
 use crate::lottie_renderer::{LottieRenderer, LottieRendererError};
 
@@ -131,51 +131,8 @@ impl DotLottieRuntime {
         }
     }
 
-    pub fn load_dotlottie(&mut self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
-        self.dotlottie_manager.init(file_data.clone());
-
-        let first_animation = self.dotlottie_manager.get_current_animation();
-
-        match first_animation {
-            Ok(animation_data) => {
-                return self.load_animation_data(&animation_data, width, height);
-            }
-            Err(error) => {
-                eprintln!("Error: {:?}", error);
-
-                false
-            }
-        }
-    }
-
-    pub fn next_animation(&mut self, width: u32, height: u32) -> bool {
-        let animation_data = self.dotlottie_manager.next_animation();
-
-        match animation_data {
-            Ok(animation_data) => {
-                return self.load_animation_data(&animation_data, width, height);
-            }
-            Err(error) => {
-                eprintln!("Error: {:?}", error);
-
-                return false;
-            }
-        }
-    }
-
-    pub fn previous_animation(&mut self, width: u32, height: u32) -> bool {
-        let animation_data = self.dotlottie_manager.previous_animation();
-
-        match animation_data {
-            Ok(animation_data) => {
-                return self.load_animation_data(&animation_data, width, height);
-            }
-            Err(error) => {
-                eprintln!("Error: {:?}", error);
-
-                return false;
-            }
-        }
+    pub fn manifest(&self) -> Manifest {
+        self.dotlottie_manager.manifest()
     }
 
     pub fn request_frame(&mut self) -> f32 {
@@ -393,6 +350,79 @@ impl DotLottieRuntime {
         )
     }
 
+    pub fn load_dotlottie_data(&mut self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
+        self.dotlottie_manager.init(file_data.clone());
+
+        let first_animation: Result<String, DotLottieError> =
+            self.dotlottie_manager.get_current_animation();
+
+        match first_animation {
+            Ok(animation_data) => {
+                self.load_playback_settings();
+                return self.load_animation_data(&animation_data, width, height);
+            }
+            Err(error) => {
+                eprintln!("Error: {:?}", error);
+
+                false
+            }
+        }
+    }
+
+    pub fn load_animation(&mut self, animation_id: &str, width: u32, height: u32) -> bool {
+        let animation_data = self.dotlottie_manager.get_animation(animation_id);
+
+        match animation_data {
+            Ok(animation_data) => {
+                return self.load_animation_data(&animation_data, width, height);
+            }
+            Err(error) => {
+                eprintln!("Error: {:?}", error);
+
+                false
+            }
+        }
+    }
+
+    fn load_playback_settings(&mut self) {
+        let playback_settings_result: Result<ManifestAnimation, DotLottieError> =
+            self.dotlottie_manager.current_animation_playback_settings();
+
+        match playback_settings_result {
+            Ok(playback_settings) => {
+                let speed = playback_settings.speed.unwrap_or(1);
+                let loop_animation = playback_settings.r#loop.unwrap_or(false);
+                let direction = playback_settings.direction.unwrap_or(1);
+                let autoplay = playback_settings.autoplay.unwrap_or(false);
+                let play_mode = playback_settings.playMode.unwrap_or("normal".to_string());
+
+                let mode = match play_mode.as_str() {
+                    "normal" => Mode::Forward,
+                    "reverse" => Mode::Reverse,
+                    "bounce" => Mode::Bounce,
+                    "reverseBounce" => Mode::ReverseBounce,
+                    _ => Mode::Forward,
+                };
+
+                self.config.speed = speed as f32;
+                self.config.autoplay = autoplay;
+                self.config.mode = if play_mode == "normal" {
+                    if direction == 1 {
+                        Mode::Forward
+                    } else {
+                        Mode::Reverse
+                    }
+                } else {
+                    mode
+                };
+                self.config.loop_animation = loop_animation;
+            }
+            Err(error) => {
+                eprintln!("Error: {:?}", error);
+            }
+        }
+    }
+
     pub fn resize(&mut self, width: u32, height: u32) -> bool {
         self.renderer.resize(width, height).is_ok()
     }
@@ -425,6 +455,24 @@ impl DotLottiePlayer {
             .write()
             .unwrap()
             .load_animation_path(animation_path, width, height)
+    }
+
+    pub fn load_dotlottie_data(&self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .load_dotlottie_data(file_data, width, height)
+    }
+
+    pub fn manifest(&self) -> Manifest {
+        self.runtime.read().unwrap().manifest()
+    }
+
+    pub fn load_animation(&self, animation_id: &str, width: u32, height: u32) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .load_animation(animation_id, width, height)
     }
 
     pub fn buffer_ptr(&self) -> u64 {
@@ -497,24 +545,6 @@ impl DotLottiePlayer {
 
     pub fn request_frame(&self) -> f32 {
         self.runtime.write().unwrap().request_frame()
-    }
-
-    pub fn load_dotlottie(&self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .load_dotlottie(file_data, width, height)
-    }
-
-    pub fn next_animation(&self, width: u32, height: u32) -> bool {
-        self.runtime.write().unwrap().next_animation(width, height)
-    }
-
-    pub fn previous_animation(&self, width: u32, height: u32) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .previous_animation(width, height)
     }
 
     pub fn set_frame(&self, no: f32) -> bool {

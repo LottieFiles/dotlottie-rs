@@ -183,6 +183,9 @@ impl DotLottieRuntime {
             next_frame.round()
         };
 
+        // to ensure the next_frame won't go beyond the start & end frames
+        let next_frame = next_frame.clamp(start_frame, end_frame);
+
         let next_frame = match self.config.mode {
             Mode::Forward => self.handle_forward_mode(next_frame, start_frame, end_frame),
             Mode::Reverse => self.handle_reverse_mode(next_frame, start_frame, end_frame),

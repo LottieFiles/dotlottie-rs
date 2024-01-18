@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ops::Index};
 
-use crate::{get_manifest, Animation, DotLottieError, Manifest, ManifestAnimation};
+use crate::{get_manifest, AnimationContainer, DotLottieError, Manifest, ManifestAnimation};
 
 pub struct DotLottieManager {
     active_animation_id: String,
@@ -202,7 +202,7 @@ impl DotLottieManager {
         }
     }
 
-    pub fn get_animations(&self) -> Result<Vec<Animation>, DotLottieError> {
+    pub fn get_animations(&self) -> Result<Vec<AnimationContainer>, DotLottieError> {
         crate::get_animations(&self.zip_data)
     }
 

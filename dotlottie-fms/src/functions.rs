@@ -1,4 +1,4 @@
-use crate::{errors::*, Animation, Manifest};
+use crate::{errors::*, AnimationContainer, Manifest};
 use std::io::{self, Read};
 use std::path::Path;
 
@@ -83,7 +83,7 @@ pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotL
 ///
 /// bytes: The bytes of the dotLottie file
 /// Result<Vec<AnimationData>, DotLottieError>: The extracted animations, or an error
-pub fn get_animations(bytes: &Vec<u8>) -> Result<Vec<Animation>, DotLottieError> {
+pub fn get_animations(bytes: &Vec<u8>) -> Result<Vec<AnimationContainer>, DotLottieError> {
     let mut archive =
         ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
     let mut file_contents = Vec::new();
@@ -100,7 +100,7 @@ pub fn get_animations(bytes: &Vec<u8>) -> Result<Vec<Animation>, DotLottieError>
                 if let Some(file_stem_str) = file_stem.to_str() {
                     let animation = get_animation(bytes, file_stem_str).unwrap();
 
-                    let item = Animation {
+                    let item = AnimationContainer {
                         id: file_stem_str.to_string(),
                         animation_data: animation,
                     };

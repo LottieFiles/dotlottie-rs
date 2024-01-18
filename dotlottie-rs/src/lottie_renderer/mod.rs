@@ -57,9 +57,20 @@ impl LottieRenderer {
         self.width = width;
         self.height = height;
 
-        let thorvg_animation = self.thorvg_animation.as_mut().unwrap();
-        let thorvg_canvas = self.thorvg_canvas.as_mut().unwrap();
-        let thorvg_background_shape = self.thorvg_background_shape.as_mut().unwrap();
+        let thorvg_animation = self
+            .thorvg_animation
+            .as_mut()
+            .ok_or(LottieRendererError::AnimationNotLoaded)?;
+
+        let thorvg_canvas = self
+            .thorvg_canvas
+            .as_mut()
+            .ok_or(LottieRendererError::AnimationNotLoaded)?;
+
+        let thorvg_background_shape = self
+            .thorvg_background_shape
+            .as_mut()
+            .ok_or(LottieRendererError::AnimationNotLoaded)?;
 
         thorvg_canvas
             .set_target(
@@ -109,9 +120,20 @@ impl LottieRenderer {
         self.width = width;
         self.height = height;
 
-        let thorvg_animation = self.thorvg_animation.as_mut().unwrap();
-        let thorvg_canvas = self.thorvg_canvas.as_mut().unwrap();
-        let thorvg_background_shape = self.thorvg_background_shape.as_mut().unwrap();
+        let thorvg_animation = self
+            .thorvg_animation
+            .as_mut()
+            .ok_or(LottieRendererError::AnimationNotLoaded)?;
+
+        let thorvg_canvas = self
+            .thorvg_canvas
+            .as_mut()
+            .ok_or(LottieRendererError::AnimationNotLoaded)?;
+
+        let thorvg_background_shape = self
+            .thorvg_background_shape
+            .as_mut()
+            .ok_or(LottieRendererError::AnimationNotLoaded)?;
 
         thorvg_canvas
             .set_target(

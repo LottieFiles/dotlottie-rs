@@ -16,6 +16,7 @@ path = "uniffi-bindgen.rs"
 uniffi = { version = "0.25.3", features = ["cli"] }
 # Core runtime
 dotlottie_player = { path = "../dotlottie-rs" }
+dotlottie_fms = { path = "../dotlottie-fms" }
 
 [build-dependencies]
 uniffi = { version = "0.25.3", features = ["build"] }

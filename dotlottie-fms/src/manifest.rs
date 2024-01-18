@@ -3,12 +3,12 @@ use json::{self, array, object};
 use crate::{ManifestAnimation, ManifestThemes};
 use serde::{Deserialize, Serialize};
 
-use std::{fmt::Display, sync::RwLock};
+use std::fmt::Display;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Manifest {
     pub active_animation_id: Option<String>,
-    pub animations: RwLock<Vec<ManifestAnimation>>,
+    pub animations: Vec<ManifestAnimation>,
     pub author: Option<String>,
     // pub custom: Option<record(string(), an>))>
     pub description: Option<String>,
@@ -24,7 +24,7 @@ impl Manifest {
     pub fn new() -> Self {
         Self {
             active_animation_id: None,
-            animations: RwLock::new(vec![]),
+            animations: vec![],
             author: Some("LottieFiles".to_string()),
             // custom,
             description: None,
@@ -44,10 +44,9 @@ impl Manifest {
     }
 
     pub fn to_json(&self) -> json::JsonValue {
-        let animations_lock = self.animations.read().unwrap();
         let mut json = object! {
             "activeAnimationId" => self.active_animation_id.clone(),
-            "animations" => animations_lock.iter().map(|animation| animation.to_json()).collect::<Vec<json::JsonValue>>(),
+            "animations" => self.animations.iter().map(|animation| animation.to_json()).collect::<Vec<json::JsonValue>>(),
             "author" => self.author.clone(),
         };
 

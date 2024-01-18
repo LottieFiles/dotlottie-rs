@@ -15,7 +15,7 @@ pub struct ManifestAnimation {
     pub loop_count: Option<u32>,
     pub playMode: Option<String>,
     pub speed: Option<u32>,
-    pub theme_color: Option<String>,
+    pub themeColor: Option<String>,
 }
 
 #[allow(non_snake_case)]
@@ -31,7 +31,7 @@ impl ManifestAnimation {
         loop_count: Option<u32>,
         playMode: Option<String>,
         speed: Option<u32>,
-        theme_color: Option<String>,
+        themeColor: Option<String>,
     ) -> Self {
         Self {
             autoplay: if autoplay.is_none() {
@@ -72,10 +72,10 @@ impl ManifestAnimation {
                 playMode
             },
             speed: if speed.is_none() { Some(1) } else { speed },
-            theme_color: if theme_color.is_none() {
+            themeColor: if themeColor.is_none() {
                 Some("".to_string())
             } else {
-                theme_color
+                themeColor
             },
         }
     }
@@ -92,7 +92,7 @@ impl ManifestAnimation {
             loop_count: Some(0),
             playMode: Some("normal".to_string()),
             speed: Some(1),
-            theme_color: Some("".to_string()),
+            themeColor: Some("".to_string()),
         }
     }
 
@@ -108,7 +108,7 @@ impl ManifestAnimation {
             "loopCount" => self.loop_count,
             "playMode" => self.playMode.clone(),
             "speed" => self.speed,
-            "themeColor" => self.theme_color.clone(),
+            "themeColor" => self.themeColor.clone(),
         }
     }
 }

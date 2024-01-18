@@ -62,7 +62,7 @@ fn get_manifest_test() {
     let manifest = crate::get_manifest(&buffer).unwrap();
 
     // First and last animations
-    let first_animation_lock = manifest.animations.read().unwrap();
+    let first_animation_lock = manifest.animations;
 
     let first_animation = first_animation_lock.first().unwrap();
 

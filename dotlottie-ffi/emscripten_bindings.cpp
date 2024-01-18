@@ -26,6 +26,38 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("speed", &Config::speed)
         .field("use_frame_interpolation", &Config::use_frame_interpolation);
 
+    value_object<Config>("ManifestTheme")
+        .field("id", &ManifestTheme::id)
+        .field("values", &ManifestTheme::values);
+
+    value_object<Config>("ManifestThemes")
+        .field("values", &ManifestThemes::values);
+
+    value_object<ManifestAnimation>("ManifestAnimation")
+        .field("autoplay", &ManifestAnimation::autoplay)
+        .field("defaultTheme", &ManifestAnimation::defaultTheme)
+        .field("direction", &ManifestAnimation::direction)
+        .field("hover", &ManifestAnimation::hover)
+        .field("id", &ManifestAnimation::id)
+        .field("intermission", &ManifestAnimation::intermission)
+        .field("loop", &ManifestAnimation::loop)
+        .field("loop_count", &ManifestAnimation::loop_count)
+        .field("playMode", &ManifestAnimation::playMode)
+        .field("speed", &ManifestAnimation::speed)
+        .field("themeColor", &ManifestAnimation::themeColor);
+
+    value_object<Manifest>("Manifest")
+        .field("active_animation_id", &Manifest::active_animation_id)
+        .field("animations", &Manifest::animations)
+        .field("author", &Manifest::author)
+        .field("description", &Manifest::description)
+        .field("generator", &Manifest::generator)
+        .field("keywords", &Manifest::keywords)
+        .field("revision", &Manifest::revision)
+        .field("themes", &Manifest::themes)
+        .field("states", &Manifest::states)
+        .field("version", &Manifest::version);
+
     class_<DotLottiePlayer>("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init, allow_raw_pointers())
         .function("buffer_len", &DotLottiePlayer::buffer_len)
@@ -43,6 +75,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("load_animation_path", &DotLottiePlayer::load_animation_path, allow_raw_pointers())
         .function("load_dotlottie_data", &DotLottiePlayer::load_dotlottie_data, allow_raw_pointers())
         .function("load_animation", &DotLottiePlayer::load_animation, allow_raw_pointers())
+        .function("manifest", &DotLottiePlayer::manifest)
         .function("loop_count", &DotLottiePlayer::loop_count)
         .function("pause", &DotLottiePlayer::pause)
         .function("play", &DotLottiePlayer::play)

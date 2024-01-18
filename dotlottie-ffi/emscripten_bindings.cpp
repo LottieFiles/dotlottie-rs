@@ -31,7 +31,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("values", &ManifestTheme::values);
 
     value_object<Config>("ManifestThemes")
-        .field("values", &ManifestThemes::values);
+        .field("value", &ManifestThemes::value);
 
     value_object<ManifestAnimation>("ManifestAnimation")
         .field("autoplay", &ManifestAnimation::autoplay)

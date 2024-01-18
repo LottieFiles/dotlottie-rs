@@ -35,8 +35,9 @@
         loop_animation: true,
         mode: Module.Mode.values[3],
         speed: 1,
-        use_frame_interpolation: true,
+        use_frame_interpolation: false,
         segments: create_Segments(0, 40),
+        background_color: 0x000000a0,
       });
 
       const data = await fetch(
@@ -54,6 +55,8 @@
       canvas.height = height;
 
       const loaded = dotLottie.load_animation_data(data, width, height);
+
+      // dotLottie.set_background_color(0x9afafa8f);
 
       const ctx = canvas.getContext("2d");
       const imageData = ctx.createImageData(width, height);

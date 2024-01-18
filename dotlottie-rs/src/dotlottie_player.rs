@@ -346,7 +346,11 @@ impl DotLottieRuntime {
     where
         F: FnOnce(&mut LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
     {
-        let loaded = loader(&mut self.renderer, width, height).is_ok();
+        let loaded = loader(&mut self.renderer, width, height).is_ok()
+            && self
+                .renderer
+                .set_background_color(self.config.background_color)
+                .is_ok();
 
         self.is_loaded = loaded;
 
@@ -509,11 +513,11 @@ impl DotLottiePlayer {
         self.runtime.read().unwrap().config()
     }
 
-    pub fn set_background_color(&self, hex_string: String) -> bool {
+    pub fn set_background_color(&self, hex_color: u32) -> bool {
         self.runtime
             .write()
             .unwrap()
-            .set_background_color(hex_string)
+            .set_background_color(hex_color)
     }
 }
 

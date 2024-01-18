@@ -50,7 +50,8 @@ fn main() {
         speed: 1.0,
         use_frame_interpolation: true,
         autoplay: true,
-        background_color: (255, 0, 0, 0),
+        segments: vec![10.0, 45.0],
+        background_color: String::from(""),
     });
     lottie_player.load_animation_path(path.to_str().unwrap(), WIDTH as u32, HEIGHT as u32);
 

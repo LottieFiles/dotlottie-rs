@@ -1,4 +1,4 @@
-use std::fs::{self, read_to_string, File};
+use std::fs::{self, File};
 use std::io::Read;
 use std::{env, path, time::Instant};
 
@@ -44,7 +44,7 @@ fn main() {
     let base_path = env::var("CARGO_MANIFEST_DIR").unwrap();
 
     let mut path = path::PathBuf::from(base_path);
-    path.push("src/emoji.lottie");
+    path.push("src/cartoon.json");
 
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         mode: Mode::ReverseBounce,
@@ -55,21 +55,27 @@ fn main() {
     });
 
     // read dotlottie in to vec<u8>
-    let mut f = File::open("src/emoji.lottie").expect("no file found");
-    let metadata = fs::metadata("src/emoji.lottie").expect("unable to read metadata");
+    let mut f = File::open("src/cartoon.json").expect("no file found");
+    let metadata = fs::metadata("src/cartoon.json").expect("unable to read metadata");
+
     let mut buffer = vec![0; metadata.len() as usize];
     f.read(&mut buffer).expect("buffer overflow");
 
-    lottie_player.load_dotlottie(&buffer, WIDTH as u32, HEIGHT as u32);
+    let string = String::from_utf8(buffer.clone()).unwrap();
+    lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
+    println!("{:?}", Some(lottie_player.manifest()));
+
+    // lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
+    // lottie_player.load_animation("confused", WIDTH as u32, HEIGHT as u32);
 
     let mut timer = Timer::new();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         timer.tick(&mut lottie_player);
 
-        if window.is_key_down(Key::Space) {
-            lottie_player.next_animation(WIDTH as u32, HEIGHT as u32);
-        }
+        // if window.is_key_down(Key::Space) {
+        //     lottie_player.next_animation(WIDTH as u32, HEIGHT as u32);
+        // }
 
         let (buffer_ptr, buffer_len) = (lottie_player.buffer_ptr(), lottie_player.buffer_len());
 

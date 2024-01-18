@@ -23,7 +23,7 @@ fn get_animation_test() {
 
     animation_file.read_to_end(&mut buffer).unwrap();
 
-    let mut dotlottie = DotLottieManager::new(Some(buffer));
+    let mut dotlottie = DotLottieManager::new(Some(buffer)).unwrap();
 
     let mut anger_animation_file = File::open(anger_file_path).unwrap();
     let mut anger_buffer = Vec::new();
@@ -53,7 +53,7 @@ fn get_animations_test() {
 
     animation_file.read_to_end(&mut buffer).unwrap();
 
-    let dotlottie = DotLottieManager::new(Some(buffer));
+    let dotlottie = DotLottieManager::new(Some(buffer)).unwrap();
 
     // let manifest = dotLottie.get_manifest(&buffer).unwrap();
 
@@ -81,9 +81,9 @@ fn get_manifest_test() {
 
     animation_file.read_to_end(&mut buffer).unwrap();
 
-    let dotlottie = DotLottieManager::new(Some(buffer));
+    let dotlottie = DotLottieManager::new(Some(buffer)).unwrap();
 
-    let manifest = dotlottie.manifest();
+    let manifest = dotlottie.manifest().unwrap();
 
     // First and last animations
     let first_animation_lock = manifest.animations.read().unwrap();

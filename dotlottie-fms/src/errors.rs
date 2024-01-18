@@ -16,4 +16,10 @@ pub enum DotLottieError {
 
     #[error("Animation not found")]
     AnimationNotFound { animation_id: String },
+
+    #[error("No animations found in dotLottie file")]
+    AnimationsNotFound,
+
+    #[error("No manifest found")]
+    ManifestNotFound,
 }

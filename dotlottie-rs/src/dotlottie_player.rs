@@ -60,7 +60,7 @@ impl DotLottieRuntime {
             start_time: Instant::now(),
             loop_count: 0,
             config,
-            dotlottie_manager: DotLottieManager::new(None),
+            dotlottie_manager: DotLottieManager::new(None).unwrap(),
             direction,
         }
     }
@@ -131,7 +131,7 @@ impl DotLottieRuntime {
         }
     }
 
-    pub fn manifest(&self) -> Manifest {
+    pub fn manifest(&self) -> Option<Manifest> {
         self.dotlottie_manager.manifest()
     }
 
@@ -351,21 +351,19 @@ impl DotLottieRuntime {
     }
 
     pub fn load_dotlottie_data(&mut self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
-        self.dotlottie_manager.init(file_data.clone());
+        if self.dotlottie_manager.init(file_data.clone()).is_err() {
+            return false;
+        }
 
         let first_animation: Result<String, DotLottieError> =
-            self.dotlottie_manager.get_current_animation();
+            self.dotlottie_manager.get_active_animation();
 
         match first_animation {
             Ok(animation_data) => {
                 self.load_playback_settings();
                 return self.load_animation_data(&animation_data, width, height);
             }
-            Err(error) => {
-                eprintln!("Error: {:?}", error);
-
-                false
-            }
+            Err(_error) => false,
         }
     }
 
@@ -376,17 +374,13 @@ impl DotLottieRuntime {
             Ok(animation_data) => {
                 return self.load_animation_data(&animation_data, width, height);
             }
-            Err(error) => {
-                eprintln!("Error: {:?}", error);
-
-                false
-            }
+            Err(_error) => false,
         }
     }
 
-    fn load_playback_settings(&mut self) {
+    fn load_playback_settings(&mut self) -> bool {
         let playback_settings_result: Result<ManifestAnimation, DotLottieError> =
-            self.dotlottie_manager.current_animation_playback_settings();
+            self.dotlottie_manager.active_animation_playback_settings();
 
         match playback_settings_result {
             Ok(playback_settings) => {
@@ -417,10 +411,10 @@ impl DotLottieRuntime {
                 };
                 self.config.loop_animation = loop_animation;
             }
-            Err(error) => {
-                eprintln!("Error: {:?}", error);
-            }
+            Err(_error) => return false,
         }
+
+        true
     }
 
     pub fn resize(&mut self, width: u32, height: u32) -> bool {
@@ -446,33 +440,29 @@ impl DotLottiePlayer {
     pub fn load_animation_data(&self, animation_data: &str, width: u32, height: u32) -> bool {
         self.runtime
             .write()
-            .unwrap()
-            .load_animation_data(animation_data, width, height)
+            .is_ok_and(|mut runtime| runtime.load_animation_data(animation_data, width, height))
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
         self.runtime
             .write()
-            .unwrap()
-            .load_animation_path(animation_path, width, height)
+            .is_ok_and(|mut runtime| runtime.load_animation_path(animation_path, width, height))
     }
 
     pub fn load_dotlottie_data(&self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
         self.runtime
             .write()
-            .unwrap()
-            .load_dotlottie_data(file_data, width, height)
-    }
-
-    pub fn manifest(&self) -> Manifest {
-        self.runtime.read().unwrap().manifest()
+            .is_ok_and(|mut runtime| runtime.load_dotlottie_data(file_data, width, height))
     }
 
     pub fn load_animation(&self, animation_id: &str, width: u32, height: u32) -> bool {
         self.runtime
             .write()
-            .unwrap()
-            .load_animation(animation_id, width, height)
+            .is_ok_and(|mut runtime| runtime.load_animation(animation_id, width, height))
+    }
+
+    pub fn manifest(&self) -> Option<Manifest> {
+        self.runtime.read().unwrap().manifest()
     }
 
     pub fn buffer_ptr(&self) -> u64 {

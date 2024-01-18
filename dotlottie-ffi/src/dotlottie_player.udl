@@ -20,6 +20,8 @@ interface DotLottiePlayer {
     constructor(Config config);
     boolean load_animation_data([ByRef] string animation_data, u32 width, u32 height);
     boolean load_animation_path([ByRef] string animation_path, u32 width, u32 height);
+    boolean load_dotlottie_data([ByRef] bytes file_data, u32 width, u32 height);
+    boolean load_animation([ByRef] string animation_id, u32 width, u32 height);
     u64 buffer_ptr();
     u64 buffer_len();
     void set_config(Config config);
@@ -39,7 +41,5 @@ interface DotLottiePlayer {
     boolean set_frame(f32 no);
     boolean render();
     boolean resize(u32 width, u32 height);
-    boolean load_dotlottie_data([ByRef] bytes file_data, u32 width, u32 height);
-    boolean load_animation([ByRef] string animation_id, u32 width, u32 height);
     void clear();
 };

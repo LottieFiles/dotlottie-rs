@@ -21,22 +21,24 @@
         },
       });
 
-      function create_Segments(start_frame, end_frame) {
+      function createSegments(startFrame, endFrame) {
         const vector = new Module.VectorFloat();
 
-        vector.push_back(start_frame);
-        vector.push_back(end_frame);
+        if (startFrame && endFrame) {
+          vector.push_back(startFrame);
+          vector.push_back(endFrame);
+        }
 
         return vector;
       }
 
-      const dotLottie = new Module.DotLottiePlayer({
+      const dotLottiePlayer = new Module.DotLottiePlayer({
         autoplay: true,
-        loop_animation: true,
+        loopAnimation: true,
         mode: Module.Mode.values[3],
         speed: 1,
-        use_frame_interpolation: true,
-        segments: create_Segments(0, 40),
+        useFrameInterpolation: true,
+        segments: createSegments(0, 40),
       });
 
       const data = await fetch(
@@ -44,29 +46,29 @@
       ).then((res) => res.text());
       const canvas = document.querySelector("canvas");
 
-      const { width: client_width, height: client_height } =
+      const { width: clientWidth, height: clientHeight } =
         canvas.getBoundingClientRect();
 
-      const width = client_width * (window.devicePixelRatio || 1);
-      const height = client_height * (window.devicePixelRatio || 1);
+      const width = clientWidth * (window.devicePixelRatio || 1);
+      const height = clientHeight * (window.devicePixelRatio || 1);
 
       canvas.width = width;
       canvas.height = height;
 
-      const loaded = dotLottie.load_animation_data(data, width, height);
+      const loaded = dotLottiePlayer.loadAnimationData(data, width, height);
 
       const ctx = canvas.getContext("2d");
       const imageData = ctx.createImageData(width, height);
 
       function animationLoop() {
-        const next_frame_number = dotLottie.request_frame();
-        console.log(next_frame_number);
-        dotLottie.set_frame(next_frame_number);
-        const rendered = dotLottie.render();
+        const nextFrameNumber = dotLottiePlayer.requestFrame();
+        console.log(nextFrameNumber);
+        dotLottiePlayer.setFrame(nextFrameNumber);
+        const rendered = dotLottiePlayer.render();
 
         if (rendered) {
-          const frame_buffer = dotLottie.buffer();
-          imageData.data.set(frame_buffer);
+          const frameBuffer = dotLottiePlayer.buffer();
+          imageData.data.set(frameBuffer);
           ctx.putImageData(imageData, 0, 0);
         }
 

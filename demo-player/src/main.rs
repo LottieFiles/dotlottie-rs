@@ -51,8 +51,10 @@ fn main() {
         use_frame_interpolation: true,
         autoplay: true,
         segments: vec![10.0, 45.0],
+        background_color: 0xffffffff,
     });
     lottie_player.load_animation_path(path.to_str().unwrap(), WIDTH as u32, HEIGHT as u32);
+    // lottie_player.set_background_color(0x00ffffff);
 
     let mut timer = Timer::new();
 

@@ -256,8 +256,8 @@ cpp_link_args = [
 	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
-	'--minify=0',
-	'--embind-emit-tsd=${WASM_MODULE}.d.ts']
+	# '--embind-emit-tsd=${WASM_MODULE}.d.ts'
+	'--minify=0']
 
 [host_machine]
 system = '$(SYSTEM)'
@@ -430,8 +430,8 @@ define WASM_RELEASE
 	mkdir -p $(RELEASE)/$(WASM)
 	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).wasm \
 		$(RELEASE)/$(WASM)
-	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).d.ts \
-		$(RELEASE)/$(WASM)
+	# cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).d.ts \
+	# 	$(RELEASE)/$(WASM)
 	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).js \
 		$(RELEASE)/$(WASM)/$(WASM_MODULE).mjs
 	cd $(RELEASE)/$(WASM) && \

@@ -30,6 +30,7 @@ pub struct Config {
     pub use_frame_interpolation: bool,
     pub autoplay: bool,
     pub segments: Vec<f32>,
+    pub background_color: u32,
 }
 
 struct DotLottieRuntime {
@@ -60,6 +61,12 @@ impl DotLottieRuntime {
             config,
             direction,
         }
+    }
+
+    pub fn set_background_color(&mut self, hex_color: u32) -> bool {
+        self.config.background_color = hex_color;
+
+        self.renderer.set_background_color(hex_color).is_ok()
     }
 
     fn start_frame(&self) -> f32 {
@@ -339,7 +346,11 @@ impl DotLottieRuntime {
     where
         F: FnOnce(&mut LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
     {
-        let loaded = loader(&mut self.renderer, width, height).is_ok();
+        let loaded = loader(&mut self.renderer, width, height).is_ok()
+            && self
+                .renderer
+                .set_background_color(self.config.background_color)
+                .is_ok();
 
         self.is_loaded = loaded;
 
@@ -500,6 +511,13 @@ impl DotLottiePlayer {
 
     pub fn config(&self) -> Config {
         self.runtime.read().unwrap().config()
+    }
+
+    pub fn set_background_color(&self, hex_color: u32) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_background_color(hex_color)
     }
 }
 

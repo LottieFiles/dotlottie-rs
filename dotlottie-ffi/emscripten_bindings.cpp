@@ -29,7 +29,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("mode", &Config::mode)
         .field("speed", &Config::speed)
         .field("use_frame_interpolation", &Config::use_frame_interpolation)
-        .field("segments", &Config::segments);
+        .field("segments", &Config::segments)
+        .field("background_color", &Config::background_color);
 
     class_<DotLottiePlayer>("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init, allow_raw_pointers())
@@ -55,5 +56,6 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("set_config", &DotLottiePlayer::set_config)
         .function("set_frame", &DotLottiePlayer::set_frame)
         .function("stop", &DotLottiePlayer::stop)
-        .function("total_frames", &DotLottiePlayer::total_frames);
+        .function("total_frames", &DotLottiePlayer::total_frames)
+        .function("set_background_color", &DotLottiePlayer::set_background_color);
 }

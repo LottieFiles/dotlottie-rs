@@ -19,6 +19,8 @@ const dotLottie = new Module.DotLottiePlayer({
   mode: Module.Mode.values[1],
   speed: 1,
   use_frame_interpolation: false,
+  segments: new Module.VectorFloat(),
+  background_color: 0xff009aff,
 });
 
 const data = await fetch(

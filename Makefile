@@ -429,9 +429,11 @@ define WASM_RELEASE
 	rm -rf $(RELEASE)/$(WASM)
 	mkdir -p $(RELEASE)/$(WASM)
 	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).wasm \
-		$(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).js \
-		$(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).d.ts \
 		$(RELEASE)/$(WASM)
+	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).d.ts \
+		$(RELEASE)/$(WASM)
+	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).js \
+		$(RELEASE)/$(WASM)/$(WASM_MODULE).mjs
 	cd $(RELEASE)/$(WASM) && \
 		rm -f $(DOTLOTTIE_PLAYER).$(WASM).tar.gz && \
 		tar zcf $(DOTLOTTIE_PLAYER).$(WASM).tar.gz *

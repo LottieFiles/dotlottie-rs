@@ -10,12 +10,12 @@
       <canvas style="width: 100%"></canvas>
     </div>
     <script type="module">
-      import createDotLottiePlayerModule from "./release/wasm/DotLottiePlayer.js";
+      import createDotLottiePlayerModule from "./release/wasm/DotLottiePlayer.mjs";
 
       const Module = await createDotLottiePlayerModule({
         locateFile: (path, prefix) => {
           if (path.endsWith(".wasm")) {
-            return `./release/wasm/${path}`;
+            return `release/wasm/${path}`;
           }
           return `${prefix}${path}`;
         },

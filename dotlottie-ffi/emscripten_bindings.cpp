@@ -11,6 +11,13 @@ val buffer(DotLottiePlayer &player)
     return val(typed_memory_view(buffer_len, reinterpret_cast<uint8_t *>(buffer_ptr)));
 }
 
+bool load_dotlottie_data(DotLottiePlayer &player, std::string data, uint32_t width, uint32_t height)
+{
+    std::vector<char> data_vector(data.begin(), data.end());
+
+    return player.load_dotlottie_data(data_vector, width, height);
+}
+
 EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 {
 
@@ -77,7 +84,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("isStopped", &DotLottiePlayer::is_stopped)
         .function("loadAnimationData", &DotLottiePlayer::load_animation_data, allow_raw_pointers())
         .function("loadAnimationPath", &DotLottiePlayer::load_animation_path, allow_raw_pointers())
-        .function("loadDotLottieData", &DotLottiePlayer::load_dotlottie_data, allow_raw_pointers())
+        .function("loadDotLottieData", &load_dotlottie_data, allow_raw_pointers())
         .function("loadAnimation", &DotLottiePlayer::load_animation, allow_raw_pointers())
         .function("manifest", &DotLottiePlayer::manifest)
         .function("loopCount", &DotLottiePlayer::loop_count)

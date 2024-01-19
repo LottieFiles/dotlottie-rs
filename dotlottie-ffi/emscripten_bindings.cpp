@@ -32,25 +32,25 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("segments", &Config::segments)
         .field("backgroundColor", &Config::background_color);
 
-    value_object<Config>("ManifestTheme")
+    value_object<ManifestTheme>("ManifestTheme")
         .field("id", &ManifestTheme::id)
         .field("values", &ManifestTheme::values);
 
-    value_object<Config>("ManifestThemes")
+    value_object<ManifestThemes>("ManifestThemes")
         .field("value", &ManifestThemes::value);
 
     value_object<ManifestAnimation>("ManifestAnimation")
         .field("autoplay", &ManifestAnimation::autoplay)
-        .field("defaultTheme", &ManifestAnimation::defaultTheme)
+        .field("defaultTheme", &ManifestAnimation::default_theme)
         .field("direction", &ManifestAnimation::direction)
         .field("hover", &ManifestAnimation::hover)
         .field("id", &ManifestAnimation::id)
         .field("intermission", &ManifestAnimation::intermission)
         .field("loop", &ManifestAnimation::loop)
         .field("loop_count", &ManifestAnimation::loop_count)
-        .field("playMode", &ManifestAnimation::playMode)
+        .field("playMode", &ManifestAnimation::play_mode)
         .field("speed", &ManifestAnimation::speed)
-        .field("themeColor", &ManifestAnimation::themeColor);
+        .field("themeColor", &ManifestAnimation::theme_color);
 
     value_object<Manifest>("Manifest")
         .field("active_animation_id", &Manifest::active_animation_id)
@@ -77,7 +77,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("isStopped", &DotLottiePlayer::is_stopped)
         .function("loadAnimationData", &DotLottiePlayer::load_animation_data, allow_raw_pointers())
         .function("loadAnimationPath", &DotLottiePlayer::load_animation_path, allow_raw_pointers())
-        .function("loadDotlottieData", &DotLottiePlayer::load_dotlottie_data, allow_raw_pointers())
+        .function("loadDotLottieData", &DotLottiePlayer::load_dotlottie_data, allow_raw_pointers())
         .function("loadAnimation", &DotLottiePlayer::load_animation, allow_raw_pointers())
         .function("manifest", &DotLottiePlayer::manifest)
         .function("loopCount", &DotLottiePlayer::loop_count)

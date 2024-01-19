@@ -256,7 +256,8 @@ cpp_link_args = [
 	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
-	'--minify=0']
+	'--minify=0',
+	'--embind-emit-tsd=${WASM_MODULE}.d.ts']
 
 [host_machine]
 system = '$(SYSTEM)'
@@ -428,8 +429,11 @@ define WASM_RELEASE
 	rm -rf $(RELEASE)/$(WASM)
 	mkdir -p $(RELEASE)/$(WASM)
 	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).wasm \
-		$(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).js \
 		$(RELEASE)/$(WASM)
+	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).d.ts \
+		$(RELEASE)/$(WASM)
+	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).js \
+		$(RELEASE)/$(WASM)/$(WASM_MODULE).mjs
 	cd $(RELEASE)/$(WASM) && \
 		rm -f $(DOTLOTTIE_PLAYER).$(WASM).tar.gz && \
 		tar zcf $(DOTLOTTIE_PLAYER).$(WASM).tar.gz *

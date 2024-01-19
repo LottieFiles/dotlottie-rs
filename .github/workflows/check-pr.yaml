@@ -3,6 +3,7 @@ name: Check PR
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, labeled, unlabeled]
 
 jobs:
   check-pr:
@@ -23,7 +24,22 @@ jobs:
         run: brew install make
       - name: Build Setup
         run: make mac-setup
-      - name: Build Artifacts
+      # - name: Build Artifacts
+      #   env:
+      #     APPLE_MACOSX_SDK: MacOSX13
+      #   run: make demo-player
+      - name: Make WASM
+        if: contains(github.event.pull_request.labels.*.name, 'make:wasm')
         env:
           APPLE_MACOSX_SDK: MacOSX13
-        run: make demo-player
+        run: make wasm
+      - name: Make Apple
+        if: contains(github.event.pull_request.labels.*.name, 'make:apple')
+        env:
+          APPLE_MACOSX_SDK: MacOSX13
+        run: make apple
+      - name: Make Android
+        if: contains(github.event.pull_request.labels.*.name, 'make:android')
+        env:
+          APPLE_MACOSX_SDK: MacOSX13
+        run: make android

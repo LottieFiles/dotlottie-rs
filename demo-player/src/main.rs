@@ -52,6 +52,8 @@ fn main() {
         speed: 1.0,
         use_frame_interpolation: true,
         autoplay: true,
+        segments: vec![10.0, 45.0],
+        background_color: 0xffffffff,
     });
 
     // read dotlottie in to vec<u8>

@@ -1,12 +1,10 @@
-name: Check PR
+name: Build Android
 
 on:
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  check-pr:
-    if: github.head_ref != 'release'
+  build-wasm:
     runs-on: macos-latest
     steps:
       - name: Cancel Previous Runs
@@ -19,11 +17,14 @@ jobs:
         with:
           xcode-version: latest-stable
       - uses: ningenMe/setup-rustup@v1.1.0
+
       - name: Install Make
         run: brew install make
+
       - name: Build Setup
         run: make mac-setup
-      - name: Build Artifacts
+
+      - name: Build Android
         env:
           APPLE_MACOSX_SDK: MacOSX13
-        run: make demo-player
+        run: make android

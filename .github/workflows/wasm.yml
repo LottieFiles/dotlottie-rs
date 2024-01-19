@@ -1,10 +1,10 @@
-name: Build WASM
+name: Build (WASM)
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-wasm:
+  build:
     runs-on: macos-latest
     steps:
       - name: Cancel Previous Runs

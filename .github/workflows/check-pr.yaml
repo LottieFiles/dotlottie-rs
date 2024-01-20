@@ -13,7 +13,13 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.1
         with:
           access_token: ${{ github.token }}
+
       - uses: actions/checkout@v4
+
+      - name: Extract Commit Message
+        id: commit-message
+        run: echo "::set-output name=message::$(git log --format=%B -n 1 ${{ github.event.pull_request.head.sha }})"
+
       - uses: Homebrew/actions/setup-homebrew@master
       - uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -27,3 +33,21 @@ jobs:
         env:
           APPLE_MACOSX_SDK: MacOSX13
         run: make demo-player
+
+      - name: Build(WASM)
+        if: contains(steps.commit-message.outputs.message, '[make wasm]') || contains(steps.commit-message.outputs.message, '[make all]')
+        env:
+          APPLE_MACOSX_SDK: MacOSX13
+        run: make wasm
+
+      - name: Build(Apple)
+        if: contains(steps.commit-message.outputs.message, '[make apple]') || contains(steps.commit-message.outputs.message, '[make all]')
+        env:
+          APPLE_MACOSX_SDK: MacOSX13
+        run: make apple
+
+      - name: Build(Android)
+        if: contains(steps.commit-message.outputs.message, '[make android]') || contains(steps.commit-message.outputs.message, '[make all]')
+        env:
+          APPLE_MACOSX_SDK: MacOSX13
+        run: make android

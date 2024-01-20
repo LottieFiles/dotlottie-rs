@@ -1,0 +1,29 @@
+name: Build (WASM)
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@master
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Install Make
+        run: brew install make
+
+      - name: Build Setup
+        run: make mac-setup
+
+      - name: Make WASM
+        env:
+          APPLE_MACOSX_SDK: MacOSX13
+        run: make wasm

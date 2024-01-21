@@ -71,14 +71,17 @@ fn main() {
     path.push("src/cartoon.json");
 
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        mode: Mode::Reverse,
+        mode: Mode::ReverseBounce,
         loop_animation: true,
-        speed: 2.5,
+        speed: 1.0,
         use_frame_interpolation: true,
         autoplay: true,
+        segments: vec![10.0, 45.0],
+        background_color: 0xffffffff,
     });
     lottie_player.subscribe(Arc::new(DummyObserver));
     lottie_player.load_animation_path(path.to_str().unwrap(), WIDTH as u32, HEIGHT as u32);
+    // lottie_player.set_background_color(0x00ffffff);
 
     let mut timer = Timer::new();
 

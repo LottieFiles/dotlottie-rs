@@ -13,32 +13,45 @@ const Module = await createDotLottiePlayerModule({
 const WIDTH = 200;
 const HEIGHT = 200;
 
-const dotLottie = new Module.DotLottiePlayer({
+function createSegments(startFrame, endFrame) {
+  const vector = new Module.VectorFloat();
+
+  if (startFrame && endFrame) {
+    vector.push_back(startFrame);
+    vector.push_back(endFrame);
+  }
+
+  return vector;
+}
+
+const dotLottiePlayer = new Module.DotLottiePlayer({
   autoplay: false,
-  loop_animation: false,
+  loopAnimation: false,
   mode: Module.Mode.values[1],
   speed: 1,
-  use_frame_interpolation: false,
+  useFrameInterpolation: false,
+  segments: new Module.VectorFloat(),
+  backgroundColor: 0xff009aff,
 });
 
 const data = await fetch(
   "https://lottie.host/647eb023-6040-4b60-a275-e2546994dd7f/zDCfp5lhLe.json"
 ).then((res) => res.text());
 
-const loaded = dotLottie.load_animation_data(data, WIDTH, HEIGHT);
+const loaded = dotLottiePlayer.loadAnimationData(data, WIDTH, HEIGHT);
 
 if (!loaded) {
   console.log("failed to load animation data");
 }
 
-dotLottie.set_frame(10.0);
-const rendered = dotLottie.render();
+dotLottiePlayer.setFrame(10.0);
+const rendered = dotLottiePlayer.render();
 
 if (!rendered) {
   console.log("failed to render");
 }
 
-const frameBuffer = dotLottie.buffer();
+const frameBuffer = dotLottiePlayer.buffer();
 
 const bmpBuffer = createBMP(WIDTH, WIDTH, frameBuffer);
 

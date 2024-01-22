@@ -47,8 +47,8 @@
       // ).then((res) => res.text());
 
       const data = await fetch(
-        // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie"
-        "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
+        "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie"
+        // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
       ).then((res) => res.arrayBuffer());
 
       const canvas = document.querySelector("canvas");
@@ -67,8 +67,9 @@
 
       console.log("Loaded: ", loaded);
 
-      // dotLottiePlayer.loadAnimation("confused", width, height);
-      // console.log(dotLottiePlayer.manifest());
+      const manifest = JSON.parse(dotLottiePlayer.manifestString());
+      const animationId = manifest.animations[2].id;
+      dotLottiePlayer.loadAnimation(animationId, width, height);
 
       // dotLottiePlayer.setBackgroundColor(0x9afafa8f);
 

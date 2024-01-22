@@ -608,6 +608,12 @@ impl DotLottiePlayer {
             .unwrap()
             .set_background_color(hex_color)
     }
+
+    pub fn manifest_string(&self) -> String {
+        let manifest = self.manifest().unwrap();
+
+        manifest.to_json().to_string()
+    }
 }
 
 unsafe impl Send for DotLottiePlayer {}

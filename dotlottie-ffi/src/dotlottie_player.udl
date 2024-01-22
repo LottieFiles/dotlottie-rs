@@ -61,6 +61,7 @@ interface DotLottiePlayer {
     boolean load_dotlottie_data([ByRef] bytes file_data, u32 width, u32 height);
     boolean load_animation([ByRef] string animation_id, u32 width, u32 height);
     Manifest? manifest();
+    string manifest_string();
     u64 buffer_ptr();
     u64 buffer_len();
     void set_config(Config config);

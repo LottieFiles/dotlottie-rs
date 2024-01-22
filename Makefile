@@ -256,8 +256,8 @@ cpp_link_args = [
 	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
-	'--minify=0',
-	'--embind-emit-tsd=${WASM_MODULE}.d.ts']
+	'--embind-emit-tsd=${WASM_MODULE}.d.ts',
+	'--minify=0']
 
 [host_machine]
 system = '$(SYSTEM)'

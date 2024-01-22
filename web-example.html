@@ -42,9 +42,15 @@
         backgroundColor: 0x9afafa8f,
       });
 
+      // const data = await fetch(
+      //   "https://lottie.host/647eb023-6040-4b60-a275-e2546994dd7f/zDCfp5lhLe.json"
+      // ).then((res) => res.text());
+
       const data = await fetch(
-        "https://lottie.host/647eb023-6040-4b60-a275-e2546994dd7f/zDCfp5lhLe.json"
-      ).then((res) => res.text());
+        "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie"
+        // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
+      ).then((res) => res.arrayBuffer());
+
       const canvas = document.querySelector("canvas");
 
       const { width: clientWidth, height: clientHeight } =
@@ -56,16 +62,23 @@
       canvas.width = width;
       canvas.height = height;
 
-      const loaded = dotLottiePlayer.loadAnimationData(data, width, height);
+      // const loaded = dotLottiePlayer.loadAnimationData(data, width, height);
+      const loaded = dotLottiePlayer.loadDotLottieData(data, width, height);
 
-      // dotLottie.set_background_color(0x9afafa8f);
+      console.log("Loaded: ", loaded);
+
+      const manifest = JSON.parse(dotLottiePlayer.manifestString());
+      const animationId = manifest.animations[2].id;
+      dotLottiePlayer.loadAnimation(animationId, width, height);
+
+      // dotLottiePlayer.setBackgroundColor(0x9afafa8f);
 
       const ctx = canvas.getContext("2d");
       const imageData = ctx.createImageData(width, height);
 
       function animationLoop() {
         const nextFrameNumber = dotLottiePlayer.requestFrame();
-        console.log(nextFrameNumber);
+        // console.log(nextFrameNumber);
         dotLottiePlayer.setFrame(nextFrameNumber);
         const rendered = dotLottiePlayer.render();
 

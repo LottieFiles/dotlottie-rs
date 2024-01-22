@@ -15,10 +15,13 @@ jobs:
           access_token: ${{ github.token }}
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Extract Commit Message
         id: commit-message
-        run: echo "::set-output name=message::$(git log --format=%B -n 1 ${{ github.event.pull_request.head.sha }})"
+        run: |
+          echo "message=$(git log --format=%B -n 1 ${{ github.event.pull_request.head.sha }})" >> $GITHUB_ENV
 
       - uses: Homebrew/actions/setup-homebrew@master
       - uses: maxim-lobanov/setup-xcode@v1

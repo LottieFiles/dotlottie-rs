@@ -610,13 +610,10 @@ impl DotLottiePlayer {
     }
 
     pub fn manifest_string(&self) -> String {
-        let manifest = self.manifest();
-
-        if manifest.is_none() {
-            return "".to_string();
+        match self.manifest() {
+            Some(manifest) => manifest.to_string(),
+            None => "{}".to_string(),
         }
-
-        manifest.to_json().to_string()
     }
 }
 

@@ -1,4 +1,4 @@
-use instant::Instant;
+use instant::{Duration, Instant};
 use std::sync::RwLock;
 
 use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
@@ -116,9 +116,33 @@ impl DotLottieRuntime {
 
     pub fn play(&mut self) -> bool {
         if self.is_loaded && !self.is_playing() {
-            self.playback_state = PlaybackState::Playing;
-            self.start_time = Instant::now();
+            if self.is_paused() {
+                let start_frame = self.start_frame();
+                let end_frame = self.end_frame();
 
+                let total_frames = self.total_frames();
+                let duration = self.duration();
+                let effective_total_frames = end_frame - start_frame;
+                let effective_duration =
+                    (duration * effective_total_frames / total_frames) / self.config.speed;
+
+                let current_frame = self.current_frame().clamp(start_frame, end_frame);
+                let frame_duration = effective_duration / effective_total_frames;
+
+                // estimate elapsed time for current frame based on direction and segments
+                let elapsed_time_for_current_frame = match self.direction {
+                    Direction::Forward => (current_frame - start_frame) * frame_duration,
+                    Direction::Reverse => (end_frame - current_frame) * frame_duration,
+                };
+
+                // update start_time to account for the already elapsed time
+                self.start_time =
+                    Instant::now() - Duration::from_secs_f32(elapsed_time_for_current_frame);
+            } else {
+                self.start_time = Instant::now();
+            }
+
+            self.playback_state = PlaybackState::Playing;
             true
         } else {
             false

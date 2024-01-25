@@ -13,10 +13,10 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [dependencies]
-uniffi = { git = "https://github.com/mozilla/uniffi-rs", branch = "main", features = ["cli"] }
+uniffi = { version = "0.26.0", features = ["cli"] }
 # Core runtime
 dotlottie_player = { path = "../dotlottie-rs" }
 
 [build-dependencies]
-uniffi = { git = "https://github.com/mozilla/uniffi-rs", branch = "main", features = ["build"] }
+uniffi = { version = "0.26.0", features = ["build"] }
 lazy_static = "1.4"

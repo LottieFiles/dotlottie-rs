@@ -27,3 +27,9 @@ jobs:
         env:
           APPLE_MACOSX_SDK: MacOSX13
         run: make apple
+
+      - name: Upload Release Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: apple-release
+          path: ./release/apple/*.tar.gz

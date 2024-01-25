@@ -97,5 +97,6 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("setConfig", &DotLottiePlayer::set_config)
         .function("setFrame", &DotLottiePlayer::set_frame)
         .function("stop", &DotLottiePlayer::stop)
-        .function("totalFrames", &DotLottiePlayer::total_frames);
+        .function("totalFrames", &DotLottiePlayer::total_frames)
+        .function("isComplete", &DotLottiePlayer::is_complete);
 }

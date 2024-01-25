@@ -102,7 +102,6 @@
 
       function animationLoop() {
         const nextFrameNumber = dotLottiePlayer.requestFrame();
-        // console.log(nextFrameNumber);
 
         const updated = dotLottiePlayer.setFrame(nextFrameNumber);
 
@@ -117,6 +116,14 @@
             const frameBuffer = dotLottiePlayer.buffer();
             imageData.data.set(frameBuffer);
             ctx.putImageData(imageData, 0, 0);
+          }
+
+          if (dotLottiePlayer.isComplete()) {
+            if (dotLottiePlayer.config().loopAnimation) {
+              console.log("Loop Completed", dotLottiePlayer.loopCount());
+            } else {
+              console.log("Completed");
+            }
           }
         }
 

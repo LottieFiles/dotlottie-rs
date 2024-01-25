@@ -505,6 +505,13 @@ impl DotLottieRuntime {
     pub fn config(&self) -> Config {
         self.config.clone()
     }
+
+    pub fn is_complete(&self) -> bool {
+        match self.config.mode {
+            Mode::Forward | Mode::ReverseBounce => self.current_frame() >= self.end_frame(),
+            Mode::Reverse | Mode::Bounce => self.current_frame() <= self.start_frame(),
+        }
+    }
 }
 
 pub struct DotLottiePlayer {
@@ -646,6 +653,10 @@ impl DotLottiePlayer {
             Some(manifest) => manifest.to_string(),
             None => "{}".to_string(),
         }
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.runtime.read().unwrap().is_complete()
     }
 }
 

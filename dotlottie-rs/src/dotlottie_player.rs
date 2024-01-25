@@ -572,7 +572,7 @@ impl DotLottieRuntime {
         self.observers.push(observer);
     }
 
-    fn is_complete(&self) -> bool {
+    pub fn is_complete(&self) -> bool {
         match self.config.mode {
             Mode::Forward | Mode::ReverseBounce => self.current_frame() >= self.end_frame(),
             Mode::Reverse | Mode::Bounce => self.current_frame() <= self.start_frame(),
@@ -723,6 +723,10 @@ impl DotLottiePlayer {
             Some(manifest) => manifest.to_string(),
             None => "{}".to_string(),
         }
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.runtime.read().unwrap().is_complete()
     }
 }
 

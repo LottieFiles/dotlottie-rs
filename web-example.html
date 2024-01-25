@@ -7,10 +7,24 @@
   </head>
   <body>
     <div style="max-width: 500px">
-      <canvas style="width: 100%"></canvas>
+      <canvas style="width: 100%; border: 1px solid black"></canvas>
+      <button id="play">play</button>
+      <button id="pause">pause</button>
+      <input
+        id="progress-bar"
+        type="range"
+        min="0"
+        max="100"
+        defaultValue="0"
+        step="0.01"
+      />
     </div>
     <script type="module">
       import createDotLottiePlayerModule from "./release/wasm/DotLottiePlayer.mjs";
+
+      const playBtn = document.querySelector("#play");
+      const pauseBtn = document.querySelector("#pause");
+      const progressBar = document.querySelector("#progress-bar");
 
       const Module = await createDotLottiePlayerModule({
         locateFile: (path, prefix) => {
@@ -24,7 +38,7 @@
       function createSegments(startFrame, endFrame) {
         const vector = new Module.VectorFloat();
 
-        if (startFrame && endFrame) {
+        if (typeof startFrame === "number" && typeof endFrame === "number") {
           vector.push_back(startFrame);
           vector.push_back(endFrame);
         }
@@ -39,7 +53,7 @@
         speed: 1,
         useFrameInterpolation: true,
         segments: createSegments(0, 40),
-        backgroundColor: 0x9afafa8f,
+        backgroundColor: 0x000000,
       });
 
       // const data = await fetch(
@@ -65,11 +79,17 @@
       // const loaded = dotLottiePlayer.loadAnimationData(data, width, height);
       const loaded = dotLottiePlayer.loadDotLottieData(data, width, height);
 
+      dotLottiePlayer.setConfig({
+        ...dotLottiePlayer.config(),
+        mode: Module.Mode.values[3],
+        segments: createSegments(20, 80),
+      });
+
       console.log("Loaded: ", loaded);
 
-      const manifest = JSON.parse(dotLottiePlayer.manifestString());
-      const animationId = manifest.animations[2].id;
-      dotLottiePlayer.loadAnimation(animationId, width, height);
+      // const manifest = JSON.parse(dotLottiePlayer.manifestString());
+      // const animationId = manifest.animations[2].id;
+      // dotLottiePlayer.loadAnimation(animationId, width, height);
 
       // dotLottiePlayer.setBackgroundColor(0x9afafa8f);
 
@@ -79,19 +99,35 @@
       function animationLoop() {
         const nextFrameNumber = dotLottiePlayer.requestFrame();
         // console.log(nextFrameNumber);
-        dotLottiePlayer.setFrame(nextFrameNumber);
-        const rendered = dotLottiePlayer.render();
 
-        if (rendered) {
-          const frameBuffer = dotLottiePlayer.buffer();
-          imageData.data.set(frameBuffer);
-          ctx.putImageData(imageData, 0, 0);
+        const updated = dotLottiePlayer.setFrame(nextFrameNumber);
+
+        if (updated) {
+          progressBar.value =
+            (dotLottiePlayer.currentFrame() / dotLottiePlayer.totalFrames()) *
+            100;
+
+          const rendered = dotLottiePlayer.render();
+
+          if (rendered) {
+            const frameBuffer = dotLottiePlayer.buffer();
+            imageData.data.set(frameBuffer);
+            ctx.putImageData(imageData, 0, 0);
+          }
         }
 
         requestAnimationFrame(animationLoop);
       }
 
       requestAnimationFrame(animationLoop);
+
+      playBtn.addEventListener("click", () => {
+        dotLottiePlayer.play();
+      });
+
+      pauseBtn.addEventListener("click", () => {
+        dotLottiePlayer.pause();
+      });
     </script>
   </body>
 </html>

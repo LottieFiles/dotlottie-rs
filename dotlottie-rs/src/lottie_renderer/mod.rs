@@ -14,6 +14,9 @@ pub enum LottieRendererError {
 
     #[error("Invalid color: {0}")]
     InvalidColor(String),
+
+    #[error("Invalid argument: {0}")]
+    InvalidArgument(String),
 }
 
 pub struct LottieRenderer {
@@ -243,6 +246,15 @@ impl LottieRenderer {
         if (width, height) == (self.width, self.height) {
             return Ok(());
         }
+
+        if width <= 0 || height <= 0 {
+            return Err(LottieRendererError::InvalidArgument(
+                "Width and height must be greater than 0".to_string(),
+            ));
+        }
+
+        self.width = width;
+        self.height = height;
 
         let mut buffer = vec![0; (width * height * 4) as usize];
         thorvg_canvas

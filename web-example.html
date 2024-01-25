@@ -19,12 +19,14 @@
         step="0.01"
       />
     </div>
+    <button id="jump">Jump</button>
     <script type="module">
       import createDotLottiePlayerModule from "./release/wasm/DotLottiePlayer.mjs";
 
       const playBtn = document.querySelector("#play");
       const pauseBtn = document.querySelector("#pause");
       const progressBar = document.querySelector("#progress-bar");
+      const jumpBtn = document.querySelector("#jump");
 
       const Module = await createDotLottiePlayerModule({
         locateFile: (path, prefix) => {
@@ -82,7 +84,7 @@
       dotLottiePlayer.setConfig({
         ...dotLottiePlayer.config(),
         mode: Module.Mode.values[3],
-        segments: createSegments(20, 80),
+        segments: createSegments(),
       });
 
       console.log("Loaded: ", loaded);
@@ -95,6 +97,8 @@
 
       const ctx = canvas.getContext("2d");
       const imageData = ctx.createImageData(width, height);
+
+      let animationFrameId = null;
 
       function animationLoop() {
         const nextFrameNumber = dotLottiePlayer.requestFrame();
@@ -116,10 +120,10 @@
           }
         }
 
-        requestAnimationFrame(animationLoop);
+        animationFrameId = requestAnimationFrame(animationLoop);
       }
 
-      requestAnimationFrame(animationLoop);
+      animationFrameId = requestAnimationFrame(animationLoop);
 
       playBtn.addEventListener("click", () => {
         dotLottiePlayer.play();
@@ -127,6 +131,33 @@
 
       pauseBtn.addEventListener("click", () => {
         dotLottiePlayer.pause();
+      });
+
+      jumpBtn.addEventListener("click", () => {
+        dotLottiePlayer.setFrame(44);
+      });
+
+      progressBar.addEventListener("mousedown", () => {
+        cancelAnimationFrame(animationFrameId);
+      });
+
+      progressBar.addEventListener("mouseup", () => {
+        animationFrameId = requestAnimationFrame(animationLoop);
+      });
+
+      progressBar.addEventListener("input", (event) => {
+        const newFrame =
+          (event.target.value / 100) * dotLottiePlayer.totalFrames();
+
+        const updated = dotLottiePlayer.setFrame(newFrame);
+        if (updated) {
+          const rendered = dotLottiePlayer.render();
+          if (rendered) {
+            const frameBuffer = dotLottiePlayer.buffer();
+            imageData.data.set(frameBuffer);
+            ctx.putImageData(imageData, 0, 0);
+          }
+        }
       });
     </script>
   </body>

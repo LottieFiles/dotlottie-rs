@@ -117,27 +117,7 @@ impl DotLottieRuntime {
     pub fn play(&mut self) -> bool {
         if self.is_loaded && !self.is_playing() {
             if self.is_paused() {
-                let start_frame = self.start_frame();
-                let end_frame = self.end_frame();
-
-                let total_frames = self.total_frames();
-                let duration = self.duration();
-                let effective_total_frames = end_frame - start_frame;
-                let effective_duration =
-                    (duration * effective_total_frames / total_frames) / self.config.speed;
-
-                let current_frame = self.current_frame().clamp(start_frame, end_frame);
-                let frame_duration = effective_duration / effective_total_frames;
-
-                // estimate elapsed time for current frame based on direction and segments
-                let elapsed_time_for_current_frame = match self.direction {
-                    Direction::Forward => (current_frame - start_frame) * frame_duration,
-                    Direction::Reverse => (end_frame - current_frame) * frame_duration,
-                };
-
-                // update start_time to account for the already elapsed time
-                self.start_time =
-                    Instant::now() - Duration::from_secs_f32(elapsed_time_for_current_frame);
+                self.update_start_time_for_frame(self.current_frame());
             } else {
                 self.start_time = Instant::now();
             }
@@ -327,8 +307,36 @@ impl DotLottieRuntime {
         }
     }
 
+    fn update_start_time_for_frame(&mut self, frame_no: f32) {
+        let start_frame = self.start_frame();
+        let end_frame = self.end_frame();
+
+        let total_frames = self.total_frames();
+        let duration = self.duration();
+        let effective_total_frames = end_frame - start_frame;
+        let effective_duration =
+            (duration * effective_total_frames / total_frames) / self.config.speed;
+
+        let frame_duration = effective_duration / effective_total_frames;
+
+        // estimate elapsed time for current frame based on direction and segments
+        let elapsed_time_for_frame = match self.direction {
+            Direction::Forward => (frame_no - start_frame) * frame_duration,
+            Direction::Reverse => (end_frame - frame_no) * frame_duration,
+        };
+
+        // update start_time to account for the already elapsed time
+        self.start_time = Instant::now() - Duration::from_secs_f32(elapsed_time_for_frame);
+    }
+
     pub fn set_frame(&mut self, no: f32) -> bool {
-        self.renderer.set_frame(no).is_ok()
+        let is_ok = self.renderer.set_frame(no).is_ok();
+
+        if self.is_playing() {
+            self.update_start_time_for_frame(no);
+        }
+
+        is_ok
     }
 
     pub fn render(&mut self) -> bool {

@@ -1,21 +1,17 @@
 name: Build Artifacts
 
-# on:
-#   workflow_dispatch:
-#     inputs:
-#       target:
-#         type: choice
-#         description: "Target to build"
-#         required: true
-#         options:
-#           - "apple"
-#           - "android"
-#           - "wasm"
-#           - "all"
-
 on:
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        description: "Target to build"
+        required: true
+        options:
+          - "apple"
+          - "android"
+          - "wasm"
+          - "all"
 
 jobs:
   build:
@@ -39,22 +35,10 @@ jobs:
         run: make mac-setup
 
       - name: Build Android
-        # if: github.event.inputs.target == 'android' || github.event.inputs.target == 'all'
+        if: github.event.inputs.target == 'android' || github.event.inputs.target == 'all'
         env:
           APPLE_MACOSX_SDK: MacOSX13
         run: make android
-
-      - name: Build Apple
-        # if: github.event.inputs.target == 'apple' || github.event.inputs.target == 'all'
-        env:
-          APPLE_MACOSX_SDK: MacOSX13
-        run: make apple
-
-      - name: Build WASM
-        # if: github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all'
-        env:
-          APPLE_MACOSX_SDK: MacOSX13
-        run: make wasm
 
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v3
@@ -62,11 +46,23 @@ jobs:
           name: android
           path: ./release/android/*.tar.gz
 
+      - name: Build Apple
+        if: github.event.inputs.target == 'apple' || github.event.inputs.target == 'all'
+        env:
+          APPLE_MACOSX_SDK: MacOSX13
+        run: make apple
+
       - name: Upload Apple Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: apple
           path: ./release/apple/*.tar.gz
+
+      - name: Build WASM
+        if: github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all'
+        env:
+          APPLE_MACOSX_SDK: MacOSX13
+        run: make wasm
 
       - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v3

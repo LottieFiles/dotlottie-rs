@@ -11,7 +11,7 @@ pub enum PlaybackState {
     Stopped,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Mode {
     Forward,
     Reverse,
@@ -65,12 +65,6 @@ impl DotLottieRuntime {
             dotlottie_manager: DotLottieManager::new(None).unwrap(),
             direction,
         }
-    }
-
-    pub fn set_background_color(&mut self, hex_color: u32) -> bool {
-        self.config.background_color = hex_color;
-
-        self.renderer.set_background_color(hex_color).is_ok()
     }
 
     fn start_frame(&self) -> f32 {
@@ -379,7 +373,68 @@ impl DotLottieRuntime {
     }
 
     pub fn set_config(&mut self, config: Config) {
-        self.config = config;
+        // Update mode
+        if self.config.mode != config.mode {
+            match config.mode {
+                // if new Mode is Forward or Bounce
+                Mode::Forward | Mode::Bounce => {
+                    // and the current direction is reverse
+                    match self.direction {
+                        Direction::Reverse => {
+                            // flip the direction, cause Forward and Bounce shall start in forward
+                            self.direction = Direction::Forward;
+
+                            // update the start_time to account for the already elapsed time
+                            self.update_start_time_for_frame(self.current_frame());
+                        }
+                        _ => {}
+                    }
+                }
+                // if new Mode is Reverse or ReverseBounce
+                Mode::Reverse | Mode::ReverseBounce => {
+                    // and the current direction is forward
+                    match self.direction {
+                        Direction::Forward => {
+                            // flip the direction, cause Reverse and ReverseBounce shall start in reverse
+                            self.direction = Direction::Reverse;
+
+                            // update the start_time to account for the already elapsed time
+                            self.update_start_time_for_frame(self.current_frame());
+                        }
+                        _ => {}
+                    }
+                }
+            };
+        }
+
+        // Update background color
+        if self.config.background_color != config.background_color {
+            let is_ok = self
+                .renderer
+                .set_background_color(config.background_color)
+                .is_ok();
+
+            if is_ok {
+                self.config.background_color = config.background_color;
+            }
+        }
+
+        if self.config.speed != config.speed {
+            // avoid zero or negative speed
+            if config.speed > 0.0 {
+                self.config.speed = config.speed;
+            }
+        }
+
+        if self.config.loop_animation != config.loop_animation {
+            // reset loop count if loop_animation is changed
+            self.loop_count = 0;
+            self.config.loop_animation = config.loop_animation;
+        }
+
+        self.config.use_frame_interpolation = config.use_frame_interpolation;
+        self.config.segments = config.segments;
+        self.config.autoplay = config.autoplay;
     }
 
     fn load_animation_common<F>(&mut self, loader: F, width: u32, height: u32) -> bool
@@ -639,13 +694,6 @@ impl DotLottiePlayer {
 
     pub fn config(&self) -> Config {
         self.runtime.read().unwrap().config()
-    }
-
-    pub fn set_background_color(&self, hex_color: u32) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .set_background_color(hex_color)
     }
 
     pub fn manifest_string(&self) -> String {

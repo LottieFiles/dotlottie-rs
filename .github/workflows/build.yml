@@ -12,16 +12,19 @@ on:
           - "android"
           - "wasm"
           - "all"
+      commitSHA:
+        description: "Commit SHA (leave blank for default branch)"
+        required: false
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          access_token: ${{ github.token }}
-      - uses: actions/checkout@v4
+          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+
       - uses: Homebrew/actions/setup-homebrew@master
       - uses: maxim-lobanov/setup-xcode@v1
         with:

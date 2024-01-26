@@ -10,6 +10,7 @@
       <canvas style="width: 100%; border: 1px solid black"></canvas>
       <button id="play">play</button>
       <button id="pause">pause</button>
+      <button id="resize">resize</button>
       <input
         id="progress-bar"
         type="range"
@@ -34,6 +35,7 @@
 
       const playBtn = document.querySelector("#play");
       const pauseBtn = document.querySelector("#pause");
+      const resizeBtn = document.querySelector("#resize");
       const progressBar = document.querySelector("#progress-bar");
       const jumpBtn = document.querySelector("#jump");
       const modeSelect = document.querySelector("#mode");
@@ -82,17 +84,14 @@
 
       const canvas = document.querySelector("canvas");
 
-      const { width: clientWidth, height: clientHeight } =
-        canvas.getBoundingClientRect();
-
-      const width = clientWidth * (window.devicePixelRatio || 1);
-      const height = clientHeight * (window.devicePixelRatio || 1);
-
-      canvas.width = width;
-      canvas.height = height;
-
       // const loaded = dotLottiePlayer.loadAnimationData(data, width, height);
-      const loaded = dotLottiePlayer.loadDotLottieData(data, width, height);
+      const loaded = dotLottiePlayer.loadDotLottieData(
+        data,
+        canvas.width,
+        canvas.height
+      );
+
+      resize();
 
       dotLottiePlayer.setConfig({
         ...dotLottiePlayer.config(),
@@ -103,7 +102,6 @@
       console.log("Loaded: ", loaded);
 
       const ctx = canvas.getContext("2d");
-      const imageData = ctx.createImageData(width, height);
 
       let animationFrameId = null;
 
@@ -117,13 +115,7 @@
             (dotLottiePlayer.currentFrame() / dotLottiePlayer.totalFrames()) *
             100;
 
-          const rendered = dotLottiePlayer.render();
-
-          if (rendered) {
-            const frameBuffer = dotLottiePlayer.buffer();
-            imageData.data.set(frameBuffer);
-            ctx.putImageData(imageData, 0, 0);
-          }
+          render();
 
           if (dotLottiePlayer.isComplete()) {
             if (dotLottiePlayer.config().loopAnimation) {
@@ -151,6 +143,10 @@
         dotLottiePlayer.setFrame(44);
       });
 
+      resizeBtn.addEventListener("click", () => {
+        resize();
+      });
+
       progressBar.addEventListener("mousedown", () => {
         cancelAnimationFrame(animationFrameId);
       });
@@ -163,16 +159,33 @@
         const newFrame =
           (event.target.value / 100) * dotLottiePlayer.totalFrames();
 
-        const updated = dotLottiePlayer.setFrame(newFrame);
-        if (updated) {
-          const rendered = dotLottiePlayer.render();
-          if (rendered) {
-            const frameBuffer = dotLottiePlayer.buffer();
-            imageData.data.set(frameBuffer);
-            ctx.putImageData(imageData, 0, 0);
-          }
+        if (dotLottiePlayer.setFrame(newFrame)) {
+          render();
         }
       });
+
+      function resize() {
+        const { width: clientWidth, height: clientHeight } =
+          canvas.getBoundingClientRect();
+
+        const width = clientWidth * (window.devicePixelRatio || 1);
+        const height = clientHeight * (window.devicePixelRatio || 1);
+
+        canvas.width = width;
+        canvas.height = height;
+
+        dotLottiePlayer.resize(width, height);
+      }
+
+      function render() {
+        const rendered = dotLottiePlayer.render();
+        if (rendered) {
+          const frameBuffer = dotLottiePlayer.buffer();
+          const imageData = ctx.createImageData(canvas.width, canvas.height);
+          imageData.data.set(frameBuffer);
+          ctx.putImageData(imageData, 0, 0);
+        }
+      }
 
       modeSelect.addEventListener("change", (event) => {
         const mode = Module.Mode.values[event.target.value];
@@ -210,3 +223,11 @@
     </script>
   </body>
 </html>
+
+<!-- 
+ buffer_ptr: 0xa03f98
+ buffer_len: 2024064 
+
+ buffer_ptr: 0x11bc9a0
+ buffer_len: 1460864
+-->

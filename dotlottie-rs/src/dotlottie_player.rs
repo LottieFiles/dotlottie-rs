@@ -11,7 +11,7 @@ pub enum PlaybackState {
     Stopped,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Mode {
     Forward,
     Reverse,
@@ -19,9 +19,19 @@ pub enum Mode {
     ReverseBounce,
 }
 
+#[derive(Clone, Copy, PartialEq)]
 enum Direction {
     Forward,
     Reverse,
+}
+
+impl Direction {
+    fn flip(&self) -> Self {
+        match self {
+            Direction::Forward => Direction::Reverse,
+            Direction::Reverse => Direction::Forward,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -65,12 +75,6 @@ impl DotLottieRuntime {
             dotlottie_manager: DotLottieManager::new(None).unwrap(),
             direction,
         }
-    }
-
-    pub fn set_background_color(&mut self, hex_color: u32) -> bool {
-        self.config.background_color = hex_color;
-
-        self.renderer.set_background_color(hex_color).is_ok()
     }
 
     fn start_frame(&self) -> f32 {
@@ -378,8 +382,61 @@ impl DotLottieRuntime {
         self.renderer.clear()
     }
 
-    pub fn set_config(&mut self, config: Config) {
-        self.config = config;
+    pub fn set_config(&mut self, new_config: Config) {
+        self.update_mode(&new_config);
+        self.update_background_color(&new_config);
+        self.update_speed(&new_config);
+        self.update_loop_animation(&new_config);
+
+        // directly updating fields that don't require special handling
+        self.config.use_frame_interpolation = new_config.use_frame_interpolation;
+        self.config.segments = new_config.segments;
+        self.config.autoplay = new_config.autoplay;
+    }
+
+    fn update_mode(&mut self, new_config: &Config) {
+        if self.config.mode != new_config.mode {
+            self.flip_direction_if_needed(new_config.mode);
+            self.config.mode = new_config.mode;
+        }
+    }
+
+    fn flip_direction_if_needed(&mut self, new_mode: Mode) {
+        let should_flip = match (new_mode, self.direction) {
+            (Mode::Forward | Mode::Bounce, Direction::Reverse)
+            | (Mode::Reverse | Mode::ReverseBounce, Direction::Forward) => true,
+            _ => false,
+        };
+
+        if should_flip {
+            self.direction = self.direction.flip();
+            self.update_start_time_for_frame(self.current_frame());
+        }
+    }
+
+    fn update_background_color(&mut self, new_config: &Config) {
+        if self.config.background_color != new_config.background_color {
+            if self
+                .renderer
+                .set_background_color(new_config.background_color)
+                .is_ok()
+            {
+                self.config.background_color = new_config.background_color;
+            }
+        }
+    }
+
+    fn update_speed(&mut self, new_config: &Config) {
+        if self.config.speed != new_config.speed && new_config.speed > 0.0 {
+            self.config.speed = new_config.speed;
+        }
+    }
+
+    fn update_loop_animation(&mut self, new_config: &Config) {
+        if self.config.loop_animation != new_config.loop_animation {
+            self.loop_count = 0;
+            self.config.loop_animation = new_config.loop_animation;
+        }
     }
 
     fn load_animation_common<F>(&mut self, loader: F, width: u32, height: u32) -> bool
@@ -504,6 +561,13 @@ impl DotLottieRuntime {
 
     pub fn config(&self) -> Config {
         self.config.clone()
+    }
+
+    pub fn is_complete(&self) -> bool {
+        match self.config.mode {
+            Mode::Forward | Mode::ReverseBounce => self.current_frame() >= self.end_frame(),
+            Mode::Reverse | Mode::Bounce => self.current_frame() <= self.start_frame(),
+        }
     }
 }
 
@@ -634,18 +698,15 @@ impl DotLottiePlayer {
         self.runtime.read().unwrap().config()
     }
 
-    pub fn set_background_color(&self, hex_color: u32) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .set_background_color(hex_color)
-    }
-
     pub fn manifest_string(&self) -> String {
         match self.manifest() {
             Some(manifest) => manifest.to_string(),
             None => "{}".to_string(),
         }
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.runtime.read().unwrap().is_complete()
     }
 }
 

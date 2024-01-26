@@ -82,4 +82,5 @@ interface DotLottiePlayer {
     boolean render();
     boolean resize(u32 width, u32 height);
     void clear();
+    boolean is_complete();
 };

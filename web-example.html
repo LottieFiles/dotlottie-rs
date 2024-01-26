@@ -19,8 +19,17 @@
         defaultValue="0"
         step="0.01"
       />
+      <select id="mode">
+        <option value="1">Forward</option>
+        <option value="2">Reverse</option>
+        <option value="3">Bounce</option>
+        <option value="4">ReverseBounce</option>
+      </select>
     </div>
     <button id="jump">Jump</button>
+    <button id="speed-up">speed +</button>
+    <button id="speed-down">speed -</button>
+    <button id="loop">loopToggle</button>
     <script type="module">
       import createDotLottiePlayerModule from "./release/wasm/DotLottiePlayer.mjs";
 
@@ -29,6 +38,10 @@
       const resizeBtn = document.querySelector("#resize");
       const progressBar = document.querySelector("#progress-bar");
       const jumpBtn = document.querySelector("#jump");
+      const modeSelect = document.querySelector("#mode");
+      const speedUpBtn = document.querySelector("#speed-up");
+      const speedDownBtn = document.querySelector("#speed-down");
+      const loopToggle = document.querySelector("#loop");
 
       const Module = await createDotLottiePlayerModule({
         locateFile: (path, prefix) => {
@@ -82,7 +95,7 @@
 
       dotLottiePlayer.setConfig({
         ...dotLottiePlayer.config(),
-        mode: Module.Mode.values[3],
+        mode: Module.Mode.values[1],
         segments: createSegments(),
       });
 
@@ -94,6 +107,7 @@
 
       function animationLoop() {
         const nextFrameNumber = dotLottiePlayer.requestFrame();
+
         const updated = dotLottiePlayer.setFrame(nextFrameNumber);
 
         if (updated) {
@@ -102,6 +116,14 @@
             100;
 
           render();
+
+          if (dotLottiePlayer.isComplete()) {
+            if (dotLottiePlayer.config().loopAnimation) {
+              console.log("Loop Completed", dotLottiePlayer.loopCount());
+            } else {
+              console.log("Completed");
+            }
+          }
         }
 
         animationFrameId = requestAnimationFrame(animationLoop);
@@ -164,6 +186,40 @@
           ctx.putImageData(imageData, 0, 0);
         }
       }
+
+      modeSelect.addEventListener("change", (event) => {
+        const mode = Module.Mode.values[event.target.value];
+        dotLottiePlayer.setConfig({
+          ...dotLottiePlayer.config(),
+          mode,
+        });
+      });
+
+      speedUpBtn.addEventListener("click", () => {
+        const speed = dotLottiePlayer.config().speed + 0.1;
+        dotLottiePlayer.setConfig({
+          ...dotLottiePlayer.config(),
+          speed,
+        });
+      });
+
+      speedDownBtn.addEventListener("click", () => {
+        const speed = dotLottiePlayer.config().speed - 0.1;
+
+        dotLottiePlayer.setConfig({
+          ...dotLottiePlayer.config(),
+          speed: speed <= 0 ? 0.001 : speed,
+        });
+      });
+
+      loopToggle.addEventListener("click", () => {
+        const loopAnimation = !dotLottiePlayer.config().loopAnimation;
+
+        dotLottiePlayer.setConfig({
+          ...dotLottiePlayer.config(),
+          loopAnimation,
+        });
+      });
     </script>
   </body>
 </html>

@@ -19,9 +19,19 @@ pub enum Mode {
     ReverseBounce,
 }
 
+#[derive(Clone, Copy, PartialEq)]
 enum Direction {
     Forward,
     Reverse,
+}
+
+impl Direction {
+    fn flip(&self) -> Self {
+        match self {
+            Direction::Forward => Direction::Reverse,
+            Direction::Reverse => Direction::Forward,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -372,69 +382,61 @@ impl DotLottieRuntime {
         self.renderer.clear()
     }
 
-    pub fn set_config(&mut self, config: Config) {
-        // Update mode
-        if self.config.mode != config.mode {
-            match config.mode {
-                // if new Mode is Forward or Bounce
-                Mode::Forward | Mode::Bounce => {
-                    // and the current direction is reverse
-                    match self.direction {
-                        Direction::Reverse => {
-                            // flip the direction, cause Forward and Bounce shall start in forward
-                            self.direction = Direction::Forward;
+    pub fn set_config(&mut self, new_config: Config) {
+        self.update_mode(&new_config);
+        self.update_background_color(&new_config);
+        self.update_speed(&new_config);
+        self.update_loop_animation(&new_config);
 
-                            // update the start_time to account for the already elapsed time
-                            self.update_start_time_for_frame(self.current_frame());
-                        }
-                        _ => {}
-                    }
-                }
-                // if new Mode is Reverse or ReverseBounce
-                Mode::Reverse | Mode::ReverseBounce => {
-                    // and the current direction is forward
-                    match self.direction {
-                        Direction::Forward => {
-                            // flip the direction, cause Reverse and ReverseBounce shall start in reverse
-                            self.direction = Direction::Reverse;
+        // directly updating fields that don't require special handling
+        self.config.use_frame_interpolation = new_config.use_frame_interpolation;
+        self.config.segments = new_config.segments;
+        self.config.autoplay = new_config.autoplay;
+    }
 
-                            // update the start_time to account for the already elapsed time
-                            self.update_start_time_for_frame(self.current_frame());
-                        }
-                        _ => {}
-                    }
-                }
-            };
+    fn update_mode(&mut self, new_config: &Config) {
+        if self.config.mode != new_config.mode {
+            self.flip_direction_if_needed(new_config.mode);
+            self.config.mode = new_config.mode;
         }
+    }
 
-        // Update background color
-        if self.config.background_color != config.background_color {
-            let is_ok = self
+    fn flip_direction_if_needed(&mut self, new_mode: Mode) {
+        let should_flip = match (new_mode, self.direction) {
+            (Mode::Forward | Mode::Bounce, Direction::Reverse)
+            | (Mode::Reverse | Mode::ReverseBounce, Direction::Forward) => true,
+            _ => false,
+        };
+
+        if should_flip {
+            self.direction = self.direction.flip();
+            self.update_start_time_for_frame(self.current_frame());
+        }
+    }
+
+    fn update_background_color(&mut self, new_config: &Config) {
+        if self.config.background_color != new_config.background_color {
+            if self
                 .renderer
-                .set_background_color(config.background_color)
-                .is_ok();
-
-            if is_ok {
-                self.config.background_color = config.background_color;
+                .set_background_color(new_config.background_color)
+                .is_ok()
+            {
+                self.config.background_color = new_config.background_color;
             }
         }
+    }
 
-        if self.config.speed != config.speed {
-            // avoid zero or negative speed
-            if config.speed > 0.0 {
-                self.config.speed = config.speed;
-            }
+    fn update_speed(&mut self, new_config: &Config) {
+        if self.config.speed != new_config.speed && new_config.speed > 0.0 {
+            self.config.speed = new_config.speed;
         }
+    }
 
-        if self.config.loop_animation != config.loop_animation {
-            // reset loop count if loop_animation is changed
+    fn update_loop_animation(&mut self, new_config: &Config) {
+        if self.config.loop_animation != new_config.loop_animation {
             self.loop_count = 0;
-            self.config.loop_animation = config.loop_animation;
+            self.config.loop_animation = new_config.loop_animation;
         }
-
-        self.config.use_frame_interpolation = config.use_frame_interpolation;
-        self.config.segments = config.segments;
-        self.config.autoplay = config.autoplay;
     }
 
     fn load_animation_common<F>(&mut self, loader: F, width: u32, height: u32) -> bool

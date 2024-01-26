@@ -62,7 +62,7 @@ impl Observer for DummyObserver {
 
 fn main() {
     let mut window = Window::new(
-        "Thorvg inside Rust - ESC to exit",
+        "dotLottie rust demo - ESC to exit",
         WIDTH,
         HEIGHT,
         WindowOptions::default(),

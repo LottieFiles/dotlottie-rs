@@ -10,7 +10,9 @@
 
 <h1 align="center">dotLottie Rust</h1>
 
-This is the Rust implementation of the dotLottie player and its related tools. It utilizes uniffi-rs to generate FFI bindings for Kotlin, Swift, and WebAssembly (WASM). Checkout the releases page for the latest binaries.
+This is the Rust implementation of the dotLottie player and its related tools. It utilizes uniffi-rs to generate FFI bindings for Kotlin, Swift, and WebAssembly (WASM). these bindings are then used in the native dotLottie players for [Android](https://github.com/LottieFiles/dotlottie-android), [iOS](https://github.com/LottieFiles/dotlottie-ios), and [Web](https://github.com/LottieFiles/dotlottie-web) bringing consistency of playback and dotLottie features across all platforms.
+
+![Alt text](assets/design.png)
 
 ## What is dotLottie?
 
@@ -40,7 +42,7 @@ installed, at a bare minimum. To ensure that your local machine has all the othe
 tools installed to build the project, run the following from the root of the repo:
 
 ```bash
-$ make mac-setup
+make mac-setup
 ```
 
 ### Performing builds
@@ -56,13 +58,13 @@ for `WASM`, only a single target will be built. These names refer to Makefile ta
 used to build them. For example, to build all `android` targets, execute the following:
 
 ```bash
-$ make android
+make android
 ```
 
 To build all targets, execute the following:
 
 ```bash
-$ make all
+make all
 ```
 
 ### Other useful targets
@@ -74,7 +76,7 @@ $ make all
 More information can be found by using the `help` target:
 
 ```bash
-$ make help
+make help
 ```
 
 ### Release Process

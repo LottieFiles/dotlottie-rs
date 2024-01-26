@@ -1,8 +1,9 @@
 use std::fs::{self, File};
 use std::io::Read;
+use std::sync::Arc;
 use std::{env, path, time::Instant};
 
-use dotlottie_player_core::{Config, DotLottiePlayer, Mode};
+use dotlottie_player_core::{Config, DotLottiePlayer, Mode, Observer};
 use minifb::{Key, Window, WindowOptions};
 
 pub const WIDTH: usize = 500;
@@ -27,6 +28,35 @@ impl Timer {
         animation.render();
 
         self.last_update = Instant::now(); // Reset the timer
+    }
+}
+
+struct DummyObserver;
+
+impl Observer for DummyObserver {
+    fn on_play(&self) {
+        println!("on_play");
+    }
+    fn on_pause(&self) {
+        println!("on_pause");
+    }
+    fn on_stop(&self) {
+        println!("on_stop");
+    }
+    fn on_frame(&self, frame_no: f32) {
+        println!("on_frame: {}", frame_no);
+    }
+    fn on_render(&self, frame_no: f32) {
+        println!("on_render: {}", frame_no);
+    }
+    fn on_load(&self) {
+        println!("on_load");
+    }
+    fn on_loop(&self, loop_count: u32) {
+        println!("on_loop: {}", loop_count);
+    }
+    fn on_complete(&self) {
+        println!("on_complete");
     }
 }
 
@@ -69,6 +99,8 @@ fn main() {
 
     // lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
     // lottie_player.load_animation("confused", WIDTH as u32, HEIGHT as u32);
+
+    lottie_player.subscribe(Arc::new(DummyObserver));
 
     let mut timer = Timer::new();
 

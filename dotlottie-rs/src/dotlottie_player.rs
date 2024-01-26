@@ -1,9 +1,20 @@
 use instant::{Duration, Instant};
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 
 use crate::lottie_renderer::{LottieRenderer, LottieRendererError};
+
+pub trait Observer: Send + Sync {
+    fn on_load(&self);
+    fn on_play(&self);
+    fn on_pause(&self);
+    fn on_stop(&self);
+    fn on_frame(&self, frame_no: f32);
+    fn on_render(&self, frame_no: f32);
+    fn on_loop(&self, loop_count: u32);
+    fn on_complete(&self);
+}
 
 pub enum PlaybackState {
     Playing,
@@ -52,6 +63,7 @@ struct DotLottieRuntime {
     start_time: Instant,
     loop_count: u32,
     config: Config,
+    observers: Vec<Arc<dyn Observer>>,
     dotlottie_manager: DotLottieManager,
     direction: Direction,
 }
@@ -72,6 +84,7 @@ impl DotLottieRuntime {
             start_time: Instant::now(),
             loop_count: 0,
             config,
+            observers: Vec::new(),
             dotlottie_manager: DotLottieManager::new(None).unwrap(),
             direction,
         }
@@ -127,6 +140,11 @@ impl DotLottieRuntime {
             }
 
             self.playback_state = PlaybackState::Playing;
+
+            self.observers.iter().for_each(|observer| {
+                observer.on_play();
+            });
+
             true
         } else {
             false
@@ -136,6 +154,10 @@ impl DotLottieRuntime {
     pub fn pause(&mut self) -> bool {
         if self.is_loaded {
             self.playback_state = PlaybackState::Paused;
+
+            self.observers.iter().for_each(|observer| {
+                observer.on_pause();
+            });
             true
         } else {
             false
@@ -157,6 +179,10 @@ impl DotLottieRuntime {
                     self.set_frame(end_frame);
                 }
             }
+
+            self.observers.iter().for_each(|observer| {
+                observer.on_stop();
+            });
 
             true
         } else {
@@ -340,11 +366,43 @@ impl DotLottieRuntime {
             self.update_start_time_for_frame(no);
         }
 
+        if is_ok {
+            self.observers.iter().for_each(|observer| {
+                observer.on_frame(no);
+            });
+        }
+
         is_ok
     }
 
     pub fn render(&mut self) -> bool {
-        self.renderer.render().is_ok()
+        let is_ok = self.renderer.render().is_ok();
+
+        if is_ok {
+            let frame_no = self.current_frame();
+
+            self.observers.iter().for_each(|observer| {
+                observer.on_render(frame_no);
+            });
+
+            // check if the animation is complete
+            if self.is_complete() {
+                // if the loop is enabled
+                if self.config.loop_animation {
+                    // notify the observers with the loop count
+                    self.observers.iter().for_each(|observer| {
+                        observer.on_loop(self.loop_count);
+                    });
+                } else {
+                    // notify the observers that the animation is complete
+                    self.observers.iter().for_each(|observer| {
+                        observer.on_complete();
+                    });
+                }
+            }
+        }
+
+        is_ok
     }
 
     pub fn total_frames(&self) -> f32 {
@@ -465,6 +523,10 @@ impl DotLottieRuntime {
             }
         }
 
+        self.observers.iter().for_each(|observer| {
+            observer.on_load();
+        });
+
         if self.config.autoplay && loaded {
             self.play();
         }
@@ -561,6 +623,10 @@ impl DotLottieRuntime {
 
     pub fn config(&self) -> Config {
         self.config.clone()
+    }
+
+    pub fn subscribe(&mut self, observer: Arc<dyn Observer>) {
+        self.observers.push(observer);
     }
 
     pub fn is_complete(&self) -> bool {
@@ -696,6 +762,10 @@ impl DotLottiePlayer {
 
     pub fn config(&self) -> Config {
         self.runtime.read().unwrap().config()
+    }
+
+    pub fn subscribe(&self, observer: Arc<dyn Observer>) {
+        self.runtime.write().unwrap().subscribe(observer);
     }
 
     pub fn manifest_string(&self) -> String {

@@ -23,6 +23,9 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 
     // Register std::vector<float> as VectorFloat for the Config::segments field
     register_vector<float>("VectorFloat");
+    register_vector<std::string>("VectorString");
+    register_vector<ManifestTheme>("VectorManifestTheme");
+    register_vector<ManifestAnimation>("VectorManifestAnimation");
 
     enum_<Mode>("Mode")
         .value("Forward", Mode::FORWARD)
@@ -39,37 +42,45 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("segments", &Config::segments)
         .field("backgroundColor", &Config::background_color);
 
-    // value_object<ManifestTheme>("ManifestTheme")
-    //     .field("id", &ManifestTheme::id)
-    //     .field("values", &ManifestTheme::values);
+    value_object<ManifestTheme>("ManifestTheme")
+        .field("id", &ManifestTheme::id)
+        .field("animations", &ManifestTheme::animations);
 
-    // value_object<ManifestThemes>("ManifestThemes")
-    //     .field("value", &ManifestThemes::value);
+    value_object<ManifestAnimation>("ManifestAnimation")
+        .field("autoplay", &ManifestAnimation::autoplay)
+        .field("defaultTheme", &ManifestAnimation::default_theme)
+        .field("direction", &ManifestAnimation::direction)
+        .field("hover", &ManifestAnimation::hover)
+        .field("id", &ManifestAnimation::id)
+        .field("intermission", &ManifestAnimation::intermission)
+        .field("loop", &ManifestAnimation::loop)
+        .field("loop_count", &ManifestAnimation::loop_count)
+        .field("playMode", &ManifestAnimation::play_mode)
+        .field("speed", &ManifestAnimation::speed)
+        .field("themeColor", &ManifestAnimation::theme_color);
 
-    // value_object<ManifestAnimation>("ManifestAnimation")
-    //     .field("autoplay", &ManifestAnimation::autoplay)
-    //     .field("defaultTheme", &ManifestAnimation::default_theme)
-    //     .field("direction", &ManifestAnimation::direction)
-    //     .field("hover", &ManifestAnimation::hover)
-    //     .field("id", &ManifestAnimation::id)
-    //     .field("intermission", &ManifestAnimation::intermission)
-    //     .field("loop", &ManifestAnimation::loop)
-    //     .field("loop_count", &ManifestAnimation::loop_count)
-    //     .field("playMode", &ManifestAnimation::play_mode)
-    //     .field("speed", &ManifestAnimation::speed)
-    //     .field("themeColor", &ManifestAnimation::theme_color);
+    value_object<Manifest>("Manifest")
+        .field("active_animation_id", &Manifest::active_animation_id)
+        .field("animations", &Manifest::animations)
+        .field("author", &Manifest::author)
+        .field("description", &Manifest::description)
+        .field("generator", &Manifest::generator)
+        .field("keywords", &Manifest::keywords)
+        .field("revision", &Manifest::revision)
+        .field("themes", &Manifest::themes)
+        .field("states", &Manifest::states)
+        .field("version", &Manifest::version);
 
-    // value_object<Manifest>("Manifest")
-    //     .field("active_animation_id", &Manifest::active_animation_id)
-    //     .field("animations", &Manifest::animations)
-    //     .field("author", &Manifest::author)
-    //     .field("description", &Manifest::description)
-    //     .field("generator", &Manifest::generator)
-    //     .field("keywords", &Manifest::keywords)
-    //     .field("revision", &Manifest::revision)
-    //     .field("themes", &Manifest::themes)
-    //     .field("states", &Manifest::states)
-    //     .field("version", &Manifest::version);
+    class_<Observer>("Observer")
+        .smart_ptr<std::shared_ptr<Observer>>("Observer")
+        .function("onFrame", &Observer::on_frame)
+        .function("onLoad", &Observer::on_load)
+        .function("onLoop", &Observer::on_loop)
+        .function("onPause", &Observer::on_pause)
+        .function("onPlay", &Observer::on_play)
+        .function("onRender", &Observer::on_render)
+        .function("onComplete", &Observer::on_complete)
+        .function("onStop", &Observer::on_stop);
 
     class_<DotLottiePlayer>("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init, allow_raw_pointers())
@@ -86,7 +97,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("loadAnimationPath", &DotLottiePlayer::load_animation_path, allow_raw_pointers())
         .function("loadDotLottieData", &load_dotlottie_data, allow_raw_pointers())
         .function("loadAnimation", &DotLottiePlayer::load_animation, allow_raw_pointers())
-        // FIXME: .function("manifest", &DotLottiePlayer::manifest)
+        .function("manifest", &DotLottiePlayer::manifest)
         .function("manifestString", &DotLottiePlayer::manifest_string)
         .function("loopCount", &DotLottiePlayer::loop_count)
         .function("pause", &DotLottiePlayer::pause)
@@ -98,5 +109,6 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("setFrame", &DotLottiePlayer::set_frame)
         .function("stop", &DotLottiePlayer::stop)
         .function("totalFrames", &DotLottiePlayer::total_frames)
-        .function("isComplete", &DotLottiePlayer::is_complete);
+        .function("isComplete", &DotLottiePlayer::is_complete)
+        .function("subscribe", &DotLottiePlayer::subscribe);
 }

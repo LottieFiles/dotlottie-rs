@@ -32,11 +32,7 @@ dictionary Config {
 
 dictionary ManifestTheme {
     string id;
-    sequence<string> values;
-};
-
-dictionary ManifestThemes {
-    sequence<ManifestTheme>? value;
+    sequence<string> animations;
 };
 
 dictionary ManifestAnimation {
@@ -61,7 +57,7 @@ dictionary Manifest {
     string? generator;
     string? keywords;
     u32? revision;
-    ManifestThemes? themes;
+    sequence<ManifestTheme>? themes;
     sequence<string>? states;
     string? version;
 };

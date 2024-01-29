@@ -366,7 +366,7 @@ define UNIFFI_BINDINGS_CPP_BUILD
 	$(UNIFFI_BINDGEN_CPP) \
 		--config $(RUNTIME_FFI)/uniffi.toml \
 		--out-dir $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS) \
-		$(RUNTIME_FFI)/src/dotlottie_player.udl
+		$(RUNTIME_FFI)/src/dotlottie_player_cpp.udl
 	sed -i .bak 's/uint8_t/char/g' $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/*
 	cp $(RUNTIME_FFI)/emscripten_bindings.cpp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/.
 endef

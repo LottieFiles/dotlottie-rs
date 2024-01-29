@@ -9,6 +9,66 @@ use minifb::{Key, Window, WindowOptions};
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
+struct DummyObserver2;
+
+impl Observer for DummyObserver2 {
+    fn on_play(&self) {
+        println!("on_play2");
+    }
+    fn on_pause(&self) {
+        println!("on_pause2");
+    }
+    fn on_stop(&self) {
+        println!("on_stop2");
+    }
+    fn on_frame(&self, frame_no: f32) {
+        println!("on_frame2: {}", frame_no);
+    }
+    fn on_render(&self, frame_no: f32) {
+        println!("on_render2: {}", frame_no);
+    }
+    fn on_load(&self) {
+        println!("on_load2");
+    }
+    fn on_loop(&self, loop_count: u32) {
+        println!("on_loop2: {}", loop_count);
+    }
+    fn on_complete(&self) {
+        println!("on_complete2");
+    }
+}
+
+struct DummyObserver {
+    id: u32,
+}
+
+impl Observer for DummyObserver {
+    fn on_play(&self) {
+        println!("on_play {} ", self.id);
+    }
+    fn on_pause(&self) {
+        println!("on_pause {} ", self.id);
+    }
+    fn on_stop(&self) {
+        println!("on_stop {} ", self.id);
+    }
+    fn on_frame(&self, frame_no: f32) {
+        println!("on_frame {}: {}", self.id, frame_no);
+    }
+    fn on_render(&self, frame_no: f32) {
+        println!("on_render {}: {}", self.id, frame_no);
+    }
+    fn on_load(&self) {
+        println!("on_load {} ", self.id);
+    }
+    fn on_loop(&self, loop_count: u32) {
+        println!("on_loop {}: {}", self.id, loop_count);
+    }
+    fn on_complete(&self) {
+        println!("on_complete {} ", self.id);
+    }
+}
+
 struct Timer {
     last_update: Instant,
 }
@@ -28,35 +88,6 @@ impl Timer {
         animation.render();
 
         self.last_update = Instant::now(); // Reset the timer
-    }
-}
-
-struct DummyObserver;
-
-impl Observer for DummyObserver {
-    fn on_play(&self) {
-        println!("on_play");
-    }
-    fn on_pause(&self) {
-        println!("on_pause");
-    }
-    fn on_stop(&self) {
-        println!("on_stop");
-    }
-    fn on_frame(&self, frame_no: f32) {
-        println!("on_frame: {}", frame_no);
-    }
-    fn on_render(&self, frame_no: f32) {
-        println!("on_render: {}", frame_no);
-    }
-    fn on_load(&self) {
-        println!("on_load");
-    }
-    fn on_loop(&self, loop_count: u32) {
-        println!("on_loop: {}", loop_count);
-    }
-    fn on_complete(&self) {
-        println!("on_complete");
     }
 }
 
@@ -100,7 +131,11 @@ fn main() {
     // lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
     // lottie_player.load_animation("confused", WIDTH as u32, HEIGHT as u32);
 
-    lottie_player.subscribe(Arc::new(DummyObserver));
+    let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
+    let observer2: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 2 });
+
+    lottie_player.subscribe(observer1.clone());
+    lottie_player.subscribe(observer2.clone());
 
     let mut timer = Timer::new();
 
@@ -110,6 +145,14 @@ fn main() {
         // if window.is_key_down(Key::Space) {
         //     lottie_player.next_animation(WIDTH as u32, HEIGHT as u32);
         // }
+
+        if window.is_key_down(Key::Up) {
+            lottie_player.unsubscribe(&observer1);
+        }
+
+        if window.is_key_down(Key::Down) {
+            lottie_player.unsubscribe(&observer2);
+        }
 
         let (buffer_ptr, buffer_len) = (lottie_player.buffer_ptr(), lottie_player.buffer_len());
 

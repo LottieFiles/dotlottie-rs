@@ -37,7 +37,11 @@ fn apply_build_settings(build_settings: &BuildSettings) {
 }
 
 fn main() {
-    uniffi::generate_scaffolding("src/dotlottie_player.udl").unwrap();
+    if is_wasm_build() {
+        uniffi::generate_scaffolding("src/dotlottie_player_cpp.udl").unwrap();
+    } else {
+        uniffi::generate_scaffolding("src/dotlottie_player.udl").unwrap();
+    }
 
     // Apply build settings
     apply_build_settings(&TARGET_BUILD_SETTINGS);

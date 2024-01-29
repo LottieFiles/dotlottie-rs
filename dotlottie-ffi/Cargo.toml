@@ -17,6 +17,7 @@ uniffi = { version = "0.26.0", features = ["cli"] }
 # Core runtime
 dotlottie_player = { path = "../dotlottie-rs" }
 dotlottie_fms = { path = "../dotlottie-fms" }
+cfg-if = "1.0"
 
 [build-dependencies]
 uniffi = { version = "0.26.0", features = ["build"] }

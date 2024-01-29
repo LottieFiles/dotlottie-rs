@@ -1,7 +1,7 @@
 namespace dotlottie_player {
 };
 
-[Trait]
+[Trait, WithForeign]
 interface Observer {
     void on_load();
     void on_play();
@@ -10,6 +10,7 @@ interface Observer {
     void on_frame(f32 frame_no);
     void on_render(f32 frame_no);
     void on_loop(u32 loop_count);
+    void on_complete();
 };
 
 enum Mode {

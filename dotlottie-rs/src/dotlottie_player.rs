@@ -394,6 +394,8 @@ impl DotLottieRuntime {
                         observer.on_loop(self.loop_count);
                     });
                 } else {
+                    self.playback_state = PlaybackState::Stopped;
+
                     // notify the observers that the animation is complete
                     self.observers.iter().for_each(|observer| {
                         observer.on_complete();
@@ -629,6 +631,10 @@ impl DotLottieRuntime {
         self.observers.push(observer);
     }
 
+    pub fn unsubscribe(&mut self, observer: &Arc<dyn Observer>) {
+        self.observers.retain(|x| !Arc::ptr_eq(x, observer));
+    }
+
     pub fn is_complete(&self) -> bool {
         match self.config.mode {
             Mode::Forward | Mode::ReverseBounce => self.current_frame() >= self.end_frame(),
@@ -777,6 +783,10 @@ impl DotLottiePlayer {
 
     pub fn is_complete(&self) -> bool {
         self.runtime.read().unwrap().is_complete()
+    }
+
+    pub fn unsubscribe(&self, observer: &Arc<dyn Observer>) {
+        self.runtime.write().unwrap().unsubscribe(&observer);
     }
 }
 

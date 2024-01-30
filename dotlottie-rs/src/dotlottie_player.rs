@@ -146,7 +146,7 @@ impl DotLottieRuntime {
     }
 
     pub fn pause(&mut self) -> bool {
-        if self.is_loaded {
+        if self.is_loaded && self.is_playing() {
             self.playback_state = PlaybackState::Paused;
 
             true

@@ -84,8 +84,11 @@ impl Timer {
         let next_frame = animation.request_frame();
 
         // println!("next_frame: {}", next_frame);
-        animation.set_frame(next_frame);
-        animation.render();
+        let updated = animation.set_frame(next_frame);
+
+        if updated {
+            animation.render();
+        }
 
         self.last_update = Instant::now(); // Reset the timer
     }
@@ -142,9 +145,19 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         timer.tick(&mut lottie_player);
 
-        // if window.is_key_down(Key::Space) {
-        //     lottie_player.next_animation(WIDTH as u32, HEIGHT as u32);
-        // }
+        if window.is_key_down(Key::S) {
+            lottie_player.stop();
+        }
+        if window.is_key_down(Key::P) {
+            lottie_player.play();
+        }
+
+        if window.is_key_down(Key::Left) {
+            let mut config = lottie_player.config();
+
+            config.mode = Mode::Bounce;
+            lottie_player.set_config(config)
+        }
 
         if window.is_key_down(Key::Up) {
             lottie_player.unsubscribe(&observer1);

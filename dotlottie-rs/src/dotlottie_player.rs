@@ -353,7 +353,7 @@ impl DotLottieRuntime {
 
         let is_ok = self.renderer.set_frame(no).is_ok();
 
-        if self.is_playing() {
+        if self.is_playing() && is_ok {
             self.update_start_time_for_frame(no);
         }
 

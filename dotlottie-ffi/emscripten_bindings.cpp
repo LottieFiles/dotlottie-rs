@@ -23,9 +23,9 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 
     // Register std::vector<float> as VectorFloat for the Config::segments field
     register_vector<float>("VectorFloat");
-    register_vector<std::string>("VectorString");
-    register_vector<ManifestTheme>("VectorManifestTheme");
-    register_vector<ManifestAnimation>("VectorManifestAnimation");
+    // register_vector<std::string>("VectorString");
+    // register_vector<ManifestTheme>("VectorManifestTheme");
+    // register_vector<ManifestAnimation>("VectorManifestAnimation");
 
     enum_<Mode>("Mode")
         .value("Forward", Mode::FORWARD)
@@ -42,34 +42,34 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("segments", &Config::segments)
         .field("backgroundColor", &Config::background_color);
 
-    value_object<ManifestTheme>("ManifestTheme")
-        .field("id", &ManifestTheme::id)
-        .field("animations", &ManifestTheme::animations);
+    // value_object<ManifestTheme>("ManifestTheme")
+    //     .field("id", &ManifestTheme::id)
+    //     .field("animations", &ManifestTheme::animations);
 
-    value_object<ManifestAnimation>("ManifestAnimation")
-        .field("autoplay", &ManifestAnimation::autoplay)
-        .field("defaultTheme", &ManifestAnimation::default_theme)
-        .field("direction", &ManifestAnimation::direction)
-        .field("hover", &ManifestAnimation::hover)
-        .field("id", &ManifestAnimation::id)
-        .field("intermission", &ManifestAnimation::intermission)
-        .field("loop", &ManifestAnimation::loop)
-        .field("loop_count", &ManifestAnimation::loop_count)
-        .field("playMode", &ManifestAnimation::play_mode)
-        .field("speed", &ManifestAnimation::speed)
-        .field("themeColor", &ManifestAnimation::theme_color);
+    // value_object<ManifestAnimation>("ManifestAnimation")
+    //     .field("autoplay", &ManifestAnimation::autoplay)
+    //     .field("defaultTheme", &ManifestAnimation::default_theme)
+    //     .field("direction", &ManifestAnimation::direction)
+    //     .field("hover", &ManifestAnimation::hover)
+    //     .field("id", &ManifestAnimation::id)
+    //     .field("intermission", &ManifestAnimation::intermission)
+    //     .field("loop", &ManifestAnimation::loop)
+    //     .field("loop_count", &ManifestAnimation::loop_count)
+    //     .field("playMode", &ManifestAnimation::play_mode)
+    //     .field("speed", &ManifestAnimation::speed)
+    //     .field("themeColor", &ManifestAnimation::theme_color);
 
-    value_object<Manifest>("Manifest")
-        .field("active_animation_id", &Manifest::active_animation_id)
-        .field("animations", &Manifest::animations)
-        .field("author", &Manifest::author)
-        .field("description", &Manifest::description)
-        .field("generator", &Manifest::generator)
-        .field("keywords", &Manifest::keywords)
-        .field("revision", &Manifest::revision)
-        .field("themes", &Manifest::themes)
-        .field("states", &Manifest::states)
-        .field("version", &Manifest::version);
+    // value_object<Manifest>("Manifest")
+    //     .field("active_animation_id", &Manifest::active_animation_id)
+    //     .field("animations", &Manifest::animations)
+    //     .field("author", &Manifest::author)
+    //     .field("description", &Manifest::description)
+    //     .field("generator", &Manifest::generator)
+    //     .field("keywords", &Manifest::keywords)
+    //     .field("revision", &Manifest::revision)
+    //     .field("themes", &Manifest::themes)
+    //     .field("states", &Manifest::states)
+    //     .field("version", &Manifest::version);
 
     // class_<Observer>("Observer")
     //     .smart_ptr<std::shared_ptr<Observer>>("Observer")

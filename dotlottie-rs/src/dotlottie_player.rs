@@ -522,7 +522,9 @@ impl DotLottieRuntime {
 
         match first_animation {
             Ok(animation_data) => {
-                self.load_playback_settings();
+                // For the moment we're ignoring manifest values
+
+                // self.load_playback_settings();
                 return self.load_animation_data(&animation_data, width, height);
             }
             Err(_error) => false,
@@ -540,6 +542,7 @@ impl DotLottieRuntime {
         }
     }
 
+    #[allow(dead_code)]
     fn load_playback_settings(&mut self) -> bool {
         let playback_settings_result: Result<ManifestAnimation, DotLottieError> =
             self.dotlottie_manager.active_animation_playback_settings();

@@ -63,7 +63,6 @@ struct DotLottieRuntime {
     start_time: Instant,
     loop_count: u32,
     config: Config,
-    observers: Vec<Arc<dyn Observer>>,
     dotlottie_manager: DotLottieManager,
     direction: Direction,
 }
@@ -84,7 +83,6 @@ impl DotLottieRuntime {
             start_time: Instant::now(),
             loop_count: 0,
             config,
-            observers: Vec::new(),
             dotlottie_manager: DotLottieManager::new(None).unwrap(),
             direction,
         }
@@ -141,10 +139,6 @@ impl DotLottieRuntime {
 
             self.playback_state = PlaybackState::Playing;
 
-            self.observers.iter().for_each(|observer| {
-                observer.on_play();
-            });
-
             true
         } else {
             false
@@ -155,9 +149,6 @@ impl DotLottieRuntime {
         if self.is_loaded {
             self.playback_state = PlaybackState::Paused;
 
-            self.observers.iter().for_each(|observer| {
-                observer.on_pause();
-            });
             true
         } else {
             false
@@ -179,10 +170,6 @@ impl DotLottieRuntime {
                     self.set_frame(end_frame);
                 }
             }
-
-            self.observers.iter().for_each(|observer| {
-                observer.on_stop();
-            });
 
             true
         } else {
@@ -366,12 +353,6 @@ impl DotLottieRuntime {
             self.update_start_time_for_frame(no);
         }
 
-        if is_ok {
-            self.observers.iter().for_each(|observer| {
-                observer.on_frame(no);
-            });
-        }
-
         is_ok
     }
 
@@ -379,27 +360,10 @@ impl DotLottieRuntime {
         let is_ok = self.renderer.render().is_ok();
 
         if is_ok {
-            let frame_no = self.current_frame();
-
-            self.observers.iter().for_each(|observer| {
-                observer.on_render(frame_no);
-            });
-
-            // check if the animation is complete
             if self.is_complete() {
                 // if the loop is enabled
-                if self.config.loop_animation {
-                    // notify the observers with the loop count
-                    self.observers.iter().for_each(|observer| {
-                        observer.on_loop(self.loop_count);
-                    });
-                } else {
+                if !self.config.loop_animation {
                     self.playback_state = PlaybackState::Stopped;
-
-                    // notify the observers that the animation is complete
-                    self.observers.iter().for_each(|observer| {
-                        observer.on_complete();
-                    });
                 }
             }
         }
@@ -525,10 +489,6 @@ impl DotLottieRuntime {
             }
         }
 
-        self.observers.iter().for_each(|observer| {
-            observer.on_load();
-        });
-
         if self.config.autoplay && loaded {
             self.play();
         }
@@ -627,14 +587,6 @@ impl DotLottieRuntime {
         self.config.clone()
     }
 
-    pub fn subscribe(&mut self, observer: Arc<dyn Observer>) {
-        self.observers.push(observer);
-    }
-
-    pub fn unsubscribe(&mut self, observer: &Arc<dyn Observer>) {
-        self.observers.retain(|x| !Arc::ptr_eq(x, observer));
-    }
-
     pub fn is_complete(&self) -> bool {
         match self.config.mode {
             Mode::Forward | Mode::ReverseBounce => self.current_frame() >= self.end_frame(),
@@ -645,37 +597,75 @@ impl DotLottieRuntime {
 
 pub struct DotLottiePlayer {
     runtime: RwLock<DotLottieRuntime>,
+    observers: RwLock<Vec<Arc<dyn Observer>>>,
 }
 
 impl DotLottiePlayer {
     pub fn new(config: Config) -> Self {
         DotLottiePlayer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
+            observers: RwLock::new(Vec::new()),
         }
     }
 
     pub fn load_animation_data(&self, animation_data: &str, width: u32, height: u32) -> bool {
-        self.runtime
+        let is_ok = self
+            .runtime
             .write()
-            .is_ok_and(|mut runtime| runtime.load_animation_data(animation_data, width, height))
+            .is_ok_and(|mut runtime| runtime.load_animation_data(animation_data, width, height));
+
+        if is_ok {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load();
+            });
+        }
+
+        is_ok
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
-        self.runtime
+        let is_ok = self
+            .runtime
             .write()
-            .is_ok_and(|mut runtime| runtime.load_animation_path(animation_path, width, height))
+            .is_ok_and(|mut runtime| runtime.load_animation_path(animation_path, width, height));
+
+        if is_ok {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load();
+            });
+        }
+
+        is_ok
     }
 
     pub fn load_dotlottie_data(&self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
-        self.runtime
+        let is_ok = self
+            .runtime
             .write()
-            .is_ok_and(|mut runtime| runtime.load_dotlottie_data(file_data, width, height))
+            .is_ok_and(|mut runtime| runtime.load_dotlottie_data(file_data, width, height));
+
+        if is_ok {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load();
+            });
+        }
+
+        is_ok
     }
 
     pub fn load_animation(&self, animation_id: &str, width: u32, height: u32) -> bool {
-        self.runtime
+        let is_ok = self
+            .runtime
             .write()
-            .is_ok_and(|mut runtime| runtime.load_animation(animation_id, width, height))
+            .is_ok_and(|mut runtime| runtime.load_animation(animation_id, width, height));
+
+        if is_ok {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load();
+            });
+        }
+
+        is_ok
     }
 
     pub fn manifest(&self) -> Option<Manifest> {
@@ -739,15 +729,39 @@ impl DotLottiePlayer {
     }
 
     pub fn play(&self) -> bool {
-        self.runtime.write().unwrap().play()
+        let ok = self.runtime.write().unwrap().play();
+
+        if ok {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_play();
+            });
+        }
+
+        ok
     }
 
     pub fn pause(&self) -> bool {
-        self.runtime.write().unwrap().pause()
+        let ok = self.runtime.write().unwrap().pause();
+
+        if ok {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_pause();
+            });
+        }
+
+        ok
     }
 
     pub fn stop(&self) -> bool {
-        self.runtime.write().unwrap().stop()
+        let ok = self.runtime.write().unwrap().stop();
+
+        if ok {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_stop();
+            });
+        }
+
+        ok
     }
 
     pub fn request_frame(&self) -> f32 {
@@ -755,11 +769,41 @@ impl DotLottiePlayer {
     }
 
     pub fn set_frame(&self, no: f32) -> bool {
-        self.runtime.write().unwrap().set_frame(no)
+        let ok = self.runtime.write().unwrap().set_frame(no);
+
+        if ok {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_frame(no);
+            });
+        }
+
+        ok
     }
 
     pub fn render(&self) -> bool {
-        self.runtime.write().unwrap().render()
+        let ok = self.runtime.write().unwrap().render();
+
+        if ok {
+            let frame_no = self.current_frame();
+
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_render(frame_no);
+            });
+
+            if self.is_complete() {
+                if self.config().loop_animation {
+                    self.observers.read().unwrap().iter().for_each(|observer| {
+                        observer.on_loop(self.loop_count());
+                    });
+                } else {
+                    self.observers.read().unwrap().iter().for_each(|observer| {
+                        observer.on_complete();
+                    });
+                }
+            }
+        }
+
+        ok
     }
 
     pub fn resize(&self, width: u32, height: u32) -> bool {
@@ -771,7 +815,7 @@ impl DotLottiePlayer {
     }
 
     pub fn subscribe(&self, observer: Arc<dyn Observer>) {
-        self.runtime.write().unwrap().subscribe(observer);
+        self.observers.write().unwrap().push(observer);
     }
 
     pub fn manifest_string(&self) -> String {
@@ -786,7 +830,10 @@ impl DotLottiePlayer {
     }
 
     pub fn unsubscribe(&self, observer: &Arc<dyn Observer>) {
-        self.runtime.write().unwrap().unsubscribe(&observer);
+        self.observers
+            .write()
+            .unwrap()
+            .retain(|o| !Arc::ptr_eq(o, observer));
     }
 }
 

@@ -347,6 +347,10 @@ impl DotLottieRuntime {
     }
 
     pub fn set_frame(&mut self, no: f32) -> bool {
+        if no < self.start_frame() || no > self.end_frame() {
+            return false;
+        }
+
         let is_ok = self.renderer.set_frame(no).is_ok();
 
         if self.is_playing() {

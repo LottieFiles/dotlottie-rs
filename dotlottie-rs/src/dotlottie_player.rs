@@ -156,7 +156,7 @@ impl DotLottieRuntime {
     }
 
     pub fn stop(&mut self) -> bool {
-        if self.is_loaded {
+        if self.is_loaded && !self.is_stopped() {
             self.playback_state = PlaybackState::Stopped;
 
             let start_frame = self.start_frame();

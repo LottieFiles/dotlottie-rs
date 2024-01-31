@@ -227,6 +227,17 @@ impl LottieRenderer {
             .as_mut()
             .ok_or(LottieRendererError::AnimationNotLoaded)?;
 
+        let total_frames = thorvg_animation
+            .get_total_frame()
+            .map_err(|e| LottieRendererError::ThorvgError(e))?;
+
+        if no < 0.0 || no >= total_frames {
+            return Err(LottieRendererError::InvalidArgument(format!(
+                "Frame number must be between 0 and {}",
+                total_frames - 1.0
+            )));
+        }
+
         thorvg_animation
             .set_frame(no)
             .map_err(|e| LottieRendererError::ThorvgError(e))

@@ -343,13 +343,21 @@ impl DotLottieRuntime {
         };
 
         // update start_time to account for the already elapsed time
-        self.start_time = Instant::now() - Duration::from_secs_f32(elapsed_time_for_frame);
+        self.start_time =
+            match Instant::now().checked_sub(Duration::from_secs_f32(elapsed_time_for_frame)) {
+                Some(start_time) => start_time,
+                None => Instant::now(),
+            };
     }
 
     pub fn set_frame(&mut self, no: f32) -> bool {
+        if no < self.start_frame() || no > self.end_frame() {
+            return false;
+        }
+
         let is_ok = self.renderer.set_frame(no).is_ok();
 
-        if self.is_playing() {
+        if self.is_playing() && is_ok {
             self.update_start_time_for_frame(no);
         }
 

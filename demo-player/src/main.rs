@@ -152,6 +152,13 @@ fn main() {
             lottie_player.play();
         }
 
+        if window.is_key_down(Key::J) {
+            let updated = lottie_player.set_frame(20.0);
+            if updated {
+                lottie_player.render();
+            }
+        }
+
         if window.is_key_down(Key::Left) {
             let mut config = lottie_player.config();
 

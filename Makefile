@@ -256,7 +256,7 @@ cpp_link_args = [
 	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
-	# '--embind-emit-tsd=${WASM_MODULE}.d.ts',
+	'--embind-emit-tsd=${WASM_MODULE}.d.ts',
 	'--minify=0']
 
 [host_machine]
@@ -344,7 +344,9 @@ endef
 
 define CARGO_BUILD
 	source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
-		cargo build \
+		RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
+		-Z build-std=std,panic_abort \
+		-Z build-std-features=panic_immediate_abort \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--release
@@ -430,8 +432,8 @@ define WASM_RELEASE
 	mkdir -p $(RELEASE)/$(WASM)
 	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).wasm \
 		$(RELEASE)/$(WASM)
-	# cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).d.ts \
-	# 	$(RELEASE)/$(WASM)
+	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).d.ts \
+		$(RELEASE)/$(WASM)
 	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).js \
 		$(RELEASE)/$(WASM)/$(WASM_MODULE).mjs
 	cd $(RELEASE)/$(WASM) && \

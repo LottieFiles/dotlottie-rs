@@ -1,10 +1,11 @@
+use dotlottie_player_core::{Config, DotLottiePlayer, Mode, Observer};
+use minifb::{Key, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
 use std::sync::Arc;
+use std::thread;
 use std::{env, path, time::Instant};
-
-use dotlottie_player_core::{Config, DotLottiePlayer, Mode, Observer};
-use minifb::{Key, Window, WindowOptions};
+use sysinfo::System;
 
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
@@ -142,6 +143,28 @@ fn main() {
 
     let mut timer = Timer::new();
 
+    let sys = System::new_all();
+
+    let cpu_memory_monitor_thread = thread::spawn(move || {
+        loop {
+            sys.refresh_all();
+
+            for (pid, process) in sys.processes() {
+                if pid.as_u32() == std::process::id() {
+                    println!(
+                        "CPU: {} % | Memory: {} MB",
+                        process.cpu_usage(),
+                        process.memory() / 1024 / 1024,
+                    );
+                }
+            }
+
+            thread::sleep(std::time::Duration::from_secs(1)); // Adjust sleep duration as needed
+        }
+    });
+
+    let mut cpu_memory_monitor_timer = Instant::now();
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
         timer.tick(&mut lottie_player);
 
@@ -174,6 +197,10 @@ fn main() {
             lottie_player.unsubscribe(&observer2);
         }
 
+        if cpu_memory_monitor_timer.elapsed().as_secs() >= 1 {
+            cpu_memory_monitor_timer = Instant::now();
+        }
+
         let (buffer_ptr, buffer_len) = (lottie_player.buffer_ptr(), lottie_player.buffer_len());
 
         let buffer =
@@ -181,4 +208,6 @@ fn main() {
 
         window.update_with_buffer(buffer, WIDTH, HEIGHT).unwrap();
     }
+
+    cpu_memory_monitor_thread.join().unwrap();
 }

@@ -143,7 +143,7 @@ fn main() {
 
     let mut timer = Timer::new();
 
-    let sys = System::new_all();
+    let mut sys = System::new_all();
 
     let cpu_memory_monitor_thread = thread::spawn(move || {
         loop {

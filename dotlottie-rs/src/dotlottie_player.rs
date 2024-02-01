@@ -3,7 +3,10 @@ use std::sync::{Arc, RwLock};
 
 use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 
-use crate::lottie_renderer::{LottieRenderer, LottieRendererError};
+use crate::{
+    lottie_renderer::{LottieRenderer, LottieRendererError},
+    thorvg,
+};
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
@@ -471,7 +474,13 @@ impl DotLottieRuntime {
         }
     }
 
-    fn load_animation_common<F>(&mut self, loader: F, width: u32, height: u32) -> bool
+    fn load_animation_common<F>(
+        &mut self,
+        loader: F,
+        width: u32,
+        height: u32,
+        color_space: thorvg::TvgColorspace,
+    ) -> bool
     where
         F: FnOnce(&mut LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
     {
@@ -479,7 +488,8 @@ impl DotLottieRuntime {
             && self
                 .renderer
                 .set_background_color(self.config.background_color)
-                .is_ok();
+                .is_ok()
+            && self.renderer.set_target(color_space).is_ok();
 
         self.is_loaded = loaded;
 
@@ -504,23 +514,43 @@ impl DotLottieRuntime {
         loaded
     }
 
-    pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
+    pub fn load_animation_data(
+        &mut self,
+        animation_data: &str,
+        width: u32,
+        height: u32,
+        color_space: thorvg::TvgColorspace,
+    ) -> bool {
         self.load_animation_common(
-            |renderer, w, h| renderer.load_data(animation_data, w, h, false),
+            |renderer, w, h| renderer.load_data(animation_data, w, h, color_space, false),
             width,
             height,
+            color_space,
         )
     }
 
-    pub fn load_animation_path(&mut self, animation_path: &str, width: u32, height: u32) -> bool {
+    pub fn load_animation_path(
+        &mut self,
+        animation_path: &str,
+        width: u32,
+        height: u32,
+        color_space: thorvg::TvgColorspace,
+    ) -> bool {
         self.load_animation_common(
-            |renderer, w, h| renderer.load_path(animation_path, w, h),
+            |renderer, w, h| renderer.load_path(animation_path, w, h, color_space),
             width,
             height,
+            color_space,
         )
     }
 
-    pub fn load_dotlottie_data(&mut self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
+    pub fn load_dotlottie_data(
+        &mut self,
+        file_data: &Vec<u8>,
+        width: u32,
+        height: u32,
+        color_space: thorvg::TvgColorspace,
+    ) -> bool {
         if self.dotlottie_manager.init(file_data.clone()).is_err() {
             return false;
         }
@@ -533,18 +563,24 @@ impl DotLottieRuntime {
                 // For the moment we're ignoring manifest values
 
                 // self.load_playback_settings();
-                return self.load_animation_data(&animation_data, width, height);
+                return self.load_animation_data(&animation_data, width, height, color_space);
             }
             Err(_error) => false,
         }
     }
 
-    pub fn load_animation(&mut self, animation_id: &str, width: u32, height: u32) -> bool {
+    pub fn load_animation(
+        &mut self,
+        animation_id: &str,
+        width: u32,
+        height: u32,
+        color_space: thorvg::TvgColorspace,
+    ) -> bool {
         let animation_data = self.dotlottie_manager.get_animation(animation_id);
 
         match animation_data {
             Ok(animation_data) => {
-                return self.load_animation_data(&animation_data, width, height);
+                return self.load_animation_data(&animation_data, width, height, color_space);
             }
             Err(_error) => false,
         }
@@ -619,11 +655,16 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn load_animation_data(&self, animation_data: &str, width: u32, height: u32) -> bool {
-        let is_ok = self
-            .runtime
-            .write()
-            .is_ok_and(|mut runtime| runtime.load_animation_data(animation_data, width, height));
+    pub fn load_animation_data(
+        &self,
+        animation_data: &str,
+        width: u32,
+        height: u32,
+        color_space: thorvg::TvgColorspace,
+    ) -> bool {
+        let is_ok = self.runtime.write().is_ok_and(|mut runtime| {
+            runtime.load_animation_data(animation_data, width, height, color_space)
+        });
 
         if is_ok {
             self.observers.read().unwrap().iter().for_each(|observer| {
@@ -634,11 +675,16 @@ impl DotLottiePlayer {
         is_ok
     }
 
-    pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
-        let is_ok = self
-            .runtime
-            .write()
-            .is_ok_and(|mut runtime| runtime.load_animation_path(animation_path, width, height));
+    pub fn load_animation_path(
+        &self,
+        animation_path: &str,
+        width: u32,
+        height: u32,
+        color_space: thorvg::TvgColorspace,
+    ) -> bool {
+        let is_ok = self.runtime.write().is_ok_and(|mut runtime| {
+            runtime.load_animation_path(animation_path, width, height, color_space)
+        });
 
         if is_ok {
             self.observers.read().unwrap().iter().for_each(|observer| {
@@ -649,11 +695,16 @@ impl DotLottiePlayer {
         is_ok
     }
 
-    pub fn load_dotlottie_data(&self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
-        let is_ok = self
-            .runtime
-            .write()
-            .is_ok_and(|mut runtime| runtime.load_dotlottie_data(file_data, width, height));
+    pub fn load_dotlottie_data(
+        &self,
+        file_data: &Vec<u8>,
+        width: u32,
+        height: u32,
+        color_space: thorvg::TvgColorspace,
+    ) -> bool {
+        let is_ok = self.runtime.write().is_ok_and(|mut runtime| {
+            runtime.load_dotlottie_data(file_data, width, height, color_space)
+        });
 
         if is_ok {
             self.observers.read().unwrap().iter().for_each(|observer| {
@@ -664,11 +715,16 @@ impl DotLottiePlayer {
         is_ok
     }
 
-    pub fn load_animation(&self, animation_id: &str, width: u32, height: u32) -> bool {
-        let is_ok = self
-            .runtime
-            .write()
-            .is_ok_and(|mut runtime| runtime.load_animation(animation_id, width, height));
+    pub fn load_animation(
+        &self,
+        animation_id: &str,
+        width: u32,
+        height: u32,
+        color_space: thorvg::TvgColorspace,
+    ) -> bool {
+        let is_ok = self.runtime.write().is_ok_and(|mut runtime| {
+            runtime.load_animation(animation_id, width, height, color_space)
+        });
 
         if is_ok {
             self.observers.read().unwrap().iter().for_each(|observer| {

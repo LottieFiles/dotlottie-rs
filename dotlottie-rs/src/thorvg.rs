@@ -32,6 +32,7 @@ pub enum TvgEngine {
     TvgEngineGl,
 }
 
+#[derive(Copy, Clone)]
 pub enum TvgColorspace {
     ABGR8888,
     ARGB8888,

@@ -7,6 +7,7 @@ use crate::lottie_renderer::{LottieRenderer, LottieRendererError};
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
+    fn on_load_error(&self);
     fn on_play(&self);
     fn on_pause(&self);
     fn on_stop(&self);
@@ -629,6 +630,12 @@ impl DotLottiePlayer {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load();
             });
+        } else {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load_error();
+            });
+
+            return false;
         }
 
         is_ok
@@ -644,6 +651,12 @@ impl DotLottiePlayer {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load();
             });
+        } else {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load_error();
+            });
+
+            return false;
         }
 
         is_ok
@@ -659,6 +672,12 @@ impl DotLottiePlayer {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load();
             });
+        } else {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load_error();
+            });
+
+            return false;
         }
 
         is_ok
@@ -674,6 +693,12 @@ impl DotLottiePlayer {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load();
             });
+        } else {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load_error();
+            });
+
+            return false;
         }
 
         is_ok

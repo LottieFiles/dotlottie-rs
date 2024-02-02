@@ -4,6 +4,7 @@ namespace dotlottie_player {
 [Trait, WithForeign]
 interface Observer {
     void on_load();
+    void on_load_error();
     void on_play();
     void on_pause();
     void on_stop();

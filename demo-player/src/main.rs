@@ -31,6 +31,9 @@ impl Observer for DummyObserver2 {
     fn on_load(&self) {
         println!("on_load2");
     }
+    fn on_load_error(&self) {
+        println!("on_load_error2");
+    }
     fn on_loop(&self, loop_count: u32) {
         println!("on_loop2: {}", loop_count);
     }
@@ -61,6 +64,9 @@ impl Observer for DummyObserver {
     }
     fn on_load(&self) {
         println!("on_load {} ", self.id);
+    }
+    fn on_load_error(&self) {
+        println!("on_load_error {} ", self.id);
     }
     fn on_loop(&self, loop_count: u32) {
         println!("on_loop {}: {}", self.id, loop_count);

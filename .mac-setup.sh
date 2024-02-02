@@ -56,6 +56,8 @@ echo
 echo "Installing rust nightly ..."
 rustup install nightly-x86_64-apple-darwin
 
+rustup component add rust-src --toolchain nightly
+
 echo
 echo "Installing rust target(s) ..."
 rustup target add aarch64-linux-android \

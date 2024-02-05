@@ -72,6 +72,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     //     .field("version", &Manifest::version);
 
     class_<DotLottiePlayer>("DotLottiePlayer")
+        .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init, allow_raw_pointers())
         .function("buffer", &buffer)
         .function("clear", &DotLottiePlayer::clear)
@@ -98,7 +99,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("setFrame", &DotLottiePlayer::set_frame)
         .function("stop", &DotLottiePlayer::stop)
         .function("totalFrames", &DotLottiePlayer::total_frames)
-        .function("subscribe", &DotLottiePlayer::subscribe)
-        .function("unsubscribe", &DotLottiePlayer::unsubscribe)
+        // .function("subscribe", &DotLottiePlayer::subscribe)
+        // .function("unsubscribe", &DotLottiePlayer::unsubscribe)
         .function("isComplete", &DotLottiePlayer::is_complete);
 }

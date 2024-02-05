@@ -92,6 +92,7 @@ interface DotLottiePlayer {
     boolean stop();
     f32 request_frame();
     boolean set_frame(f32 no);
+    boolean seek();
     boolean render();
     boolean resize(u32 width, u32 height);
     void clear();

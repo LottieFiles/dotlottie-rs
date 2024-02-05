@@ -244,7 +244,7 @@ impl Animation {
         }
     }
 
-    pub fn get_picture(&self) -> Option<Picture> {
+    pub fn new_picture(&self) -> Option<Picture> {
         let raw_picture = unsafe { tvg_animation_get_picture(self.raw_animation) };
 
         if raw_picture.is_null() {

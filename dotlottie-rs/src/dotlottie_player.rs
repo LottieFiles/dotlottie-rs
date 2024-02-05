@@ -338,23 +338,30 @@ impl DotLottieRuntime {
         let total_frames = self.total_frames();
         let duration = self.duration();
         let effective_total_frames = end_frame - start_frame;
-        let effective_duration =
-            (duration * effective_total_frames / total_frames) / self.config.speed;
 
-        let frame_duration = effective_duration / effective_total_frames;
+        if duration.is_finite() && duration > 0.0 && self.config.speed > 0.0 {
+            let effective_duration =
+                (duration * effective_total_frames / total_frames) / self.config.speed;
 
-        // estimate elapsed time for current frame based on direction and segments
-        let elapsed_time_for_frame = match self.direction {
-            Direction::Forward => (frame_no - start_frame) * frame_duration,
-            Direction::Reverse => (end_frame - frame_no) * frame_duration,
-        };
+            let frame_duration = effective_duration / effective_total_frames;
 
-        // update start_time to account for the already elapsed time
-        self.start_time =
-            match Instant::now().checked_sub(Duration::from_secs_f32(elapsed_time_for_frame)) {
-                Some(start_time) => start_time,
-                None => Instant::now(),
+            // estimate elapsed time for current frame based on direction and segments
+            let elapsed_time_for_frame = match self.direction {
+                Direction::Forward => (frame_no - start_frame) * frame_duration,
+                Direction::Reverse => (end_frame - frame_no) * frame_duration,
             };
+
+            // update start_time to account for the already elapsed time
+            if let Some(start_time) =
+                Instant::now().checked_sub(Duration::from_secs_f32(elapsed_time_for_frame))
+            {
+                self.start_time = start_time;
+            } else {
+                self.start_time = Instant::now();
+            }
+        } else {
+            self.start_time = Instant::now();
+        }
     }
 
     /// Set the frame number to be rendered next.
@@ -511,6 +518,11 @@ impl DotLottieRuntime {
     where
         F: FnOnce(&mut LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
     {
+        self.clear();
+        self.playback_state = PlaybackState::Stopped;
+        self.start_time = Instant::now();
+        self.loop_count = 0;
+
         let loaded = loader(&mut self.renderer, width, height).is_ok()
             && self
                 .renderer

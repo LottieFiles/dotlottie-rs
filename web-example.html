@@ -140,7 +140,7 @@
       });
 
       jumpBtn.addEventListener("click", () => {
-        dotLottiePlayer.setFrame(44);
+        dotLottiePlayer.seek(44);
       });
 
       resizeBtn.addEventListener("click", () => {
@@ -159,7 +159,7 @@
         const newFrame =
           (event.target.value / 100) * dotLottiePlayer.totalFrames();
 
-        if (dotLottiePlayer.setFrame(newFrame)) {
+        if (dotLottiePlayer.seek(newFrame)) {
           render();
         }
       });
@@ -223,11 +223,3 @@
     </script>
   </body>
 </html>
-
-<!-- 
- buffer_ptr: 0xa03f98
- buffer_len: 2024064 
-
- buffer_ptr: 0x11bc9a0
- buffer_len: 1460864
--->

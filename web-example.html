@@ -30,6 +30,7 @@
     <button id="speed-up">speed +</button>
     <button id="speed-down">speed -</button>
     <button id="loop">loopToggle</button>
+    <button id="next">Next</button>
     <script type="module">
       import createDotLottiePlayerModule from "./release/wasm/DotLottiePlayer.mjs";
 
@@ -42,6 +43,7 @@
       const speedUpBtn = document.querySelector("#speed-up");
       const speedDownBtn = document.querySelector("#speed-down");
       const loopToggle = document.querySelector("#loop");
+      const nextBtn = document.querySelector("#next");
 
       const Module = await createDotLottiePlayerModule({
         locateFile: (path, prefix) => {
@@ -84,7 +86,11 @@
 
       const canvas = document.querySelector("canvas");
 
-      // const loaded = dotLottiePlayer.loadAnimationData(data, width, height);
+      // const loaded = dotLottiePlayer.loadAnimationData(
+      //   data,
+      //   canvas.width,
+      //   canvas.height
+      // );
       const loaded = dotLottiePlayer.loadDotLottieData(
         data,
         canvas.width,
@@ -219,6 +225,27 @@
           ...dotLottiePlayer.config(),
           loopAnimation,
         });
+      });
+
+      let i = 0;
+      nextBtn.addEventListener("click", () => {
+        const manifest = dotLottiePlayer.manifestString();
+
+        if (manifest) {
+          const animations = JSON.parse(manifest).animations;
+
+          if (i < animations.length) {
+            const animation = animations[i];
+            dotLottiePlayer.loadAnimation(
+              animation.id,
+              canvas.width,
+              canvas.height
+            );
+            i++;
+          } else {
+            i = 0;
+          }
+        }
       });
     </script>
   </body>

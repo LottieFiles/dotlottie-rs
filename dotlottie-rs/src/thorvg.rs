@@ -173,14 +173,15 @@ impl Picture {
         convert_tvg_result(result, "tvg_picture_load")
     }
 
-    pub fn load_data(&mut self, data: &[u8], mimetype: &str, copy: bool) -> Result<(), TvgError> {
+    pub fn load_data(&mut self, data: &str, mimetype: &str, copy: bool) -> Result<(), TvgError> {
         let mimetype = CString::new(mimetype).expect("Failed to create CString");
+        let data = CString::new(data).expect("Failed to create CString");
 
         let result = unsafe {
             tvg_picture_load_data(
                 self.raw_paint,
-                data.as_ptr() as *const std::ffi::c_char,
-                data.len() as u32,
+                data.as_ptr(),
+                data.as_bytes().len() as u32,
                 mimetype.as_ptr(),
                 copy,
             )

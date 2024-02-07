@@ -30,41 +30,41 @@ dictionary Config {
     u32 background_color;
 };
 
-dictionary ManifestTheme {
-    string id;
-    sequence<string> values;
-};
+///dictionary ManifestTheme {
+///    string id;
+///    sequence<string> values;
+///};
 
-dictionary ManifestThemes {
-    sequence<ManifestTheme>? value;
-};
+///dictionary ManifestThemes {
+///    sequence<ManifestTheme>? value;
+///};
 
-dictionary ManifestAnimation {
-    boolean? autoplay;
-    string? defaultTheme;
-    i8? direction;
-    boolean? hover;
-    string id;
-    u32? intermission;
-    boolean? loop;
-    u32? loop_count;
-    string? playMode;
-    u32? speed;
-    string? themeColor;
-};
+///dictionary ManifestAnimation {
+///    boolean? autoplay;
+///    string? defaultTheme;
+///    i8? direction;
+///    boolean? hover;
+///    string id;
+///    u32? intermission;
+///    boolean? loop;
+///    u32? loop_count;
+///    string? playMode;
+///    u32? speed;
+///    string? themeColor;
+///};
 
-dictionary Manifest {
-    string? active_animation_id;
-    sequence<ManifestAnimation> animations;
-    string? author;
-    string? description;
-    string? generator;
-    string? keywords;
-    u32? revision;
-    ManifestThemes? themes;
-    sequence<string>? states;
-    string? version;
-};
+///dictionary Manifest {
+///    string? active_animation_id;
+///    sequence<ManifestAnimation> animations;
+///    string? author;
+///   string? description;
+///    string? generator;
+///    string? keywords;
+///    u32? revision;
+///    ManifestThemes? themes;
+///    sequence<string>? states;
+///    string? version;
+///};
 
 interface DotLottiePlayer {
     constructor(Config config);
@@ -91,6 +91,7 @@ interface DotLottiePlayer {
     boolean stop();
     f32 request_frame();
     boolean set_frame(f32 no);
+    boolean seek(f32 no);
     boolean render();
     boolean resize(u32 width, u32 height);
     void clear();

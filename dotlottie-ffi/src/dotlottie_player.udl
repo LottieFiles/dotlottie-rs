@@ -4,6 +4,7 @@ namespace dotlottie_player {
 [Trait, WithForeign]
 interface Observer {
     void on_load();
+    void on_load_error();
     void on_play();
     void on_pause();
     void on_stop();
@@ -91,6 +92,7 @@ interface DotLottiePlayer {
     boolean stop();
     f32 request_frame();
     boolean set_frame(f32 no);
+    boolean seek(f32 no);
     boolean render();
     boolean resize(u32 width, u32 height);
     void clear();

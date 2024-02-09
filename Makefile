@@ -123,7 +123,6 @@ LIBPNG_LIB := libpng.a
 LIBJPEG_TURBO_LIB := libturbojpeg.a
 ZLIB_LIB := libz.a
 WEBP_LIB := libwebp.a
-WEBP_DECODER_LIB := libwebpdecoder.a
 
 # Release artifacts will be placed in this directory
 RELEASE := release
@@ -310,7 +309,7 @@ define SETUP_MESON
 	meson setup \
 		--prefix=/ \
 		--backend=ninja \
-		-Dloaders="lottie, png, jpg, webp_beta" \
+		-Dloaders="lottie, png, jpg, webp" \
 		-Ddefault_library=static \
 		-Dbindings=capi \
 		-Dlog=$(LOG) \
@@ -581,7 +580,6 @@ $(if $(filter $3,false),
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(LIBJPEG_TURBO_LIB)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(LIBPNG_LIB)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(WEBP_LIB)
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(WEBP_DECODER_LIB)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(ZLIB_LIB),)
 	$$(SETUP_MESON)
 
@@ -770,7 +768,6 @@ $(eval $(call NEW_LOCAL_ARCH_CMAKE_BUILD,LIBJPEG_TURBO,$(LIBJPEG_TURBO),$(LIBJPE
 $(eval $(call NEW_LOCAL_ARCH_CMAKE_BUILD,LIBPNG,$(LIBPNG),$(LIBPNG_LIB)))
 $(eval $(call NEW_LOCAL_ARCH_CMAKE_BUILD,ZLIB,$(ZLIB),$(ZLIB_LIB)))
 $(eval $(call NEW_LOCAL_ARCH_CMAKE_BUILD,WEBP,$(WEBP),$(WEBP_LIB)))
-$(eval $(call NEW_LOCAL_ARCH_CMAKE_BUILD,WEBP,$(WEBP),$(WEBP_DECODER_LIB)))
 
 # Setup meson for thorvg local arch build
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): export PKG_CONFIG_PATH := $(PWD)/$(LOCAL_ARCH_LIB_DIR)/pkgconfig:$(PWD)/$(LOCAL_ARCH_LIB64_DIR)
@@ -783,7 +780,6 @@ $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(LIBJ
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(LIBPNG_LIB)
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(ZLIB_LIB)
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(WEBP_LIB)
-$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(WEBP_DECODER_LIB)
 	$(SETUP_MESON)
 
 # Build thorvg local arch

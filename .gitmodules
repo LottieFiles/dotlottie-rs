@@ -16,3 +16,6 @@
 [submodule "deps/modules/emsdk"]
 	path = deps/modules/emsdk
 	url = https://github.com/emscripten-core/emsdk.git
+[submodule "deps/modules/libwebp"]
+	path = deps/modules/libwebp
+	url = git@github.com:webmproject/libwebp.git

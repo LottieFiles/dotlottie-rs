@@ -117,7 +117,7 @@ impl Canvas {
     }
 
     pub fn clear(&self, free: bool) -> Result<(), TvgError> {
-        let result = unsafe { tvg_canvas_clear(self.raw_canvas, free) };
+        let result = unsafe { tvg_canvas_clear(self.raw_canvas, free, true) };
 
         convert_tvg_result(result, "tvg_canvas_clear")
     }
@@ -175,6 +175,7 @@ impl Picture {
 
     pub fn load_data(&mut self, data: &[u8], mimetype: &str, copy: bool) -> Result<(), TvgError> {
         let mimetype = CString::new(mimetype).expect("Failed to create CString");
+        let rpath = CString::new("").expect("Failed to create CString");
 
         let result = unsafe {
             tvg_picture_load_data(
@@ -182,6 +183,7 @@ impl Picture {
                 data.as_ptr() as *const std::ffi::c_char,
                 data.len() as u32,
                 mimetype.as_ptr(),
+                rpath.as_ptr(),
                 copy,
             )
         };

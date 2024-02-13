@@ -152,3 +152,27 @@ pub fn get_width_height(animation_data: &str) -> (u32, u32) {
 
     (width, height)
 }
+
+pub fn get_theme(bytes: &Vec<u8>, theme_id: &str) -> Result<String, DotLottieError> {
+    let mut archive =
+        ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
+
+    let search_file_name = format!("themes/{}.json", theme_id);
+
+    let mut result =
+        archive
+            .by_name(&search_file_name)
+            .map_err(|_| DotLottieError::FileFindError {
+                file_name: search_file_name,
+            })?;
+
+    let mut content = Vec::new();
+
+    result
+        .read_to_end(&mut content)
+        .map_err(|_| DotLottieError::ReadContentError)?;
+
+    let theme_data = String::from_utf8(content).unwrap();
+
+    Ok(theme_data)
+}

@@ -55,6 +55,7 @@ pub struct Config {
     pub autoplay: bool,
     pub segments: Vec<f32>,
     pub background_color: u32,
+    pub theme_id: String,
 }
 
 struct DotLottieRuntime {
@@ -224,11 +225,12 @@ impl DotLottieRuntime {
             Direction::Reverse => end_frame - raw_next_frame,
         };
 
-        let next_frame = if self.config.use_frame_interpolation {
-            next_frame
-        } else {
-            next_frame.round()
-        };
+        let next_frame =
+            if self.config.use_frame_interpolation {
+                next_frame
+            } else {
+                next_frame.round()
+            };
 
         // to ensure the next_frame won't go beyond the start & end frames
         let next_frame = next_frame.clamp(start_frame, end_frame);
@@ -652,6 +654,26 @@ impl DotLottieRuntime {
             Mode::Reverse | Mode::Bounce => self.current_frame() <= self.start_frame(),
         }
     }
+
+    pub fn load_theme(&mut self, theme_id: &str) -> bool {
+        // check if this theme_id exists in the manifest.themes array 
+        // then check if the theme has animations array or not 
+        // if not then this is a global theme 
+        // if yes then this is a scoped theme to the given animations and we have to check if 
+        // it can be applied to the currently running animation id 
+        let theme_data = self.dotlottie_manager.get_theme(theme_id);
+
+        match theme_data {
+            Ok(theme_data) => {
+                return self.renderer.load_theme_data(&theme_data).is_ok();
+            }
+            Err(_error) => false,
+        }
+    }
+
+    pub fn load_theme_data(&mut self, theme_data: &str) -> bool {
+        self.renderer.load_theme_data(theme_data).is_ok()
+    }
 }
 
 pub struct DotLottiePlayer {
@@ -929,6 +951,18 @@ impl DotLottiePlayer {
             .write()
             .unwrap()
             .retain(|o| !Arc::ptr_eq(o, observer));
+    }
+
+    pub fn load_theme(&self, theme_id: &str) -> bool {
+        let ok = self.runtime.write().unwrap().load_theme(theme_id);
+
+        ok
+    }
+
+    pub fn load_theme_data(&self, theme_data: &str) -> bool {
+        let ok = self.runtime.write().unwrap().load_theme_data(theme_data);
+
+        ok
     }
 }
 

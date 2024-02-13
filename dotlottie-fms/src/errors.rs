@@ -22,4 +22,7 @@ pub enum DotLottieError {
 
     #[error("No manifest found")]
     ManifestNotFound,
+
+    #[error("Theme not found")]
+    ThemeNotFound { theme_id: String },
 }

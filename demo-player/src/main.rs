@@ -1,5 +1,5 @@
 use dotlottie_player_core::{Config, DotLottiePlayer, Mode, Observer};
-use minifb::{Key, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
 use std::sync::Arc;
@@ -102,15 +102,16 @@ impl Timer {
 }
 
 fn main() {
-    let mut window = Window::new(
-        "dotLottie rust demo - ESC to exit",
-        WIDTH,
-        HEIGHT,
-        WindowOptions::default(),
-    )
-    .unwrap_or_else(|e| {
-        panic!("{}", e);
-    });
+    let mut window =
+        Window::new(
+            "dotLottie rust demo - ESC to exit",
+            WIDTH,
+            HEIGHT,
+            WindowOptions::default(),
+        )
+        .unwrap_or_else(|e| {
+            panic!("{}", e);
+        });
 
     let base_path = env::var("CARGO_MANIFEST_DIR").unwrap();
 
@@ -125,11 +126,22 @@ fn main() {
         autoplay: true,
         segments: vec![10.0, 45.0],
         background_color: 0xffffffff,
+        theme_id: "".to_string(),
     });
 
     // read dotlottie in to vec<u8>
-    let mut f = File::open("src/emoji.lottie").expect("no file found");
-    let metadata = fs::metadata("src/emoji.lottie").expect("unable to read metadata");
+    let mut f =
+        File::open(
+            // "src/emoji.lottie"
+            "src/theming_example.lottie",
+        )
+        .expect("no file found");
+    let metadata =
+        fs::metadata(
+            // "src/emoji.lottie"
+            "src/theming_example.lottie",
+        )
+        .expect("unable to read metadata");
 
     let mut buffer = vec![0; metadata.len() as usize];
     f.read(&mut buffer).expect("buffer overflow");
@@ -195,6 +207,16 @@ fn main() {
 
             config.mode = Mode::Bounce;
             lottie_player.set_config(config)
+        }
+
+        if window.is_key_pressed(Key::T, KeyRepeat::No) {
+            if let Some(manifest) = lottie_player.manifest() {
+                if let Some(themes) = manifest.themes {
+                    let theme = &themes[0];
+
+                    lottie_player.load_theme(&theme.id.as_str());
+                }
+            }
         }
 
         if window.is_key_down(Key::Right) {

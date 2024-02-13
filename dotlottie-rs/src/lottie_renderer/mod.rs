@@ -306,6 +306,11 @@ impl LottieRenderer {
             .fill((red, green, blue, alpha))
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
+
+    pub fn load_theme_data(&mut self, theme_data: &str) -> Result<(), LottieRendererError> {
+        // TODO: thorvg to provide an api to call on the picture instance (maybe) to load the theme
+        todo!();
+    }
 }
 
 fn calculate_scale_and_shift(

@@ -1,6 +1,6 @@
 use json::{self, array, object};
 
-use crate::{ManifestAnimation, ManifestThemes};
+use crate::{ManifestAnimation, ManifestTheme};
 use serde::{Deserialize, Serialize};
 
 use std::fmt::Display;
@@ -15,7 +15,7 @@ pub struct Manifest {
     pub generator: Option<String>,
     pub keywords: Option<String>,
     pub revision: Option<u32>,
-    pub themes: Option<ManifestThemes>,
+    pub themes: Option<Vec<ManifestTheme>>,
     pub states: Option<Vec<String>>,
     pub version: Option<String>,
 }
@@ -28,7 +28,7 @@ impl Manifest {
             author: Some("LottieFiles".to_string()),
             // custom,
             description: None,
-            generator: Some("dotLottie-utils".to_string()),
+            generator: Some("dotLottie-fms".to_string()),
             keywords: Some("dotLottie".to_string()),
             revision: Some(1),
             themes: None,
@@ -54,9 +54,10 @@ impl Manifest {
             json["description"] = self.description.clone().into();
         }
         if let Some(themes) = &self.themes {
-            if !themes.clone().value.unwrap().is_empty() {
-                json["themes"] = themes.to_json();
-            }
+            json["themes"] = array!(themes
+                .iter()
+                .map(|t| t.to_json())
+                .collect::<Vec<json::JsonValue>>());
         }
         if let Some(states) = &self.states {
             json["states"] = array!(states

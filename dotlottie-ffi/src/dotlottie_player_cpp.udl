@@ -33,7 +33,7 @@ dictionary Config {
 
 ///dictionary ManifestTheme {
 ///    string id;
-///    sequence<string> values;
+///    sequence<string> animations;
 ///};
 
 ///dictionary ManifestThemes {
@@ -58,11 +58,11 @@ dictionary Config {
 ///    string? active_animation_id;
 ///    sequence<ManifestAnimation> animations;
 ///    string? author;
-///   string? description;
+///    string? description;
 ///    string? generator;
 ///    string? keywords;
 ///    u32? revision;
-///    ManifestThemes? themes;
+///    sequence<ManifestTheme>? themes;
 ///    sequence<string>? states;
 ///    string? version;
 ///};

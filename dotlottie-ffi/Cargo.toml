@@ -23,7 +23,6 @@ path = "uniffi-bindgen.rs"
 # uncomment uniffi v0.25.3 when building with uniffi-cpp-bindgen targetting C++/WASM
 # uniffi = { version = "0.25.3", features = ["cli"] }
 uniffi = { version = "0.26.0", features = ["cli"] }
-# Core runtime
 dotlottie_player = { path = "../dotlottie-rs" }
 dotlottie_fms = { path = "../dotlottie-fms" }
 cfg-if = "1.0"

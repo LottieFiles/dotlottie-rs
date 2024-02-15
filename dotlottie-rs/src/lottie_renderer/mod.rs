@@ -147,7 +147,7 @@ impl LottieRenderer {
             .map_err(LottieRendererError::ThorvgError)?;
 
         if let Some(picture) = &mut self.thorvg_picture {
-            picture.load_data(data.as_bytes(), "lottie", copy)?;
+            picture.load_data(data, "lottie", copy)?;
 
             let (pw, ph) = picture.get_size()?;
             let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);

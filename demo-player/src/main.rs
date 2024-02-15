@@ -128,17 +128,17 @@ fn main() {
     });
 
     // read dotlottie in to vec<u8>
-    let mut f = File::open("src/cartoon.json").expect("no file found");
-    let metadata = fs::metadata("src/cartoon.json").expect("unable to read metadata");
+    let mut f = File::open("src/emoji.lottie").expect("no file found");
+    let metadata = fs::metadata("src/emoji.lottie").expect("unable to read metadata");
 
     let mut buffer = vec![0; metadata.len() as usize];
     f.read(&mut buffer).expect("buffer overflow");
 
-    let string = String::from_utf8(buffer.clone()).unwrap();
-    lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
-    println!("{:?}", Some(lottie_player.manifest()));
+    // let string = String::from_utf8(buffer.clone()).unwrap();
+    // lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
+    // println!("{:?}", Some(lottie_player.manifest()));
 
-    // lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
+    lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
     // lottie_player.load_animation("confused", WIDTH as u32, HEIGHT as u32);
 
     let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
@@ -148,6 +148,8 @@ fn main() {
     lottie_player.subscribe(observer2.clone());
 
     let mut timer = Timer::new();
+
+    let mut i = 0;
 
     let mut sys = System::new_all();
 
@@ -193,6 +195,22 @@ fn main() {
 
             config.mode = Mode::Bounce;
             lottie_player.set_config(config)
+        }
+
+        if window.is_key_down(Key::Right) {
+            if let Some(manifest) = lottie_player.manifest() {
+                println!("{:?}", i);
+
+                if i >= manifest.animations.len() - 1 {
+                    i = 0;
+                } else {
+                    i += 1;
+                }
+
+                let animation_id = manifest.animations[i].id.clone();
+
+                lottie_player.load_animation(animation_id.as_str(), WIDTH as u32, HEIGHT as u32);
+            }
         }
 
         if window.is_key_down(Key::Up) {

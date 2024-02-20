@@ -6,20 +6,20 @@ on:
   pull_request:
     branches: [main]
 
-  workflow_dispatch:
-    inputs:
-      target:
-        type: choice
-        description: "Target to build"
-        required: true
-        options:
-          - "apple"
-          - "android"
-          - "wasm"
-          - "all"
-      commitSHA:
-        description: "Commit SHA (leave blank for default branch)"
-        required: false
+  # workflow_dispatch:
+  #   inputs:
+  #     target:
+  #       type: choice
+  #       description: "Target to build"
+  #       required: true
+  #       options:
+  #         - "apple"
+  #         - "android"
+  #         - "wasm"
+  #         - "all"
+  #     commitSHA:
+  #       description: "Commit SHA (leave blank for default branch)"
+  #       required: false
 
 jobs:
   build:
@@ -27,8 +27,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
 
       - uses: Homebrew/actions/setup-homebrew@master
       - uses: maxim-lobanov/setup-xcode@v1
@@ -43,37 +41,34 @@ jobs:
         run: make mac-setup
 
       - name: Build Android
-        if: github.event.inputs.target == 'android' || github.event.inputs.target == 'all'
         env:
           APPLE_MACOSX_SDK: MacOSX13
         run: make android
 
-      - name: Upload Android Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: android
-          path: ./release/android/*.tar.gz
+      # - name: Upload Android Artifacts
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: android
+      #     path: ./release/android/*.tar.gz
 
       - name: Build Apple
-        if: github.event.inputs.target == 'apple' || github.event.inputs.target == 'all'
         env:
           APPLE_MACOSX_SDK: MacOSX13
         run: rm /usr/local/lib/libjpeg* ; make apple
 
-      - name: Upload Apple Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: apple
-          path: ./release/apple/*.tar.gz
+      # - name: Upload Apple Artifacts
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: apple
+      #     path: ./release/apple/*.tar.gz
 
       - name: Build WASM
-        if: github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all'
         env:
           APPLE_MACOSX_SDK: MacOSX13
         run: make wasm
 
-      - name: Upload WASM Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: wasm
-          path: ./release/wasm/*.tar.gz
+      # - name: Upload WASM Artifacts
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: wasm
+      #     path: ./release/wasm/*.tar.gz

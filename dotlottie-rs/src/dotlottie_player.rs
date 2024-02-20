@@ -549,6 +549,8 @@ impl DotLottieRuntime {
     }
 
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
+        self.dotlottie_manager = DotLottieManager::new(None).unwrap();
+
         self.load_animation_common(
             |renderer, w, h| renderer.load_data(animation_data, w, h, false),
             width,
@@ -557,6 +559,8 @@ impl DotLottieRuntime {
     }
 
     pub fn load_animation_path(&mut self, animation_path: &str, width: u32, height: u32) -> bool {
+        self.dotlottie_manager = DotLottieManager::new(None).unwrap();
+
         self.load_animation_common(
             |renderer, w, h| renderer.load_path(animation_path, w, h),
             width,
@@ -577,7 +581,11 @@ impl DotLottieRuntime {
                 // For the moment we're ignoring manifest values
 
                 // self.load_playback_settings();
-                return self.load_animation_data(&animation_data, width, height);
+                self.load_animation_common(
+                    |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
+                    width,
+                    height,
+                )
             }
             Err(_error) => false,
         }
@@ -587,9 +595,11 @@ impl DotLottieRuntime {
         let animation_data = self.dotlottie_manager.get_animation(animation_id);
 
         match animation_data {
-            Ok(animation_data) => {
-                return self.load_animation_data(&animation_data, width, height);
-            }
+            Ok(animation_data) => self.load_animation_common(
+                |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
+                width,
+                height,
+            ),
             Err(_error) => false,
         }
     }

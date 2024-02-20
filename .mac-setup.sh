@@ -11,7 +11,7 @@ NC=$(tput sgr0)
 
 # Environment
 EMSDK_VERSION=${EMSDK_VERSION:-latest}
-UNIFFI_BINDGEN_CPP_VERSION=${UNIFFI_BINDGEN_CPP_VERSION:-"v0.3.0+v0.25.0"}
+UNIFFI_BINDGEN_CPP_VERSION=${UNIFFI_BINDGEN_CPP_VERSION:-"v0.4.1+v0.25.0"}
 
 die() { printf %s "${@+$@$'\n'}" 1>&2 ; exit 1; }
 
@@ -83,6 +83,14 @@ echo "Setting up emsdk"
 cd "${SCRIPT_DIR}/deps/modules/emsdk" || die "Could not find Emscripten SDK under ${RED}deps/modules/emsdk${NC}!"
 ./emsdk install "${EMSDK_VERSION}"
 ./emsdk activate "${EMSDK_VERSION}"
+
+echo
+echo "Disabling unneeded webp features"
+cd "${SCRIPT_DIR}/deps/modules/libwebp" || die "Could not find libwebp under ${RED}deps/modules/libwep${NC}!"
+file_path="${SCRIPT_DIR}/deps/modules/libwebp/CMakeLists.txt"
+# Use sed to replace the specified lines
+sed -i -e 's/option(WEBP_BUILD_ANIM_UTILS "Build animation utilities." ON)/option(WEBP_BUILD_ANIM_UTILS "Build animation utilities." OFF)/' "$file_path"
+sed -i -e 's/option(WEBP_BUILD_GIF2WEBP "Build the gif2webp conversion tool." ON)/option(WEBP_BUILD_GIF2WEBP "Build the gif2webp conversion tool." OFF)/' "$file_path"
 
 echo
 echo "${WHITE}Setup completed!${NC}"

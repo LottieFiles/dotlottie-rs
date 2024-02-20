@@ -53,7 +53,7 @@ jobs:
         if: github.event.inputs.target == 'apple' || github.event.inputs.target == 'all'
         env:
           APPLE_MACOSX_SDK: MacOSX13
-        run: make apple
+        run: rm /usr/local/lib/libjpeg* ; make apple
 
       - name: Upload Apple Artifacts
         uses: actions/upload-artifact@v3

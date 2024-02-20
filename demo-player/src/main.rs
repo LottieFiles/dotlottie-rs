@@ -134,7 +134,11 @@ fn main() {
     let mut buffer = vec![0; metadata.len() as usize];
     f.read(&mut buffer).expect("buffer overflow");
 
-    // let string = String::from_utf8(buffer.clone()).unwrap();
+    let mut cartoon = File::open("src/cartoon.json").expect("no file found");
+    let metadataCartoon = fs::metadata("src/cartoon.json").expect("unable to read metadata");
+    let mut cartoonBuffer = vec![0; metadataCartoon.len() as usize];
+    cartoon.read(&mut cartoonBuffer).expect("buffer overflow");
+    let string = String::from_utf8(cartoonBuffer.clone()).unwrap();
     // lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
     // println!("{:?}", Some(lottie_player.manifest()));
 
@@ -211,6 +215,14 @@ fn main() {
 
                 lottie_player.load_animation(animation_id.as_str(), WIDTH as u32, HEIGHT as u32);
             }
+        }
+
+        if window.is_key_down(Key::L) {
+            lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
+        }
+
+        if window.is_key_down(Key::R) {
+            lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
         }
 
         if window.is_key_down(Key::Up) {

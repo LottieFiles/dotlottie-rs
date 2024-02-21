@@ -345,6 +345,11 @@ define CMAKE_BUILD
   cmake --build $(CMAKE_BUILD_DIR) --config Release --target install -- $(CMAKE_BUILD_OPTIONS)
 endef
 
+define CLEAN_LIBGJPEG
+	echo "Removing libjpeg from rm /usr/local/lib/libjpeg*"
+	rm -f /usr/local/lib/libjpeg*
+endef
+
 define CARGO_BUILD
 	source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
 		cargo build \
@@ -527,6 +532,7 @@ $4/$(CMAKE_CACHE):
 	$$(SETUP_CMAKE)
 
 # Build
+$(call CLEAN_LIBGJPEG)
 $$($1_DEPS_LIB_DIR)/$5: CMAKE_BUILD_DIR := $4
 $$($1_DEPS_LIB_DIR)/$5: CMAKE_BUILD_OPTIONS := $(if $(filter $($1_SUBSYSTEM),$(APPLE_IOS)),CODE_SIGNING_ALLOWED=NO,)
 $$($1_DEPS_LIB_DIR)/$5: $4/$(CMAKE_CACHE)

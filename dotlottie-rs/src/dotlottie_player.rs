@@ -441,10 +441,6 @@ impl DotLottieRuntime {
         self.loop_count
     }
 
-    pub fn set_speed(&mut self, speed: f32) {
-        self.config.speed = if speed < 0.0 { 1.0 } else { speed };
-    }
-
     pub fn speed(&self) -> f32 {
         self.config.speed
     }
@@ -761,6 +757,7 @@ impl DotLottiePlayer {
         is_ok
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn manifest(&self) -> Option<Manifest> {
         self.runtime.read().unwrap().manifest()
     }
@@ -779,10 +776,6 @@ impl DotLottiePlayer {
 
     pub fn set_config(&self, config: Config) {
         self.runtime.write().unwrap().set_config(config);
-    }
-
-    pub fn set_speed(&self, speed: f32) {
-        self.runtime.write().unwrap().set_speed(speed);
     }
 
     pub fn speed(&self) -> f32 {
@@ -919,21 +912,20 @@ impl DotLottiePlayer {
         self.runtime.read().unwrap().config()
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn subscribe(&self, observer: Arc<dyn Observer>) {
         self.observers.write().unwrap().push(observer);
     }
 
     pub fn manifest_string(&self) -> String {
-        match self.manifest() {
-            Some(manifest) => manifest.to_string(),
-            None => "{}".to_string(),
-        }
+        self.runtime.read().unwrap().manifest().unwrap().to_string()
     }
 
     pub fn is_complete(&self) -> bool {
         self.runtime.read().unwrap().is_complete()
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn unsubscribe(&self, observer: &Arc<dyn Observer>) {
         self.observers
             .write()

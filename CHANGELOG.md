@@ -1,3 +1,21 @@
+## 0.1.14 (2024-02-20)
+
+### Fixes
+
+#### added load_error event (#75)
+
+#### 🐛 memory access out of range on resize (#76)
+
+#### 🐛 on_loop/on_complete events are not triggered when in Reverse/Forward modes (#77)
+
+#### 🐛 reset playback_state,loop_count,start_time on load (#71)
+
+#### 🐛 pass animation data to tvg_picture_load_data as a valid C string (#78)
+
+#### 🐛 themes structure in manifest file (#65)
+
+#### re-init dotlottie manager when loading from animation_data (#85)
+
 ## 0.1.13 (2024-02-02)
 
 ### Features

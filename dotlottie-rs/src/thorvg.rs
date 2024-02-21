@@ -90,7 +90,7 @@ impl Canvas {
     }
 
     pub fn set_target(
-        &self,
+        &mut self,
         buffer: &mut Vec<u32>,
         stride: u32,
         width: u32,
@@ -122,48 +122,51 @@ impl Canvas {
         convert_tvg_result(result, "tvg_canvas_clear")
     }
 
-    pub fn push<T: Drawable>(&self, drawable: &T) -> Result<(), TvgError> {
+    pub fn push<T: Drawable>(&mut self, drawable: &T) -> Result<(), TvgError> {
         let result = unsafe { tvg_canvas_push(self.raw_canvas, drawable.as_raw_paint()) };
 
         convert_tvg_result(result, "tvg_canvas_push")
     }
 
-    pub fn draw(&self) -> Result<(), TvgError> {
+    pub fn draw(&mut self) -> Result<(), TvgError> {
         let result = unsafe { tvg_canvas_draw(self.raw_canvas) };
 
         convert_tvg_result(result, "tvg_canvas_draw")
     }
 
-    pub fn sync(&self) -> Result<(), TvgError> {
+    pub fn sync(&mut self) -> Result<(), TvgError> {
         let result = unsafe { tvg_canvas_sync(self.raw_canvas) };
 
         convert_tvg_result(result, "tvg_canvas_sync")
     }
 
-    pub fn update(&self) -> Result<(), TvgError> {
+    pub fn update(&mut self) -> Result<(), TvgError> {
         let result = unsafe { tvg_canvas_update(self.raw_canvas) };
 
         convert_tvg_result(result, "tvg_canvas_update")
     }
+}
 
-    pub fn set_mempool(&self, policy: Tvg_Mempool_Policy) -> Result<(), TvgError> {
-        let result = unsafe { tvg_swcanvas_set_mempool(self.raw_canvas, policy) };
-
-        convert_tvg_result(result, "tvg_swcanvas_set_mempool")
+impl Drop for Canvas {
+    fn drop(&mut self) {
+        unsafe { tvg_canvas_destroy(self.raw_canvas) };
     }
 }
 
-pub struct Picture {
+pub struct Animation {
+    raw_animation: *mut Tvg_Animation,
     raw_paint: *mut Tvg_Paint,
 }
 
-impl Picture {
-    pub fn from_raw(raw: *mut Tvg_Paint) -> Self {
-        Picture { raw_paint: raw }
-    }
+impl Animation {
+    pub fn new() -> Self {
+        let raw_animation = unsafe { tvg_animation_new() };
+        let raw_paint = unsafe { tvg_animation_get_picture(raw_animation) };
 
-    fn raw_paint(&self) -> *mut Tvg_Paint {
-        self.raw_paint
+        Animation {
+            raw_animation,
+            raw_paint,
+        }
     }
 
     pub fn load(&mut self, path: &str) -> Result<(), TvgError> {
@@ -177,15 +180,16 @@ impl Picture {
         let mimetype = CString::new(mimetype).expect("Failed to create CString");
         let data = CString::new(data).expect("Failed to create CString");
 
-        let result = unsafe {
-            tvg_picture_load_data(
-                self.raw_paint,
-                data.as_ptr(),
-                data.as_bytes().len() as u32,
-                mimetype.as_ptr(),
-                copy,
-            )
-        };
+        let result =
+            unsafe {
+                tvg_picture_load_data(
+                    self.raw_paint,
+                    data.as_ptr(),
+                    data.as_bytes().len() as u32,
+                    mimetype.as_ptr(),
+                    copy,
+                )
+            };
 
         convert_tvg_result(result, "tvg_picture_load_data")?;
 
@@ -196,63 +200,36 @@ impl Picture {
         let mut width = 0.0;
         let mut height = 0.0;
 
-        let result = unsafe {
-            tvg_picture_get_size(
-                self.raw_paint,
-                &mut width as *mut f32,
-                &mut height as *mut f32,
-            )
-        };
+        let result =
+            unsafe {
+                tvg_picture_get_size(
+                    self.raw_paint,
+                    &mut width as *mut f32,
+                    &mut height as *mut f32,
+                )
+            };
 
         convert_tvg_result(result, "tvg_picture_get_size")?;
 
         Ok((width, height))
     }
 
-    pub fn set_size(&self, width: f32, height: f32) -> Result<(), TvgError> {
+    pub fn set_size(&mut self, width: f32, height: f32) -> Result<(), TvgError> {
         let result = unsafe { tvg_picture_set_size(self.raw_paint, width, height) };
 
         convert_tvg_result(result, "tvg_picture_set_size")
     }
 
     pub fn scale(&mut self, factor: f32) -> Result<(), TvgError> {
-        let result = unsafe { tvg_paint_scale(self.raw_paint(), factor) };
+        let result = unsafe { tvg_paint_scale(self.raw_paint, factor) };
 
         convert_tvg_result(result, "tvg_paint_scale")
     }
 
     pub fn translate(&mut self, tx: f32, ty: f32) -> Result<(), TvgError> {
-        let result = unsafe { tvg_paint_translate(self.raw_paint(), tx, ty) };
+        let result = unsafe { tvg_paint_translate(self.raw_paint, tx, ty) };
 
         convert_tvg_result(result, "tvg_paint_translate")
-    }
-}
-
-impl<'a> Drawable for Picture {
-    fn as_raw_paint(&self) -> *mut Tvg_Paint {
-        self.raw_paint
-    }
-}
-
-pub struct Animation {
-    raw_animation: *mut Tvg_Animation,
-}
-
-impl Animation {
-    pub fn new() -> Self {
-        Animation {
-            raw_animation: unsafe { tvg_animation_new() },
-        }
-    }
-
-    pub fn new_picture(&self) -> Option<Picture> {
-        let raw_picture = unsafe { tvg_animation_get_picture(self.raw_animation) };
-
-        if raw_picture.is_null() {
-            return None;
-        }
-
-        Some(Picture::from_raw(raw_picture))
     }
 
     pub fn get_total_frame(&self) -> Result<f32, TvgError> {
@@ -278,7 +255,7 @@ impl Animation {
         return Ok(duration);
     }
 
-    pub fn set_frame(&self, frame_no: f32) -> Result<(), TvgError> {
+    pub fn set_frame(&mut self, frame_no: f32) -> Result<(), TvgError> {
         let result = unsafe { tvg_animation_set_frame(self.raw_animation, frame_no) };
 
         convert_tvg_result(result, "tvg_animation_set_frame")
@@ -291,7 +268,21 @@ impl Animation {
 
         convert_tvg_result(result, "tvg_animation_get_frame")?;
 
-        Ok(curr_frame)
+        return Ok(curr_frame);
+    }
+}
+
+impl Drawable for Animation {
+    fn as_raw_paint(&self) -> *mut Tvg_Paint {
+        self.raw_paint
+    }
+}
+
+impl Drop for Animation {
+    fn drop(&mut self) {
+        unsafe {
+            tvg_paint_del(self.raw_paint);
+        };
     }
 }
 
@@ -306,16 +297,15 @@ impl Shape {
         }
     }
 
-    pub fn fill(&self, color: (u8, u8, u8, u8)) -> Result<(), TvgError> {
-        let (r, g, b, a) = color;
-
-        let result = unsafe { tvg_shape_set_fill_color(self.raw_shape, r, g, b, a) };
+    pub fn fill(&mut self, color: (u8, u8, u8, u8)) -> Result<(), TvgError> {
+        let result =
+            unsafe { tvg_shape_set_fill_color(self.raw_shape, color.0, color.1, color.2, color.3) };
 
         convert_tvg_result(result, "tvg_shape_set_fill_color")
     }
 
     pub fn append_rect(
-        &self,
+        &mut self,
         x: f32,
         y: f32,
         w: f32,
@@ -328,10 +318,10 @@ impl Shape {
         convert_tvg_result(result, "tvg_shape_append_rect")
     }
 
-    pub fn destroy(&self) -> Result<(), TvgError> {
-        let result = unsafe { tvg_paint_del(self.raw_shape) };
+    pub fn reset(&mut self) -> Result<(), TvgError> {
+        let result = unsafe { tvg_shape_reset(self.raw_shape) };
 
-        convert_tvg_result(result, "tvg_paint_del")
+        convert_tvg_result(result, "tvg_shape_reset")
     }
 }
 

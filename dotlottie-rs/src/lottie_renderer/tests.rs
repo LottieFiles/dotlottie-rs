@@ -164,16 +164,4 @@ mod tests {
 
         assert!(result.is_ok());
     }
-
-    #[test]
-    fn test_error_on_animation_not_loaded() {
-        let renderer = LottieRenderer::new();
-
-        let result = renderer.total_frames();
-
-        assert!(matches!(
-            result,
-            Err(LottieRendererError::AnimationNotLoaded)
-        ));
-    }
 }

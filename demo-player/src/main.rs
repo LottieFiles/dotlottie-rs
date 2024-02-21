@@ -1,5 +1,5 @@
 use dotlottie_player_core::{Config, DotLottiePlayer, Mode, Observer};
-use minifb::{Key, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
 use std::sync::Arc;
@@ -102,15 +102,16 @@ impl Timer {
 }
 
 fn main() {
-    let mut window = Window::new(
-        "dotLottie rust demo - ESC to exit",
-        WIDTH,
-        HEIGHT,
-        WindowOptions::default(),
-    )
-    .unwrap_or_else(|e| {
-        panic!("{}", e);
-    });
+    let mut window =
+        Window::new(
+            "dotLottie rust demo - ESC to exit",
+            WIDTH,
+            HEIGHT,
+            WindowOptions::default(),
+        )
+        .unwrap_or_else(|e| {
+            panic!("{}", e);
+        });
 
     let base_path = env::var("CARGO_MANIFEST_DIR").unwrap();
 
@@ -201,7 +202,7 @@ fn main() {
             lottie_player.set_config(config)
         }
 
-        if window.is_key_down(Key::Right) {
+        if window.is_key_pressed(Key::Right, KeyRepeat::No) {
             if let Some(manifest) = lottie_player.manifest() {
                 println!("{:?}", i);
 

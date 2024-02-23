@@ -219,7 +219,17 @@ fn main() {
         }
 
         if window.is_key_down(Key::L) {
-            lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
+            lottie_player = DotLottiePlayer::new(Config {
+                mode: Mode::ReverseBounce,
+                loop_animation: true,
+                speed: 1.0,
+                use_frame_interpolation: true,
+                autoplay: true,
+                segments: vec![10.0, 45.0],
+                background_color: 0xffffffff,
+            });
+
+            lottie_player.load_animation_data(&string, WIDTH as u32, HEIGHT as u32);
         }
 
         if window.is_key_down(Key::R) {

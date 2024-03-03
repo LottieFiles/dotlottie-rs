@@ -149,7 +149,10 @@ impl Canvas {
 
 impl Drop for Canvas {
     fn drop(&mut self) {
-        unsafe { tvg_canvas_destroy(self.raw_canvas) };
+        unsafe {
+            tvg_canvas_clear(self.raw_canvas, true);
+            tvg_canvas_destroy(self.raw_canvas);
+        };
     }
 }
 
@@ -281,7 +284,7 @@ impl Drawable for Animation {
 impl Drop for Animation {
     fn drop(&mut self) {
         unsafe {
-            tvg_paint_del(self.raw_paint);
+            tvg_animation_del(self.raw_animation);
         };
     }
 }

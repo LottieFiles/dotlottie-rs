@@ -218,7 +218,7 @@ fn main() {
             }
         }
 
-        if window.is_key_down(Key::L) {
+        if window.is_key_pressed(Key::L, KeyRepeat::No) {
             lottie_player = DotLottiePlayer::new(Config {
                 mode: Mode::ReverseBounce,
                 loop_animation: true,
@@ -232,7 +232,7 @@ fn main() {
             lottie_player.load_animation_data(&string, WIDTH as u32, HEIGHT as u32);
         }
 
-        if window.is_key_down(Key::R) {
+        if window.is_key_pressed(Key::R, KeyRepeat::No) {
             lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
         }
 

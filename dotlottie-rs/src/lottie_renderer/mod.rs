@@ -122,7 +122,7 @@ impl LottieRenderer {
                 self.width,
                 self.width,
                 self.height,
-                TvgColorspace::ABGR8888,
+                TvgColorspace::ARGB8888,
             )
             .map_err(LottieRendererError::ThorvgError)?;
 
@@ -182,6 +182,7 @@ impl LottieRenderer {
 
     pub fn render(&mut self) -> Result<(), LottieRendererError> {
         self.thorvg_canvas.update()?;
+        self.thorvg_canvas.clear(false, true)?;
         self.thorvg_canvas.draw()?;
         self.thorvg_canvas.sync()?;
 
@@ -269,9 +270,10 @@ impl LottieRenderer {
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
 
-    pub fn load_theme_data(&mut self, theme_data: &str) -> Result<(), LottieRendererError> {
-        // TODO: thorvg to provide an api to call on the picture instance (maybe) to load the theme
-        todo!();
+    pub fn load_theme_data(&mut self, slots: &str) -> Result<(), LottieRendererError> {
+        self.thorvg_animation
+            .set_slots(slots)
+            .map_err(|e| LottieRendererError::ThorvgError(e))
     }
 }
 

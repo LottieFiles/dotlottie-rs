@@ -116,8 +116,8 @@ impl Canvas {
         convert_tvg_result(result, "tvg_swcanvas_set_target")
     }
 
-    pub fn clear(&self, paints: bool, buffer: bool) -> Result<(), TvgError> {
-        let result = unsafe { tvg_canvas_clear(self.raw_canvas, paints, buffer) };
+    pub fn clear(&self, free: bool) -> Result<(), TvgError> {
+        let result = unsafe { tvg_canvas_clear(self.raw_canvas, free) };
 
         convert_tvg_result(result, "tvg_canvas_clear")
     }
@@ -183,16 +183,16 @@ impl Animation {
         let mimetype = CString::new(mimetype).expect("Failed to create CString");
         let data = CString::new(data).expect("Failed to create CString");
 
-        let result = unsafe {
-            tvg_picture_load_data(
-                self.raw_paint,
-                data.as_ptr(),
-                data.as_bytes().len() as u32,
-                mimetype.as_ptr(),
-                std::ptr::null(),
-                copy,
-            )
-        };
+        let result =
+            unsafe {
+                tvg_picture_load_data(
+                    self.raw_paint,
+                    data.as_ptr(),
+                    data.as_bytes().len() as u32,
+                    mimetype.as_ptr(),
+                    copy,
+                )
+            };
 
         convert_tvg_result(result, "tvg_picture_load_data")?;
 

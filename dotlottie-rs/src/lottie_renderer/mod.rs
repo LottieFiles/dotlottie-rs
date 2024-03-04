@@ -53,7 +53,7 @@ impl LottieRenderer {
         width: u32,
         height: u32,
     ) -> Result<(), LottieRendererError> {
-        self.thorvg_canvas.clear(true, false)?;
+        self.thorvg_canvas.clear(true)?;
 
         self.width = width;
         self.height = height;
@@ -109,7 +109,7 @@ impl LottieRenderer {
         height: u32,
         copy: bool,
     ) -> Result<(), LottieRendererError> {
-        self.thorvg_canvas.clear(true, false)?;
+        self.thorvg_canvas.clear(true)?;
 
         self.width = width;
         self.height = height;
@@ -182,7 +182,6 @@ impl LottieRenderer {
 
     pub fn render(&mut self) -> Result<(), LottieRendererError> {
         self.thorvg_canvas.update()?;
-        self.thorvg_canvas.clear(false, true)?;
         self.thorvg_canvas.draw()?;
         self.thorvg_canvas.sync()?;
 

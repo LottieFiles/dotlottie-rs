@@ -2,15 +2,12 @@ use thiserror::Error;
 
 mod tests;
 
-use crate::thorvg;
+use crate::{Animation, Canvas, Shape, TvgColorspace, TvgEngine, TvgError};
 
 #[derive(Error, Debug)]
 pub enum LottieRendererError {
     #[error("Thorvg error: {0}")]
-    ThorvgError(#[from] thorvg::TvgError),
-
-    #[error("Animation not loaded")]
-    AnimationNotLoaded,
+    ThorvgError(#[from] TvgError),
 
     #[error("Invalid color: {0}")]
     InvalidColor(String),
@@ -20,10 +17,9 @@ pub enum LottieRendererError {
 }
 
 pub struct LottieRenderer {
-    thorvg_animation: Option<thorvg::Animation>,
-    thorvg_canvas: Option<thorvg::Canvas>,
-    thorvg_background_shape: Option<thorvg::Shape>,
-    thorvg_picture: Option<thorvg::Picture>,
+    thorvg_animation: Animation,
+    thorvg_canvas: Canvas,
+    thorvg_background_shape: Shape,
     picture_width: f32,
     picture_height: f32,
     pub width: u32,
@@ -34,11 +30,14 @@ pub struct LottieRenderer {
 
 impl LottieRenderer {
     pub fn new() -> Self {
+        let thorvg_canvas = Canvas::new(TvgEngine::TvgEngineSw, 0);
+        let thorvg_animation = Animation::new();
+        let thorvg_background_shape = Shape::new();
+
         Self {
-            thorvg_animation: None,
-            thorvg_canvas: None,
-            thorvg_background_shape: None,
-            thorvg_picture: None,
+            thorvg_animation,
+            thorvg_canvas,
+            thorvg_background_shape,
             buffer: vec![],
             width: 0,
             height: 0,
@@ -54,56 +53,51 @@ impl LottieRenderer {
         width: u32,
         height: u32,
     ) -> Result<(), LottieRendererError> {
-        let thorvg_animation = thorvg::Animation::new();
-        self.thorvg_picture = thorvg_animation.new_picture();
-        self.thorvg_animation = Some(thorvg_animation);
-        self.thorvg_background_shape = Some(thorvg::Shape::new());
-        self.thorvg_canvas = Some(thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 0));
+        self.thorvg_canvas.clear(true, false)?;
 
         self.width = width;
         self.height = height;
+
         self.buffer
             .resize((self.width * self.height * 4) as usize, 0);
-
-        let thorvg_canvas = self
-            .thorvg_canvas
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
-        let thorvg_background_shape = self
-            .thorvg_background_shape
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
-        thorvg_canvas
+        self.thorvg_canvas
             .set_target(
                 &mut self.buffer,
-                width,
-                width,
-                height,
-                thorvg::TvgColorspace::ABGR8888,
+                self.width,
+                self.width,
+                self.height,
+                TvgColorspace::ABGR8888,
             )
             .map_err(LottieRendererError::ThorvgError)?;
 
-        if let Some(picture) = &mut self.thorvg_picture {
-            picture.load(path)?;
+        self.thorvg_animation = Animation::new();
+        self.thorvg_background_shape = Shape::new();
 
-            let (pw, ph) = picture.get_size()?;
-            let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);
+        self.thorvg_animation.load(path)?;
 
-            picture.scale(scale)?;
-            picture.translate(shift_x, shift_y)?;
+        let (pw, ph) = self.thorvg_animation.get_size()?;
+        self.picture_width = pw;
+        self.picture_height = ph;
 
-            self.picture_width = pw;
-            self.picture_height = ph;
+        let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);
 
-            thorvg_background_shape.append_rect(0.0, 0.0, pw, ph, 0.0, 0.0)?;
-            let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
-            thorvg_background_shape.fill((red, green, blue, alpha))?;
+        self.thorvg_animation.scale(scale)?;
+        self.thorvg_animation.translate(shift_x, shift_y)?;
 
-            thorvg_canvas.push(thorvg_background_shape)?;
-            thorvg_canvas.push(picture)?;
-        }
+        self.thorvg_background_shape.append_rect(
+            0.0,
+            0.0,
+            self.width as f32,
+            self.height as f32,
+            0.0,
+            0.0,
+        )?;
+        let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
+        self.thorvg_background_shape
+            .fill((red, green, blue, alpha))?;
+
+        self.thorvg_canvas.push(&self.thorvg_background_shape)?;
+        self.thorvg_canvas.push(&self.thorvg_animation)?;
 
         Ok(())
     }
@@ -115,89 +109,69 @@ impl LottieRenderer {
         height: u32,
         copy: bool,
     ) -> Result<(), LottieRendererError> {
-        let thorvg_animation = thorvg::Animation::new();
-        self.thorvg_picture = thorvg_animation.new_picture();
-        self.thorvg_animation = Some(thorvg_animation);
-        self.thorvg_background_shape = Some(thorvg::Shape::new());
-        self.thorvg_canvas = Some(thorvg::Canvas::new(thorvg::TvgEngine::TvgEngineSw, 0));
+        self.thorvg_canvas.clear(true, false)?;
 
         self.width = width;
         self.height = height;
+
         self.buffer
             .resize((self.width * self.height * 4) as usize, 0);
-
-        let thorvg_canvas = self
-            .thorvg_canvas
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
-        let thorvg_background_shape = self
-            .thorvg_background_shape
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
-        thorvg_canvas
+        self.thorvg_canvas
             .set_target(
                 &mut self.buffer,
-                width,
-                width,
-                height,
-                thorvg::TvgColorspace::ABGR8888,
+                self.width,
+                self.width,
+                self.height,
+                TvgColorspace::ABGR8888,
             )
             .map_err(LottieRendererError::ThorvgError)?;
 
-        if let Some(picture) = &mut self.thorvg_picture {
-            picture.load_data(data, "lottie", copy)?;
+        self.thorvg_animation = Animation::new();
+        self.thorvg_background_shape = Shape::new();
 
-            let (pw, ph) = picture.get_size()?;
-            let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);
+        self.thorvg_animation.load_data(data, "lottie", copy)?;
 
-            picture.scale(scale)?;
-            picture.translate(shift_x, shift_y)?;
+        let (pw, ph) = self.thorvg_animation.get_size()?;
+        self.picture_width = pw;
+        self.picture_height = ph;
 
-            self.picture_width = pw;
-            self.picture_height = ph;
+        let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);
 
-            thorvg_background_shape.append_rect(0.0, 0.0, pw, ph, 0.0, 0.0)?;
-            let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
-            thorvg_background_shape.fill((red, green, blue, alpha))?;
+        self.thorvg_animation.scale(scale)?;
+        self.thorvg_animation.translate(shift_x, shift_y)?;
 
-            thorvg_canvas.push(thorvg_background_shape)?;
-            thorvg_canvas.push(picture)?;
-        }
+        self.thorvg_background_shape.append_rect(
+            0.0,
+            0.0,
+            self.width as f32,
+            self.height as f32,
+            0.0,
+            0.0,
+        )?;
+        let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
+        self.thorvg_background_shape
+            .fill((red, green, blue, alpha))?;
+
+        self.thorvg_canvas.push(&self.thorvg_background_shape)?;
+        self.thorvg_canvas.push(&self.thorvg_animation)?;
 
         Ok(())
     }
 
     pub fn total_frames(&self) -> Result<f32, LottieRendererError> {
-        let thorvg_animation = self
-            .thorvg_animation
-            .as_ref()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
-        thorvg_animation
+        self.thorvg_animation
             .get_total_frame()
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
 
     pub fn duration(&self) -> Result<f32, LottieRendererError> {
-        let thorvg_animation = self
-            .thorvg_animation
-            .as_ref()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
-        thorvg_animation
+        self.thorvg_animation
             .get_duration()
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
 
     pub fn current_frame(&self) -> Result<f32, LottieRendererError> {
-        let thorvg_animation = self
-            .thorvg_animation
-            .as_ref()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
-        thorvg_animation
+        self.thorvg_animation
             .get_frame()
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
@@ -207,25 +181,16 @@ impl LottieRenderer {
     }
 
     pub fn render(&mut self) -> Result<(), LottieRendererError> {
-        let thorvg_canvas = self
-            .thorvg_canvas
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
-        thorvg_canvas.update()?;
-        thorvg_canvas.draw()?;
-        thorvg_canvas.sync()?;
+        self.thorvg_canvas.update()?;
+        self.thorvg_canvas.draw()?;
+        self.thorvg_canvas.sync()?;
 
         Ok(())
     }
 
     pub fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError> {
-        let thorvg_animation = self
+        let total_frames = self
             .thorvg_animation
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
-        let total_frames = thorvg_animation
             .get_total_frame()
             .map_err(|e| LottieRendererError::ThorvgError(e))?;
 
@@ -236,17 +201,12 @@ impl LottieRenderer {
             )));
         }
 
-        thorvg_animation
+        self.thorvg_animation
             .set_frame(no)
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
 
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError> {
-        let thorvg_canvas = self
-            .thorvg_canvas
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
         if (width, height) == (self.width, self.height) {
             return Ok(());
         }
@@ -263,23 +223,30 @@ impl LottieRenderer {
         self.buffer
             .resize((self.width * self.height * 4) as usize, 0);
 
-        thorvg_canvas
+        self.thorvg_canvas
             .set_target(
                 &mut self.buffer,
                 self.width,
                 self.width,
                 self.height,
-                thorvg::TvgColorspace::ABGR8888,
+                TvgColorspace::ABGR8888,
             )
             .map_err(LottieRendererError::ThorvgError)?;
 
-        if let Some(picture) = &mut self.thorvg_picture {
-            let (pw, ph) = picture.get_size()?;
-            let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);
+        let (scale, shift_x, shift_y) =
+            calculate_scale_and_shift(self.picture_width, self.picture_height, width, height);
 
-            picture.scale(scale)?;
-            picture.translate(shift_x, shift_y)?;
-        }
+        self.thorvg_animation.scale(scale)?;
+        self.thorvg_animation.translate(shift_x, shift_y)?;
+
+        self.thorvg_background_shape.append_rect(
+            0.0,
+            0.0,
+            self.width as f32,
+            self.height as f32,
+            0.0,
+            0.0,
+        )?;
 
         Ok(())
     }
@@ -295,14 +262,9 @@ impl LottieRenderer {
     pub fn set_background_color(&mut self, hex_color: u32) -> Result<(), LottieRendererError> {
         self.background_color = hex_color;
 
-        let thorvg_background_shape = self
-            .thorvg_background_shape
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
-
         let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
 
-        thorvg_background_shape
+        self.thorvg_background_shape
             .fill((red, green, blue, alpha))
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }

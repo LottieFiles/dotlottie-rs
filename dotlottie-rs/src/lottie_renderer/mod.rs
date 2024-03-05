@@ -47,61 +47,6 @@ impl LottieRenderer {
         }
     }
 
-    pub fn load_path(
-        &mut self,
-        path: &str,
-        width: u32,
-        height: u32,
-    ) -> Result<(), LottieRendererError> {
-        self.thorvg_canvas.clear(true)?;
-
-        self.width = width;
-        self.height = height;
-
-        self.buffer
-            .resize((self.width * self.height * 4) as usize, 0);
-        self.thorvg_canvas
-            .set_target(
-                &mut self.buffer,
-                self.width,
-                self.width,
-                self.height,
-                TvgColorspace::ABGR8888,
-            )
-            .map_err(LottieRendererError::ThorvgError)?;
-
-        self.thorvg_animation = Animation::new();
-        self.thorvg_background_shape = Shape::new();
-
-        self.thorvg_animation.load(path)?;
-
-        let (pw, ph) = self.thorvg_animation.get_size()?;
-        self.picture_width = pw;
-        self.picture_height = ph;
-
-        let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);
-
-        self.thorvg_animation.scale(scale)?;
-        self.thorvg_animation.translate(shift_x, shift_y)?;
-
-        self.thorvg_background_shape.append_rect(
-            0.0,
-            0.0,
-            self.width as f32,
-            self.height as f32,
-            0.0,
-            0.0,
-        )?;
-        let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
-        self.thorvg_background_shape
-            .fill((red, green, blue, alpha))?;
-
-        self.thorvg_canvas.push(&self.thorvg_background_shape)?;
-        self.thorvg_canvas.push(&self.thorvg_animation)?;
-
-        Ok(())
-    }
-
     pub fn load_data(
         &mut self,
         data: &str,

@@ -29,6 +29,7 @@ dictionary Config {
     boolean use_frame_interpolation;
     sequence<f32> segments;
     u32 background_color;
+    string marker;
 };
 
 dictionary ManifestTheme {
@@ -63,6 +64,12 @@ dictionary Manifest {
     string? version;
 };
 
+dictionary Marker {
+    string name;
+    f32 time;
+    f32 duration;
+};
+
 interface DotLottiePlayer {
     constructor(Config config);
     boolean load_animation_data([ByRef] string animation_data, u32 width, u32 height);
@@ -95,4 +102,5 @@ interface DotLottiePlayer {
     void subscribe(Observer observer);
     void unsubscribe([ByRef] Observer observer);
     boolean is_complete();
+    sequence<Marker> markers();
 };

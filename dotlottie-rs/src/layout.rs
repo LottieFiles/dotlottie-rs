@@ -10,16 +10,16 @@ pub enum Fit {
 
 #[derive(Clone, PartialEq)]
 pub struct Layout {
-    // Defines how the animation fits within the canvas.
     pub fit: Fit,
-    // To Specifies the position of the animation within the canvas.
-    // use the align property with [x, y] values ranging from 0 to 1, where 0 represents the start (left or top) and 1 represents the end (right or bottom) of the canvas.
     pub align: Vec<f32>,
 }
 
 impl Layout {
     pub fn new(fit: Fit, align: Vec<f32>) -> Self {
-        Self { fit, align }
+        Self {
+            fit,
+            align: validate_normalize_align(align),
+        }
     }
 
     pub fn default() -> Self {
@@ -83,6 +83,19 @@ impl Layout {
 
         (scaled_width, scaled_height, shift_x, shift_y)
     }
+}
+
+fn validate_normalize_align(align: Vec<f32>) -> Vec<f32> {
+    let mut align = align;
+
+    if align.len() != 2 {
+        align = vec![0.5, 0.5];
+    }
+
+    align[0] = align[0].max(0.0).min(1.0);
+    align[1] = align[1].max(0.0).min(1.0);
+
+    align
 }
 
 #[cfg(test)]

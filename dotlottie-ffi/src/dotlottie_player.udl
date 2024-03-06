@@ -1,4 +1,5 @@
 namespace dotlottie_player {
+    Layout create_default_layout();
 };
 
 [Trait, WithForeign]

@@ -90,10 +90,11 @@
         useFrameInterpolation: true,
         segments: createSegments(0, 40),
         backgroundColor: 0xff0000ff,
-        layout: {
-          fit: Module.Fit.values[6],
-          align: createAlign(0, 1),
-        },
+        // layout: {
+        //   fit: Module.Fit.values[6],
+        //   align: createAlign(0, 1),
+        // },
+        layout: Module.create_default_layout(),
       });
 
       // const data = await fetch(

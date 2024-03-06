@@ -45,6 +45,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("fit", &Layout::fit)
         .field("align", &Layout::align);
 
+    function("create_default_layout", &create_default_layout);
+
     value_object<Config>("Config")
         .field("autoplay", &Config::autoplay)
         .field("loopAnimation", &Config::loop_animation)

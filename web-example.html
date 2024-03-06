@@ -89,35 +89,36 @@
         speed: 1,
         useFrameInterpolation: true,
         segments: createSegments(0, 40),
-        backgroundColor: 0xff0000ff,
         // layout: {
         //   fit: Module.Fit.values[6],
         //   align: createAlign(0, 1),
         // },
         layout: Module.create_default_layout(),
+        backgroundColor: 0xff00005f,
+        marker: "feather",
       });
 
-      // const data = await fetch(
-      //   "https://lottie.host/647eb023-6040-4b60-a275-e2546994dd7f/zDCfp5lhLe.json"
-      // ).then((res) => res.text());
+      const data = await fetch("./demo-player/src/markers.json").then((res) =>
+        res.text()
+      );
 
-      const data = await fetch(
-        "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie"
-        // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
-      ).then((res) => res.arrayBuffer());
+      // const data = await fetch(
+      //   "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie"
+      //   // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
+      // ).then((res) => res.arrayBuffer());
 
       const canvas = document.querySelector("canvas");
 
-      // const loaded = dotLottiePlayer.loadAnimationData(
-      //   data,
-      //   canvas.width,
-      //   canvas.height
-      // );
-      const loaded = dotLottiePlayer.loadDotLottieData(
+      const loaded = dotLottiePlayer.loadAnimationData(
         data,
         canvas.width,
         canvas.height
       );
+      // const loaded = dotLottiePlayer.loadDotLottieData(
+      //   data,
+      //   canvas.width,
+      //   canvas.height
+      // );
 
       if (loaded) {
         resize();
@@ -128,6 +129,8 @@
         mode: Module.Mode.values[1],
         segments: createSegments(),
       });
+
+      console.log(dotLottiePlayer.markers());
 
       console.log("Loaded: ", loaded);
 

@@ -18,6 +18,24 @@ bool load_dotlottie_data(DotLottiePlayer &player, std::string data, uint32_t wid
     return player.load_dotlottie_data(data_vector, width, height);
 }
 
+val markers(DotLottiePlayer &player)
+{
+    auto markers = player.markers();
+
+    val result = val::array();
+
+    for (auto &marker : markers)
+    {
+        val marker_obj = val::object();
+        marker_obj.set("name", marker.name);
+        marker_obj.set("time", marker.time);
+        marker_obj.set("duration", marker.duration);
+        result.call<void>("push", marker_obj);
+    }
+
+    return result;
+}
+
 EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 {
 
@@ -55,7 +73,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("useFrameInterpolation", &Config::use_frame_interpolation)
         .field("segments", &Config::segments)
         .field("backgroundColor", &Config::background_color)
-        .field("layout", &Config::layout);
+        .field("layout", &Config::layout)
+        .field("marker", &Config::marker);
 
     // value_object<ManifestTheme>("ManifestTheme")
     //     .field("id", &ManifestTheme::id)
@@ -128,5 +147,6 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("totalFrames", &DotLottiePlayer::total_frames)
         // .function("subscribe", &DotLottiePlayer::subscribe)
         // .function("unsubscribe", &DotLottiePlayer::unsubscribe)
-        .function("isComplete", &DotLottiePlayer::is_complete);
+        .function("isComplete", &DotLottiePlayer::is_complete)
+        .function("markers", &markers);
 }

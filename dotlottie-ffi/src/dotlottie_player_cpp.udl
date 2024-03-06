@@ -20,6 +20,20 @@ enum Mode {
     "ReverseBounce"
 };
 
+enum Fit {
+    "Contain",
+    "Fill",
+    "Cover",
+    "FitWidth",
+    "FitHeight",
+    "None",
+};
+
+dictionary Layout {
+    Fit fit;
+    sequence<f32> align;
+};
+
 dictionary Config {
     boolean autoplay;
     boolean loop_animation;
@@ -28,6 +42,7 @@ dictionary Config {
     boolean use_frame_interpolation;
     sequence<f32> segments;
     u32 background_color;
+    Layout layout;
 };
 
 ///dictionary ManifestTheme {

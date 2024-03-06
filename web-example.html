@@ -6,7 +6,7 @@
     <title>WASM test</title>
   </head>
   <body>
-    <div style="width: 500px">
+    <div style="width: 800px">
       <canvas
         style="width: 100%; height: 100%; border: 1px solid black"
       ></canvas>
@@ -69,6 +69,19 @@
         return vector;
       }
 
+      function createAlign(x, y) {
+        const vector = new Module.VectorFloat();
+
+        if (typeof x === "number" && typeof y === "number") {
+          vector.push_back(x);
+          vector.push_back(y);
+        }
+
+        return vector;
+      }
+
+      console.log(Module);
+
       const dotLottiePlayer = new Module.DotLottiePlayer({
         autoplay: true,
         loopAnimation: true,
@@ -77,6 +90,10 @@
         useFrameInterpolation: true,
         segments: createSegments(0, 40),
         backgroundColor: 0xff0000ff,
+        layout: {
+          fit: Module.Fit.values[6],
+          align: createAlign(0, 1),
+        },
       });
 
       // const data = await fetch(

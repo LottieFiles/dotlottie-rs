@@ -33,6 +33,18 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .value("Bounce", Mode::BOUNCE)
         .value("ReverseBounce", Mode::REVERSE_BOUNCE);
 
+    enum_<Fit>("Fit")
+        .value("Contain", Fit::CONTAIN)
+        .value("Cover", Fit::COVER)
+        .value("Fill", Fit::FILL)
+        .value("FitWidth", Fit::FIT_WIDTH)
+        .value("FitHeight", Fit::FIT_HEIGHT)
+        .value("None", Fit::NONE);
+
+    value_object<Layout>("Layout")
+        .field("fit", &Layout::fit)
+        .field("align", &Layout::align);
+
     value_object<Config>("Config")
         .field("autoplay", &Config::autoplay)
         .field("loopAnimation", &Config::loop_animation)
@@ -40,7 +52,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("speed", &Config::speed)
         .field("useFrameInterpolation", &Config::use_frame_interpolation)
         .field("segments", &Config::segments)
-        .field("backgroundColor", &Config::background_color);
+        .field("backgroundColor", &Config::background_color)
+        .field("layout", &Config::layout);
 
     // value_object<ManifestTheme>("ManifestTheme")
     //     .field("id", &ManifestTheme::id)

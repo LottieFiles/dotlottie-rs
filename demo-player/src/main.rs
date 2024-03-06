@@ -126,7 +126,6 @@ fn main() {
         autoplay: true,
         segments: vec![10.0, 45.0],
         background_color: 0xffffffff,
-        theme_id: "".to_string(),
     });
 
     // read dotlottie in to vec<u8>
@@ -248,7 +247,6 @@ fn main() {
                 autoplay: true,
                 segments: vec![10.0, 45.0],
                 background_color: 0xffffffff,
-                theme_id: "".to_string(),
             });
 
             lottie_player.load_animation_data(&string, WIDTH as u32, HEIGHT as u32);

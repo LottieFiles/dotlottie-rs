@@ -55,7 +55,6 @@ pub struct Config {
     pub autoplay: bool,
     pub segments: Vec<f32>,
     pub background_color: u32,
-    pub theme_id: String,
 }
 
 struct DotLottieRuntime {
@@ -662,17 +661,15 @@ impl DotLottieRuntime {
     }
 
     pub fn load_theme(&mut self, theme_id: &str) -> bool {
-        // check if this theme_id exists in the manifest.themes array 
-        // then check if the theme has animations array or not 
-        // if not then this is a global theme 
-        // if yes then this is a scoped theme to the given animations and we have to check if 
-        // it can be applied to the currently running animation id 
+        // check if this theme_id exists in the manifest.themes array
+        // then check if the theme has animations array or not
+        // if not then this is a global theme
+        // if yes then this is a scoped theme to the given animations and we have to check if
+        // it can be applied to the currently running animation id
         let theme_data = self.dotlottie_manager.get_theme(theme_id);
 
         match theme_data {
-            Ok(theme_data) => {
-                return self.renderer.load_theme_data(&theme_data).is_ok();
-            }
+            Ok(theme_data) => self.renderer.load_theme_data(&theme_data).is_ok(),
             Err(_error) => false,
         }
     }
@@ -956,15 +953,11 @@ impl DotLottiePlayer {
     }
 
     pub fn load_theme(&self, theme_id: &str) -> bool {
-        let ok = self.runtime.write().unwrap().load_theme(theme_id);
-
-        ok
+        self.runtime.write().unwrap().load_theme(theme_id)
     }
 
     pub fn load_theme_data(&self, theme_data: &str) -> bool {
-        let ok = self.runtime.write().unwrap().load_theme_data(theme_data);
-
-        ok
+        self.runtime.write().unwrap().load_theme_data(theme_data)
     }
 }
 

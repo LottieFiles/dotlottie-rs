@@ -113,5 +113,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("totalFrames", &DotLottiePlayer::total_frames)
         // .function("subscribe", &DotLottiePlayer::subscribe)
         // .function("unsubscribe", &DotLottiePlayer::unsubscribe)
-        .function("isComplete", &DotLottiePlayer::is_complete);
+        .function("isComplete", &DotLottiePlayer::is_complete)
+        .function("loadTheme", &DotLottiePlayer::load_theme)
+        .function("loadThemeData", &DotLottiePlayer::load_theme_data);
 }

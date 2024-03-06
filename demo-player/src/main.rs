@@ -23,10 +23,10 @@ impl Observer for DummyObserver2 {
         println!("on_stop2");
     }
     fn on_frame(&self, frame_no: f32) {
-        println!("on_frame2: {}", frame_no);
+        // println!("on_frame2: {}", frame_no);
     }
     fn on_render(&self, frame_no: f32) {
-        println!("on_render2: {}", frame_no);
+        // println!("on_render2: {}", frame_no);
     }
     fn on_load(&self) {
         println!("on_load2");
@@ -35,7 +35,7 @@ impl Observer for DummyObserver2 {
         println!("on_load_error2");
     }
     fn on_loop(&self, loop_count: u32) {
-        println!("on_loop2: {}", loop_count);
+        // println!("on_loop2: {}", loop_count);
     }
     fn on_complete(&self) {
         println!("on_complete2");
@@ -48,7 +48,7 @@ struct DummyObserver {
 
 impl Observer for DummyObserver {
     fn on_play(&self) {
-        println!("on_play {} ", self.id);
+        // println!("on_play {} ", self.id);
     }
     fn on_pause(&self) {
         println!("on_pause {} ", self.id);
@@ -57,10 +57,10 @@ impl Observer for DummyObserver {
         println!("on_stop {} ", self.id);
     }
     fn on_frame(&self, frame_no: f32) {
-        println!("on_frame {}: {}", self.id, frame_no);
+        // println!("on_frame {}: {}", self.id, frame_no);
     }
     fn on_render(&self, frame_no: f32) {
-        println!("on_render {}: {}", self.id, frame_no);
+        // println!("on_render {}: {}", self.id, frame_no);
     }
     fn on_load(&self) {
         println!("on_load {} ", self.id);
@@ -102,16 +102,15 @@ impl Timer {
 }
 
 fn main() {
-    let mut window =
-        Window::new(
-            "dotLottie rust demo - ESC to exit",
-            WIDTH,
-            HEIGHT,
-            WindowOptions::default(),
-        )
-        .unwrap_or_else(|e| {
-            panic!("{}", e);
-        });
+    let mut window = Window::new(
+        "dotLottie rust demo - ESC to exit",
+        WIDTH,
+        HEIGHT,
+        WindowOptions::default(),
+    )
+    .unwrap_or_else(|e| {
+        panic!("{}", e);
+    });
 
     let base_path = env::var("CARGO_MANIFEST_DIR").unwrap();
 
@@ -119,31 +118,35 @@ fn main() {
     path.push("src/cartoon.json");
 
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        mode: Mode::ReverseBounce,
+        mode: Mode::Forward,
         loop_animation: true,
         speed: 1.0,
         use_frame_interpolation: true,
         autoplay: true,
-        segments: vec![10.0, 45.0],
+        segments: vec![],
         background_color: 0xffffffff,
     });
 
     // read dotlottie in to vec<u8>
-    let mut f = File::open("src/emoji.lottie").expect("no file found");
-    let metadata = fs::metadata("src/emoji.lottie").expect("unable to read metadata");
+    let mut f = File::open("src/exploding_pigeon.json").expect("no file found");
+    let metadata = fs::metadata("src/exploding_pigeon.json").expect("unable to read metadata");
 
     let mut buffer = vec![0; metadata.len() as usize];
     f.read(&mut buffer).expect("buffer overflow");
+
+    let exploding_pigeon = String::from_utf8(buffer.clone()).unwrap();
+    lottie_player.load_animation_data(exploding_pigeon.as_str(), WIDTH as u32, HEIGHT as u32);
 
     let mut cartoon = File::open("src/cartoon.json").expect("no file found");
     let metadataCartoon = fs::metadata("src/cartoon.json").expect("unable to read metadata");
     let mut cartoonBuffer = vec![0; metadataCartoon.len() as usize];
     cartoon.read(&mut cartoonBuffer).expect("buffer overflow");
     let string = String::from_utf8(cartoonBuffer.clone()).unwrap();
+
     // lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
     // println!("{:?}", Some(lottie_player.manifest()));
 
-    lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
+    // lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
     // lottie_player.load_animation("confused", WIDTH as u32, HEIGHT as u32);
 
     let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
@@ -158,23 +161,23 @@ fn main() {
 
     let mut sys = System::new_all();
 
-    let cpu_memory_monitor_thread = thread::spawn(move || {
-        loop {
-            sys.refresh_all();
+    // let cpu_memory_monitor_thread = thread::spawn(move || {
+    //     loop {
+    //         sys.refresh_all();
 
-            for (pid, process) in sys.processes() {
-                if pid.as_u32() == std::process::id() {
-                    println!(
-                        "CPU: {} % | Memory: {} MB",
-                        process.cpu_usage(),
-                        process.memory() / 1024 / 1024,
-                    );
-                }
-            }
+    //         for (pid, process) in sys.processes() {
+    //             if pid.as_u32() == std::process::id() {
+    //                 println!(
+    //                     "CPU: {} % | Memory: {} MB",
+    //                     process.cpu_usage(),
+    //                     process.memory() / 1024 / 1024,
+    //                 );
+    //             }
+    //         }
 
-            thread::sleep(std::time::Duration::from_secs(1)); // Adjust sleep duration as needed
-        }
-    });
+    //         thread::sleep(std::time::Duration::from_secs(1)); // Adjust sleep duration as needed
+    //     }
+    // });
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
@@ -184,8 +187,17 @@ fn main() {
         if window.is_key_down(Key::S) {
             lottie_player.stop();
         }
+
         if window.is_key_down(Key::P) {
             lottie_player.play();
+        }
+
+        if window.is_key_pressed(Key::X, KeyRepeat::No) {
+            lottie_player.explode_pigeon();
+        }
+
+        if window.is_key_pressed(Key::Y, KeyRepeat::No) {
+            lottie_player.explosion_complete();
         }
 
         if window.is_key_down(Key::J) {
@@ -244,9 +256,9 @@ fn main() {
             lottie_player.unsubscribe(&observer2);
         }
 
-        if cpu_memory_monitor_timer.elapsed().as_secs() >= 1 {
-            cpu_memory_monitor_timer = Instant::now();
-        }
+        // if cpu_memory_monitor_timer.elapsed().as_secs() >= 1 {
+        //     cpu_memory_monitor_timer = Instant::now();
+        // }
 
         let (buffer_ptr, buffer_len) = (lottie_player.buffer_ptr(), lottie_player.buffer_len());
 
@@ -256,5 +268,5 @@ fn main() {
         window.update_with_buffer(buffer, WIDTH, HEIGHT).unwrap();
     }
 
-    cpu_memory_monitor_thread.join().unwrap();
+    // cpu_memory_monitor_thread.join().unwrap();
 }

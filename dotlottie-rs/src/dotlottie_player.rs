@@ -1,4 +1,9 @@
 use instant::{Duration, Instant};
+use statig::{
+    blocking::{IntoStateMachineExt, StateMachine},
+    state_machine,
+    Response::{self, Handled, Super, Transition},
+};
 use std::sync::{Arc, RwLock};
 
 use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
@@ -66,6 +71,81 @@ struct DotLottieRuntime {
     config: Config,
     dotlottie_manager: DotLottieManager,
     direction: Direction,
+    state_machine: StateMachine<Blinky>,
+}
+
+#[derive(Default)]
+pub struct Blinky;
+
+pub enum Event {
+    ButtonPressed,
+    ExplosionComplete,
+    FeathersComplete,
+}
+
+#[state_machine(initial = "State::running_pigeon()")]
+impl Blinky {
+    #[state(entry_action = "enter_running_pigeon")]
+    fn running_pigeon(context: &mut DotLottiePlayer, event: &Event) -> Response<State> {
+        match event {
+            Event::ButtonPressed => {
+                // context.set_frame(0.0);
+                context.stop();
+
+                // Transition(State::running_pigeon());
+
+                Handled
+            }
+            _ => Super,
+        }
+    }
+
+    #[state(entry_action = "enter_explosion")]
+    fn explosion(context: &mut DotLottiePlayer, event: &Event) -> Response<State> {
+        match event {
+            Event::ExplosionComplete => {
+                context.set_frame(30.0);
+                // Transition(State::feathers());
+
+                Handled
+            }
+            _ => Super,
+        }
+    }
+
+    #[state(entry_action = "enter_feathers")]
+    fn feathers(context: &mut DotLottiePlayer, event: &Event) -> Response<State> {
+        match event {
+            Event::FeathersComplete => {
+                context.set_frame(45.0);
+
+                // Transition(State::running_pigeon());
+
+                Handled
+            }
+            _ => Super,
+        }
+
+        // match event {
+        //     Event::FeathersComplete => Transition(State::running_pigeon()),
+        //     _ => Super,
+        // }
+    }
+
+    #[action]
+    fn enter_running_pigeon() {
+        println!("Entered running_pigeon");
+    }
+
+    #[action]
+    fn enter_explosion() {
+        println!("Entered explosion");
+    }
+
+    #[action]
+    fn enter_feathers() {
+        println!("Entered feathers");
+    }
 }
 
 impl DotLottieRuntime {
@@ -86,6 +166,7 @@ impl DotLottieRuntime {
             config,
             dotlottie_manager: DotLottieManager::new(None).unwrap(),
             direction,
+            state_machine: Blinky::default().state_machine(),
         }
     }
 
@@ -164,6 +245,22 @@ impl DotLottieRuntime {
         } else {
             false
         }
+    }
+
+    pub fn explode_pigeon(&mut self, player: &mut DotLottiePlayer) {
+        // self.state_machine.handle(self.renderer, &Event::ButtonPressed);
+        self.state_machine
+            .handle_with_context(&Event::ButtonPressed, player);
+    }
+
+    pub fn explosion_complete(&mut self, player: &mut DotLottiePlayer) {
+        self.state_machine
+            .handle_with_context(&Event::ExplosionComplete, player);
+    }
+
+    pub fn feathers_complete(&mut self, player: &mut DotLottiePlayer) {
+        self.state_machine
+            .handle_with_context(&Event::FeathersComplete, player);
     }
 
     pub fn stop(&mut self) -> bool {
@@ -812,6 +909,25 @@ impl DotLottiePlayer {
 
     pub fn is_stopped(&self) -> bool {
         self.runtime.read().unwrap().is_stopped()
+    }
+    pub fn explode_pigeon(&mut self) {
+        let player = self.runtime.write().unwrap();
+
+        let ok = self.runtime.write().unwrap().explode_pigeon(player);
+
+        ok
+    }
+
+    pub fn explosion_complete(&self) {
+        let ok = self.runtime.write().unwrap().explosion_complete();
+
+        ok
+    }
+
+    pub fn feathers_complete(&self) {
+        let ok = self.runtime.write().unwrap().feathers_complete();
+
+        ok
     }
 
     pub fn play(&self) -> bool {

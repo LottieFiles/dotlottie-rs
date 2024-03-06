@@ -116,16 +116,17 @@ fn main() {
     let base_path = env::var("CARGO_MANIFEST_DIR").unwrap();
 
     let mut path = path::PathBuf::from(base_path);
-    path.push("src/cartoon.json");
+    path.push("src/markers.json");
 
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        mode: Mode::ReverseBounce,
+        mode: Mode::Forward,
         loop_animation: true,
         speed: 1.0,
         use_frame_interpolation: true,
         autoplay: true,
-        segments: vec![10.0, 45.0],
+        segments: vec![],
         background_color: 0xffffffff,
+        marker: "feather".to_string(),
     });
 
     // read dotlottie in to vec<u8>
@@ -135,15 +136,21 @@ fn main() {
     let mut buffer = vec![0; metadata.len() as usize];
     f.read(&mut buffer).expect("buffer overflow");
 
-    let mut cartoon = File::open("src/cartoon.json").expect("no file found");
-    let metadataCartoon = fs::metadata("src/cartoon.json").expect("unable to read metadata");
-    let mut cartoonBuffer = vec![0; metadataCartoon.len() as usize];
-    cartoon.read(&mut cartoonBuffer).expect("buffer overflow");
-    let string = String::from_utf8(cartoonBuffer.clone()).unwrap();
+    let mut markers = File::open("src/markers.json").expect("no file found");
+    let metadatamarkers = fs::metadata("src/markers.json").expect("unable to read metadata");
+    let mut markersBuffer = vec![0; metadatamarkers.len() as usize];
+    markers.read(&mut markersBuffer).expect("buffer overflow");
+    let string = String::from_utf8(markersBuffer.clone()).unwrap();
     // lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
     // println!("{:?}", Some(lottie_player.manifest()));
 
-    lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
+    lottie_player.load_animation_path(
+        path.as_path().to_str().unwrap(),
+        WIDTH as u32,
+        HEIGHT as u32,
+    );
+
+    // lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
     // lottie_player.load_animation("confused", WIDTH as u32, HEIGHT as u32);
 
     let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
@@ -227,6 +234,7 @@ fn main() {
                 autoplay: true,
                 segments: vec![10.0, 45.0],
                 background_color: 0xffffffff,
+                marker: "".to_string(),
             });
 
             lottie_player.load_animation_data(&string, WIDTH as u32, HEIGHT as u32);
@@ -242,6 +250,30 @@ fn main() {
 
         if window.is_key_down(Key::Down) {
             lottie_player.unsubscribe(&observer2);
+        }
+
+        if window.is_key_pressed(Key::Q, KeyRepeat::No) {
+            let mut config = lottie_player.config();
+
+            config.marker = "bird".to_string();
+
+            lottie_player.set_config(config);
+        }
+
+        if window.is_key_pressed(Key::W, KeyRepeat::No) {
+            let mut config = lottie_player.config();
+
+            config.marker = "explosion".to_string();
+
+            lottie_player.set_config(config);
+        }
+
+        if window.is_key_pressed(Key::E, KeyRepeat::No) {
+            let mut config = lottie_player.config();
+
+            config.marker = "feather".to_string();
+
+            lottie_player.set_config(config);
         }
 
         if cpu_memory_monitor_timer.elapsed().as_secs() >= 1 {

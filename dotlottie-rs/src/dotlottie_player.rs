@@ -1,9 +1,15 @@
 use instant::{Duration, Instant};
-use std::sync::{Arc, RwLock};
+use std::{
+    borrow::Borrow,
+    sync::{Arc, RwLock},
+};
 
 use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 
-use crate::lottie_renderer::{LottieRenderer, LottieRendererError};
+use crate::{
+    layout::{self, Layout},
+    lottie_renderer::{LottieRenderer, LottieRendererError},
+};
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
@@ -55,6 +61,7 @@ pub struct Config {
     pub autoplay: bool,
     pub segments: Vec<f32>,
     pub background_color: u32,
+    pub layout: Layout,
 }
 
 struct DotLottieRuntime {
@@ -224,11 +231,12 @@ impl DotLottieRuntime {
             Direction::Reverse => end_frame - raw_next_frame,
         };
 
-        let next_frame = if self.config.use_frame_interpolation {
-            next_frame
-        } else {
-            next_frame.round()
-        };
+        let next_frame =
+            if self.config.use_frame_interpolation {
+                next_frame
+            } else {
+                next_frame.round()
+            };
 
         // to ensure the next_frame won't go beyond the start & end frames
         let next_frame = next_frame.clamp(start_frame, end_frame);
@@ -458,11 +466,18 @@ impl DotLottieRuntime {
         self.update_background_color(&new_config);
         self.update_speed(&new_config);
         self.update_loop_animation(&new_config);
+        self.update_layout(&new_config.layout);
 
         // directly updating fields that don't require special handling
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
         self.config.segments = new_config.segments;
         self.config.autoplay = new_config.autoplay;
+    }
+
+    pub fn update_layout(&mut self, layout: &Layout) {
+        if self.renderer.set_layout(layout).is_ok() {
+            self.config.layout = layout.clone();
+        }
     }
 
     fn update_mode(&mut self, new_config: &Config) {
@@ -524,6 +539,8 @@ impl DotLottieRuntime {
                 .renderer
                 .set_background_color(self.config.background_color)
                 .is_ok();
+
+        self.renderer.set_layout(&self.config.layout).unwrap();
 
         self.is_loaded = loaded;
 

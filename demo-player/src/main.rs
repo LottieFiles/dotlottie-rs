@@ -1,4 +1,4 @@
-use dotlottie_player_core::{Config, DotLottiePlayer, Mode, Observer};
+use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Mode, Observer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
@@ -7,8 +7,8 @@ use std::thread;
 use std::{env, path, time::Instant};
 use sysinfo::System;
 
-pub const WIDTH: usize = 500;
-pub const HEIGHT: usize = 500;
+pub const WIDTH: usize = 1000;
+pub const HEIGHT: usize = 1000;
 
 struct DummyObserver2;
 
@@ -126,6 +126,7 @@ fn main() {
         autoplay: true,
         segments: vec![10.0, 45.0],
         background_color: 0xffffffff,
+        layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
     });
 
     // read dotlottie in to vec<u8>
@@ -149,8 +150,8 @@ fn main() {
     let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
     let observer2: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 2 });
 
-    lottie_player.subscribe(observer1.clone());
-    lottie_player.subscribe(observer2.clone());
+    // lottie_player.subscribe(observer1.clone());
+    // lottie_player.subscribe(observer2.clone());
 
     let mut timer = Timer::new();
 
@@ -227,6 +228,7 @@ fn main() {
                 autoplay: true,
                 segments: vec![10.0, 45.0],
                 background_color: 0xffffffff,
+                layout: Layout::default(),
             });
 
             lottie_player.load_animation_data(&string, WIDTH as u32, HEIGHT as u32);
@@ -242,6 +244,15 @@ fn main() {
 
         if window.is_key_down(Key::Down) {
             lottie_player.unsubscribe(&observer2);
+        }
+
+        if window.is_key_pressed(Key::K, KeyRepeat::No) {
+            let mut config = lottie_player.config();
+
+            config.layout.fit = dotlottie_player_core::Fit::None;
+            config.layout.align = vec![0.0, 0.0];
+
+            lottie_player.set_config(config);
         }
 
         if cpu_memory_monitor_timer.elapsed().as_secs() >= 1 {

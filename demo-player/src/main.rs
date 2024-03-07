@@ -1,4 +1,4 @@
-use dotlottie_player_core::{Config, DotLottiePlayer, Mode, Observer};
+use dotlottie_player_core::{Config, DotLottiePlayer, Event, Mode, Observer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
@@ -69,7 +69,7 @@ impl Observer for DummyObserver {
         println!("on_load_error {} ", self.id);
     }
     fn on_loop(&self, loop_count: u32) {
-        println!("on_loop {}: {}", self.id, loop_count);
+        // println!("on_loop {}: {}", self.id, loop_count);
     }
     fn on_complete(&self) {
         println!("on_complete {} ", self.id);
@@ -119,10 +119,10 @@ fn main() {
 
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         mode: Mode::Forward,
-        loop_animation: true,
+        loop_animation: false,
         speed: 1.0,
         use_frame_interpolation: true,
-        autoplay: true,
+        autoplay: false,
         segments: vec![],
         background_color: 0xffffffff,
     });
@@ -153,7 +153,7 @@ fn main() {
     let observer2: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 2 });
 
     lottie_player.subscribe(observer1.clone());
-    lottie_player.subscribe(observer2.clone());
+    // lottie_player.subscribe(observer2.clone());
 
     let mut timer = Timer::new();
 
@@ -192,12 +192,16 @@ fn main() {
             lottie_player.play();
         }
 
-        if window.is_key_pressed(Key::X, KeyRepeat::No) {
-            lottie_player.explode_pigeon();
+        if window.is_key_pressed(Key::Z, KeyRepeat::No) {
+            lottie_player.send_event(Event::InitialState);
         }
 
-        if window.is_key_pressed(Key::Y, KeyRepeat::No) {
-            lottie_player.explosion_complete();
+        if window.is_key_pressed(Key::X, KeyRepeat::No) {
+            lottie_player.send_event(Event::ButtonPressed);
+        }
+
+        if window.is_key_pressed(Key::C, KeyRepeat::No) {
+            lottie_player.send_event(Event::TimerElapsed);
         }
 
         if window.is_key_down(Key::J) {

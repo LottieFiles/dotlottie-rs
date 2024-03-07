@@ -62,7 +62,7 @@ pub struct Config {
     pub background_color: u32,
 }
 
-struct DotLottieRuntime {
+pub struct DotLottieRuntime {
     renderer: LottieRenderer,
     playback_state: PlaybackState,
     is_loaded: bool,
@@ -71,80 +71,92 @@ struct DotLottieRuntime {
     config: Config,
     dotlottie_manager: DotLottieManager,
     direction: Direction,
-    state_machine: StateMachine<Blinky>,
 }
 
 #[derive(Default)]
 pub struct Blinky;
 
+#[derive(Debug)]
 pub enum Event {
+    InitialState,
     ButtonPressed,
-    ExplosionComplete,
-    FeathersComplete,
+    OnComplete,
+    TimerElapsed,
 }
 
-#[state_machine(initial = "State::running_pigeon()")]
+#[state_machine(
+    initial = "State::running_pigeon()",
+    state(derive(Debug)),
+    on_transition = "Self::on_transition"
+)]
 impl Blinky {
+    fn on_transition(&mut self, source: &State, target: &State) {
+        println!("transitioned from `{:?}` to `{:?}`", source, target);
+    }
+
+    // Context is passed to the associated action
     #[state(entry_action = "enter_running_pigeon")]
-    fn running_pigeon(context: &mut DotLottiePlayer, event: &Event) -> Response<State> {
+    fn running_pigeon(context: &mut DotLottieRuntime, event: &Event) -> Response<State> {
         match event {
-            Event::ButtonPressed => {
-                // context.set_frame(0.0);
-                context.stop();
-
-                // Transition(State::running_pigeon());
-
-                Handled
-            }
-            _ => Super,
+            Event::ButtonPressed => Transition(State::explosion()),
+            _ => Handled,
         }
     }
 
+    // Context is passed to the associated action
     #[state(entry_action = "enter_explosion")]
-    fn explosion(context: &mut DotLottiePlayer, event: &Event) -> Response<State> {
+    fn explosion(context: &mut DotLottieRuntime, event: &Event) -> Response<State> {
         match event {
-            Event::ExplosionComplete => {
-                context.set_frame(30.0);
-                // Transition(State::feathers());
-
-                Handled
-            }
-            _ => Super,
+            Event::OnComplete => Transition(State::feathers()),
+            _ => Handled,
         }
     }
 
+    // Context is passed to the associated action
     #[state(entry_action = "enter_feathers")]
-    fn feathers(context: &mut DotLottiePlayer, event: &Event) -> Response<State> {
+    fn feathers(context: &mut DotLottieRuntime, event: &Event) -> Response<State> {
         match event {
-            Event::FeathersComplete => {
-                context.set_frame(45.0);
-
-                // Transition(State::running_pigeon());
-
-                Handled
-            }
-            _ => Super,
+            Event::OnComplete => Transition(State::running_pigeon()),
+            _ => Handled,
         }
-
-        // match event {
-        //     Event::FeathersComplete => Transition(State::running_pigeon()),
-        //     _ => Super,
-        // }
     }
 
     #[action]
-    fn enter_running_pigeon() {
+    fn enter_running_pigeon(context: &mut DotLottieRuntime) {
         println!("Entered running_pigeon");
+
+        let mut config = context.config();
+
+        config.loop_animation = true;
+        config.autoplay = true;
+        config.segments = vec![0.0, 21.0];
+        context.set_config(config);
+        context.play();
     }
 
     #[action]
-    fn enter_explosion() {
+    fn enter_explosion(context: &mut DotLottieRuntime) {
         println!("Entered explosion");
+        let mut config = context.config();
+
+        config.loop_animation = false;
+        config.autoplay = true;
+        config.speed = 0.5;
+        config.segments = vec![23.0, 33.0];
+        context.set_config(config);
+        context.play();
     }
 
     #[action]
-    fn enter_feathers() {
+    fn enter_feathers(context: &mut DotLottieRuntime) {
         println!("Entered feathers");
+        let mut config = context.config();
+
+        config.speed = 1.0;
+        config.loop_animation = false;
+        config.segments = vec![34.0, 96.0];
+        context.set_config(config);
+        context.play();
     }
 }
 
@@ -166,7 +178,6 @@ impl DotLottieRuntime {
             config,
             dotlottie_manager: DotLottieManager::new(None).unwrap(),
             direction,
-            state_machine: Blinky::default().state_machine(),
         }
     }
 
@@ -245,22 +256,6 @@ impl DotLottieRuntime {
         } else {
             false
         }
-    }
-
-    pub fn explode_pigeon(&mut self, player: &mut DotLottiePlayer) {
-        // self.state_machine.handle(self.renderer, &Event::ButtonPressed);
-        self.state_machine
-            .handle_with_context(&Event::ButtonPressed, player);
-    }
-
-    pub fn explosion_complete(&mut self, player: &mut DotLottiePlayer) {
-        self.state_machine
-            .handle_with_context(&Event::ExplosionComplete, player);
-    }
-
-    pub fn feathers_complete(&mut self, player: &mut DotLottiePlayer) {
-        self.state_machine
-            .handle_with_context(&Event::FeathersComplete, player);
     }
 
     pub fn stop(&mut self) -> bool {
@@ -760,6 +755,7 @@ impl DotLottieRuntime {
 pub struct DotLottiePlayer {
     runtime: RwLock<DotLottieRuntime>,
     observers: RwLock<Vec<Arc<dyn Observer>>>,
+    state_machine: StateMachine<Blinky>,
 }
 
 impl DotLottiePlayer {
@@ -767,10 +763,11 @@ impl DotLottiePlayer {
         DotLottiePlayer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
             observers: RwLock::new(Vec::new()),
+            state_machine: Blinky::default().state_machine(),
         }
     }
 
-    pub fn load_animation_data(&self, animation_data: &str, width: u32, height: u32) -> bool {
+    pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
         let is_ok = self
             .runtime
             .write()
@@ -787,6 +784,9 @@ impl DotLottiePlayer {
 
             return false;
         }
+
+        self.state_machine
+            .init_with_context(&mut *self.runtime.write().unwrap());
 
         is_ok
     }
@@ -910,24 +910,13 @@ impl DotLottiePlayer {
     pub fn is_stopped(&self) -> bool {
         self.runtime.read().unwrap().is_stopped()
     }
-    pub fn explode_pigeon(&mut self) {
-        let player = self.runtime.write().unwrap();
 
-        let ok = self.runtime.write().unwrap().explode_pigeon(player);
+    pub fn send_event(&mut self, event: Event) {
+        let runtime = &mut *self.runtime.write().unwrap();
 
-        ok
-    }
+        println!("Event: {:?}", event);
 
-    pub fn explosion_complete(&self) {
-        let ok = self.runtime.write().unwrap().explosion_complete();
-
-        ok
-    }
-
-    pub fn feathers_complete(&self) {
-        let ok = self.runtime.write().unwrap().feathers_complete();
-
-        ok
+        self.state_machine.handle_with_context(&event, runtime);
     }
 
     pub fn play(&self) -> bool {
@@ -994,7 +983,7 @@ impl DotLottiePlayer {
         ok
     }
 
-    pub fn render(&self) -> bool {
+    pub fn render(&mut self) -> bool {
         let ok = self.runtime.write().unwrap().render();
 
         if ok {
@@ -1012,6 +1001,13 @@ impl DotLottiePlayer {
                 } else {
                     self.observers.read().unwrap().iter().for_each(|observer| {
                         observer.on_complete();
+
+                        let runtime = &mut *self.runtime.write().unwrap();
+
+                        println!("Sending on complete >> Event: {:?}", Event::OnComplete);
+
+                        self.state_machine
+                            .handle_with_context(&Event::OnComplete, runtime);
                     });
                 }
             }

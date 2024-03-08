@@ -172,13 +172,6 @@ impl Animation {
         }
     }
 
-    pub fn load(&mut self, path: &str) -> Result<(), TvgError> {
-        let result =
-            unsafe { tvg_picture_load(self.raw_paint, path.as_ptr() as *const std::ffi::c_char) };
-
-        convert_tvg_result(result, "tvg_picture_load")
-    }
-
     pub fn load_data(&mut self, data: &str, mimetype: &str, copy: bool) -> Result<(), TvgError> {
         let mimetype = CString::new(mimetype).expect("Failed to create CString");
         let data = CString::new(data).expect("Failed to create CString");

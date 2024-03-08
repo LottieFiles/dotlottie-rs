@@ -29,6 +29,7 @@ dictionary Config {
     boolean use_frame_interpolation;
     sequence<f32> segments;
     u32 background_color;
+    string marker;
 };
 
 dictionary ManifestTheme {
@@ -61,6 +62,12 @@ dictionary Manifest {
     sequence<ManifestTheme>? themes;
     sequence<string>? states;
     string? version;
+};
+
+dictionary Marker {
+    string name;
+    f32 time;
+    f32 duration;
 };
 
 interface DotLottiePlayer {
@@ -97,4 +104,5 @@ interface DotLottiePlayer {
     boolean is_complete();
     boolean load_theme([ByRef] string theme_id);
     boolean load_theme_data([ByRef] string theme_data);
+    sequence<Marker> markers();
 };

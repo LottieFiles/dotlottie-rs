@@ -1,9 +1,16 @@
 use instant::{Duration, Instant};
-use std::sync::{Arc, RwLock};
+use std::{
+    fs,
+    sync::{Arc, RwLock},
+};
 
 use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 
-use crate::lottie_renderer::{LottieRenderer, LottieRendererError};
+use crate::{
+    extract_markers,
+    lottie_renderer::{LottieRenderer, LottieRendererError},
+    Marker, MarkersMap,
+};
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
@@ -55,6 +62,7 @@ pub struct Config {
     pub autoplay: bool,
     pub segments: Vec<f32>,
     pub background_color: u32,
+    pub marker: String,
 }
 
 struct DotLottieRuntime {
@@ -66,6 +74,7 @@ struct DotLottieRuntime {
     config: Config,
     dotlottie_manager: DotLottieManager,
     direction: Direction,
+    markers: MarkersMap,
 }
 
 impl DotLottieRuntime {
@@ -86,23 +95,56 @@ impl DotLottieRuntime {
             config,
             dotlottie_manager: DotLottieManager::new(None).unwrap(),
             direction,
+            markers: MarkersMap::new(),
         }
+    }
+
+    pub fn markers(&self) -> Vec<Marker> {
+        self.markers
+            .iter()
+            .map(|(name, (time, duration))| Marker {
+                name: name.to_string(),
+                time: *time,
+                duration: *duration,
+            })
+            .collect()
     }
 
     fn start_frame(&self) -> f32 {
-        if self.config.segments.len() == 2 {
-            self.config.segments[0].max(0.0)
-        } else {
+        let start_frame: f32 = {
+            if !self.config.marker.is_empty() {
+                if let Some((time, _)) = self.markers.get(&self.config.marker) {
+                    return *time;
+                }
+            }
+
+            if self.config.segments.len() == 2 {
+                return self.config.segments[0];
+            }
+
             0.0
-        }
+        };
+
+        start_frame.clamp(0.0, self.total_frames())
     }
 
     fn end_frame(&self) -> f32 {
-        if self.config.segments.len() == 2 {
-            self.config.segments[1].min(self.total_frames())
-        } else {
-            self.total_frames()
-        }
+        let end_frame: f32 =
+            {
+                if !self.config.marker.is_empty() {
+                    if let Some((time, duration)) = self.markers.get(&self.config.marker) {
+                        return time + duration;
+                    }
+                }
+
+                if self.config.segments.len() == 2 {
+                    return self.config.segments[1];
+                }
+
+                self.total_frames()
+            };
+
+        end_frame.clamp(0.0, self.total_frames())
     }
 
     pub fn is_loaded(&self) -> bool {
@@ -464,6 +506,7 @@ impl DotLottieRuntime {
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
         self.config.segments = new_config.segments;
         self.config.autoplay = new_config.autoplay;
+        self.config.marker = new_config.marker;
     }
 
     fn update_mode(&mut self, new_config: &Config) {
@@ -552,6 +595,8 @@ impl DotLottieRuntime {
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
         self.dotlottie_manager = DotLottieManager::new(None).unwrap();
 
+        self.markers = extract_markers(animation_data).unwrap_or_default();
+
         self.load_animation_common(
             |renderer, w, h| renderer.load_data(animation_data, w, h, false),
             width,
@@ -559,14 +604,11 @@ impl DotLottieRuntime {
         )
     }
 
-    pub fn load_animation_path(&mut self, animation_path: &str, width: u32, height: u32) -> bool {
-        self.dotlottie_manager = DotLottieManager::new(None).unwrap();
-
-        self.load_animation_common(
-            |renderer, w, h| renderer.load_path(animation_path, w, h),
-            width,
-            height,
-        )
+    pub fn load_animation_path(&mut self, file_path: &str, width: u32, height: u32) -> bool {
+        match fs::read_to_string(file_path) {
+            Ok(data) => self.load_animation_data(&data, width, height),
+            Err(_) => false,
+        }
     }
 
     pub fn load_dotlottie_data(&mut self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
@@ -579,6 +621,8 @@ impl DotLottieRuntime {
 
         match first_animation {
             Ok(animation_data) => {
+                self.markers = extract_markers(animation_data.as_str()).unwrap_or_default();
+
                 // For the moment we're ignoring manifest values
 
                 // self.load_playback_settings();
@@ -958,6 +1002,10 @@ impl DotLottiePlayer {
 
     pub fn load_theme_data(&self, theme_data: &str) -> bool {
         self.runtime.write().unwrap().load_theme_data(theme_data)
+    }
+
+    pub fn markers(&self) -> Vec<Marker> {
+        self.runtime.read().unwrap().markers()
     }
 }
 

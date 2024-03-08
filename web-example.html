@@ -82,11 +82,12 @@
         useFrameInterpolation: true,
         segments: createSegments(0, 40),
         backgroundColor: 0,
+        marker: "feather",
       });
 
-      // const data = await fetch(
-      //   "https://lottie.host/647eb023-6040-4b60-a275-e2546994dd7f/zDCfp5lhLe.json"
-      // ).then((res) => res.text());
+      // const data = await fetch("./demo-player/src/markers.json").then((res) =>
+      //   res.text()
+      // );
 
       const data = await fetch(
         "./demo-player/src/theming_example.lottie"
@@ -116,6 +117,8 @@
         mode: Module.Mode.values[1],
         segments: createSegments(),
       });
+
+      console.log(dotLottiePlayer.markers());
 
       console.log("Loaded: ", loaded);
 

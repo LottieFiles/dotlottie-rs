@@ -157,8 +157,8 @@ fn main() {
     let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
     let observer2: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 2 });
 
-    // lottie_player.subscribe(observer1.clone());
-    // lottie_player.subscribe(observer2.clone());
+    lottie_player.subscribe(observer1.clone());
+    lottie_player.subscribe(observer2.clone());
 
     let mut timer = Timer::new();
 
@@ -258,7 +258,11 @@ fn main() {
             let mut config = lottie_player.config();
 
             config.layout.fit = dotlottie_player_core::Fit::None;
-            config.layout.align = vec![0.0, 0.0];
+            // randomize alignment
+            config.layout.align =
+                vec![(rand::random::<f32>() * 1.0), (rand::random::<f32>() * 1.0)];
+
+            lottie_player.set_config(config);
         }
 
         if window.is_key_pressed(Key::Q, KeyRepeat::No) {

@@ -111,40 +111,31 @@ impl DotLottieRuntime {
     }
 
     fn start_frame(&self) -> f32 {
-        let start_frame: f32 = {
-            if !self.config.marker.is_empty() {
-                if let Some((time, _)) = self.markers.get(&self.config.marker) {
-                    return *time;
-                }
+        if !self.config.marker.is_empty() {
+            if let Some((time, _)) = self.markers.get(&self.config.marker) {
+                return (*time).max(0.0);
             }
+        }
 
-            if self.config.segments.len() == 2 {
-                return self.config.segments[0];
-            }
+        if self.config.segments.len() == 2 {
+            return self.config.segments[0].max(0.0);
+        }
 
-            0.0
-        };
-
-        start_frame.clamp(0.0, self.total_frames())
+        0.0
     }
 
     fn end_frame(&self) -> f32 {
-        let end_frame: f32 =
-            {
-                if !self.config.marker.is_empty() {
-                    if let Some((time, duration)) = self.markers.get(&self.config.marker) {
-                        return time + duration;
-                    }
-                }
+        if !self.config.marker.is_empty() {
+            if let Some((time, duration)) = self.markers.get(&self.config.marker) {
+                return (time + duration).min(self.total_frames());
+            }
+        }
 
-                if self.config.segments.len() == 2 {
-                    return self.config.segments[1];
-                }
+        if self.config.segments.len() == 2 {
+            return self.config.segments[1].min(self.total_frames());
+        }
 
-                self.total_frames()
-            };
-
-        end_frame.clamp(0.0, self.total_frames())
+        self.total_frames()
     }
 
     pub fn is_loaded(&self) -> bool {
@@ -595,7 +586,7 @@ impl DotLottieRuntime {
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
         self.dotlottie_manager = DotLottieManager::new(None).unwrap();
 
-        self.markers = extract_markers(animation_data).unwrap_or_default();
+        self.markers = extract_markers(animation_data);
 
         self.load_animation_common(
             |renderer, w, h| renderer.load_data(animation_data, w, h, false),
@@ -621,7 +612,7 @@ impl DotLottieRuntime {
 
         match first_animation {
             Ok(animation_data) => {
-                self.markers = extract_markers(animation_data.as_str()).unwrap_or_default();
+                self.markers = extract_markers(animation_data.as_str());
 
                 // For the moment we're ignoring manifest values
 

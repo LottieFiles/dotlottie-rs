@@ -18,29 +18,12 @@ bool load_dotlottie_data(DotLottiePlayer &player, std::string data, uint32_t wid
     return player.load_dotlottie_data(data_vector, width, height);
 }
 
-val markers(DotLottiePlayer &player)
-{
-    auto markers = player.markers();
-
-    val result = val::array();
-
-    for (auto &marker : markers)
-    {
-        val marker_obj = val::object();
-        marker_obj.set("name", marker.name);
-        marker_obj.set("time", marker.time);
-        marker_obj.set("duration", marker.duration);
-        result.call<void>("push", marker_obj);
-    }
-
-    return result;
-}
-
 EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 {
 
     // Register std::vector<float> as VectorFloat for the Config::segments field
     register_vector<float>("VectorFloat");
+    register_vector<Marker>("VectorMarker");
     // register_vector<std::string>("VectorString");
     // register_vector<ManifestTheme>("VectorManifestTheme");
     // register_vector<ManifestAnimation>("VectorManifestAnimation");
@@ -50,6 +33,11 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .value("Reverse", Mode::REVERSE)
         .value("Bounce", Mode::BOUNCE)
         .value("ReverseBounce", Mode::REVERSE_BOUNCE);
+
+    value_object<Marker>("Marker")
+        .field("name", &Marker::name)
+        .field("time", &Marker::time)
+        .field("duration", &Marker::duration);
 
     value_object<Config>("Config")
         .field("autoplay", &Config::autoplay)
@@ -133,5 +121,5 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         // .function("subscribe", &DotLottiePlayer::subscribe)
         // .function("unsubscribe", &DotLottiePlayer::unsubscribe)
         .function("isComplete", &DotLottiePlayer::is_complete)
-        .function("markers", &markers);
+        .function("markers", &DotLottiePlayer::markers);
 }

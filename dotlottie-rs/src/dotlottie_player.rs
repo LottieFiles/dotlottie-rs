@@ -705,17 +705,30 @@ impl DotLottieRuntime {
     }
 
     pub fn load_theme(&mut self, theme_id: &str) -> bool {
-        // check if this theme_id exists in the manifest.themes array
-        // then check if the theme has animations array or not
-        // if not then this is a global theme
-        // if yes then this is a scoped theme to the given animations and we have to check if
-        // it can be applied to the currently running animation id
-        let theme_data = self.dotlottie_manager.get_theme(theme_id);
+        self.manifest()
+            .and_then(|manifest| manifest.themes)
+            .map_or(false, |themes| {
+                themes
+                    .iter()
+                    .find(|t| t.id == theme_id)
+                    .map_or(false, |theme| {
+                        // check if the theme is either global or scoped to the currently active animation
+                        let is_global_or_active_animation = theme.animations.is_empty()
+                            || theme.animations.iter().any(|animation| {
+                                animation == &self.dotlottie_manager.active_animation_id()
+                            });
 
-        match theme_data {
-            Ok(theme_data) => self.renderer.load_theme_data(&theme_data).is_ok(),
-            Err(_error) => false,
-        }
+                        is_global_or_active_animation
+                            && self
+                                .dotlottie_manager
+                                .get_theme(theme_id)
+                                .ok()
+                                .and_then(|theme_data| {
+                                    self.renderer.load_theme_data(&theme_data).ok()
+                                })
+                                .is_some()
+                    })
+            })
     }
 
     pub fn load_theme_data(&mut self, theme_data: &str) -> bool {

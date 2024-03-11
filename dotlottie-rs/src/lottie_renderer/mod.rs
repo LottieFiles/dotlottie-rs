@@ -231,6 +231,12 @@ impl LottieRenderer {
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
 
+    pub fn load_theme_data(&mut self, slots: &str) -> Result<(), LottieRendererError> {
+        self.thorvg_animation
+            .set_slots(slots)
+            .map_err(|e| LottieRendererError::ThorvgError(e))
+    }
+
     pub fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError> {
         if self.layout == *layout {
             return Ok(());

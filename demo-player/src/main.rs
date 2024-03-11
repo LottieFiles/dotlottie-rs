@@ -131,8 +131,18 @@ fn main() {
     });
 
     // read dotlottie in to vec<u8>
-    let mut f = File::open("src/emoji.lottie").expect("no file found");
-    let metadata = fs::metadata("src/emoji.lottie").expect("unable to read metadata");
+    let mut f =
+        File::open(
+            // "src/emoji.lottie"
+            "src/theming_example.lottie",
+        )
+        .expect("no file found");
+    let metadata =
+        fs::metadata(
+            // "src/emoji.lottie"
+            "src/theming_example.lottie",
+        )
+        .expect("unable to read metadata");
 
     let mut buffer = vec![0; metadata.len() as usize];
     f.read(&mut buffer).expect("buffer overflow");
@@ -208,6 +218,16 @@ fn main() {
 
             config.mode = Mode::Bounce;
             lottie_player.set_config(config)
+        }
+
+        if window.is_key_pressed(Key::T, KeyRepeat::No) {
+            if let Some(manifest) = lottie_player.manifest() {
+                if let Some(themes) = manifest.themes {
+                    let theme = &themes[0];
+
+                    lottie_player.load_theme(&theme.id.as_str());
+                }
+            }
         }
 
         if window.is_key_pressed(Key::Right, KeyRepeat::No) {

@@ -8,6 +8,7 @@ pub struct DotLottieManager {
     zip_data: Vec<u8>,
     animation_settings_cache: HashMap<String, ManifestAnimation>,
     animation_data_cache: HashMap<String, String>,
+    theme_cache: HashMap<String, String>,
 }
 
 impl DotLottieManager {
@@ -34,6 +35,7 @@ impl DotLottieManager {
                         zip_data: dotlottie,
                         animation_settings_cache: HashMap::new(),
                         animation_data_cache: HashMap::new(),
+                        theme_cache: HashMap::new(),
                     })
                 }
                 Err(error) => Err(error),
@@ -45,6 +47,7 @@ impl DotLottieManager {
                 zip_data: vec![],
                 animation_settings_cache: HashMap::new(),
                 animation_data_cache: HashMap::new(),
+                theme_cache: HashMap::new(),
             })
         }
     }
@@ -243,5 +246,17 @@ impl DotLottieManager {
 
     pub fn active_animation_id(&self) -> String {
         self.active_animation_id.clone()
+    }
+
+    pub fn get_theme(&mut self, theme_id: &str) -> Result<String, DotLottieError> {
+        if let Some(theme) = self.theme_cache.get(theme_id) {
+            return Ok(theme.clone());
+        }
+
+        let theme = crate::get_theme(&self.zip_data, theme_id)?;
+
+        self.theme_cache.insert(theme_id.to_string(), theme.clone());
+
+        Ok(theme)
     }
 }

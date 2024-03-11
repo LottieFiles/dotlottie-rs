@@ -113,40 +113,31 @@ impl DotLottieRuntime {
     }
 
     fn start_frame(&self) -> f32 {
-        let start_frame: f32 = {
-            if !self.config.marker.is_empty() {
-                if let Some((time, _)) = self.markers.get(&self.config.marker) {
-                    return *time;
-                }
+        if !self.config.marker.is_empty() {
+            if let Some((time, _)) = self.markers.get(&self.config.marker) {
+                return (*time).max(0.0);
             }
+        }
 
-            if self.config.segments.len() == 2 {
-                return self.config.segments[0];
-            }
+        if self.config.segments.len() == 2 {
+            return self.config.segments[0].max(0.0);
+        }
 
-            0.0
-        };
-
-        start_frame.clamp(0.0, self.total_frames())
+        0.0
     }
 
     fn end_frame(&self) -> f32 {
-        let end_frame: f32 =
-            {
-                if !self.config.marker.is_empty() {
-                    if let Some((time, duration)) = self.markers.get(&self.config.marker) {
-                        return time + duration;
-                    }
-                }
+        if !self.config.marker.is_empty() {
+            if let Some((time, duration)) = self.markers.get(&self.config.marker) {
+                return (time + duration).min(self.total_frames());
+            }
+        }
 
-                if self.config.segments.len() == 2 {
-                    return self.config.segments[1];
-                }
+        if self.config.segments.len() == 2 {
+            return self.config.segments[1].min(self.total_frames());
+        }
 
-                self.total_frames()
-            };
-
-        end_frame.clamp(0.0, self.total_frames())
+        self.total_frames()
     }
 
     pub fn is_loaded(&self) -> bool {
@@ -606,7 +597,7 @@ impl DotLottieRuntime {
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
         self.dotlottie_manager = DotLottieManager::new(None).unwrap();
 
-        self.markers = extract_markers(animation_data).unwrap_or_default();
+        self.markers = extract_markers(animation_data);
 
         self.load_animation_common(
             |renderer, w, h| renderer.load_data(animation_data, w, h, false),
@@ -632,7 +623,7 @@ impl DotLottieRuntime {
 
         match first_animation {
             Ok(animation_data) => {
-                self.markers = extract_markers(animation_data.as_str()).unwrap_or_default();
+                self.markers = extract_markers(animation_data.as_str());
 
                 // For the moment we're ignoring manifest values
 
@@ -713,6 +704,37 @@ impl DotLottieRuntime {
             Mode::Forward | Mode::ReverseBounce => self.current_frame() >= self.end_frame(),
             Mode::Reverse | Mode::Bounce => self.current_frame() <= self.start_frame(),
         }
+    }
+
+    pub fn load_theme(&mut self, theme_id: &str) -> bool {
+        self.manifest()
+            .and_then(|manifest| manifest.themes)
+            .map_or(false, |themes| {
+                themes
+                    .iter()
+                    .find(|t| t.id == theme_id)
+                    .map_or(false, |theme| {
+                        // check if the theme is either global or scoped to the currently active animation
+                        let is_global_or_active_animation = theme.animations.is_empty()
+                            || theme.animations.iter().any(|animation| {
+                                animation == &self.dotlottie_manager.active_animation_id()
+                            });
+
+                        is_global_or_active_animation
+                            && self
+                                .dotlottie_manager
+                                .get_theme(theme_id)
+                                .ok()
+                                .and_then(|theme_data| {
+                                    self.renderer.load_theme_data(&theme_data).ok()
+                                })
+                                .is_some()
+                    })
+            })
+    }
+
+    pub fn load_theme_data(&mut self, theme_data: &str) -> bool {
+        self.renderer.load_theme_data(theme_data).is_ok()
     }
 }
 
@@ -987,6 +1009,14 @@ impl DotLottiePlayer {
             .write()
             .unwrap()
             .retain(|o| !Arc::ptr_eq(o, observer));
+    }
+
+    pub fn load_theme(&self, theme_id: &str) -> bool {
+        self.runtime.write().unwrap().load_theme(theme_id)
+    }
+
+    pub fn load_theme_data(&self, theme_data: &str) -> bool {
+        self.runtime.write().unwrap().load_theme_data(theme_data)
     }
 
     pub fn markers(&self) -> Vec<Marker> {

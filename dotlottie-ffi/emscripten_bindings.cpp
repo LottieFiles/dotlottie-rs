@@ -46,7 +46,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("fit", &Layout::fit)
         .field("align", &Layout::align);
 
-    function("create_default_layout", &create_default_layout);
+    function("createDefaultLayout", &create_default_layout);
 
     value_object<Marker>("Marker")
         .field("name", &Marker::name)
@@ -138,5 +138,5 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("isComplete", &DotLottiePlayer::is_complete)
         .function("loadTheme", &DotLottiePlayer::load_theme)
         .function("loadThemeData", &DotLottiePlayer::load_theme_data)
-        .function("markers", &markers);
+        .function("markers", &DotLottiePlayer::markers);
 }

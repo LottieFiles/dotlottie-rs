@@ -694,6 +694,37 @@ impl DotLottieRuntime {
             Mode::Reverse | Mode::Bounce => self.current_frame() <= self.start_frame(),
         }
     }
+
+    pub fn load_theme(&mut self, theme_id: &str) -> bool {
+        self.manifest()
+            .and_then(|manifest| manifest.themes)
+            .map_or(false, |themes| {
+                themes
+                    .iter()
+                    .find(|t| t.id == theme_id)
+                    .map_or(false, |theme| {
+                        // check if the theme is either global or scoped to the currently active animation
+                        let is_global_or_active_animation = theme.animations.is_empty()
+                            || theme.animations.iter().any(|animation| {
+                                animation == &self.dotlottie_manager.active_animation_id()
+                            });
+
+                        is_global_or_active_animation
+                            && self
+                                .dotlottie_manager
+                                .get_theme(theme_id)
+                                .ok()
+                                .and_then(|theme_data| {
+                                    self.renderer.load_theme_data(&theme_data).ok()
+                                })
+                                .is_some()
+                    })
+            })
+    }
+
+    pub fn load_theme_data(&mut self, theme_data: &str) -> bool {
+        self.renderer.load_theme_data(theme_data).is_ok()
+    }
 }
 
 pub struct DotLottiePlayer {
@@ -967,6 +998,14 @@ impl DotLottiePlayer {
             .write()
             .unwrap()
             .retain(|o| !Arc::ptr_eq(o, observer));
+    }
+
+    pub fn load_theme(&self, theme_id: &str) -> bool {
+        self.runtime.write().unwrap().load_theme(theme_id)
+    }
+
+    pub fn load_theme_data(&self, theme_data: &str) -> bool {
+        self.runtime.write().unwrap().load_theme_data(theme_data)
     }
 
     pub fn markers(&self) -> Vec<Marker> {

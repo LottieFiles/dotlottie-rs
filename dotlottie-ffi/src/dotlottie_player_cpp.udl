@@ -105,5 +105,7 @@ interface DotLottiePlayer {
 /// void subscribe(Observer observer);
 /// void unsubscribe([ByRef] Observer observer);
     boolean is_complete();
+    boolean load_theme([ByRef] string theme_id);
+    boolean load_theme_data([ByRef] string theme_data);
     sequence<Marker> markers();
 };

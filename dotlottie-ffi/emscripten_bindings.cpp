@@ -121,5 +121,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         // .function("subscribe", &DotLottiePlayer::subscribe)
         // .function("unsubscribe", &DotLottiePlayer::unsubscribe)
         .function("isComplete", &DotLottiePlayer::is_complete)
-        .function("markers", &DotLottiePlayer::markers);
+        .function("loadTheme", &DotLottiePlayer::load_theme)
+        .function("loadThemeData", &DotLottiePlayer::load_theme_data)
+        .function("markers", &markers);
 }

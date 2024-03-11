@@ -213,6 +213,12 @@ impl LottieRenderer {
             .fill((red, green, blue, alpha))
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
+
+    pub fn load_theme_data(&mut self, slots: &str) -> Result<(), LottieRendererError> {
+        self.thorvg_animation
+            .set_slots(slots)
+            .map_err(|e| LottieRendererError::ThorvgError(e))
+    }
 }
 
 fn calculate_scale_and_shift(

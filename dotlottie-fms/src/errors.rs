@@ -22,4 +22,7 @@ pub enum DotLottieError {
 
     #[error("No manifest found")]
     ManifestNotFound,
+
+    #[error("Invalid UTF-8")]
+    InvalidUtf8Error,
 }

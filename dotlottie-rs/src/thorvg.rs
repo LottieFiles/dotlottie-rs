@@ -266,6 +266,14 @@ impl Animation {
 
         return Ok(curr_frame);
     }
+
+    pub fn set_slots(&mut self, slots: &str) -> Result<(), TvgError> {
+        let slots = CString::new(slots).expect("Failed to create CString");
+
+        let result = unsafe { tvg_lottie_animation_override(self.raw_animation, slots.as_ptr()) };
+
+        convert_tvg_result(result, "tvg_animation_override")
+    }
 }
 
 impl Drawable for Animation {

@@ -250,22 +250,13 @@ impl DotLottieManager {
 
     pub fn get_theme(&mut self, theme_id: &str) -> Result<String, DotLottieError> {
         if let Some(theme) = self.theme_cache.get(theme_id) {
-            let cloned_theme = theme.clone();
-
-            return Ok(cloned_theme);
-        } else {
-            let theme = crate::get_theme(&self.zip_data, theme_id);
-
-            if let Ok(theme) = theme {
-                self.theme_cache
-                    .insert(theme_id.to_string().clone(), theme.clone());
-
-                return Ok(theme);
-            } else {
-                return Err(DotLottieError::ThemeNotFound {
-                    theme_id: theme_id.to_string(),
-                });
-            }
+            return Ok(theme.clone());
         }
+
+        let theme = crate::get_theme(&self.zip_data, theme_id)?;
+
+        self.theme_cache.insert(theme_id.to_string(), theme.clone());
+
+        Ok(theme)
     }
 }

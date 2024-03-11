@@ -21,14 +21,14 @@ path = "uniffi-bindgen.rs"
 
 [dependencies]
 # uncomment uniffi v0.25.3 when building with uniffi-cpp-bindgen targetting C++/WASM
-uniffi = { version = "0.25.3", features = ["cli"] }
-# uniffi = { version = "0.26.0", features = ["cli"] }
+# uniffi = { version = "0.25.3", features = ["cli"] }
+uniffi = { version = "0.26.0", features = ["cli"] }
 dotlottie_player = { path = "../dotlottie-rs" }
 dotlottie_fms = { path = "../dotlottie-fms" }
 cfg-if = "1.0"
 
 [build-dependencies]
 # uncomment uniffi v0.25.3 when building with uniffi-cpp-bindgen targetting C++/WASM
-uniffi = { version = "0.25.3", features = ["build"] }
-# uniffi = { version = "0.26.0", features = ["build"] }
+# uniffi = { version = "0.25.3", features = ["build"] }
+uniffi = { version = "0.26.0", features = ["build"] }
 lazy_static = "1.4"

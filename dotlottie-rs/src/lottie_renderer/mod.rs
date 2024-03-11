@@ -67,7 +67,7 @@ impl LottieRenderer {
                 self.width,
                 self.width,
                 self.height,
-                TvgColorspace::ARGB8888,
+                TvgColorspace::ABGR8888,
             )
             .map_err(LottieRendererError::ThorvgError)?;
 

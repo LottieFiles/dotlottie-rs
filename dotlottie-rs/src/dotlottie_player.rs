@@ -8,6 +8,7 @@ use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimatio
 
 use crate::{
     extract_markers,
+    layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap,
 };
@@ -62,6 +63,7 @@ pub struct Config {
     pub autoplay: bool,
     pub segments: Vec<f32>,
     pub background_color: u32,
+    pub layout: Layout,
     pub marker: String,
 }
 
@@ -492,12 +494,19 @@ impl DotLottieRuntime {
         self.update_background_color(&new_config);
         self.update_speed(&new_config);
         self.update_loop_animation(&new_config);
+        self.update_layout(&new_config.layout);
 
         // directly updating fields that don't require special handling
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
         self.config.segments = new_config.segments;
         self.config.autoplay = new_config.autoplay;
         self.config.marker = new_config.marker;
+    }
+
+    pub fn update_layout(&mut self, layout: &Layout) {
+        if self.renderer.set_layout(layout).is_ok() {
+            self.config.layout = layout.clone();
+        }
     }
 
     fn update_mode(&mut self, new_config: &Config) {
@@ -559,6 +568,8 @@ impl DotLottieRuntime {
                 .renderer
                 .set_background_color(self.config.background_color)
                 .is_ok();
+
+        self.renderer.set_layout(&self.config.layout).unwrap();
 
         self.is_loaded = loaded;
 

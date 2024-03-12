@@ -7,3 +7,5 @@ edition = "2021"
 minifb = "0.25"
 dotlottie_player = { path = "../dotlottie-rs" }
 sysinfo = "0.30"
+rand = "0.8"
+

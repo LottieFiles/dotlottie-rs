@@ -34,6 +34,20 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .value("Bounce", Mode::BOUNCE)
         .value("ReverseBounce", Mode::REVERSE_BOUNCE);
 
+    enum_<Fit>("Fit")
+        .value("Contain", Fit::CONTAIN)
+        .value("Cover", Fit::COVER)
+        .value("Fill", Fit::FILL)
+        .value("FitWidth", Fit::FIT_WIDTH)
+        .value("FitHeight", Fit::FIT_HEIGHT)
+        .value("None", Fit::NONE);
+
+    value_object<Layout>("Layout")
+        .field("fit", &Layout::fit)
+        .field("align", &Layout::align);
+
+    function("createDefaultLayout", &create_default_layout);
+
     value_object<Marker>("Marker")
         .field("name", &Marker::name)
         .field("time", &Marker::time)
@@ -47,6 +61,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("useFrameInterpolation", &Config::use_frame_interpolation)
         .field("segments", &Config::segments)
         .field("backgroundColor", &Config::background_color)
+        .field("layout", &Config::layout)
         .field("marker", &Config::marker);
 
     // value_object<ManifestTheme>("ManifestTheme")
@@ -123,5 +138,5 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("isComplete", &DotLottiePlayer::is_complete)
         .function("loadTheme", &DotLottiePlayer::load_theme)
         .function("loadThemeData", &DotLottiePlayer::load_theme_data)
-        .function("markers", &markers);
+        .function("markers", &DotLottiePlayer::markers);
 }

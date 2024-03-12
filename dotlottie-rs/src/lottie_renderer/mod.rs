@@ -2,7 +2,7 @@ use thiserror::Error;
 
 mod tests;
 
-use crate::{Animation, Canvas, Shape, TvgColorspace, TvgEngine, TvgError};
+use crate::{Animation, Canvas, Layout, Shape, TvgColorspace, TvgEngine, TvgError};
 
 #[derive(Error, Debug)]
 pub enum LottieRendererError {
@@ -26,6 +26,7 @@ pub struct LottieRenderer {
     pub height: u32,
     pub buffer: Vec<u32>,
     pub background_color: u32,
+    layout: Layout,
 }
 
 impl LottieRenderer {
@@ -44,6 +45,7 @@ impl LottieRenderer {
             picture_width: 0.0,
             picture_height: 0.0,
             background_color: 0,
+            layout: Layout::default(),
         }
     }
 
@@ -80,9 +82,17 @@ impl LottieRenderer {
         self.picture_width = pw;
         self.picture_height = ph;
 
-        let (scale, shift_x, shift_y) = calculate_scale_and_shift(pw, ph, width, height);
+        let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) = self
+            .layout
+            .compute_layout_transform(
+                self.width as f32,
+                self.height as f32,
+                self.picture_width,
+                self.picture_height,
+            );
 
-        self.thorvg_animation.scale(scale)?;
+        self.thorvg_animation
+            .set_size(scaled_picture_width, scaled_picture_height)?;
         self.thorvg_animation.translate(shift_x, shift_y)?;
 
         self.thorvg_background_shape.append_rect(
@@ -178,10 +188,17 @@ impl LottieRenderer {
             )
             .map_err(LottieRendererError::ThorvgError)?;
 
-        let (scale, shift_x, shift_y) =
-            calculate_scale_and_shift(self.picture_width, self.picture_height, width, height);
+        let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) = self
+            .layout
+            .compute_layout_transform(
+                self.width as f32,
+                self.height as f32,
+                self.picture_width,
+                self.picture_height,
+            );
 
-        self.thorvg_animation.scale(scale)?;
+        self.thorvg_animation
+            .set_size(scaled_picture_width, scaled_picture_height)?;
         self.thorvg_animation.translate(shift_x, shift_y)?;
 
         self.thorvg_background_shape.append_rect(
@@ -219,24 +236,29 @@ impl LottieRenderer {
             .set_slots(slots)
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
-}
 
-fn calculate_scale_and_shift(
-    picture_width: f32,
-    picture_height: f32,
-    width: u32,
-    height: u32,
-) -> (f32, f32, f32) {
-    let scale = if picture_width > picture_height {
-        width as f32 / picture_width
-    } else {
-        height as f32 / picture_height
-    };
+    pub fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError> {
+        if self.layout == *layout {
+            return Ok(());
+        }
 
-    let shift_x = (width as f32 - picture_width * scale) / 2.0;
-    let shift_y = (height as f32 - picture_height * scale) / 2.0;
+        self.layout = layout.clone();
 
-    (scale, shift_x, shift_y)
+        let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) = self
+            .layout
+            .compute_layout_transform(
+                self.width as f32,
+                self.height as f32,
+                self.picture_width,
+                self.picture_height,
+            );
+
+        self.thorvg_animation
+            .set_size(scaled_picture_width, scaled_picture_height)?;
+        self.thorvg_animation.translate(shift_x, shift_y)?;
+
+        Ok(())
+    }
 }
 
 fn hex_to_rgba(hex_color: u32) -> (u8, u8, u8, u8) {

@@ -6,7 +6,30 @@
     <title>WASM test</title>
   </head>
   <body>
-    <div style="width: 500px">
+    <div style="width: 800px">
+      <label for="fit">Fit:</label>
+      <select id="fit">
+        <option value="1" selected>Contain</option>
+        <option value="2">Fill</option>
+        <option value="3">Cover</option>
+        <option value="4">FitWidth</option>
+        <option value="5">FitHeight</option>
+        <option value="6">None</option>
+      </select>
+      <label for="align">Align:</label>
+      <select id="align">
+        <option value="0,0">top-left</option>
+        <option value="0.5,0">top-center</option>
+        <option value="1,0">top-right</option>
+
+        <option value="0,0.5">center-left</option>
+        <option value="0.5,0.5" selected>center</option>
+        <option value="1,0.5">center-right</option>
+
+        <option value="0,1">bottom-left</option>
+        <option value="0.5,1">bottom-center</option>
+        <option value="1,1">bottom-right</option>
+      </select>
       <canvas
         style="width: 100%; height: 100%; border: 1px solid black"
       ></canvas>
@@ -52,6 +75,8 @@
       const loopToggle = document.querySelector("#loop");
       const nextBtn = document.querySelector("#next");
       const bgColorInput = document.querySelector("#bg-color");
+      const fitSelect = document.querySelector("#fit");
+      const alignSelect = document.querySelector("#align");
       const themeSelect = document.querySelector("select");
 
       const Module = await createDotLottiePlayerModule({
@@ -74,6 +99,19 @@
         return vector;
       }
 
+      function createAlign(x, y) {
+        const vector = new Module.VectorFloat();
+
+        if (typeof x === "number" && typeof y === "number") {
+          vector.push_back(x);
+          vector.push_back(y);
+        }
+
+        return vector;
+      }
+
+      console.log(Module);
+
       const dotLottiePlayer = new Module.DotLottiePlayer({
         autoplay: true,
         loopAnimation: true,
@@ -83,6 +121,7 @@
         segments: createSegments(0, 40),
         backgroundColor: 0,
         marker: "feather",
+        layout: Module.createDefaultLayout(),
       });
 
       // const data = await fetch("./demo-player/src/markers.json").then((res) =>
@@ -90,8 +129,9 @@
       // );
 
       const data = await fetch(
-        "./demo-player/src/theming_example.lottie"
-        // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie"
+        "https://lottie.host/5c89381e-0d1a-4422-8247-f5b7e4b3c4e2/mqs5juC4PW.lottie"
+        // "./demo-player/src/theming_example.lottie",
+        // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie",
         // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
       ).then((res) => res.arrayBuffer());
 
@@ -270,6 +310,26 @@
           ...dotLottiePlayer.config(),
           // the expected color is in the format of 0xRRGGBBAA and the alpha component is not provided by the input element
           backgroundColor: (color << 8) | 0xff,
+        });
+      });
+
+      fitSelect.addEventListener("change", (event) => {
+        const fit = Module.Fit.values[event.target.value];
+        const layout = dotLottiePlayer.config().layout;
+        layout.fit = fit;
+        dotLottiePlayer.setConfig({
+          ...dotLottiePlayer.config(),
+          layout,
+        });
+      });
+
+      alignSelect.addEventListener("change", (event) => {
+        const [x, y] = event.target.value.split(",").map(Number);
+        const layout = dotLottiePlayer.config().layout;
+        layout.align = createAlign(x, y);
+        dotLottiePlayer.setConfig({
+          ...dotLottiePlayer.config(),
+          layout,
         });
       });
 

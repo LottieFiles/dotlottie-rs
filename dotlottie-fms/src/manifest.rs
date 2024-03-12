@@ -54,10 +54,11 @@ impl Manifest {
             json["description"] = self.description.clone().into();
         }
         if let Some(themes) = &self.themes {
-            json["themes"] = array!(themes
+            json["themes"] = themes
                 .iter()
                 .map(|t| t.to_json())
-                .collect::<Vec<json::JsonValue>>());
+                .collect::<Vec<json::JsonValue>>()
+                .into();
         }
         if let Some(states) = &self.states {
             json["states"] = array!(states

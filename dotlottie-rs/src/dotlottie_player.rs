@@ -689,6 +689,9 @@ impl DotLottieRuntime {
     }
 
     pub fn is_complete(&self) -> bool {
+        if !self.is_loaded() {
+            return false;
+        }
         match self.config.mode {
             Mode::Forward | Mode::ReverseBounce => self.current_frame() >= self.end_frame(),
             Mode::Reverse | Mode::Bounce => self.current_frame() <= self.start_frame(),

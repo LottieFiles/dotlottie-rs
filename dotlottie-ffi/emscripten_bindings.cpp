@@ -23,6 +23,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 
     // Register std::vector<float> as VectorFloat for the Config::segments field
     register_vector<float>("VectorFloat");
+    register_vector<Marker>("VectorMarker");
     // register_vector<std::string>("VectorString");
     // register_vector<ManifestTheme>("VectorManifestTheme");
     // register_vector<ManifestAnimation>("VectorManifestAnimation");
@@ -33,6 +34,11 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .value("Bounce", Mode::BOUNCE)
         .value("ReverseBounce", Mode::REVERSE_BOUNCE);
 
+    value_object<Marker>("Marker")
+        .field("name", &Marker::name)
+        .field("time", &Marker::time)
+        .field("duration", &Marker::duration);
+
     value_object<Config>("Config")
         .field("autoplay", &Config::autoplay)
         .field("loopAnimation", &Config::loop_animation)
@@ -40,7 +46,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("speed", &Config::speed)
         .field("useFrameInterpolation", &Config::use_frame_interpolation)
         .field("segments", &Config::segments)
-        .field("backgroundColor", &Config::background_color);
+        .field("backgroundColor", &Config::background_color)
+        .field("marker", &Config::marker);
 
     // value_object<ManifestTheme>("ManifestTheme")
     //     .field("id", &ManifestTheme::id)
@@ -113,5 +120,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("totalFrames", &DotLottiePlayer::total_frames)
         // .function("subscribe", &DotLottiePlayer::subscribe)
         // .function("unsubscribe", &DotLottiePlayer::unsubscribe)
-        .function("isComplete", &DotLottiePlayer::is_complete);
+        .function("isComplete", &DotLottiePlayer::is_complete)
+        .function("loadTheme", &DotLottiePlayer::load_theme)
+        .function("loadThemeData", &DotLottiePlayer::load_theme_data)
+        .function("markers", &markers);
 }

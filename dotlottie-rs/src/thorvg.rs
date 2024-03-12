@@ -149,7 +149,10 @@ impl Canvas {
 
 impl Drop for Canvas {
     fn drop(&mut self) {
-        unsafe { tvg_canvas_destroy(self.raw_canvas) };
+        unsafe {
+            tvg_canvas_clear(self.raw_canvas, true);
+            tvg_canvas_destroy(self.raw_canvas);
+        };
     }
 }
 
@@ -167,13 +170,6 @@ impl Animation {
             raw_animation,
             raw_paint,
         }
-    }
-
-    pub fn load(&mut self, path: &str) -> Result<(), TvgError> {
-        let result =
-            unsafe { tvg_picture_load(self.raw_paint, path.as_ptr() as *const std::ffi::c_char) };
-
-        convert_tvg_result(result, "tvg_picture_load")
     }
 
     pub fn load_data(&mut self, data: &str, mimetype: &str, copy: bool) -> Result<(), TvgError> {
@@ -270,6 +266,14 @@ impl Animation {
 
         return Ok(curr_frame);
     }
+
+    pub fn set_slots(&mut self, slots: &str) -> Result<(), TvgError> {
+        let slots = CString::new(slots).expect("Failed to create CString");
+
+        let result = unsafe { tvg_lottie_animation_override(self.raw_animation, slots.as_ptr()) };
+
+        convert_tvg_result(result, "tvg_animation_override")
+    }
 }
 
 impl Drawable for Animation {
@@ -281,7 +285,7 @@ impl Drawable for Animation {
 impl Drop for Animation {
     fn drop(&mut self) {
         unsafe {
-            tvg_paint_del(self.raw_paint);
+            tvg_animation_del(self.raw_animation);
         };
     }
 }

@@ -34,7 +34,7 @@ enum Fit {
 dictionary Layout {
     Fit fit;
     sequence<f32> align;
-}
+};
 
 dictionary Config {
     boolean autoplay;

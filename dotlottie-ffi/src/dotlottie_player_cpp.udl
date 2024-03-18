@@ -41,7 +41,7 @@ dictionary Config {
     Mode mode;
     f32 speed;
     boolean use_frame_interpolation;
-    sequence<f32> segments;
+    sequence<f32> segment;
     u32 background_color;
     Layout layout;
     string marker;

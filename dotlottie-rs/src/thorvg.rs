@@ -34,7 +34,9 @@ pub enum TvgEngine {
 
 pub enum TvgColorspace {
     ABGR8888,
+    ABGR8888S,
     ARGB8888,
+    ARGB8888S,
 }
 
 fn convert_tvg_result(result: Tvg_Result, function_name: &str) -> Result<(), TvgError> {
@@ -99,7 +101,9 @@ impl Canvas {
     ) -> Result<(), TvgError> {
         let color_space = match color_space {
             TvgColorspace::ABGR8888 => Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
+            TvgColorspace::ABGR8888S => Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
             TvgColorspace::ARGB8888 => Tvg_Colorspace_TVG_COLORSPACE_ARGB8888,
+            TvgColorspace::ARGB8888S => Tvg_Colorspace_TVG_COLORSPACE_ARGB8888S,
         };
 
         let result = unsafe {

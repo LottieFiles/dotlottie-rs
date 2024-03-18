@@ -69,7 +69,7 @@ impl LottieRenderer {
                 self.width,
                 self.width,
                 self.height,
-                TvgColorspace::ABGR8888,
+                get_color_space_for_target(),
             )
             .map_err(LottieRendererError::ThorvgError)?;
 
@@ -184,7 +184,7 @@ impl LottieRenderer {
                 self.width,
                 self.width,
                 self.height,
-                TvgColorspace::ABGR8888,
+                get_color_space_for_target(),
             )
             .map_err(LottieRendererError::ThorvgError)?;
 
@@ -268,4 +268,17 @@ fn hex_to_rgba(hex_color: u32) -> (u8, u8, u8, u8) {
     let alpha = (hex_color & 0xFF) as u8;
 
     (red, green, blue, alpha)
+}
+
+#[inline]
+fn get_color_space_for_target() -> TvgColorspace {
+    #[cfg(target_arch = "wasm32")]
+    {
+        TvgColorspace::ABGR8888S
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        TvgColorspace::ABGR8888
+    }
 }

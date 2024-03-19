@@ -71,16 +71,17 @@ pub trait Drawable {
 
 pub struct Canvas {
     raw_canvas: *mut Tvg_Canvas,
+    engine_method: Tvg_Engine
 }
 
 impl Canvas {
     pub fn new(engine_method: TvgEngine, threads: u32) -> Self {
-        let engine_method = match engine_method {
+        let engine = match engine_method {
             TvgEngine::TvgEngineSw => Tvg_Engine_TVG_ENGINE_SW,
             TvgEngine::TvgEngineGl => Tvg_Engine_TVG_ENGINE_GL,
         };
 
-        let init_result = unsafe { tvg_engine_init(engine_method, threads) };
+        let init_result = unsafe { tvg_engine_init(engine, threads) };
 
         if init_result != Tvg_Result_TVG_RESULT_SUCCESS {
             panic!("Failed to initialize ThorVG engine");
@@ -88,6 +89,7 @@ impl Canvas {
 
         Canvas {
             raw_canvas: unsafe { tvg_swcanvas_create() },
+            engine_method: engine
         }
     }
 
@@ -154,8 +156,8 @@ impl Canvas {
 impl Drop for Canvas {
     fn drop(&mut self) {
         unsafe {
-            tvg_canvas_clear(self.raw_canvas, true);
             tvg_canvas_destroy(self.raw_canvas);
+            tvg_engine_term(self.engine_method);
         };
     }
 }

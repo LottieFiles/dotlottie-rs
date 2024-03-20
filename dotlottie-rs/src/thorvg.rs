@@ -1,31 +1,10 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
 
+use crate::errors::DotLottiePlayerError;
 use std::ffi::CString;
-use thiserror::Error;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-
-#[derive(Error, Debug)]
-pub enum TvgError {
-    #[error("Invalid argument provided in {function_name}")]
-    InvalidArgument { function_name: String },
-
-    #[error("Insufficient condition in {function_name}")]
-    InsufficientCondition { function_name: String },
-
-    #[error("Failed memory allocation in {function_name}")]
-    FailedAllocation { function_name: String },
-
-    #[error("Memory corruption detected in {function_name}")]
-    MemoryCorruption { function_name: String },
-
-    #[error("Operation not supported in {function_name}")]
-    NotSupported { function_name: String },
-
-    #[error("Unknown error occurred in {function_name}")]
-    Unknown { function_name: String },
-}
 
 pub enum TvgEngine {
     TvgEngineSw,
@@ -37,27 +16,29 @@ pub enum TvgColorspace {
     ARGB8888,
 }
 
-fn convert_tvg_result(result: Tvg_Result, function_name: &str) -> Result<(), TvgError> {
+fn convert_tvg_result(result: Tvg_Result, function_name: &str) -> Result<(), DotLottiePlayerError> {
     let func_name = function_name.to_string();
 
     match result {
         Tvg_Result_TVG_RESULT_SUCCESS => Ok(()),
-        Tvg_Result_TVG_RESULT_INVALID_ARGUMENT => Err(TvgError::InvalidArgument {
+        Tvg_Result_TVG_RESULT_INVALID_ARGUMENT => Err(DotLottiePlayerError::TvgInvalidArgument {
             function_name: func_name,
         }),
-        Tvg_Result_TVG_RESULT_INSUFFICIENT_CONDITION => Err(TvgError::InsufficientCondition {
+        Tvg_Result_TVG_RESULT_INSUFFICIENT_CONDITION => {
+            Err(DotLottiePlayerError::TvgInsufficientCondition {
+                function_name: func_name,
+            })
+        }
+        Tvg_Result_TVG_RESULT_FAILED_ALLOCATION => Err(DotLottiePlayerError::TvgFailedAllocation {
             function_name: func_name,
         }),
-        Tvg_Result_TVG_RESULT_FAILED_ALLOCATION => Err(TvgError::FailedAllocation {
+        Tvg_Result_TVG_RESULT_MEMORY_CORRUPTION => Err(DotLottiePlayerError::TvgMemoryCorruption {
             function_name: func_name,
         }),
-        Tvg_Result_TVG_RESULT_MEMORY_CORRUPTION => Err(TvgError::MemoryCorruption {
+        Tvg_Result_TVG_RESULT_NOT_SUPPORTED => Err(DotLottiePlayerError::TvgNotSupported {
             function_name: func_name,
         }),
-        Tvg_Result_TVG_RESULT_NOT_SUPPORTED => Err(TvgError::NotSupported {
-            function_name: func_name,
-        }),
-        Tvg_Result_TVG_RESULT_UNKNOWN | _ => Err(TvgError::Unknown {
+        Tvg_Result_TVG_RESULT_UNKNOWN | _ => Err(DotLottiePlayerError::TvgUnknown {
             function_name: func_name,
         }),
     }
@@ -96,7 +77,7 @@ impl Canvas {
         width: u32,
         height: u32,
         color_space: TvgColorspace,
-    ) -> Result<(), TvgError> {
+    ) -> Result<(), DotLottiePlayerError> {
         let color_space = match color_space {
             TvgColorspace::ABGR8888 => Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
             TvgColorspace::ARGB8888 => Tvg_Colorspace_TVG_COLORSPACE_ARGB8888,
@@ -116,31 +97,31 @@ impl Canvas {
         convert_tvg_result(result, "tvg_swcanvas_set_target")
     }
 
-    pub fn clear(&self, free: bool) -> Result<(), TvgError> {
+    pub fn clear(&self, free: bool) -> Result<(), DotLottiePlayerError> {
         let result = unsafe { tvg_canvas_clear(self.raw_canvas, free) };
 
         convert_tvg_result(result, "tvg_canvas_clear")
     }
 
-    pub fn push<T: Drawable>(&mut self, drawable: &T) -> Result<(), TvgError> {
+    pub fn push<T: Drawable>(&mut self, drawable: &T) -> Result<(), DotLottiePlayerError> {
         let result = unsafe { tvg_canvas_push(self.raw_canvas, drawable.as_raw_paint()) };
 
         convert_tvg_result(result, "tvg_canvas_push")
     }
 
-    pub fn draw(&mut self) -> Result<(), TvgError> {
+    pub fn draw(&mut self) -> Result<(), DotLottiePlayerError> {
         let result = unsafe { tvg_canvas_draw(self.raw_canvas) };
 
         convert_tvg_result(result, "tvg_canvas_draw")
     }
 
-    pub fn sync(&mut self) -> Result<(), TvgError> {
+    pub fn sync(&mut self) -> Result<(), DotLottiePlayerError> {
         let result = unsafe { tvg_canvas_sync(self.raw_canvas) };
 
         convert_tvg_result(result, "tvg_canvas_sync")
     }
 
-    pub fn update(&mut self) -> Result<(), TvgError> {
+    pub fn update(&mut self) -> Result<(), DotLottiePlayerError> {
         let result = unsafe { tvg_canvas_update(self.raw_canvas) };
 
         convert_tvg_result(result, "tvg_canvas_update")
@@ -172,7 +153,12 @@ impl Animation {
         }
     }
 
-    pub fn load_data(&mut self, data: &str, mimetype: &str, copy: bool) -> Result<(), TvgError> {
+    pub fn load_data(
+        &mut self,
+        data: &str,
+        mimetype: &str,
+        copy: bool,
+    ) -> Result<(), DotLottiePlayerError> {
         let mimetype = CString::new(mimetype).expect("Failed to create CString");
         let data = CString::new(data).expect("Failed to create CString");
 
@@ -192,7 +178,7 @@ impl Animation {
         Ok(())
     }
 
-    pub fn get_size(&self) -> Result<(f32, f32), TvgError> {
+    pub fn get_size(&self) -> Result<(f32, f32), DotLottiePlayerError> {
         let mut width = 0.0;
         let mut height = 0.0;
 
@@ -210,25 +196,25 @@ impl Animation {
         Ok((width, height))
     }
 
-    pub fn set_size(&mut self, width: f32, height: f32) -> Result<(), TvgError> {
+    pub fn set_size(&mut self, width: f32, height: f32) -> Result<(), DotLottiePlayerError> {
         let result = unsafe { tvg_picture_set_size(self.raw_paint, width, height) };
 
         convert_tvg_result(result, "tvg_picture_set_size")
     }
 
-    pub fn scale(&mut self, factor: f32) -> Result<(), TvgError> {
+    pub fn scale(&mut self, factor: f32) -> Result<(), DotLottiePlayerError> {
         let result = unsafe { tvg_paint_scale(self.raw_paint, factor) };
 
         convert_tvg_result(result, "tvg_paint_scale")
     }
 
-    pub fn translate(&mut self, tx: f32, ty: f32) -> Result<(), TvgError> {
+    pub fn translate(&mut self, tx: f32, ty: f32) -> Result<(), DotLottiePlayerError> {
         let result = unsafe { tvg_paint_translate(self.raw_paint, tx, ty) };
 
         convert_tvg_result(result, "tvg_paint_translate")
     }
 
-    pub fn get_total_frame(&self) -> Result<f32, TvgError> {
+    pub fn get_total_frame(&self) -> Result<f32, DotLottiePlayerError> {
         let mut total_frame: f32 = 0.0;
 
         let result = unsafe {
@@ -240,7 +226,7 @@ impl Animation {
         return Ok(total_frame);
     }
 
-    pub fn get_duration(&self) -> Result<f32, TvgError> {
+    pub fn get_duration(&self) -> Result<f32, DotLottiePlayerError> {
         let mut duration: f32 = 0.0;
 
         let result =
@@ -251,13 +237,13 @@ impl Animation {
         return Ok(duration);
     }
 
-    pub fn set_frame(&mut self, frame_no: f32) -> Result<(), TvgError> {
+    pub fn set_frame(&mut self, frame_no: f32) -> Result<(), DotLottiePlayerError> {
         let result = unsafe { tvg_animation_set_frame(self.raw_animation, frame_no) };
 
         convert_tvg_result(result, "tvg_animation_set_frame")
     }
 
-    pub fn get_frame(&self) -> Result<f32, TvgError> {
+    pub fn get_frame(&self) -> Result<f32, DotLottiePlayerError> {
         let mut curr_frame: f32 = 0.0;
         let result =
             unsafe { tvg_animation_get_frame(self.raw_animation, &mut curr_frame as *mut f32) };
@@ -267,7 +253,7 @@ impl Animation {
         return Ok(curr_frame);
     }
 
-    pub fn set_slots(&mut self, slots: &str) -> Result<(), TvgError> {
+    pub fn set_slots(&mut self, slots: &str) -> Result<(), DotLottiePlayerError> {
         let slots = CString::new(slots).expect("Failed to create CString");
 
         let result = unsafe { tvg_lottie_animation_override(self.raw_animation, slots.as_ptr()) };
@@ -301,7 +287,7 @@ impl Shape {
         }
     }
 
-    pub fn fill(&mut self, color: (u8, u8, u8, u8)) -> Result<(), TvgError> {
+    pub fn fill(&mut self, color: (u8, u8, u8, u8)) -> Result<(), DotLottiePlayerError> {
         let result =
             unsafe { tvg_shape_set_fill_color(self.raw_shape, color.0, color.1, color.2, color.3) };
 
@@ -316,13 +302,13 @@ impl Shape {
         h: f32,
         rx: f32,
         ry: f32,
-    ) -> Result<(), TvgError> {
+    ) -> Result<(), DotLottiePlayerError> {
         let result = unsafe { tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry) };
 
         convert_tvg_result(result, "tvg_shape_append_rect")
     }
 
-    pub fn reset(&mut self) -> Result<(), TvgError> {
+    pub fn reset(&mut self) -> Result<(), DotLottiePlayerError> {
         let result = unsafe { tvg_shape_reset(self.raw_shape) };
 
         convert_tvg_result(result, "tvg_shape_reset")

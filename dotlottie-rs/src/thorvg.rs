@@ -71,7 +71,7 @@ pub trait Drawable {
 
 pub struct Canvas {
     raw_canvas: *mut Tvg_Canvas,
-    engine_method: Tvg_Engine
+    engine_method: Tvg_Engine,
 }
 
 impl Canvas {
@@ -89,7 +89,7 @@ impl Canvas {
 
         Canvas {
             raw_canvas: unsafe { tvg_swcanvas_create() },
-            engine_method: engine
+            engine_method: engine,
         }
     }
 

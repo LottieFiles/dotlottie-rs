@@ -710,6 +710,10 @@ impl DotLottieRuntime {
     }
 
     pub fn load_theme(&mut self, theme_id: &str) -> bool {
+        if theme_id.is_empty() {
+            return self.renderer.load_theme_data("").is_ok();
+        }
+
         self.manifest()
             .and_then(|manifest| manifest.themes)
             .map_or(false, |themes| {

@@ -1,7 +1,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
 
-use std::ffi::CString;
+use std::{ffi::CString, ptr};
 use thiserror::Error;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -71,7 +71,7 @@ pub trait Drawable {
 
 pub struct Canvas {
     raw_canvas: *mut Tvg_Canvas,
-    engine_method: Tvg_Engine
+    engine_method: Tvg_Engine,
 }
 
 impl Canvas {
@@ -89,7 +89,7 @@ impl Canvas {
 
         Canvas {
             raw_canvas: unsafe { tvg_swcanvas_create() },
-            engine_method: engine
+            engine_method: engine,
         }
     }
 
@@ -274,11 +274,14 @@ impl Animation {
     }
 
     pub fn set_slots(&mut self, slots: &str) -> Result<(), TvgError> {
-        let slots = CString::new(slots).expect("Failed to create CString");
+        let result = if slots.is_empty() {
+            unsafe { tvg_lottie_animation_override(self.raw_animation, ptr::null()) }
+        } else {
+            let slots_cstr = CString::new(slots).expect("Failed to create CString");
+            unsafe { tvg_lottie_animation_override(self.raw_animation, slots_cstr.as_ptr()) }
+        };
 
-        let result = unsafe { tvg_lottie_animation_override(self.raw_animation, slots.as_ptr()) };
-
-        convert_tvg_result(result, "tvg_animation_override")
+        convert_tvg_result(result, "tvg_lottie_animation_override")
     }
 }
 

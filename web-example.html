@@ -36,8 +36,8 @@
       <button id="play">play</button>
       <button id="pause">pause</button>
       <button id="resize">resize</button>
-      <select id="themeSelect">
-        <option>None</option>
+      <select id="theme-select">
+        <option value="">None</option>
         <option value="theme">Theme</option>
       </select>
       <input
@@ -77,7 +77,7 @@
       const bgColorInput = document.querySelector("#bg-color");
       const fitSelect = document.querySelector("#fit");
       const alignSelect = document.querySelector("#align");
-      const themeSelect = document.querySelector("select");
+      const themeSelect = document.querySelector("#theme-select");
 
       const Module = await createDotLottiePlayerModule({
         locateFile: (path, prefix) => {
@@ -88,7 +88,7 @@
         },
       });
 
-      function createSegments(startFrame, endFrame) {
+      function createSegment(startFrame, endFrame) {
         const vector = new Module.VectorFloat();
 
         if (typeof startFrame === "number" && typeof endFrame === "number") {
@@ -118,7 +118,7 @@
         mode: Module.Mode.values[3],
         speed: 1,
         useFrameInterpolation: true,
-        segments: createSegments(0, 40),
+        segment: createSegment(0, 40),
         backgroundColor: 0,
         marker: "feather",
         layout: Module.createDefaultLayout(),
@@ -129,8 +129,8 @@
       // );
 
       const data = await fetch(
-        "https://lottie.host/5c89381e-0d1a-4422-8247-f5b7e4b3c4e2/mqs5juC4PW.lottie"
-        // "./demo-player/src/theming_example.lottie",
+        // "https://lottie.host/5c89381e-0d1a-4422-8247-f5b7e4b3c4e2/mqs5juC4PW.lottie"
+        "./demo-player/src/theming_example.lottie"
         // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie",
         // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
       ).then((res) => res.arrayBuffer());
@@ -155,7 +155,7 @@
       dotLottiePlayer.setConfig({
         ...dotLottiePlayer.config(),
         mode: Module.Mode.values[1],
-        segments: createSegments(),
+        segment: createSegment(),
       });
 
       console.log(dotLottiePlayer.markers());
@@ -336,7 +336,7 @@
       themeSelect.addEventListener("change", (event) => {
         const theme = event.target.value;
 
-        if (theme === "theme") {
+        if (theme) {
           dotLottiePlayer.loadTheme(theme);
         } else {
           dotLottiePlayer.loadTheme("");

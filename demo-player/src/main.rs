@@ -230,6 +230,10 @@ fn main() {
             }
         }
 
+        if window.is_key_pressed(Key::Y, KeyRepeat::No) {
+            lottie_player.load_theme("");
+        }
+
         if window.is_key_pressed(Key::Right, KeyRepeat::No) {
             if let Some(manifest) = lottie_player.manifest() {
                 println!("{:?}", i);

@@ -31,9 +31,13 @@ pub struct LottieRenderer {
 
 impl LottieRenderer {
     pub fn new() -> Self {
-        let thorvg_canvas = Canvas::new(TvgEngine::TvgEngineSw, 0);
+        let mut thorvg_canvas = Canvas::new(TvgEngine::TvgEngineSw, 0);
+
         let thorvg_animation = Animation::new();
         let thorvg_background_shape = Shape::new();
+
+        thorvg_canvas.push(&thorvg_background_shape).unwrap();
+        thorvg_canvas.push(&thorvg_animation).unwrap();
 
         Self {
             thorvg_animation,

@@ -27,3 +27,5 @@ jobs:
         env:
           APPLE_MACOSX_SDK: MacOSX13
         run: make demo-player
+      - name: Test
+        run: cargo test

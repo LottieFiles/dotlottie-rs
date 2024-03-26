@@ -21,7 +21,7 @@ bool load_dotlottie_data(DotLottiePlayer &player, std::string data, uint32_t wid
 EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 {
 
-    // Register std::vector<float> as VectorFloat for the Config::segments field
+    // Register std::vector<float> as VectorFloat for the Config::segment field
     register_vector<float>("VectorFloat");
     register_vector<Marker>("VectorMarker");
     // register_vector<std::string>("VectorString");
@@ -59,7 +59,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("mode", &Config::mode)
         .field("speed", &Config::speed)
         .field("useFrameInterpolation", &Config::use_frame_interpolation)
-        .field("segments", &Config::segments)
+        .field("segment", &Config::segment)
         .field("backgroundColor", &Config::background_color)
         .field("layout", &Config::layout)
         .field("marker", &Config::marker);

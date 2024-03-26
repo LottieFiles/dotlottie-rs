@@ -3,6 +3,7 @@
 
 use crate::errors::DotLottiePlayerError;
 use std::ffi::CString;
+use std::ptr;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -13,7 +14,9 @@ pub enum TvgEngine {
 
 pub enum TvgColorspace {
     ABGR8888,
+    ABGR8888S,
     ARGB8888,
+    ARGB8888S,
 }
 
 fn convert_tvg_result(result: Tvg_Result, function_name: &str) -> Result<(), DotLottiePlayerError> {
@@ -50,16 +53,17 @@ pub trait Drawable {
 
 pub struct Canvas {
     raw_canvas: *mut Tvg_Canvas,
+    engine_method: Tvg_Engine,
 }
 
 impl Canvas {
     pub fn new(engine_method: TvgEngine, threads: u32) -> Self {
-        let engine_method = match engine_method {
+        let engine = match engine_method {
             TvgEngine::TvgEngineSw => Tvg_Engine_TVG_ENGINE_SW,
             TvgEngine::TvgEngineGl => Tvg_Engine_TVG_ENGINE_GL,
         };
 
-        let init_result = unsafe { tvg_engine_init(engine_method, threads) };
+        let init_result = unsafe { tvg_engine_init(engine, threads) };
 
         if init_result != Tvg_Result_TVG_RESULT_SUCCESS {
             panic!("Failed to initialize ThorVG engine");
@@ -67,6 +71,7 @@ impl Canvas {
 
         Canvas {
             raw_canvas: unsafe { tvg_swcanvas_create() },
+            engine_method: engine,
         }
     }
 
@@ -80,7 +85,9 @@ impl Canvas {
     ) -> Result<(), DotLottiePlayerError> {
         let color_space = match color_space {
             TvgColorspace::ABGR8888 => Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
+            TvgColorspace::ABGR8888S => Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
             TvgColorspace::ARGB8888 => Tvg_Colorspace_TVG_COLORSPACE_ARGB8888,
+            TvgColorspace::ARGB8888S => Tvg_Colorspace_TVG_COLORSPACE_ARGB8888S,
         };
 
         let result = unsafe {
@@ -131,8 +138,8 @@ impl Canvas {
 impl Drop for Canvas {
     fn drop(&mut self) {
         unsafe {
-            tvg_canvas_clear(self.raw_canvas, true);
             tvg_canvas_destroy(self.raw_canvas);
+            tvg_engine_term(self.engine_method);
         };
     }
 }
@@ -254,11 +261,14 @@ impl Animation {
     }
 
     pub fn set_slots(&mut self, slots: &str) -> Result<(), DotLottiePlayerError> {
-        let slots = CString::new(slots).expect("Failed to create CString");
+        let result = if slots.is_empty() {
+            unsafe { tvg_lottie_animation_override(self.raw_animation, ptr::null()) }
+        } else {
+            let slots_cstr = CString::new(slots).expect("Failed to create CString");
+            unsafe { tvg_lottie_animation_override(self.raw_animation, slots_cstr.as_ptr()) }
+        };
 
-        let result = unsafe { tvg_lottie_animation_override(self.raw_animation, slots.as_ptr()) };
-
-        convert_tvg_result(result, "tvg_animation_override")
+        convert_tvg_result(result, "tvg_lottie_animation_override")
     }
 }
 

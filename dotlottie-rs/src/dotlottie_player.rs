@@ -57,7 +57,7 @@ pub struct Config {
     pub speed: f32,
     pub use_frame_interpolation: bool,
     pub autoplay: bool,
-    pub segments: Vec<f32>,
+    pub segment: Vec<f32>,
     pub background_color: u32,
     pub layout: Layout,
     pub marker: String,
@@ -115,8 +115,8 @@ impl DotLottieRuntime {
             }
         }
 
-        if self.config.segments.len() == 2 {
-            return self.config.segments[0].max(0.0);
+        if self.config.segment.len() == 2 {
+            return self.config.segment[0].max(0.0);
         }
 
         0.0
@@ -129,8 +129,8 @@ impl DotLottieRuntime {
             }
         }
 
-        if self.config.segments.len() == 2 {
-            return self.config.segments[1].min(self.total_frames());
+        if self.config.segment.len() == 2 {
+            return self.config.segment[1].min(self.total_frames());
         }
 
         self.total_frames()
@@ -241,14 +241,14 @@ impl DotLottieRuntime {
         // the animation duration in seconds
         let duration = self.duration();
 
-        // the animation start & end frames (considering the segments)
+        // the animation start & end frames (considering the segment)
         let start_frame = self.start_frame();
         let end_frame = self.end_frame();
 
-        // the effective total frames (considering the segments)
+        // the effective total frames (considering the segment)
         let effective_total_frames = end_frame - start_frame;
 
-        // the effective duration in milliseconds (considering the segments & speed)
+        // the effective duration in milliseconds (considering the segment & speed)
         let effective_duration =
             (duration * effective_total_frames / total_frames) / self.config.speed;
 
@@ -382,7 +382,7 @@ impl DotLottieRuntime {
 
             let frame_duration = effective_duration / effective_total_frames;
 
-            // estimate elapsed time for current frame based on direction and segments
+            // estimate elapsed time for current frame based on direction and segment
             let elapsed_time_for_frame = match self.direction {
                 Direction::Forward => (frame_no - start_frame) * frame_duration,
                 Direction::Reverse => (end_frame - frame_no) * frame_duration,
@@ -499,7 +499,7 @@ impl DotLottieRuntime {
 
         // directly updating fields that don't require special handling
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
-        self.config.segments = new_config.segments;
+        self.config.segment = new_config.segment;
         self.config.autoplay = new_config.autoplay;
         self.config.marker = new_config.marker;
     }

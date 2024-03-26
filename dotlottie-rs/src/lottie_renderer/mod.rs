@@ -49,12 +49,13 @@ impl LottieRenderer {
 
         self.buffer
             .resize((self.width * self.height * 4) as usize, 0);
+
         self.thorvg_canvas.set_target(
             &mut self.buffer,
             self.width,
             self.width,
             self.height,
-            TvgColorspace::ABGR8888,
+            get_color_space_for_target(),
         )?;
 
         self.thorvg_animation = Animation::new();
@@ -156,7 +157,7 @@ impl LottieRenderer {
             self.width,
             self.width,
             self.height,
-            TvgColorspace::ABGR8888,
+            get_color_space_for_target(),
         )?;
 
         let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) = self
@@ -235,4 +236,17 @@ fn hex_to_rgba(hex_color: u32) -> (u8, u8, u8, u8) {
     let alpha = (hex_color & 0xFF) as u8;
 
     (red, green, blue, alpha)
+}
+
+#[inline]
+fn get_color_space_for_target() -> TvgColorspace {
+    #[cfg(target_arch = "wasm32")]
+    {
+        TvgColorspace::ABGR8888S
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        TvgColorspace::ABGR8888
+    }
 }

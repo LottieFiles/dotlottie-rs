@@ -124,7 +124,7 @@ fn main() {
         speed: 1.0,
         use_frame_interpolation: true,
         autoplay: true,
-        segments: vec![],
+        segment: vec![],
         background_color: 0xffffffff,
         layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
         marker: "feather".to_string(),
@@ -230,6 +230,10 @@ fn main() {
             }
         }
 
+        if window.is_key_pressed(Key::Y, KeyRepeat::No) {
+            lottie_player.load_theme("");
+        }
+
         if window.is_key_pressed(Key::Right, KeyRepeat::No) {
             if let Some(manifest) = lottie_player.manifest() {
                 println!("{:?}", i);
@@ -253,7 +257,7 @@ fn main() {
                 speed: 1.0,
                 use_frame_interpolation: true,
                 autoplay: true,
-                segments: vec![10.0, 45.0],
+                segment: vec![10.0, 45.0],
                 background_color: 0xffffffff,
                 layout: Layout::default(),
                 marker: "".to_string(),

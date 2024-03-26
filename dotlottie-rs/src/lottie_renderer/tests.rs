@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
 
+    use crate::lottie_renderer::DotLottiePlayerError;
     use crate::lottie_renderer::LottieRenderer;
-    use crate::lottie_renderer::LottieRendererError;
 
     #[test]
     fn test_new_lottie_renderer() {

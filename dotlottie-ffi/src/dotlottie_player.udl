@@ -55,16 +55,12 @@ dictionary ManifestTheme {
 
 dictionary ManifestAnimation {
     boolean? autoplay;
-    string? defaultTheme;
+    string? default_theme;
     i8? direction;
-    boolean? hover;
     string id;
-    u32? intermission;
     boolean? loop;
-    u32? loop_count;
-    string? playMode;
+    string? play_mode;
     u32? speed;
-    string? themeColor;
 };
 
 dictionary Manifest {

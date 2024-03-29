@@ -2,18 +2,6 @@ namespace dotlottie_player {
     Layout create_default_layout();
 };
 
-/// [Trait]
-/// interface Observer {
-///    void on_load();
-///    void on_play();
-///    void on_pause();
-///    void on_stop();
-///    void on_frame(f32 frame_no);
-///    void on_render(f32 frame_no);
-///    void on_loop(u32 loop_count);
-///    void on_complete();
-/// };
-
 enum Mode {
     "Forward",
     "Reverse",
@@ -47,42 +35,6 @@ dictionary Config {
     string marker;
 };
 
-///dictionary ManifestTheme {
-///    string id;
-///    sequence<string> animations;
-///};
-
-///dictionary ManifestThemes {
-///    sequence<ManifestTheme>? value;
-///};
-
-///dictionary ManifestAnimation {
-///    boolean? autoplay;
-///    string? defaultTheme;
-///    i8? direction;
-///    boolean? hover;
-///    string id;
-///    u32? intermission;
-///    boolean? loop;
-///    u32? loop_count;
-///    string? playMode;
-///    u32? speed;
-///    string? themeColor;
-///};
-
-///dictionary Manifest {
-///    string? active_animation_id;
-///    sequence<ManifestAnimation> animations;
-///    string? author;
-///    string? description;
-///    string? generator;
-///    string? keywords;
-///    u32? revision;
-///    sequence<ManifestTheme>? themes;
-///    sequence<string>? states;
-///    string? version;
-///};
-
 dictionary Marker {
     string name;
     f32 time;
@@ -95,7 +47,6 @@ interface DotLottiePlayer {
     boolean load_animation_path([ByRef] string animation_path, u32 width, u32 height);
     boolean load_dotlottie_data([ByRef] bytes file_data, u32 width, u32 height);
     boolean load_animation([ByRef] string animation_id, u32 width, u32 height);
-/// Manifest? manifest();
     string manifest_string();
     u64 buffer_ptr();
     u64 buffer_len();
@@ -118,8 +69,6 @@ interface DotLottiePlayer {
     boolean render();
     boolean resize(u32 width, u32 height);
     void clear();
-/// void subscribe(Observer observer);
-/// void unsubscribe([ByRef] Observer observer);
     boolean is_complete();
     boolean load_theme([ByRef] string theme_id);
     boolean load_theme_data([ByRef] string theme_data);

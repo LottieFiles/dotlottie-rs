@@ -17,7 +17,7 @@ mod tests {
         let valid_theme_id = "test_theme";
 
         assert!(
-            player.load_theme(valid_theme_id) == false,
+            !player.load_theme(valid_theme_id),
             "Expected theme to not load"
         );
 
@@ -38,14 +38,14 @@ mod tests {
         let invalid_theme_id = "invalid_theme";
 
         assert!(
-            player.load_theme(invalid_theme_id) == false,
+            !player.load_theme(invalid_theme_id),
             "Expected theme to not load"
         );
 
         assert!(player.load_dotlottie_data(include_bytes!("assets/test.lottie"), WIDTH, HEIGHT));
 
         assert!(
-            player.load_theme(invalid_theme_id) == false,
+            !player.load_theme(invalid_theme_id),
             "Expected theme to not load"
         );
 

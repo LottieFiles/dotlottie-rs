@@ -12,7 +12,7 @@ mod tests {
     fn test_default_use_frame_interpolation() {
         let player = DotLottiePlayer::new(Config::default());
 
-        assert_eq!(player.config().use_frame_interpolation, true);
+        assert!(player.config().use_frame_interpolation);
     }
 
     #[test]
@@ -23,7 +23,7 @@ mod tests {
         config.use_frame_interpolation = false;
         player.set_config(config);
 
-        assert_eq!(player.config().use_frame_interpolation, false);
+        assert!(!player.config().use_frame_interpolation);
     }
 
     #[test]
@@ -42,16 +42,14 @@ mod tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) {
-                if player.render() {
-                    let current_frame = player.current_frame();
-                    rendered_frames.push(current_frame);
-                }
+            if player.set_frame(next_frame) && player.render() {
+                let current_frame = player.current_frame();
+                rendered_frames.push(current_frame);
             }
         }
 
         assert!(!rendered_frames.is_empty());
-        assert_eq!((rendered_frames.len() as usize), total_frames as usize);
+        assert_eq!({ rendered_frames.len() }, total_frames as usize);
 
         assert_eq!(rendered_frames[rendered_frames.len() - 1], total_frames);
 

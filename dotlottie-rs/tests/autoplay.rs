@@ -12,7 +12,7 @@ mod tests {
     fn test_default_autoplay() {
         let player = DotLottiePlayer::new(Config::default());
 
-        assert_eq!(player.config().autoplay, false);
+        assert!(!player.config().autoplay);
     }
 
     #[test]
@@ -23,7 +23,7 @@ mod tests {
         config.autoplay = true;
         player.set_config(config);
 
-        assert_eq!(player.config().autoplay, true);
+        assert!(player.config().autoplay);
     }
 
     #[test]
@@ -38,7 +38,7 @@ mod tests {
         assert!(player.is_playing());
         assert!(!player.is_paused());
         assert!(!player.is_stopped());
-        assert!(player.is_complete() == false);
+        assert!(!player.is_complete());
         assert_eq!(player.current_frame(), 0.0);
 
         let mut rendered_frames: Vec<f32> = vec![];
@@ -46,11 +46,9 @@ mod tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) {
-                if player.render() {
-                    let current_frame = player.current_frame();
-                    rendered_frames.push(current_frame);
-                }
+            if player.set_frame(next_frame) && player.render() {
+                let current_frame = player.current_frame();
+                rendered_frames.push(current_frame);
             }
         }
 
@@ -72,7 +70,7 @@ mod tests {
         assert!(!player.is_playing());
         assert!(!player.is_paused());
         assert!(player.is_stopped());
-        assert!(player.is_complete() == false);
+        assert!(!player.is_complete());
         assert!(player.current_frame() == 0.0);
 
         let times: usize = 10;

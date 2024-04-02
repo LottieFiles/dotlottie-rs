@@ -27,3 +27,8 @@ jobs:
         env:
           APPLE_MACOSX_SDK: MacOSX13
         run: make demo-player
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features
+        # Make sure CI fails on all warnings, including Clippy lints
+        env:
+          RUSTFLAGS: "-Dwarnings"

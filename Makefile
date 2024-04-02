@@ -923,6 +923,14 @@ mac-setup: export UNIFFI_BINDGEN_CPP_VERSION:= $(UNIFFI_BINDGEN_CPP_VERSION)
 mac-setup:
 	@./.$@.sh
 
+.PHONY: test
+test: test-all
+
+.PHONY: test-all
+test-all:
+	$(info $(YELLOW)Running tests for workspace$(NC))
+	cargo test -- --test-threads=1
+
 .PHONY: help
 help:
 	@echo "Welcome to the $(GREEN)dotlottie-player$(NC) build system!"
@@ -962,13 +970,6 @@ help:
 	@echo "  - $(YELLOW)clean-deps$(NC)  - clean up all native dependency builds & artifacts"
 	@echo "  - $(YELLOW)clean-build$(NC) - clean up any extraneous build files (useful for ensuring a clean working directory)"
 	@echo "  - $(YELLOW)distclean$(NC)   - clean up everything"
+	@echo "  - $(YELLOW)test$(NC)        - run all tests"
 	@echo
 	@echo
-
-.PHONY: test
-test: test-all
-
-.PHONY: test-all
-test-all:
-	$(info $(YELLOW)Running tests for workspace$(NC))
-	cargo test -- --test-threads=1

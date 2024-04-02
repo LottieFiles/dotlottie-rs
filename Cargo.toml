@@ -1,0 +1,10 @@
+[workspace]
+
+resolver = "2"
+
+members = [
+    "demo-player",
+    "dotlottie-rs",
+    "dotlottie-fms",
+    "dotlottie-ffi"
+]

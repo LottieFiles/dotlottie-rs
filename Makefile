@@ -964,3 +964,11 @@ help:
 	@echo "  - $(YELLOW)distclean$(NC)   - clean up everything"
 	@echo
 	@echo
+
+.PHONY: test
+test: test-all
+
+.PHONY: test-all
+test-all:
+	$(info $(YELLOW)Running tests for workspace$(NC))
+	cargo test -- --test-threads=1

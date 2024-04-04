@@ -121,7 +121,7 @@ pub fn get_animations(bytes: &Vec<u8>) -> Result<Vec<AnimationContainer>, DotLot
 ///
 /// bytes: The bytes of the dotLottie file
 /// Result<Manifest, DotLottieError>: The extracted manifest, or an error
-pub fn get_manifest(bytes: &Vec<u8>) -> Result<Manifest, DotLottieError> {
+pub fn get_manifest(bytes: &[u8]) -> Result<Manifest, DotLottieError> {
     let mut archive =
         ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
 

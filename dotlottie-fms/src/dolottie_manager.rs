@@ -52,9 +52,9 @@ impl DotLottieManager {
         }
     }
 
-    pub fn init(&mut self, dotlottie: Vec<u8>) -> Result<bool, DotLottieError> {
+    pub fn init(&mut self, dotlottie: &[u8]) -> Result<bool, DotLottieError> {
         // Initialize the manager with the dotLottie file
-        let manifest = get_manifest(&dotlottie);
+        let manifest = get_manifest(dotlottie);
 
         match manifest {
             Ok(manifest) => {
@@ -70,7 +70,7 @@ impl DotLottieManager {
 
                 self.active_animation_id = id;
                 self.manifest = manifest;
-                self.zip_data = dotlottie;
+                self.zip_data = dotlottie.to_vec();
 
                 return Ok(true);
             }

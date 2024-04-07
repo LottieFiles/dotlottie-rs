@@ -1,3 +1,31 @@
+## 0.1.16 (2024-04-03)
+
+### Features
+
+#### 🎸 markers (#89)
+
+#### 🎸 theming (#81)
+
+#### 🎸 layout config (#93)
+
+#### 🎸 revert loaded theme (#104)
+
+#### updated readme (#105)
+
+### Fixes
+
+#### 🐛 ensure canvas is cleared before loading a new animation (#86)
+
+#### 🐛 segmentation fault when LottieRender is dropped (#91)
+
+#### 🐛 markers emscripten wasm bindings (#96)
+
+#### 🐛 added a guard for is_complete (#97)
+
+#### 🐛 unnecessary extra array wrapper in theme serialization (#98)
+
+#### added thorvg backlink inside readme (#120)
+
 ## 0.1.15 (2024-02-22)
 
 ### Fixes

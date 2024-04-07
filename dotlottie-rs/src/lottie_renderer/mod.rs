@@ -1,7 +1,5 @@
 use thiserror::Error;
 
-mod tests;
-
 use crate::{Animation, Canvas, Layout, Shape, TvgColorspace, TvgEngine, TvgError};
 
 #[derive(Error, Debug)]

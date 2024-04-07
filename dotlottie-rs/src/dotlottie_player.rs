@@ -31,7 +31,7 @@ pub enum PlaybackState {
     Stopped,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Mode {
     Forward,
     Reverse,
@@ -65,6 +65,22 @@ pub struct Config {
     pub background_color: u32,
     pub layout: Layout,
     pub marker: String,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            mode: Mode::Forward,
+            loop_animation: false,
+            speed: 1.0,
+            use_frame_interpolation: true,
+            autoplay: false,
+            segment: vec![],
+            background_color: 0x00000000,
+            layout: Layout::default(),
+            marker: String::new(),
+        }
+    }
 }
 
 struct DotLottieRuntime {
@@ -587,10 +603,6 @@ impl DotLottieRuntime {
             }
         }
 
-        if self.config.autoplay && loaded {
-            self.play();
-        }
-
         loaded
     }
 
@@ -613,8 +625,8 @@ impl DotLottieRuntime {
         }
     }
 
-    pub fn load_dotlottie_data(&mut self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
-        if self.dotlottie_manager.init(file_data.clone()).is_err() {
+    pub fn load_dotlottie_data(&mut self, file_data: &[u8], width: u32, height: u32) -> bool {
+        if self.dotlottie_manager.init(file_data).is_err() {
             return false;
         }
 
@@ -768,6 +780,10 @@ impl DotLottiePlayer {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load();
             });
+
+            if self.config().autoplay {
+                self.play();
+            }
         } else {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load_error();
@@ -789,6 +805,10 @@ impl DotLottiePlayer {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load();
             });
+
+            if self.config().autoplay {
+                self.play();
+            }
         } else {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load_error();
@@ -800,7 +820,7 @@ impl DotLottiePlayer {
         is_ok
     }
 
-    pub fn load_dotlottie_data(&self, file_data: &Vec<u8>, width: u32, height: u32) -> bool {
+    pub fn load_dotlottie_data(&self, file_data: &[u8], width: u32, height: u32) -> bool {
         let is_ok = self
             .runtime
             .write()
@@ -810,6 +830,10 @@ impl DotLottiePlayer {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load();
             });
+
+            if self.config().autoplay {
+                self.play();
+            }
         } else {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load_error();
@@ -831,6 +855,10 @@ impl DotLottiePlayer {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load();
             });
+
+            if self.config().autoplay {
+                self.play();
+            }
         } else {
             self.observers.read().unwrap().iter().for_each(|observer| {
                 observer.on_load_error();

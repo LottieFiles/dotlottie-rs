@@ -935,6 +935,11 @@ test-all:
 	@cargo test --manifest-path $(FMS)/Cargo.toml -- --test-threads=1 
 	@cargo test --manifest-path $(RUNTIME_FFI)/Cargo.toml -- --test-threads=1 
 
+.PHONY: bench
+bench:
+	$(info $(YELLOW)Running benchmarks for workspace$(NC))
+	cargo bench
+
 .PHONY: help
 help:
 	@echo "Welcome to the $(GREEN)dotlottie-player$(NC) build system!"
@@ -975,5 +980,6 @@ help:
 	@echo "  - $(YELLOW)clean-build$(NC) - clean up any extraneous build files (useful for ensuring a clean working directory)"
 	@echo "  - $(YELLOW)distclean$(NC)   - clean up everything"
 	@echo "  - $(YELLOW)test$(NC)        - run all tests"
+	@echo "  - $(YELLOW)bench$(NC)       - run all benchmarks"
 	@echo
 	@echo

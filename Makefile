@@ -130,6 +130,7 @@ RELEASE := release
 # Build artifact types
 CORE := dotlottie-rs
 RUNTIME_FFI := dotlottie-ffi
+FMS := dotlottie-fms
 DOTLOTTIE_PLAYER := dotlottie-player
 
 # Build artifacts
@@ -910,6 +911,7 @@ clean-deps: clean-build
 clean: clean-build
 	@rm -rf $(RELEASE)
 	@cargo clean --manifest-path $(CORE)/Cargo.toml
+	@cargo clean --manifest-path $(FMS)/Cargo.toml
 	@cargo clean --manifest-path $(RUNTIME_FFI)/Cargo.toml
 	@rm -rf $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)
 	@rm -rf $(RUNTIME_FFI)/$(BUILD)
@@ -929,7 +931,9 @@ test: test-all
 .PHONY: test-all
 test-all:
 	$(info $(YELLOW)Running tests for workspace$(NC))
-	cargo test -- --test-threads=1
+	@cargo test --manifest-path $(CORE)/Cargo.toml -- --test-threads=1 
+	@cargo test --manifest-path $(FMS)/Cargo.toml -- --test-threads=1 
+	@cargo test --manifest-path $(RUNTIME_FFI)/Cargo.toml -- --test-threads=1 
 
 .PHONY: bench
 bench:

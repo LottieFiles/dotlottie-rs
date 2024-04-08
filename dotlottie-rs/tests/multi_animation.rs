@@ -27,13 +27,24 @@ mod tests {
                 animation.id
             );
 
-            /*
-               TODO: assert if the currently loaded animation is the same as the one we loaded
-               require the player to have a method to get the currently loaded animation
+            let active_animation_id = player.active_animation_id();
 
-                let current_animation = player.current_animation();
-                assert_eq!(current_animation.id, animation.id);
-            */
+            assert_eq!(
+                active_animation_id, animation.id,
+                "Active animation id is not equal to the loaded animation id"
+            );
         }
+
+        assert!(
+            !player.load_animation("invalid_id", WIDTH, HEIGHT),
+            "Loaded animation with invalid id"
+        );
+
+        let active_action_id = player.active_animation_id();
+
+        assert!(
+            active_action_id.is_empty(),
+            "Active animation id is not empty"
+        );
     }
 }

@@ -110,18 +110,13 @@
         return vector;
       }
 
-      console.log(Module);
-
       const dotLottiePlayer = new Module.DotLottiePlayer({
+        ...Module.createDefaultConfig(),
         autoplay: true,
         loopAnimation: true,
         mode: Module.Mode.values[3],
-        speed: 1,
-        useFrameInterpolation: true,
         segment: createSegment(0, 40),
-        backgroundColor: 0,
         marker: "feather",
-        layout: Module.createDefaultLayout(),
       });
 
       // const data = await fetch("./demo-player/src/markers.json").then((res) =>

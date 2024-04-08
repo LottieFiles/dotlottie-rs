@@ -140,5 +140,6 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("isComplete", &DotLottiePlayer::is_complete)
         .function("loadTheme", &DotLottiePlayer::load_theme)
         .function("loadThemeData", &DotLottiePlayer::load_theme_data)
-        .function("markers", &DotLottiePlayer::markers);
+        .function("markers", &DotLottiePlayer::markers)
+        .function("activeAnimationId", &DotLottiePlayer::active_animation_id);
 }

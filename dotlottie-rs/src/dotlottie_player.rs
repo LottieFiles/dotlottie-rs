@@ -93,6 +93,7 @@ struct DotLottieRuntime {
     dotlottie_manager: DotLottieManager,
     direction: Direction,
     markers: MarkersMap,
+    active_animation_id: String,
 }
 
 impl DotLottieRuntime {
@@ -114,6 +115,7 @@ impl DotLottieRuntime {
             dotlottie_manager: DotLottieManager::new(None).unwrap(),
             direction,
             markers: MarkersMap::new(),
+            active_animation_id: String::new(),
         }
     }
 
@@ -607,6 +609,7 @@ impl DotLottieRuntime {
     }
 
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
+        self.active_animation_id.clear();
         self.dotlottie_manager = DotLottieManager::new(None).unwrap();
 
         self.markers = extract_markers(animation_data);
@@ -619,6 +622,7 @@ impl DotLottieRuntime {
     }
 
     pub fn load_animation_path(&mut self, file_path: &str, width: u32, height: u32) -> bool {
+        self.active_animation_id.clear();
         match fs::read_to_string(file_path) {
             Ok(data) => self.load_animation_data(&data, width, height),
             Err(_) => false,
@@ -626,6 +630,7 @@ impl DotLottieRuntime {
     }
 
     pub fn load_dotlottie_data(&mut self, file_data: &[u8], width: u32, height: u32) -> bool {
+        self.active_animation_id.clear();
         if self.dotlottie_manager.init(file_data).is_err() {
             return false;
         }
@@ -633,34 +638,49 @@ impl DotLottieRuntime {
         let first_animation: Result<String, DotLottieError> =
             self.dotlottie_manager.get_active_animation();
 
-        match first_animation {
-            Ok(animation_data) => {
-                self.markers = extract_markers(animation_data.as_str());
+        let ok =
+            match first_animation {
+                Ok(animation_data) => {
+                    self.markers = extract_markers(animation_data.as_str());
 
-                // For the moment we're ignoring manifest values
+                    // For the moment we're ignoring manifest values
 
-                // self.load_playback_settings();
-                self.load_animation_common(
-                    |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
-                    width,
-                    height,
-                )
-            }
-            Err(_error) => false,
+                    // self.load_playback_settings();
+                    self.load_animation_common(
+                        |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
+                        width,
+                        height,
+                    )
+                }
+                Err(_error) => false,
+            };
+
+        if ok {
+            self.active_animation_id = self.dotlottie_manager.active_animation_id();
         }
+
+        ok
     }
 
     pub fn load_animation(&mut self, animation_id: &str, width: u32, height: u32) -> bool {
+        self.active_animation_id.clear();
+
         let animation_data = self.dotlottie_manager.get_animation(animation_id);
 
-        match animation_data {
+        let ok = match animation_data {
             Ok(animation_data) => self.load_animation_common(
                 |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
                 width,
                 height,
             ),
             Err(_error) => false,
+        };
+
+        if ok {
+            self.active_animation_id = animation_id.to_string();
         }
+
+        ok
     }
 
     #[allow(dead_code)]
@@ -735,9 +755,10 @@ impl DotLottieRuntime {
                     .map_or(false, |theme| {
                         // check if the theme is either global or scoped to the currently active animation
                         let is_global_or_active_animation = theme.animations.is_empty()
-                            || theme.animations.iter().any(|animation| {
-                                animation == &self.dotlottie_manager.active_animation_id()
-                            });
+                            || theme
+                                .animations
+                                .iter()
+                                .any(|animation| animation == &self.active_animation_id);
 
                         is_global_or_active_animation
                             && self
@@ -754,6 +775,10 @@ impl DotLottieRuntime {
 
     pub fn load_theme_data(&mut self, theme_data: &str) -> bool {
         self.renderer.load_theme_data(theme_data).is_ok()
+    }
+
+    pub fn active_animation_id(&self) -> &str {
+        &self.active_animation_id
     }
 }
 
@@ -1056,6 +1081,14 @@ impl DotLottiePlayer {
 
     pub fn markers(&self) -> Vec<Marker> {
         self.runtime.read().unwrap().markers()
+    }
+
+    pub fn active_animation_id(&self) -> String {
+        self.runtime
+            .read()
+            .unwrap()
+            .active_animation_id()
+            .to_string()
     }
 }
 

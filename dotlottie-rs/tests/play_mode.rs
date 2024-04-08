@@ -257,6 +257,7 @@ mod play_mode_tests {
         );
 
         assert!(player.is_playing(), "Animation should be playing");
+        assert!(!player.is_complete(), "Animation should not be complete");
 
         let mut rendered_frames: Vec<f32> = vec![];
 

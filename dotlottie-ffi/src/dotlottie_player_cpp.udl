@@ -1,5 +1,6 @@
 namespace dotlottie_player {
     Layout create_default_layout();
+    Config create_default_config();
 };
 
 /// [Trait]

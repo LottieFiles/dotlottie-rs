@@ -64,6 +64,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("layout", &Config::layout)
         .field("marker", &Config::marker);
 
+    function("createDefaultConfig", &create_default_config);
+
     // value_object<ManifestTheme>("ManifestTheme")
     //     .field("id", &ManifestTheme::id)
     //     .field("animations", &ManifestTheme::animations);
@@ -105,7 +107,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     //     .function("onStop", &Observer::on_stop);
 
     class_<DotLottiePlayer>("DotLottiePlayer")
-        .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
+        .smart_ptr<std::shared_ptr<DotLottiePlayer> >("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init, allow_raw_pointers())
         .function("buffer", &buffer)
         .function("clear", &DotLottiePlayer::clear)

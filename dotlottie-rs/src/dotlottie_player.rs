@@ -277,12 +277,11 @@ impl DotLottieRuntime {
             Direction::Reverse => end_frame - raw_next_frame,
         };
 
-        let next_frame =
-            if self.config.use_frame_interpolation {
-                next_frame
-            } else {
-                next_frame.round()
-            };
+        let next_frame = if self.config.use_frame_interpolation {
+            next_frame
+        } else {
+            next_frame.round()
+        };
 
         // to ensure the next_frame won't go beyond the start & end frames
         let next_frame = next_frame.clamp(start_frame, end_frame);
@@ -638,22 +637,21 @@ impl DotLottieRuntime {
         let first_animation: Result<String, DotLottieError> =
             self.dotlottie_manager.get_active_animation();
 
-        let ok =
-            match first_animation {
-                Ok(animation_data) => {
-                    self.markers = extract_markers(animation_data.as_str());
+        let ok = match first_animation {
+            Ok(animation_data) => {
+                self.markers = extract_markers(animation_data.as_str());
 
-                    // For the moment we're ignoring manifest values
+                // For the moment we're ignoring manifest values
 
-                    // self.load_playback_settings();
-                    self.load_animation_common(
-                        |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
-                        width,
-                        height,
-                    )
-                }
-                Err(_error) => false,
-            };
+                // self.load_playback_settings();
+                self.load_animation_common(
+                    |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
+                    width,
+                    height,
+                )
+            }
+            Err(_error) => false,
+        };
 
         if ok {
             self.active_animation_id = self.dotlottie_manager.active_animation_id();
@@ -736,8 +734,14 @@ impl DotLottieRuntime {
             return false;
         }
         match self.config.mode {
-            Mode::Forward | Mode::ReverseBounce => self.current_frame() >= self.end_frame(),
-            Mode::Reverse | Mode::Bounce => self.current_frame() <= self.start_frame(),
+            Mode::Forward => self.current_frame() >= self.end_frame(),
+            Mode::Reverse => self.current_frame() <= self.start_frame(),
+            Mode::Bounce => {
+                self.current_frame() <= self.start_frame() && self.direction == Direction::Reverse
+            }
+            Mode::ReverseBounce => {
+                self.current_frame() >= self.end_frame() && self.direction == Direction::Forward
+            }
         }
     }
 

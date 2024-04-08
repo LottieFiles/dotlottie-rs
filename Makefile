@@ -938,7 +938,9 @@ test-all:
 .PHONY: bench
 bench:
 	$(info $(YELLOW)Running benchmarks for workspace$(NC))
-	cargo bench
+	cargo bench --manifest-path $(CORE)/Cargo.toml
+	cargo bench --manifest-path $(FMS)/Cargo.toml
+	cargo bench --manifest-path $(RUNTIME_FFI)/Cargo.toml
 
 .PHONY: help
 help:

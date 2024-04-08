@@ -25,12 +25,7 @@ function createSegments(startFrame, endFrame) {
 }
 
 const dotLottiePlayer = new Module.DotLottiePlayer({
-  autoplay: false,
-  loopAnimation: false,
-  mode: Module.Mode.values[1],
-  speed: 1,
-  useFrameInterpolation: false,
-  segments: new Module.VectorFloat(),
+  ...Module.createDefaultConfig(),
   backgroundColor: 0xff009aff,
 });
 

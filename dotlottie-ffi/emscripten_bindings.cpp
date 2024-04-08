@@ -64,6 +64,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("layout", &Config::layout)
         .field("marker", &Config::marker);
 
+    function("createDefaultConfig", &create_default_config);
+
     // value_object<ManifestTheme>("ManifestTheme")
     //     .field("id", &ManifestTheme::id)
     //     .field("animations", &ManifestTheme::animations);

@@ -21,3 +21,10 @@ serde = { version = "1.0.188", features = ["derive"] }
 [build-dependencies]
 bindgen = "0.69.1"
 lazy_static = "1.4"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "benchmarks"
+harness = false

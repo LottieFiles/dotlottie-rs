@@ -81,13 +81,12 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode() {
-        let player =
-            DotLottiePlayer::new(Config {
-                mode: Mode::Forward,
-                autoplay: true,
-                use_frame_interpolation: false,
-                ..Config::default()
-            });
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::Forward,
+            autoplay: true,
+            use_frame_interpolation: false,
+            ..Config::default()
+        });
 
         assert!(
             player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
@@ -131,13 +130,12 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_play_mode() {
-        let player =
-            DotLottiePlayer::new(Config {
-                mode: Mode::Reverse,
-                autoplay: true,
-                use_frame_interpolation: false,
-                ..Config::default()
-            });
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::Reverse,
+            autoplay: true,
+            use_frame_interpolation: false,
+            ..Config::default()
+        });
 
         assert!(
             player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
@@ -178,15 +176,13 @@ mod play_mode_tests {
     }
 
     #[test]
-    #[ignore = "fail cause of a bug in is_complete()"]
     fn test_bounce_play_mode() {
-        let player =
-            DotLottiePlayer::new(Config {
-                mode: Mode::Bounce,
-                autoplay: true,
-                use_frame_interpolation: false,
-                ..Config::default()
-            });
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::Bounce,
+            autoplay: true,
+            use_frame_interpolation: false,
+            ..Config::default()
+        });
 
         assert!(
             player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
@@ -213,38 +209,47 @@ mod play_mode_tests {
             "Expected rendered frames to be greater than or equal to total frames"
         );
 
-        // check if the rendered frames are increasing and decreasing
-        let mut prev_frame = 0.0;
-        for frame in &rendered_frames {
+        let mut frame_idx = 0;
+
+        while frame_idx < rendered_frames.len()
+            && rendered_frames[frame_idx] < player.total_frames()
+        {
             assert!(
-                frame >= &prev_frame,
-                "Expected frame to be greater than or equal to previous frame"
+                rendered_frames[frame_idx] <= rendered_frames[frame_idx + 1],
+                "Expected frame to be less than or equal to next frame"
             );
-            prev_frame = *frame;
+            frame_idx += 1;
         }
 
-        for frame in rendered_frames.iter().rev() {
+        assert!(
+            rendered_frames[frame_idx] == player.total_frames(),
+            "Expected frame to be total frames at index {}",
+            frame_idx
+        );
+
+        while frame_idx < rendered_frames.len() && rendered_frames[frame_idx] > 0.0 {
             assert!(
-                frame <= &prev_frame,
-                "Expected frame to be less than or equal to previous frame"
+                rendered_frames[frame_idx] >= rendered_frames[frame_idx + 1],
+                "Expected frame to be greater than or equal to next frame"
             );
-            prev_frame = *frame;
+            frame_idx += 1;
         }
 
-        // check if the last frame is 0
-        assert_eq!(0.0, prev_frame, "Expected last frame to be 0");
+        assert!(
+            rendered_frames[frame_idx] == 0.0,
+            "Expected frame to be 0 at index {}",
+            frame_idx
+        );
     }
 
     #[test]
-    #[ignore = "fail cause of a bug in is_complete()"]
     fn test_reverse_bounce_play_mode() {
-        let player =
-            DotLottiePlayer::new(Config {
-                mode: Mode::ReverseBounce,
-                autoplay: true,
-                use_frame_interpolation: false,
-                ..Config::default()
-            });
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::ReverseBounce,
+            autoplay: true,
+            use_frame_interpolation: false,
+            ..Config::default()
+        });
 
         assert!(
             player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
@@ -252,6 +257,7 @@ mod play_mode_tests {
         );
 
         assert!(player.is_playing(), "Animation should be playing");
+        assert!(!player.is_complete(), "Animation should not be complete");
 
         let mut rendered_frames: Vec<f32> = vec![];
 
@@ -270,25 +276,36 @@ mod play_mode_tests {
             "Expected rendered frames to be greater than or equal to total frames"
         );
 
-        // check if the rendered frames are decreasing and increasing
-        let mut prev_frame = player.total_frames();
-        for frame in &rendered_frames {
+        let mut frame_idx = 0;
+
+        while frame_idx < rendered_frames.len() && rendered_frames[frame_idx] > 0.0 {
             assert!(
-                frame <= &prev_frame,
-                "Expected frame to be less than or equal to previous frame"
+                rendered_frames[frame_idx] >= rendered_frames[frame_idx + 1],
+                "Expected frame to be greater than or equal to next frame"
             );
-            prev_frame = *frame;
+            frame_idx += 1;
         }
 
-        for frame in rendered_frames.iter().rev() {
+        assert!(
+            rendered_frames[frame_idx] == 0.0,
+            "Expected frame to be 0 at index {}",
+            frame_idx
+        );
+
+        while frame_idx < rendered_frames.len()
+            && rendered_frames[frame_idx] < player.total_frames()
+        {
             assert!(
-                frame >= &prev_frame,
-                "Expected frame to be greater than or equal to previous frame"
+                rendered_frames[frame_idx] <= rendered_frames[frame_idx + 1],
+                "Expected frame to be less than or equal to next frame"
             );
-            prev_frame = *frame;
+            frame_idx += 1;
         }
 
-        // check if the last frame is 0
-        assert_eq!(0.0, prev_frame, "Expected last frame to be 0");
+        assert!(
+            rendered_frames[frame_idx] == player.total_frames(),
+            "Expected frame to be total frames at index {}",
+            frame_idx
+        );
     }
 }

@@ -98,7 +98,7 @@ EMSDK_VERSION := 3.1.51
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
-UNIFFI_BINDGEN_CPP_VERSION := v0.4.2+v0.25.0
+UNIFFI_BINDGEN_CPP_VERSION := v0.5.0+v0.25.0
 
 WASM_MODULE := DotLottiePlayer
 
@@ -130,6 +130,7 @@ RELEASE := release
 # Build artifact types
 CORE := dotlottie-rs
 RUNTIME_FFI := dotlottie-ffi
+FMS := dotlottie-fms
 DOTLOTTIE_PLAYER := dotlottie-player
 
 # Build artifacts
@@ -910,6 +911,7 @@ clean-deps: clean-build
 clean: clean-build
 	@rm -rf $(RELEASE)
 	@cargo clean --manifest-path $(CORE)/Cargo.toml
+	@cargo clean --manifest-path $(FMS)/Cargo.toml
 	@cargo clean --manifest-path $(RUNTIME_FFI)/Cargo.toml
 	@rm -rf $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)
 	@rm -rf $(RUNTIME_FFI)/$(BUILD)
@@ -929,7 +931,16 @@ test: test-all
 .PHONY: test-all
 test-all:
 	$(info $(YELLOW)Running tests for workspace$(NC))
-	cargo test -- --test-threads=1
+	@cargo test --manifest-path $(CORE)/Cargo.toml -- --test-threads=1 
+	@cargo test --manifest-path $(FMS)/Cargo.toml -- --test-threads=1 
+	@cargo test --manifest-path $(RUNTIME_FFI)/Cargo.toml -- --test-threads=1 
+
+.PHONY: bench
+bench:
+	$(info $(YELLOW)Running benchmarks for workspace$(NC))
+	cargo bench --manifest-path $(CORE)/Cargo.toml
+	cargo bench --manifest-path $(FMS)/Cargo.toml
+	cargo bench --manifest-path $(RUNTIME_FFI)/Cargo.toml
 
 .PHONY: help
 help:
@@ -971,5 +982,6 @@ help:
 	@echo "  - $(YELLOW)clean-build$(NC) - clean up any extraneous build files (useful for ensuring a clean working directory)"
 	@echo "  - $(YELLOW)distclean$(NC)   - clean up everything"
 	@echo "  - $(YELLOW)test$(NC)        - run all tests"
+	@echo "  - $(YELLOW)bench$(NC)       - run all benchmarks"
 	@echo
 	@echo

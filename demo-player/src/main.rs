@@ -118,6 +118,7 @@ fn main() {
     path.push("src/markers.json");
 
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
+        autoplay: true,
         loop_animation: true,
         background_color: 0xffffffff,
         layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),

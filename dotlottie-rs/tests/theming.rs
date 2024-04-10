@@ -88,8 +88,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "invalid memory reference"]
-    fn test_clear_active_theme_id_after_new_animation_data_loaded() {
+    fn test_clear_active_theme_id_after_new_animation_data_is_loaded() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
@@ -107,8 +106,8 @@ mod tests {
         assert!(player.load_theme(valid_theme_id), "Expected theme to load");
         assert_eq!(player.active_theme_id(), valid_theme_id);
 
-        let mut test_json_file = File::open("assets/test.json").expect("no file found");
-        let metadata = fs::metadata("assets/test.json").expect("unable to read metadata");
+        let mut test_json_file = File::open("tests/assets/test.json").expect("no file found");
+        let metadata = fs::metadata("tests/assets/test.json").expect("unable to read metadata");
         let mut buffer = vec![0; metadata.len() as usize];
         test_json_file.read(&mut buffer).expect("buffer overflow");
         let string = String::from_utf8(buffer.clone()).unwrap();
@@ -120,7 +119,7 @@ mod tests {
     }
 
     #[test]
-    fn test_clear_active_theme_id_after_new_dotlottie_loaded() {
+    fn test_clear_active_theme_id_after_new_dotlottie_is_loaded() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()

@@ -611,6 +611,8 @@ impl DotLottieRuntime {
 
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
+        self.active_theme_id.clear();
+
         self.dotlottie_manager = DotLottieManager::new(None).unwrap();
 
         self.markers = extract_markers(animation_data);
@@ -624,6 +626,8 @@ impl DotLottieRuntime {
 
     pub fn load_animation_path(&mut self, file_path: &str, width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
+        self.active_theme_id.clear();
+
         match fs::read_to_string(file_path) {
             Ok(data) => self.load_animation_data(&data, width, height),
             Err(_) => false,
@@ -632,6 +636,8 @@ impl DotLottieRuntime {
 
     pub fn load_dotlottie_data(&mut self, file_data: &[u8], width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
+        self.active_theme_id.clear();
+
         if self.dotlottie_manager.init(file_data).is_err() {
             return false;
         }

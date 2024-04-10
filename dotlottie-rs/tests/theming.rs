@@ -107,13 +107,8 @@ mod tests {
         assert!(player.load_theme(valid_theme_id), "Expected theme to load");
         assert_eq!(player.active_theme_id(), valid_theme_id);
 
-        let mut test_json_file = File::open("tests/assets/test.json").expect("no file found");
-        let metadata = fs::metadata("tests/assets/test.json").expect("unable to read metadata");
-        let mut buffer = vec![0; metadata.len() as usize];
-        test_json_file.read(&mut buffer).expect("buffer overflow");
-        let string = String::from_utf8(buffer.clone()).unwrap();
-
-        assert!(player.load_animation_data(&string, WIDTH, HEIGHT));
+        let data = std::str::from_utf8(include_bytes!("assets/test.json")).expect("Invalid data.");
+        assert!(player.load_animation_data(data, WIDTH, HEIGHT));
         assert!(player.active_theme_id().is_empty());
 
         assert!(player.is_playing());

@@ -94,6 +94,7 @@ struct DotLottieRuntime {
     direction: Direction,
     markers: MarkersMap,
     active_animation_id: String,
+    active_theme_id: String,
 }
 
 impl DotLottieRuntime {
@@ -116,6 +117,7 @@ impl DotLottieRuntime {
             direction,
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
+            active_theme_id: String::new(),
         }
     }
 
@@ -609,6 +611,8 @@ impl DotLottieRuntime {
 
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
+        self.active_theme_id.clear();
+
         self.dotlottie_manager = DotLottieManager::new(None).unwrap();
 
         self.markers = extract_markers(animation_data);
@@ -622,6 +626,8 @@ impl DotLottieRuntime {
 
     pub fn load_animation_path(&mut self, file_path: &str, width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
+        self.active_theme_id.clear();
+
         match fs::read_to_string(file_path) {
             Ok(data) => self.load_animation_data(&data, width, height),
             Err(_) => false,
@@ -630,6 +636,8 @@ impl DotLottieRuntime {
 
     pub fn load_dotlottie_data(&mut self, file_data: &[u8], width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
+        self.active_theme_id.clear();
+
         if self.dotlottie_manager.init(file_data).is_err() {
             return false;
         }
@@ -746,11 +754,14 @@ impl DotLottieRuntime {
     }
 
     pub fn load_theme(&mut self, theme_id: &str) -> bool {
+        self.active_theme_id.clear();
+
         if theme_id.is_empty() {
             return self.renderer.load_theme_data("").is_ok();
         }
 
-        self.manifest()
+        let ok = self
+            .manifest()
             .and_then(|manifest| manifest.themes)
             .map_or(false, |themes| {
                 themes
@@ -774,7 +785,13 @@ impl DotLottieRuntime {
                                 })
                                 .is_some()
                     })
-            })
+            });
+
+        if ok {
+            self.active_theme_id = theme_id.to_string();
+        }
+
+        ok
     }
 
     pub fn load_theme_data(&mut self, theme_data: &str) -> bool {
@@ -783,6 +800,10 @@ impl DotLottieRuntime {
 
     pub fn active_animation_id(&self) -> &str {
         &self.active_animation_id
+    }
+
+    pub fn active_theme_id(&self) -> &str {
+        &self.active_theme_id
     }
 }
 
@@ -1093,6 +1114,10 @@ impl DotLottiePlayer {
             .unwrap()
             .active_animation_id()
             .to_string()
+    }
+
+    pub fn active_theme_id(&self) -> String {
+        self.runtime.read().unwrap().active_theme_id().to_string()
     }
 }
 

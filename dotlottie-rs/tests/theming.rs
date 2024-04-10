@@ -24,6 +24,7 @@ mod tests {
         assert!(player.load_dotlottie_data(include_bytes!("assets/test.lottie"), WIDTH, HEIGHT));
 
         assert!(player.load_theme(valid_theme_id), "Expected theme to load");
+        assert_eq!(player.active_theme_id(), valid_theme_id);
 
         assert!(player.is_playing());
     }

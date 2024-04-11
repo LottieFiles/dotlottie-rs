@@ -72,6 +72,8 @@ pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotL
                 assets[i]["u"] = "".into();
                 assets[i]["p"] =
                     format!("data:image/{};base64,{}", image_ext, image_data_base64).into();
+                // explicitly indicate that the image asset is inlined
+                assets[i]["e"] = 1.into();
             }
         }
     }

@@ -13,53 +13,45 @@ mod tests {
         let configs: Vec<Config> = vec![
             Config {
                 autoplay: true,
-                use_frame_interpolation: false,
                 ..Config::default()
             },
             Config {
                 mode: Mode::Reverse,
                 autoplay: true,
-                use_frame_interpolation: false,
                 ..Config::default()
             },
             Config {
                 mode: Mode::Bounce,
                 autoplay: true,
-                use_frame_interpolation: false,
                 ..Config::default()
             },
             Config {
                 mode: Mode::ReverseBounce,
                 autoplay: true,
-                use_frame_interpolation: false,
                 ..Config::default()
             },
             // test with different segments
             Config {
                 autoplay: true,
                 segment: vec![10.0, 30.0],
-                use_frame_interpolation: false,
                 ..Config::default()
             },
             Config {
                 mode: Mode::Reverse,
                 autoplay: true,
                 segment: vec![10.0, 30.0],
-                use_frame_interpolation: false,
                 ..Config::default()
             },
             Config {
                 mode: Mode::Bounce,
                 autoplay: true,
                 segment: vec![10.0, 30.0],
-                use_frame_interpolation: false,
                 ..Config::default()
             },
             Config {
                 mode: Mode::ReverseBounce,
                 autoplay: true,
                 segment: vec![10.0, 30.0],
-                use_frame_interpolation: false,
                 ..Config::default()
             },
         ];

@@ -70,13 +70,11 @@ mod tests {
 
     #[test]
     fn test_subscribe_unsubscribe() {
-        let player =
-            DotLottiePlayer::new(Config {
-                autoplay: true,
-                loop_animation: true,
-                use_frame_interpolation: false,
-                ..Config::default()
-            });
+        let player = DotLottiePlayer::new(Config {
+            autoplay: true,
+            loop_animation: true,
+            ..Config::default()
+        });
 
         let events = Arc::new(Mutex::new(vec![]));
         let observer_events = Arc::clone(&events);

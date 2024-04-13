@@ -43,7 +43,6 @@ fn animation_loop_benchmark(c: &mut Criterion) {
     let player = DotLottiePlayer::new(Config {
         autoplay: true,
         loop_animation: true,
-        use_frame_interpolation: false,
         ..Config::default()
     });
 

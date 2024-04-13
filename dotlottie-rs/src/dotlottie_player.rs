@@ -186,29 +186,29 @@ impl DotLottieRuntime {
     }
 
     pub fn play(&mut self) -> bool {
-        if self.is_loaded && !self.is_playing() {
-            if self.is_paused() {
-                self.update_start_time_for_frame(self.current_frame());
-            } else {
-                self.start_time = Instant::now();
-                match self.config.mode {
-                    Mode::Forward | Mode::Bounce => {
-                        self.set_frame(self.start_frame());
-                        self.direction = Direction::Forward;
-                    }
-                    Mode::Reverse | Mode::ReverseBounce => {
-                        self.set_frame(self.end_frame());
-                        self.direction = Direction::Reverse;
-                    }
+        if !self.is_loaded || self.is_playing() {
+            return false;
+        }
+
+        if self.is_complete() && self.is_stopped() {
+            self.start_time = Instant::now();
+            match self.config.mode {
+                Mode::Forward | Mode::Bounce => {
+                    self.set_frame(self.start_frame());
+                    self.direction = Direction::Forward;
+                }
+                Mode::Reverse | Mode::ReverseBounce => {
+                    self.set_frame(self.end_frame());
+                    self.direction = Direction::Reverse;
                 }
             }
-
-            self.playback_state = PlaybackState::Playing;
-
-            true
         } else {
-            false
+            self.update_start_time_for_frame(self.current_frame());
         }
+
+        self.playback_state = PlaybackState::Playing;
+
+        true
     }
 
     pub fn pause(&mut self) -> bool {

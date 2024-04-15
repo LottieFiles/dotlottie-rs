@@ -83,6 +83,8 @@ impl Default for Config {
     }
 }
 
+const FRAME_DIFF_THRESHOLD: f32 = 0.001;
+
 struct DotLottieRuntime {
     renderer: LottieRenderer,
     playback_state: PlaybackState,
@@ -274,21 +276,35 @@ impl DotLottieRuntime {
         let raw_next_frame = (elapsed_time / effective_duration) * effective_total_frames;
 
         // update the next frame based on the direction
-        let next_frame = match self.direction {
+        let mut next_frame = match self.direction {
             Direction::Forward => start_frame + raw_next_frame,
             Direction::Reverse => end_frame - raw_next_frame,
         };
 
-        let next_frame = if self.config.use_frame_interpolation {
-            next_frame
-        } else {
-            next_frame.round()
+        if !self.config.use_frame_interpolation {
+            next_frame = next_frame.round();
+        }
+
+        /*
+           Note:
+           If we're close to the end frame, we should snap to it as tvg_set_frame ignore the frame which is 0.001 less than the current frame.
+        */
+        match self.direction {
+            Direction::Forward => {
+                if (next_frame - end_frame).abs() < FRAME_DIFF_THRESHOLD {
+                    next_frame = end_frame;
+                }
+            }
+            Direction::Reverse => {
+                if (next_frame - start_frame).abs() < FRAME_DIFF_THRESHOLD {
+                    next_frame = start_frame
+                }
+            }
         };
 
-        // to ensure the next_frame won't go beyond the start & end frames
-        let next_frame = next_frame.clamp(start_frame, end_frame);
+        next_frame = next_frame.clamp(start_frame, end_frame);
 
-        let next_frame = match self.config.mode {
+        next_frame = match self.config.mode {
             Mode::Forward => self.handle_forward_mode(next_frame, end_frame),
             Mode::Reverse => self.handle_reverse_mode(next_frame, start_frame),
             Mode::Bounce => self.handle_bounce_mode(next_frame, start_frame, end_frame),

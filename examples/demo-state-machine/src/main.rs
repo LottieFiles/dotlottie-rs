@@ -1,8 +1,6 @@
 use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Mode, Observer, PlaybackState};
 use dotlottie_sm::event::Event;
-// use dotlottie_sm::base_event::{BoolEvent, NumericEvent, String};
-// use dotlottie_sm::playback_state::PlaybackState;
-// use dotlottie_sm::state::StateType::PlaybackEnum;
+use dotlottie_sm::parser::parser::Parser;
 use dotlottie_sm::state::State;
 use dotlottie_sm::state::StateTrait;
 use dotlottie_sm::transition::Transition;
@@ -10,7 +8,7 @@ use dotlottie_sm::StateMachine;
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
-use std::rc::Rc;
+use std::process::exit;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::{env, path, time::Instant};
@@ -126,8 +124,7 @@ fn main() {
     let mut path = path::PathBuf::from(base_path);
     path.push("src/markers.json");
 
-    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        autoplay: true,
+    let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         loop_animation: true,
         background_color: 0xffffffff,
         layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
@@ -154,9 +151,6 @@ fn main() {
     let metadatamarkers = fs::metadata("src/markers.json").expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
-    let string = String::from_utf8(markers_buffer.clone()).unwrap();
-    // lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
-    // println!("{:?}", Some(lottie_player.manifest()));
 
     lottie_player.load_animation_path(
         path.as_path().to_str().unwrap(),
@@ -196,98 +190,110 @@ fn main() {
 
     lottie_player.play();
 
-    let run_state = State::Playback {
-        config: Config {
-            mode: Mode::Forward,
-            speed: 1.0,
-            loop_animation: true,
-            autoplay: true,
-            segment: vec![],
-            background_color: 0xffffffff,
-            marker: "bird".to_string(),
-            ..Config::default()
-        },
-        reset_context: false,
-        animation_id: "".to_string(),
-        width: 1920,
-        height: 1080,
-        transitions: Vec::new(),
-    };
+    let mut file = File::open("src/pigeon_fsm.json").expect("Unable to open the file");
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)
+        .expect("Unable to read the file");
 
-    let explode_state = State::Playback {
-        config: Config {
-            mode: Mode::Forward,
-            speed: 0.5,
-            loop_animation: false,
-            autoplay: true,
-            segment: vec![],
-            background_color: 0xffffffff,
-            marker: "explosion".to_string(),
-            ..Config::default()
-        },
-        reset_context: false,
-        animation_id: "".to_string(),
-        width: 1920,
-        height: 1080,
-        transitions: Vec::new(),
-    };
+    let fsm_parser = Parser::new();
 
-    let feather_state = State::Playback {
-        config: Config {
-            mode: Mode::Forward,
-            speed: 1.0,
-            loop_animation: false,
-            autoplay: true,
-            segment: vec![],
-            background_color: 0xffffffff,
-            marker: "feather".to_string(),
-            ..Config::default()
-        },
-        reset_context: false,
-        animation_id: "".to_string(),
-        width: 1920,
-        height: 1080,
-        transitions: Vec::new(),
-    };
+    let mut sm_machine = fsm_parser.parse(&contents).unwrap();
 
-    let run_arc = Arc::new(RwLock::new(run_state));
-    let explode_arc = Arc::new(RwLock::new(explode_state));
-    let feather_arc = Arc::new(RwLock::new(feather_state));
+    // let run_state = State::Playback {
+    //     config: Config {
+    //         mode: Mode::Forward,
+    //         speed: 1.0,
+    //         loop_animation: true,
+    //         autoplay: true,
+    //         segment: vec![],
+    //         background_color: 0xffffffff,
+    //         marker: "bird".to_string(),
+    //         ..Config::default()
+    //     },
+    //     reset_context: false,
+    //     animation_id: "".to_string(),
+    //     width: 1920,
+    //     height: 1080,
+    //     transitions: Vec::new(),
+    // };
 
-    let transition_one = Transition::Transition {
-        target_state: explode_arc.clone(),
-        event: Arc::new(RwLock::new(Event::String("explode".to_string()))),
-    };
-    let transition_two = Transition::Transition {
-        target_state: feather_arc.clone(),
-        event: Arc::new(RwLock::new(Event::String("complete".to_string()))),
-    };
-    let transition_three = Transition::Transition {
-        target_state: run_arc.clone(),
-        event: Arc::new(RwLock::new(Event::String("complete".to_string()))),
-    };
+    // let explode_state = State::Playback {
+    //     config: Config {
+    //         mode: Mode::Forward,
+    //         speed: 0.5,
+    //         loop_animation: false,
+    //         autoplay: true,
+    //         segment: vec![],
+    //         background_color: 0xffffffff,
+    //         marker: "explosion".to_string(),
+    //         ..Config::default()
+    //     },
+    //     reset_context: false,
+    //     animation_id: "".to_string(),
+    //     width: 1920,
+    //     height: 1080,
+    //     transitions: Vec::new(),
+    // };
+
+    // let feather_state = State::Playback {
+    //     config: Config {
+    //         mode: Mode::Forward,
+    //         speed: 1.0,
+    //         loop_animation: false,
+    //         autoplay: true,
+    //         segment: vec![],
+    //         background_color: 0xffffffff,
+    //         marker: "feather".to_string(),
+    //         ..Config::default()
+    //     },
+    //     reset_context: false,
+    //     animation_id: "".to_string(),
+    //     width: 1920,
+    //     height: 1080,
+    //     transitions: Vec::new(),
+    // };
+
+    // let run_arc = Arc::new(RwLock::new(run_state));
+    // let explode_arc = Arc::new(RwLock::new(explode_state));
+    // let feather_arc = Arc::new(RwLock::new(feather_state));
+
+    // let transition_one = Transition::Transition {
+    //     target_state: explode_arc.clone(),
+    //     event: Arc::new(RwLock::new(Event::String("explode".to_string()))),
+    // };
+    // let transition_two = Transition::Transition {
+    //     target_state: feather_arc.clone(),
+    //     event: Arc::new(RwLock::new(Event::String("complete".to_string()))),
+    // };
+    // let transition_three = Transition::Transition {
+    //     target_state: run_arc.clone(),
+    //     event: Arc::new(RwLock::new(Event::String("complete".to_string()))),
+    // };
 
     let locked_player = Arc::new(RwLock::new(lottie_player));
 
-    run_arc
-        .write()
-        .unwrap()
-        .add_transition(Arc::new(RwLock::new(transition_one)));
-    explode_arc
-        .write()
-        .unwrap()
-        .add_transition(Arc::new(RwLock::new(transition_two)));
-    feather_arc
-        .write()
-        .unwrap()
-        .add_transition(Arc::new(RwLock::new(transition_three)));
+    sm_machine.set_player(locked_player.clone());
+    sm_machine.start();
 
-    let mut state_machine: StateMachine = StateMachine {
-        current_state: run_arc,
-        dotlottie_player: locked_player.clone(),
-    };
+    // run_arc
+    //     .write()
+    //     .unwrap()
+    //     .add_transition(Arc::new(RwLock::new(transition_one)));
+    // explode_arc
+    //     .write()
+    //     .unwrap()
+    //     .add_transition(Arc::new(RwLock::new(transition_two)));
+    // feather_arc
+    //     .write()
+    //     .unwrap()
+    //     .add_transition(Arc::new(RwLock::new(transition_three)));
 
-    state_machine.start();
+    // let mut state_machine: StateMachine = StateMachine {
+    //     current_state: run_arc,
+    //     dotlottie_player: locked_player.clone(),
+    // };
+
+    // state_machine.start();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         timer.tick(&mut *locked_player.write().unwrap());
@@ -298,15 +304,15 @@ fn main() {
         }
 
         if window.is_key_pressed(Key::O, KeyRepeat::No) {
-            let string_event = Event::String("explode".to_string());
+            let string_event = Event::String("explosion".to_string());
 
-            state_machine.post_event(&string_event);
+            sm_machine.post_event(&string_event);
         }
 
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
             let string_event = Event::String("complete".to_string());
 
-            state_machine.post_event(&string_event);
+            sm_machine.post_event(&string_event);
         }
 
         if cpu_memory_monitor_timer.elapsed().as_secs() >= 1 {

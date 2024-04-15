@@ -1,10 +1,9 @@
 use thiserror;
 
 #[derive(Debug, thiserror::Error)]
-pub enum DotLottieError {
-    // #[error("Failed to open archive")]
-    // ArchiveOpenError,
-
+pub enum StateMachineError {
+    #[error("Failed to parse JSON state machine definition")]
+    ParsingError { reason: String },
     // #[error("Unable to find the file: {file_name}")]
     // FileFindError { file_name: String },
 

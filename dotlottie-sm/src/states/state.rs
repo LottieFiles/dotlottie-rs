@@ -21,6 +21,7 @@ pub trait StateTrait {
     // fn get_exit_actions(&self) -> Vec<String>;
 }
 
+#[derive(Clone)]
 pub enum State {
     Playback {
         config: Config,

@@ -30,7 +30,6 @@ mod tests {
     fn test_autoplay() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
-            use_frame_interpolation: false,
             ..Config::default()
         });
 

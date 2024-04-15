@@ -22,7 +22,6 @@ mod tests {
     fn test_markers() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
-            use_frame_interpolation: false,
             ..Config::default()
         });
 
@@ -82,7 +81,6 @@ mod tests {
     fn test_set_marker() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
-            use_frame_interpolation: false,
             ..Config::default()
         });
 

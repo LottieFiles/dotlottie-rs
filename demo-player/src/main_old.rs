@@ -1,17 +1,8 @@
-use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Mode, Observer, PlaybackState};
-use dotlottie_sm::event::Event;
-// use dotlottie_sm::base_event::{BoolEvent, NumericEvent, StringEvent};
-// use dotlottie_sm::playback_state::PlaybackState;
-// use dotlottie_sm::state::StateType::PlaybackEnum;
-use dotlottie_sm::state::State;
-use dotlottie_sm::state::StateTrait;
-use dotlottie_sm::transition::Transition;
-use dotlottie_sm::StateMachine;
+use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Mode, Observer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
-use std::rc::Rc;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::thread;
 use std::{env, path, time::Instant};
 use sysinfo::System;
@@ -23,19 +14,19 @@ struct DummyObserver2;
 
 impl Observer for DummyObserver2 {
     fn on_play(&self) {
-        // println!("on_play2");
+        println!("on_play2");
     }
     fn on_pause(&self) {
-        // println!("on_pause2");
+        println!("on_pause2");
     }
     fn on_stop(&self) {
-        // println!("on_stop2");
+        println!("on_stop2");
     }
     fn on_frame(&self, frame_no: f32) {
-        // println!("on_frame2: {}", frame_no);
+        println!("on_frame2: {}", frame_no);
     }
     fn on_render(&self, frame_no: f32) {
-        // println!("on_render2: {}", frame_no);
+        println!("on_render2: {}", frame_no);
     }
     fn on_load(&self) {
         println!("on_load2");
@@ -44,10 +35,10 @@ impl Observer for DummyObserver2 {
         println!("on_load_error2");
     }
     fn on_loop(&self, loop_count: u32) {
-        // println!("on_loop2: {}", loop_count);
+        println!("on_loop2: {}", loop_count);
     }
     fn on_complete(&self) {
-        // println!("on_complete2");
+        println!("on_complete2");
     }
 }
 
@@ -57,19 +48,19 @@ struct DummyObserver {
 
 impl Observer for DummyObserver {
     fn on_play(&self) {
-        // println!("on_play {} ", self.id);
+        println!("on_play {} ", self.id);
     }
     fn on_pause(&self) {
-        // println!("on_pause {} ", self.id);
+        println!("on_pause {} ", self.id);
     }
     fn on_stop(&self) {
-        // println!("on_stop {} ", self.id);
+        println!("on_stop {} ", self.id);
     }
     fn on_frame(&self, frame_no: f32) {
-        // println!("on_frame {}: {}", self.id, frame_no);
+        println!("on_frame {}: {}", self.id, frame_no);
     }
     fn on_render(&self, frame_no: f32) {
-        // println!("on_render {}: {}", self.id, frame_no);
+        println!("on_render {}: {}", self.id, frame_no);
     }
     fn on_load(&self) {
         println!("on_load {} ", self.id);
@@ -78,10 +69,10 @@ impl Observer for DummyObserver {
         println!("on_load_error {} ", self.id);
     }
     fn on_loop(&self, loop_count: u32) {
-        // println!("on_loop {}: {}", self.id, loop_count);
+        println!("on_loop {}: {}", self.id, loop_count);
     }
     fn on_complete(&self) {
-        // println!("on_complete {} ", self.id);
+        println!("on_complete {} ", self.id);
     }
 }
 
@@ -127,7 +118,6 @@ fn main() {
     path.push("src/markers.json");
 
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        autoplay: true,
         loop_animation: true,
         background_color: 0xffffffff,
         layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
@@ -152,9 +142,9 @@ fn main() {
 
     let mut markers = File::open("src/markers.json").expect("no file found");
     let metadatamarkers = fs::metadata("src/markers.json").expect("unable to read metadata");
-    let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
-    markers.read(&mut markers_buffer).expect("buffer overflow");
-    let string = String::from_utf8(markers_buffer.clone()).unwrap();
+    let mut markersBuffer = vec![0; metadatamarkers.len() as usize];
+    markers.read(&mut markersBuffer).expect("buffer overflow");
+    let string = String::from_utf8(markersBuffer.clone()).unwrap();
     // lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
     // println!("{:?}", Some(lottie_player.manifest()));
 
@@ -185,11 +175,11 @@ fn main() {
 
             for (pid, process) in sys.processes() {
                 if pid.as_u32() == std::process::id() {
-                    // println!(
-                    //     "CPU: {} % | Memory: {} MB",
-                    //     process.cpu_usage(),
-                    //     process.memory() / 1024 / 1024,
-                    // );
+                    println!(
+                        "CPU: {} % | Memory: {} MB",
+                        process.cpu_usage(),
+                        process.memory() / 1024 / 1024,
+                    );
                 }
             }
 
@@ -199,145 +189,14 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    lottie_player.play();
-
-    // let mut state: StateType = dotlottie_sm::state::StateType::PlaybackEnum::new(
-    //     Config {
-    //         mode: Mode::Forward,
-    //         speed: 5.0,
-    //         loop_animation: true,
-    //         autoplay: true,
-    //         segment: vec![],
-    //         background_color: 0xffffffff,
-    //         ..Config::default()
-    //     },
-    //     true,
-    //     "bird".to_string(),
-    //     WIDTH as u32,
-    //     HEIGHT as u32,
-    //     vec![],
-    // );
-
-    let run_state = State::Playback {
-        config: Config {
-            mode: Mode::Forward,
-            speed: 1.0,
-            loop_animation: true,
-            autoplay: true,
-            segment: vec![],
-            background_color: 0xffffffff,
-            marker: "bird".to_string(),
-            ..Config::default()
-        },
-        reset_context: false,
-        animation_id: "".to_string(),
-        width: 1920,
-        height: 1080,
-        transitions: Vec::new(),
-    };
-
-    let explode_state = State::Playback {
-        config: Config {
-            mode: Mode::Forward,
-            speed: 0.5,
-            loop_animation: false,
-            autoplay: true,
-            segment: vec![],
-            background_color: 0xffffffff,
-            marker: "explosion".to_string(),
-            ..Config::default()
-        },
-        reset_context: false,
-        animation_id: "".to_string(),
-        width: 1920,
-        height: 1080,
-        transitions: Vec::new(),
-    };
-
-    let feather_state = State::Playback {
-        config: Config {
-            mode: Mode::Forward,
-            speed: 1.0,
-            loop_animation: false,
-            autoplay: true,
-            segment: vec![],
-            background_color: 0xffffffff,
-            marker: "feather".to_string(),
-            ..Config::default()
-        },
-        reset_context: false,
-        animation_id: "".to_string(),
-        width: 1920,
-        height: 1080,
-        transitions: Vec::new(),
-    };
-
-    let run_arc = Arc::new(RwLock::new(run_state));
-    let explode_arc = Arc::new(RwLock::new(explode_state));
-    let feather_arc = Arc::new(RwLock::new(feather_state));
-
-    let transition_one = Transition::Transition {
-        target_state: explode_arc.clone(),
-        event: Arc::new(RwLock::new(Event::StringEvent {
-            value: "explode".to_string(),
-        })),
-    };
-    let transition_two = Transition::Transition {
-        target_state: feather_arc.clone(),
-        event: Arc::new(RwLock::new(Event::StringEvent {
-            value: "complete".to_string(),
-        })),
-    };
-    let transition_three = Transition::Transition {
-        target_state: run_arc.clone(),
-        event: Arc::new(RwLock::new(Event::StringEvent {
-            value: "complete".to_string(),
-        })),
-    };
-
-    run_arc
-        .write()
-        .unwrap()
-        .add_transition(Arc::new(RwLock::new(transition_one)));
-    explode_arc
-        .write()
-        .unwrap()
-        .add_transition(Arc::new(RwLock::new(transition_two)));
-    feather_arc
-        .write()
-        .unwrap()
-        .add_transition(Arc::new(RwLock::new(transition_three)));
-
-    let mut state_machine: StateMachine = StateMachine {
-        states: vec![],
-        current_state: run_arc,
-    };
-
-    state_machine.start(&mut lottie_player);
-
-    // state_machine.add_state(Box::new(state));
-
-    // let trait_object: &dyn MyTrait = &my_struct;
-
-    // state_machine.set_initial_state(Rc::new(state));
-
     while window.is_open() && !window.is_key_down(Key::Escape) {
         timer.tick(&mut lottie_player);
 
         if window.is_key_down(Key::S) {
             lottie_player.stop();
         }
-
-        if window.is_key_pressed(Key::P, KeyRepeat::No) {
-            // let numeric_event = NumericEvent::new(52.0);
-            // state_machine.post_event(&numeric_event);
-            let string_event = Event::StringEvent {
-                value: "complete".to_string(),
-            };
-
-            state_machine.post_event(&string_event);
-
-            state_machine.execute_current_state(&mut lottie_player);
+        if window.is_key_down(Key::P) {
+            lottie_player.play();
         }
 
         if window.is_key_down(Key::J) {

@@ -1,19 +1,12 @@
-use std::{
-    borrow::Borrow,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use dotlottie_player_core::DotLottiePlayer;
 
-use crate::{
-    event::Event,
-    state::{State, StateType},
-    transition::{self, TransitionTrait},
-};
+use crate::{event::Event, state::State, state::StateTrait, transition::TransitionTrait};
 
 pub struct StateMachine {
-    pub states: Vec<Box<StateType>>,
-    pub current_state: Arc<RwLock<StateType>>,
+    pub states: Vec<Box<State>>,
+    pub current_state: Arc<RwLock<State>>,
 }
 
 impl StateMachine {
@@ -25,7 +18,7 @@ impl StateMachine {
 
     pub fn end(&mut self) {}
 
-    pub fn set_initial_state(&mut self, state: Arc<RwLock<StateType>>) {
+    pub fn set_initial_state(&mut self, state: Arc<RwLock<State>>) {
         self.current_state = state;
     }
 
@@ -57,30 +50,26 @@ impl StateMachine {
         let mut numeric_event = false;
         let mut bool_event = false;
 
-        // if event.downcast_ref::<StringEvent>().is_some() {
-        //     // string event
-        //     println!(
-        //         ">> StringEvent: {:?}",
-        //         event.downcast_ref::<StringEvent>().unwrap().value
-        //     );
-        //     string_event = true;
-        // }
-        // if event.downcast_ref::<NumericEvent>().is_some() {
-        //     // numeric event
-        //     println!(
-        //         ">> NumericEvent: {:?}",
-        //         event.downcast_ref::<NumericEvent>().unwrap().value
-        //     );
-        //     numeric_event = true;
-        // }
-        // if event.downcast_ref::<BoolEvent>().is_some() {
-        //     // numeric event
-        //     println!(
-        //         ">> BoolEvent: {:?}",
-        //         event.downcast_ref::<BoolEvent>().unwrap().value
-        //     );
-        //     bool_event = true;
-        // }
+        match event {
+            Event::BoolEvent { value: _ } => bool_event = true,
+            Event::StringEvent { value: _ } => string_event = true,
+            Event::NumericEvent { value: _ } => numeric_event = true,
+            Event::OnPointerDownEvent { x, y } => {
+                println!(">> OnPointerDownEvent");
+            }
+            Event::OnPointerUpEvent { x, y } => {
+                println!(">> OnPointerUpEvent");
+            }
+            Event::OnPointerMoveEvent { x, y } => {
+                println!(">> OnPointerMoveEvent");
+            }
+            Event::OnPointerEnterEvent { x, y } => {
+                println!(">> OnPointerEnterEvent");
+            }
+            Event::OnPointerExitEvent => {
+                println!(">> OnPointerExitEvent");
+            }
+        }
 
         // if self.current_state.is_some() {
         let curr_state = self.current_state.clone();
@@ -90,7 +79,7 @@ impl StateMachine {
             let state_value = state_value_result.unwrap();
             let mut iter = state_value.get_transitions().iter();
 
-            let mut tmp_state: Option<Arc<RwLock<StateType>>> = None;
+            let mut tmp_state: Option<Arc<RwLock<State>>> = None;
 
             loop {
                 match iter.next() {
@@ -104,19 +93,25 @@ impl StateMachine {
 
                         match event {
                             Event::BoolEvent { value: _ } => {
-                                let target_state = unwrapped_transition.get_target_state();
+                                if bool_event {
+                                    let target_state = unwrapped_transition.get_target_state();
 
-                                tmp_state = Some(target_state);
+                                    tmp_state = Some(target_state);
+                                }
                             }
                             Event::StringEvent { value } => {
-                                let target_state = unwrapped_transition.get_target_state();
+                                if string_event {
+                                    let target_state = unwrapped_transition.get_target_state();
 
-                                tmp_state = Some(target_state);
+                                    tmp_state = Some(target_state);
+                                }
                             }
                             Event::NumericEvent { value } => {
-                                let target_state = unwrapped_transition.get_target_state();
+                                if numeric_event {
+                                    let target_state = unwrapped_transition.get_target_state();
 
-                                tmp_state = Some(target_state);
+                                    tmp_state = Some(target_state);
+                                }
                             }
                             Event::OnPointerDownEvent { x, y } => todo!(),
                             Event::OnPointerUpEvent { x, y } => todo!(),
@@ -124,39 +119,6 @@ impl StateMachine {
                             Event::OnPointerEnterEvent { x, y } => todo!(),
                             Event::OnPointerExitEvent => todo!(),
                         }
-
-                        // if let Some(_numeric_event) = transition
-                        //     .get_event()
-                        //     .as_any()
-                        //     .downcast_ref::<NumericEvent>()
-                        // {
-                        //     println!(">> NumericEvent transition");
-                        //     if numeric_event {
-                        //         let target_state = transition.get_target_state();
-
-                        //         tmp_state = Some(target_state);
-                        //     }
-                        // }
-                        // if let Some(_string_event) = transition
-                        //     .get_event()
-                        //     .as_any()
-                        //     .downcast_ref::<StringEvent>()
-                        // {
-                        //     if string_event {
-                        //         let target_state = transition.get_target_state();
-
-                        //         tmp_state = Some(target_state);
-                        //     }
-                        // }
-                        // if let Some(_bool_event) =
-                        //     transition.get_event().as_any().downcast_ref::<BoolEvent>()
-                        // {
-                        //     if bool_event {
-                        //         let target_state = transition.get_target_state();
-
-                        //         tmp_state = Some(target_state);
-                        //     }
-                        // }
                     }
                     None => break,
                 }
@@ -174,7 +136,7 @@ impl StateMachine {
         }
     }
 
-    pub fn remove_state(&mut self, state: Box<dyn State>) {
+    pub fn remove_state(&mut self, state: Arc<RwLock<State>>) {
         // self.states.remove(state);
     }
 }

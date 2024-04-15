@@ -4,7 +4,7 @@ use dotlottie_player_core::{Config, DotLottiePlayer};
 
 use crate::transition::Transition;
 
-pub trait State {
+pub trait StateTrait {
     fn execute(&mut self, player: &mut DotLottiePlayer);
     fn reset_context(&self) -> bool;
     fn get_animation_id(&self) -> &String;
@@ -12,7 +12,6 @@ pub trait State {
     fn add_transition(&mut self, transition: Arc<RwLock<Transition>>);
     fn remove_transition(&mut self, index: u32);
     fn set_reset_context(&mut self, reset_context: bool);
-    fn get_state_name(&self) -> &str;
 
     // fn add_entry_action(&mut self, action: String);
     // fn add_exit_action(&mut self, action: String);
@@ -20,11 +19,10 @@ pub trait State {
     // fn remove_exit_action(&mut self, action: String);
     // fn get_entry_actions(&self) -> Vec<String>;
     // fn get_exit_actions(&self) -> Vec<String>;
-    // fn get_transitions(&self) -> Vec<String>;
 }
 
-pub enum StateType {
-    PlaybackEnum {
+pub enum State {
+    Playback {
         config: Config,
         reset_context: bool,
         animation_id: String,
@@ -42,10 +40,10 @@ pub enum StateType {
     },
 }
 
-impl StateType {
+impl State {
     pub fn as_str(&self) -> &str {
         match self {
-            StateType::PlaybackEnum {
+            State::Playback {
                 config: _,
                 reset_context: _,
                 animation_id: _,
@@ -53,7 +51,7 @@ impl StateType {
                 height: _,
                 transitions: _,
             } => "Playback",
-            StateType::Sync {
+            State::Sync {
                 frame_context_key: _,
                 reset_context: _,
                 animation_id: _,
@@ -65,10 +63,10 @@ impl StateType {
     }
 }
 
-impl State for StateType {
+impl StateTrait for State {
     fn execute(&mut self, player: &mut DotLottiePlayer) {
         match self {
-            StateType::PlaybackEnum {
+            State::Playback {
                 config,
                 reset_context: _,
                 animation_id,
@@ -88,7 +86,7 @@ impl State for StateType {
 
                 player.play();
             }
-            StateType::Sync {
+            State::Sync {
                 frame_context_key: _,
                 reset_context: _,
                 animation_id: _,
@@ -111,7 +109,7 @@ impl State for StateType {
 
     fn get_transitions(&self) -> &Vec<Arc<RwLock<Transition>>> {
         match self {
-            StateType::PlaybackEnum {
+            State::Playback {
                 config: _,
                 reset_context: _,
                 animation_id: _,
@@ -119,7 +117,7 @@ impl State for StateType {
                 height: _,
                 transitions,
             } => transitions,
-            StateType::Sync {
+            State::Sync {
                 frame_context_key: _,
                 reset_context: _,
                 animation_id: _,
@@ -132,7 +130,7 @@ impl State for StateType {
 
     fn add_transition(&mut self, transition: Arc<RwLock<Transition>>) {
         match self {
-            StateType::PlaybackEnum {
+            State::Playback {
                 config: _,
                 reset_context: _,
                 animation_id: _,
@@ -142,7 +140,7 @@ impl State for StateType {
             } => {
                 transitions.push(transition);
             }
-            StateType::Sync {
+            State::Sync {
                 frame_context_key: _,
                 reset_context: _,
                 animation_id: _,
@@ -160,10 +158,6 @@ impl State for StateType {
     }
 
     fn set_reset_context(&mut self, reset_context: bool) {
-        todo!()
-    }
-
-    fn get_state_name(&self) -> &str {
         todo!()
     }
 }

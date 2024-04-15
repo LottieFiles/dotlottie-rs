@@ -39,15 +39,6 @@ impl Event {
             Event::OnPointerExitEvent => "OnPointerExitEvent",
         }
     }
-
-    // pub fn value<T>(&self) -> T {
-    //     match self {
-    //         Event::BoolEvent { value } => *value,
-    //         Event::StringEvent { value } => value.clone(),
-    //         Event::NumericEvent { value } => *value,
-    //         _ => None,
-    //     }
-    // }
 }
 
 // Implement each trait for the repective enum variant

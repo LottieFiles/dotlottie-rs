@@ -86,13 +86,13 @@ cd "${SCRIPT_DIR}/deps/modules/emsdk" || die "Could not find Emscripten SDK unde
 ./emsdk install "${EMSDK_VERSION}"
 ./emsdk activate "${EMSDK_VERSION}"
 
-# echo
-# echo "Disabling unneeded webp features"
-# cd "${SCRIPT_DIR}/deps/modules/libwebp" || die "Could not find libwebp under ${RED}deps/modules/libwep${NC}!"
-# file_path="${SCRIPT_DIR}/deps/modules/libwebp/CMakeLists.txt"
-# # Use sed to replace the specified lines
-# sed -i -e 's/option(WEBP_BUILD_ANIM_UTILS "Build animation utilities." ON)/option(WEBP_BUILD_ANIM_UTILS "Build animation utilities." OFF)/' "$file_path"
-# sed -i -e 's/option(WEBP_BUILD_GIF2WEBP "Build the gif2webp conversion tool." ON)/option(WEBP_BUILD_GIF2WEBP "Build the gif2webp conversion tool." OFF)/' "$file_path"
+echo
+echo "Disabling unneeded webp features"
+cd "${SCRIPT_DIR}/deps/modules/libwebp" || die "Could not find libwebp under ${RED}deps/modules/libwep${NC}!"
+file_path="${SCRIPT_DIR}/deps/modules/libwebp/CMakeLists.txt"
+# Use sed to replace the specified lines
+sed -i -e 's/option(WEBP_BUILD_ANIM_UTILS "Build animation utilities." ON)/option(WEBP_BUILD_ANIM_UTILS "Build animation utilities." OFF)/' "$file_path"
+sed -i -e 's/option(WEBP_BUILD_GIF2WEBP "Build the gif2webp conversion tool." ON)/option(WEBP_BUILD_GIF2WEBP "Build the gif2webp conversion tool." OFF)/' "$file_path"
 
 echo
 echo "${WHITE}Setup completed!${NC}"

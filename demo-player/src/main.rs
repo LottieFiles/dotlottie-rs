@@ -164,9 +164,6 @@ fn main() {
         HEIGHT as u32,
     );
 
-    // lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
-    // lottie_player.load_animation("confused", WIDTH as u32, HEIGHT as u32);
-
     let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
     let observer2: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 2 });
 
@@ -200,23 +197,6 @@ fn main() {
     let mut cpu_memory_monitor_timer = Instant::now();
 
     lottie_player.play();
-
-    // let mut state: StateType = dotlottie_sm::state::StateType::PlaybackEnum::new(
-    //     Config {
-    //         mode: Mode::Forward,
-    //         speed: 5.0,
-    //         loop_animation: true,
-    //         autoplay: true,
-    //         segment: vec![],
-    //         background_color: 0xffffffff,
-    //         ..Config::default()
-    //     },
-    //     true,
-    //     "bird".to_string(),
-    //     WIDTH as u32,
-    //     HEIGHT as u32,
-    //     vec![],
-    // );
 
     let run_state = State::Playback {
         config: Config {
@@ -295,6 +275,8 @@ fn main() {
         })),
     };
 
+    let locked_player = Arc::new(RwLock::new(lottie_player));
+
     run_arc
         .write()
         .unwrap()
@@ -311,144 +293,42 @@ fn main() {
     let mut state_machine: StateMachine = StateMachine {
         states: vec![],
         current_state: run_arc,
+        dotlottie_player: locked_player.clone(),
     };
 
-    state_machine.start(&mut lottie_player);
-
-    // state_machine.add_state(Box::new(state));
-
-    // let trait_object: &dyn MyTrait = &my_struct;
-
-    // state_machine.set_initial_state(Rc::new(state));
+    state_machine.start();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        timer.tick(&mut lottie_player);
+        timer.tick(&mut *locked_player.write().unwrap());
 
         if window.is_key_down(Key::S) {
-            lottie_player.stop();
+            let p = &mut *locked_player.write().unwrap();
+            p.stop();
+        }
+
+        if window.is_key_pressed(Key::O, KeyRepeat::No) {
+            let string_event = Event::StringEvent {
+                value: "explode".to_string(),
+            };
+
+            state_machine.post_event(&string_event);
         }
 
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
-            // let numeric_event = NumericEvent::new(52.0);
-            // state_machine.post_event(&numeric_event);
             let string_event = Event::StringEvent {
                 value: "complete".to_string(),
             };
 
             state_machine.post_event(&string_event);
-
-            state_machine.execute_current_state(&mut lottie_player);
-        }
-
-        if window.is_key_down(Key::J) {
-            let updated = lottie_player.set_frame(20.0);
-            if updated {
-                lottie_player.render();
-            }
-        }
-
-        if window.is_key_down(Key::Left) {
-            let mut config = lottie_player.config();
-
-            config.mode = Mode::Bounce;
-            lottie_player.set_config(config)
-        }
-
-        if window.is_key_pressed(Key::T, KeyRepeat::No) {
-            if let Some(manifest) = lottie_player.manifest() {
-                if let Some(themes) = manifest.themes {
-                    let theme = &themes[0];
-
-                    lottie_player.load_theme(&theme.id.as_str());
-                }
-            }
-        }
-
-        if window.is_key_pressed(Key::Y, KeyRepeat::No) {
-            lottie_player.load_theme("");
-        }
-
-        if window.is_key_pressed(Key::Right, KeyRepeat::No) {
-            if let Some(manifest) = lottie_player.manifest() {
-                println!("{:?}", i);
-
-                if i >= manifest.animations.len() - 1 {
-                    i = 0;
-                } else {
-                    i += 1;
-                }
-
-                let animation_id = manifest.animations[i].id.clone();
-
-                lottie_player.load_animation(animation_id.as_str(), WIDTH as u32, HEIGHT as u32);
-            }
-        }
-
-        if window.is_key_pressed(Key::L, KeyRepeat::No) {
-            lottie_player = DotLottiePlayer::new(Config {
-                mode: Mode::ReverseBounce,
-                loop_animation: true,
-                autoplay: true,
-                segment: vec![10.0, 45.0],
-                background_color: 0xffffffff,
-                ..Config::default()
-            });
-
-            lottie_player.load_animation_data(&string, WIDTH as u32, HEIGHT as u32);
-        }
-
-        if window.is_key_pressed(Key::R, KeyRepeat::No) {
-            lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
-        }
-
-        if window.is_key_down(Key::Up) {
-            lottie_player.unsubscribe(&observer1);
-        }
-
-        if window.is_key_down(Key::Down) {
-            lottie_player.unsubscribe(&observer2);
-        }
-
-        if window.is_key_pressed(Key::K, KeyRepeat::No) {
-            let mut config = lottie_player.config();
-
-            config.layout.fit = dotlottie_player_core::Fit::None;
-            // randomize alignment
-            config.layout.align =
-                vec![(rand::random::<f32>() * 1.0), (rand::random::<f32>() * 1.0)];
-
-            lottie_player.set_config(config);
-        }
-
-        if window.is_key_pressed(Key::Q, KeyRepeat::No) {
-            let mut config = lottie_player.config();
-
-            config.marker = "bird".to_string();
-
-            lottie_player.set_config(config);
-        }
-
-        if window.is_key_pressed(Key::W, KeyRepeat::No) {
-            let mut config = lottie_player.config();
-
-            config.marker = "explosion".to_string();
-
-            lottie_player.set_config(config);
-        }
-
-        if window.is_key_pressed(Key::E, KeyRepeat::No) {
-            let mut config = lottie_player.config();
-
-            config.marker = "feather".to_string();
-
-            lottie_player.set_config(config);
         }
 
         if cpu_memory_monitor_timer.elapsed().as_secs() >= 1 {
             cpu_memory_monitor_timer = Instant::now();
         }
 
-        let (buffer_ptr, buffer_len) = (lottie_player.buffer_ptr(), lottie_player.buffer_len());
+        let p = &mut *locked_player.write().unwrap();
+
+        let (buffer_ptr, buffer_len) = (p.buffer_ptr(), p.buffer_len());
 
         let buffer =
             unsafe { std::slice::from_raw_parts(buffer_ptr as *const u32, buffer_len as usize) };

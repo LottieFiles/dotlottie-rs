@@ -2,16 +2,21 @@ use std::sync::{Arc, RwLock};
 
 use dotlottie_player_core::DotLottiePlayer;
 
-use crate::{event::Event, state::State, state::StateTrait, transition::TransitionTrait};
+use crate::{
+    event::Event,
+    state::{State, StateTrait},
+    transition::TransitionTrait,
+};
 
 pub struct StateMachine {
     pub states: Vec<Box<State>>,
     pub current_state: Arc<RwLock<State>>,
+    pub dotlottie_player: Arc<RwLock<DotLottiePlayer>>,
 }
 
 impl StateMachine {
-    pub fn start(&mut self, player: &mut DotLottiePlayer) {
-        self.execute_current_state(player)
+    pub fn start(&mut self) {
+        self.execute_current_state()
     }
 
     pub fn pause(&mut self) {}
@@ -22,9 +27,9 @@ impl StateMachine {
         self.current_state = state;
     }
 
-    // pub fn set_player(&mut self, player: &'a mut DotLottiePlayer) {
-    //     self.dotlottie_player = Some(player)
-    // }
+    pub fn set_player(&mut self, player: Arc<RwLock<DotLottiePlayer>>) {
+        self.dotlottie_player = player;
+    }
 
     // pub fn add_state(&mut self, state: Box<dyn State>) {
     //     self.states.push(state);
@@ -36,13 +41,19 @@ impl StateMachine {
     //     });
     // }
 
-    pub fn execute_current_state(&mut self, player: &mut DotLottiePlayer) {
-        let current_state = self.current_state.clone();
-        let state_value_result = current_state.write();
+    pub fn execute_current_state(&mut self) {
+        let mut player = self.dotlottie_player.write().unwrap();
 
-        if state_value_result.is_ok() {
-            state_value_result.unwrap().execute(player);
-        }
+        let mut state = self.current_state.write().unwrap();
+
+        state.execute(&mut *player);
+
+        // let current_state = self.current_state.clone();
+        // let state_value_result = current_state.write();
+
+        // if state_value_result.is_ok() {
+        //     state_value_result.unwrap().execute(player);
+        // }
     }
 
     pub fn post_event(&mut self, event: &Event) {
@@ -54,16 +65,16 @@ impl StateMachine {
             Event::BoolEvent { value: _ } => bool_event = true,
             Event::StringEvent { value: _ } => string_event = true,
             Event::NumericEvent { value: _ } => numeric_event = true,
-            Event::OnPointerDownEvent { x, y } => {
+            Event::OnPointerDownEvent { x: _, y: _ } => {
                 println!(">> OnPointerDownEvent");
             }
-            Event::OnPointerUpEvent { x, y } => {
+            Event::OnPointerUpEvent { x: _, y: _ } => {
                 println!(">> OnPointerUpEvent");
             }
-            Event::OnPointerMoveEvent { x, y } => {
+            Event::OnPointerMoveEvent { x: _, y: _ } => {
                 println!(">> OnPointerMoveEvent");
             }
-            Event::OnPointerEnterEvent { x, y } => {
+            Event::OnPointerEnterEvent { x: _, y: _ } => {
                 println!(">> OnPointerEnterEvent");
             }
             Event::OnPointerExitEvent => {
@@ -89,34 +100,66 @@ impl StateMachine {
                         let transition = &*unwrapped_transition;
                         let event_lock = transition.get_event();
                         let event_data = event_lock.read().unwrap();
-                        let event = &*event_data;
+                        let transition_event = &*event_data;
 
-                        match event {
-                            Event::BoolEvent { value: _ } => {
-                                if bool_event {
+                        match transition_event {
+                            Event::BoolEvent { value: bool_value } => {
+                                let mut received_event_value = false;
+
+                                match event {
+                                    Event::BoolEvent { value } => {
+                                        received_event_value = *value;
+                                    }
+                                    _ => {}
+                                }
+
+                                // Check the transitions value and compare to the received one to check if we should transition
+                                if bool_event && received_event_value == *bool_value {
                                     let target_state = unwrapped_transition.get_target_state();
 
                                     tmp_state = Some(target_state);
                                 }
                             }
-                            Event::StringEvent { value } => {
-                                if string_event {
+                            Event::StringEvent {
+                                value: string_value,
+                            } => {
+                                let mut received_event_value = "";
+
+                                match event {
+                                    Event::StringEvent { value } => {
+                                        received_event_value = value;
+                                    }
+                                    _ => {}
+                                }
+
+                                if string_event && received_event_value == string_value {
                                     let target_state = unwrapped_transition.get_target_state();
 
                                     tmp_state = Some(target_state);
                                 }
                             }
-                            Event::NumericEvent { value } => {
-                                if numeric_event {
+                            Event::NumericEvent {
+                                value: numeric_value,
+                            } => {
+                                let mut received_event_value = 0.0;
+
+                                match event {
+                                    Event::NumericEvent { value } => {
+                                        received_event_value = *value;
+                                    }
+                                    _ => {}
+                                }
+
+                                if numeric_event && received_event_value == *numeric_value {
                                     let target_state = unwrapped_transition.get_target_state();
 
                                     tmp_state = Some(target_state);
                                 }
                             }
-                            Event::OnPointerDownEvent { x, y } => todo!(),
-                            Event::OnPointerUpEvent { x, y } => todo!(),
-                            Event::OnPointerMoveEvent { x, y } => todo!(),
-                            Event::OnPointerEnterEvent { x, y } => todo!(),
+                            Event::OnPointerDownEvent { x: _, y: _ } => todo!(),
+                            Event::OnPointerUpEvent { x: _, y: _ } => todo!(),
+                            Event::OnPointerMoveEvent { x: _, y: _ } => todo!(),
+                            Event::OnPointerEnterEvent { x: _, y: _ } => todo!(),
                             Event::OnPointerExitEvent => todo!(),
                         }
                     }
@@ -128,6 +171,14 @@ impl StateMachine {
                 let next_state = tmp_state.unwrap();
                 self.current_state = next_state;
 
+                self.execute_current_state();
+
+                // let mut player = self.dotlottie_player.write().unwrap();
+
+                // let mut state = self.current_state.write().unwrap();
+
+                // state.execute(&mut *player);
+
                 println!(
                     ">> Transitioning to next state {0}",
                     self.current_state.read().unwrap().as_str()
@@ -137,6 +188,7 @@ impl StateMachine {
     }
 
     pub fn remove_state(&mut self, state: Arc<RwLock<State>>) {
+        let _ = state;
         // self.states.remove(state);
     }
 }

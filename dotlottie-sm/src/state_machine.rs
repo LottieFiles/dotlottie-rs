@@ -9,7 +9,6 @@ use crate::{
 };
 
 pub struct StateMachine {
-    pub states: Vec<Box<State>>,
     pub current_state: Arc<RwLock<State>>,
     pub dotlottie_player: Arc<RwLock<DotLottiePlayer>>,
 }
@@ -47,13 +46,6 @@ impl StateMachine {
         let mut state = self.current_state.write().unwrap();
 
         state.execute(&mut *player);
-
-        // let current_state = self.current_state.clone();
-        // let state_value_result = current_state.write();
-
-        // if state_value_result.is_ok() {
-        //     state_value_result.unwrap().execute(player);
-        // }
     }
 
     pub fn post_event(&mut self, event: &Event) {
@@ -62,22 +54,22 @@ impl StateMachine {
         let mut bool_event = false;
 
         match event {
-            Event::BoolEvent { value: _ } => bool_event = true,
-            Event::StringEvent { value: _ } => string_event = true,
-            Event::NumericEvent { value: _ } => numeric_event = true,
-            Event::OnPointerDownEvent { x: _, y: _ } => {
+            Event::Bool(_) => bool_event = true,
+            Event::String(_) => string_event = true,
+            Event::Numeric(_) => numeric_event = true,
+            Event::OnPointerDown(_, _) => {
                 println!(">> OnPointerDownEvent");
             }
-            Event::OnPointerUpEvent { x: _, y: _ } => {
+            Event::OnPointerUp(_, _) => {
                 println!(">> OnPointerUpEvent");
             }
-            Event::OnPointerMoveEvent { x: _, y: _ } => {
+            Event::OnPointerMove(_, _) => {
                 println!(">> OnPointerMoveEvent");
             }
-            Event::OnPointerEnterEvent { x: _, y: _ } => {
+            Event::OnPointerEnter(_, _) => {
                 println!(">> OnPointerEnterEvent");
             }
-            Event::OnPointerExitEvent => {
+            Event::OnPointerExit => {
                 println!(">> OnPointerExitEvent");
             }
         }
@@ -103,11 +95,11 @@ impl StateMachine {
                         let transition_event = &*event_data;
 
                         match transition_event {
-                            Event::BoolEvent { value: bool_value } => {
+                            Event::Bool(bool_value) => {
                                 let mut received_event_value = false;
 
                                 match event {
-                                    Event::BoolEvent { value } => {
+                                    Event::Bool(value) => {
                                         received_event_value = *value;
                                     }
                                     _ => {}
@@ -120,13 +112,11 @@ impl StateMachine {
                                     tmp_state = Some(target_state);
                                 }
                             }
-                            Event::StringEvent {
-                                value: string_value,
-                            } => {
+                            Event::String(string_value) => {
                                 let mut received_event_value = "";
 
                                 match event {
-                                    Event::StringEvent { value } => {
+                                    Event::String(value) => {
                                         received_event_value = value;
                                     }
                                     _ => {}
@@ -138,13 +128,11 @@ impl StateMachine {
                                     tmp_state = Some(target_state);
                                 }
                             }
-                            Event::NumericEvent {
-                                value: numeric_value,
-                            } => {
+                            Event::Numeric(numeric_value) => {
                                 let mut received_event_value = 0.0;
 
                                 match event {
-                                    Event::NumericEvent { value } => {
+                                    Event::Numeric(value) => {
                                         received_event_value = *value;
                                     }
                                     _ => {}
@@ -156,11 +144,11 @@ impl StateMachine {
                                     tmp_state = Some(target_state);
                                 }
                             }
-                            Event::OnPointerDownEvent { x: _, y: _ } => todo!(),
-                            Event::OnPointerUpEvent { x: _, y: _ } => todo!(),
-                            Event::OnPointerMoveEvent { x: _, y: _ } => todo!(),
-                            Event::OnPointerEnterEvent { x: _, y: _ } => todo!(),
-                            Event::OnPointerExitEvent => todo!(),
+                            Event::OnPointerDown(_, _) => todo!(),
+                            Event::OnPointerUp(_, _) => todo!(),
+                            Event::OnPointerMove(_, _) => todo!(),
+                            Event::OnPointerEnter(_, _) => todo!(),
+                            Event::OnPointerExit => todo!(),
                         }
                     }
                     None => break,

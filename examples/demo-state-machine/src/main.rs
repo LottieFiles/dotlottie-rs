@@ -1,6 +1,6 @@
 use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Mode, Observer, PlaybackState};
 use dotlottie_sm::event::Event;
-// use dotlottie_sm::base_event::{BoolEvent, NumericEvent, StringEvent};
+// use dotlottie_sm::base_event::{BoolEvent, NumericEvent, String};
 // use dotlottie_sm::playback_state::PlaybackState;
 // use dotlottie_sm::state::StateType::PlaybackEnum;
 use dotlottie_sm::state::State;
@@ -172,8 +172,6 @@ fn main() {
 
     let mut timer = Timer::new();
 
-    let mut i = 0;
-
     let mut sys = System::new_all();
 
     let cpu_memory_monitor_thread = thread::spawn(move || {
@@ -258,21 +256,15 @@ fn main() {
 
     let transition_one = Transition::Transition {
         target_state: explode_arc.clone(),
-        event: Arc::new(RwLock::new(Event::StringEvent {
-            value: "explode".to_string(),
-        })),
+        event: Arc::new(RwLock::new(Event::String("explode".to_string()))),
     };
     let transition_two = Transition::Transition {
         target_state: feather_arc.clone(),
-        event: Arc::new(RwLock::new(Event::StringEvent {
-            value: "complete".to_string(),
-        })),
+        event: Arc::new(RwLock::new(Event::String("complete".to_string()))),
     };
     let transition_three = Transition::Transition {
         target_state: run_arc.clone(),
-        event: Arc::new(RwLock::new(Event::StringEvent {
-            value: "complete".to_string(),
-        })),
+        event: Arc::new(RwLock::new(Event::String("complete".to_string()))),
     };
 
     let locked_player = Arc::new(RwLock::new(lottie_player));
@@ -291,7 +283,6 @@ fn main() {
         .add_transition(Arc::new(RwLock::new(transition_three)));
 
     let mut state_machine: StateMachine = StateMachine {
-        states: vec![],
         current_state: run_arc,
         dotlottie_player: locked_player.clone(),
     };
@@ -307,17 +298,13 @@ fn main() {
         }
 
         if window.is_key_pressed(Key::O, KeyRepeat::No) {
-            let string_event = Event::StringEvent {
-                value: "explode".to_string(),
-            };
+            let string_event = Event::String("explode".to_string());
 
             state_machine.post_event(&string_event);
         }
 
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
-            let string_event = Event::StringEvent {
-                value: "complete".to_string(),
-            };
+            let string_event = Event::String("complete".to_string());
 
             state_machine.post_event(&string_event);
         }

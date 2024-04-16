@@ -310,6 +310,7 @@ fn main() {
     let mut state_machine: StateMachine = StateMachine {
         states: vec![],
         current_state: run_arc,
+        context: std::collections::HashMap::new(),
     };
 
     state_machine.start(&mut lottie_player);

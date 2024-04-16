@@ -1,12 +1,22 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use dotlottie_player_core::DotLottiePlayer;
 
 use crate::{event::Event, state::State, state::StateTrait, transition::TransitionTrait};
 
+pub enum ContextValue {
+    Numeric(i32),
+    String(String),
+    Boolean(bool),
+}
+
 pub struct StateMachine {
     pub states: Vec<Box<State>>,
     pub current_state: Arc<RwLock<State>>,
+    pub context: HashMap<String, ContextValue>,
 }
 
 impl StateMachine {
@@ -30,11 +40,13 @@ impl StateMachine {
     //     self.states.push(state);
     // }
 
-    // pub fn execute_all_states(&mut self, player: &mut DotLottiePlayer) {
-    //     self.states.iter_mut().for_each(|state| {
-    //         state.execute(player);
-    //     });
-    // }
+    fn set_context(&mut self, key: String, value: ContextValue) {
+        self.context.insert(key, value);
+    }
+
+    fn get_context(&self, key: &str) -> Option<&ContextValue> {
+        self.context.get(key)
+    }
 
     pub fn execute_current_state(&mut self, player: &mut DotLottiePlayer) {
         let current_state = self.current_state.clone();

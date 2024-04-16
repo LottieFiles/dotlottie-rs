@@ -8,7 +8,7 @@ pub trait BoolValue {
 }
 
 pub trait StringValue {
-    fn value(&self) -> &String;
+    fn value(&self) -> &str;
 }
 
 pub trait NumericValue {
@@ -32,10 +32,10 @@ impl Event {
             Event::BoolEvent { value: _ } => "BoolEvent",
             Event::StringEvent { value: _ } => "StringEvent",
             Event::NumericEvent { value: _ } => "NumericEvent: {value}",
-            Event::OnPointerDownEvent { x, y } => "OnPointerDownEvent",
-            Event::OnPointerUpEvent { x, y } => "OnPointerUpEvent",
-            Event::OnPointerMoveEvent { x, y } => "OnPointerMoveEvent",
-            Event::OnPointerEnterEvent { x, y } => "OnPointerEnterEvent",
+            Event::OnPointerDownEvent { x: _, y: _ } => "OnPointerDownEvent",
+            Event::OnPointerUpEvent { x: _, y: _ } => "OnPointerUpEvent",
+            Event::OnPointerMoveEvent { x: _, y: _ } => "OnPointerMoveEvent",
+            Event::OnPointerEnterEvent { x: _, y: _ } => "OnPointerEnterEvent",
             Event::OnPointerExitEvent => "OnPointerExitEvent",
         }
     }
@@ -46,16 +46,16 @@ impl BoolValue for Event {
     fn value(&self) -> bool {
         match self {
             Event::BoolEvent { value } => *value,
-            _ => panic!("Attempted to get bool value from non-BoolEvent."),
+            _ => false,
         }
     }
 }
 
 impl StringValue for Event {
-    fn value(&self) -> &String {
+    fn value(&self) -> &str {
         match self {
             Event::StringEvent { value } => value,
-            _ => panic!("Attempted to get string value from non-StringEvent."),
+            _ => "",
         }
     }
 }
@@ -64,7 +64,7 @@ impl NumericValue for Event {
     fn value(&self) -> f32 {
         match self {
             Event::NumericEvent { value } => *value,
-            _ => panic!("Attempted to get numeric value from non-NumericEvent."),
+            _ => 0.0,
         }
     }
 }

@@ -80,8 +80,6 @@ impl StateTrait for State {
                     player.load_animation(animation_id, *width, *height);
                 }
 
-                println!("config: {:?}", config.marker);
-
                 player.set_config(config);
 
                 player.play();
@@ -104,7 +102,24 @@ impl StateTrait for State {
     }
 
     fn get_animation_id(&self) -> &String {
-        todo!()
+        match self {
+            State::Playback {
+                config: _,
+                reset_context: _,
+                animation_id,
+                width: _,
+                height: _,
+                transitions: _,
+            } => animation_id,
+            State::Sync {
+                frame_context_key: _,
+                reset_context: _,
+                animation_id,
+                width: _,
+                height: _,
+                transitions: _,
+            } => animation_id,
+        }
     }
 
     fn get_transitions(&self) -> &Vec<Arc<RwLock<Transition>>> {

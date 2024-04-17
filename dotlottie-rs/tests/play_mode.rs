@@ -84,7 +84,6 @@ mod play_mode_tests {
         let player = DotLottiePlayer::new(Config {
             mode: Mode::Forward,
             autoplay: true,
-            use_frame_interpolation: false,
             ..Config::default()
         });
 
@@ -133,7 +132,6 @@ mod play_mode_tests {
         let player = DotLottiePlayer::new(Config {
             mode: Mode::Reverse,
             autoplay: true,
-            use_frame_interpolation: false,
             ..Config::default()
         });
 
@@ -180,7 +178,6 @@ mod play_mode_tests {
         let player = DotLottiePlayer::new(Config {
             mode: Mode::Bounce,
             autoplay: true,
-            use_frame_interpolation: false,
             ..Config::default()
         });
 
@@ -247,7 +244,6 @@ mod play_mode_tests {
         let player = DotLottiePlayer::new(Config {
             mode: Mode::ReverseBounce,
             autoplay: true,
-            use_frame_interpolation: false,
             ..Config::default()
         });
 

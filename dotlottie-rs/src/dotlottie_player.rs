@@ -83,6 +83,8 @@ impl Default for Config {
     }
 }
 
+const FRAME_DIFF_THRESHOLD: f32 = 0.001;
+
 struct DotLottieRuntime {
     renderer: LottieRenderer,
     playback_state: PlaybackState,
@@ -94,6 +96,7 @@ struct DotLottieRuntime {
     direction: Direction,
     markers: MarkersMap,
     active_animation_id: String,
+    active_theme_id: String,
 }
 
 impl DotLottieRuntime {
@@ -116,6 +119,7 @@ impl DotLottieRuntime {
             direction,
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
+            active_theme_id: String::new(),
         }
     }
 
@@ -184,29 +188,29 @@ impl DotLottieRuntime {
     }
 
     pub fn play(&mut self) -> bool {
-        if self.is_loaded && !self.is_playing() {
-            if self.is_paused() {
-                self.update_start_time_for_frame(self.current_frame());
-            } else {
-                self.start_time = Instant::now();
-                match self.config.mode {
-                    Mode::Forward | Mode::Bounce => {
-                        self.set_frame(self.start_frame());
-                        self.direction = Direction::Forward;
-                    }
-                    Mode::Reverse | Mode::ReverseBounce => {
-                        self.set_frame(self.end_frame());
-                        self.direction = Direction::Reverse;
-                    }
+        if !self.is_loaded || self.is_playing() {
+            return false;
+        }
+
+        if self.is_complete() && self.is_stopped() {
+            self.start_time = Instant::now();
+            match self.config.mode {
+                Mode::Forward | Mode::Bounce => {
+                    self.set_frame(self.start_frame());
+                    self.direction = Direction::Forward;
+                }
+                Mode::Reverse | Mode::ReverseBounce => {
+                    self.set_frame(self.end_frame());
+                    self.direction = Direction::Reverse;
                 }
             }
-
-            self.playback_state = PlaybackState::Playing;
-
-            true
         } else {
-            false
+            self.update_start_time_for_frame(self.current_frame());
         }
+
+        self.playback_state = PlaybackState::Playing;
+
+        true
     }
 
     pub fn pause(&mut self) -> bool {
@@ -272,21 +276,35 @@ impl DotLottieRuntime {
         let raw_next_frame = (elapsed_time / effective_duration) * effective_total_frames;
 
         // update the next frame based on the direction
-        let next_frame = match self.direction {
+        let mut next_frame = match self.direction {
             Direction::Forward => start_frame + raw_next_frame,
             Direction::Reverse => end_frame - raw_next_frame,
         };
 
-        let next_frame = if self.config.use_frame_interpolation {
-            next_frame
-        } else {
-            next_frame.round()
+        if !self.config.use_frame_interpolation {
+            next_frame = next_frame.round();
+        }
+
+        /*
+           Note:
+           If we're close to the end frame, we should snap to it as tvg_set_frame ignore the frame which is 0.001 less than the current frame.
+        */
+        match self.direction {
+            Direction::Forward => {
+                if (next_frame - end_frame).abs() < FRAME_DIFF_THRESHOLD {
+                    next_frame = end_frame;
+                }
+            }
+            Direction::Reverse => {
+                if (next_frame - start_frame).abs() < FRAME_DIFF_THRESHOLD {
+                    next_frame = start_frame
+                }
+            }
         };
 
-        // to ensure the next_frame won't go beyond the start & end frames
-        let next_frame = next_frame.clamp(start_frame, end_frame);
+        next_frame = next_frame.clamp(start_frame, end_frame);
 
-        let next_frame = match self.config.mode {
+        next_frame = match self.config.mode {
             Mode::Forward => self.handle_forward_mode(next_frame, end_frame),
             Mode::Reverse => self.handle_reverse_mode(next_frame, start_frame),
             Mode::Bounce => self.handle_bounce_mode(next_frame, start_frame, end_frame),
@@ -609,6 +627,8 @@ impl DotLottieRuntime {
 
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
+        self.active_theme_id.clear();
+
         self.dotlottie_manager = DotLottieManager::new(None).unwrap();
 
         self.markers = extract_markers(animation_data);
@@ -622,6 +642,8 @@ impl DotLottieRuntime {
 
     pub fn load_animation_path(&mut self, file_path: &str, width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
+        self.active_theme_id.clear();
+
         match fs::read_to_string(file_path) {
             Ok(data) => self.load_animation_data(&data, width, height),
             Err(_) => false,
@@ -630,6 +652,8 @@ impl DotLottieRuntime {
 
     pub fn load_dotlottie_data(&mut self, file_data: &[u8], width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
+        self.active_theme_id.clear();
+
         if self.dotlottie_manager.init(file_data).is_err() {
             return false;
         }
@@ -746,11 +770,14 @@ impl DotLottieRuntime {
     }
 
     pub fn load_theme(&mut self, theme_id: &str) -> bool {
+        self.active_theme_id.clear();
+
         if theme_id.is_empty() {
             return self.renderer.load_theme_data("").is_ok();
         }
 
-        self.manifest()
+        let ok = self
+            .manifest()
             .and_then(|manifest| manifest.themes)
             .map_or(false, |themes| {
                 themes
@@ -774,7 +801,13 @@ impl DotLottieRuntime {
                                 })
                                 .is_some()
                     })
-            })
+            });
+
+        if ok {
+            self.active_theme_id = theme_id.to_string();
+        }
+
+        ok
     }
 
     pub fn load_theme_data(&mut self, theme_data: &str) -> bool {
@@ -783,6 +816,10 @@ impl DotLottieRuntime {
 
     pub fn active_animation_id(&self) -> &str {
         &self.active_animation_id
+    }
+
+    pub fn active_theme_id(&self) -> &str {
+        &self.active_theme_id
     }
 }
 
@@ -1093,6 +1130,10 @@ impl DotLottiePlayer {
             .unwrap()
             .active_animation_id()
             .to_string()
+    }
+
+    pub fn active_theme_id(&self) -> String {
+        self.runtime.read().unwrap().active_theme_id().to_string()
     }
 }
 

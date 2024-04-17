@@ -28,58 +28,52 @@ mod tests {
 
     #[test]
     fn test_playback_speed_accuracy() {
-        let configs: Vec<(Config, f32)> =
-            vec![
-                // test with default config
-                (
-                    Config {
-                        autoplay: true,
-                        use_frame_interpolation: false,
-                        ..Config::default()
-                    },
-                    1.0,
-                ),
-                // test with different speeds
-                (
-                    Config {
-                        speed: 2.0,
-                        autoplay: true,
-                        use_frame_interpolation: false,
-                        ..Config::default()
-                    },
-                    2.0,
-                ),
-                (
-                    Config {
-                        speed: 0.5,
-                        autoplay: true,
-                        use_frame_interpolation: false,
-                        ..Config::default()
-                    },
-                    0.5,
-                ),
-                // test with a segment
-                (
-                    Config {
-                        speed: 2.0,
-                        segment: vec![10.0, 30.0],
-                        autoplay: true,
-                        use_frame_interpolation: false,
-                        ..Config::default()
-                    },
-                    2.0,
-                ),
-                (
-                    Config {
-                        speed: 0.4,
-                        autoplay: true,
-                        segment: vec![10.0, 30.0],
-                        use_frame_interpolation: false,
-                        ..Config::default()
-                    },
-                    0.4,
-                ),
-            ];
+        let configs: Vec<(Config, f32)> = vec![
+            // test with default config
+            (
+                Config {
+                    autoplay: true,
+                    ..Config::default()
+                },
+                1.0,
+            ),
+            // test with different speeds
+            (
+                Config {
+                    speed: 2.0,
+                    autoplay: true,
+                    ..Config::default()
+                },
+                2.0,
+            ),
+            (
+                Config {
+                    speed: 0.5,
+                    autoplay: true,
+                    ..Config::default()
+                },
+                0.5,
+            ),
+            // test with a segment
+            (
+                Config {
+                    speed: 2.0,
+                    segment: vec![10.0, 30.0],
+                    autoplay: true,
+                    ..Config::default()
+                },
+                2.0,
+            ),
+            (
+                Config {
+                    speed: 0.4,
+                    autoplay: true,
+                    segment: vec![10.0, 30.0],
+                    ..Config::default()
+                },
+                0.4,
+            ),
+        ];
 
         for (config, expected_speed) in configs {
             let player = DotLottiePlayer::new(config);

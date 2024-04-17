@@ -71,6 +71,10 @@ rustup target add aarch64-linux-android \
   wasm32-unknown-emscripten
 
 echo
+echo "Force linking python"
+brew link --overwrite python@3.12
+
+echo
 echo "Install cargo dependencies"
 cargo install uniffi-bindgen-cpp \
   --git https://github.com/NordSecurity/uniffi-bindgen-cpp \
@@ -85,6 +89,10 @@ echo "Setting up emsdk"
 cd "${SCRIPT_DIR}/deps/modules/emsdk" || die "Could not find Emscripten SDK under ${RED}deps/modules/emsdk${NC}!"
 ./emsdk install "${EMSDK_VERSION}"
 ./emsdk activate "${EMSDK_VERSION}"
+
+echo
+echo "Printing current working directory..."
+ls
 
 echo
 echo "Disabling unneeded webp features"

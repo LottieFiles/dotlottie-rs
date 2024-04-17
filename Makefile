@@ -887,8 +887,21 @@ $(ANDROID): $(ANDROID_BUILD_TARGETS)
 .PHONY: $(APPLE)
 $(APPLE): $(APPLE_BUILD_TARGETS)
 
+.PHONY: pre-make-wasm
+pre-make-wasm:
+	@echo "Copy Cargo.wasm.toml to Cargo.toml..."
+	@cp $(RUNTIME_FFI)/Cargo.wasm.toml $(RUNTIME_FFI)/Cargo.toml
+
+.PHONY: post-make-wasm
+post-make-wasm:
+	@echo "Reset Cargo.toml..."
+	@git -C $(RUNTIME_FFI) checkout -- Cargo.toml
+
 .PHONY: $(WASM)
-$(WASM): $(WASM_BUILD_TARGETS)
+$(WASM):
+	@$(MAKE) pre-make-wasm
+	@$(MAKE) $(WASM_BUILD_TARGETS)
+	@$(MAKE) post-make-wasm
 
 .PHONY: all
 all: $(APPLE) $(ANDROID) $(WASM)

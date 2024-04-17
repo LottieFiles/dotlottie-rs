@@ -1,0 +1,30 @@
+[package]
+name = "dotlottie-ffi"
+version = "0.1.16"
+edition = "2021"
+build = "build.rs"
+
+[profile.release]
+lto = true
+opt-level = "s"
+strip = true 
+codegen-units = 1
+panic = "abort" 
+
+[lib]
+crate-type = ["staticlib", "cdylib", "rlib"]
+name = "dotlottie_player"
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+
+[dependencies]
+uniffi = { version = "0.25.3", features = ["cli"] }
+dotlottie_player = { path = "../dotlottie-rs" }
+dotlottie_fms = { path = "../dotlottie-fms" }
+cfg-if = "1.0"
+
+[build-dependencies]
+uniffi = { version = "0.25.3", features = ["build"] }
+lazy_static = "1.4"

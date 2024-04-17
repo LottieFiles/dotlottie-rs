@@ -94,7 +94,7 @@ WASM_BUILD := $(BUILD)/$(WASM)
 
 EMSDK := emsdk
 EMSDK_DIR := $(PROJECT_DIR)/$(DEPS_MODULES_DIR)/$(EMSDK)
-EMSDK_VERSION := 3.1.51
+EMSDK_VERSION := 3.1.57
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
@@ -260,7 +260,7 @@ cpp_link_args = [
 	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
-	'--embind-emit-tsd=${WASM_MODULE}.d.ts',
+	'--emit-tsd=${WASM_MODULE}.d.ts',
 	'--minify=0']
 
 [host_machine]

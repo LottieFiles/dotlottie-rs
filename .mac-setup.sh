@@ -11,7 +11,7 @@ NC=$(tput sgr0)
 
 # Environment
 EMSDK_VERSION=${EMSDK_VERSION:-latest}
-UNIFFI_BINDGEN_CPP_VERSION=${UNIFFI_BINDGEN_CPP_VERSION:-"v0.5.0+v0.25.0"}
+UNIFFI_BINDGEN_CPP_VERSION=${UNIFFI_BINDGEN_CPP_VERSION:-"v0.6.0+v0.25.0"}
 
 die() { printf %s "${@+$@$'\n'}" 1>&2 ; exit 1; }
 
@@ -85,6 +85,8 @@ echo "Setting up emsdk"
 cd "${SCRIPT_DIR}/deps/modules/emsdk" || die "Could not find Emscripten SDK under ${RED}deps/modules/emsdk${NC}!"
 ./emsdk install "${EMSDK_VERSION}"
 ./emsdk activate "${EMSDK_VERSION}"
+cd "${SCRIPT_DIR}/deps/modules/emsdk/upstream/emscripten" || die "Could not find Emscripten under ${RED}deps/modules/emsdk/upstream/emscripten${NC}!"
+npm install
 
 echo
 echo "Disabling unneeded webp features"

@@ -94,11 +94,11 @@ WASM_BUILD := $(BUILD)/$(WASM)
 
 EMSDK := emsdk
 EMSDK_DIR := $(PROJECT_DIR)/$(DEPS_MODULES_DIR)/$(EMSDK)
-EMSDK_VERSION := 3.1.51
+EMSDK_VERSION := 3.1.57
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
-UNIFFI_BINDGEN_CPP_VERSION := v0.5.0+v0.25.0
+UNIFFI_BINDGEN_CPP_VERSION := v0.6.0+v0.25.0
 
 WASM_MODULE := DotLottiePlayer
 
@@ -260,7 +260,7 @@ cpp_link_args = [
 	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
-	'--embind-emit-tsd=${WASM_MODULE}.d.ts',
+	'--emit-tsd=${WASM_MODULE}.d.ts',
 	'--minify=0']
 
 [host_machine]

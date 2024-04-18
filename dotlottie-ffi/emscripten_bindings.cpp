@@ -29,18 +29,18 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     // register_vector<ManifestAnimation>("VectorManifestAnimation");
 
     enum_<Mode>("Mode")
-        .value("Forward", Mode::FORWARD)
-        .value("Reverse", Mode::REVERSE)
-        .value("Bounce", Mode::BOUNCE)
-        .value("ReverseBounce", Mode::REVERSE_BOUNCE);
+        .value("Forward", Mode::kForward)
+        .value("Reverse", Mode::kReverse)
+        .value("Bounce", Mode::kBounce)
+        .value("ReverseBounce", Mode::kReverseBounce);
 
     enum_<Fit>("Fit")
-        .value("Contain", Fit::CONTAIN)
-        .value("Cover", Fit::COVER)
-        .value("Fill", Fit::FILL)
-        .value("FitWidth", Fit::FIT_WIDTH)
-        .value("FitHeight", Fit::FIT_HEIGHT)
-        .value("None", Fit::NONE);
+        .value("Contain", Fit::kContain)
+        .value("Cover", Fit::kCover)
+        .value("Fill", Fit::kFill)
+        .value("FitWidth", Fit::kFitWidth)
+        .value("FitHeight", Fit::kFitHeight)
+        .value("None", Fit::kNone);
 
     value_object<Layout>("Layout")
         .field("fit", &Layout::fit)

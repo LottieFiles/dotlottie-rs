@@ -96,8 +96,8 @@ ls
 
 echo
 echo "Disabling unneeded webp features"
-cd "${SCRIPT_DIR}/deps/modules/libwebp" || die "Could not find libwebp under ${RED}deps/modules/libwep${NC}!"
-file_path="${SCRIPT_DIR}/deps/modules/libwebp/CMakeLists.txt"
+cd "/Users/runner/work/dotlottie-rs/dotlottie-rs/deps/modules/libwebp" || die "Could not find libwebp under ${RED}deps/modules/libwep${NC}!"
+file_path="/Users/runner/work/dotlottie-rs/dotlottie-rs/deps/modules/libwebp/CMakeLists.txt"
 # Use sed to replace the specified lines
 sed -i -e 's/option(WEBP_BUILD_ANIM_UTILS "Build animation utilities." ON)/option(WEBP_BUILD_ANIM_UTILS "Build animation utilities." OFF)/' "$file_path"
 sed -i -e 's/option(WEBP_BUILD_GIF2WEBP "Build the gif2webp conversion tool." ON)/option(WEBP_BUILD_GIF2WEBP "Build the gif2webp conversion tool." OFF)/' "$file_path"

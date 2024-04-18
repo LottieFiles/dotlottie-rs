@@ -1,14 +1,9 @@
 use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Mode, Observer, PlaybackState};
 use dotlottie_sm::event::Event;
 use dotlottie_sm::parser::parser::Parser;
-use dotlottie_sm::state::State;
-use dotlottie_sm::state::StateTrait;
-use dotlottie_sm::transition::Transition;
-use dotlottie_sm::StateMachine;
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
-use std::process::exit;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::{env, path, time::Instant};

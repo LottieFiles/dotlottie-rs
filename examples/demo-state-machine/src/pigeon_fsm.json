@@ -26,7 +26,7 @@
             "loop": false,
             "autoplay": true,
             "mode": "forward",
-            "speed": 1,
+            "speed": 0.5,
             "marker": "explosion",
             "segment": [],
             "frame_interpolation": true,

@@ -67,6 +67,22 @@ pub struct Config {
     pub marker: String,
 }
 
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("mode", &self.mode)
+            .field("loop_animation", &self.loop_animation)
+            .field("speed", &self.speed)
+            .field("use_frame_interpolation", &self.use_frame_interpolation)
+            .field("autoplay", &self.autoplay)
+            .field("segment", &self.segment)
+            .field("background_color", &self.background_color)
+            // .field("layout", &self.layout)
+            .field("marker", &self.marker)
+            .finish()
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {

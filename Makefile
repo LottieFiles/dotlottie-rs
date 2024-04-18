@@ -314,6 +314,7 @@ define SETUP_MESON
 		-Ddefault_library=static \
 		-Dbindings=capi \
 		-Dlog=$(LOG) \
+		-Dthreads=false \
 		-Dstatic=$(STATIC) \
 		-Dsavers=$(SAVERS) \
 		$(CROSS_FILE) "$(THORVG_DEP_SOURCE_DIR)" "$(THORVG_DEP_BUILD_DIR)"

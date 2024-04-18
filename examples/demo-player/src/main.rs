@@ -118,7 +118,6 @@ fn main() {
     path.push("src/markers.json");
 
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        autoplay: true,
         loop_animation: true,
         background_color: 0xffffffff,
         layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
@@ -143,9 +142,9 @@ fn main() {
 
     let mut markers = File::open("src/markers.json").expect("no file found");
     let metadatamarkers = fs::metadata("src/markers.json").expect("unable to read metadata");
-    let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
-    markers.read(&mut markers_buffer).expect("buffer overflow");
-    let string = String::from_utf8(markers_buffer.clone()).unwrap();
+    let mut markersBuffer = vec![0; metadatamarkers.len() as usize];
+    markers.read(&mut markersBuffer).expect("buffer overflow");
+    let string = String::from_utf8(markersBuffer.clone()).unwrap();
     // lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
     // println!("{:?}", Some(lottie_player.manifest()));
 

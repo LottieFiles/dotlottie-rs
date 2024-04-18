@@ -1,0 +1,16 @@
+[package]
+name = "dotlottie_sm"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["staticlib", "cdylib", "rlib"]
+name = "dotlottie_sm"
+
+[dependencies]
+dotlottie_player = { path = "../dotlottie-rs" }
+thiserror = "1.0.48"
+
+[build-dependencies]
+lazy_static = "1.4"

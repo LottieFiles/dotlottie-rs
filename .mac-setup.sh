@@ -53,7 +53,7 @@ ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk /Library/Developer/C
 
 echo "Checking symbol created properly"
 ls -l /Library/Developer/CommandLineTools/SDKs
-
+ 
 echo "Installing brew package(s) ..."
 brew install android-ndk \
   cmake \

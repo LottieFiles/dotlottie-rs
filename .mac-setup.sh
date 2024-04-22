@@ -39,6 +39,11 @@ check_for() {
 # check_for xcodebuild
 # See http://apple.stackexchange.com/questions/107307/how-can-i-install-the-command-line-tools-completely-from-the-command-line
 
+check_for brew "https://brew.sh"
+check_for rustup "https://rustup.rs" "\
+     1. Choose the ${GREEN}default${NC} installation option
+     2. Either logout & login after the installation, or execute: ${YELLOW}source \"\$HOME/.cargo/env\""
+
 echo "Checking Xcode CLI tools"
 # Only run if the tools are not installed yet
 # To check that try to print the SDK path
@@ -56,10 +61,8 @@ else
   echo "Xcode CLI tools already installed. Skipping."
 fi
 
-check_for brew "https://brew.sh"
-check_for rustup "https://rustup.rs" "\
-     1. Choose the ${GREEN}default${NC} installation option
-     2. Either logout & login after the installation, or execute: ${YELLOW}source \"\$HOME/.cargo/env\""
+echo "Remove llvm"
+brew remove llvm
 
 echo "Installing brew package(s) ..."
 brew install android-ndk \

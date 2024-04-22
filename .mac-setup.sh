@@ -64,6 +64,12 @@ fi
 echo "Checking SDK library"
 ls -l /Library/Developer/CommandLineTools/SDKs
 
+echo "Creating symbloic link for SDK"
+ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX11.sdk /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk
+
+echo "Checking symbol created properly"
+ls -l /Library/Developer/CommandLineTools/SDKs
+
 echo "Installing brew package(s) ..."
 brew install android-ndk \
   cmake \

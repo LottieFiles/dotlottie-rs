@@ -61,8 +61,8 @@ else
   echo "Xcode CLI tools already installed. Skipping."
 fi
 
-echo "Remove llvm"
-brew remove llvm
+echo "Checking SDK library"
+ll /Library/Developer/CommandLineTools/SDKs
 
 echo "Installing brew package(s) ..."
 brew install android-ndk \

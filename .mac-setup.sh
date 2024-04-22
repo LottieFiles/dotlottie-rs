@@ -66,6 +66,7 @@ ls -l /Library/Developer/CommandLineTools/SDKs
 
 echo "Creating symbloic link for SDK"
 ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX11.sdk /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk
+ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk
 
 echo "Checking symbol created properly"
 ls -l /Library/Developer/CommandLineTools/SDKs

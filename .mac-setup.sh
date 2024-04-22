@@ -62,7 +62,7 @@ else
 fi
 
 echo "Checking SDK library"
-ll /Library/Developer/CommandLineTools/SDKs
+ls -l /Library/Developer/CommandLineTools/SDKs
 
 echo "Installing brew package(s) ..."
 brew install android-ndk \

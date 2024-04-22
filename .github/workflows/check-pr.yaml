@@ -23,7 +23,7 @@ jobs:
 
       - name: Build Apple
         env:
-          APPLE_MACOSX_SDK: MacOSX13
+          APPLE_MACOSX_SDK: MacOSX11.1
         run: rm -f /usr/local/lib/libjpeg* ; make apple
 
       - name: Upload Apple Artifacts

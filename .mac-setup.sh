@@ -51,6 +51,9 @@ echo "Creating symbolic link for SDK"
 sudo ln -sfn /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk/ /Library/Developer/CommandLineTools/SDKs/MacOSX11.0.sdk
 sudo ln -sfn /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk/ /Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk
 
+echo "For change xcode version"
+sudo xcode-select -s "/Applications/Xcode_12.4.app"
+
 echo "Checking symbol created properly"
 ls -l /Library/Developer/CommandLineTools/SDKs
  

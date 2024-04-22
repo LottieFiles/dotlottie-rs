@@ -48,8 +48,8 @@ echo "Checking SDK library"
 ls -l /Library/Developer/CommandLineTools/SDKs
 
 echo "Creating symbloic link for SDK"
-sudo ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX11.sdk /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk
-sudo ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk
+sudo ln -sfn /Library/Developer/CommandLineTools/SDKs/MacOSX11.sdk/ /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk/
+sudo ln -sfn /Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk/ /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk/
 
 echo "Checking symbol created properly"
 ls -l /Library/Developer/CommandLineTools/SDKs

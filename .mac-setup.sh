@@ -47,6 +47,9 @@ check_for rustup "https://rustup.rs" "\
 echo "Checking SDK library"
 ls -l /Library/Developer/CommandLineTools/SDKs
 
+echo "Printing MacOS SDKs"
+ls /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/
+
 echo "Creating symbolic link for SDK"
 sudo ln -sfn /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk/ /Library/Developer/CommandLineTools/SDKs/MacOSX11.0.sdk
 sudo ln -sfn /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk/ /Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk

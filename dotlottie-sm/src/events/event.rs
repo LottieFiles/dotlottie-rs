@@ -3,6 +3,7 @@ pub trait PointerEvent {
     fn y(&self) -> f32;
 }
 
+#[derive(Debug)]
 pub enum Event {
     Bool(bool),
     String(String),

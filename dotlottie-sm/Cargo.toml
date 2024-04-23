@@ -11,6 +11,8 @@ name = "dotlottie_sm"
 [dependencies]
 dotlottie_player = { path = "../dotlottie-rs" }
 thiserror = "1.0.48"
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = "1.0.107"
 
 [build-dependencies]
 lazy_static = "1.4"

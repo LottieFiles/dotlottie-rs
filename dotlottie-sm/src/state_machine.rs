@@ -78,7 +78,7 @@ impl StateMachine {
         if state_value_result.is_ok() {
             let state_value = state_value_result.unwrap();
             let mut iter = state_value.get_transitions().iter();
-            let mut tmp_state: u32 = 0;
+            let mut tmp_state: i32 = -1;
 
             // Loop through all transitions of the current state and check if we should transition to another state
             loop {
@@ -106,7 +106,7 @@ impl StateMachine {
                                 if bool_event && received_event_value == *bool_value {
                                     let target_state = unwrapped_transition.get_target_state();
 
-                                    tmp_state = target_state;
+                                    tmp_state = target_state as i32;
                                 }
                             }
                             Event::String(string_value) => {
@@ -122,7 +122,7 @@ impl StateMachine {
                                 if string_event && received_event_value == string_value {
                                     let target_state = unwrapped_transition.get_target_state();
 
-                                    tmp_state = target_state;
+                                    tmp_state = target_state as i32;
                                 }
                             }
                             Event::Numeric(numeric_value) => {
@@ -138,7 +138,7 @@ impl StateMachine {
                                 if numeric_event && received_event_value == *numeric_value {
                                     let target_state = unwrapped_transition.get_target_state();
 
-                                    tmp_state = target_state;
+                                    tmp_state = target_state as i32;
                                 }
                             }
                             Event::OnPointerDown(_, _) => todo!(),
@@ -152,10 +152,12 @@ impl StateMachine {
                 }
             }
 
-            let next_state = self.states.get(tmp_state as usize).unwrap();
-            self.current_state = next_state.clone();
+            if tmp_state > -1 {
+                let next_state = self.states.get(tmp_state as usize).unwrap();
+                self.current_state = next_state.clone();
 
-            self.execute_current_state();
+                self.execute_current_state();
+            }
         }
     }
 

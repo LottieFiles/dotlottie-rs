@@ -1,6 +1,6 @@
 use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Mode, Observer, PlaybackState};
 use dotlottie_sm::event::Event;
-use dotlottie_sm::parser::parser::Parser;
+use dotlottie_sm::parser::statemachine_parse;
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
@@ -190,9 +190,7 @@ fn main() {
     file.read_to_string(&mut contents)
         .expect("Unable to read the file");
 
-    let fsm_parser = Parser::new();
-
-    let mut sm_machine = fsm_parser.parse(&contents).unwrap();
+    let mut sm_machine = statemachine_parse(&contents).unwrap();
 
     // let run_state = State::Playback {
     //     config: Config {

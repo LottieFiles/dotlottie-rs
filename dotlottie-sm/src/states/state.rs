@@ -21,7 +21,7 @@ pub trait StateTrait {
     // fn get_exit_actions(&self) -> Vec<String>;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum State {
     Playback {
         config: Config,
@@ -39,46 +39,6 @@ pub enum State {
         height: u32,
         transitions: Vec<Arc<RwLock<Transition>>>,
     },
-}
-
-impl std::fmt::Debug for State {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            State::Playback {
-                config,
-                reset_context,
-                animation_id,
-                width,
-                height,
-                transitions,
-            } => f
-                .debug_struct("State::Playback")
-                .field("config", config)
-                .field("reset_context", reset_context)
-                .field("animation_id", animation_id)
-                .field("width", width)
-                .field("height", height)
-                .field("transitions", transitions)
-                .finish(),
-
-            State::Sync {
-                frame_context_key,
-                reset_context,
-                animation_id,
-                width,
-                height,
-                transitions,
-            } => f
-                .debug_struct("State::Sync")
-                .field("frame_context_key", frame_context_key)
-                .field("reset_context", reset_context)
-                .field("animation_id", animation_id)
-                .field("width", width)
-                .field("height", height)
-                .field("transitions", transitions)
-                .finish(),
-        }
-    }
 }
 
 impl std::fmt::Display for State {

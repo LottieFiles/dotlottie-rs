@@ -1,12 +1,8 @@
-use crate::{StateActionJson, StateJson, StringEventJson, TransitionJson};
-
 #[cfg(test)]
 #[test]
 fn get_animation_test() {
     use crate::DotLottieManager;
     use std::{fs::File, io::Read};
-
-    use crate::get_animation;
 
     let file_path = format!(
         "{}{}",
@@ -102,6 +98,8 @@ fn get_manifest_test() {
 #[test]
 fn parse_state_machine_test() {
     use crate::DotLottieManager;
+    use crate::{StateActionJson, StateJson, StringEventJson, TransitionJson};
+
     use std::{fs::File, io::Read};
 
     let file_path = format!(

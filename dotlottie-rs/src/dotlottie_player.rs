@@ -273,12 +273,6 @@ impl DotLottieRuntime {
         self.dotlottie_manager.manifest()
     }
 
-    pub fn load_state_machine(&mut self, sm: &str, player: Arc<RwLock<DotLottiePlayer>>) {}
-
-    pub fn init_state_machine<'a>(&mut self, def: &str) {}
-
-    pub fn post_event(&mut self, event: &Event) {}
-
     pub fn request_frame(&mut self) -> f32 {
         if !self.is_loaded || !self.is_playing() {
             return self.current_frame();
@@ -864,10 +858,6 @@ impl DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
             observers: RwLock::new(Vec::new()),
         }
-    }
-
-    pub fn post_event(&self, event: &Event) {
-        self.runtime.write().unwrap().post_event(event);
     }
 
     pub fn load_animation_data(&self, animation_data: &str, width: u32, height: u32) -> bool {

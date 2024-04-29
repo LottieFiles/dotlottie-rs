@@ -233,15 +233,6 @@ impl StateMachine {
                     initial_state = Some(states[initial_state_index as usize].clone());
                 }
 
-                // self.states = states;
-                // self.current_state = initial_state.unwrap();
-
-                // let state_machine: StateMachine = StateMachine {
-                //     states,
-                //     current_state: initial_state.unwrap(),
-                //     dotlottie_player,
-                // };
-
                 return Ok((states, initial_state.unwrap()));
             }
             Err(error) => Err(StateMachineError::ParsingError {
@@ -262,10 +253,6 @@ impl StateMachine {
     pub fn set_initial_state(&mut self, state: Arc<RwLock<State>>) {
         self.current_state = state;
     }
-
-    // pub fn set_player(&mut self, player: Arc<RwLock<DotLottiePlayer>>) {
-    //     self.dotlottie_player = player;
-    // }
 
     pub fn get_current_state(&self) -> Arc<RwLock<State>> {
         self.current_state.clone()

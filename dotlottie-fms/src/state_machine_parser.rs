@@ -8,7 +8,7 @@ pub struct DescriptorJson {
     pub initial: u32,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct StateActionJson {
     pub r#type: String,
     pub url: Option<String>,
@@ -18,7 +18,7 @@ pub struct StateActionJson {
     pub message: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct StateJson {
     pub r#type: String,
     pub animation_id: Option<String>,
@@ -36,53 +36,53 @@ pub struct StateJson {
     pub frame_context_key: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct TransitionGuardJson {}
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct NumericEventJson {
     pub value: f32,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct StringEventJson {
     pub value: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct BooleanEventJson {
     pub value: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct OnCompleteEventJson {}
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct OnPointerDownEventJson {
     pub target: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct OnPointerUpEventJson {
     pub target: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct OnPointerEnterEventJson {
     pub target: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct OnPointerExitEventJson {
     pub target: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct OnPointerMoveEventJson {
     pub target: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct TransitionJson {
     pub r#type: String,
     pub from_state: u32,

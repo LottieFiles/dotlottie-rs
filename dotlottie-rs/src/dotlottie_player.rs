@@ -58,7 +58,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Config {
     pub mode: Mode,
     pub loop_animation: bool,
@@ -1201,6 +1201,10 @@ impl DotLottiePlayer {
                 .unwrap()
                 .replace(state_machine.unwrap());
         }
+    }
+
+    pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachine>>> {
+        self.state_machine.clone()
     }
 
     pub fn start_state_machine(&self) {

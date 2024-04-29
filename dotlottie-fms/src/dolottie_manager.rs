@@ -1,6 +1,10 @@
 use std::{collections::HashMap, ops::Index};
 
-use crate::{get_manifest, AnimationContainer, DotLottieError, Manifest, ManifestAnimation};
+use crate::{
+    get_manifest, AnimationContainer, DotLottieError, Manifest, ManifestAnimation, StateMachineJson,
+};
+
+use crate::state_machine_parse;
 
 pub struct DotLottieManager {
     active_animation_id: String,
@@ -258,5 +262,19 @@ impl DotLottieManager {
         self.theme_cache.insert(theme_id.to_string(), theme.clone());
 
         Ok(theme)
+    }
+
+    pub fn parse_state_machine(
+        &self,
+        state_machine: &str,
+    ) -> Result<StateMachineJson, crate::DotLottieError> {
+        let result = state_machine_parse(state_machine);
+
+        match result {
+            Ok(state_machine_json) => {
+                return Ok(state_machine_json);
+            }
+            Err(err) => Err(err),
+        }
     }
 }

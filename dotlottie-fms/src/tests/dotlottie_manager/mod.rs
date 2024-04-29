@@ -96,3 +96,33 @@ fn get_manifest_test() {
 
     assert_eq!(last_animation.id == "yummy", true);
 }
+
+#[test]
+fn parse_state_machine_test() {
+    use crate::DotLottieManager;
+    use std::{fs::File, io::Read};
+
+    let file_path = format!(
+        "{}{}",
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/tests/resources/pigeon_fms.json"
+    );
+
+    let mut sm_definition = File::open(file_path).unwrap();
+    let mut buffer = Vec::new();
+    let mut buffer_to_string = String::new();
+
+    sm_definition.read_to_end(&mut buffer).unwrap();
+    sm_definition.read_to_string(&mut buffer_to_string).unwrap();
+
+    let dotlottie = DotLottieManager::new(None).unwrap();
+
+    let state_machine_json = dotlottie.parse_state_machine(&buffer_to_string).unwrap();
+
+    assert_eq!(state_machine_json.states.len(), 3);
+    assert_eq!(state_machine_json.transitions.len(), 3);
+
+    for state in state_machine_json.states {
+        assert_eq!(state.r#type == "playback", true);
+    }
+}

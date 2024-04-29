@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use crate::event::Event;
+use crate::state_machine::events::Event;
 
 pub trait TransitionTrait {
     fn set_target_state(&mut self, target_state: u32);

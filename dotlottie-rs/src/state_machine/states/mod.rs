@@ -1,11 +1,14 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    rc::Rc,
+    sync::{Arc, RwLock},
+};
 
-use dotlottie_player_core::{Config, DotLottiePlayer};
+use crate::{Config, DotLottiePlayerContainer};
 
-use crate::transition::Transition;
+use super::transitions::Transition;
 
 pub trait StateTrait {
-    fn execute(&mut self, player: &mut DotLottiePlayer);
+    fn execute(&mut self, player: &Rc<RwLock<DotLottiePlayerContainer>>);
     fn reset_context(&self) -> bool;
     fn get_animation_id(&self) -> &String;
     fn get_transitions(&self) -> &Vec<Arc<RwLock<Transition>>>;
@@ -105,7 +108,7 @@ impl State {
 }
 
 impl StateTrait for State {
-    fn execute(&mut self, player: &mut DotLottiePlayer) {
+    fn execute(&mut self, player: &Rc<RwLock<DotLottiePlayerContainer>>) {
         match self {
             State::Playback {
                 config,
@@ -117,13 +120,19 @@ impl StateTrait for State {
             } => {
                 let config = config.clone();
 
-                if animation_id != "" {
-                    player.load_animation(animation_id, *width, *height);
+                // Tell player to load new animation
+                if !animation_id.is_empty() {
+                    player
+                        .write()
+                        .unwrap()
+                        .load_animation(&animation_id, *width, *height);
                 }
 
-                player.set_config(config);
+                println!("config: {:?}", config);
 
-                player.play();
+                // Set the config
+                player.write().unwrap().set_config(config);
+                player.write().unwrap().play();
             }
             State::Sync {
                 frame_context_key: _,

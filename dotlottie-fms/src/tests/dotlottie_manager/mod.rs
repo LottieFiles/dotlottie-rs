@@ -4,8 +4,6 @@ fn get_animation_test() {
     use crate::DotLottieManager;
     use std::{fs::File, io::Read};
 
-    use crate::get_animation;
-
     let file_path = format!(
         "{}{}",
         env!("CARGO_MANIFEST_DIR"),

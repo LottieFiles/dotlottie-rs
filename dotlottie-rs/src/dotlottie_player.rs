@@ -1,16 +1,20 @@
 use instant::{Duration, Instant};
 use std::{
+    collections::HashMap,
     fs,
-    sync::{Arc, RwLock},
+    rc::Rc,
+    sync::{mpsc, Arc, RwLock},
+    thread,
 };
 
+use crate::state_machine::events::Event;
 use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 
 use crate::{
     extract_markers,
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
-    Marker, MarkersMap,
+    Marker, MarkersMap, StateMachine, StateMachineObserver,
 };
 
 pub trait Observer: Send + Sync {
@@ -54,7 +58,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Config {
     pub mode: Mode,
     pub loop_animation: bool,
@@ -113,6 +117,8 @@ struct DotLottieRuntime {
     markers: MarkersMap,
     active_animation_id: String,
     active_theme_id: String,
+    active_state_machine_id: String,
+    state_machine: Option<StateMachine>,
 }
 
 impl DotLottieRuntime {
@@ -136,6 +142,8 @@ impl DotLottieRuntime {
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
             active_theme_id: String::new(),
+            active_state_machine_id: String::new(),
+            state_machine: None,
         }
     }
 
@@ -839,14 +847,14 @@ impl DotLottieRuntime {
     }
 }
 
-pub struct DotLottiePlayer {
+pub struct DotLottiePlayerContainer {
     runtime: RwLock<DotLottieRuntime>,
     observers: RwLock<Vec<Arc<dyn Observer>>>,
 }
 
-impl DotLottiePlayer {
+impl DotLottiePlayerContainer {
     pub fn new(config: Config) -> Self {
-        DotLottiePlayer {
+        DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
             observers: RwLock::new(Vec::new()),
         }
@@ -1150,6 +1158,234 @@ impl DotLottiePlayer {
 
     pub fn active_theme_id(&self) -> String {
         self.runtime.read().unwrap().active_theme_id().to_string()
+    }
+}
+
+pub struct DotLottiePlayer {
+    player: Rc<RwLock<DotLottiePlayerContainer>>,
+    state_machine: Rc<RwLock<Option<StateMachine>>>,
+}
+
+impl DotLottiePlayer {
+    pub fn new(config: Config) -> Self {
+        DotLottiePlayer {
+            player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config))),
+            state_machine: Rc::new(RwLock::new(None)),
+        }
+    }
+
+    pub fn load_animation_data(&self, animation_data: &str, width: u32, height: u32) -> bool {
+        let is_ok = self
+            .player
+            .write()
+            .is_ok_and(|runtime| runtime.load_animation_data(animation_data, width, height));
+        is_ok
+    }
+
+    pub fn load_state_machine(&self, state_machine: &str) {
+        let state_machine = StateMachine::new(state_machine, self.player.clone());
+
+        if state_machine.is_ok() {
+            self.state_machine
+                .write()
+                .unwrap()
+                .replace(state_machine.unwrap());
+        }
+    }
+
+    pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachine>>> {
+        self.state_machine.clone()
+    }
+
+    pub fn start_state_machine(&self) {
+        self.state_machine
+            .write()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .start();
+    }
+
+    pub fn post_event(&self, event: &Event) {
+        self.state_machine
+            .write()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .post_event(event)
+    }
+
+    pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
+        let is_ok = self
+            .player
+            .write()
+            .is_ok_and(|mut runtime| runtime.load_animation_path(animation_path, width, height));
+
+        is_ok
+    }
+
+    pub fn load_dotlottie_data(&self, file_data: &[u8], width: u32, height: u32) -> bool {
+        let is_ok = self
+            .player
+            .write()
+            .is_ok_and(|mut runtime| runtime.load_dotlottie_data(file_data, width, height));
+
+        is_ok
+    }
+
+    pub fn load_animation(&self, animation_id: &str, width: u32, height: u32) -> bool {
+        let is_ok = self
+            .player
+            .write()
+            .is_ok_and(|runtime| runtime.load_animation(animation_id, width, height));
+
+        is_ok
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn manifest(&self) -> Option<Manifest> {
+        self.player.read().unwrap().manifest()
+    }
+
+    pub fn buffer_ptr(&self) -> u64 {
+        self.player.read().unwrap().buffer_ptr()
+    }
+
+    pub fn buffer_len(&self) -> u64 {
+        self.player.read().unwrap().buffer_len()
+    }
+
+    pub fn clear(&self) {
+        self.player.write().unwrap().clear();
+    }
+
+    pub fn set_config(&self, config: Config) {
+        self.player.write().unwrap().set_config(config);
+    }
+
+    pub fn speed(&self) -> f32 {
+        self.player.read().unwrap().speed()
+    }
+
+    pub fn total_frames(&self) -> f32 {
+        self.player.read().unwrap().total_frames()
+    }
+
+    pub fn duration(&self) -> f32 {
+        self.player.read().unwrap().duration()
+    }
+
+    pub fn current_frame(&self) -> f32 {
+        self.player.read().unwrap().current_frame()
+    }
+
+    pub fn loop_count(&self) -> u32 {
+        self.player.read().unwrap().loop_count()
+    }
+
+    pub fn is_loaded(&self) -> bool {
+        self.player.read().unwrap().is_loaded()
+    }
+
+    pub fn is_playing(&self) -> bool {
+        self.player.read().unwrap().is_playing()
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.player.read().unwrap().is_paused()
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        self.player.read().unwrap().is_stopped()
+    }
+
+    pub fn play(&self) -> bool {
+        let ok = self.player.write().unwrap().play();
+
+        ok
+    }
+
+    pub fn pause(&self) -> bool {
+        let ok = self.player.write().unwrap().pause();
+        ok
+    }
+
+    pub fn stop(&self) -> bool {
+        let ok = self.player.write().unwrap().stop();
+
+        ok
+    }
+
+    pub fn request_frame(&self) -> f32 {
+        self.player.write().unwrap().request_frame()
+    }
+
+    pub fn set_frame(&self, no: f32) -> bool {
+        let ok = self.player.write().unwrap().set_frame(no);
+
+        ok
+    }
+
+    pub fn seek(&self, no: f32) -> bool {
+        let ok = self.player.write().unwrap().seek(no);
+
+        ok
+    }
+
+    pub fn render(&self) -> bool {
+        let ok = self.player.write().unwrap().render();
+
+        ok
+    }
+
+    pub fn resize(&self, width: u32, height: u32) -> bool {
+        self.player.write().unwrap().resize(width, height)
+    }
+
+    pub fn config(&self) -> Config {
+        self.player.read().unwrap().config()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn subscribe(&self, observer: Arc<dyn Observer>) {
+        self.player.write().unwrap().subscribe(observer);
+    }
+
+    pub fn manifest_string(&self) -> String {
+        self.player.read().unwrap().manifest().unwrap().to_string()
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.player.read().unwrap().is_complete()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn unsubscribe(&self, observer: &Arc<dyn Observer>) {
+        self.player.write().unwrap().unsubscribe(observer);
+    }
+
+    pub fn load_theme(&self, theme_id: &str) -> bool {
+        self.player.write().unwrap().load_theme(theme_id)
+    }
+
+    pub fn load_theme_data(&self, theme_data: &str) -> bool {
+        self.player.write().unwrap().load_theme_data(theme_data)
+    }
+
+    pub fn markers(&self) -> Vec<Marker> {
+        self.player.read().unwrap().markers()
+    }
+
+    pub fn active_animation_id(&self) -> String {
+        self.player
+            .read()
+            .unwrap()
+            .active_animation_id()
+            .to_string()
+    }
+
+    pub fn active_theme_id(&self) -> String {
+        self.player.read().unwrap().active_theme_id().to_string()
     }
 }
 

@@ -6,6 +6,5 @@ edition = "2021"
 [dependencies]
 minifb = "0.25"
 dotlottie_player = { path = "../../dotlottie-rs" }
-dotlottie_sm = { path = "../../dotlottie-sm" }
 sysinfo = "0.30"
 rand = "0.8"

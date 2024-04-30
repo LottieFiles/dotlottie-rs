@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::DotLottieError;
+use crate::errors::StateMachineError;
 
 #[derive(Deserialize, Debug)]
 pub struct DescriptorJson {
@@ -124,14 +124,14 @@ pub struct StateMachineJson {
     pub context_variables: Vec<ContextJson>,
 }
 
-pub fn state_machine_parse(json: &str) -> Result<StateMachineJson, DotLottieError> {
+pub fn state_machine_parse(json: &str) -> Result<StateMachineJson, StateMachineError> {
     let result: Result<StateMachineJson, serde_json::Error> = serde_json::from_str(json);
 
     match result {
         Ok(state_machine_json) => {
             return Ok(state_machine_json);
         }
-        Err(err) => Err(DotLottieError::StateMachineError {
+        Err(err) => Err(StateMachineError::ParsingError {
             reason: format!("Error parsing state machine definition file: {}", err),
         }),
     }

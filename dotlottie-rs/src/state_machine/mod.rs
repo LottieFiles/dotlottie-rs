@@ -3,14 +3,15 @@ use std::sync::{Arc, RwLock};
 
 pub mod errors;
 pub mod events;
+pub mod parser;
 pub mod states;
 pub mod transitions;
 
 use crate::state_machine::states::StateTrait;
 use crate::state_machine::transitions::TransitionTrait;
 use crate::{Config, DotLottiePlayerContainer, Layout, Mode};
-use dotlottie_fms::state_machine_parse;
 
+use self::parser::{state_machine_parse, StateMachineJson};
 use self::{errors::StateMachineError, events::Event, states::State, transitions::Transition};
 
 pub trait StateMachineObserver {
@@ -60,6 +61,20 @@ impl StateMachine {
                 return Err(err);
             }
         };
+    }
+
+    pub fn parse_state_machine(
+        &self,
+        state_machine: &str,
+    ) -> Result<StateMachineJson, StateMachineError> {
+        let result = state_machine_parse(state_machine);
+
+        match result {
+            Ok(state_machine_json) => {
+                return Ok(state_machine_json);
+            }
+            Err(err) => Err(err),
+        }
     }
 
     // Parses the JSON of the state machine definition and creates the states and transitions

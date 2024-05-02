@@ -13,12 +13,6 @@
             "marker": "bird",
             "segment": [],
             "frame_interpolation": true,
-            "entry_actions": [
-                {
-                    "type": "LogAction",
-                    "message": "Howdy partner!"
-                }
-            ],
             "exit_actions": [],
             "reset_context": "*"
         },
@@ -59,7 +53,7 @@
                 {
                     "type": "Numeric",
                     "context_key": "counter_0",
-                    "condition_type": "LessThan",
+                    "condition_type": "LessThanOrEqual",
                     "compare_to": 5.0
                 }
             ]
@@ -94,38 +88,13 @@
         },
         {
             "type": "string",
-            "key": "counter_1",
-            "value": "COUNTER HAHAHAH"
+            "key": "STRING_GUARD",
+            "value": "SUPER_SECRET_VALUE"
         },
         {
             "type": "bool",
             "key": "counter_2",
             "value": false
-        },
-        {
-            "type": "int",
-            "key": "counter_2",
-            "value": "2"
-        },
-        {
-            "type": "int",
-            "key": "counter_3",
-            "value": "3"
-        },
-        {
-            "type": "int",
-            "key": "counter_4",
-            "value": "4"
-        },
-        {
-            "type": "int",
-            "key": "counter_5",
-            "value": "5"
-        },
-        {
-            "type": "int",
-            "key": "counter_6",
-            "value": "6"
         }
     ]
 }

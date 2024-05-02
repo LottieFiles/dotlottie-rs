@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
@@ -7,11 +8,13 @@ pub mod parser;
 pub mod states;
 pub mod transitions;
 
+use crate::parser::StringNumberBool;
 use crate::state_machine::states::StateTrait;
+use crate::state_machine::transitions::guard::Guard;
 use crate::state_machine::transitions::TransitionTrait;
 use crate::{Config, DotLottiePlayerContainer, Layout, Mode};
 
-use self::parser::{state_machine_parse, StateMachineJson};
+use self::parser::state_machine_parse;
 use self::{errors::StateMachineError, events::Event, states::State, transitions::Transition};
 
 pub trait StateMachineObserver {
@@ -20,42 +23,56 @@ pub trait StateMachineObserver {
     fn set_frame(&mut self, frame: f32);
 }
 
+#[derive(PartialEq)]
+pub enum StateMachineStatus {
+    Running,
+    Paused,
+    Stopped,
+}
+
 pub struct StateMachine {
     pub states: Vec<Arc<RwLock<State>>>,
-    pub current_state: Arc<RwLock<State>>,
-    pub player: Rc<RwLock<DotLottiePlayerContainer>>,
+    pub current_state: Option<Arc<RwLock<State>>>,
+    pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
+    pub status: StateMachineStatus,
+
+    numeric_context: HashMap<String, f32>,
+    string_context: HashMap<String, String>,
+    bool_context: HashMap<String, bool>,
 }
 
 impl StateMachine {
+    pub fn default() -> StateMachine {
+        StateMachine {
+            states: Vec::new(),
+            current_state: None,
+            player: None,
+            numeric_context: HashMap::new(),
+            string_context: HashMap::new(),
+            bool_context: HashMap::new(),
+            status: StateMachineStatus::Stopped,
+        }
+    }
+
     pub fn new(
         state_machine_definition: &str,
         player: Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<StateMachine, StateMachineError> {
-        let state_machine = StateMachine {
+        let mut state_machine = StateMachine {
             states: Vec::new(),
-            current_state: Arc::new(RwLock::new(State::Playback {
-                config: Config::default(),
-                reset_context: false,
-                animation_id: "".to_string(),
-                width: 0,
-                height: 0,
-                transitions: Vec::new(),
-            })),
-            player: player.clone(),
+            current_state: None,
+            player: Some(player.clone()),
+            numeric_context: HashMap::new(),
+            string_context: HashMap::new(),
+            bool_context: HashMap::new(),
+            status: StateMachineStatus::Stopped,
         };
 
-        let sm = state_machine.parse(state_machine_definition);
+        let sm = state_machine.create_state_machine(state_machine_definition, &player);
 
         match sm {
-            Ok((states, initial_state)) => {
-                let new_sm = StateMachine {
-                    states,
-                    current_state: initial_state,
-                    player: player.clone(),
-                };
-
-                println!("{:?}", "returning new sm");
-                return Ok(new_sm);
+            Ok(sm) => {
+                return Ok(sm);
             }
             Err(err) => {
                 return Err(err);
@@ -63,35 +80,55 @@ impl StateMachine {
         };
     }
 
-    pub fn parse_state_machine(
-        &self,
-        state_machine: &str,
-    ) -> Result<StateMachineJson, StateMachineError> {
-        let result = state_machine_parse(state_machine);
+    pub fn get_numeric_context(&self, key: &str) -> Option<f32> {
+        self.numeric_context.get(key).cloned()
+    }
 
-        match result {
-            Ok(state_machine_json) => {
-                return Ok(state_machine_json);
-            }
-            Err(err) => Err(err),
-        }
+    pub fn get_string_context(&self, key: &str) -> Option<String> {
+        self.string_context.get(key).cloned()
+    }
+
+    pub fn get_bool_context(&self, key: &str) -> Option<bool> {
+        self.bool_context.get(key).cloned()
+    }
+
+    pub fn set_numeric_context(&mut self, key: &str, value: f32) {
+        self.numeric_context.insert(key.to_string(), value);
+    }
+
+    pub fn set_string_context(&mut self, key: &str, value: &str) {
+        self.string_context
+            .insert(key.to_string(), value.to_string());
+    }
+
+    pub fn set_bool_context(&mut self, key: &str, value: bool) {
+        self.bool_context.insert(key.to_string(), value);
     }
 
     // Parses the JSON of the state machine definition and creates the states and transitions
-    pub fn parse(
-        self,
+    pub fn create_state_machine(
+        &mut self,
         sm_definition: &str,
-    ) -> Result<(Vec<Arc<RwLock<State>>>, Arc<RwLock<State>>), StateMachineError> {
-        // let parser = dotlottie_fms::::new();
+        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+    ) -> Result<StateMachine, StateMachineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
+
+        // todo somehow getthe context json without having to parse it again
+        // self.json_context = Some(
+        //     state_machine_parse(sm_definition)
+        //         .unwrap()
+        //         .context_variables,
+        // );
+
         let mut states: Vec<Arc<RwLock<State>>> = Vec::new();
+        let mut new_state_machine = StateMachine::default();
 
         match parsed_state_machine {
             Ok(parsed_state_machine) => {
-                // Loop through result states and create objects for each
+                // Loop through result json states and create objects for each
                 for state in parsed_state_machine.states {
-                    match state.r#type.as_str() {
-                        "PlaybackState" => {
+                    match state.r#type {
+                        parser::StateType::PlaybackState => {
                             let unwrapped_mode = state.mode.unwrap_or("Forward".to_string());
                             let mode = {
                                 match unwrapped_mode.as_str() {
@@ -107,7 +144,7 @@ impl StateMachine {
 
                             // Fill out a config with the state's values, if absent use default config values
                             let playback_config = Config {
-                                mode: mode,
+                                mode,
                                 loop_animation: state
                                     .r#loop
                                     .unwrap_or(default_config.loop_animation),
@@ -127,7 +164,7 @@ impl StateMachine {
                             // Construct a State with the values we've gathered
                             let new_playback_state = State::Playback {
                                 config: playback_config,
-                                reset_context: state.reset_context.unwrap_or(false),
+                                reset_context: state.reset_context.unwrap_or("".to_string()),
                                 animation_id: state.animation_id.unwrap_or("".to_string()),
                                 width: 1920,
                                 height: 1080,
@@ -136,9 +173,9 @@ impl StateMachine {
 
                             states.push(Arc::new(RwLock::new(new_playback_state)));
                         }
-                        "SyncState" => {}
-                        "FinalState" => {}
-                        "GlobalState" => {}
+                        parser::StateType::SyncState => {}
+                        parser::StateType::FinalState => {}
+                        parser::StateType::GlobalState => {}
                         _ => {}
                     }
                 }
@@ -148,6 +185,7 @@ impl StateMachine {
                     match transition.r#type.as_str() {
                         "Transition" => {
                             let target_state_index = transition.to_state;
+                            let mut guards_for_transition: Vec<Guard> = Vec::new();
 
                             // Use the provided index to get the state in the vec we've built
                             if target_state_index >= states.len() as u32 {
@@ -157,75 +195,38 @@ impl StateMachine {
                                 });
                             }
 
+                            // Loop through transition guards and create equivalent Guard objects
+                            if transition.guards.is_some() {
+                                let guards = transition.guards.unwrap();
+
+                                for guard in guards {
+                                    let new_guard = Guard {
+                                        context_key: guard.context_key,
+                                        condition_type: guard.condition_type,
+                                        compare_to: guard.compare_to,
+                                    };
+
+                                    guards_for_transition.push(new_guard);
+                                }
+                            }
+
+                            // let mut new_transition: Option<Transition> = None;
+                            let mut state_to_attach_to: i32 = -1;
+                            let mut new_event: Option<Event> = None;
+
                             // Capture which event this transition has
                             if transition.numeric_event.is_some() {
                                 let numeric_event = transition.numeric_event.unwrap();
-                                let new_event = Event::Numeric(numeric_event.value);
-
-                                let new_transition = Transition::Transition {
-                                    target_state: target_state_index,
-                                    event: Arc::new(RwLock::new(new_event)),
-                                };
-
-                                // Since the target is valid and transition created, we attach it to the state
-                                let state_to_attch_to = transition.from_state;
-
-                                if state_to_attch_to < states.len() as u32 {
-                                    states[state_to_attch_to as usize]
-                                        .write()
-                                        .unwrap()
-                                        .add_transition(new_transition);
-                                    println!(
-                                        "{}",
-                                        states[state_to_attch_to as usize].write().unwrap()
-                                    );
-                                }
+                                new_event = Some(Event::Numeric(numeric_event.value));
+                                state_to_attach_to = transition.from_state as i32;
                             } else if transition.string_event.is_some() {
                                 let string_event = transition.string_event.unwrap();
-                                let new_event = Event::String(string_event.value);
-
-                                let new_transition = Transition::Transition {
-                                    target_state: target_state_index,
-                                    event: Arc::new(RwLock::new(new_event)),
-                                };
-
-                                // Since the target is valid and transition created, we attach it to the state
-                                let state_to_attch_to = transition.from_state;
-
-                                if state_to_attch_to < states.len() as u32 {
-                                    states[state_to_attch_to as usize]
-                                        .write()
-                                        .unwrap()
-                                        .add_transition(new_transition);
-
-                                    println!(
-                                        "{}",
-                                        states[state_to_attch_to as usize].write().unwrap()
-                                    );
-                                }
+                                new_event = Some(Event::String(string_event.value));
+                                state_to_attach_to = transition.from_state as i32;
                             } else if transition.boolean_event.is_some() {
                                 let boolean_event = transition.boolean_event.unwrap();
-                                let new_event = Event::Bool(boolean_event.value);
-
-                                let new_transition = Transition::Transition {
-                                    target_state: target_state_index,
-                                    event: Arc::new(RwLock::new(new_event)),
-                                };
-
-                                // Since the target is valid and transition created, we attach it to the state
-                                let state_to_attch_to = transition.from_state;
-
-                                if state_to_attch_to < states.len() as u32 {
-                                    states[state_to_attch_to as usize]
-                                        .write()
-                                        .unwrap()
-                                        .add_transition(new_transition);
-
-                                    println!(
-                                        "{}",
-                                        states[state_to_attch_to as usize].write().unwrap()
-                                    );
-                                }
+                                new_event = Some(Event::Bool(boolean_event.value));
+                                state_to_attach_to = transition.from_state as i32;
                             } else if transition.on_complete_event.is_some() {
                             } else if transition.on_pointer_down_event.is_some() {
                             } else if transition.on_pointer_up_event.is_some() {
@@ -234,7 +235,51 @@ impl StateMachine {
                             } else if transition.on_pointer_move_event.is_some() {
                             }
                             // Todo - Add the rest of the event types
+
+                            match new_event {
+                                Some(event) => {
+                                    let new_transition = Transition::Transition {
+                                        target_state: target_state_index,
+                                        event: Arc::new(RwLock::new(event)),
+                                        guards: guards_for_transition,
+                                    };
+
+                                    // Since the target is valid and transition created, we attach it to the state
+                                    if state_to_attach_to < states.len() as i32 {
+                                        states[state_to_attach_to as usize]
+                                            .write()
+                                            .unwrap()
+                                            .add_transition(new_transition);
+                                    }
+                                }
+                                None => {}
+                            }
                         }
+                        _ => {}
+                    }
+                }
+
+                // Since value can either be a string, int or bool, we need to check the type and set the context accordingly
+                for variable in parsed_state_machine.context_variables {
+                    match variable.r#type.as_str() {
+                        "int" => match variable.value {
+                            StringNumberBool::F32(value) => {
+                                new_state_machine.set_numeric_context(&variable.key, value);
+                            }
+                            _ => {}
+                        },
+                        "string" => match variable.value {
+                            StringNumberBool::String(value) => {
+                                new_state_machine.set_string_context(&variable.key, value.as_str());
+                            }
+                            _ => {}
+                        },
+                        "bool" => match variable.value {
+                            StringNumberBool::Bool(value) => {
+                                new_state_machine.set_bool_context(&variable.key, value);
+                            }
+                            _ => {}
+                        },
                         _ => {}
                     }
                 }
@@ -248,28 +293,42 @@ impl StateMachine {
                     initial_state = Some(states[initial_state_index as usize].clone());
                 }
 
-                return Ok((states, initial_state.unwrap()));
+                new_state_machine = StateMachine {
+                    states,
+                    current_state: initial_state,
+                    player: Some(player.clone()),
+                    numeric_context: new_state_machine.numeric_context,
+                    string_context: new_state_machine.string_context,
+                    bool_context: new_state_machine.bool_context,
+                    status: StateMachineStatus::Stopped,
+                };
+
+                return Ok(new_state_machine);
             }
-            Err(error) => Err(StateMachineError::ParsingError {
-                reason: error.to_string(),
-            }),
+            Err(error) => return Err(error),
         }
     }
 
     pub fn start(&mut self) {
         println!("{:?}", "Starting state machine");
+
+        self.status = StateMachineStatus::Running;
         self.execute_current_state()
     }
 
-    pub fn pause(&mut self) {}
-
-    pub fn end(&mut self) {}
-
-    pub fn set_initial_state(&mut self, state: Arc<RwLock<State>>) {
-        self.current_state = state;
+    pub fn pause(&mut self) {
+        self.status = StateMachineStatus::Paused;
     }
 
-    pub fn get_current_state(&self) -> Arc<RwLock<State>> {
+    pub fn end(&mut self) {
+        self.status = StateMachineStatus::Stopped;
+    }
+
+    pub fn set_initial_state(&mut self, state: Arc<RwLock<State>>) {
+        self.current_state = Some(state);
+    }
+
+    pub fn get_current_state(&self) -> Option<Arc<RwLock<State>>> {
         self.current_state.clone()
     }
 
@@ -278,12 +337,72 @@ impl StateMachine {
     }
 
     pub fn execute_current_state(&mut self) {
-        let mut state = self.current_state.write().unwrap();
+        if self.current_state.is_none() {
+            return;
+        }
 
-        state.execute(&self.player);
+        // Check if current_state is not None and execute the state
+        match self.current_state {
+            Some(ref state) => {
+                let mut unwrapped_state = state.write().unwrap();
+                let reset_key = unwrapped_state.get_reset_context_key();
+
+                if reset_key.len() > 0 {
+                    if reset_key == "*" {
+                        // Todo dont clear reset to their original values from file
+                        // self.numeric_context.clear();
+                        // self.string_context.clear();
+                        // self.bool_context.clear();
+                    } else {
+                        if self.numeric_context.contains_key(reset_key) {
+                            // self.numeric_context.remove(reset_key);
+                        }
+
+                        if self.string_context.contains_key(reset_key) {
+                            // self.string_context.remove(reset_key);
+                        }
+
+                        if self.bool_context.contains_key(reset_key) {
+                            // self.bool_context.remove(reset_key);
+                        }
+                    }
+                }
+
+                if self.player.is_some() {
+                    unwrapped_state.execute(&self.player.as_mut().unwrap());
+                }
+            }
+            None => {}
+        }
+    }
+
+    fn verify_if_guards_are_met(&mut self, guard: &Guard) -> bool {
+        match guard.compare_to {
+            StringNumberBool::String(_) => {
+                if guard.string_context_is_satisfied(&self.string_context) {
+                    return true;
+                }
+            }
+            StringNumberBool::F32(_) => {
+                if guard.numeric_context_is_satisfied(&self.numeric_context) {
+                    return true;
+                }
+            }
+            StringNumberBool::Bool(_) => {
+                if guard.string_context_is_satisfied(&self.string_context) {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     pub fn post_event(&mut self, event: &Event) {
+        if self.status == StateMachineStatus::Stopped || self.status == StateMachineStatus::Paused {
+            return;
+        }
+
         let mut string_event = false;
         let mut numeric_event = false;
         let mut bool_event = false;
@@ -309,7 +428,11 @@ impl StateMachine {
             }
         }
 
-        let curr_state = self.current_state.clone();
+        if self.current_state.is_none() {
+            return;
+        }
+
+        let curr_state = self.current_state.clone().unwrap();
         let state_value_result = curr_state.read();
 
         if state_value_result.is_ok() {
@@ -322,10 +445,12 @@ impl StateMachine {
                 match iter.next() {
                     Some(transition) => {
                         let unwrapped_transition = transition.read().unwrap();
+                        let target_state = unwrapped_transition.get_target_state();
                         let transition = &*unwrapped_transition;
                         let event_lock = transition.get_event();
                         let event_data = event_lock.read().unwrap();
                         let transition_event = &*event_data;
+                        let transition_guards = transition.get_guards();
 
                         // Match the transition's event type and compare it to the received event
                         match transition_event {
@@ -341,9 +466,16 @@ impl StateMachine {
 
                                 // Check the transitions value and compare to the received one to check if we should transition
                                 if bool_event && received_event_value == *bool_value {
-                                    let target_state = unwrapped_transition.get_target_state();
-
-                                    tmp_state = target_state as i32;
+                                    // If there are guards loop over them and check if theyre verified
+                                    if transition_guards.len() > 0 {
+                                        for guard in transition_guards {
+                                            if self.verify_if_guards_are_met(guard) {
+                                                tmp_state = target_state as i32;
+                                            }
+                                        }
+                                    } else {
+                                        tmp_state = target_state as i32;
+                                    }
                                 }
                             }
                             Event::String(string_value) => {
@@ -356,13 +488,17 @@ impl StateMachine {
                                     _ => {}
                                 }
 
-                                println!("Received event value: {}", received_event_value);
-                                println!("String event value: {}", string_value);
-
                                 if string_event && received_event_value == string_value {
-                                    let target_state = unwrapped_transition.get_target_state();
-
-                                    tmp_state = target_state as i32;
+                                    // If there are guards loop over them and check if theyre verified
+                                    if transition_guards.len() > 0 {
+                                        for guard in transition_guards {
+                                            if self.verify_if_guards_are_met(guard) {
+                                                tmp_state = target_state as i32;
+                                            }
+                                        }
+                                    } else {
+                                        tmp_state = target_state as i32;
+                                    }
                                 }
                             }
                             Event::Numeric(numeric_value) => {
@@ -376,9 +512,16 @@ impl StateMachine {
                                 }
 
                                 if numeric_event && received_event_value == *numeric_value {
-                                    let target_state = unwrapped_transition.get_target_state();
-
-                                    tmp_state = target_state as i32;
+                                    // If there are guards loop over them and check if theyre verified
+                                    if transition_guards.len() > 0 {
+                                        for guard in transition_guards {
+                                            if self.verify_if_guards_are_met(guard) {
+                                                tmp_state = target_state as i32;
+                                            }
+                                        }
+                                    } else {
+                                        tmp_state = target_state as i32;
+                                    }
                                 }
                             }
                             Event::OnPointerDown(_, _) => todo!(),
@@ -394,7 +537,7 @@ impl StateMachine {
 
             if tmp_state > -1 {
                 let next_state = self.states.get(tmp_state as usize).unwrap();
-                self.current_state = next_state.clone();
+                self.current_state = Some(next_state.clone());
 
                 self.execute_current_state();
             }

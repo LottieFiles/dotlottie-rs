@@ -8,8 +8,8 @@ use std::thread;
 use std::{env, path, time::Instant};
 use sysinfo::System;
 
-pub const WIDTH: usize = 1000;
-pub const HEIGHT: usize = 1000;
+pub const WIDTH: usize = 200;
+pub const HEIGHT: usize = 300;
 
 struct DummyObserver2;
 
@@ -194,6 +194,8 @@ fn main() {
 
     let locked_player = Arc::new(RwLock::new(lottie_player));
 
+    let mut pushed = 10.0;
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
         timer.tick(&mut *locked_player.write().unwrap());
 
@@ -212,7 +214,11 @@ fn main() {
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
             let string_event = Event::String("explosion".to_string());
 
+            pushed -= 1.0;
+
             let p = &mut *locked_player.write().unwrap();
+            p.tmp_set_state_machine_context("counter_0", pushed);
+
             p.post_event(&string_event);
         }
 

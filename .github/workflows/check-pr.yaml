@@ -26,6 +26,22 @@ jobs:
       - name: Build Artifacts
         env:
           APPLE_MACOSX_SDK: MacOSX13
-        run: make demo-player
-      - name: Run Tests
-        run: make test
+        run: make all
+
+      - name: Upload Android Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: android
+          path: ./release/android/*.tar.gz
+
+      - name: Upload Apple Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: apple
+          path: ./release/apple/*.tar.gz
+
+      - name: Upload WASM Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wasm
+          path: ./release/wasm/*.tar.gz

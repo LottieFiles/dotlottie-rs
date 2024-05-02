@@ -1,3 +1,23 @@
+## 0.1.17 (2024-05-02)
+
+### Features
+
+#### 🎸 active_animation_id() (#125)
+
+#### 🎸 create_default_config ffi (#129)
+
+#### Add `active_theme_id` function (#131)
+
+### Fixes
+
+#### 🐛 unexpected is_complete result for Bounce modes on load (#130)
+
+#### 🐛 invalid embed of image assets (#132)
+
+#### 🐛 failed to reach end frame on frame interpolation enabled (#134)
+
+#### 🐛 play() after set_frame() resets the animation (#135)
+
 ## 0.1.16 (2024-04-03)
 
 ### Features

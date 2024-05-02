@@ -52,11 +52,7 @@ brew install android-ndk \
   ktlint \
   swiftformat
 
-echo
-echo "Installing rust nightly ..."
-rustup install nightly-x86_64-apple-darwin
-
-rustup component add rust-src --toolchain nightly
+rustup component add rust-src
 
 echo
 echo "Installing rust target(s) ..."

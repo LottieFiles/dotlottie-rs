@@ -316,7 +316,7 @@ define SETUP_MESON
 		-Dlog=$(LOG) \
 		-Dstatic=$(STATIC) \
 		-Dsavers=$(SAVERS) \
-		-Dthreads=true \
+		-Dthreads=false \
 		$(CROSS_FILE) "$(THORVG_DEP_SOURCE_DIR)" "$(THORVG_DEP_BUILD_DIR)"
 endef
 

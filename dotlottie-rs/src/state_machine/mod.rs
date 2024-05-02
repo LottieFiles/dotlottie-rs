@@ -287,6 +287,30 @@ impl StateMachine {
                     }
                 }
 
+                // Since value can either be a string, int or bool, we need to check the type and set the context accordingly
+                for variable in parsed_state_machine.context_variables {
+                    match variable.r#type {
+                        ContextJsonType::Numeric => match variable.value {
+                            StringNumberBool::F32(value) => {
+                                new_state_machine.set_numeric_context(&variable.key, value);
+                            }
+                            _ => {}
+                        },
+                        ContextJsonType::String => match variable.value {
+                            StringNumberBool::String(value) => {
+                                new_state_machine.set_string_context(&variable.key, value.as_str());
+                            }
+                            _ => {}
+                        },
+                        ContextJsonType::Boolean => match variable.value {
+                            StringNumberBool::Bool(value) => {
+                                new_state_machine.set_bool_context(&variable.key, value);
+                            }
+                            _ => {}
+                        },
+                    }
+                }
+
                 let mut initial_state = None;
 
                 // All states and transitions have been created, we can set the state machine's initial state

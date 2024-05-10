@@ -75,7 +75,7 @@ APPLE_IOS_SIMULATOR_SDK ?= iPhoneSimulator
 
 APPLE_MACOSX := macosx
 APPLE_MACOSX_PLATFORM := MacOSX
-APPLE_MACOSX_SDK ?= MacOSX14
+APPLE_MACOSX_SDK ?= MacOSX12
 
 APPLE_IOS_FRAMEWORK_TYPE := $(APPLE_IOS)
 APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_IOS_SIMULATOR)
@@ -316,6 +316,7 @@ define SETUP_MESON
 		-Dlog=$(LOG) \
 		-Dstatic=$(STATIC) \
 		-Dsavers=$(SAVERS) \
+		-Dthreads=true \
 		$(CROSS_FILE) "$(THORVG_DEP_SOURCE_DIR)" "$(THORVG_DEP_BUILD_DIR)"
 endef
 
@@ -353,9 +354,7 @@ endef
 
 define CARGO_BUILD
 	source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
-		RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
-		-Z build-std=std,panic_abort \
-		-Z build-std-features=panic_immediate_abort \
+		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--release
@@ -363,7 +362,7 @@ endef
 
 define UNIFFI_BINDINGS_BUILD
 	rm -rf $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(BINDINGS_LANGUAGE)
-	cargo +nightly run \
+	cargo run \
 		--manifest-path $(RUNTIME_FFI)/Cargo.toml \
 		--features=uniffi/cli \
 		--bin uniffi-bindgen \

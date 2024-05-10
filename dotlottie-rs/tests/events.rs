@@ -73,6 +73,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
             loop_animation: true,
+            use_frame_interpolation: false,
             ..Config::default()
         });
 
@@ -102,6 +103,7 @@ mod tests {
         // animation loop
         loop {
             let next_frame = player.request_frame();
+            println!("Next frame: {}", next_frame);
             if player.set_frame(next_frame) {
                 expected_events.push(format!("on_frame: {}", player.current_frame()));
                 if player.render() {

@@ -95,7 +95,5 @@ impl Guard {
             StringNumberBool::String(_) => return false,
             StringNumberBool::Bool(_) => return false,
         };
-
-        false
     }
 }

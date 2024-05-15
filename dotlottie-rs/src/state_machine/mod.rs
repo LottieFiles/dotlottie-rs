@@ -176,7 +176,6 @@ impl StateMachine {
                         parser::StateType::SyncState => {}
                         parser::StateType::FinalState => {}
                         parser::StateType::GlobalState => {}
-                        _ => {}
                     }
                 }
 
@@ -255,7 +254,6 @@ impl StateMachine {
                                 None => {}
                             }
                         }
-                        _ => {}
                     }
                 }
 
@@ -280,7 +278,6 @@ impl StateMachine {
                             }
                             _ => {}
                         },
-                        _ => {}
                     }
                 }
 

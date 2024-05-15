@@ -1294,7 +1294,7 @@ impl DotLottiePlayer {
         let is_ok = self
             .player
             .write()
-            .is_ok_and(|mut runtime| runtime.load_animation_path(animation_path, width, height));
+            .is_ok_and(|runtime| runtime.load_animation_path(animation_path, width, height));
 
         is_ok
     }

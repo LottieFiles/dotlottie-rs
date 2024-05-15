@@ -236,7 +236,7 @@ impl StateTrait for State {
         }
     }
 
-    fn remove_transition(&mut self, index: u32) {
+    fn remove_transition(&mut self, _index: u32) {
         todo!()
     }
 

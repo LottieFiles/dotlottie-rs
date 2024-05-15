@@ -83,47 +83,47 @@
     ],
     "listeners": [
         {
-            "type": "pointer_down"
+            "type": "PointerDown"
         }
     ],
     "context_variables": [
         {
-            "type": "int",
+            "type": "Numeric",
             "key": "counter_0",
             "value": 1
         },
         {
-            "type": "string",
+            "type": "String",
             "key": "counter_1",
             "value": "COUNTER HAHAHAH"
         },
         {
-            "type": "bool",
+            "type": "Boolean",
             "key": "counter_2",
             "value": false
         },
         {
-            "type": "int",
+            "type": "Numeric",
             "key": "counter_2",
             "value": "2"
         },
         {
-            "type": "int",
+            "type": "Numeric",
             "key": "counter_3",
             "value": "3"
         },
         {
-            "type": "int",
+            "type": "Numeric",
             "key": "counter_4",
             "value": "4"
         },
         {
-            "type": "int",
+            "type": "Numeric",
             "key": "counter_5",
             "value": "5"
         },
         {
-            "type": "int",
+            "type": "Numeric",
             "key": "counter_6",
             "value": "6"
         }

@@ -14,7 +14,7 @@ use crate::state_machine::transitions::guard::Guard;
 use crate::state_machine::transitions::TransitionTrait;
 use crate::{Config, DotLottiePlayerContainer, Layout, Mode};
 
-use self::parser::state_machine_parse;
+use self::parser::{state_machine_parse, ContextJsonType};
 use self::{errors::StateMachineError, events::Event, states::State, transitions::Transition};
 
 pub trait StateMachineObserver {
@@ -182,8 +182,8 @@ impl StateMachine {
 
                 // Loop through result transitions and create objects for each
                 for transition in parsed_state_machine.transitions {
-                    match transition.r#type.as_str() {
-                        "Transition" => {
+                    match transition.r#type {
+                        parser::TransitionJsonType::Transition => {
                             let target_state_index = transition.to_state;
                             let mut guards_for_transition: Vec<Guard> = Vec::new();
 
@@ -261,20 +261,20 @@ impl StateMachine {
 
                 // Since value can either be a string, int or bool, we need to check the type and set the context accordingly
                 for variable in parsed_state_machine.context_variables {
-                    match variable.r#type.as_str() {
-                        "int" => match variable.value {
+                    match variable.r#type {
+                        ContextJsonType::Numeric => match variable.value {
                             StringNumberBool::F32(value) => {
                                 new_state_machine.set_numeric_context(&variable.key, value);
                             }
                             _ => {}
                         },
-                        "string" => match variable.value {
+                        ContextJsonType::String => match variable.value {
                             StringNumberBool::String(value) => {
                                 new_state_machine.set_string_context(&variable.key, value.as_str());
                             }
                             _ => {}
                         },
-                        "bool" => match variable.value {
+                        ContextJsonType::Boolean => match variable.value {
                             StringNumberBool::Bool(value) => {
                                 new_state_machine.set_bool_context(&variable.key, value);
                             }
@@ -310,8 +310,6 @@ impl StateMachine {
     }
 
     pub fn start(&mut self) {
-        println!("{:?}", "Starting state machine");
-
         self.status = StateMachineStatus::Running;
         self.execute_current_state()
     }

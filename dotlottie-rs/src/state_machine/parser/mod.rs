@@ -26,6 +26,27 @@ pub enum TransitionGuardType {
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
+pub enum ContextJsonType {
+    Numeric,
+    String,
+    Boolean,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub enum TransitionJsonType {
+    Transition,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub enum ListenerJsonType {
+    PointerUp,
+    PointerDown,
+    PointerEnter,
+    PointerExit,
+    PointerMove,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
 pub enum TransitionGuardConditionType {
     GreaterThan,
     GreaterThanOrEqual,
@@ -130,7 +151,7 @@ pub struct OnPointerMoveEventJson {
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct TransitionJson {
-    pub r#type: String,
+    pub r#type: TransitionJsonType,
     pub from_state: u32,
     pub to_state: u32,
     pub guards: Option<Vec<TransitionGuardJson>>,
@@ -147,7 +168,7 @@ pub struct TransitionJson {
 
 #[derive(Deserialize, Debug)]
 pub struct ListenerJson {
-    pub r#type: String,
+    pub r#type: ListenerJsonType,
     pub target: Option<String>,
     pub action: Option<String>,
     pub value: Option<StringNumberBool>,
@@ -156,7 +177,7 @@ pub struct ListenerJson {
 
 #[derive(Deserialize, Debug)]
 pub struct ContextJson {
-    pub r#type: String,
+    pub r#type: ContextJsonType,
     pub key: String,
     pub value: StringNumberBool,
 }
@@ -164,7 +185,7 @@ pub struct ContextJson {
 impl ContextJson {
     pub fn new() -> ContextJson {
         Self {
-            r#type: String::new(),
+            r#type: ContextJsonType::String,
             key: String::new(),
             value: StringNumberBool::String(String::new()),
         }
@@ -188,7 +209,6 @@ pub fn state_machine_parse(json: &str) -> Result<StateMachineJson, StateMachineE
             return Ok(state_machine_json);
         }
         Err(err) => {
-            // println!("{}", err.to_string());
             return Err(StateMachineError::ParsingError {
                 reason: format!(
                     "Error parsing state machine definition file: {:?}",

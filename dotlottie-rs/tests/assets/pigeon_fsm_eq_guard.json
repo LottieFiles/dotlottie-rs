@@ -93,12 +93,12 @@
     ],
     "listeners": [
         {
-            "type": "pointer_down"
+            "type": "PointerDown"
         }
     ],
     "context_variables": [
         {
-            "type": "Int",
+            "type": "Numeric",
             "key": "counter_0",
             "value": 1
         },

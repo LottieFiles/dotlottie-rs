@@ -1230,7 +1230,7 @@ impl DotLottiePlayer {
         true
     }
 
-    // todo: Once lister actions are implemented, remove this fnc
+    // todo: Once lister actions are implemented, remove this fn
     pub fn tmp_set_state_machine_context(&self, key: &str, value: f32) -> bool {
         if self.state_machine.read().unwrap().is_none() {
             return false;

@@ -85,7 +85,7 @@
     ],
     "listeners": [
         {
-            "type": "pointer_down"
+            "type": "PointerDown"
         }
     ],
     "context_variables": [

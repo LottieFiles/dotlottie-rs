@@ -1246,6 +1246,36 @@ impl DotLottiePlayer {
         true
     }
 
+    pub fn tmp_set_state_machine_string_context(&self, key: &str, value: &str) -> bool {
+        if self.state_machine.read().unwrap().is_none() {
+            return false;
+        }
+
+        self.state_machine
+            .write()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .set_string_context(key, value);
+
+        true
+    }
+
+    pub fn tmp_set_state_machine_bool_context(&self, key: &str, value: bool) -> bool {
+        if self.state_machine.read().unwrap().is_none() {
+            return false;
+        }
+
+        self.state_machine
+            .write()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .set_bool_context(key, value);
+
+        true
+    }
+
     pub fn post_event(&self, event: &Event) -> bool {
         if self.state_machine.read().unwrap().is_none() {
             return false;

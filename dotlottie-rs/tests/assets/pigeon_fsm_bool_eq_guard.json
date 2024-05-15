@@ -51,10 +51,10 @@
             },
             "guards": [
                 {
-                    "type": "Numeric",
+                    "type": "Boolean",
                     "context_key": "counter_0",
-                    "condition_type": "LessThan",
-                    "compare_to": 5.0
+                    "condition_type": "Equal",
+                    "compare_to": true
                 }
             ]
         },
@@ -64,14 +64,22 @@
             "to_state": 2,
             "string_event": {
                 "value": "complete"
-            }
+            },
+            "guards": [
+                {
+                    "type": "Boolean",
+                    "context_key": "counter_0",
+                    "condition_type": "NotEqual",
+                    "compare_to": false
+                }
+            ]
         },
         {
             "type": "Transition",
             "from_state": 2,
             "to_state": 0,
             "string_event": {
-                "value": "complete"
+                "value": "done"
             }
         }
     ],
@@ -82,18 +90,8 @@
     ],
     "context_variables": [
         {
-            "type": "int",
+            "type": "Boolean",
             "key": "counter_0",
-            "value": 1
-        },
-        {
-            "type": "string",
-            "key": "STRING_GUARD",
-            "value": "SUPER_SECRET_VALUE"
-        },
-        {
-            "type": "bool",
-            "key": "counter_2",
             "value": false
         }
     ]

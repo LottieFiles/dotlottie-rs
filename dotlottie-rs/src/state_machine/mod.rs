@@ -389,7 +389,7 @@ impl StateMachine {
                 }
             }
             StringNumberBool::Bool(_) => {
-                if guard.string_context_is_satisfied(&self.string_context) {
+                if guard.bool_context_is_satisfied(&self.bool_context) {
                     return true;
                 }
             }

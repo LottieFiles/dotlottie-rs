@@ -53,7 +53,7 @@
                 {
                     "type": "Numeric",
                     "context_key": "counter_0",
-                    "condition_type": "GreaterThanOrEqual",
+                    "condition_type": "GreaterThan",
                     "compare_to": 5.0
                 }
             ]
@@ -64,15 +64,31 @@
             "to_state": 2,
             "string_event": {
                 "value": "complete"
-            }
+            },
+            "guards": [
+                {
+                    "type": "Numeric",
+                    "context_key": "counter_0",
+                    "condition_type": "GreaterThanOrEqual",
+                    "compare_to": 60.0
+                }
+            ]
         },
         {
             "type": "Transition",
             "from_state": 2,
             "to_state": 0,
             "string_event": {
-                "value": "complete"
-            }
+                "value": "done"
+            },
+            "guards": [
+                {
+                    "type": "Numeric",
+                    "context_key": "counter_0",
+                    "condition_type": "GreaterThanOrEqual",
+                    "compare_to": 65.0
+                }
+            ]
         }
     ],
     "listeners": [

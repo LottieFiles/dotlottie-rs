@@ -25,11 +25,17 @@ impl Guard {
     pub fn string_context_is_satisfied(&self, context: &HashMap<String, String>) -> bool {
         let context_value = context.get(&self.context_key);
 
+        if context_value.is_none() {
+            return false;
+        }
+
         match &self.compare_to {
             StringNumberBool::String(compare_to) => match self.condition_type {
-                TransitionGuardConditionType::Equal => context_value == Some(&compare_to),
-                TransitionGuardConditionType::NotEqual => context_value != Some(&compare_to),
-                _ => false,
+                TransitionGuardConditionType::Equal => return context_value == Some(&compare_to),
+                TransitionGuardConditionType::NotEqual => {
+                    return context_value != Some(&compare_to)
+                }
+                _ => return false,
             },
             StringNumberBool::F32(_) => false,
             StringNumberBool::Bool(_) => false,
@@ -41,11 +47,19 @@ impl Guard {
     pub fn bool_context_is_satisfied(&self, context: &HashMap<String, bool>) -> bool {
         let context_value = context.get(&self.context_key);
 
+        if context_value.is_none() {
+            return false;
+        }
+
         match &self.compare_to {
             StringNumberBool::Bool(compare_to) => match self.condition_type {
-                TransitionGuardConditionType::Equal => context_value == Some(&compare_to),
-                TransitionGuardConditionType::NotEqual => context_value != Some(&compare_to),
-                _ => false,
+                TransitionGuardConditionType::Equal => {
+                    return context_value == Some(&compare_to);
+                }
+                TransitionGuardConditionType::NotEqual => {
+                    return context_value != Some(&compare_to)
+                }
+                _ => return false,
             },
             StringNumberBool::String(_) => false,
             StringNumberBool::F32(_) => false,
@@ -57,8 +71,8 @@ impl Guard {
     pub fn numeric_context_is_satisfied(&self, context: &HashMap<String, f32>) -> bool {
         let context_value = context.get(&self.context_key);
 
-        if let StringNumberBool::F32(f) = &self.compare_to {
-            println!("Extracted f32 value: {}", f);
+        if context_value.is_none() {
+            return false;
         }
 
         match &self.compare_to {
@@ -78,8 +92,8 @@ impl Guard {
                     return context_value <= Some(&compare_to)
                 }
             },
-            StringNumberBool::String(_) => false,
-            StringNumberBool::Bool(_) => false,
+            StringNumberBool::String(_) => return false,
+            StringNumberBool::Bool(_) => return false,
         };
 
         false

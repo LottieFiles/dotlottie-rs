@@ -51,10 +51,10 @@
             },
             "guards": [
                 {
-                    "type": "Numeric",
+                    "type": "String",
                     "context_key": "counter_0",
-                    "condition_type": "GreaterThan",
-                    "compare_to": 5.0
+                    "condition_type": "Equal",
+                    "compare_to": "BE_EQUAL"
                 }
             ]
         },
@@ -64,7 +64,15 @@
             "to_state": 2,
             "string_event": {
                 "value": "complete"
-            }
+            },
+            "guards": [
+                {
+                    "type": "String",
+                    "context_key": "counter_0",
+                    "condition_type": "NotEqual",
+                    "compare_to": "NOT_EQUAL"
+                }
+            ]
         },
         {
             "type": "Transition",
@@ -82,9 +90,9 @@
     ],
     "context_variables": [
         {
-            "type": "int",
+            "type": "String",
             "key": "counter_0",
-            "value": 1
+            "value": "init"
         },
         {
             "type": "string",

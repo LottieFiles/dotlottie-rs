@@ -64,15 +64,31 @@
             "to_state": 2,
             "string_event": {
                 "value": "complete"
-            }
+            },
+            "guards": [
+                {
+                    "type": "String",
+                    "context_key": "counter_1",
+                    "condition_type": "Equal",
+                    "compare_to": "to_be_the_same"
+                }
+            ]
         },
         {
             "type": "Transition",
             "from_state": 2,
             "to_state": 0,
             "string_event": {
-                "value": "complete"
-            }
+                "value": "done"
+            },
+            "guards": [
+                {
+                    "type": "Boolean",
+                    "context_key": "counter_2",
+                    "condition_type": "Equal",
+                    "compare_to": true
+                }
+            ]
         }
     ],
     "listeners": [
@@ -82,17 +98,17 @@
     ],
     "context_variables": [
         {
-            "type": "int",
+            "type": "Int",
             "key": "counter_0",
             "value": 1
         },
         {
-            "type": "string",
-            "key": "STRING_GUARD",
-            "value": "SUPER_SECRET_VALUE"
+            "type": "String",
+            "key": "counter_1",
+            "value": "init"
         },
         {
-            "type": "bool",
+            "type": "Boolean",
             "key": "counter_2",
             "value": false
         }

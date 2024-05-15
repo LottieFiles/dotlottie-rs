@@ -2,11 +2,7 @@ mod test_utils;
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        fs::File,
-        io::Read,
-        sync::{Arc, RwLock},
-    };
+    use std::{fs::File, io::Read};
 
     use dotlottie_player_core::states::StateTrait;
     use dotlottie_player_core::{
@@ -18,15 +14,15 @@ mod tests {
 
     #[test]
     pub fn guards_loaded_correctly() {
-        use dotlottie_player_core::transitions::{Transition::Transition, TransitionTrait};
+        use dotlottie_player_core::transitions::TransitionTrait;
 
-        use dotlottie_player_core::{events::Event, states::State, Config, DotLottiePlayer};
+        use dotlottie_player_core::{states::State, Config, DotLottiePlayer};
 
         let player = DotLottiePlayer::new(Config::default());
         let file_path = format!(
             "{}{}",
             env!("CARGO_MANIFEST_DIR"),
-            "/tests/assets/pigeon_fsm_gt_guard.json"
+            "/tests/assets/pigeon_fsm_gt_gte_guard.json"
         );
 
         let mut sm_definition = File::open(file_path).unwrap();
@@ -48,17 +44,23 @@ mod tests {
         let tmp_unwrap = sm.read().unwrap();
         let unwrapped_sm = tmp_unwrap.as_ref().unwrap();
 
-        let guard_clone = Guard {
+        let guard_0 = Guard {
             context_key: "counter_0".to_string(),
             condition_type: TransitionGuardConditionType::GreaterThan,
             compare_to: dotlottie_player_core::parser::StringNumberBool::F32(5.0),
         };
-
-        let pigeon_transition_0_clone = Transition {
-            target_state: 1,
-            event: Arc::new(RwLock::new(Event::String("explosion".to_string()))),
-            guards: vec![guard_clone],
+        let guard_1 = Guard {
+            context_key: "counter_0".to_string(),
+            condition_type: TransitionGuardConditionType::GreaterThanOrEqual,
+            compare_to: dotlottie_player_core::parser::StringNumberBool::F32(60.0),
         };
+        let guard_2 = Guard {
+            context_key: "counter_0".to_string(),
+            condition_type: TransitionGuardConditionType::GreaterThanOrEqual,
+            compare_to: dotlottie_player_core::parser::StringNumberBool::F32(65.0),
+        };
+
+        let guards = vec![guard_0, guard_1, guard_2];
 
         let mut i = 0;
 
@@ -74,24 +76,22 @@ mod tests {
                     height: _,
                     transitions,
                 } => {
-                    if i == 0 {
-                        let first_transition = &*transitions[0].read().unwrap();
+                    let first_transition = &*transitions[0].read().unwrap();
 
-                        assert_eq!(
-                            first_transition.get_guards()[0].compare_to,
-                            pigeon_transition_0_clone.get_guards()[0].compare_to
-                        );
+                    assert_eq!(
+                        first_transition.get_guards()[0].compare_to,
+                        guards[i].compare_to
+                    );
 
-                        assert_eq!(
-                            first_transition.get_guards()[0].condition_type,
-                            pigeon_transition_0_clone.get_guards()[0].condition_type
-                        );
+                    assert_eq!(
+                        first_transition.get_guards()[0].condition_type,
+                        guards[i].condition_type
+                    );
 
-                        assert_eq!(
-                            first_transition.get_guards()[0].context_key,
-                            pigeon_transition_0_clone.get_guards()[0].context_key
-                        );
-                    }
+                    assert_eq!(
+                        first_transition.get_guards()[0].context_key,
+                        guards[i].context_key
+                    );
                 }
                 _ => {}
             }
@@ -99,6 +99,7 @@ mod tests {
         }
     }
 
+    // Helper function to get the current transition event as a string
     pub fn get_current_transition_event(player: &DotLottiePlayer) -> String {
         let players_first_state = player
             .get_state_machine()
@@ -120,7 +121,7 @@ mod tests {
     }
 
     #[test]
-    pub fn diff_test() {
+    pub fn not_equal_test() {
         use dotlottie_player_core::transitions::TransitionTrait;
 
         use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
@@ -148,8 +149,6 @@ mod tests {
             "State machine is not loaded"
         );
 
-        // Test if the state machine transitions after sending 5 events to it
-
         let players_first_state = sm
             .read()
             .unwrap()
@@ -172,19 +171,48 @@ mod tests {
             "explosion".to_string()
         );
 
-        drop(sm);
-
+        // Test != with a numeric value
         player.tmp_set_state_machine_context("counter_0", 5.0);
         player.post_event(&Event::String("explosion".to_string()));
 
-        // Should stay in first state
+        // Should stay in stage 0 since 5 = 5
         assert_eq!(get_current_transition_event(&player), "explosion");
 
         player.tmp_set_state_machine_context("counter_0", 18.0);
         player.post_event(&Event::String("explosion".to_string()));
 
-        // Should stay in first state
+        // Should go to stage 2
         assert_eq!(get_current_transition_event(&player), "complete");
+
+        // Test != with a string value
+        player.tmp_set_state_machine_string_context(
+            "counter_1",
+            "to_be_the_same".to_string().as_str(),
+        );
+        player.post_event(&Event::String("complete".to_string()));
+
+        // Should stay in stage 2 since diff_value = diff_value
+        assert_eq!(get_current_transition_event(&player), "complete");
+
+        player
+            .tmp_set_state_machine_string_context("counter_1", "not_the_same".to_string().as_str());
+        player.post_event(&Event::String("complete".to_string()));
+
+        // Should go to stage 3
+        assert_eq!(get_current_transition_event(&player), "done");
+
+        // Test != with a bool value
+        player.tmp_set_state_machine_bool_context("counter_2", true);
+        player.post_event(&Event::String("done".to_string()));
+
+        // Should stay in stage 3 since diff_value = diff_value
+        assert_eq!(get_current_transition_event(&player), "done");
+
+        player.tmp_set_state_machine_bool_context("counter_2", false);
+        player.post_event(&Event::String("done".to_string()));
+
+        // Should go to stage 0
+        assert_eq!(get_current_transition_event(&player), "explosion");
     }
 
     #[test]
@@ -216,8 +244,6 @@ mod tests {
             "State machine is not loaded"
         );
 
-        // Test if the state machine transitions after sending 5 events to it
-
         let players_first_state = sm
             .read()
             .unwrap()
@@ -240,16 +266,48 @@ mod tests {
             "explosion".to_string()
         );
 
-        drop(sm);
+        // Test with a numeric value
+        player.tmp_set_state_machine_context("counter_0", 4.0);
+        player.post_event(&Event::String("explosion".to_string()));
+
+        // Should stay on stage 0 since 4 != 5
+        assert_eq!(get_current_transition_event(&player), "explosion");
 
         player.tmp_set_state_machine_context("counter_0", 5.0);
         player.post_event(&Event::String("explosion".to_string()));
 
+        // Should go to stage 1
         assert_eq!(get_current_transition_event(&player), "complete");
+
+        // Test with a string value
+        player.tmp_set_state_machine_string_context("counter_1", "diff");
+        player.post_event(&Event::String("complete".to_string()));
+
+        // Should stay on stage 1 since to_be_the_same != diff
+        assert_eq!(get_current_transition_event(&player), "complete");
+
+        player.tmp_set_state_machine_string_context("counter_1", "to_be_the_same");
+        player.post_event(&Event::String("complete".to_string()));
+
+        // Should go to stage 2
+        assert_eq!(get_current_transition_event(&player), "done");
+
+        // Test with a bool value
+        player.tmp_set_state_machine_bool_context("counter_2", false);
+        player.post_event(&Event::String("done".to_string()));
+
+        // Should stay on stage 3 since false != true
+        assert_eq!(get_current_transition_event(&player), "done");
+
+        player.tmp_set_state_machine_bool_context("counter_2", true);
+        player.post_event(&Event::String("done".to_string()));
+
+        // Should go to stage 0
+        assert_eq!(get_current_transition_event(&player), "explosion");
     }
 
     #[test]
-    pub fn greater_than_test() {
+    pub fn greater_than_greater_than_or_equal_test() {
         use dotlottie_player_core::transitions::TransitionTrait;
 
         use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
@@ -258,7 +316,7 @@ mod tests {
         let file_path = format!(
             "{}{}",
             env!("CARGO_MANIFEST_DIR"),
-            "/tests/assets/pigeon_fsm_gt_guard.json"
+            "/tests/assets/pigeon_fsm_gt_gte_guard.json"
         );
 
         let mut sm_definition = File::open(file_path).unwrap();
@@ -277,8 +335,6 @@ mod tests {
             "State machine is not loaded"
         );
 
-        // Test if the state machine transitions after sending 5 events to it
-
         let players_first_state = sm
             .read()
             .unwrap()
@@ -306,19 +362,52 @@ mod tests {
         player.tmp_set_state_machine_context("counter_0", 5.0);
         player.post_event(&Event::String("explosion".to_string()));
 
+        // Not greater than 5.0, should stay on first stage
         assert_eq!(get_current_transition_event(&player), "explosion");
 
+        // Greater than, should go to stage 2
         player.tmp_set_state_machine_context("counter_0", 6.0);
 
         let string_event = Event::String("explosion".to_string());
 
         player.post_event(&string_event);
 
+        // Assert stage 2
         assert_eq!(get_current_transition_event(&player), "complete");
+
+        // Greater than or equal, since its equal should go to stage 3
+        player.tmp_set_state_machine_context("counter_0", 60.0);
+
+        let string_event = Event::String("complete".to_string());
+
+        player.post_event(&string_event);
+
+        // Assert stage 3
+        assert_eq!(get_current_transition_event(&player), "done");
+
+        // Greater than or equal, since its not >= should stay on same stage
+        player.tmp_set_state_machine_context("counter_0", 64.0);
+
+        let string_event = Event::String("done".to_string());
+
+        player.post_event(&string_event);
+
+        // Assert stage 3
+        assert_eq!(get_current_transition_event(&player), "done");
+
+        // Greater than or equal, greater than should go to stage 0
+        player.tmp_set_state_machine_context("counter_0", 66.0);
+
+        let string_event = Event::String("done".to_string());
+
+        player.post_event(&string_event);
+
+        // Assert stage 0
+        assert_eq!(get_current_transition_event(&player), "explosion");
     }
 
     #[test]
-    pub fn greater_than_or_equal_test() {
+    pub fn less_than_less_than_equal_test() {
         use dotlottie_player_core::transitions::TransitionTrait;
 
         use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
@@ -327,7 +416,7 @@ mod tests {
         let file_path = format!(
             "{}{}",
             env!("CARGO_MANIFEST_DIR"),
-            "/tests/assets/pigeon_fsm_gte_guard.json"
+            "/tests/assets/pigeon_fsm_lt_lte_guard.json"
         );
 
         let mut sm_definition = File::open(file_path).unwrap();
@@ -346,8 +435,6 @@ mod tests {
             "State machine is not loaded"
         );
 
-        // Test if the state machine transitions after sending 5 events to it
-
         let players_first_state = sm
             .read()
             .unwrap()
@@ -370,226 +457,42 @@ mod tests {
             "explosion".to_string()
         );
 
-        drop(sm);
-
+        // Test less than
         player.tmp_set_state_machine_context("counter_0", 5.0);
         player.post_event(&Event::String("explosion".to_string()));
 
-        assert_eq!(get_current_transition_event(&player), "complete");
-
-        player.end_state_machine();
-
-        // Test greater than too -------------------- //
-        player.load_state_machine(&buffer_to_string);
-
-        player.start_state_machine();
-
-        let sm = player.get_state_machine();
-
-        assert!(
-            sm.read().unwrap().as_ref().is_some(),
-            "State machine is not loaded"
-        );
-
-        // Test if the state machine transitions after sending 5 events to it
-
-        let players_first_state = sm
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .get_current_state()
-            .unwrap();
-
-        let players_first_transition =
-            &*players_first_state.read().unwrap().get_transitions()[0].clone();
-
-        let first_player_transition_unwrapped = players_first_transition.read().unwrap();
-
-        assert_eq!(
-            &*first_player_transition_unwrapped
-                .get_event()
-                .read()
-                .unwrap()
-                .as_str(),
-            "explosion".to_string()
-        );
-
-        drop(sm);
-
-        player.tmp_set_state_machine_context("counter_0", 19.0);
-        player.post_event(&Event::String("explosion".to_string()));
-
-        assert_eq!(get_current_transition_event(&player), "complete");
-    }
-
-    #[test]
-    pub fn less_than_test() {
-        use dotlottie_player_core::transitions::TransitionTrait;
-
-        use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
-
-        let player = DotLottiePlayer::new(Config::default());
-        let file_path = format!(
-            "{}{}",
-            env!("CARGO_MANIFEST_DIR"),
-            "/tests/assets/pigeon_fsm_lt_guard.json"
-        );
-
-        let mut sm_definition = File::open(file_path).unwrap();
-        let mut buffer_to_string = String::new();
-
-        sm_definition.read_to_string(&mut buffer_to_string).unwrap();
-
-        player.load_state_machine(&buffer_to_string);
-
-        player.start_state_machine();
-
-        let sm = player.get_state_machine();
-
-        assert!(
-            sm.read().unwrap().as_ref().is_some(),
-            "State machine is not loaded"
-        );
-
-        // Test if the state machine transitions after sending 5 events to it
-
-        let players_first_state = sm
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .get_current_state()
-            .unwrap();
-
-        let players_first_transition =
-            &*players_first_state.read().unwrap().get_transitions()[0].clone();
-
-        let first_player_transition_unwrapped = players_first_transition.read().unwrap();
-
-        assert_eq!(
-            &*first_player_transition_unwrapped
-                .get_event()
-                .read()
-                .unwrap()
-                .as_str(),
-            "explosion".to_string()
-        );
-
-        player.tmp_set_state_machine_context("counter_0", 5.0);
-        player.post_event(&Event::String("explosion".to_string()));
-
+        // Should stay in first stage since 5 == 5
         assert_eq!(get_current_transition_event(&player), "explosion");
 
+        // Test less than
         player.tmp_set_state_machine_context("counter_0", 1.0);
 
         let string_event = Event::String("explosion".to_string());
 
         player.post_event(&string_event);
 
-        assert_eq!(get_current_transition_event(&player), "complete");
-    }
-
-    #[test]
-    pub fn less_than_or_equal_test() {
-        use dotlottie_player_core::transitions::TransitionTrait;
-
-        use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
-
-        let player = DotLottiePlayer::new(Config::default());
-        let file_path = format!(
-            "{}{}",
-            env!("CARGO_MANIFEST_DIR"),
-            "/tests/assets/pigeon_fsm_lte_guard.json"
-        );
-
-        let mut sm_definition = File::open(file_path).unwrap();
-        let mut buffer_to_string = String::new();
-
-        sm_definition.read_to_string(&mut buffer_to_string).unwrap();
-
-        player.load_state_machine(&buffer_to_string);
-
-        player.start_state_machine();
-
-        let sm = player.get_state_machine();
-
-        assert!(
-            sm.read().unwrap().as_ref().is_some(),
-            "State machine is not loaded"
-        );
-
-        let players_first_state = sm
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .get_current_state()
-            .unwrap();
-
-        let players_first_transition =
-            &*players_first_state.read().unwrap().get_transitions()[0].clone();
-
-        let first_player_transition_unwrapped = players_first_transition.read().unwrap();
-
-        assert_eq!(
-            &*first_player_transition_unwrapped
-                .get_event()
-                .read()
-                .unwrap()
-                .as_str(),
-            "explosion".to_string()
-        );
-
-        drop(sm);
-
-        // test equal
-        player.tmp_set_state_machine_context("counter_0", 5.0);
-        player.post_event(&Event::String("explosion".to_string()));
-
+        // Should go to stage 2
         assert_eq!(get_current_transition_event(&player), "complete");
 
-        player.end_state_machine();
+        // Start testing less than equal
+        player.tmp_set_state_machine_context("counter_0", 11.0);
+        player.post_event(&Event::String("complete".to_string()));
 
-        player.load_state_machine(&buffer_to_string);
-
-        player.start_state_machine();
-
-        let sm = player.get_state_machine();
-
-        assert!(
-            sm.read().unwrap().as_ref().is_some(),
-            "State machine is not loaded"
-        );
-
-        let players_first_state = sm
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .get_current_state()
-            .unwrap();
-
-        let players_first_transition =
-            &*players_first_state.read().unwrap().get_transitions()[0].clone();
-
-        let first_player_transition_unwrapped = players_first_transition.read().unwrap();
-
-        assert_eq!(
-            &*first_player_transition_unwrapped
-                .get_event()
-                .read()
-                .unwrap()
-                .as_str(),
-            "explosion".to_string()
-        );
-
-        drop(sm);
-
-        // test less than
-        player.tmp_set_state_machine_context("counter_0", 1.0);
-        player.post_event(&Event::String("explosion".to_string()));
-
+        // Should stay in second stage since 11 > 10
         assert_eq!(get_current_transition_event(&player), "complete");
+
+        // Test equal
+        player.tmp_set_state_machine_context("counter_0", 10.0);
+        player.post_event(&Event::String("complete".to_string()));
+
+        // Should go to third stage
+        assert_eq!(get_current_transition_event(&player), "done");
+
+        // Test less than
+        player.tmp_set_state_machine_context("counter_0", 14.0);
+        player.post_event(&Event::String("done".to_string()));
+
+        // Should go back to first stage
+        assert_eq!(get_current_transition_event(&player), "explosion");
     }
 }

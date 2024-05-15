@@ -7,6 +7,7 @@ use std::{
 
 use crate::errors::StateMachineError::ParsingError;
 use crate::state_machine::events::Event;
+use crate::StateMachineObserver;
 use crate::{
     extract_markers,
     layout::Layout,
@@ -1424,6 +1425,31 @@ impl DotLottiePlayer {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn subscribe(&self, observer: Arc<dyn Observer>) {
         self.player.write().unwrap().subscribe(observer);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
+        let mut sm = self.state_machine.write().unwrap();
+
+        if sm.is_none() {
+            return false;
+        }
+        sm.as_mut().unwrap().subscribe(observer);
+
+        true
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn state_machine_unsubscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
+        let mut sm = self.state_machine.write().unwrap();
+
+        if sm.is_none() {
+            return false;
+        }
+
+        sm.as_mut().unwrap().unsubscribe(&observer);
+
+        true
     }
 
     pub fn manifest_string(&self) -> String {

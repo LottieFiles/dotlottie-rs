@@ -205,14 +205,18 @@ fn main() {
         }
 
         if window.is_key_pressed(Key::O, KeyRepeat::No) {
-            let string_event = Event::String("complete".to_string());
+            let string_event = Event::String {
+                value: "complete".to_string(),
+            };
 
             let p = &mut *locked_player.write().unwrap();
             p.post_event(&string_event);
         }
 
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
-            let string_event = Event::String("explosion".to_string());
+            let string_event = Event::String {
+                value: "explosion".to_string(),
+            };
 
             pushed -= 1.0;
 

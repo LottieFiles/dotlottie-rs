@@ -87,6 +87,18 @@ dictionary Marker {
     f32 duration;
 };
 
+[Enum]
+interface Event {
+    Bool(boolean value);
+    String(string value);
+    Numeric(f32 value);
+    OnPointerDown(f32 x, f32 y);
+    OnPointerUp(f32 x, f32 y);
+    OnPointerMove(f32 x, f32 y);
+    OnPointerEnter(f32 x, f32 y);
+    OnPointerExit();
+};
+
 interface DotLottiePlayer {
     constructor(Config config);
     boolean load_animation_data([ByRef] string animation_data, u32 width, u32 height);
@@ -124,4 +136,9 @@ interface DotLottiePlayer {
     sequence<Marker> markers();
     string active_animation_id();
     string active_theme_id();
+
+    boolean load_state_machine([ByRef] string str);
+    boolean start_state_machine();
+    boolean end_state_machine();
+    boolean post_event([ByRef] Event event);
 };

@@ -9,5 +9,6 @@ pub use dotlottie_player::*;
 pub use layout::*;
 pub use lottie_renderer::*;
 pub use markers::*;
+pub use state_machine::events::*;
 pub use state_machine::*;
 pub use thorvg::*;

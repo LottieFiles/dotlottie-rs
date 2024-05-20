@@ -64,7 +64,7 @@ dictionary ManifestAnimation {
     boolean? loop;
     u32? loop_count;
     string? playMode;
-    u32? speed;
+    f32? speed;
     string? themeColor;
 };
 

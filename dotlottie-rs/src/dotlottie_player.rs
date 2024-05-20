@@ -712,7 +712,7 @@ impl DotLottieRuntime {
 
         match playback_settings_result {
             Ok(playback_settings) => {
-                let speed = playback_settings.speed.unwrap_or(1);
+                let speed = playback_settings.speed.unwrap_or(1.0);
                 let loop_animation = playback_settings.r#loop.unwrap_or(false);
                 let direction = playback_settings.direction.unwrap_or(1);
                 let autoplay = playback_settings.autoplay.unwrap_or(false);
@@ -726,7 +726,7 @@ impl DotLottieRuntime {
                     _ => Mode::Forward,
                 };
 
-                self.config.speed = speed as f32;
+                self.config.speed = speed;
                 self.config.autoplay = autoplay;
                 self.config.mode = if play_mode == "normal" {
                     if direction == 1 {

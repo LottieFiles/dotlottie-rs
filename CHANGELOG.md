@@ -1,3 +1,15 @@
+## 0.1.19 (2024-05-21)
+
+### Features
+
+#### chore: 🤖 Upgrade ThorVG to v0.13.4 (#148)
+
+Release details: [ThorVG v0.13.4](https://github.com/thorvg/thorvg/releases/tag/v0.13.4)
+
+### Fixes
+
+#### perf: 🚀 Optimize frame interpolation by rounding to 3 decimal places (#148)
+
 ## 0.1.18 (2024-05-20)
 
 ### Features

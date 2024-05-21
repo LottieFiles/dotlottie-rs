@@ -83,8 +83,6 @@ impl Default for Config {
     }
 }
 
-const FRAME_DIFF_THRESHOLD: f32 = 0.001;
-
 struct DotLottieRuntime {
     renderer: LottieRenderer,
     playback_state: PlaybackState,
@@ -281,29 +279,17 @@ impl DotLottieRuntime {
             Direction::Reverse => end_frame - raw_next_frame,
         };
 
-        if !self.config.use_frame_interpolation {
-            next_frame = next_frame.round();
-        }
-
-        /*
-           Note:
-           If we're close to the end frame, we should snap to it as tvg_set_frame ignore the frame which is 0.001 less than the current frame.
-        */
-        match self.direction {
-            Direction::Forward => {
-                if (next_frame - end_frame).abs() < FRAME_DIFF_THRESHOLD {
-                    next_frame = end_frame;
-                }
-            }
-            Direction::Reverse => {
-                if (next_frame - start_frame).abs() < FRAME_DIFF_THRESHOLD {
-                    next_frame = start_frame
-                }
-            }
+        // Apply frame interpolation
+        next_frame = if self.config.use_frame_interpolation {
+            (next_frame * 1000.0).round() / 1000.0
+        } else {
+            next_frame.round()
         };
 
+        // Clamp the next frame to the start & end frames
         next_frame = next_frame.clamp(start_frame, end_frame);
 
+        // Handle different modes
         next_frame = match self.config.mode {
             Mode::Forward => self.handle_forward_mode(next_frame, end_frame),
             Mode::Reverse => self.handle_reverse_mode(next_frame, start_frame),
@@ -505,7 +491,7 @@ impl DotLottieRuntime {
     }
 
     pub fn current_frame(&self) -> f32 {
-        self.renderer.current_frame().unwrap_or(0.0)
+        self.renderer.current_frame
     }
 
     pub fn loop_count(&self) -> u32 {

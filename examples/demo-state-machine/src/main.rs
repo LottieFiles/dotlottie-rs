@@ -1,6 +1,7 @@
 use dotlottie_player_core::events::Event;
 use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Mode, Observer, PlaybackState};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
+use no_deadlocks::RwLock;
 use std::fs::{self, File};
 use std::io::Read;
 use std::sync::{Arc, RwLock};
@@ -47,6 +48,10 @@ struct DummyObserver {
     id: u32,
 }
 
+unsafe impl Send for DummyObserver2 {}
+unsafe impl Sync for DummyObserver2 {}
+
+// todo try sending complete from here
 impl Observer for DummyObserver {
     fn on_play(&self) {
         // println!("on_play {} ", self.id);
@@ -88,7 +93,7 @@ impl Timer {
         }
     }
 
-    fn tick(&mut self, animation: &mut DotLottiePlayer) {
+    fn tick(&mut self, animation: &DotLottiePlayer) {
         let next_frame = animation.request_frame();
 
         // println!("next_frame: {}", next_frame);
@@ -118,13 +123,21 @@ fn main() {
     let mut path = path::PathBuf::from(base_path);
     path.push("src/markers.json");
 
-    let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
+    let lottie_player: DotLottiePlayer = (DotLottiePlayer::new(Config {
         loop_animation: true,
         background_color: 0xffffffff,
         layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
         marker: "feather".to_string(),
         ..Config::default()
-    });
+    }));
+
+    lottie_player.load_animation_path(
+        path.as_path().to_str().unwrap(),
+        WIDTH as u32,
+        HEIGHT as u32,
+    );
+
+    let locked_player = Arc::new(RwLock::new(lottie_player));
 
     // read dotlottie in to vec<u8>
     let mut f = File::open(
@@ -146,17 +159,11 @@ fn main() {
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
-    lottie_player.load_animation_path(
-        path.as_path().to_str().unwrap(),
-        WIDTH as u32,
-        HEIGHT as u32,
-    );
-
     let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
-    let observer2: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 2 });
+    let observer2: Arc<dyn Observer + 'static> = Arc::new(DummyObserver2 {});
 
-    lottie_player.subscribe(observer1.clone());
-    lottie_player.subscribe(observer2.clone());
+    // lottie_player.subscribe(observer1.clone());
+    // locked_player.read().unwrap().subscribe(observer2.clone());
 
     let mut timer = Timer::new();
 
@@ -182,22 +189,22 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    lottie_player.play();
+    locked_player.read().unwrap().play();
 
     let mut file = File::open("src/pigeon_fsm.json").expect("Unable to open the file");
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .expect("Unable to read the file");
 
-    lottie_player.load_state_machine(&contents);
-    lottie_player.start_state_machine();
+    locked_player.write().unwrap().load_state_machine(&contents);
+    locked_player.read().unwrap().start_state_machine();
 
-    let locked_player = Arc::new(RwLock::new(lottie_player));
+    // let locked_player = Arc::new(RwLock::new(lottie_player.clone()));
 
     let mut pushed = 10.0;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        timer.tick(&mut *locked_player.write().unwrap());
+        timer.tick(&*locked_player.read().unwrap());
 
         if window.is_key_down(Key::S) {
             let p = &mut *locked_player.write().unwrap();
@@ -205,19 +212,23 @@ fn main() {
         }
 
         if window.is_key_pressed(Key::O, KeyRepeat::No) {
-            let string_event = Event::String("complete".to_string());
+            let string_event = Event::String {
+                value: "complete".to_string(),
+            };
 
             let p = &mut *locked_player.write().unwrap();
             p.post_event(&string_event);
         }
 
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
-            let string_event = Event::String("explosion".to_string());
+            let string_event = Event::String {
+                value: "explosion".to_string(),
+            };
 
             pushed -= 1.0;
 
             let p = &mut *locked_player.write().unwrap();
-            p.tmp_set_state_machine_context("counter_0", pushed);
+            // p.tmp_set_state_machine_context("counter_0", pushed);
 
             p.post_event(&string_event);
         }

@@ -47,19 +47,25 @@ mod tests {
 
         let pigeon_transition_0 = Transition {
             target_state: 1,
-            event: Arc::new(RwLock::new(Event::String("explosion".to_string()))),
+            event: Arc::new(RwLock::new(Event::String {
+                value: "explosion".to_string(),
+            })),
             guards: Vec::new(),
         };
 
         let pigeon_transition_1 = Transition {
             target_state: 2,
-            event: Arc::new(RwLock::new(Event::String("complete".to_string()))),
+            event: Arc::new(RwLock::new(Event::String {
+                value: "complete".to_string(),
+            })),
             guards: Vec::new(),
         };
 
         let pigeon_transition_2 = Transition {
             target_state: 0,
-            event: Arc::new(RwLock::new(Event::String("complete".to_string()))),
+            event: Arc::new(RwLock::new(Event::String {
+                value: "complete".to_string(),
+            })),
             guards: Vec::new(),
         };
 

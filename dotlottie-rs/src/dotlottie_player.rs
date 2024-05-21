@@ -1,9 +1,6 @@
 use instant::{Duration, Instant};
-use std::{
-    fs,
-    rc::Rc,
-    sync::{Arc, RwLock},
-};
+use std::sync::RwLock;
+use std::{fs, rc::Rc, sync::Arc};
 
 use crate::errors::StateMachineError::ParsingError;
 use crate::state_machine::events::Event;
@@ -848,6 +845,7 @@ impl DotLottieRuntime {
 pub struct DotLottiePlayerContainer {
     runtime: RwLock<DotLottieRuntime>,
     observers: RwLock<Vec<Arc<dyn Observer>>>,
+    state_machine: Rc<RwLock<Option<StateMachine>>>,
 }
 
 impl DotLottiePlayerContainer {
@@ -855,6 +853,7 @@ impl DotLottiePlayerContainer {
         DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
             observers: RwLock::new(Vec::new()),
+            state_machine: Rc::new(RwLock::new(None)),
         }
     }
 
@@ -1095,6 +1094,15 @@ impl DotLottiePlayerContainer {
                         observer.on_loop(self.loop_count());
                     });
                 } else {
+                    match self.state_machine.try_write() {
+                        Ok(mut state_machine) => {
+                            if let Some(sm) = state_machine.as_mut() {
+                                sm.post_event(&Event::OnComplete);
+                            }
+                        }
+                        Err(_) => todo!(),
+                    }
+
                     self.observers.read().unwrap().iter().for_each(|observer| {
                         observer.on_complete();
                     });
@@ -1184,15 +1192,27 @@ impl DotLottiePlayer {
         let state_machine = StateMachine::new(state_machine, self.player.clone());
 
         if state_machine.is_ok() {
-            self.state_machine
-                .write()
-                .unwrap()
-                .replace(state_machine.unwrap());
-            return false;
+            match self.state_machine.try_write() {
+                Ok(mut sm) => {
+                    sm.replace(state_machine.unwrap());
+                }
+                Err(_) => {}
+            }
+
+            let player = self.player.try_write();
+
+            match player {
+                Ok(mut player) => {
+                    player.state_machine = self.state_machine.clone();
+                    println!("State Machine Set")
+                }
+                Err(_) => {}
+            }
         } else {
             match state_machine {
                 Err(ParsingError { reason }) => {
                     println!("State Machine Is Not Ok -> {}", reason);
+                    return false;
                 }
                 Ok(_) => {}
             }
@@ -1210,12 +1230,14 @@ impl DotLottiePlayer {
             return false;
         }
 
-        self.state_machine
-            .write()
-            .unwrap()
-            .as_mut()
-            .unwrap()
-            .start();
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.start();
+                }
+            }
+            Err(_) => return false,
+        }
 
         true
     }
@@ -1225,7 +1247,14 @@ impl DotLottiePlayer {
             return false;
         }
 
-        self.state_machine.write().unwrap().as_mut().unwrap().end();
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.end();
+                }
+            }
+            Err(_) => return false,
+        }
 
         true
     }
@@ -1280,12 +1309,15 @@ impl DotLottiePlayer {
         if self.state_machine.read().unwrap().is_none() {
             return false;
         }
-        self.state_machine
-            .write()
-            .unwrap()
-            .as_mut()
-            .unwrap()
-            .post_event(event);
+
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.post_event(event);
+                }
+            }
+            Err(_) => return false,
+        }
 
         true
     }
@@ -1408,7 +1440,7 @@ impl DotLottiePlayer {
     }
 
     pub fn render(&self) -> bool {
-        let ok = self.player.write().unwrap().render();
+        let ok = self.player.read().unwrap().render();
 
         ok
     }

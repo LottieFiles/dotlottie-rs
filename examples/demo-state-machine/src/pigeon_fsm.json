@@ -6,7 +6,7 @@
     "states": [
         {
             "type": "PlaybackState",
-            "loop": true,
+            "loop": false,
             "autoplay": true,
             "mode": "forward",
             "speed": 1,
@@ -52,33 +52,19 @@
             "type": "Transition",
             "from_state": 0,
             "to_state": 1,
-            "string_event": {
-                "value": "explosion"
-            },
-            "guards": [
-                {
-                    "type": "Numeric",
-                    "context_key": "counter_0",
-                    "condition_type": "LessThan",
-                    "compare_to": 5.0
-                }
-            ]
+            "on_complete_event": {}
         },
         {
             "type": "Transition",
             "from_state": 1,
             "to_state": 2,
-            "string_event": {
-                "value": "complete"
-            }
+            "on_complete_event": {}
         },
         {
             "type": "Transition",
             "from_state": 2,
             "to_state": 0,
-            "string_event": {
-                "value": "complete"
-            }
+            "on_complete_event": {}
         }
     ],
     "listeners": [

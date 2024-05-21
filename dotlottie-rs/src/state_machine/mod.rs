@@ -216,17 +216,25 @@ impl StateMachine {
                             // Capture which event this transition has
                             if transition.numeric_event.is_some() {
                                 let numeric_event = transition.numeric_event.unwrap();
-                                new_event = Some(Event::Numeric(numeric_event.value));
+                                new_event = Some(Event::Numeric {
+                                    value: numeric_event.value,
+                                });
                                 state_to_attach_to = transition.from_state as i32;
                             } else if transition.string_event.is_some() {
                                 let string_event = transition.string_event.unwrap();
-                                new_event = Some(Event::String(string_event.value));
+                                new_event = Some(Event::String {
+                                    value: string_event.value,
+                                });
                                 state_to_attach_to = transition.from_state as i32;
                             } else if transition.boolean_event.is_some() {
                                 let boolean_event = transition.boolean_event.unwrap();
-                                new_event = Some(Event::Bool(boolean_event.value));
+                                new_event = Some(Event::Bool {
+                                    value: boolean_event.value,
+                                });
                                 state_to_attach_to = transition.from_state as i32;
                             } else if transition.on_complete_event.is_some() {
+                                new_event = Some(Event::OnComplete);
+                                state_to_attach_to = transition.from_state as i32;
                             } else if transition.on_pointer_down_event.is_some() {
                             } else if transition.on_pointer_up_event.is_some() {
                             } else if transition.on_pointer_enter_event.is_some() {
@@ -339,7 +347,7 @@ impl StateMachine {
         // Check if current_state is not None and execute the state
         match self.current_state {
             Some(ref state) => {
-                let mut unwrapped_state = state.write().unwrap();
+                let unwrapped_state = state.read().unwrap();
                 let reset_key = unwrapped_state.get_reset_context_key();
 
                 if reset_key.len() > 0 {
@@ -371,7 +379,7 @@ impl StateMachine {
         }
     }
 
-    fn verify_if_guards_are_met(&mut self, guard: &Guard) -> bool {
+    fn verify_if_guards_are_met(&self, guard: &Guard) -> bool {
         match guard.compare_to {
             StringNumberBool::String(_) => {
                 if guard.string_context_is_satisfied(&self.string_context) {
@@ -401,26 +409,28 @@ impl StateMachine {
         let mut string_event = false;
         let mut numeric_event = false;
         let mut bool_event = false;
+        let mut complete_event = false;
 
         match event {
-            Event::Bool(_) => bool_event = true,
-            Event::String(_) => string_event = true,
-            Event::Numeric(_) => numeric_event = true,
-            Event::OnPointerDown(_, _) => {
+            Event::Bool { value: _ } => bool_event = true,
+            Event::String { value: _ } => string_event = true,
+            Event::Numeric { value: _ } => numeric_event = true,
+            Event::OnPointerDown { x: _, y: _ } => {
                 println!(">> OnPointerDownEvent");
             }
-            Event::OnPointerUp(_, _) => {
+            Event::OnPointerUp { x: _, y: _ } => {
                 println!(">> OnPointerUpEvent");
             }
-            Event::OnPointerMove(_, _) => {
+            Event::OnPointerMove { x: _, y: _ } => {
                 println!(">> OnPointerMoveEvent");
             }
-            Event::OnPointerEnter(_, _) => {
+            Event::OnPointerEnter { x: _, y: _ } => {
                 println!(">> OnPointerEnterEvent");
             }
             Event::OnPointerExit => {
                 println!(">> OnPointerExitEvent");
             }
+            Event::OnComplete => complete_event = true,
         }
 
         if self.current_state.is_none() {
@@ -428,6 +438,7 @@ impl StateMachine {
         }
 
         let curr_state = self.current_state.clone().unwrap();
+
         let state_value_result = curr_state.read();
 
         if state_value_result.is_ok() {
@@ -435,7 +446,6 @@ impl StateMachine {
             let mut iter = state_value.get_transitions().iter();
             let mut tmp_state: i32 = -1;
 
-            // Loop through all transitions of the current state and check if we should transition to another state
             loop {
                 match iter.next() {
                     Some(transition) => {
@@ -449,11 +459,11 @@ impl StateMachine {
 
                         // Match the transition's event type and compare it to the received event
                         match transition_event {
-                            Event::Bool(bool_value) => {
+                            Event::Bool { value: bool_value } => {
                                 let mut received_event_value = false;
 
                                 match event {
-                                    Event::Bool(value) => {
+                                    Event::Bool { value: value } => {
                                         received_event_value = *value;
                                     }
                                     _ => {}
@@ -473,11 +483,13 @@ impl StateMachine {
                                     }
                                 }
                             }
-                            Event::String(string_value) => {
+                            Event::String {
+                                value: string_value,
+                            } => {
                                 let mut received_event_value = "";
 
                                 match event {
-                                    Event::String(value) => {
+                                    Event::String { value } => {
                                         received_event_value = value;
                                     }
                                     _ => {}
@@ -496,11 +508,13 @@ impl StateMachine {
                                     }
                                 }
                             }
-                            Event::Numeric(numeric_value) => {
+                            Event::Numeric {
+                                value: numeric_value,
+                            } => {
                                 let mut received_event_value = 0.0;
 
                                 match event {
-                                    Event::Numeric(value) => {
+                                    Event::Numeric { value } => {
                                         received_event_value = *value;
                                     }
                                     _ => {}
@@ -519,10 +533,24 @@ impl StateMachine {
                                     }
                                 }
                             }
-                            Event::OnPointerDown(_, _) => todo!(),
-                            Event::OnPointerUp(_, _) => todo!(),
-                            Event::OnPointerMove(_, _) => todo!(),
-                            Event::OnPointerEnter(_, _) => todo!(),
+                            Event::OnComplete => {
+                                if complete_event {
+                                    // If there are guards loop over them and check if theyre verified
+                                    if transition_guards.len() > 0 {
+                                        for guard in transition_guards {
+                                            if self.verify_if_guards_are_met(guard) {
+                                                tmp_state = target_state as i32;
+                                            }
+                                        }
+                                    } else {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            }
+                            Event::OnPointerDown { x: _, y: _ } => todo!(),
+                            Event::OnPointerUp { x: _, y: _ } => todo!(),
+                            Event::OnPointerMove { x: _, y: _ } => todo!(),
+                            Event::OnPointerEnter { x: _, y: _ } => todo!(),
                             Event::OnPointerExit => todo!(),
                         }
                     }

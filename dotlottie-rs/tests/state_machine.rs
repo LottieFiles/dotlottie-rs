@@ -15,7 +15,7 @@ mod tests {
     use crate::test_utils::{HEIGHT, WIDTH};
 
     #[test]
-    pub fn test_state_machine() {
+    pub fn load_multiple_states() {
         let player = DotLottiePlayer::new(Config::default());
         let file_path = format!(
             "{}{}",
@@ -23,14 +23,10 @@ mod tests {
             "/tests/assets/pigeon_fsm.json"
         );
 
-        println!("file_path: {:?}", file_path);
-
         let mut sm_definition = File::open(file_path).unwrap();
         let mut buffer_to_string = String::new();
 
         sm_definition.read_to_string(&mut buffer_to_string).unwrap();
-
-        assert!(player.load_dotlottie_data(include_bytes!("assets/emoji.lottie"), WIDTH, HEIGHT));
 
         player.load_state_machine(&buffer_to_string);
 
@@ -52,16 +48,19 @@ mod tests {
         let pigeon_transition_0 = Transition {
             target_state: 1,
             event: Arc::new(RwLock::new(Event::String("explosion".to_string()))),
+            guards: Vec::new(),
         };
 
         let pigeon_transition_1 = Transition {
             target_state: 2,
             event: Arc::new(RwLock::new(Event::String("complete".to_string()))),
+            guards: Vec::new(),
         };
 
         let pigeon_transition_2 = Transition {
             target_state: 0,
             event: Arc::new(RwLock::new(Event::String("complete".to_string()))),
+            guards: Vec::new(),
         };
 
         let pigeon_state_0 = State::Playback {
@@ -76,7 +75,7 @@ mod tests {
                 layout: Config::default().layout,
                 marker: "bird".to_string(),
             },
-            reset_context: false,
+            reset_context: "".to_string(),
             animation_id: "".to_string(),
             width: WIDTH,
             height: HEIGHT,
@@ -95,7 +94,7 @@ mod tests {
                 layout: Config::default().layout,
                 marker: "explosion".to_string(),
             },
-            reset_context: false,
+            reset_context: "".to_string(),
             animation_id: "".to_string(),
             width: WIDTH,
             height: HEIGHT,
@@ -114,7 +113,7 @@ mod tests {
                 layout: Config::default().layout,
                 marker: "feather".to_string(),
             },
-            reset_context: false,
+            reset_context: "".to_string(),
             animation_id: "".to_string(),
             width: WIDTH,
             height: HEIGHT,
@@ -167,5 +166,7 @@ mod tests {
 
             i += 1;
         }
+
+        assert_eq!(i, 3)
     }
 }

@@ -9,12 +9,13 @@ use super::transitions::Transition;
 
 pub trait StateTrait {
     fn execute(&mut self, player: &Rc<RwLock<DotLottiePlayerContainer>>);
-    fn reset_context(&self) -> bool;
+    fn get_reset_context_key(&self) -> &String;
     fn get_animation_id(&self) -> &String;
     fn get_transitions(&self) -> &Vec<Arc<RwLock<Transition>>>;
     fn add_transition(&mut self, transition: Transition);
     fn remove_transition(&mut self, index: u32);
-    fn set_reset_context(&mut self, reset_context: bool);
+    fn get_config(&self) -> Option<&Config>;
+    // fn set_reset_context(&mut self, reset_context: bool);
 
     // fn add_entry_action(&mut self, action: String);
     // fn add_exit_action(&mut self, action: String);
@@ -28,7 +29,7 @@ pub trait StateTrait {
 pub enum State {
     Playback {
         config: Config,
-        reset_context: bool,
+        reset_context: String,
         animation_id: String,
         width: u32,
         height: u32,
@@ -36,7 +37,7 @@ pub enum State {
     },
     Sync {
         frame_context_key: String,
-        reset_context: bool,
+        reset_context: String,
         animation_id: String,
         width: u32,
         height: u32,
@@ -147,8 +148,25 @@ impl StateTrait for State {
         }
     }
 
-    fn reset_context(&self) -> bool {
-        todo!()
+    fn get_reset_context_key(&self) -> &String {
+        match self {
+            State::Playback {
+                config: _,
+                reset_context,
+                animation_id: _,
+                width: _,
+                height: _,
+                transitions: _,
+            } => reset_context,
+            State::Sync {
+                frame_context_key: _,
+                reset_context,
+                animation_id: _,
+                width: _,
+                height: _,
+                transitions: _,
+            } => reset_context,
+        }
     }
 
     fn get_animation_id(&self) -> &String {
@@ -218,11 +236,32 @@ impl StateTrait for State {
         }
     }
 
-    fn remove_transition(&mut self, index: u32) {
+    fn remove_transition(&mut self, _index: u32) {
         todo!()
     }
 
-    fn set_reset_context(&mut self, reset_context: bool) {
-        todo!()
+    fn get_config(&self) -> Option<&Config> {
+        match self {
+            State::Playback {
+                config,
+                reset_context: _,
+                animation_id: _,
+                width: _,
+                height: _,
+                transitions: _,
+            } => return Some(config),
+            State::Sync {
+                frame_context_key: _,
+                reset_context: _,
+                animation_id: _,
+                width: _,
+                height: _,
+                transitions: _,
+            } => return None,
+        }
     }
+
+    // fn set_reset_context(&mut self, reset_context: bool) {
+    //     todo!()
+    // }
 }

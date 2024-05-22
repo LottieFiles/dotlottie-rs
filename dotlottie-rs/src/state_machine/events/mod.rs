@@ -16,16 +16,16 @@ pub enum Event {
 }
 
 impl Event {
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> String {
         match self {
-            Event::Bool(_) => "BoolEvent",
-            Event::String(_) => "StringEvent",
-            Event::Numeric(_) => "NumericEvent: {value}",
-            Event::OnPointerDown(_, _) => "OnPointerDownEvent",
-            Event::OnPointerUp(_, _) => "OnPointerUpEvent",
-            Event::OnPointerMove(_, _) => "OnPointerMoveEvent",
-            Event::OnPointerEnter(_, _) => "OnPointerEnterEvent",
-            Event::OnPointerExit => "OnPointerExitEvent",
+            Event::Bool(value) => value.to_string(),
+            Event::String(value) => value.clone(),
+            Event::Numeric(value) => value.to_string(),
+            Event::OnPointerDown(x, y) => x.to_string() + ", " + &y.to_string(),
+            Event::OnPointerUp(x, y) => x.to_string() + ", " + &y.to_string(),
+            Event::OnPointerMove(x, y) => x.to_string() + ", " + &y.to_string(),
+            Event::OnPointerEnter(x, y) => x.to_string() + ", " + &y.to_string(),
+            Event::OnPointerExit => "OnPointerExitEvent".to_string(),
         }
     }
 }

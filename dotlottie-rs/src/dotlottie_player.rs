@@ -1,21 +1,19 @@
 use instant::{Duration, Instant};
 use std::{
-    collections::HashMap,
     fs,
     rc::Rc,
-    sync::{mpsc, Arc, RwLock},
-    thread,
+    sync::{Arc, RwLock},
 };
 
+use crate::errors::StateMachineError::ParsingError;
 use crate::state_machine::events::Event;
-use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
-
 use crate::{
     extract_markers,
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
-    Marker, MarkersMap, StateMachine, StateMachineObserver,
+    Marker, MarkersMap, StateMachine,
 };
+use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
@@ -1182,7 +1180,7 @@ impl DotLottiePlayer {
         is_ok
     }
 
-    pub fn load_state_machine(&self, state_machine: &str) {
+    pub fn load_state_machine(&self, state_machine: &str) -> bool {
         let state_machine = StateMachine::new(state_machine, self.player.clone());
 
         if state_machine.is_ok() {
@@ -1190,36 +1188,113 @@ impl DotLottiePlayer {
                 .write()
                 .unwrap()
                 .replace(state_machine.unwrap());
+            return false;
+        } else {
+            match state_machine {
+                Err(ParsingError { reason }) => {
+                    println!("State Machine Is Not Ok -> {}", reason);
+                }
+                Ok(_) => {}
+            }
         }
+
+        true
     }
 
     pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachine>>> {
         self.state_machine.clone()
     }
 
-    pub fn start_state_machine(&self) {
+    pub fn start_state_machine(&self) -> bool {
+        if self.state_machine.read().unwrap().is_none() {
+            return false;
+        }
+
         self.state_machine
             .write()
             .unwrap()
             .as_mut()
             .unwrap()
             .start();
+
+        true
     }
 
-    pub fn post_event(&self, event: &Event) {
+    pub fn end_state_machine(&self) -> bool {
+        if self.state_machine.read().unwrap().is_none() {
+            return false;
+        }
+
+        self.state_machine.write().unwrap().as_mut().unwrap().end();
+
+        true
+    }
+
+    // todo: Once lister actions are implemented, remove this fn
+    pub fn tmp_set_state_machine_context(&self, key: &str, value: f32) -> bool {
+        if self.state_machine.read().unwrap().is_none() {
+            return false;
+        }
+
         self.state_machine
             .write()
             .unwrap()
             .as_mut()
             .unwrap()
-            .post_event(event)
+            .set_numeric_context(key, value);
+
+        true
+    }
+
+    pub fn tmp_set_state_machine_string_context(&self, key: &str, value: &str) -> bool {
+        if self.state_machine.read().unwrap().is_none() {
+            return false;
+        }
+
+        self.state_machine
+            .write()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .set_string_context(key, value);
+
+        true
+    }
+
+    pub fn tmp_set_state_machine_bool_context(&self, key: &str, value: bool) -> bool {
+        if self.state_machine.read().unwrap().is_none() {
+            return false;
+        }
+
+        self.state_machine
+            .write()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .set_bool_context(key, value);
+
+        true
+    }
+
+    pub fn post_event(&self, event: &Event) -> bool {
+        if self.state_machine.read().unwrap().is_none() {
+            return false;
+        }
+        self.state_machine
+            .write()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .post_event(event);
+
+        true
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
         let is_ok = self
             .player
             .write()
-            .is_ok_and(|mut runtime| runtime.load_animation_path(animation_path, width, height));
+            .is_ok_and(|runtime| runtime.load_animation_path(animation_path, width, height));
 
         is_ok
     }
@@ -1228,7 +1303,7 @@ impl DotLottiePlayer {
         let is_ok = self
             .player
             .write()
-            .is_ok_and(|mut runtime| runtime.load_dotlottie_data(file_data, width, height));
+            .is_ok_and(|runtime| runtime.load_dotlottie_data(file_data, width, height));
 
         is_ok
     }

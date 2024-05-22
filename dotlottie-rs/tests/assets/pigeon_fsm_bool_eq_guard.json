@@ -13,12 +13,6 @@
             "marker": "bird",
             "segment": [],
             "frame_interpolation": true,
-            "entry_actions": [
-                {
-                    "type": "LogAction",
-                    "message": "Howdy partner!"
-                }
-            ],
             "exit_actions": [],
             "reset_context": "*"
         },
@@ -57,10 +51,10 @@
             },
             "guards": [
                 {
-                    "type": "Numeric",
+                    "type": "Boolean",
                     "context_key": "counter_0",
-                    "condition_type": "LessThan",
-                    "compare_to": 5.0
+                    "condition_type": "Equal",
+                    "compare_to": true
                 }
             ]
         },
@@ -70,14 +64,22 @@
             "to_state": 2,
             "string_event": {
                 "value": "complete"
-            }
+            },
+            "guards": [
+                {
+                    "type": "Boolean",
+                    "context_key": "counter_0",
+                    "condition_type": "NotEqual",
+                    "compare_to": false
+                }
+            ]
         },
         {
             "type": "Transition",
             "from_state": 2,
             "to_state": 0,
             "string_event": {
-                "value": "complete"
+                "value": "done"
             }
         }
     ],
@@ -88,44 +90,9 @@
     ],
     "context_variables": [
         {
-            "type": "Numeric",
-            "key": "counter_0",
-            "value": 1
-        },
-        {
-            "type": "String",
-            "key": "counter_1",
-            "value": "COUNTER HAHAHAH"
-        },
-        {
             "type": "Boolean",
-            "key": "counter_2",
+            "key": "counter_0",
             "value": false
-        },
-        {
-            "type": "Numeric",
-            "key": "counter_2",
-            "value": "2"
-        },
-        {
-            "type": "Numeric",
-            "key": "counter_3",
-            "value": "3"
-        },
-        {
-            "type": "Numeric",
-            "key": "counter_4",
-            "value": "4"
-        },
-        {
-            "type": "Numeric",
-            "key": "counter_5",
-            "value": "5"
-        },
-        {
-            "type": "Numeric",
-            "key": "counter_6",
-            "value": "6"
         }
     ]
 }

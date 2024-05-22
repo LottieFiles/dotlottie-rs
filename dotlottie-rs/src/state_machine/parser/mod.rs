@@ -2,6 +2,68 @@ use serde::Deserialize;
 
 use crate::errors::StateMachineError;
 
+#[derive(Deserialize, Debug, PartialEq)]
+pub enum StateActionType {
+    URLAction,
+    ThemeAction,
+    SoundAction,
+    LogAction,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum StringNumberBool {
+    String(String),
+    F32(f32),
+    Bool(bool),
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub enum TransitionGuardType {
+    Numeric,
+    String,
+    Boolean,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub enum ContextJsonType {
+    Numeric,
+    String,
+    Boolean,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub enum TransitionJsonType {
+    Transition,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub enum ListenerJsonType {
+    PointerUp,
+    PointerDown,
+    PointerEnter,
+    PointerExit,
+    PointerMove,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub enum TransitionGuardConditionType {
+    GreaterThan,
+    GreaterThanOrEqual,
+    LessThan,
+    LessThanOrEqual,
+    Equal,
+    NotEqual,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub enum StateType {
+    PlaybackState,
+    FinalState,
+    SyncState,
+    GlobalState,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct DescriptorJson {
     pub id: String,
@@ -10,7 +72,7 @@ pub struct DescriptorJson {
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct StateActionJson {
-    pub r#type: String,
+    pub r#type: StateActionType,
     pub url: Option<String>,
     pub target: Option<String>,
     pub theme_id: Option<String>,
@@ -20,7 +82,7 @@ pub struct StateActionJson {
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct StateJson {
-    pub r#type: String,
+    pub r#type: StateType,
     pub animation_id: Option<String>,
     pub r#loop: Option<bool>,
     pub autoplay: Option<bool>,
@@ -32,12 +94,17 @@ pub struct StateJson {
     pub use_frame_interpolation: Option<bool>,
     pub entry_actions: Option<Vec<StateActionJson>>,
     pub exit_actions: Option<Vec<StateActionJson>>,
-    pub reset_context: Option<bool>,
+    pub reset_context: Option<String>,
     pub frame_context_key: Option<String>,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
-pub struct TransitionGuardJson {}
+pub struct TransitionGuardJson {
+    pub r#type: TransitionGuardType,
+    pub context_key: String,
+    pub condition_type: TransitionGuardConditionType,
+    pub compare_to: StringNumberBool,
+}
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct NumericEventJson {
@@ -84,10 +151,10 @@ pub struct OnPointerMoveEventJson {
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct TransitionJson {
-    pub r#type: String,
+    pub r#type: TransitionJsonType,
     pub from_state: u32,
     pub to_state: u32,
-    pub guard: Option<Vec<TransitionGuardJson>>,
+    pub guards: Option<Vec<TransitionGuardJson>>,
     pub numeric_event: Option<NumericEventJson>,
     pub string_event: Option<StringEventJson>,
     pub boolean_event: Option<BooleanEventJson>,
@@ -101,18 +168,28 @@ pub struct TransitionJson {
 
 #[derive(Deserialize, Debug)]
 pub struct ListenerJson {
-    pub r#type: String,
+    pub r#type: ListenerJsonType,
     pub target: Option<String>,
     pub action: Option<String>,
-    pub value: Option<String>,
+    pub value: Option<StringNumberBool>,
     pub context_key: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct ContextJson {
-    pub r#type: String,
+    pub r#type: ContextJsonType,
     pub key: String,
-    pub value: String,
+    pub value: StringNumberBool,
+}
+
+impl ContextJson {
+    pub fn new() -> ContextJson {
+        Self {
+            r#type: ContextJsonType::String,
+            key: String::new(),
+            value: StringNumberBool::String(String::new()),
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -131,8 +208,13 @@ pub fn state_machine_parse(json: &str) -> Result<StateMachineJson, StateMachineE
         Ok(state_machine_json) => {
             return Ok(state_machine_json);
         }
-        Err(err) => Err(StateMachineError::ParsingError {
-            reason: format!("Error parsing state machine definition file: {}", err),
-        }),
+        Err(err) => {
+            return Err(StateMachineError::ParsingError {
+                reason: format!(
+                    "Error parsing state machine definition file: {:?}",
+                    err.to_string()
+                ),
+            });
+        }
     }
 }

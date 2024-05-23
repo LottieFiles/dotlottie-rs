@@ -1,7 +1,6 @@
 use dotlottie_player_core::events::Event;
 use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Mode, Observer, PlaybackState};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
-use no_deadlocks::RwLock;
 use std::fs::{self, File};
 use std::io::Read;
 use std::sync::{Arc, RwLock};

@@ -216,15 +216,21 @@ impl StateMachine {
                             // Capture which event this transition has
                             if transition.numeric_event.is_some() {
                                 let numeric_event = transition.numeric_event.unwrap();
-                                new_event = Some(Event::Numeric(numeric_event.value));
+                                new_event = Some(Event::Numeric {
+                                    value: numeric_event.value,
+                                });
                                 state_to_attach_to = transition.from_state as i32;
                             } else if transition.string_event.is_some() {
                                 let string_event = transition.string_event.unwrap();
-                                new_event = Some(Event::String(string_event.value));
+                                new_event = Some(Event::String {
+                                    value: string_event.value,
+                                });
                                 state_to_attach_to = transition.from_state as i32;
                             } else if transition.boolean_event.is_some() {
                                 let boolean_event = transition.boolean_event.unwrap();
-                                new_event = Some(Event::Bool(boolean_event.value));
+                                new_event = Some(Event::Bool {
+                                    value: boolean_event.value,
+                                });
                                 state_to_attach_to = transition.from_state as i32;
                             } else if transition.on_complete_event.is_some() {
                             } else if transition.on_pointer_down_event.is_some() {
@@ -403,19 +409,19 @@ impl StateMachine {
         let mut bool_event = false;
 
         match event {
-            Event::Bool(_) => bool_event = true,
-            Event::String(_) => string_event = true,
-            Event::Numeric(_) => numeric_event = true,
-            Event::OnPointerDown(_, _) => {
+            Event::Bool { value: _ } => bool_event = true,
+            Event::String { value: _ } => string_event = true,
+            Event::Numeric { value: _ } => numeric_event = true,
+            Event::OnPointerDown { x: _, y: _ } => {
                 println!(">> OnPointerDownEvent");
             }
-            Event::OnPointerUp(_, _) => {
+            Event::OnPointerUp { x: _, y: _ } => {
                 println!(">> OnPointerUpEvent");
             }
-            Event::OnPointerMove(_, _) => {
+            Event::OnPointerMove { x: _, y: _ } => {
                 println!(">> OnPointerMoveEvent");
             }
-            Event::OnPointerEnter(_, _) => {
+            Event::OnPointerEnter { x: _, y: _ } => {
                 println!(">> OnPointerEnterEvent");
             }
             Event::OnPointerExit => {
@@ -449,18 +455,18 @@ impl StateMachine {
 
                         // Match the transition's event type and compare it to the received event
                         match transition_event {
-                            Event::Bool(bool_value) => {
+                            Event::Bool { value } => {
                                 let mut received_event_value = false;
 
                                 match event {
-                                    Event::Bool(value) => {
+                                    Event::Bool { value } => {
                                         received_event_value = *value;
                                     }
                                     _ => {}
                                 }
 
                                 // Check the transitions value and compare to the received one to check if we should transition
-                                if bool_event && received_event_value == *bool_value {
+                                if bool_event && received_event_value == *value {
                                     // If there are guards loop over them and check if theyre verified
                                     if transition_guards.len() > 0 {
                                         for guard in transition_guards {
@@ -473,17 +479,17 @@ impl StateMachine {
                                     }
                                 }
                             }
-                            Event::String(string_value) => {
+                            Event::String { value } => {
                                 let mut received_event_value = "";
 
                                 match event {
-                                    Event::String(value) => {
+                                    Event::String { value } => {
                                         received_event_value = value;
                                     }
                                     _ => {}
                                 }
 
-                                if string_event && received_event_value == string_value {
+                                if string_event && received_event_value == value {
                                     // If there are guards loop over them and check if theyre verified
                                     if transition_guards.len() > 0 {
                                         for guard in transition_guards {
@@ -496,17 +502,17 @@ impl StateMachine {
                                     }
                                 }
                             }
-                            Event::Numeric(numeric_value) => {
+                            Event::Numeric { value } => {
                                 let mut received_event_value = 0.0;
 
                                 match event {
-                                    Event::Numeric(value) => {
+                                    Event::Numeric { value } => {
                                         received_event_value = *value;
                                     }
                                     _ => {}
                                 }
 
-                                if numeric_event && received_event_value == *numeric_value {
+                                if numeric_event && received_event_value == *value {
                                     // If there are guards loop over them and check if theyre verified
                                     if transition_guards.len() > 0 {
                                         for guard in transition_guards {
@@ -519,10 +525,10 @@ impl StateMachine {
                                     }
                                 }
                             }
-                            Event::OnPointerDown(_, _) => todo!(),
-                            Event::OnPointerUp(_, _) => todo!(),
-                            Event::OnPointerMove(_, _) => todo!(),
-                            Event::OnPointerEnter(_, _) => todo!(),
+                            Event::OnPointerDown { x: _, y: _ } => todo!(),
+                            Event::OnPointerUp { x: _, y: _ } => todo!(),
+                            Event::OnPointerMove { x: _, y: _ } => todo!(),
+                            Event::OnPointerEnter { x: _, y: _ } => todo!(),
                             Event::OnPointerExit => todo!(),
                         }
                     }

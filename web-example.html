@@ -233,7 +233,39 @@
         dotLottiePlayer.resize(width, height);
       }
 
+      function setViewport() {
+        const { left, right, top, bottom } = canvas.getBoundingClientRect();
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+
+        let x = 0;
+        let y = 0;
+        let width = canvas.width;
+        let height = canvas.height;
+
+        if (left < 0) {
+          x = Math.abs(left);
+          width -= x;
+        }
+
+        if (top < 0) {
+          y = Math.abs(top);
+          height -= y;
+        }
+
+        if (right > windowWidth) {
+          width -= right - windowWidth;
+        }
+
+        if (bottom > windowHeight) {
+          height -= bottom - windowHeight;
+        }
+
+        dotLottiePlayer.setViewport(x, y, width, height);
+      }
+
       function render() {
+        setViewport();
         const rendered = dotLottiePlayer.render();
         if (rendered) {
           const frameBuffer = dotLottiePlayer.buffer();

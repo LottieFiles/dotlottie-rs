@@ -565,6 +565,8 @@ impl DotLottieRuntime {
     fn update_speed(&mut self, new_config: &Config) {
         if self.config.speed != new_config.speed && new_config.speed > 0.0 {
             self.config.speed = new_config.speed;
+
+            self.update_start_time_for_frame(self.current_frame());
         }
     }
 

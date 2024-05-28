@@ -5,6 +5,5 @@
     "./dotlottie-fms/Cargo.toml",
     "./demo-player/Cargo.toml"
   ],
-  "C_Cpp.errorSquiggles": "disabled",
-  "cmake.sourceDirectory": "/Users/ashraf/Projects/dotlottie-rs/deps/modules/emsdk/upstream/emscripten/test/cmake/check_type_size"
+  "C_Cpp.errorSquiggles": "disabled"
 }

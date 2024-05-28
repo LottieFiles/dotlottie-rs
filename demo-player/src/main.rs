@@ -117,14 +117,17 @@ fn main() {
     let mut path = path::PathBuf::from(base_path);
     path.push("src/markers.json");
 
-    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        autoplay: true,
-        loop_animation: true,
-        background_color: 0xffffffff,
-        layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
-        marker: "feather".to_string(),
-        ..Config::default()
-    });
+    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::with_threads(
+        Config {
+            autoplay: true,
+            loop_animation: true,
+            // background_color: 0xffffffff,
+            // layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
+            // marker: "feather".to_string(),
+            ..Config::default()
+        },
+        1,
+    );
 
     // read dotlottie in to vec<u8>
     let mut f = File::open(

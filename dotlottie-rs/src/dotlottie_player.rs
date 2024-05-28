@@ -98,7 +98,7 @@ struct DotLottieRuntime {
 }
 
 impl DotLottieRuntime {
-    pub fn new(config: Config) -> Self {
+    pub fn with_threads(config: Config, threads: u32) -> Self {
         let direction = match config.mode {
             Mode::Forward => Direction::Forward,
             Mode::Reverse => Direction::Reverse,
@@ -107,7 +107,7 @@ impl DotLottieRuntime {
         };
 
         DotLottieRuntime {
-            renderer: LottieRenderer::new(),
+            renderer: LottieRenderer::new(threads),
             playback_state: PlaybackState::Stopped,
             is_loaded: false,
             start_time: Instant::now(),
@@ -119,6 +119,10 @@ impl DotLottieRuntime {
             active_animation_id: String::new(),
             active_theme_id: String::new(),
         }
+    }
+
+    pub fn new(config: Config) -> Self {
+        Self::with_threads(config, 0)
     }
 
     pub fn markers(&self) -> Vec<Marker> {
@@ -815,11 +819,15 @@ pub struct DotLottiePlayer {
 }
 
 impl DotLottiePlayer {
-    pub fn new(config: Config) -> Self {
+    pub fn with_threads(config: Config, threads: u32) -> Self {
         DotLottiePlayer {
-            runtime: RwLock::new(DotLottieRuntime::new(config)),
+            runtime: RwLock::new(DotLottieRuntime::with_threads(config, threads)),
             observers: RwLock::new(Vec::new()),
         }
+    }
+
+    pub fn new(config: Config) -> Self {
+        Self::with_threads(config, 0)
     }
 
     pub fn load_animation_data(&self, animation_data: &str, width: u32, height: u32) -> bool {

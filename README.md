@@ -1,6 +1,6 @@
 # dotLottie Rust
 
-![CI](https://github.com/LottieFiles/dotlottie-rs/workflows/release/badge.svg)
+![CI](https://img.shields.io/github/v/release/LottieFiles/dotlottie-rs)
 ![GitHub contributors](https://img.shields.io/github/contributors/LottieFiles/dotlottie-rs)
 ![GitHub](https://img.shields.io/github/license/LottieFiles/dotlottie-rs)
 
@@ -12,7 +12,21 @@
 
 This is the Rust implementation of the dotLottie player and its related tools. It utilizes uniffi-rs to generate FFI bindings for Kotlin, Swift, and WebAssembly (WASM). these bindings are then used in the native dotLottie players for [Android](https://github.com/LottieFiles/dotlottie-android), [iOS](https://github.com/LottieFiles/dotlottie-ios), and [Web](https://github.com/LottieFiles/dotlottie-web) bringing consistency of playback and dotLottie features across all platforms.
 
-![Alt text](assets/design.png)
+  ```mermaid
+  flowchart TD
+    A[dotLottie-web] --> WASM+Bindings[WASM Bindings]
+    B[dotLottie-ios] --> swift+Bindings[Swift Bindings]
+    C[dotLottie-android] --> kotlin+Bindings[Kotlin Bindings]
+
+    WASM+Bindings --> dotLottie-ffi[dotLottie-ffi \n 'uniffi bindings']
+    swift+Bindings --> dotLottie-ffi[dotLottie-ffi \n 'uniffi bindings']
+    kotlin+Bindings --> dotLottie-ffi[dotLottie-ffi \n 'uniffi bindings']
+
+    dotLottie-ffi --> dotlottiers[dotLottie-rs \n 'Core player']
+
+    dotlottiers --> Thorvg[Thorvg \n 'Lottie renderer']
+    dotlottiers --> dotlotttie-fms[dotLottie-fms \n'File manager']
+  ```
 
 ## What is dotLottie?
 
@@ -20,13 +34,32 @@ dotLottie is an open-source file format that aggregates one or more Lottie files
 
 [Learn more about dotLottie](https://dotlottie.io/).
 
-## Contents
+## Features
 
-- [crates](#crates)
+dotLottie-rs builds on the Lottie format, adding powerful quality of life improvements and new features:
+
+  - Theming support
+  - Multi-animation support
+  - Built-in interactivity powered by state machines (in development)
+  - Reduced animation file sizes
+  - Feature parity across platforms
+  - Guarenteed visual consistancy across platforms (Thanks to the [Thorvg renderer](https://github.com/thorvg/thorvg))
+
+## Available Players
+
+dotLottie-rs serves as a core player from which our framework players use: 
+
+- [dotlottie-web] (https://github.com/LottieFiles/dotlottie-web)
+- [dotlottie-android] (https://github.com/LottieFiles/dotlottie-android)
+- [dotlottie-ios] (https://github.com/LottieFiles/dotlottie-ios)
+
+## Repository contents
+
+- [Crates](#Crates)
 - [Development](#development)
 - [License](#license)
 
-## crates
+## Crates
 
 - [dotlottie-rs](./dotlottie-rs): The core library for dotLottie native players
 - [dotlottie-fms](./dotlottie-fms): The dotLottie file management system library
@@ -89,6 +122,11 @@ and used to simply the creation of changeset files.
 The release PR should be checked for correctness and then merged. Once that is done, the `Release`
 Github Actions workflow will be started automatically to do the work of actually creating the new
 release and building & uploading the related release artifacts.
+
+### Relevant Tools
+
+- [For your dotLottie creation and modification needs](https://github.com/dotlottie/dotlottie-js)
+- [Tools for parsing Lottie animations](https://github.com/LottieFiles/relottie)
 
 ### License
 

@@ -1,5 +1,6 @@
 namespace dotlottie_player {
     Layout create_default_layout();
+    Config create_default_config();
 };
 
 [Trait, WithForeign]
@@ -63,7 +64,7 @@ dictionary ManifestAnimation {
     boolean? loop;
     u32? loop_count;
     string? playMode;
-    u32? speed;
+    f32? speed;
     string? themeColor;
 };
 
@@ -121,4 +122,6 @@ interface DotLottiePlayer {
     boolean load_theme([ByRef] string theme_id);
     boolean load_theme_data([ByRef] string theme_data);
     sequence<Marker> markers();
+    string active_animation_id();
+    string active_theme_id();
 };

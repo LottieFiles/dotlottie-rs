@@ -29,18 +29,18 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     // register_vector<ManifestAnimation>("VectorManifestAnimation");
 
     enum_<Mode>("Mode")
-        .value("Forward", Mode::FORWARD)
-        .value("Reverse", Mode::REVERSE)
-        .value("Bounce", Mode::BOUNCE)
-        .value("ReverseBounce", Mode::REVERSE_BOUNCE);
+        .value("Forward", Mode::kForward)
+        .value("Reverse", Mode::kReverse)
+        .value("Bounce", Mode::kBounce)
+        .value("ReverseBounce", Mode::kReverseBounce);
 
     enum_<Fit>("Fit")
-        .value("Contain", Fit::CONTAIN)
-        .value("Cover", Fit::COVER)
-        .value("Fill", Fit::FILL)
-        .value("FitWidth", Fit::FIT_WIDTH)
-        .value("FitHeight", Fit::FIT_HEIGHT)
-        .value("None", Fit::NONE);
+        .value("Contain", Fit::kContain)
+        .value("Cover", Fit::kCover)
+        .value("Fill", Fit::kFill)
+        .value("FitWidth", Fit::kFitWidth)
+        .value("FitHeight", Fit::kFitHeight)
+        .value("None", Fit::kNone);
 
     value_object<Layout>("Layout")
         .field("fit", &Layout::fit)
@@ -63,6 +63,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("backgroundColor", &Config::background_color)
         .field("layout", &Config::layout)
         .field("marker", &Config::marker);
+
+    function("createDefaultConfig", &create_default_config);
 
     // value_object<ManifestTheme>("ManifestTheme")
     //     .field("id", &ManifestTheme::id)
@@ -105,7 +107,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     //     .function("onStop", &Observer::on_stop);
 
     class_<DotLottiePlayer>("DotLottiePlayer")
-        .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
+        .smart_ptr<std::shared_ptr<DotLottiePlayer> >("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init, allow_raw_pointers())
         .function("buffer", &buffer)
         .function("clear", &DotLottiePlayer::clear)
@@ -138,5 +140,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("isComplete", &DotLottiePlayer::is_complete)
         .function("loadTheme", &DotLottiePlayer::load_theme)
         .function("loadThemeData", &DotLottiePlayer::load_theme_data)
-        .function("markers", &DotLottiePlayer::markers);
+        .function("markers", &DotLottiePlayer::markers)
+        .function("activeAnimationId", &DotLottiePlayer::active_animation_id)
+        .function("activeThemeId", &DotLottiePlayer::active_theme_id);
 }

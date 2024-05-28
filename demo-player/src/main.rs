@@ -102,16 +102,15 @@ impl Timer {
 }
 
 fn main() {
-    let mut window =
-        Window::new(
-            "dotLottie rust demo - ESC to exit",
-            WIDTH,
-            HEIGHT,
-            WindowOptions::default(),
-        )
-        .unwrap_or_else(|e| {
-            panic!("{}", e);
-        });
+    let mut window = Window::new(
+        "dotLottie rust demo - ESC to exit",
+        WIDTH,
+        HEIGHT,
+        WindowOptions::default(),
+    )
+    .unwrap_or_else(|e| {
+        panic!("{}", e);
+    });
 
     let base_path = env::var("CARGO_MANIFEST_DIR").unwrap();
 
@@ -119,39 +118,34 @@ fn main() {
     path.push("src/markers.json");
 
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        mode: Mode::Forward,
-        loop_animation: true,
-        speed: 1.0,
-        use_frame_interpolation: true,
         autoplay: true,
-        segment: vec![],
+        loop_animation: true,
         background_color: 0xffffffff,
         layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
         marker: "feather".to_string(),
+        ..Config::default()
     });
 
     // read dotlottie in to vec<u8>
-    let mut f =
-        File::open(
-            // "src/emoji.lottie"
-            "src/theming_example.lottie",
-        )
-        .expect("no file found");
-    let metadata =
-        fs::metadata(
-            // "src/emoji.lottie"
-            "src/theming_example.lottie",
-        )
-        .expect("unable to read metadata");
+    let mut f = File::open(
+        // "src/emoji.lottie"
+        "src/theming_example.lottie",
+    )
+    .expect("no file found");
+    let metadata = fs::metadata(
+        // "src/emoji.lottie"
+        "src/theming_example.lottie",
+    )
+    .expect("unable to read metadata");
 
     let mut buffer = vec![0; metadata.len() as usize];
     f.read(&mut buffer).expect("buffer overflow");
 
     let mut markers = File::open("src/markers.json").expect("no file found");
     let metadatamarkers = fs::metadata("src/markers.json").expect("unable to read metadata");
-    let mut markersBuffer = vec![0; metadatamarkers.len() as usize];
-    markers.read(&mut markersBuffer).expect("buffer overflow");
-    let string = String::from_utf8(markersBuffer.clone()).unwrap();
+    let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
+    markers.read(&mut markers_buffer).expect("buffer overflow");
+    let string = String::from_utf8(markers_buffer.clone()).unwrap();
     // lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
     // println!("{:?}", Some(lottie_player.manifest()));
 
@@ -230,6 +224,10 @@ fn main() {
             }
         }
 
+        if window.is_key_pressed(Key::Y, KeyRepeat::No) {
+            lottie_player.load_theme("");
+        }
+
         if window.is_key_pressed(Key::Right, KeyRepeat::No) {
             if let Some(manifest) = lottie_player.manifest() {
                 println!("{:?}", i);
@@ -250,13 +248,10 @@ fn main() {
             lottie_player = DotLottiePlayer::new(Config {
                 mode: Mode::ReverseBounce,
                 loop_animation: true,
-                speed: 1.0,
-                use_frame_interpolation: true,
                 autoplay: true,
                 segment: vec![10.0, 45.0],
                 background_color: 0xffffffff,
-                layout: Layout::default(),
-                marker: "".to_string(),
+                ..Config::default()
             });
 
             lottie_player.load_animation_data(&string, WIDTH as u32, HEIGHT as u32);

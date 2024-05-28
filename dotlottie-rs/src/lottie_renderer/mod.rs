@@ -1,7 +1,5 @@
 use thiserror::Error;
 
-mod tests;
-
 use crate::{Animation, Canvas, Layout, Shape, TvgColorspace, TvgEngine, TvgError};
 
 #[derive(Error, Debug)]
@@ -26,6 +24,7 @@ pub struct LottieRenderer {
     pub height: u32,
     pub buffer: Vec<u32>,
     pub background_color: u32,
+    pub current_frame: f32,
     layout: Layout,
 }
 
@@ -49,6 +48,7 @@ impl LottieRenderer {
             picture_width: 0.0,
             picture_height: 0.0,
             background_color: 0,
+            current_frame: 0.0,
             layout: Layout::default(),
         }
     }
@@ -86,9 +86,8 @@ impl LottieRenderer {
         self.picture_width = pw;
         self.picture_height = ph;
 
-        let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) = self
-            .layout
-            .compute_layout_transform(
+        let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) =
+            self.layout.compute_layout_transform(
                 self.width as f32,
                 self.height as f32,
                 self.picture_width,
@@ -129,10 +128,8 @@ impl LottieRenderer {
             .map_err(|e| LottieRendererError::ThorvgError(e))
     }
 
-    pub fn current_frame(&self) -> Result<f32, LottieRendererError> {
-        self.thorvg_animation
-            .get_frame()
-            .map_err(|e| LottieRendererError::ThorvgError(e))
+    pub fn current_frame(&self) -> f32 {
+        self.current_frame
     }
 
     pub fn clear(&mut self) {
@@ -162,7 +159,11 @@ impl LottieRenderer {
 
         self.thorvg_animation
             .set_frame(no)
-            .map_err(|e| LottieRendererError::ThorvgError(e))
+            .map_err(LottieRendererError::ThorvgError)?;
+
+        self.current_frame = no;
+
+        Ok(())
     }
 
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError> {
@@ -192,9 +193,8 @@ impl LottieRenderer {
             )
             .map_err(LottieRendererError::ThorvgError)?;
 
-        let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) = self
-            .layout
-            .compute_layout_transform(
+        let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) =
+            self.layout.compute_layout_transform(
                 self.width as f32,
                 self.height as f32,
                 self.picture_width,
@@ -248,9 +248,8 @@ impl LottieRenderer {
 
         self.layout = layout.clone();
 
-        let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) = self
-            .layout
-            .compute_layout_transform(
+        let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) =
+            self.layout.compute_layout_transform(
                 self.width as f32,
                 self.height as f32,
                 self.picture_width,

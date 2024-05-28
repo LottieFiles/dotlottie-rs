@@ -75,7 +75,7 @@ APPLE_IOS_SIMULATOR_SDK ?= iPhoneSimulator
 
 APPLE_MACOSX := macosx
 APPLE_MACOSX_PLATFORM := MacOSX
-APPLE_MACOSX_SDK ?= MacOSX14
+APPLE_MACOSX_SDK ?= MacOSX12
 
 APPLE_IOS_FRAMEWORK_TYPE := $(APPLE_IOS)
 APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_IOS_SIMULATOR)
@@ -94,11 +94,11 @@ WASM_BUILD := $(BUILD)/$(WASM)
 
 EMSDK := emsdk
 EMSDK_DIR := $(PROJECT_DIR)/$(DEPS_MODULES_DIR)/$(EMSDK)
-EMSDK_VERSION := 3.1.51
+EMSDK_VERSION := 3.1.57
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
-UNIFFI_BINDGEN_CPP_VERSION := v0.4.1+v0.25.0
+UNIFFI_BINDGEN_CPP_VERSION := v0.6.0+v0.25.0
 
 WASM_MODULE := DotLottiePlayer
 
@@ -130,6 +130,7 @@ RELEASE := release
 # Build artifact types
 CORE := dotlottie-rs
 RUNTIME_FFI := dotlottie-ffi
+FMS := dotlottie-fms
 DOTLOTTIE_PLAYER := dotlottie-player
 
 # Build artifacts
@@ -259,7 +260,7 @@ cpp_link_args = [
 	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
-	'--embind-emit-tsd=${WASM_MODULE}.d.ts',
+	'--emit-tsd=${WASM_MODULE}.d.ts',
 	'--minify=0']
 
 [host_machine]
@@ -314,7 +315,7 @@ define SETUP_MESON
 		-Dbindings=capi \
 		-Dlog=$(LOG) \
 		-Dstatic=$(STATIC) \
-		-Dsavers=$(SAVERS) \
+		-Dextra=$(EXTRA) \
 		$(CROSS_FILE) "$(THORVG_DEP_SOURCE_DIR)" "$(THORVG_DEP_BUILD_DIR)"
 endef
 
@@ -352,9 +353,7 @@ endef
 
 define CARGO_BUILD
 	source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
-		RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
-		-Z build-std=std,panic_abort \
-		-Z build-std-features=panic_immediate_abort \
+		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--release
@@ -362,7 +361,7 @@ endef
 
 define UNIFFI_BINDINGS_BUILD
 	rm -rf $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(BINDINGS_LANGUAGE)
-	cargo +nightly run \
+	cargo run \
 		--manifest-path $(RUNTIME_FFI)/Cargo.toml \
 		--features=uniffi/cli \
 		--bin uniffi-bindgen \
@@ -583,7 +582,7 @@ $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_BUILD_DIR := $$($1_T
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): CROSS_FILE := --cross-file $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): LOG := $2
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): STATIC := $3
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): SAVERS := $4
+$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): EXTRA := $4
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE)
 $(if $(filter $3,false),
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(LIBJPEG_TURBO_LIB)
@@ -605,7 +604,7 @@ $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,LIBPNG_LIB,$(LIBPNG),$$($1_LIBPNG_DEP_B
 $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,ZLIB,$(ZLIB),$$($1_ZLIB_DEP_BUILD_DIR),$(ZLIB_LIB)))
 $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,WEBP,$(WEBP),$$($1_WEBP_DEP_BUILD_DIR),$(WEBP_LIB)))
 $(eval $(call NEW_ANDROID_CROSS_FILE,$1))
-$(eval $(call NEW_THORVG_BUILD,$1,true,false,all))
+$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions"))
 endef
 
 define NEW_APPLE_DEPS_BUILD
@@ -614,12 +613,12 @@ $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,LIBPNG_LIB,$(LIBPNG),$$($1_LIBPNG_DEP_BUI
 $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,ZLIB,$(ZLIB),$$($1_ZLIB_DEP_BUILD_DIR),$(ZLIB_LIB)))
 $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,WEBP,$(WEBP),$$($1_WEBP_DEP_BUILD_DIR),$(WEBP_LIB)))
 $(eval $(call NEW_APPLE_CROSS_FILE,$1))
-$(eval $(call NEW_THORVG_BUILD,$1,true,false,all))
+$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions"))
 endef
 
 define NEW_WASM_DEPS_BUILD
 $(eval $(call NEW_WASM_CROSS_FILE,$1,$$($1_THORVG_DEP_BUILD_DIR)/..,windows))
-$(eval $(call NEW_THORVG_BUILD,$1,false,true,))
+$(eval $(call NEW_THORVG_BUILD,$1,false,true,"lottie_expressions"))
 endef
 
 define NEW_ANDROID_BUILD
@@ -784,7 +783,7 @@ $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_SOURCE_DIR := $(D
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_BUILD_DIR := $(THORVG_LOCAL_ARCH_BUILD_DIR)
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): LOG := false
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): STATIC := false
-$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): SAVERS := all
+$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): EXTRA := lottie_expressions
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(LIBJPEG_TURBO_LIB)
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(LIBPNG_LIB)
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(ZLIB_LIB)
@@ -886,8 +885,21 @@ $(ANDROID): $(ANDROID_BUILD_TARGETS)
 .PHONY: $(APPLE)
 $(APPLE): $(APPLE_BUILD_TARGETS)
 
+.PHONY: pre-make-wasm
+pre-make-wasm:
+	@echo "Copy Cargo.wasm.toml to Cargo.toml..."
+	@cp $(RUNTIME_FFI)/Cargo.wasm.toml $(RUNTIME_FFI)/Cargo.toml
+
+.PHONY: post-make-wasm
+post-make-wasm:
+	@echo "Reset Cargo.toml..."
+	@git -C $(RUNTIME_FFI) checkout -- Cargo.toml
+
 .PHONY: $(WASM)
-$(WASM): $(WASM_BUILD_TARGETS)
+$(WASM):
+	@$(MAKE) pre-make-wasm
+	@$(MAKE) $(WASM_BUILD_TARGETS)
+	@$(MAKE) post-make-wasm
 
 .PHONY: all
 all: $(APPLE) $(ANDROID) $(WASM)
@@ -910,6 +922,7 @@ clean-deps: clean-build
 clean: clean-build
 	@rm -rf $(RELEASE)
 	@cargo clean --manifest-path $(CORE)/Cargo.toml
+	@cargo clean --manifest-path $(FMS)/Cargo.toml
 	@cargo clean --manifest-path $(RUNTIME_FFI)/Cargo.toml
 	@rm -rf $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)
 	@rm -rf $(RUNTIME_FFI)/$(BUILD)
@@ -922,6 +935,23 @@ mac-setup: export EMSDK_VERSION := $(EMSDK_VERSION)
 mac-setup: export UNIFFI_BINDGEN_CPP_VERSION:= $(UNIFFI_BINDGEN_CPP_VERSION)
 mac-setup:
 	@./.$@.sh
+
+.PHONY: test
+test: test-all
+
+.PHONY: test-all
+test-all:
+	$(info $(YELLOW)Running tests for workspace$(NC))
+	@cargo test --manifest-path $(CORE)/Cargo.toml -- --test-threads=1 
+	@cargo test --manifest-path $(FMS)/Cargo.toml -- --test-threads=1 
+	@cargo test --manifest-path $(RUNTIME_FFI)/Cargo.toml -- --test-threads=1 
+
+.PHONY: bench
+bench:
+	$(info $(YELLOW)Running benchmarks for workspace$(NC))
+	cargo bench --manifest-path $(CORE)/Cargo.toml
+	cargo bench --manifest-path $(FMS)/Cargo.toml
+	cargo bench --manifest-path $(RUNTIME_FFI)/Cargo.toml
 
 .PHONY: help
 help:
@@ -962,5 +992,7 @@ help:
 	@echo "  - $(YELLOW)clean-deps$(NC)  - clean up all native dependency builds & artifacts"
 	@echo "  - $(YELLOW)clean-build$(NC) - clean up any extraneous build files (useful for ensuring a clean working directory)"
 	@echo "  - $(YELLOW)distclean$(NC)   - clean up everything"
+	@echo "  - $(YELLOW)test$(NC)        - run all tests"
+	@echo "  - $(YELLOW)bench$(NC)       - run all benchmarks"
 	@echo
 	@echo

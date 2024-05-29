@@ -14,7 +14,7 @@ pub struct ManifestAnimation {
     pub r#loop: Option<bool>,
     pub loop_count: Option<u32>,
     pub playMode: Option<String>,
-    pub speed: Option<u32>,
+    pub speed: Option<f32>,
     pub themeColor: Option<String>,
 }
 
@@ -30,7 +30,7 @@ impl ManifestAnimation {
         r#loop: Option<bool>,
         loop_count: Option<u32>,
         playMode: Option<String>,
-        speed: Option<u32>,
+        speed: Option<f32>,
         themeColor: Option<String>,
     ) -> Self {
         Self {
@@ -71,7 +71,7 @@ impl ManifestAnimation {
             } else {
                 playMode
             },
-            speed: if speed.is_none() { Some(1) } else { speed },
+            speed: if speed.is_none() { Some(1.0) } else { speed },
             themeColor: if themeColor.is_none() {
                 Some("".to_string())
             } else {
@@ -91,7 +91,7 @@ impl ManifestAnimation {
             r#loop: Some(false),
             loop_count: Some(0),
             playMode: Some("normal".to_string()),
-            speed: Some(1),
+            speed: Some(1.0),
             themeColor: Some("".to_string()),
         }
     }

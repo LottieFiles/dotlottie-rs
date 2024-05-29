@@ -35,35 +35,33 @@ fn display() {
         None,
     );
 
-    let animation_02 =
-        ManifestAnimation::new(
-            Some(false),
-            Some("red_theme".to_string()),
-            Some(-1),
-            None,
-            "animation_02".to_string(),
-            None,
-            Some(false),
-            Some(12),
-            Some("bounce".to_string()),
-            Some(2),
-            None,
-        );
+    let animation_02 = ManifestAnimation::new(
+        Some(false),
+        Some("red_theme".to_string()),
+        Some(-1),
+        None,
+        "animation_02".to_string(),
+        None,
+        Some(false),
+        Some(12),
+        Some("bounce".to_string()),
+        Some(2.0),
+        None,
+    );
 
-    let animation_03 =
-        ManifestAnimation::new(
-            Some(true),
-            Some("orange_theme".to_string()),
-            Some(1),
-            None,
-            "animation_02".to_string(),
-            None,
-            Some(true),
-            Some(12),
-            None,
-            None,
-            None,
-        );
+    let animation_03 = ManifestAnimation::new(
+        Some(true),
+        Some("orange_theme".to_string()),
+        Some(1),
+        None,
+        "animation_02".to_string(),
+        None,
+        Some(true),
+        Some(12),
+        None,
+        None,
+        None,
+    );
 
     animations.push(animation_01);
 
@@ -95,7 +93,7 @@ fn display() {
               "loop": true,
               "loopCount": 0,
               "playMode": "normal",
-              "speed": 1,
+              "speed": 1.0,
               "themeColor": ""
             }
           ],
@@ -134,44 +132,43 @@ fn display() {
 
     let dis_02 = manifest_with_two_animations.to_json();
 
-    let dis_02_expected =
-        object! {
-          "activeAnimationId": "default_animation_id",
-          "animations": [
-            {
-              "autoplay": false,
-              "defaultTheme": "red_theme",
-              "direction": -1,
-              "hover": false,
-              "id": "animation_02",
-              "intermission": 0,
-              "loop": false,
-              "loopCount": 12,
-              "playMode": "bounce",
-              "speed": 2,
-              "themeColor": ""
-            },
-            {
-              "autoplay": true,
-              "defaultTheme": "orange_theme",
-              "direction": 1,
-              "hover": false,
-              "id": "animation_02",
-              "intermission": 0,
-              "loop": true,
-              "loopCount": 12,
-              "playMode": "Normal",
-              "speed": 1,
-              "themeColor": ""
-            }
-          ],
-          "author": "test_author",
-          "description": "Multi animation",
-          "generator": "dotLottie-fms",
-          "keywords": "dotLottie",
-          "revision": 2,
-          "version": "1.0.0"
-        };
+    let dis_02_expected = object! {
+      "activeAnimationId": "default_animation_id",
+      "animations": [
+        {
+          "autoplay": false,
+          "defaultTheme": "red_theme",
+          "direction": -1,
+          "hover": false,
+          "id": "animation_02",
+          "intermission": 0,
+          "loop": false,
+          "loopCount": 12,
+          "playMode": "bounce",
+          "speed": 2.0,
+          "themeColor": ""
+        },
+        {
+          "autoplay": true,
+          "defaultTheme": "orange_theme",
+          "direction": 1,
+          "hover": false,
+          "id": "animation_02",
+          "intermission": 0,
+          "loop": true,
+          "loopCount": 12,
+          "playMode": "Normal",
+          "speed": 1.0,
+          "themeColor": ""
+        }
+      ],
+      "author": "test_author",
+      "description": "Multi animation",
+      "generator": "dotLottie-fms",
+      "keywords": "dotLottie",
+      "revision": 2,
+      "version": "1.0.0"
+    };
 
     assert_eq!(dis_02.dump(), dis_02_expected.dump());
 }

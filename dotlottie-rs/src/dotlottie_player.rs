@@ -83,8 +83,6 @@ impl Default for Config {
     }
 }
 
-const FRAME_DIFF_THRESHOLD: f32 = 0.001;
-
 struct DotLottieRuntime {
     renderer: LottieRenderer,
     playback_state: PlaybackState,
@@ -281,29 +279,17 @@ impl DotLottieRuntime {
             Direction::Reverse => end_frame - raw_next_frame,
         };
 
-        if !self.config.use_frame_interpolation {
-            next_frame = next_frame.round();
-        }
-
-        /*
-           Note:
-           If we're close to the end frame, we should snap to it as tvg_set_frame ignore the frame which is 0.001 less than the current frame.
-        */
-        match self.direction {
-            Direction::Forward => {
-                if (next_frame - end_frame).abs() < FRAME_DIFF_THRESHOLD {
-                    next_frame = end_frame;
-                }
-            }
-            Direction::Reverse => {
-                if (next_frame - start_frame).abs() < FRAME_DIFF_THRESHOLD {
-                    next_frame = start_frame
-                }
-            }
+        // Apply frame interpolation
+        next_frame = if self.config.use_frame_interpolation {
+            (next_frame * 1000.0).round() / 1000.0
+        } else {
+            next_frame.round()
         };
 
+        // Clamp the next frame to the start & end frames
         next_frame = next_frame.clamp(start_frame, end_frame);
 
+        // Handle different modes
         next_frame = match self.config.mode {
             Mode::Forward => self.handle_forward_mode(next_frame, end_frame),
             Mode::Reverse => self.handle_reverse_mode(next_frame, start_frame),
@@ -482,6 +468,10 @@ impl DotLottieRuntime {
         is_ok
     }
 
+    pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> bool {
+        self.renderer.set_viewport(x, y, w, h).is_ok()
+    }
+
     pub fn render(&mut self) -> bool {
         let is_ok = self.renderer.render().is_ok();
 
@@ -504,8 +494,21 @@ impl DotLottieRuntime {
         self.renderer.duration().unwrap_or(0.0)
     }
 
+    pub fn segment_duration(&self) -> f32 {
+        if self.config.segment.is_empty() {
+            self.duration()
+        } else {
+            let start_frame = self.start_frame();
+            let end_frame = self.end_frame();
+
+            let frame_rate = self.total_frames() / self.duration();
+
+            (end_frame - start_frame) / frame_rate
+        }
+    }
+
     pub fn current_frame(&self) -> f32 {
-        self.renderer.current_frame().unwrap_or(0.0)
+        self.renderer.current_frame
     }
 
     pub fn loop_count(&self) -> u32 {
@@ -579,6 +582,8 @@ impl DotLottieRuntime {
     fn update_speed(&mut self, new_config: &Config) {
         if self.config.speed != new_config.speed && new_config.speed > 0.0 {
             self.config.speed = new_config.speed;
+
+            self.update_start_time_for_frame(self.current_frame());
         }
     }
 
@@ -712,7 +717,7 @@ impl DotLottieRuntime {
 
         match playback_settings_result {
             Ok(playback_settings) => {
-                let speed = playback_settings.speed.unwrap_or(1);
+                let speed = playback_settings.speed.unwrap_or(1.0);
                 let loop_animation = playback_settings.r#loop.unwrap_or(false);
                 let direction = playback_settings.direction.unwrap_or(1);
                 let autoplay = playback_settings.autoplay.unwrap_or(false);
@@ -726,7 +731,7 @@ impl DotLottieRuntime {
                     _ => Mode::Forward,
                 };
 
-                self.config.speed = speed as f32;
+                self.config.speed = speed;
                 self.config.autoplay = autoplay;
                 self.config.mode = if play_mode == "normal" {
                     if direction == 1 {
@@ -969,6 +974,10 @@ impl DotLottiePlayer {
         self.runtime.read().unwrap().duration()
     }
 
+    pub fn segment_duration(&self) -> f32 {
+        self.runtime.read().unwrap().segment_duration()
+    }
+
     pub fn current_frame(&self) -> f32 {
         self.runtime.read().unwrap().current_frame()
     }
@@ -1081,6 +1090,13 @@ impl DotLottiePlayer {
         }
 
         ok
+    }
+
+    pub fn set_viewport(&self, x: i32, y: i32, w: i32, h: i32) -> bool {
+        match self.runtime.try_write() {
+            Ok(mut runtime) => runtime.set_viewport(x, y, w, h),
+            _ => false,
+        }
     }
 
     pub fn resize(&self, width: u32, height: u32) -> bool {

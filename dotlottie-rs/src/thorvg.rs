@@ -93,6 +93,18 @@ impl Canvas {
         }
     }
 
+    pub fn set_viewport(
+        &mut self,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+    ) -> Result<(), TvgError> {
+        let result = unsafe { tvg_canvas_set_viewport(self.raw_canvas, x, y, w, h) };
+
+        convert_tvg_result(result, "tvg_canvas_set_viewport")
+    }
+
     pub fn set_target(
         &mut self,
         buffer: &mut Vec<u32>,
@@ -182,16 +194,15 @@ impl Animation {
         let mimetype = CString::new(mimetype).expect("Failed to create CString");
         let data = CString::new(data).expect("Failed to create CString");
 
-        let result =
-            unsafe {
-                tvg_picture_load_data(
-                    self.raw_paint,
-                    data.as_ptr(),
-                    data.as_bytes().len() as u32,
-                    mimetype.as_ptr(),
-                    copy,
-                )
-            };
+        let result = unsafe {
+            tvg_picture_load_data(
+                self.raw_paint,
+                data.as_ptr(),
+                data.as_bytes().len() as u32,
+                mimetype.as_ptr(),
+                copy,
+            )
+        };
 
         convert_tvg_result(result, "tvg_picture_load_data")?;
 
@@ -202,14 +213,13 @@ impl Animation {
         let mut width = 0.0;
         let mut height = 0.0;
 
-        let result =
-            unsafe {
-                tvg_picture_get_size(
-                    self.raw_paint,
-                    &mut width as *mut f32,
-                    &mut height as *mut f32,
-                )
-            };
+        let result = unsafe {
+            tvg_picture_get_size(
+                self.raw_paint,
+                &mut width as *mut f32,
+                &mut height as *mut f32,
+            )
+        };
 
         convert_tvg_result(result, "tvg_picture_get_size")?;
 

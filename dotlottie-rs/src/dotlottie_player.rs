@@ -468,6 +468,10 @@ impl DotLottieRuntime {
         is_ok
     }
 
+    pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> bool {
+        self.renderer.set_viewport(x, y, w, h).is_ok()
+    }
+
     pub fn render(&mut self) -> bool {
         let is_ok = self.renderer.render().is_ok();
 
@@ -1086,6 +1090,13 @@ impl DotLottiePlayer {
         }
 
         ok
+    }
+
+    pub fn set_viewport(&self, x: i32, y: i32, w: i32, h: i32) -> bool {
+        match self.runtime.try_write() {
+            Ok(mut runtime) => runtime.set_viewport(x, y, w, h),
+            _ => false,
+        }
     }
 
     pub fn resize(&self, width: u32, height: u32) -> bool {

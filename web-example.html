@@ -61,6 +61,12 @@
     <button id="loop">loopToggle</button>
     <button id="next">Next</button>
     <input id="bg-color" type="color" />
+    <div>
+      <label for="width">Rendering Area Width:</label>
+      <input id="width" type="range" min="0" max="1" step="0.01" value="1" />
+      <label for="height">Rendering Area Height:</label>
+      <input id="height" type="range" min="0" max="1" step="0.01" value="1" />
+    </div>
     <script type="module">
       import createDotLottiePlayerModule from "./release/wasm/DotLottiePlayer.mjs";
 
@@ -78,6 +84,8 @@
       const fitSelect = document.querySelector("#fit");
       const alignSelect = document.querySelector("#align");
       const themeSelect = document.querySelector("#theme-select");
+      const renderAreaWidthInput = document.querySelector("#width");
+      const renderAreaHeightInput = document.querySelector("#height");
 
       const Module = await createDotLottiePlayerModule({
         locateFile: (path, prefix) => {
@@ -233,7 +241,14 @@
         dotLottiePlayer.resize(width, height);
       }
 
+      function setViewport() {
+        const width = Number(renderAreaWidthInput.value) * canvas.width;
+        const height = Number(renderAreaHeightInput.value) * canvas.height;
+        dotLottiePlayer.setViewport(0, 0, width, height);
+      }
+
       function render() {
+        setViewport();
         const rendered = dotLottiePlayer.render();
         if (rendered) {
           const frameBuffer = dotLottiePlayer.buffer();

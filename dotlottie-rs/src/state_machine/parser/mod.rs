@@ -82,6 +82,7 @@ pub struct StateActionJson {
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct StateJson {
+    pub name: String,
     pub r#type: StateType,
     pub animation_id: Option<String>,
     pub r#loop: Option<bool>,

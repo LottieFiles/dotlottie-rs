@@ -84,13 +84,7 @@ mod tests {
             );
             assert!(player.is_playing(), "Animation should be playing");
 
-            let expected_duration = if player.config().segment.is_empty() {
-                player.duration()
-            } else {
-                let segment_total_frames = player.config().segment[1] - player.config().segment[0];
-
-                segment_total_frames / player.total_frames() * player.duration()
-            };
+            let expected_duration = player.segment_duration();
 
             let start_time = std::time::Instant::now();
 

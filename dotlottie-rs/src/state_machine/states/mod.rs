@@ -138,13 +138,11 @@ impl StateTrait for State {
                         .load_animation(&animation_id, *width, *height);
                 }
 
-                println!("config: {:?}", config);
-
-                // Set the config
-                player.write().unwrap().set_config(config);
+                // We have to use read otherwise it will deadlock
+                player.read().unwrap().set_config(config);
 
                 if autoplay {
-                    player.write().unwrap().play();
+                    player.read().unwrap().play();
                 }
             }
             State::Sync {

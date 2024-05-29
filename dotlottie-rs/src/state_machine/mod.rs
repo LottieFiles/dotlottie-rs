@@ -17,10 +17,17 @@ use crate::{Config, DotLottiePlayerContainer, Layout, Mode};
 use self::parser::{state_machine_parse, ContextJsonType};
 use self::{errors::StateMachineError, events::Event, states::State, transitions::Transition};
 
-pub trait StateMachineObserver {
-    fn load_animation(&mut self, animation_id: &str);
-    fn set_config(&mut self, config: Config);
-    fn set_frame(&mut self, frame: f32);
+pub trait StateMachineObserver: Send + Sync {
+    fn on_transition(&self, previous_state: String, new_state: String);
+    fn on_state_entered(&self, entering_state: String);
+    fn on_state_exit(&self, leaving_state: String);
+}
+
+#[derive(PartialEq)]
+pub enum StateMachineStatus {
+    Running,
+    Paused,
+    Stopped,
 }
 
 pub struct StateMachine {
@@ -272,30 +279,6 @@ impl StateMachine {
                                 None => {}
                             }
                         }
-                    }
-                }
-
-                // Since value can either be a string, int or bool, we need to check the type and set the context accordingly
-                for variable in parsed_state_machine.context_variables {
-                    match variable.r#type {
-                        ContextJsonType::Numeric => match variable.value {
-                            StringNumberBool::F32(value) => {
-                                new_state_machine.set_numeric_context(&variable.key, value);
-                            }
-                            _ => {}
-                        },
-                        ContextJsonType::String => match variable.value {
-                            StringNumberBool::String(value) => {
-                                new_state_machine.set_string_context(&variable.key, value.as_str());
-                            }
-                            _ => {}
-                        },
-                        ContextJsonType::Boolean => match variable.value {
-                            StringNumberBool::Bool(value) => {
-                                new_state_machine.set_bool_context(&variable.key, value);
-                            }
-                            _ => {}
-                        },
                     }
                 }
 

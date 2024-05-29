@@ -47,10 +47,6 @@ struct DummyObserver {
     id: u32,
 }
 
-unsafe impl Send for DummyObserver2 {}
-unsafe impl Sync for DummyObserver2 {}
-
-// todo try sending complete from here
 impl Observer for DummyObserver {
     fn on_play(&self) {
         // println!("on_play {} ", self.id);
@@ -141,21 +137,13 @@ fn main() {
     let mut path = path::PathBuf::from(base_path);
     path.push("src/markers.json");
 
-    let lottie_player: DotLottiePlayer = (DotLottiePlayer::new(Config {
+    let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         loop_animation: true,
         background_color: 0xffffffff,
         layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
         marker: "feather".to_string(),
         ..Config::default()
-    }));
-
-    lottie_player.load_animation_path(
-        path.as_path().to_str().unwrap(),
-        WIDTH as u32,
-        HEIGHT as u32,
-    );
-
-    let locked_player = Arc::new(RwLock::new(lottie_player));
+    });
 
     // read dotlottie in to vec<u8>
     let mut f = File::open(
@@ -177,13 +165,19 @@ fn main() {
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
+    lottie_player.load_animation_path(
+        path.as_path().to_str().unwrap(),
+        WIDTH as u32,
+        HEIGHT as u32,
+    );
+
     let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
     let observer2: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 2 });
 
     let observer3: Arc<dyn StateMachineObserver + 'static> = Arc::new(SMObserver {});
 
-    // lottie_player.subscribe(observer1.clone());
-    // locked_player.read().unwrap().subscribe(observer2.clone());
+    lottie_player.subscribe(observer1.clone());
+    lottie_player.subscribe(observer2.clone());
 
     let mut timer = Timer::new();
 
@@ -209,7 +203,7 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    locked_player.read().unwrap().play();
+    // lottie_player.play();
 
     let mut file = File::open("src/pigeon_fsm.json").expect("Unable to open the file");
     let mut contents = String::new();
@@ -217,10 +211,11 @@ fn main() {
         .expect("Unable to read the file");
 
     lottie_player.load_state_machine(&contents);
+    lottie_player.start_state_machine();
 
     lottie_player.state_machine_subscribe(observer3.clone());
 
-    // let locked_player = Arc::new(RwLock::new(lottie_player.clone()));
+    let locked_player = Arc::new(RwLock::new(lottie_player));
 
     let mut pushed = 10.0;
 
@@ -250,10 +245,8 @@ fn main() {
 
             pushed -= 1.0;
 
-            pushed -= 1.0;
-
             let p = &mut *locked_player.write().unwrap();
-            // p.tmp_set_state_machine_context("counter_0", pushed);
+            p.tmp_set_state_machine_context("counter_0", pushed);
 
             p.post_event(&string_event);
         }

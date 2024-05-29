@@ -113,8 +113,6 @@ struct DotLottieRuntime {
     markers: MarkersMap,
     active_animation_id: String,
     active_theme_id: String,
-    active_state_machine_id: String,
-    state_machine: Option<StateMachine>,
 }
 
 impl DotLottieRuntime {
@@ -138,8 +136,6 @@ impl DotLottieRuntime {
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
             active_theme_id: String::new(),
-            active_state_machine_id: String::new(),
-            state_machine: None,
         }
     }
 
@@ -1094,20 +1090,21 @@ impl DotLottiePlayerContainer {
                     self.observers.read().unwrap().iter().for_each(|observer| {
                         observer.on_loop(self.loop_count());
                     });
-                } else {
-                    match self.state_machine.try_write() {
-                        Ok(mut state_machine) => {
-                            if let Some(sm) = state_machine.as_mut() {
-                                sm.post_event(&Event::OnComplete);
-                            }
-                        }
-                        Err(_) => todo!(),
-                    }
-
-                    self.observers.read().unwrap().iter().for_each(|observer| {
-                        observer.on_complete();
-                    });
                 }
+
+                let ret = self.state_machine.try_write();
+                match ret {
+                    Ok(mut state_machine) => {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.post_event(&Event::OnComplete);
+                        }
+                    }
+                    Err(_) => (),
+                }
+
+                self.observers.read().unwrap().iter().for_each(|observer| {
+                    observer.on_complete();
+                });
             }
         }
 
@@ -1193,10 +1190,22 @@ impl DotLottiePlayer {
         let state_machine = StateMachine::new(state_machine, self.player.clone());
 
         if state_machine.is_ok() {
-            self.state_machine
-                .write()
-                .unwrap()
-                .replace(state_machine.unwrap());
+            match self.state_machine.try_write() {
+                Ok(mut sm) => {
+                    sm.replace(state_machine.unwrap());
+                }
+                Err(_) => {}
+            }
+
+            let player = self.player.try_write();
+
+            match player {
+                Ok(mut player) => {
+                    player.state_machine = self.state_machine.clone();
+                    println!("State Machine Set")
+                }
+                Err(_) => {}
+            }
         } else {
             match state_machine {
                 Err(ParsingError { reason }) => {
@@ -1219,15 +1228,13 @@ impl DotLottiePlayer {
             return false;
         }
 
-        let ret = self.state_machine.try_write();
-
-        match ret {
+        match self.state_machine.try_write() {
             Ok(mut state_machine) => {
-                state_machine.as_mut().unwrap().start();
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.start();
+                }
             }
-            Err(_) => {
-                return false;
-            }
+            Err(_) => return false,
         }
 
         true

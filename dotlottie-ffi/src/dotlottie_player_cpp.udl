@@ -127,4 +127,5 @@ interface DotLottiePlayer {
     sequence<Marker> markers();
     string active_animation_id();
     string active_theme_id();
+    f32 segment_duration();
 };

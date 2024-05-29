@@ -144,6 +144,18 @@ impl LottieRenderer {
         Ok(())
     }
 
+    pub fn set_viewport(
+        &mut self,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+    ) -> Result<(), LottieRendererError> {
+        self.thorvg_canvas
+            .set_viewport(x, y, w, h)
+            .map_err(LottieRendererError::ThorvgError)
+    }
+
     pub fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError> {
         let total_frames = self
             .thorvg_animation

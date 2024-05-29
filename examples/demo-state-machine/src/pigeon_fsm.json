@@ -5,6 +5,7 @@
     },
     "states": [
         {
+            "name": "pigeon",
             "type": "PlaybackState",
             "loop": true,
             "autoplay": true,
@@ -23,6 +24,7 @@
             "reset_context": "*"
         },
         {
+            "name": "explosion",
             "type": "PlaybackState",
             "loop": false,
             "autoplay": true,
@@ -35,6 +37,7 @@
             "exit_actions": []
         },
         {
+            "name": "feather",
             "type": "PlaybackState",
             "loop": false,
             "autoplay": true,
@@ -44,7 +47,7 @@
             "segment": [],
             "frame_interpolation": true,
             "entry_actions": [],
-            "exit_actions": []
+            "exit_actions": []  
         }
     ],
     "transitions": [

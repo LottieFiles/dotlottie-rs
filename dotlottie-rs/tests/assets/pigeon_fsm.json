@@ -5,6 +5,7 @@
     },
     "states": [
         {
+            "name": "pigeon",
             "type": "PlaybackState",
             "loop": true,
             "autoplay": true,
@@ -22,6 +23,7 @@
             "exit_actions": []
         },
         {
+            "name": "explosion",
             "type": "PlaybackState",
             "loop": false,
             "autoplay": true,
@@ -34,6 +36,7 @@
             "exit_actions": []
         },
         {
+            "name": "feather",
             "type": "PlaybackState",
             "loop": false,
             "autoplay": true,

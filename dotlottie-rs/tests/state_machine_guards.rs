@@ -69,6 +69,7 @@ mod tests {
 
             match unwrapped_state {
                 State::Playback {
+                    name: _,
                     config: _,
                     reset_context: _,
                     animation_id: _,

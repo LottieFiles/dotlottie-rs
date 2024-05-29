@@ -17,10 +17,10 @@ use crate::{Config, DotLottiePlayerContainer, Layout, Mode};
 use self::parser::{state_machine_parse, ContextJsonType};
 use self::{errors::StateMachineError, events::Event, states::State, transitions::Transition};
 
-pub trait StateMachineObserver {
-    fn load_animation(&mut self, animation_id: &str);
-    fn set_config(&mut self, config: Config);
-    fn set_frame(&mut self, frame: f32);
+pub trait StateMachineObserver: Send + Sync {
+    fn on_transition(&self, previous_state: String, new_state: String);
+    fn on_state_entered(&self, entering_state: String);
+    fn on_state_exit(&self, leaving_state: String);
 }
 
 #[derive(PartialEq)]
@@ -39,6 +39,8 @@ pub struct StateMachine {
     numeric_context: HashMap<String, f32>,
     string_context: HashMap<String, String>,
     bool_context: HashMap<String, bool>,
+
+    observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
 }
 
 impl StateMachine {
@@ -51,6 +53,7 @@ impl StateMachine {
             string_context: HashMap::new(),
             bool_context: HashMap::new(),
             status: StateMachineStatus::Stopped,
+            observers: RwLock::new(Vec::new()),
         }
     }
 
@@ -66,6 +69,7 @@ impl StateMachine {
             string_context: HashMap::new(),
             bool_context: HashMap::new(),
             status: StateMachineStatus::Stopped,
+            observers: RwLock::new(Vec::new()),
         };
 
         let sm = state_machine.create_state_machine(state_machine_definition, &player);
@@ -78,6 +82,18 @@ impl StateMachine {
                 return Err(err);
             }
         };
+    }
+
+    pub fn subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
+        let mut observers = self.observers.write().unwrap();
+        observers.push(observer);
+    }
+
+    pub fn unsubscribe(&self, observer: &Arc<dyn StateMachineObserver>) {
+        self.observers
+            .write()
+            .unwrap()
+            .retain(|o| !Arc::ptr_eq(o, observer));
     }
 
     pub fn get_numeric_context(&self, key: &str) -> Option<f32> {
@@ -113,7 +129,7 @@ impl StateMachine {
     ) -> Result<StateMachine, StateMachineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
 
-        // todo somehow getthe context json without having to parse it again
+        // todo somehow get the context json without having to parse it again
         // self.json_context = Some(
         //     state_machine_parse(sm_definition)
         //         .unwrap()
@@ -163,6 +179,7 @@ impl StateMachine {
 
                             // Construct a State with the values we've gathered
                             let new_playback_state = State::Playback {
+                                name: state.name,
                                 config: playback_config,
                                 reset_context: state.reset_context.unwrap_or("".to_string()),
                                 animation_id: state.animation_id.unwrap_or("".to_string()),
@@ -304,6 +321,7 @@ impl StateMachine {
                     string_context: new_state_machine.string_context,
                     bool_context: new_state_machine.bool_context,
                     status: StateMachineStatus::Stopped,
+                    observers: RwLock::new(Vec::new()),
                 };
 
                 return Ok(new_state_machine);
@@ -314,7 +332,7 @@ impl StateMachine {
 
     pub fn start(&mut self) {
         self.status = StateMachineStatus::Running;
-        self.execute_current_state()
+        self.execute_current_state();
     }
 
     pub fn pause(&mut self) {
@@ -337,9 +355,9 @@ impl StateMachine {
         self.states.push(state);
     }
 
-    pub fn execute_current_state(&mut self) {
+    pub fn execute_current_state(&mut self) -> bool {
         if self.current_state.is_none() {
-            return;
+            return false;
         }
 
         // Check if current_state is not None and execute the state
@@ -375,6 +393,8 @@ impl StateMachine {
             }
             None => {}
         }
+
+        return true;
     }
 
     fn verify_if_guards_are_met(&mut self, guard: &Guard) -> bool {
@@ -538,7 +558,45 @@ impl StateMachine {
 
             if tmp_state > -1 {
                 let next_state = self.states.get(tmp_state as usize).unwrap();
+
+                // Emit transtion occured event
+                self.observers.read().unwrap().iter().for_each(|observer| {
+                    observer.on_transition(
+                        (&*self
+                            .current_state
+                            .as_ref()
+                            .unwrap()
+                            .read()
+                            .unwrap()
+                            .get_name())
+                            .to_string(),
+                        (&*next_state.read().unwrap().get_name()).to_string(),
+                    )
+                });
+
+                // Emit leaving current state event
+                if self.current_state.is_some() {
+                    self.observers.read().unwrap().iter().for_each(|observer| {
+                        observer.on_state_exit(
+                            (&*self
+                                .current_state
+                                .as_ref()
+                                .unwrap()
+                                .read()
+                                .unwrap()
+                                .get_name())
+                                .to_string(),
+                        );
+                    });
+                }
+
                 self.current_state = Some(next_state.clone());
+
+                // Emit entering a new state
+                self.observers.read().unwrap().iter().for_each(|observer| {
+                    observer
+                        .on_state_entered((&*next_state.read().unwrap().get_name()).to_string());
+                });
 
                 self.execute_current_state();
             }

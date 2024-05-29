@@ -8,11 +8,14 @@ mod tests {
         sync::{Arc, RwLock},
     };
 
-    use dotlottie_player_core::transitions::{Transition::Transition, TransitionTrait};
-
-    use dotlottie_player_core::{events::Event, states::State, Config, DotLottiePlayer, Mode};
+    use dotlottie_player_core::{
+        states::StateTrait,
+        transitions::{Transition::Transition, TransitionTrait},
+        StateMachineObserver,
+    };
 
     use crate::test_utils::{HEIGHT, WIDTH};
+    use dotlottie_player_core::{events::Event, states::State, Config, DotLottiePlayer, Mode};
 
     #[test]
     pub fn load_multiple_states() {
@@ -70,6 +73,7 @@ mod tests {
         };
 
         let pigeon_state_0 = State::Playback {
+            name: "pigeon".to_string(),
             config: Config {
                 mode: Mode::Forward,
                 loop_animation: true,
@@ -89,6 +93,7 @@ mod tests {
         };
 
         let pigeon_state_1 = State::Playback {
+            name: "explosion".to_string(),
             config: Config {
                 mode: Mode::Forward,
                 loop_animation: false,
@@ -108,6 +113,7 @@ mod tests {
         };
 
         let pigeon_state_2 = State::Playback {
+            name: "feather".to_string(),
             config: Config {
                 mode: Mode::Forward,
                 loop_animation: false,
@@ -136,6 +142,7 @@ mod tests {
 
             match unwrapped_state {
                 State::Playback {
+                    name: _,
                     config: state_config,
                     reset_context: _,
                     animation_id: _,
@@ -144,6 +151,7 @@ mod tests {
                     transitions: state_transitions,
                 } => match ps {
                     State::Playback {
+                        name: _,
                         config,
                         reset_context: _,
                         animation_id: _,
@@ -174,5 +182,133 @@ mod tests {
         }
 
         assert_eq!(i, 3)
+    }
+
+    #[test]
+    fn state_machine_observer_test() {
+        // We create 3 separate observers to test the different methods
+        // Otherwise if we use the same observer all three events will modify the same data
+        pub struct SMObserver1 {
+            pub custom_data: RwLock<String>,
+        }
+
+        impl StateMachineObserver for SMObserver1 {
+            fn on_transition(&self, previous_state: String, new_state: String) {
+                *self.custom_data.write().unwrap() =
+                    format!("{:?} -> {:?}", previous_state, new_state);
+            }
+
+            fn on_state_entered(&self, _entering_state: String) {}
+
+            fn on_state_exit(&self, _leaving_state: String) {}
+        }
+
+        pub struct SMObserver2 {
+            pub custom_data: RwLock<String>,
+        }
+
+        impl StateMachineObserver for SMObserver2 {
+            fn on_transition(&self, previous_state: String, new_state: String) {}
+
+            fn on_state_entered(&self, entering_state: String) {
+                *self.custom_data.write().unwrap() = format!("{:?}", entering_state);
+            }
+
+            fn on_state_exit(&self, _leaving_state: String) {}
+        }
+
+        pub struct SMObserver3 {
+            pub custom_data: RwLock<String>,
+        }
+
+        impl StateMachineObserver for SMObserver3 {
+            fn on_transition(&self, _previous_state: String, _new_state: String) {}
+
+            fn on_state_entered(&self, _entering_state: String) {}
+
+            fn on_state_exit(&self, leaving_state: String) {
+                *self.custom_data.write().unwrap() = format!("{:?}", leaving_state);
+            }
+        }
+
+        let observer = Arc::new(SMObserver1 {
+            custom_data: RwLock::new("No event so far".to_string()),
+        });
+        let observer2 = Arc::new(SMObserver2 {
+            custom_data: RwLock::new("No event so far".to_string()),
+        });
+        let observer3 = Arc::new(SMObserver3 {
+            custom_data: RwLock::new("No event so far".to_string()),
+        });
+
+        use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
+
+        let player = DotLottiePlayer::new(Config::default());
+        let file_path = format!(
+            "{}{}",
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/assets/pigeon_fsm_ne_guard.json"
+        );
+
+        let mut sm_definition = File::open(file_path).unwrap();
+        let mut buffer_to_string = String::new();
+
+        sm_definition.read_to_string(&mut buffer_to_string).unwrap();
+
+        player.load_state_machine(&buffer_to_string);
+
+        player.start_state_machine();
+
+        player.state_machine_subscribe(observer.clone());
+
+        assert_eq!(*observer.custom_data.read().unwrap(), "No event so far");
+
+        // First test that the event doesn't fire if the guard is not met
+        player.tmp_set_state_machine_context("counter_0", 5.0);
+        player.post_event(&Event::String {
+            value: "explosion".to_string(),
+        });
+
+        // Should stay the same value we initialized it at
+        assert_eq!(*observer.custom_data.read().unwrap(), "No event so far");
+
+        player.tmp_set_state_machine_context("counter_0", 18.0);
+        player.post_event(&Event::String {
+            value: "explosion".to_string(),
+        });
+
+        // Should go to stage 2
+        assert_eq!(
+            *observer.custom_data.read().unwrap(),
+            "\"pigeon\" -> \"explosion\""
+        );
+
+        // Start second observer to test on_state_enter
+        player.state_machine_subscribe(observer2.clone());
+
+        // Should stay the same value we initialized it at
+        assert_eq!(*observer2.custom_data.read().unwrap(), "No event so far");
+
+        player.tmp_set_state_machine_string_context("counter_1", "not_the_same");
+        player.post_event(&Event::String {
+            value: "complete".to_string(),
+        });
+
+        // Should go to stage 3
+        assert_eq!(*observer2.custom_data.read().unwrap(), "\"feather\"");
+
+        // Start third observer to test on_state_exit
+        player.state_machine_subscribe(observer3.clone());
+
+        // Should stay the same value we initialized it at
+        assert_eq!(*observer3.custom_data.read().unwrap(), "No event so far");
+
+        player.tmp_set_state_machine_bool_context("counter_2", false);
+        player.post_event(&Event::String {
+            value: "done".to_string(),
+        });
+
+        // Should go to stage 0 and use previous state so it should be "done"
+        assert_eq!(*observer3.custom_data.read().unwrap(), "\"feather\"");
     }
 }

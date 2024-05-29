@@ -494,6 +494,19 @@ impl DotLottieRuntime {
         self.renderer.duration().unwrap_or(0.0)
     }
 
+    pub fn segment_duration(&self) -> f32 {
+        if self.config.segment.is_empty() {
+            self.duration()
+        } else {
+            let start_frame = self.start_frame();
+            let end_frame = self.end_frame();
+
+            let frame_rate = self.total_frames() / self.duration();
+
+            (end_frame - start_frame) / frame_rate
+        }
+    }
+
     pub fn current_frame(&self) -> f32 {
         self.renderer.current_frame
     }
@@ -569,6 +582,8 @@ impl DotLottieRuntime {
     fn update_speed(&mut self, new_config: &Config) {
         if self.config.speed != new_config.speed && new_config.speed > 0.0 {
             self.config.speed = new_config.speed;
+
+            self.update_start_time_for_frame(self.current_frame());
         }
     }
 
@@ -957,6 +972,10 @@ impl DotLottiePlayer {
 
     pub fn duration(&self) -> f32 {
         self.runtime.read().unwrap().duration()
+    }
+
+    pub fn segment_duration(&self) -> f32 {
+        self.runtime.read().unwrap().segment_duration()
     }
 
     pub fn current_frame(&self) -> f32 {

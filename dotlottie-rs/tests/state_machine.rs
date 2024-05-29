@@ -73,6 +73,7 @@ mod tests {
         };
 
         let pigeon_state_0 = State::Playback {
+            name: "pigeon".to_string(),
             config: Config {
                 mode: Mode::Forward,
                 loop_animation: true,
@@ -92,6 +93,7 @@ mod tests {
         };
 
         let pigeon_state_1 = State::Playback {
+            name: "explosion".to_string(),
             config: Config {
                 mode: Mode::Forward,
                 loop_animation: false,
@@ -111,6 +113,7 @@ mod tests {
         };
 
         let pigeon_state_2 = State::Playback {
+            name: "feather".to_string(),
             config: Config {
                 mode: Mode::Forward,
                 loop_animation: false,
@@ -139,6 +142,7 @@ mod tests {
 
             match unwrapped_state {
                 State::Playback {
+                    name: _,
                     config: state_config,
                     reset_context: _,
                     animation_id: _,
@@ -147,6 +151,7 @@ mod tests {
                     transitions: state_transitions,
                 } => match ps {
                     State::Playback {
+                        name: _,
                         config,
                         reset_context: _,
                         animation_id: _,
@@ -188,37 +193,14 @@ mod tests {
         }
 
         impl StateMachineObserver for SMObserver1 {
-            fn transition_occured(&self, previous_state: &State, new_state: &State) {
-                let transition_event = previous_state
-                    .get_transitions()
-                    .get(0)
-                    .unwrap()
-                    .read()
-                    .unwrap()
-                    .get_event();
-
-                let previous_state_transition_event = &*transition_event.read().unwrap();
-
-                let next_transition_event = new_state
-                    .get_transitions()
-                    .get(0)
-                    .unwrap()
-                    .read()
-                    .unwrap()
-                    .get_event();
-
-                let next_state_transition_event = &*next_transition_event.read().unwrap();
-
-                *self.custom_data.write().unwrap() = format!(
-                    "{:?} -> {:?}",
-                    previous_state_transition_event.as_str(),
-                    next_state_transition_event.as_str()
-                );
+            fn on_transition(&self, previous_state: String, new_state: String) {
+                *self.custom_data.write().unwrap() =
+                    format!("{:?} -> {:?}", previous_state, new_state);
             }
 
-            fn on_state_entered(&self, _entering_state: &State) {}
+            fn on_state_entered(&self, _entering_state: String) {}
 
-            fn on_state_exit(&self, _leaving_state: &State) {}
+            fn on_state_exit(&self, _leaving_state: String) {}
         }
 
         pub struct SMObserver2 {
@@ -226,24 +208,13 @@ mod tests {
         }
 
         impl StateMachineObserver for SMObserver2 {
-            fn transition_occured(&self, previous_state: &State, new_state: &State) {}
+            fn on_transition(&self, previous_state: String, new_state: String) {}
 
-            fn on_state_entered(&self, entering_state: &State) {
-                let transition_event = entering_state
-                    .get_transitions()
-                    .get(0)
-                    .unwrap()
-                    .read()
-                    .unwrap()
-                    .get_event();
-
-                let state_transition_event = &*transition_event.read().unwrap();
-
-                *self.custom_data.write().unwrap() =
-                    format!("{:?}", state_transition_event.as_str(),);
+            fn on_state_entered(&self, entering_state: String) {
+                *self.custom_data.write().unwrap() = format!("{:?}", entering_state);
             }
 
-            fn on_state_exit(&self, _leaving_state: &State) {}
+            fn on_state_exit(&self, _leaving_state: String) {}
         }
 
         pub struct SMObserver3 {
@@ -251,23 +222,12 @@ mod tests {
         }
 
         impl StateMachineObserver for SMObserver3 {
-            fn transition_occured(&self, _previous_state: &State, _new_state: &State) {}
+            fn on_transition(&self, _previous_state: String, _new_state: String) {}
 
-            fn on_state_entered(&self, _entering_state: &State) {}
+            fn on_state_entered(&self, _entering_state: String) {}
 
-            fn on_state_exit(&self, leaving_state: &State) {
-                let transition_event = leaving_state
-                    .get_transitions()
-                    .get(0)
-                    .unwrap()
-                    .read()
-                    .unwrap()
-                    .get_event();
-
-                let state_transition_event = &*transition_event.read().unwrap();
-
-                *self.custom_data.write().unwrap() =
-                    format!("{:?}", state_transition_event.as_str(),);
+            fn on_state_exit(&self, leaving_state: String) {
+                *self.custom_data.write().unwrap() = format!("{:?}", leaving_state);
             }
         }
 
@@ -320,7 +280,7 @@ mod tests {
         // Should go to stage 2
         assert_eq!(
             *observer.custom_data.read().unwrap(),
-            "\"explosion\" -> \"complete\""
+            "\"pigeon\" -> \"explosion\""
         );
 
         // Start second observer to test on_state_enter
@@ -335,7 +295,7 @@ mod tests {
         });
 
         // Should go to stage 3
-        assert_eq!(*observer2.custom_data.read().unwrap(), "\"done\"");
+        assert_eq!(*observer2.custom_data.read().unwrap(), "\"feather\"");
 
         // Start third observer to test on_state_exit
         player.state_machine_subscribe(observer3.clone());
@@ -349,6 +309,6 @@ mod tests {
         });
 
         // Should go to stage 0 and use previous state so it should be "done"
-        assert_eq!(*observer3.custom_data.read().unwrap(), "\"done\"");
+        assert_eq!(*observer3.custom_data.read().unwrap(), "\"feather\"");
     }
 }

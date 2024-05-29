@@ -15,6 +15,13 @@ namespace dotlottie_player {
 ///    void on_complete();
 /// };
 
+/// [Trait]
+/// interface StateMachineObserver {
+///    void on_transition(string previous_state, string new_state);
+///    void on_state_entered(string entering_state);
+///    void on_state_exit(string leaving_state);
+/// };
+
 enum Mode {
     "Forward",
     "Reverse",
@@ -121,6 +128,8 @@ interface DotLottiePlayer {
     void clear();
 /// void subscribe(Observer observer);
 /// void unsubscribe([ByRef] Observer observer);
+/// void state_machine_subscribe(StateMachineObserver observer);
+/// void state_machine_unsubscribe([ByRef] StateMachineObserver observer);
     boolean is_complete();
     boolean load_theme([ByRef] string theme_id);
     boolean load_theme_data([ByRef] string theme_data);

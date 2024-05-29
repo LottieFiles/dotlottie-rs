@@ -18,9 +18,9 @@ use self::parser::{state_machine_parse, ContextJsonType};
 use self::{errors::StateMachineError, events::Event, states::State, transitions::Transition};
 
 pub trait StateMachineObserver: Send + Sync {
-    fn transition_occured(&self, previous_state: &State, new_state: &State);
-    fn on_state_entered(&self, entering_state: &State);
-    fn on_state_exit(&self, leaving_state: &State);
+    fn on_transition(&self, previous_state: String, new_state: String);
+    fn on_state_entered(&self, entering_state: String);
+    fn on_state_exit(&self, leaving_state: String);
 }
 
 #[derive(PartialEq)]
@@ -179,6 +179,7 @@ impl StateMachine {
 
                             // Construct a State with the values we've gathered
                             let new_playback_state = State::Playback {
+                                name: state.name,
                                 config: playback_config,
                                 reset_context: state.reset_context.unwrap_or("".to_string()),
                                 animation_id: state.animation_id.unwrap_or("".to_string()),
@@ -331,7 +332,7 @@ impl StateMachine {
 
     pub fn start(&mut self) {
         self.status = StateMachineStatus::Running;
-        self.execute_current_state()
+        self.execute_current_state();
     }
 
     pub fn pause(&mut self) {
@@ -354,9 +355,9 @@ impl StateMachine {
         self.states.push(state);
     }
 
-    pub fn execute_current_state(&mut self) {
+    pub fn execute_current_state(&mut self) -> bool {
         if self.current_state.is_none() {
-            return;
+            return false;
         }
 
         // Check if current_state is not None and execute the state
@@ -392,6 +393,8 @@ impl StateMachine {
             }
             None => {}
         }
+
+        return true;
     }
 
     fn verify_if_guards_are_met(&mut self, guard: &Guard) -> bool {
@@ -558,17 +561,32 @@ impl StateMachine {
 
                 // Emit transtion occured event
                 self.observers.read().unwrap().iter().for_each(|observer| {
-                    observer.transition_occured(
-                        &*self.current_state.as_ref().unwrap().read().unwrap(),
-                        &*next_state.read().unwrap(),
+                    observer.on_transition(
+                        (&*self
+                            .current_state
+                            .as_ref()
+                            .unwrap()
+                            .read()
+                            .unwrap()
+                            .get_name())
+                            .to_string(),
+                        (&*next_state.read().unwrap().get_name()).to_string(),
                     )
                 });
 
                 // Emit leaving current state event
                 if self.current_state.is_some() {
                     self.observers.read().unwrap().iter().for_each(|observer| {
-                        observer
-                            .on_state_exit(&*self.current_state.as_ref().unwrap().read().unwrap());
+                        observer.on_state_exit(
+                            (&*self
+                                .current_state
+                                .as_ref()
+                                .unwrap()
+                                .read()
+                                .unwrap()
+                                .get_name())
+                                .to_string(),
+                        );
                     });
                 }
 
@@ -576,7 +594,8 @@ impl StateMachine {
 
                 // Emit entering a new state
                 self.observers.read().unwrap().iter().for_each(|observer| {
-                    observer.on_state_entered(&*next_state.read().unwrap());
+                    observer
+                        .on_state_entered((&*next_state.read().unwrap().get_name()).to_string());
                 });
 
                 self.execute_current_state();

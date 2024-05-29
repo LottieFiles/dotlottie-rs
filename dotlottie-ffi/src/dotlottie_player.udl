@@ -16,6 +16,13 @@ interface Observer {
     void on_complete();
 };
 
+[Trait, WithForeign]
+interface StateMachineObserver {
+    void on_transition(string previous_state, string new_state);
+    void on_state_entered(string entering_state);
+    void on_state_exit(string leaving_state);
+};
+
 enum Mode {
     "Forward",
     "Reverse",
@@ -141,4 +148,6 @@ interface DotLottiePlayer {
     boolean start_state_machine();
     boolean end_state_machine();
     boolean post_event([ByRef] Event event);
+    boolean state_machine_subscribe(StateMachineObserver observer);
+    boolean state_machine_unsubscribe(StateMachineObserver observer);
 };

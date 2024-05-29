@@ -1,5 +1,4 @@
 use dotlottie_player_core::events::Event;
-use dotlottie_player_core::states::State;
 use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Observer, StateMachineObserver};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
@@ -81,18 +80,18 @@ impl Observer for DummyObserver {
 struct SMObserver {}
 
 impl StateMachineObserver for SMObserver {
-    fn transition_occured(&self, previous_state: &State, new_state: &State) {
+    fn on_transition(&self, previous_state: String, new_state: String) {
         println!(
             "transition_occured: {:?} -> \n {:?}",
             previous_state, new_state
         );
     }
 
-    fn on_state_entered(&self, entering_state: &State) {
+    fn on_state_entered(&self, entering_state: String) {
         // println!("entering state: {:?}", entering_state);
     }
 
-    fn on_state_exit(&self, leaving_state: &State) {
+    fn on_state_exit(&self, leaving_state: String) {
         // println!("exiting state: {:?}", leaving_state);
     }
 }
@@ -175,7 +174,7 @@ fn main() {
     let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
     let observer2: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 2 });
 
-    let observer3: Arc<dyn StateMachineObserver + 'static> = Arc::new(SMObserver { id: 3 });
+    let observer3: Arc<dyn StateMachineObserver + 'static> = Arc::new(SMObserver {});
 
     lottie_player.subscribe(observer1.clone());
     lottie_player.subscribe(observer2.clone());
@@ -212,7 +211,6 @@ fn main() {
         .expect("Unable to read the file");
 
     lottie_player.load_state_machine(&contents);
-    lottie_player.start_state_machine();
 
     lottie_player.state_machine_subscribe(observer3.clone());
 
@@ -225,7 +223,7 @@ fn main() {
 
         if window.is_key_down(Key::S) {
             let p = &mut *locked_player.write().unwrap();
-            p.stop();
+            p.start_state_machine();
         }
 
         if window.is_key_pressed(Key::O, KeyRepeat::No) {

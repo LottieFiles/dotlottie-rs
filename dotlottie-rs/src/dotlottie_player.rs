@@ -1189,11 +1189,11 @@ impl DotLottiePlayer {
                 .write()
                 .unwrap()
                 .replace(state_machine.unwrap());
-            return false;
         } else {
             match state_machine {
                 Err(ParsingError { reason }) => {
                     println!("State Machine Is Not Ok -> {}", reason);
+                    return false;
                 }
                 Ok(_) => {}
             }
@@ -1211,12 +1211,16 @@ impl DotLottiePlayer {
             return false;
         }
 
-        self.state_machine
-            .write()
-            .unwrap()
-            .as_mut()
-            .unwrap()
-            .start();
+        let ret = self.state_machine.try_write();
+
+        match ret {
+            Ok(mut state_machine) => {
+                state_machine.as_mut().unwrap().start();
+            }
+            Err(_) => {
+                return false;
+            }
+        }
 
         true
     }

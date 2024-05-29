@@ -106,8 +106,14 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     //     .function("onComplete", &Observer::on_complete)
     //     .function("onStop", &Observer::on_stop);
 
+    // class_<StateMachineObserver>("StateMachineObserver")
+    //     .smart_ptr<std::shared_ptr<StateMachineObserver>>("StateMachineObserver")
+    //     .function("OnTransition", &StateMachineObserver::on_transition);
+    //     .function("onStateEntered", &StateMachineObserver::on_state_entered);
+    //     .function("onStateExit", &StateMachineObserver::on_state_exit);
+
     class_<DotLottiePlayer>("DotLottiePlayer")
-        .smart_ptr<std::shared_ptr<DotLottiePlayer> >("DotLottiePlayer")
+        .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init, allow_raw_pointers())
         .function("buffer", &buffer)
         .function("clear", &DotLottiePlayer::clear)

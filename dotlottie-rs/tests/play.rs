@@ -156,6 +156,6 @@ mod tests {
             }
         }
 
-        assert_eq!((rendered_frames[0] - mid_frame).abs() <= 1.0, true);
+        assert!((rendered_frames[0] - mid_frame).abs() <= 1.0);
     }
 }

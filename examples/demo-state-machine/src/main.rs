@@ -107,7 +107,7 @@ impl Timer {
         }
     }
 
-    fn tick(&mut self, animation: &mut DotLottiePlayer) {
+    fn tick(&mut self, animation: &DotLottiePlayer) {
         let next_frame = animation.request_frame();
 
         // println!("next_frame: {}", next_frame);
@@ -203,7 +203,7 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    lottie_player.play();
+    // lottie_player.play();
 
     let mut file = File::open("src/pigeon_fsm.json").expect("Unable to open the file");
     let mut contents = String::new();
@@ -211,6 +211,7 @@ fn main() {
         .expect("Unable to read the file");
 
     lottie_player.load_state_machine(&contents);
+    lottie_player.start_state_machine();
 
     lottie_player.state_machine_subscribe(observer3.clone());
 
@@ -219,7 +220,7 @@ fn main() {
     let mut pushed = 10.0;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        timer.tick(&mut *locked_player.write().unwrap());
+        timer.tick(&*locked_player.read().unwrap());
 
         if window.is_key_down(Key::S) {
             let p = &mut *locked_player.write().unwrap();

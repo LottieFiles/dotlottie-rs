@@ -250,6 +250,8 @@ impl StateMachine {
                                 });
                                 state_to_attach_to = transition.from_state as i32;
                             } else if transition.on_complete_event.is_some() {
+                                new_event = Some(Event::OnComplete);
+                                state_to_attach_to = transition.from_state as i32;
                             } else if transition.on_pointer_down_event.is_some() {
                             } else if transition.on_pointer_up_event.is_some() {
                             } else if transition.on_pointer_enter_event.is_some() {
@@ -363,7 +365,7 @@ impl StateMachine {
         // Check if current_state is not None and execute the state
         match self.current_state {
             Some(ref state) => {
-                let mut unwrapped_state = state.write().unwrap();
+                let unwrapped_state = state.read().unwrap();
                 let reset_key = unwrapped_state.get_reset_context_key();
 
                 if reset_key.len() > 0 {
@@ -397,7 +399,7 @@ impl StateMachine {
         return true;
     }
 
-    fn verify_if_guards_are_met(&mut self, guard: &Guard) -> bool {
+    fn verify_if_guards_are_met(&self, guard: &Guard) -> bool {
         match guard.compare_to {
             StringNumberBool::String(_) => {
                 if guard.string_context_is_satisfied(&self.string_context) {
@@ -427,6 +429,7 @@ impl StateMachine {
         let mut string_event = false;
         let mut numeric_event = false;
         let mut bool_event = false;
+        let mut complete_event = false;
 
         match event {
             Event::Bool { value: _ } => bool_event = true,
@@ -447,6 +450,7 @@ impl StateMachine {
             Event::OnPointerExit => {
                 println!(">> OnPointerExitEvent");
             }
+            Event::OnComplete => complete_event = true,
         }
 
         if self.current_state.is_none() {
@@ -454,6 +458,7 @@ impl StateMachine {
         }
 
         let curr_state = self.current_state.clone().unwrap();
+
         let state_value_result = curr_state.read();
 
         if state_value_result.is_ok() {
@@ -461,7 +466,6 @@ impl StateMachine {
             let mut iter = state_value.get_transitions().iter();
             let mut tmp_state: i32 = -1;
 
-            // Loop through all transitions of the current state and check if we should transition to another state
             loop {
                 match iter.next() {
                     Some(transition) => {
@@ -533,6 +537,20 @@ impl StateMachine {
                                 }
 
                                 if numeric_event && received_event_value == *value {
+                                    // If there are guards loop over them and check if theyre verified
+                                    if transition_guards.len() > 0 {
+                                        for guard in transition_guards {
+                                            if self.verify_if_guards_are_met(guard) {
+                                                tmp_state = target_state as i32;
+                                            }
+                                        }
+                                    } else {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            }
+                            Event::OnComplete => {
+                                if complete_event {
                                     // If there are guards loop over them and check if theyre verified
                                     if transition_guards.len() > 0 {
                                         for guard in transition_guards {

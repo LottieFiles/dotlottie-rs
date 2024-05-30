@@ -8,7 +8,7 @@ use crate::{Config, DotLottiePlayerContainer};
 use super::transitions::Transition;
 
 pub trait StateTrait {
-    fn execute(&mut self, player: &Rc<RwLock<DotLottiePlayerContainer>>);
+    fn execute(&self, player: &Rc<RwLock<DotLottiePlayerContainer>>);
     fn get_reset_context_key(&self) -> &String;
     fn get_animation_id(&self) -> &String;
     fn get_transitions(&self) -> &Vec<Arc<RwLock<Transition>>>;
@@ -116,7 +116,7 @@ impl State {
 }
 
 impl StateTrait for State {
-    fn execute(&mut self, player: &Rc<RwLock<DotLottiePlayerContainer>>) {
+    fn execute(&self, player: &Rc<RwLock<DotLottiePlayerContainer>>) {
         match self {
             State::Playback {
                 name: _,
@@ -133,18 +133,16 @@ impl StateTrait for State {
                 // Tell player to load new animation
                 if !animation_id.is_empty() {
                     player
-                        .write()
+                        .read()
                         .unwrap()
                         .load_animation(&animation_id, *width, *height);
                 }
 
-                println!("config: {:?}", config);
-
-                // Set the config
-                player.write().unwrap().set_config(config);
+                // We have to use read otherwise it will deadlock
+                player.read().unwrap().set_config(config);
 
                 if autoplay {
-                    player.write().unwrap().play();
+                    player.read().unwrap().play();
                 }
             }
             State::Sync {

@@ -3,7 +3,7 @@ pub trait PointerEvent {
     fn y(&self) -> f32;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Event {
     Bool { value: bool },
     String { value: String },
@@ -13,6 +13,7 @@ pub enum Event {
     OnPointerMove { x: f32, y: f32 },
     OnPointerEnter { x: f32, y: f32 },
     OnPointerExit,
+    OnComplete,
 }
 
 impl Event {
@@ -26,6 +27,7 @@ impl Event {
             Event::OnPointerMove { x, y } => format!("{}, {}", x, y),
             Event::OnPointerEnter { x, y } => format!("{}, {}", x, y),
             Event::OnPointerExit => "OnPointerExitEvent".to_string(),
+            Event::OnComplete => "OnCompleteEvent".to_string(),
         }
     }
 }

@@ -299,7 +299,7 @@ mod tests {
         // Test with a string value
         player.tmp_set_state_machine_string_context("counter_1", "diff");
         player.post_event(&Event::String {
-            value: "compelete".to_string(),
+            value: "complete".to_string(),
         });
 
         // Should stay on stage 1 since to_be_the_same != diff

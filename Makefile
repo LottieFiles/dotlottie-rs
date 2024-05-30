@@ -1002,5 +1002,6 @@ help:
 	@echo "  - $(YELLOW)distclean$(NC)   - clean up everything"
 	@echo "  - $(YELLOW)test$(NC)        - run all tests"
 	@echo "  - $(YELLOW)bench$(NC)       - run all benchmarks"
+	@echo "  - $(YELLOW)clippy$(NC)      - run clippy on all projects"
 	@echo
 	@echo

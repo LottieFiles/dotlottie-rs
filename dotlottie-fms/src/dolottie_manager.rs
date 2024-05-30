@@ -79,6 +79,7 @@ impl DotLottieManager {
     }
 
     /// Advances to the next animation and returns it's animation data as a string.
+    #[allow(dead_code)]
     fn next_animation(&mut self) -> Result<String, DotLottieError> {
         let mut i = 0;
         let new_active_animation_id: String;
@@ -104,6 +105,7 @@ impl DotLottieManager {
     }
 
     /// Reverses to the previous animation and returns it's animation data as a string.
+    #[allow(dead_code)]
     fn previous_animation(&mut self) -> Result<String, DotLottieError> {
         let new_active_animation_id: String;
         let mut i = 0;

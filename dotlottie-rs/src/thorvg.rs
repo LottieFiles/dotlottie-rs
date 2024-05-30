@@ -1,5 +1,6 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 
 use std::{ffi::CString, ptr};
 use thiserror::Error;
@@ -59,7 +60,10 @@ fn convert_tvg_result(result: Tvg_Result, function_name: &str) -> Result<(), Tvg
         Tvg_Result_TVG_RESULT_NOT_SUPPORTED => Err(TvgError::NotSupported {
             function_name: func_name,
         }),
-        Tvg_Result_TVG_RESULT_UNKNOWN | _ => Err(TvgError::Unknown {
+        Tvg_Result_TVG_RESULT_UNKNOWN => Err(TvgError::Unknown {
+            function_name: func_name,
+        }),
+        _ => Err(TvgError::Unknown {
             function_name: func_name,
         }),
     }
@@ -93,13 +97,7 @@ impl Canvas {
         }
     }
 
-    pub fn set_viewport(
-        &mut self,
-        x: i32,
-        y: i32,
-        w: i32,
-        h: i32,
-    ) -> Result<(), TvgError> {
+    pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), TvgError> {
         let result = unsafe { tvg_canvas_set_viewport(self.raw_canvas, x, y, w, h) };
 
         convert_tvg_result(result, "tvg_canvas_set_viewport")
@@ -179,6 +177,12 @@ pub struct Animation {
     raw_paint: *mut Tvg_Paint,
 }
 
+impl Default for Animation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Animation {
     pub fn new() -> Self {
         let raw_animation = unsafe { tvg_animation_new() };
@@ -253,7 +257,7 @@ impl Animation {
 
         convert_tvg_result(result, "tvg_animation_get_total_frame")?;
 
-        return Ok(total_frame);
+        Ok(total_frame)
     }
 
     pub fn get_duration(&self) -> Result<f32, TvgError> {
@@ -264,7 +268,7 @@ impl Animation {
 
         convert_tvg_result(result, "tvg_animation_get_duration")?;
 
-        return Ok(duration);
+        Ok(duration)
     }
 
     pub fn set_frame(&mut self, frame_no: f32) -> Result<(), TvgError> {
@@ -280,7 +284,7 @@ impl Animation {
 
         convert_tvg_result(result, "tvg_animation_get_frame")?;
 
-        return Ok(curr_frame);
+        Ok(curr_frame)
     }
 
     pub fn set_slots(&mut self, slots: &str) -> Result<(), TvgError> {
@@ -311,6 +315,12 @@ impl Drop for Animation {
 
 pub struct Shape {
     raw_shape: *mut Tvg_Paint,
+}
+
+impl Default for Shape {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Shape {

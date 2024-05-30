@@ -185,7 +185,7 @@ impl LottieRenderer {
             return Ok(());
         }
 
-        if width <= 0 || height <= 0 {
+        if width.max(0) == 0 || height.max(0) == 0 {
             return Err(LottieRendererError::InvalidArgument(
                 "Width and height must be greater than 0".to_string(),
             ));

@@ -30,7 +30,7 @@ jobs:
       # - name: Run Tests
       #   run: make test
       - name: Run Clippy
-        run: cargo clippy --all-targets --all-features --manifest-path=./dotlottie-rs/Cargo.toml
+        run: make clippy
         # Make sure CI fails on all warnings, including Clippy lints
         env:
           RUSTFLAGS: "-Dwarnings"

@@ -14,18 +14,20 @@ pub struct Layout {
     pub align: Vec<f32>,
 }
 
+impl Default for Layout {
+    fn default() -> Self {
+        Self {
+            fit: Fit::Contain,
+            align: vec![0.5, 0.5],
+        }
+    }
+}
+
 impl Layout {
     pub fn new(fit: Fit, align: Vec<f32>) -> Self {
         Self {
             fit,
             align: validate_normalize_align(align),
-        }
-    }
-
-    pub fn default() -> Self {
-        Self {
-            fit: Fit::Contain,
-            align: vec![0.5, 0.5],
         }
     }
 

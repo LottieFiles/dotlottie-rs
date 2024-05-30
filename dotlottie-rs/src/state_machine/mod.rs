@@ -549,7 +549,7 @@ impl StateMachine {
                                     }
                                 }
                             }
-                            Event::OnComplete => {
+                            Event::OnComplete  => {
                                 if complete_event {
                                     // If there are guards loop over them and check if theyre verified
                                     if transition_guards.len() > 0 {

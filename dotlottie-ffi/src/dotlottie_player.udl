@@ -104,6 +104,7 @@ interface Event {
     OnPointerMove(f32 x, f32 y);
     OnPointerEnter(f32 x, f32 y);
     OnPointerExit();
+    OnComplete();
 };
 
 interface DotLottiePlayer {

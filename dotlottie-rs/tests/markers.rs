@@ -39,8 +39,7 @@ mod tests {
 
         assert_eq!(actual_markers.len(), 4);
 
-        let expected_markers = vec![
-            Marker {
+        let expected_markers = [Marker {
                 name: "Marker_1".to_string(),
                 time: 0.0,
                 duration: 10.0,
@@ -59,8 +58,7 @@ mod tests {
                 name: "Marker_4".to_string(),
                 time: 30.0,
                 duration: 12.0,
-            },
-        ];
+            }];
 
         for marker in actual_markers {
             let expected = expected_markers

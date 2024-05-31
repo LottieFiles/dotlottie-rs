@@ -1,5 +1,6 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 
 use std::{ffi::CString, ptr};
 use thiserror::Error;
@@ -59,7 +60,10 @@ fn convert_tvg_result(result: Tvg_Result, function_name: &str) -> Result<(), Tvg
         Tvg_Result_TVG_RESULT_NOT_SUPPORTED => Err(TvgError::NotSupported {
             function_name: func_name,
         }),
-        Tvg_Result_TVG_RESULT_UNKNOWN | _ => Err(TvgError::Unknown {
+        Tvg_Result_TVG_RESULT_UNKNOWN => Err(TvgError::Unknown {
+            function_name: func_name,
+        }),
+        _ => Err(TvgError::Unknown {
             function_name: func_name,
         }),
     }
@@ -91,6 +95,12 @@ impl Canvas {
             raw_canvas: unsafe { tvg_swcanvas_create() },
             engine_method: engine,
         }
+    }
+
+    pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), TvgError> {
+        let result = unsafe { tvg_canvas_set_viewport(self.raw_canvas, x, y, w, h) };
+
+        convert_tvg_result(result, "tvg_canvas_set_viewport")
     }
 
     pub fn set_target(
@@ -167,6 +177,12 @@ pub struct Animation {
     raw_paint: *mut Tvg_Paint,
 }
 
+impl Default for Animation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Animation {
     pub fn new() -> Self {
         let raw_animation = unsafe { tvg_animation_new() };
@@ -182,16 +198,15 @@ impl Animation {
         let mimetype = CString::new(mimetype).expect("Failed to create CString");
         let data = CString::new(data).expect("Failed to create CString");
 
-        let result =
-            unsafe {
-                tvg_picture_load_data(
-                    self.raw_paint,
-                    data.as_ptr(),
-                    data.as_bytes().len() as u32,
-                    mimetype.as_ptr(),
-                    copy,
-                )
-            };
+        let result = unsafe {
+            tvg_picture_load_data(
+                self.raw_paint,
+                data.as_ptr(),
+                data.as_bytes().len() as u32,
+                mimetype.as_ptr(),
+                copy,
+            )
+        };
 
         convert_tvg_result(result, "tvg_picture_load_data")?;
 
@@ -202,14 +217,13 @@ impl Animation {
         let mut width = 0.0;
         let mut height = 0.0;
 
-        let result =
-            unsafe {
-                tvg_picture_get_size(
-                    self.raw_paint,
-                    &mut width as *mut f32,
-                    &mut height as *mut f32,
-                )
-            };
+        let result = unsafe {
+            tvg_picture_get_size(
+                self.raw_paint,
+                &mut width as *mut f32,
+                &mut height as *mut f32,
+            )
+        };
 
         convert_tvg_result(result, "tvg_picture_get_size")?;
 
@@ -243,7 +257,7 @@ impl Animation {
 
         convert_tvg_result(result, "tvg_animation_get_total_frame")?;
 
-        return Ok(total_frame);
+        Ok(total_frame)
     }
 
     pub fn get_duration(&self) -> Result<f32, TvgError> {
@@ -254,7 +268,7 @@ impl Animation {
 
         convert_tvg_result(result, "tvg_animation_get_duration")?;
 
-        return Ok(duration);
+        Ok(duration)
     }
 
     pub fn set_frame(&mut self, frame_no: f32) -> Result<(), TvgError> {
@@ -270,7 +284,7 @@ impl Animation {
 
         convert_tvg_result(result, "tvg_animation_get_frame")?;
 
-        return Ok(curr_frame);
+        Ok(curr_frame)
     }
 
     pub fn set_slots(&mut self, slots: &str) -> Result<(), TvgError> {
@@ -301,6 +315,12 @@ impl Drop for Animation {
 
 pub struct Shape {
     raw_shape: *mut Tvg_Paint,
+}
+
+impl Default for Shape {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Shape {

@@ -169,24 +169,15 @@ impl DotLottieRuntime {
     }
 
     pub fn is_playing(&self) -> bool {
-        match self.playback_state {
-            PlaybackState::Playing => true,
-            _ => false,
-        }
+        matches!(self.playback_state, PlaybackState::Playing)
     }
 
     pub fn is_paused(&self) -> bool {
-        match self.playback_state {
-            PlaybackState::Paused => true,
-            _ => false,
-        }
+        matches!(self.playback_state, PlaybackState::Paused)
     }
 
     pub fn is_stopped(&self) -> bool {
-        match self.playback_state {
-            PlaybackState::Stopped => true,
-            _ => false,
-        }
+        matches!(self.playback_state, PlaybackState::Stopped)
     }
 
     pub fn play(&mut self) -> bool {
@@ -472,6 +463,10 @@ impl DotLottieRuntime {
         is_ok
     }
 
+    pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> bool {
+        self.renderer.set_viewport(x, y, w, h).is_ok()
+    }
+
     pub fn render(&mut self) -> bool {
         let is_ok = self.renderer.render().is_ok();
 
@@ -555,11 +550,11 @@ impl DotLottieRuntime {
     }
 
     fn flip_direction_if_needed(&mut self, new_mode: Mode) {
-        let should_flip = match (new_mode, self.direction) {
+        let should_flip = matches!(
+            (new_mode, self.direction),
             (Mode::Forward | Mode::Bounce, Direction::Reverse)
-            | (Mode::Reverse | Mode::ReverseBounce, Direction::Forward) => true,
-            _ => false,
-        };
+                | (Mode::Reverse | Mode::ReverseBounce, Direction::Forward)
+        );
 
         if should_flip {
             self.direction = self.direction.flip();
@@ -568,14 +563,13 @@ impl DotLottieRuntime {
     }
 
     fn update_background_color(&mut self, new_config: &Config) {
-        if self.config.background_color != new_config.background_color {
-            if self
+        if self.config.background_color != new_config.background_color
+            && self
                 .renderer
                 .set_background_color(new_config.background_color)
                 .is_ok()
-            {
-                self.config.background_color = new_config.background_color;
-            }
+        {
+            self.config.background_color = new_config.background_color;
         }
     }
 
@@ -1094,6 +1088,13 @@ impl DotLottiePlayer {
         }
 
         ok
+    }
+
+    pub fn set_viewport(&self, x: i32, y: i32, w: i32, h: i32) -> bool {
+        match self.runtime.try_write() {
+            Ok(mut runtime) => runtime.set_viewport(x, y, w, h),
+            _ => false,
+        }
     }
 
     pub fn resize(&self, width: u32, height: u32) -> bool {

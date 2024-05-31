@@ -954,6 +954,14 @@ bench:
 	cargo bench --manifest-path $(FMS)/Cargo.toml
 	cargo bench --manifest-path $(RUNTIME_FFI)/Cargo.toml
 
+.PHONY: clippy
+clippy:
+	$(info $(YELLOW)Running clippy for workspace$(NC))
+	cargo clippy --manifest-path $(CORE)/Cargo.toml --all-targets --all-features
+	# fms has a lot of clippy warnings and errors, so we're ignoring them for now
+	# cargo clippy --manifest-path $(FMS)/Cargo.toml --all-targets --all-features
+	cargo clippy --manifest-path $(RUNTIME_FFI)/Cargo.toml --all-targets --all-features
+
 .PHONY: help
 help:
 	@echo "Welcome to the $(GREEN)dotlottie-player$(NC) build system!"
@@ -995,5 +1003,6 @@ help:
 	@echo "  - $(YELLOW)distclean$(NC)   - clean up everything"
 	@echo "  - $(YELLOW)test$(NC)        - run all tests"
 	@echo "  - $(YELLOW)bench$(NC)       - run all benchmarks"
+	@echo "  - $(YELLOW)clippy$(NC)      - run clippy on all projects"
 	@echo
 	@echo

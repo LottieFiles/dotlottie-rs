@@ -29,3 +29,8 @@ jobs:
         run: make demo-player
       - name: Run Tests
         run: make test
+      - name: Run Clippy
+        run: make clippy
+        # Make sure CI fails on all warnings, including Clippy lints
+        env:
+          RUSTFLAGS: "-Dwarnings"

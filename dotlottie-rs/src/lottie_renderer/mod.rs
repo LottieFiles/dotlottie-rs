@@ -28,6 +28,12 @@ pub struct LottieRenderer {
     layout: Layout,
 }
 
+impl Default for LottieRenderer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LottieRenderer {
     pub fn new(threads: u32) -> Self {
         let thorvg_canvas = Canvas::new(TvgEngine::TvgEngineSw, threads);
@@ -115,13 +121,13 @@ impl LottieRenderer {
     pub fn total_frames(&self) -> Result<f32, LottieRendererError> {
         self.thorvg_animation
             .get_total_frame()
-            .map_err(|e| LottieRendererError::ThorvgError(e))
+            .map_err(LottieRendererError::ThorvgError)
     }
 
     pub fn duration(&self) -> Result<f32, LottieRendererError> {
         self.thorvg_animation
             .get_duration()
-            .map_err(|e| LottieRendererError::ThorvgError(e))
+            .map_err(LottieRendererError::ThorvgError)
     }
 
     pub fn current_frame(&self) -> f32 {
@@ -140,11 +146,23 @@ impl LottieRenderer {
         Ok(())
     }
 
+    pub fn set_viewport(
+        &mut self,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+    ) -> Result<(), LottieRendererError> {
+        self.thorvg_canvas
+            .set_viewport(x, y, w, h)
+            .map_err(LottieRendererError::ThorvgError)
+    }
+
     pub fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError> {
         let total_frames = self
             .thorvg_animation
             .get_total_frame()
-            .map_err(|e| LottieRendererError::ThorvgError(e))?;
+            .map_err(LottieRendererError::ThorvgError)?;
 
         if no < 0.0 || no >= total_frames {
             return Err(LottieRendererError::InvalidArgument(format!(
@@ -167,7 +185,7 @@ impl LottieRenderer {
             return Ok(());
         }
 
-        if width <= 0 || height <= 0 {
+        if width.max(0) == 0 || height.max(0) == 0 {
             return Err(LottieRendererError::InvalidArgument(
                 "Width and height must be greater than 0".to_string(),
             ));
@@ -228,13 +246,13 @@ impl LottieRenderer {
 
         self.thorvg_background_shape
             .fill((red, green, blue, alpha))
-            .map_err(|e| LottieRendererError::ThorvgError(e))
+            .map_err(LottieRendererError::ThorvgError)
     }
 
     pub fn load_theme_data(&mut self, slots: &str) -> Result<(), LottieRendererError> {
         self.thorvg_animation
             .set_slots(slots)
-            .map_err(|e| LottieRendererError::ThorvgError(e))
+            .map_err(LottieRendererError::ThorvgError)
     }
 
     pub fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError> {

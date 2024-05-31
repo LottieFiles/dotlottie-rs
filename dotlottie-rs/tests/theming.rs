@@ -5,11 +5,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        fs::{self, File},
-        io::Read,
-        path::Path,
-    };
+    
 
     use super::*;
 

@@ -53,12 +53,8 @@ mod tests {
 
         assert_eq!(rendered_frames[rendered_frames.len() - 1], total_frames);
 
-        for i in 0..rendered_frames.len() {
-            assert!(
-                rendered_frames[i] == rendered_frames[i].floor(),
-                "Frame {} is interpolated.",
-                i
-            );
+        for (i, frame) in rendered_frames.iter().enumerate() {
+            assert!(*frame == frame.floor(), "Frame {} is interpolated.", i);
         }
     }
 }

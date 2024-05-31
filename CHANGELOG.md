@@ -1,3 +1,25 @@
+## 0.1.20 (2024-05-31)
+
+### Features
+
+#### 🎸 segment duration getter (#161)
+
+#### 🎸 add tvg_canvas_set_viewport integration and bindings (#158)
+
+#### chore: 🤖 update ThorVG 0.13.5
+
+#### feat: 🎸 add tvg_canvas_set_viewport integration and bindings
+
+#### feat(playback): 🎸 segment duration getter
+
+### Fixes
+
+#### 🐛 update speed causes animation frame jump (#160)
+
+#### chore: 🤖 update ThorVG 0.13.6
+
+#### fix(playback): 🐛 update speed causes animation frame jump
+
 ## 0.1.19 (2024-05-21)
 
 ### Features

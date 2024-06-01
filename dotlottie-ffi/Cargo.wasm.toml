@@ -1,12 +1,12 @@
 [package]
 name = "dotlottie-ffi"
-version = "0.1.16"
+version = "0.1.20"
 edition = "2021"
 build = "build.rs"
 
 [profile.release]
 lto = true
-opt-level = "s"
+opt-level = "z"
 strip = true 
 codegen-units = 1
 panic = "abort" 

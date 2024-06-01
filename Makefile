@@ -248,7 +248,7 @@ cpp_link_args = [
 	'-Wl,-u,ntohs',
 	'-Wl,-u,htonl',
 	'-Wshift-negative-value',
-	'-flto', '-Oz', '--bind', '-sWASM=1',
+	'-flto', '-Os', '--bind', '-sWASM=1',
 	'-sALLOW_MEMORY_GROWTH=1',
 	'-sFORCE_FILESYSTEM=0',
 	'-sMODULARIZE=1',
@@ -261,7 +261,7 @@ cpp_link_args = [
 	'--no-entry',
 	'--strip-all',
 	'--emit-tsd=${WASM_MODULE}.d.ts',
-	'--closure=1']
+	'--minify=0']
 
 [host_machine]
 system = '$(SYSTEM)'
@@ -353,9 +353,7 @@ endef
 
 define CARGO_BUILD
 	source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
-		RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
-		-Z build-std=std,panic_abort \
-		-Z build-std-features=panic_immediate_abort \
+		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--release
@@ -944,9 +942,9 @@ test: test-all
 .PHONY: test-all
 test-all:
 	$(info $(YELLOW)Running tests for workspace$(NC))
-	@cargo test --manifest-path $(CORE)/Cargo.toml -- --test-threads=1
-	@cargo test --manifest-path $(FMS)/Cargo.toml -- --test-threads=1
-	@cargo test --manifest-path $(RUNTIME_FFI)/Cargo.toml -- --test-threads=1
+	@cargo test --manifest-path $(CORE)/Cargo.toml -- --test-threads=1 
+	@cargo test --manifest-path $(FMS)/Cargo.toml -- --test-threads=1 
+	@cargo test --manifest-path $(RUNTIME_FFI)/Cargo.toml -- --test-threads=1 
 
 .PHONY: bench
 bench:

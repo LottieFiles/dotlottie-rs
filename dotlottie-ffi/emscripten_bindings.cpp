@@ -150,5 +150,12 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("activeAnimationId", &DotLottiePlayer::active_animation_id)
         .function("activeThemeId", &DotLottiePlayer::active_theme_id)
         .function("setViewport", &DotLottiePlayer::set_viewport)
-        .function("segmentDuration", &DotLottiePlayer::segment_duration);
+        .function("segmentDuration", &DotLottiePlayer::segment_duration)
+
+        .function("load_state_machine", &DotLottiePlayer::load_state_machine)
+        .function("start_state_machine", &DotLottiePlayer::start_state_machine)
+        .function("end_state_machine", &DotLottiePlayer::end_state_machine)
+        .function("post_event", &DotLottiePlayer::post_event)
+    // .function("state_machine_subscribe", &DotLottiePlayer::state_machine_subscribe)
+    // .function("state_machine_unsubscribe", &DotLottiePlayer::state_machine_unsubscribe)
 }

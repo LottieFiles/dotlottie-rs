@@ -254,6 +254,16 @@ impl DotLottieRuntime {
         self.dotlottie_manager.manifest()
     }
 
+    pub fn size(&self) -> (u32, u32) {
+        (self.renderer.width, self.renderer.height)
+    }
+
+    pub fn get_state_machine(&self, state_machine_id: &str) -> Option<String> {
+        self.dotlottie_manager
+            .get_state_machine(state_machine_id)
+            .ok()
+    }
+
     pub fn request_frame(&mut self) -> f32 {
         if !self.is_loaded || !self.is_playing() {
             return self.current_frame();
@@ -970,6 +980,10 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().set_config(config);
     }
 
+    pub fn size(&self) -> (u32, u32) {
+        self.runtime.read().unwrap().size()
+    }
+
     pub fn speed(&self) -> f32 {
         self.runtime.read().unwrap().speed()
     }
@@ -1169,6 +1183,13 @@ impl DotLottiePlayerContainer {
     pub fn active_theme_id(&self) -> String {
         self.runtime.read().unwrap().active_theme_id().to_string()
     }
+
+    pub fn get_state_machine(&self, state_machine_id: &str) -> Option<String> {
+        self.runtime
+            .read()
+            .unwrap()
+            .get_state_machine(state_machine_id)
+    }
 }
 
 pub struct DotLottiePlayer {
@@ -1190,39 +1211,6 @@ impl DotLottiePlayer {
             .write()
             .is_ok_and(|runtime| runtime.load_animation_data(animation_data, width, height));
         is_ok
-    }
-
-    pub fn load_state_machine(&self, state_machine: &str) -> bool {
-        let state_machine = StateMachine::new(state_machine, self.player.clone());
-
-        if state_machine.is_ok() {
-            match self.state_machine.try_write() {
-                Ok(mut sm) => {
-                    sm.replace(state_machine.unwrap());
-                }
-                Err(_) => {}
-            }
-
-            let player = self.player.try_write();
-
-            match player {
-                Ok(mut player) => {
-                    player.state_machine = self.state_machine.clone();
-                    println!("State Machine Set")
-                }
-                Err(_) => {}
-            }
-        } else {
-            match state_machine {
-                Err(ParsingError { reason }) => {
-                    println!("State Machine Is Not Ok -> {}", reason);
-                    return false;
-                }
-                Ok(_) => {}
-            }
-        }
-
-        true
     }
 
     pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachine>>> {
@@ -1502,6 +1490,54 @@ impl DotLottiePlayer {
 
     pub fn load_theme(&self, theme_id: &str) -> bool {
         self.player.write().unwrap().load_theme(theme_id)
+    }
+
+    pub fn load_state_machine(&self, state_machine_id: &str) -> bool {
+        let state_machine_string = self
+            .player
+            .read()
+            .unwrap()
+            .get_state_machine(state_machine_id);
+
+        match state_machine_string {
+            Some(machine) => {
+                let state_machine = StateMachine::new(&machine, self.player.clone());
+
+                if state_machine.is_ok() {
+                    match self.state_machine.try_write() {
+                        Ok(mut sm) => {
+                            sm.replace(state_machine.unwrap());
+                        }
+                        Err(_) => {
+                            return false;
+                        }
+                    }
+
+                    let player = self.player.try_write();
+
+                    match player {
+                        Ok(mut player) => {
+                            player.state_machine = self.state_machine.clone();
+                        }
+                        Err(_) => {
+                            return false;
+                        }
+                    }
+                } else {
+                    match state_machine {
+                        Err(ParsingError { reason }) => {
+                            println!("State Machine Is Not Ok -> {}", reason);
+                            return false;
+                        }
+                        Ok(_) => {}
+                    }
+                }
+            }
+            None => {
+                return false;
+            }
+        }
+        true
     }
 
     pub fn load_theme_data(&self, theme_data: &str) -> bool {

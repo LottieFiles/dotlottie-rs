@@ -183,8 +183,6 @@ impl StateMachine {
                                 config: playback_config,
                                 reset_context: state.reset_context.unwrap_or("".to_string()),
                                 animation_id: state.animation_id.unwrap_or("".to_string()),
-                                width: 1920,
-                                height: 1080,
                                 transitions: Vec::new(),
                             };
 
@@ -549,7 +547,7 @@ impl StateMachine {
                                     }
                                 }
                             }
-                            Event::OnComplete  => {
+                            Event::OnComplete => {
                                 if complete_event {
                                     // If there are guards loop over them and check if theyre verified
                                     if transition_guards.len() > 0 {

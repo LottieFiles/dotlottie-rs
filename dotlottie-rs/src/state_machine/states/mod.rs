@@ -33,8 +33,6 @@ pub enum State {
         config: Config,
         reset_context: String,
         animation_id: String,
-        width: u32,
-        height: u32,
         transitions: Vec<Arc<RwLock<Transition>>>,
     },
     Sync {
@@ -42,8 +40,6 @@ pub enum State {
         frame_context_key: String,
         reset_context: String,
         animation_id: String,
-        width: u32,
-        height: u32,
         transitions: Vec<Arc<RwLock<Transition>>>,
     },
 }
@@ -56,16 +52,12 @@ impl std::fmt::Display for State {
                 config: _,
                 reset_context,
                 animation_id,
-                width,
-                height,
                 transitions,
             } => f
                 .debug_struct("State::Playback")
                 // .field("config", &(config))
                 .field("reset_context", reset_context)
                 .field("animation_id", animation_id)
-                .field("width", width)
-                .field("height", height)
                 .field("transitions", transitions)
                 .finish(),
 
@@ -74,16 +66,12 @@ impl std::fmt::Display for State {
                 frame_context_key,
                 reset_context,
                 animation_id,
-                width,
-                height,
                 transitions,
             } => f
                 .debug_struct("State::Sync")
                 .field("frame_context_key", frame_context_key)
                 .field("reset_context", reset_context)
                 .field("animation_id", animation_id)
-                .field("width", width)
-                .field("height", height)
                 .field("transitions", transitions)
                 .finish(),
         }
@@ -98,8 +86,6 @@ impl State {
                 config: _,
                 reset_context: _,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions: _,
             } => "Playback",
             State::Sync {
@@ -107,8 +93,6 @@ impl State {
                 frame_context_key: _,
                 reset_context: _,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions: _,
             } => "Sync",
         }
@@ -123,19 +107,18 @@ impl StateTrait for State {
                 config,
                 reset_context: _,
                 animation_id,
-                width,
-                height,
                 transitions: _,
             } => {
                 let config = config.clone();
                 let autoplay = config.autoplay;
+                let size = player.read().unwrap().size();
 
                 // Tell player to load new animation
                 if !animation_id.is_empty() {
                     player
                         .read()
                         .unwrap()
-                        .load_animation(&animation_id, *width, *height);
+                        .load_animation(&animation_id, size.0, size.1);
                 }
 
                 // We have to use read otherwise it will deadlock
@@ -150,8 +133,6 @@ impl StateTrait for State {
                 frame_context_key: _,
                 reset_context: _,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions: _,
             } => {
                 todo!()
@@ -166,8 +147,6 @@ impl StateTrait for State {
                 config: _,
                 reset_context,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions: _,
             } => reset_context,
             State::Sync {
@@ -175,8 +154,6 @@ impl StateTrait for State {
                 frame_context_key: _,
                 reset_context,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions: _,
             } => reset_context,
         }
@@ -189,8 +166,6 @@ impl StateTrait for State {
                 config: _,
                 reset_context: _,
                 animation_id,
-                width: _,
-                height: _,
                 transitions: _,
             } => animation_id,
             State::Sync {
@@ -198,8 +173,6 @@ impl StateTrait for State {
                 frame_context_key: _,
                 reset_context: _,
                 animation_id,
-                width: _,
-                height: _,
                 transitions: _,
             } => animation_id,
         }
@@ -212,8 +185,6 @@ impl StateTrait for State {
                 config: _,
                 reset_context: _,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions,
             } => transitions,
             State::Sync {
@@ -221,8 +192,6 @@ impl StateTrait for State {
                 frame_context_key: _,
                 reset_context: _,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions,
             } => transitions,
         }
@@ -235,8 +204,6 @@ impl StateTrait for State {
                 config: _,
                 reset_context: _,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions,
             } => {
                 transitions.push(Arc::new(RwLock::new(transition)));
@@ -246,8 +213,6 @@ impl StateTrait for State {
                 frame_context_key: _,
                 reset_context: _,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions,
             } => {
                 transitions.push(Arc::new(RwLock::new(transition)));
@@ -266,8 +231,6 @@ impl StateTrait for State {
                 config,
                 reset_context: _,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions: _,
             } => return Some(config),
             State::Sync {
@@ -275,8 +238,6 @@ impl StateTrait for State {
                 frame_context_key: _,
                 reset_context: _,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions: _,
             } => return None,
         }
@@ -289,8 +250,6 @@ impl StateTrait for State {
                 config: _,
                 reset_context: _,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions: _,
             } => name.to_string(),
             State::Sync {
@@ -298,8 +257,6 @@ impl StateTrait for State {
                 frame_context_key: _,
                 reset_context: _,
                 animation_id: _,
-                width: _,
-                height: _,
                 transitions: _,
             } => name.to_string(),
         }

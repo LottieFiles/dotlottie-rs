@@ -111,15 +111,14 @@ impl StateTrait for State {
             } => {
                 let config = config.clone();
                 let autoplay = config.autoplay;
-                let resolution = player.read().unwrap().size();
+                let size = player.read().unwrap().size();
 
                 // Tell player to load new animation
                 if !animation_id.is_empty() {
-                    player.read().unwrap().load_animation(
-                        &animation_id,
-                        resolution.0,
-                        resolution.1,
-                    );
+                    player
+                        .read()
+                        .unwrap()
+                        .load_animation(&animation_id, size.0, size.1);
                 }
 
                 // We have to use read otherwise it will deadlock

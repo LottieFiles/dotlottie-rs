@@ -8,8 +8,8 @@ use std::thread;
 use std::{env, path, time::Instant};
 use sysinfo::System;
 
-pub const WIDTH: usize = 200;
-pub const HEIGHT: usize = 300;
+pub const WIDTH: usize = 500;
+pub const HEIGHT: usize = 500;
 
 struct DummyObserver2;
 
@@ -134,42 +134,22 @@ fn main() {
 
     let base_path = env::var("CARGO_MANIFEST_DIR").unwrap();
 
-    let mut path = path::PathBuf::from(base_path);
-    path.push("src/markers.json");
+    // let mut path = path::PathBuf::from(base_path);
+    // path.push("src/markers.json");
 
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         loop_animation: true,
         background_color: 0xffffffff,
-        layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
-        marker: "feather".to_string(),
         ..Config::default()
     });
 
-    // read dotlottie in to vec<u8>
-    let mut f = File::open(
-        // "src/emoji.lottie"
-        "src/theming_example.lottie",
-    )
-    .expect("no file found");
-    let metadata = fs::metadata(
-        // "src/emoji.lottie"
-        "src/theming_example.lottie",
-    )
-    .expect("unable to read metadata");
-
-    let mut buffer = vec![0; metadata.len() as usize];
-    f.read(&mut buffer).expect("buffer overflow");
-
-    let mut markers = File::open("src/markers.json").expect("no file found");
-    let metadatamarkers = fs::metadata("src/markers.json").expect("unable to read metadata");
+    let mut markers = File::open("src/exploding-pigeons-test-file.lottie").expect("no file found");
+    let metadatamarkers =
+        fs::metadata("src/exploding-pigeons-test-file.lottie").expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
-    lottie_player.load_animation_path(
-        path.as_path().to_str().unwrap(),
-        WIDTH as u32,
-        HEIGHT as u32,
-    );
+    lottie_player.load_dotlottie_data(&markers_buffer, WIDTH as u32, HEIGHT as u32);
 
     let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
     let observer2: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 2 });
@@ -203,15 +183,9 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    // lottie_player.play();
-
-    let mut file = File::open("src/pigeon_fsm.json").expect("Unable to open the file");
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)
-        .expect("Unable to read the file");
-
-    lottie_player.load_state_machine(&contents);
+    lottie_player.load_state_machine("exploding_pigeon");
     lottie_player.start_state_machine();
+    lottie_player.play();
 
     lottie_player.state_machine_subscribe(observer3.clone());
 

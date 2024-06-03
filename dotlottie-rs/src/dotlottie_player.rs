@@ -113,8 +113,6 @@ struct DotLottieRuntime {
     markers: MarkersMap,
     active_animation_id: String,
     active_theme_id: String,
-    width: u32,
-    height: u32,
 }
 
 impl DotLottieRuntime {
@@ -138,8 +136,6 @@ impl DotLottieRuntime {
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
             active_theme_id: String::new(),
-            width: 0,
-            height: 0,
         }
     }
 
@@ -269,17 +265,14 @@ impl DotLottieRuntime {
         self.dotlottie_manager.manifest()
     }
 
-    pub fn resolution(&self) -> (u32, u32) {
-        (self.width, self.height)
+    pub fn size(&self) -> (u32, u32) {
+        (self.renderer.width, self.renderer.height)
     }
 
     pub fn get_state_machine(&self, state_machine_id: &str) -> Option<String> {
-        let machine = self.dotlottie_manager.get_state_machine(state_machine_id);
-
-        match machine {
-            Ok(machine) => return Some(machine),
-            Err(_) => return None,
-        }
+        self.dotlottie_manager
+            .get_state_machine(state_machine_id)
+            .ok()
     }
 
     pub fn request_frame(&mut self) -> f32 {
@@ -630,8 +623,6 @@ impl DotLottieRuntime {
         self.playback_state = PlaybackState::Stopped;
         self.start_time = Instant::now();
         self.loop_count = 0;
-        self.width = width;
-        self.height = height;
 
         let loaded = loader(&mut self.renderer, width, height).is_ok()
             && self
@@ -781,9 +772,6 @@ impl DotLottieRuntime {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) -> bool {
-        self.width = width;
-        self.height = height;
-
         self.renderer.resize(width, height).is_ok()
     }
 
@@ -997,8 +985,8 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().set_config(config);
     }
 
-    pub fn resolution(&self) -> (u32, u32) {
-        self.runtime.read().unwrap().resolution()
+    pub fn size(&self) -> (u32, u32) {
+        self.runtime.read().unwrap().size()
     }
 
     pub fn speed(&self) -> f32 {

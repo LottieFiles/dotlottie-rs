@@ -1,6 +1,6 @@
 {
     "descriptor": {
-        "id": "multi_animation_slideshow",
+        "id": "pigeon_fsm_bool_eq_guard",
         "initial": 0
     },
     "states": [
@@ -54,10 +54,10 @@
             },
             "guards": [
                 {
-                    "type": "Numeric",
+                    "type": "Boolean",
                     "context_key": "counter_0",
-                    "condition_type": "GreaterThan",
-                    "compare_to": 5.0
+                    "condition_type": "Equal",
+                    "compare_to": true
                 }
             ]
         },
@@ -70,10 +70,10 @@
             },
             "guards": [
                 {
-                    "type": "Numeric",
+                    "type": "Boolean",
                     "context_key": "counter_0",
-                    "condition_type": "GreaterThanOrEqual",
-                    "compare_to": 60.0
+                    "condition_type": "NotEqual",
+                    "compare_to": false
                 }
             ]
         },
@@ -83,15 +83,7 @@
             "to_state": 0,
             "string_event": {
                 "value": "done"
-            },
-            "guards": [
-                {
-                    "type": "Numeric",
-                    "context_key": "counter_0",
-                    "condition_type": "GreaterThanOrEqual",
-                    "compare_to": 65.0
-                }
-            ]
+            }
         }
     ],
     "listeners": [
@@ -101,18 +93,8 @@
     ],
     "context_variables": [
         {
-            "type": "Numeric",
-            "key": "counter_0",
-            "value": 1
-        },
-        {
-            "type": "String",
-            "key": "STRING_GUARD",
-            "value": "SUPER_SECRET_VALUE"
-        },
-        {
             "type": "Boolean",
-            "key": "counter_2",
+            "key": "counter_0",
             "value": false
         }
     ]

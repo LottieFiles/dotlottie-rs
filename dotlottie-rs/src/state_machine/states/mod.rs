@@ -111,7 +111,7 @@ impl StateTrait for State {
             } => {
                 let config = config.clone();
                 let autoplay = config.autoplay;
-                let resolution = player.read().unwrap().resolution();
+                let resolution = player.read().unwrap().size();
 
                 // Tell player to load new animation
                 if !animation_id.is_empty() {

@@ -1484,7 +1484,7 @@ impl DotLottiePlayer {
     }
 
     pub fn manifest_string(&self) -> String {
-        self.player.read().unwrap().manifest().unwrap().to_string()
+        self.player.read().unwrap().manifest_string()
     }
 
     pub fn is_complete(&self) -> bool {

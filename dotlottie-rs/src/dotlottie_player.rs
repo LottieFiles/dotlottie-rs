@@ -1398,6 +1398,14 @@ impl DotLottiePlayer {
         self.player.read().unwrap().is_stopped()
     }
 
+    pub fn segment_duration(&self) -> f32 {
+        self.player.read().unwrap().segment_duration()
+    }
+
+    pub fn set_viewport(&self, x: i32, y: i32, w: i32, h: i32) -> bool {
+        self.player.write().unwrap().set_viewport(x, y, w, h)
+    }
+
     pub fn play(&self) -> bool {
         let ok = self.player.write().unwrap().play();
 

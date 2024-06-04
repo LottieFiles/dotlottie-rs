@@ -3,6 +3,7 @@ use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
 use crate::errors::StateMachineError::ParsingError;
+use crate::listeners::ListenerTrait;
 use crate::state_machine::events::Event;
 use crate::StateMachineObserver;
 use crate::{
@@ -1249,6 +1250,43 @@ impl DotLottiePlayer {
         }
 
         true
+    }
+
+    /// Returns which types of listeners need to be setup.
+    /// The frameworks should call the function after calling start_state_machine.
+    pub fn state_machine_framework_setup(&self) -> Vec<String> {
+        if self.state_machine.read().unwrap().is_none() {
+            return vec![];
+        }
+
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                let mut listener_types = vec![];
+
+                if let Some(sm) = state_machine.as_ref() {
+                    let listeners = sm.get_listeners();
+
+                    for listener in listeners {
+                        match listener.try_read() {
+                            Ok(listener) => {
+                                let unwrapped_listener = &*listener;
+
+                                if !listener_types
+                                    .contains(&unwrapped_listener.get_type().to_string())
+                                {
+                                    listener_types.push(unwrapped_listener.get_type().to_string());
+                                }
+                            }
+                            Err(_) => todo!(),
+                        }
+                    }
+                    return listener_types;
+                } else {
+                    return vec![];
+                }
+            }
+            Err(_) => todo!(),
+        }
     }
 
     // todo: Once lister actions are implemented, remove this fn

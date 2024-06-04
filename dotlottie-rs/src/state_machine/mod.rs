@@ -4,11 +4,13 @@ use std::sync::{Arc, RwLock};
 
 pub mod errors;
 pub mod events;
+pub mod listeners;
 pub mod parser;
 pub mod states;
 pub mod transitions;
 
 use crate::parser::StringNumberBool;
+use crate::state_machine::listeners::Listener;
 use crate::state_machine::states::StateTrait;
 use crate::state_machine::transitions::guard::Guard;
 use crate::state_machine::transitions::TransitionTrait;
@@ -32,6 +34,7 @@ pub enum StateMachineStatus {
 
 pub struct StateMachine {
     pub states: Vec<Arc<RwLock<State>>>,
+    pub listeners: Vec<Arc<RwLock<Listener>>>,
     pub current_state: Option<Arc<RwLock<State>>>,
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineStatus,
@@ -47,6 +50,7 @@ impl Default for StateMachine {
     fn default() -> StateMachine {
         StateMachine {
             states: Vec::new(),
+            listeners: Vec::new(),
             current_state: None,
             player: None,
             numeric_context: HashMap::new(),
@@ -65,6 +69,7 @@ impl StateMachine {
     ) -> Result<StateMachine, StateMachineError> {
         let mut state_machine = StateMachine {
             states: Vec::new(),
+            listeners: Vec::new(),
             current_state: None,
             player: Some(player.clone()),
             numeric_context: HashMap::new(),
@@ -135,6 +140,7 @@ impl StateMachine {
         // );
 
         let mut states: Vec<Arc<RwLock<State>>> = Vec::new();
+        let mut listeners: Vec<Arc<RwLock<Listener>>> = Vec::new();
         let mut new_state_machine = StateMachine::default();
 
         match parsed_state_machine {
@@ -276,6 +282,62 @@ impl StateMachine {
                     }
                 }
 
+                for listener in parsed_state_machine.listeners {
+                    match listener.r#type {
+                        parser::ListenerJsonType::PointerUp => {
+                            let new_listener = Listener::PointerUp {
+                                r#type: listeners::ListenerType::PointerUp,
+                                target: listener.target,
+                                action: listener.action,
+                                value: listener.value,
+                                context_key: listener.context_key,
+                            };
+
+                            listeners.push(Arc::new(RwLock::new(new_listener)));
+                        }
+                        parser::ListenerJsonType::PointerDown => {
+                            let new_listener = Listener::PointerDown {
+                                r#type: listeners::ListenerType::PointerDown,
+                                target: listener.target,
+                                action: listener.action,
+                                value: listener.value,
+                                context_key: listener.context_key,
+                            };
+
+                            listeners.push(Arc::new(RwLock::new(new_listener)));
+                        }
+                        parser::ListenerJsonType::PointerEnter => {
+                            let new_listener = Listener::PointerEnter {
+                                r#type: listeners::ListenerType::PointerEnter,
+                                target: listener.target,
+                                action: listener.action,
+                                value: listener.value,
+                                context_key: listener.context_key,
+                            };
+
+                            listeners.push(Arc::new(RwLock::new(new_listener)));
+                        }
+                        parser::ListenerJsonType::PointerExit => {
+                            let new_listener = Listener::PointerExit {
+                                r#type: listeners::ListenerType::PointerExit,
+                            };
+
+                            listeners.push(Arc::new(RwLock::new(new_listener)));
+                        }
+                        parser::ListenerJsonType::PointerMove => {
+                            let new_listener = Listener::PointerMove {
+                                r#type: listeners::ListenerType::PointerMove,
+                                target: listener.target,
+                                action: listener.action,
+                                value: listener.value,
+                                context_key: listener.context_key,
+                            };
+
+                            listeners.push(Arc::new(RwLock::new(new_listener)));
+                        }
+                    }
+                }
+
                 // Since value can either be a string, int or bool, we need to check the type and set the context accordingly
                 for variable in parsed_state_machine.context_variables {
                     match variable.r#type {
@@ -308,6 +370,7 @@ impl StateMachine {
 
                 new_state_machine = StateMachine {
                     states,
+                    listeners,
                     current_state: initial_state,
                     player: Some(player.clone()),
                     numeric_context: new_state_machine.numeric_context,
@@ -346,6 +409,11 @@ impl StateMachine {
 
     pub fn add_state(&mut self, state: Arc<RwLock<State>>) {
         self.states.push(state);
+    }
+
+    pub fn get_listeners(&self) -> &Vec<Arc<RwLock<Listener>>> {
+        println!("Listeners: {:?}", self.listeners);
+        &self.listeners
     }
 
     pub fn execute_current_state(&mut self) -> bool {

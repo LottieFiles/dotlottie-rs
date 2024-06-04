@@ -155,7 +155,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("load_state_machine", &DotLottiePlayer::load_state_machine)
         .function("start_state_machine", &DotLottiePlayer::start_state_machine)
         .function("end_state_machine", &DotLottiePlayer::end_state_machine)
-        .function("post_event_payload", &DotLottiePlayer::post_event_payload)
+        .function("post_event_payload", &DotLottiePlayer::post_event_payload);
     // .function("state_machine_subscribe", &DotLottiePlayer::state_machine_subscribe)
     // .function("state_machine_unsubscribe", &DotLottiePlayer::state_machine_unsubscribe)
 }

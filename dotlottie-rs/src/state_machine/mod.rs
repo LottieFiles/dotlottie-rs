@@ -412,7 +412,6 @@ impl StateMachine {
     }
 
     pub fn get_listeners(&self) -> &Vec<Arc<RwLock<Listener>>> {
-        println!("Listeners: {:?}", self.listeners);
         &self.listeners
     }
 
@@ -486,14 +485,13 @@ impl StateMachine {
         let mut numeric_event = false;
         let mut bool_event = false;
         let mut complete_event = false;
+        let mut pointer_down_event = false;
 
         match event {
             Event::Bool { value: _ } => bool_event = true,
             Event::String { value: _ } => string_event = true,
             Event::Numeric { value: _ } => numeric_event = true,
-            Event::OnPointerDown { x: _, y: _ } => {
-                println!(">> OnPointerDownEvent");
-            }
+            Event::OnPointerDown { x: _, y: _ } => pointer_down_event = true,
             Event::OnPointerUp { x: _, y: _ } => {
                 println!(">> OnPointerUpEvent");
             }
@@ -608,7 +606,20 @@ impl StateMachine {
                             }
                         }
                     }
-                    Event::OnPointerDown { x: _, y: _ } => todo!(),
+                    Event::OnPointerDown { x: _, y: _ } => {
+                        if pointer_down_event {
+                            // If there are guards loop over them and check if theyre verified
+                            if transition_guards.len() > 0 {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            } else {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    }
                     Event::OnPointerUp { x: _, y: _ } => todo!(),
                     Event::OnPointerMove { x: _, y: _ } => todo!(),
                     Event::OnPointerEnter { x: _, y: _ } => todo!(),

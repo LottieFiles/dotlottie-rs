@@ -257,12 +257,32 @@ impl StateMachine {
                             }
 
                             //  else if transition.on_pointer_down_event.is_some() {
+                            // Default to 0.0 0.0 coordinates
+                            // How to manage targets?
+                            // let pointer_down_event = transition.on_pointer_down_event.unwrap();
+                            // pointer_down_event.target;
+
+                            new_event = Some(Event::OnPointerDown { x: 0.0, y: 0.0 });
+                            state_to_attach_to = transition.from_state as i32;
                             // } else if transition.on_pointer_up_event.is_some() {
+                            // Default to 0.0 0.0 coordinates
+                            // How to manage targets?
+                            new_event = Some(Event::OnPointerUp { x: 0.0, y: 0.0 });
+                            state_to_attach_to = transition.from_state as i32;
                             // } else if transition.on_pointer_enter_event.is_some() {
+                            // Default to 0.0 0.0 coordinates
+                            // How to manage targets?
+                            new_event = Some(Event::OnPointerEnter { x: 0.0, y: 0.0 });
+                            state_to_attach_to = transition.from_state as i32;
                             // } else if transition.on_pointer_exit_event.is_some() {
+                            new_event = Some(Event::OnPointerExit {});
+                            state_to_attach_to = transition.from_state as i32;
                             // } else if transition.on_pointer_move_event.is_some() {
+                            // Default to 0.0 0.0 coordinates
+                            // How to manage targets?
+                            new_event = Some(Event::OnPointerMove { x: 0.0, y: 0.0 });
+                            state_to_attach_to = transition.from_state as i32;
                             // }
-                            // Todo - Add the rest of the event types
                             if let Some(event) = new_event {
                                 let new_transition = Transition::Transition {
                                     target_state: target_state_index,

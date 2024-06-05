@@ -63,8 +63,14 @@ rustup target add aarch64-linux-android \
   x86_64-apple-darwin \
   aarch64-apple-ios \
   x86_64-apple-ios \
-  aarch64-apple-ios-sim \
-  wasm32-unknown-emscripten
+  aarch64-apple-ios-sim 
+
+echo 
+echo "Installing rust nightly toolchain ..."
+rustup toolchain install nightly; \
+rustup component add rust-src --toolchain nightly-aarch64-apple-darwin; \
+rustup component add rust-src --toolchain nightly-x86_64-apple-darwin; \
+rustup target add wasm32-unknown-emscripten --toolchain nightly; \
 
 echo
 echo "Install cargo dependencies"

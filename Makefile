@@ -94,7 +94,7 @@ WASM_BUILD := $(BUILD)/$(WASM)
 
 EMSDK := emsdk
 EMSDK_DIR := $(PROJECT_DIR)/$(DEPS_MODULES_DIR)/$(EMSDK)
-EMSDK_VERSION := 3.1.57
+EMSDK_VERSION := 3.1.61
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
@@ -248,7 +248,7 @@ cpp_link_args = [
 	'-Wl,-u,ntohs',
 	'-Wl,-u,htonl',
 	'-Wshift-negative-value',
-	'-flto', '-Os', '--bind', '-sWASM=1',
+	'-flto', '-Oz', '--bind', '-sWASM=1',
 	'-sALLOW_MEMORY_GROWTH=1',
 	'-sFORCE_FILESYSTEM=0',
 	'-sMODULARIZE=1',
@@ -261,7 +261,7 @@ cpp_link_args = [
 	'--no-entry',
 	'--strip-all',
 	'--emit-tsd=${WASM_MODULE}.d.ts',
-	'--minify=0']
+	'--closure=1']
 
 [host_machine]
 system = '$(SYSTEM)'
@@ -352,11 +352,20 @@ define CLEAN_LIBGJPEG
 endef
 
 define CARGO_BUILD
-	source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
+	if [ "$(CARGO_TARGET)" = "wasm32-unknown-emscripten" ]; then \
+		source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
+		RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
+		-Z build-std=std,panic_abort \
+		-Z build-std-features=panic_immediate_abort \
+		--manifest-path $(PROJECT_DIR)/Cargo.toml \
+		--target $(CARGO_TARGET) \
+		--release; \
+	else \
 		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
-		--release
+		--release; \
+	fi
 endef
 
 define UNIFFI_BINDINGS_BUILD

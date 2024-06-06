@@ -143,9 +143,9 @@ fn main() {
         ..Config::default()
     });
 
-    let mut markers = File::open("src/exploding-pigeons-test-file.lottie").expect("no file found");
+    let mut markers = File::open("src/pigeon_with_listeners.lottie").expect("no file found");
     let metadatamarkers =
-        fs::metadata("src/exploding-pigeons-test-file.lottie").expect("unable to read metadata");
+        fs::metadata("src/pigeon_with_listeners.lottie").expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
@@ -183,7 +183,7 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    lottie_player.load_state_machine("exploding_pigeon");
+    lottie_player.load_state_machine("pigeon_fsm");
     lottie_player.start_state_machine();
     lottie_player.play();
 
@@ -202,12 +202,10 @@ fn main() {
         }
 
         if window.is_key_pressed(Key::O, KeyRepeat::No) {
-            let string_event = Event::String {
-                value: "complete".to_string(),
-            };
+            let pointer_event = Event::OnPointerDown { x: 1.0, y: 1.0 };
 
             let p = &mut *locked_player.write().unwrap();
-            p.post_event(&string_event);
+            p.post_event(&pointer_event);
         }
 
         if window.is_key_pressed(Key::P, KeyRepeat::No) {

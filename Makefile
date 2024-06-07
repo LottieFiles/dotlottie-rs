@@ -936,6 +936,12 @@ mac-setup: export UNIFFI_BINDGEN_CPP_VERSION:= $(UNIFFI_BINDGEN_CPP_VERSION)
 mac-setup:
 	@./.$@.sh
 
+.PHONY: linux-wasm-setup
+linux-wasm-setup: export EMSDK_VERSION := $(EMSDK_VERSION)
+linux-wasm-setup: export UNIFFI_BINDGEN_CPP_VERSION:= $(UNIFFI_BINDGEN_CPP_VERSION)
+linux-wasm-setup:
+	./.$@.sh
+
 .PHONY: test
 test: test-all
 

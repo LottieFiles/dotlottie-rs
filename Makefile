@@ -15,6 +15,8 @@ YELLOW := $(shell tput setaf 3)
 GREEN := $(shell tput setaf 2)
 NC := $(shell tput sgr0)
 
+BASE_DIR := $(PROJECT_DIR)
+
 # Build system types
 LINUX_BUILD_PLATFORM := linux
 MAC_BUILD_PLATFORM := darwin
@@ -352,7 +354,9 @@ define CLEAN_LIBGJPEG
 endef
 
 define CARGO_BUILD
-	source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
+	cd $(EMSDK_DIR) && \
+	. ./$(EMSDK)_env.sh && \
+	cd $(BASE_DIR) && \
 		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
@@ -948,9 +952,9 @@ test: test-all
 .PHONY: test-all
 test-all:
 	$(info $(YELLOW)Running tests for workspace$(NC))
-	@cargo test --manifest-path $(CORE)/Cargo.toml -- --test-threads=1 
-	@cargo test --manifest-path $(FMS)/Cargo.toml -- --test-threads=1 
-	@cargo test --manifest-path $(RUNTIME_FFI)/Cargo.toml -- --test-threads=1 
+	@cargo test --manifest-path $(CORE)/Cargo.toml -- --test-threads=1
+	@cargo test --manifest-path $(FMS)/Cargo.toml -- --test-threads=1
+	@cargo test --manifest-path $(RUNTIME_FFI)/Cargo.toml -- --test-threads=1
 
 .PHONY: bench
 bench:

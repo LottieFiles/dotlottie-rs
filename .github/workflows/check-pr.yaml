@@ -1,8 +1,7 @@
 name: Check PR
 
 on:
-  pull_request:
-    branches: [main]
+  push:
 
 jobs:
   check-pr:
@@ -18,6 +17,8 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: "13.3.1"
+      - name: Check Xcode SDKs Version
+        run: ls /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/
       - uses: ningenMe/setup-rustup@v1.1.0
       - name: Install Make
         run: brew install make

@@ -35,7 +35,7 @@ jobs:
         run: make mac-setup
 
       - name: Build Apple
-        run: rm -f /usr/local/lib/libjpeg* ; make aarch64-apple-ios
+        run: rm -f /usr/local/lib/libjpeg* ; make apple
 
       - name: Upload Apple Artifacts
         uses: actions/upload-artifact@v3

@@ -76,13 +76,13 @@ echo
 echo "Setting up project ..."
 make deps
 
-echo
-echo "Setting up emsdk"
-cd "${SCRIPT_DIR}/deps/modules/emsdk" || die "Could not find Emscripten SDK under ${RED}deps/modules/emsdk${NC}!"
-./emsdk install "${EMSDK_VERSION}"
-./emsdk activate "${EMSDK_VERSION}"
-cd "${SCRIPT_DIR}/deps/modules/emsdk/upstream/emscripten" || die "Could not find Emscripten under ${RED}deps/modules/emsdk/upstream/emscripten${NC}!"
-npm install
+# echo
+# echo "Setting up emsdk"
+# cd "${SCRIPT_DIR}/deps/modules/emsdk" || die "Could not find Emscripten SDK under ${RED}deps/modules/emsdk${NC}!"
+# ./emsdk install "${EMSDK_VERSION}"
+# ./emsdk activate "${EMSDK_VERSION}"
+# cd "${SCRIPT_DIR}/deps/modules/emsdk/upstream/emscripten" || die "Could not find Emscripten under ${RED}deps/modules/emsdk/upstream/emscripten${NC}!"
+# npm install
 
 
 echo

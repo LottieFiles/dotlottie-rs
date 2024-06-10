@@ -203,14 +203,14 @@ endef
 
 define APPLE_CROSS_FILE
 [binaries]
-cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
+cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/Xcode.app/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
 ld = 'ld'
 ar = 'ar'
 strip = 'strip'
 pkg-config = 'pkg-config'
 
 [properties]
-root = '/Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/$(SDK).platform/Developer'
+root = '/Applications/Xcode.app/Contents/Developer/Platforms/$(SDK).platform/Developer'
 has_function_printf = true
 
 $(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),\

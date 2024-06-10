@@ -203,14 +203,14 @@ endef
 
 define APPLE_CROSS_FILE
 [binaries]
-cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
+cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/Xcode_14.2.app/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
 ld = 'ld'
 ar = 'ar'
 strip = 'strip'
 pkg-config = 'pkg-config'
 
 [properties]
-root = '/Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/$(SDK).platform/Developer'
+root = '/Applications/Xcode_14.2.app/Contents/Developer/Platforms/$(SDK).platform/Developer'
 has_function_printf = true
 
 $(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),\
@@ -413,7 +413,7 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :MinimumOSVersion string 13" \
+                     -c "Add :MinimumOSVersion string 15.4" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \

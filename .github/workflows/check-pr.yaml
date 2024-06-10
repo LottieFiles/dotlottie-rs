@@ -26,6 +26,9 @@ jobs:
       - name: "Log all xcode sdks"
         run: xcodebuild -showsdks
 
+      - name: "Log all xcode toolchains"
+        run: ls -l /Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/
+
       - uses: ningenMe/setup-rustup@v1.1.0
 
       - name: Install Make

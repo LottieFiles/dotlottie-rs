@@ -203,7 +203,7 @@ endef
 
 define APPLE_CROSS_FILE
 [binaries]
-cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/Xcode.app/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
+cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
 ld = 'ld'
 ar = 'ar'
 strip = 'strip'

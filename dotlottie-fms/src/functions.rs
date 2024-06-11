@@ -42,6 +42,11 @@ pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotL
     // Loop through the parsed lottie animation and check for image assets
     if let Some(assets) = lottie_animation["assets"].as_array_mut() {
         for i in 0..assets.len() {
+            // Skip if the asset is already inlined
+            if assets[i]["e"].as_i64() == Some(1) {
+                continue;
+            }
+
             if !assets[i]["p"].is_null() {
                 let image_asset_filename =
                     format!("images/{}", assets[i]["p"].to_string().replace("\"", ""));

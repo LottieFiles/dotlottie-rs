@@ -67,7 +67,8 @@ APPLE_BUILD := $(BUILD)/$(APPLE)
 APPLE_IOS := ios
 APPLE_IOS_PLATFORM := iPhoneOS
 APPLE_IOS_SDK ?= iPhoneOS
-APPLE_IOS_VERSION_MIN ?= 11.0
+APPLE_IOS_VERSION_MIN ?= 15.4
+APPLE_XCODE_APP_NAME ?= Xcode_13.3.1.app
 
 APPLE_IOS_SIMULATOR := ios-simulator
 APPLE_IOS_SIMULATOR_PLATFORM := iPhoneSimulator
@@ -203,14 +204,14 @@ endef
 
 define APPLE_CROSS_FILE
 [binaries]
-cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
+cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/${APPLE_XCODE_APP_NAME}/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
 ld = 'ld'
 ar = 'ar'
 strip = 'strip'
 pkg-config = 'pkg-config'
 
 [properties]
-root = '/Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/$(SDK).platform/Developer'
+root = '/Applications/${APPLE_XCODE_APP_NAME}/Contents/Developer/Platforms/$(SDK).platform/Developer'
 has_function_printf = true
 
 $(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),\
@@ -414,11 +415,18 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :MinimumOSVersion string 15.4" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \
-                     $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(INFO_PLIST)
+
+if [ "$(platform)" = "MacOSX" ]; then \
+	$(PLISTBUDDY_EXEC) -c "Add :MinimumOSVersion string 12" \
+else \
+	$(PLISTBUDDY_EXEC) -c "Add :MinimumOSVersion string 15.4" \
+fi; \
+
+#  -c "Add :MinimumOSVersion string 15.4" \
+
 
 	$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 endef

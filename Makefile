@@ -403,7 +403,7 @@ endef
 
 MIN_OS_VERSION_IOS=15.4
 MIN_OS_VERSION_MACOS=12
-ifneq (,$(findstring MacOSX,$(platform)))
+ifneq (,$(findstring MacOSX,$(PLIST_ENABLE)))
 	MIN_OS_VERSION = $(MIN_OS_VERSION_MACOS)
 else
 	MIN_OS_VERSION = $(MIN_OS_VERSION_IOS)

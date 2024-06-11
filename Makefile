@@ -401,6 +401,14 @@ define LIPO_CREATE
 		-o $@
 endef
 
+MIN_OS_VERSION_IOS=15.4
+MIN_OS_VERSION_MACOS=12
+ifneq (,$(findstring MacOSX,$(platform)))
+	MIN_OS_VERSION = $(MIN_OS_VERSION_MACOS)
+else
+	MIN_OS_VERSION = $(MIN_OS_VERSION_IOS)
+endif
+
 define CREATE_FRAMEWORK
 	rm -rf $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
 	mkdir -p $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/{$(FRAMEWORK_HEADERS),$(FRAMEWORK_MODULES)}
@@ -415,17 +423,11 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
+					 -c "Add :MinimumOSVersion string $(MIN_OS_VERSION)" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \
-
-if [ "$(platform)" = "MacOSX" ]; then \
-	$(PLISTBUDDY_EXEC) -c "Add :MinimumOSVersion string 12" \
-else \
-	$(PLISTBUDDY_EXEC) -c "Add :MinimumOSVersion string 15.4" \
-fi; \
-
-#  -c "Add :MinimumOSVersion string 15.4" \
+						$(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(INFO_PLIST)
 
 
 	$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)

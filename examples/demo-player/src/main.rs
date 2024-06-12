@@ -142,9 +142,9 @@ fn main() {
 
     let mut markers = File::open("src/markers.json").expect("no file found");
     let metadatamarkers = fs::metadata("src/markers.json").expect("unable to read metadata");
-    let mut markersBuffer = vec![0; metadatamarkers.len() as usize];
-    markers.read(&mut markersBuffer).expect("buffer overflow");
-    let string = String::from_utf8(markersBuffer.clone()).unwrap();
+    let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
+    markers.read(&mut markers_buffer).expect("buffer overflow");
+    let string = String::from_utf8(markers_buffer.clone()).unwrap();
     // lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
     // println!("{:?}", Some(lottie_player.manifest()));
 

@@ -3,9 +3,12 @@ mod tests {
     use std::sync::{Arc, RwLock};
 
     use dotlottie_player_core::{
+        listeners::ListenerTrait,
         transitions::{Transition::Transition, TransitionTrait},
         StateMachineObserver,
     };
+    
+    use dotlottie_player_core::{listeners::ListenerType, parser::StringNumberBool};
 
     use dotlottie_player_core::{events::Event, states::State, Config, DotLottiePlayer, Mode};
 
@@ -305,5 +308,71 @@ mod tests {
 
         // Should go to stage 0 and use previous state so it should be "done"
         assert_eq!(*observer3.custom_data.read().unwrap(), "\"feather\"");
+    }
+
+    #[test]
+    fn state_machine_listener_test() {
+        let file_path = format!(
+            "{}{}",
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/assets/pigeon_with_listeners.lottie"
+        );
+        let mut loaded_file = File::open(file_path.clone()).expect("no file found");
+        let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
+
+        let mut buffer = vec![0; meta_data.len() as usize];
+        loaded_file.read(&mut buffer).expect("buffer overflow");
+
+        let player = DotLottiePlayer::new(Config::default());
+
+        player.load_dotlottie_data(&buffer, 100, 100);
+
+        player.load_state_machine("pigeon_fsm");
+
+        let sm = player.get_state_machine();
+
+        assert!(
+            sm.read().unwrap().as_ref().is_some(),
+            "State machine is not loaded"
+        );
+
+        let tmp_unwrap = sm.read().unwrap();
+        let unwrapped_sm = tmp_unwrap.as_ref().unwrap();
+        let sm_listeners = unwrapped_sm.get_listeners();
+        let first_listener = &*sm_listeners[0].clone();
+        let first_listener_unwrapped = &*first_listener.read().unwrap();
+
+        assert!(
+            unwrapped_sm.states.len() == 3,
+            "State machine states are not loaded"
+        );
+        assert!(
+            sm_listeners.len() == 5,
+            "State machine listeners are not loaded"
+        );
+
+        //
+        // Only the first listener has additional properties
+        //
+        assert!(
+            *first_listener_unwrapped.get_type() == ListenerType::PointerUp,
+            "Listener 0 is not loaded"
+        );
+        assert!(
+            first_listener_unwrapped.get_target() == Some("button_0".to_string()),
+            "Listener 0 is not loaded"
+        );
+        assert!(
+            first_listener_unwrapped.get_action() == Some("set".to_string()),
+            "Listener 0 is not loaded"
+        );
+        assert!(
+            first_listener_unwrapped.get_value() == Some(&StringNumberBool::F32(1.0)),
+            "Listener 0 is not loaded"
+        );
+        assert!(
+            first_listener_unwrapped.get_context_key() == Some("counter_0".to_string()),
+            "Listener 0 is not loaded"
+        );
     }
 }

@@ -340,6 +340,10 @@ impl StateMachine {
                         parser::ListenerJsonType::PointerExit => {
                             let new_listener = Listener::PointerExit {
                                 r#type: listeners::ListenerType::PointerExit,
+                                target: listener.target,
+                                action: listener.action,
+                                value: listener.value,
+                                context_key: listener.context_key,
                             };
 
                             listeners.push(Arc::new(RwLock::new(new_listener)));
@@ -506,24 +510,20 @@ impl StateMachine {
         let mut bool_event = false;
         let mut complete_event = false;
         let mut pointer_down_event = false;
+        let mut pointer_up_event = false;
+        let mut pointer_move_event = false;
+        let mut pointer_enter_event = false;
+        let mut pointer_exit_event = false;
 
         match event {
             Event::Bool { value: _ } => bool_event = true,
             Event::String { value: _ } => string_event = true,
             Event::Numeric { value: _ } => numeric_event = true,
             Event::OnPointerDown { x: _, y: _ } => pointer_down_event = true,
-            Event::OnPointerUp { x: _, y: _ } => {
-                println!(">> OnPointerUpEvent");
-            }
-            Event::OnPointerMove { x: _, y: _ } => {
-                println!(">> OnPointerMoveEvent");
-            }
-            Event::OnPointerEnter { x: _, y: _ } => {
-                println!(">> OnPointerEnterEvent");
-            }
-            Event::OnPointerExit => {
-                println!(">> OnPointerExitEvent");
-            }
+            Event::OnPointerUp { x: _, y: _ } => pointer_up_event = true,
+            Event::OnPointerMove { x: _, y: _ } => pointer_move_event = true,
+            Event::OnPointerEnter { x: _, y: _ } => pointer_enter_event = true,
+            Event::OnPointerExit => pointer_exit_event = true,
             Event::OnComplete => complete_event = true,
         }
 
@@ -640,10 +640,62 @@ impl StateMachine {
                             }
                         }
                     }
-                    Event::OnPointerUp { x: _, y: _ } => todo!(),
-                    Event::OnPointerMove { x: _, y: _ } => todo!(),
-                    Event::OnPointerEnter { x: _, y: _ } => todo!(),
-                    Event::OnPointerExit => todo!(),
+                    Event::OnPointerUp { x: _, y: _ } => {
+                                if pointer_up_event {
+                                    // If there are guards loop over them and check if theyre verified
+                                    if transition_guards.len() > 0 {
+                                        for guard in transition_guards {
+                                            if self.verify_if_guards_are_met(guard) {
+                                                tmp_state = target_state as i32;
+                                            }
+                                        }
+                                    } else {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            }
+                    Event::OnPointerMove { x: _, y: _ } => {
+                                if pointer_move_event {
+                                    // If there are guards loop over them and check if theyre verified
+                                    if transition_guards.len() > 0 {
+                                        for guard in transition_guards {
+                                            if self.verify_if_guards_are_met(guard) {
+                                                tmp_state = target_state as i32;
+                                            }
+                                        }
+                                    } else {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            }
+                    Event::OnPointerEnter { x: _, y: _ } => {
+                                if pointer_enter_event {
+                                    // If there are guards loop over them and check if theyre verified
+                                    if transition_guards.len() > 0 {
+                                        for guard in transition_guards {
+                                            if self.verify_if_guards_are_met(guard) {
+                                                tmp_state = target_state as i32;
+                                            }
+                                        }
+                                    } else {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            }
+                    Event::OnPointerExit => {
+                                if pointer_exit_event {
+                                    // If there are guards loop over them and check if theyre verified
+                                    if transition_guards.len() > 0 {
+                                        for guard in transition_guards {
+                                            if self.verify_if_guards_are_met(guard) {
+                                                tmp_state = target_state as i32;
+                                            }
+                                        }
+                                    } else {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            }
                 }
             }
 

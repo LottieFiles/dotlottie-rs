@@ -24,7 +24,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     // Register std::vector<float> as VectorFloat for the Config::segment field
     register_vector<float>("VectorFloat");
     register_vector<Marker>("VectorMarker");
-    // register_vector<std::string>("VectorString");
+    register_vector<std::string>("VectorString");
     // register_vector<ManifestTheme>("VectorManifestTheme");
     // register_vector<ManifestAnimation>("VectorManifestAnimation");
 

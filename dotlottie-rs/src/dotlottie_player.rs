@@ -1255,12 +1255,12 @@ impl DotLottiePlayer {
     /// Returns which types of listeners need to be setup.
     /// The frameworks should call the function after calling start_state_machine.
     pub fn state_machine_framework_setup(&self) -> Vec<String> {
-        if self.state_machine.read().unwrap().is_none() {
-            return vec![];
-        }
-
         match self.state_machine.try_read() {
             Ok(state_machine) => {
+                if state_machine.is_none() {
+                    return vec![];
+                }
+
                 let mut listener_types = vec![];
 
                 if let Some(sm) = state_machine.as_ref() {
@@ -1277,7 +1277,7 @@ impl DotLottiePlayer {
                                     listener_types.push(unwrapped_listener.get_type().to_string());
                                 }
                             }
-                            Err(_) => todo!(),
+                            Err(_) => return vec![],
                         }
                     }
                     return listener_types;
@@ -1285,7 +1285,7 @@ impl DotLottiePlayer {
                     return vec![];
                 }
             }
-            Err(_) => todo!(),
+            Err(_) => return vec![],
         }
     }
 

@@ -422,11 +422,14 @@ impl DotLottieRuntime {
             let frame_duration = effective_duration / effective_total_frames;
 
             // estimate elapsed time for current frame based on direction and segment
-            let elapsed_time_for_frame = match self.direction {
+            let mut elapsed_time_for_frame = match self.direction {
                 Direction::Forward => (frame_no - start_frame) * frame_duration,
                 Direction::Reverse => (end_frame - frame_no) * frame_duration,
             };
 
+            if elapsed_time_for_frame < 0.0 {
+                elapsed_time_for_frame = 0.0;
+            }
             // update start_time to account for the already elapsed time
             if let Some(start_time) =
                 Instant::now().checked_sub(Duration::from_secs_f32(elapsed_time_for_frame))
@@ -1105,21 +1108,21 @@ impl DotLottiePlayerContainer {
                     self.observers.read().unwrap().iter().for_each(|observer| {
                         observer.on_loop(self.loop_count());
                     });
-                }
+                } else {
+                    self.observers.read().unwrap().iter().for_each(|observer| {
+                        observer.on_complete();
+                    });
 
-                let ret = self.state_machine.try_write();
-                match ret {
-                    Ok(mut state_machine) => {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&Event::OnComplete);
+                    let ret = self.state_machine.try_write();
+                    match ret {
+                        Ok(mut state_machine) => {
+                            if let Some(sm) = state_machine.as_mut() {
+                                sm.post_event(&Event::OnComplete);
+                            }
                         }
+                        Err(_) => (),
                     }
-                    Err(_) => (),
                 }
-
-                self.observers.read().unwrap().iter().for_each(|observer| {
-                    observer.on_complete();
-                });
             }
         }
 

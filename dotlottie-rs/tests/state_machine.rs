@@ -1,12 +1,6 @@
-mod test_utils;
-
 #[cfg(test)]
 mod tests {
-    use std::{
-        fs::{self, File},
-        io::Read,
-        sync::{Arc, RwLock},
-    };
+    use std::sync::{Arc, RwLock};
 
     use dotlottie_player_core::{
         transitions::{Transition::Transition, TransitionTrait},
@@ -17,20 +11,21 @@ mod tests {
 
     #[test]
     pub fn load_multiple_states() {
-        let file_path = format!(
-            "{}{}",
-            env!("CARGO_MANIFEST_DIR"),
-            "/tests/assets/exploding_pigeon.lottie"
-        );
-        let mut loaded_file = File::open(file_path.clone()).expect("no file found");
-        let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
+        // let file_path = format!(
+        //     "{}{}",
+        //     env!("CARGO_MANIFEST_DIR"),
+        //     "/tests/assets/exploding_pigeon.lottie"
+        // );
+        // let mut loaded_file = File::open(file_path.clone()).expect("no file found");
+        // let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
 
-        let mut buffer = vec![0; meta_data.len() as usize];
-        loaded_file.read(&mut buffer).expect("buffer overflow");
+        // let mut buffer = vec![0; meta_data.len() as usize];
+        // loaded_file.read(&mut buffer).expect("buffer overflow");
 
         let player = DotLottiePlayer::new(Config::default());
+        player.load_dotlottie_data(include_bytes!("assets/exploding_pigeon.lottie"), 100, 100);
 
-        player.load_dotlottie_data(&buffer, 100, 100);
+        // player.load_dotlottie_data(&buffer, 100, 100);
 
         player.load_state_machine("pigeon_fsm");
 
@@ -161,11 +156,11 @@ mod tests {
                         );
                     }
                     _ => {
-                        assert!(false, "State is not Playback");
+                        panic!("State is not Playback")
                     }
                 },
                 _ => {
-                    assert!(false, "State is not Playback");
+                    panic!("State is not Playback")
                 }
             }
 
@@ -199,7 +194,7 @@ mod tests {
         }
 
         impl StateMachineObserver for SMObserver2 {
-            fn on_transition(&self, previous_state: String, new_state: String) {}
+            fn on_transition(&self, _: String, _: String) {}
 
             fn on_state_entered(&self, entering_state: String) {
                 *self.custom_data.write().unwrap() = format!("{:?}", entering_state);
@@ -234,20 +229,26 @@ mod tests {
 
         use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
 
-        let file_path = format!(
-            "{}{}",
-            env!("CARGO_MANIFEST_DIR"),
-            "/tests/assets/pigeon_fsm_ne_guard.lottie"
-        );
-        let mut loaded_file = File::open(file_path.clone()).expect("no file found");
-        let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
+        // let file_path = format!(
+        //     "{}{}",
+        //     env!("CARGO_MANIFEST_DIR"),
+        //     "/tests/assets/pigeon_fsm_ne_guard.lottie"
+        // );
+        // let mut loaded_file = File::open(file_path.clone()).expect("no file found");
+        // let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
 
-        let mut buffer = vec![0; meta_data.len() as usize];
-        loaded_file.read(&mut buffer).expect("buffer overflow");
+        // let mut buffer = vec![0; meta_data.len() as usize];
+        // loaded_file.read(&mut buffer).expect("buffer overflow");
 
         let player = DotLottiePlayer::new(Config::default());
 
-        player.load_dotlottie_data(&buffer, 100, 100);
+        player.load_dotlottie_data(
+            include_bytes!("assets/pigeon_fsm_ne_guard.lottie"),
+            100,
+            100,
+        );
+
+        // player.load_dotlottie_data(&buffer, 100, 100);
 
         player.load_state_machine("ne_guard");
 

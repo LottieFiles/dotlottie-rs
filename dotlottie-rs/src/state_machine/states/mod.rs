@@ -118,7 +118,7 @@ impl StateTrait for State {
                     player
                         .read()
                         .unwrap()
-                        .load_animation(&animation_id, size.0, size.1);
+                        .load_animation(animation_id, size.0, size.1);
                 }
 
                 // We have to use read otherwise it will deadlock
@@ -232,14 +232,14 @@ impl StateTrait for State {
                 reset_context: _,
                 animation_id: _,
                 transitions: _,
-            } => return Some(config),
+            } => Some(config),
             State::Sync {
                 name: _,
                 frame_context_key: _,
                 reset_context: _,
                 animation_id: _,
                 transitions: _,
-            } => return None,
+            } => None,
         }
     }
 

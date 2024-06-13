@@ -77,23 +77,17 @@ impl Guard {
 
         match &self.compare_to {
             StringNumberBool::F32(compare_to) => match self.condition_type {
-                TransitionGuardConditionType::Equal => return context_value == Some(&compare_to),
-                TransitionGuardConditionType::NotEqual => {
-                    return context_value != Some(&compare_to)
-                }
-                TransitionGuardConditionType::GreaterThan => {
-                    return context_value > Some(&compare_to)
-                }
-                TransitionGuardConditionType::LessThan => return context_value < Some(&compare_to),
+                TransitionGuardConditionType::Equal => context_value == Some(&compare_to),
+                TransitionGuardConditionType::NotEqual => context_value != Some(&compare_to),
+                TransitionGuardConditionType::GreaterThan => context_value > Some(&compare_to),
+                TransitionGuardConditionType::LessThan => context_value < Some(&compare_to),
                 TransitionGuardConditionType::GreaterThanOrEqual => {
-                    return context_value >= Some(&compare_to)
+                    context_value >= Some(&compare_to)
                 }
-                TransitionGuardConditionType::LessThanOrEqual => {
-                    return context_value <= Some(&compare_to)
-                }
+                TransitionGuardConditionType::LessThanOrEqual => context_value <= Some(&compare_to),
             },
-            StringNumberBool::String(_) => return false,
-            StringNumberBool::Bool(_) => return false,
-        };
+            StringNumberBool::String(_) => false,
+            StringNumberBool::Bool(_) => false,
+        }
     }
 }

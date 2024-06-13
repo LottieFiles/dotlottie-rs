@@ -1,6 +1,4 @@
 use instant::{Duration, Instant};
-use std::str::FromStr;
-use std::string;
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
@@ -1114,13 +1112,10 @@ impl DotLottiePlayerContainer {
                     });
 
                     let ret = self.state_machine.try_write();
-                    match ret {
-                        Ok(mut state_machine) => {
-                            if let Some(sm) = state_machine.as_mut() {
-                                sm.post_event(&Event::OnComplete);
-                            }
+                    if let Ok(mut state_machine) = ret {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.post_event(&Event::OnComplete);
                         }
-                        Err(_) => (),
                     }
                 }
             }
@@ -1712,14 +1707,9 @@ impl DotLottiePlayer {
                             return false;
                         }
                     }
-                } else {
-                    match state_machine {
-                        Err(ParsingError { reason }) => {
-                            println!("State Machine Is Not Ok -> {}", reason);
-                            return false;
-                        }
-                        Ok(_) => {}
-                    }
+                } else if let Err(ParsingError { reason }) = state_machine {
+                    println!("State Machine Is Not Ok -> {}", reason);
+                    return false;
                 }
             }
             None => {

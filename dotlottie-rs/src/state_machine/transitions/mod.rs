@@ -45,7 +45,7 @@ impl TransitionTrait for Transition {
                 target_state,
                 event: _,
                 guards: _,
-            } => target_state.clone(),
+            } => *target_state,
         }
     }
 
@@ -77,7 +77,7 @@ impl TransitionTrait for Transition {
                 target_state: _,
                 event: _,
                 guards,
-            } => return guards,
+            } => guards,
         }
     }
 }

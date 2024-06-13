@@ -193,6 +193,12 @@ impl ContextJson {
     }
 }
 
+impl Default for ContextJson {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Deserialize, Debug)]
 pub struct StateMachineJson {
     pub descriptor: DescriptorJson,
@@ -206,16 +212,12 @@ pub fn state_machine_parse(json: &str) -> Result<StateMachineJson, StateMachineE
     let result: Result<StateMachineJson, serde_json::Error> = serde_json::from_str(json);
 
     match result {
-        Ok(state_machine_json) => {
-            return Ok(state_machine_json);
-        }
-        Err(err) => {
-            return Err(StateMachineError::ParsingError {
-                reason: format!(
-                    "Error parsing state machine definition file: {:?}",
-                    err.to_string()
-                ),
-            });
-        }
+        Ok(state_machine_json) => Ok(state_machine_json),
+        Err(err) => Err(StateMachineError::ParsingError {
+            reason: format!(
+                "Error parsing state machine definition file: {:?}",
+                err.to_string()
+            ),
+        }),
     }
 }

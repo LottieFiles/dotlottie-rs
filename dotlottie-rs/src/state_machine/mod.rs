@@ -43,8 +43,8 @@ pub struct StateMachine {
     observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
 }
 
-impl StateMachine {
-    pub fn default() -> StateMachine {
+impl Default for StateMachine {
+    fn default() -> StateMachine {
         StateMachine {
             states: Vec::new(),
             current_state: None,
@@ -56,7 +56,9 @@ impl StateMachine {
             observers: RwLock::new(Vec::new()),
         }
     }
+}
 
+impl StateMachine {
     pub fn new(
         state_machine_definition: &str,
         player: Rc<RwLock<DotLottiePlayerContainer>>,
@@ -75,13 +77,9 @@ impl StateMachine {
         let sm = state_machine.create_state_machine(state_machine_definition, &player);
 
         match sm {
-            Ok(sm) => {
-                return Ok(sm);
-            }
-            Err(err) => {
-                return Err(err);
-            }
-        };
+            Ok(sm) => Ok(sm),
+            Err(err) => Err(err),
+        }
     }
 
     pub fn subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
@@ -257,24 +255,20 @@ impl StateMachine {
                             } else if transition.on_pointer_move_event.is_some() {
                             }
                             // Todo - Add the rest of the event types
+                            if let Some(event) = new_event {
+                                let new_transition = Transition::Transition {
+                                    target_state: target_state_index,
+                                    event: Arc::new(RwLock::new(event)),
+                                    guards: guards_for_transition,
+                                };
 
-                            match new_event {
-                                Some(event) => {
-                                    let new_transition = Transition::Transition {
-                                        target_state: target_state_index,
-                                        event: Arc::new(RwLock::new(event)),
-                                        guards: guards_for_transition,
-                                    };
-
-                                    // Since the target is valid and transition created, we attach it to the state
-                                    if state_to_attach_to < states.len() as i32 {
-                                        states[state_to_attach_to as usize]
-                                            .write()
-                                            .unwrap()
-                                            .add_transition(new_transition);
-                                    }
+                                // Since the target is valid and transition created, we attach it to the state
+                                if state_to_attach_to < states.len() as i32 {
+                                    states[state_to_attach_to as usize]
+                                        .write()
+                                        .unwrap()
+                                        .add_transition(new_transition);
                                 }
-                                None => {}
                             }
                         }
                     }
@@ -283,24 +277,21 @@ impl StateMachine {
                 // Since value can either be a string, int or bool, we need to check the type and set the context accordingly
                 for variable in parsed_state_machine.context_variables {
                     match variable.r#type {
-                        ContextJsonType::Numeric => match variable.value {
-                            StringNumberBool::F32(value) => {
+                        ContextJsonType::Numeric => {
+                            if let StringNumberBool::F32(value) = variable.value {
                                 new_state_machine.set_numeric_context(&variable.key, value);
                             }
-                            _ => {}
-                        },
-                        ContextJsonType::String => match variable.value {
-                            StringNumberBool::String(value) => {
+                        }
+                        ContextJsonType::String => {
+                            if let StringNumberBool::String(value) = variable.value {
                                 new_state_machine.set_string_context(&variable.key, value.as_str());
                             }
-                            _ => {}
-                        },
-                        ContextJsonType::Boolean => match variable.value {
-                            StringNumberBool::Bool(value) => {
+                        }
+                        ContextJsonType::Boolean => {
+                            if let StringNumberBool::Bool(value) = variable.value {
                                 new_state_machine.set_bool_context(&variable.key, value);
                             }
-                            _ => {}
-                        },
+                        }
                     }
                 }
 
@@ -324,9 +315,9 @@ impl StateMachine {
                     observers: RwLock::new(Vec::new()),
                 };
 
-                return Ok(new_state_machine);
+                Ok(new_state_machine)
             }
-            Err(error) => return Err(error),
+            Err(error) => Err(error),
         }
     }
 
@@ -361,40 +352,37 @@ impl StateMachine {
         }
 
         // Check if current_state is not None and execute the state
-        match self.current_state {
-            Some(ref state) => {
-                let unwrapped_state = state.read().unwrap();
-                let reset_key = unwrapped_state.get_reset_context_key();
+        if let Some(ref state) = self.current_state {
+            let unwrapped_state = state.read().unwrap();
+            let reset_key = unwrapped_state.get_reset_context_key();
 
-                if reset_key.len() > 0 {
-                    if reset_key == "*" {
-                        // Todo dont clear reset to their original values from file
-                        // self.numeric_context.clear();
-                        // self.string_context.clear();
-                        // self.bool_context.clear();
-                    } else {
-                        if self.numeric_context.contains_key(reset_key) {
-                            // self.numeric_context.remove(reset_key);
-                        }
+            if !reset_key.is_empty() {
+                if reset_key == "*" {
+                    // Todo dont clear reset to their original values from file
+                    // self.numeric_context.clear();
+                    // self.string_context.clear();
+                    // self.bool_context.clear();
+                } else {
+                    if self.numeric_context.contains_key(reset_key) {
+                        // self.numeric_context.remove(reset_key);
+                    }
 
-                        if self.string_context.contains_key(reset_key) {
-                            // self.string_context.remove(reset_key);
-                        }
+                    if self.string_context.contains_key(reset_key) {
+                        // self.string_context.remove(reset_key);
+                    }
 
-                        if self.bool_context.contains_key(reset_key) {
-                            // self.bool_context.remove(reset_key);
-                        }
+                    if self.bool_context.contains_key(reset_key) {
+                        // self.bool_context.remove(reset_key);
                     }
                 }
-
-                if self.player.is_some() {
-                    unwrapped_state.execute(&self.player.as_mut().unwrap());
-                }
             }
-            None => {}
+
+            if self.player.is_some() {
+                unwrapped_state.execute(self.player.as_mut().unwrap());
+            }
         }
 
-        return true;
+        true
     }
 
     fn verify_if_guards_are_met(&self, guard: &Guard) -> bool {
@@ -461,114 +449,100 @@ impl StateMachine {
 
         if state_value_result.is_ok() {
             let state_value = state_value_result.unwrap();
-            let mut iter = state_value.get_transitions().iter();
+            let iter = state_value.get_transitions().iter();
             let mut tmp_state: i32 = -1;
 
-            loop {
-                match iter.next() {
-                    Some(transition) => {
-                        let unwrapped_transition = transition.read().unwrap();
-                        let target_state = unwrapped_transition.get_target_state();
-                        let transition = &*unwrapped_transition;
-                        let event_lock = transition.get_event();
-                        let event_data = event_lock.read().unwrap();
-                        let transition_event = &*event_data;
-                        let transition_guards = transition.get_guards();
+            for transition in iter {
+                let unwrapped_transition = transition.read().unwrap();
+                let target_state = unwrapped_transition.get_target_state();
+                let transition = &*unwrapped_transition;
+                let event_lock = transition.get_event();
+                let event_data = event_lock.read().unwrap();
+                let transition_event = &*event_data;
+                let transition_guards = transition.get_guards();
 
-                        // Match the transition's event type and compare it to the received event
-                        match transition_event {
-                            Event::Bool { value } => {
-                                let mut received_event_value = false;
+                // Match the transition's event type and compare it to the received event
+                match transition_event {
+                    Event::Bool { value } => {
+                        let mut received_event_value = false;
 
-                                match event {
-                                    Event::Bool { value } => {
-                                        received_event_value = *value;
-                                    }
-                                    _ => {}
-                                }
+                        if let Event::Bool { value } = event {
+                            received_event_value = *value;
+                        }
 
-                                // Check the transitions value and compare to the received one to check if we should transition
-                                if bool_event && received_event_value == *value {
-                                    // If there are guards loop over them and check if theyre verified
-                                    if transition_guards.len() > 0 {
-                                        for guard in transition_guards {
-                                            if self.verify_if_guards_are_met(guard) {
-                                                tmp_state = target_state as i32;
-                                            }
-                                        }
-                                    } else {
+                        // Check the transitions value and compare to the received one to check if we should transition
+                        if bool_event && received_event_value == *value {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
                                         tmp_state = target_state as i32;
                                     }
                                 }
+                            } else {
+                                tmp_state = target_state as i32;
                             }
-                            Event::String { value } => {
-                                let mut received_event_value = "";
-
-                                match event {
-                                    Event::String { value } => {
-                                        received_event_value = value;
-                                    }
-                                    _ => {}
-                                }
-
-                                if string_event && received_event_value == value {
-                                    // If there are guards loop over them and check if theyre verified
-                                    if transition_guards.len() > 0 {
-                                        for guard in transition_guards {
-                                            if self.verify_if_guards_are_met(guard) {
-                                                tmp_state = target_state as i32;
-                                            }
-                                        }
-                                    } else {
-                                        tmp_state = target_state as i32;
-                                    }
-                                }
-                            }
-                            Event::Numeric { value } => {
-                                let mut received_event_value = 0.0;
-
-                                match event {
-                                    Event::Numeric { value } => {
-                                        received_event_value = *value;
-                                    }
-                                    _ => {}
-                                }
-
-                                if numeric_event && received_event_value == *value {
-                                    // If there are guards loop over them and check if theyre verified
-                                    if transition_guards.len() > 0 {
-                                        for guard in transition_guards {
-                                            if self.verify_if_guards_are_met(guard) {
-                                                tmp_state = target_state as i32;
-                                            }
-                                        }
-                                    } else {
-                                        tmp_state = target_state as i32;
-                                    }
-                                }
-                            }
-                            Event::OnComplete => {
-                                if complete_event {
-                                    // If there are guards loop over them and check if theyre verified
-                                    if transition_guards.len() > 0 {
-                                        for guard in transition_guards {
-                                            if self.verify_if_guards_are_met(guard) {
-                                                tmp_state = target_state as i32;
-                                            }
-                                        }
-                                    } else {
-                                        tmp_state = target_state as i32;
-                                    }
-                                }
-                            }
-                            Event::OnPointerDown { x: _, y: _ } => todo!(),
-                            Event::OnPointerUp { x: _, y: _ } => todo!(),
-                            Event::OnPointerMove { x: _, y: _ } => todo!(),
-                            Event::OnPointerEnter { x: _, y: _ } => todo!(),
-                            Event::OnPointerExit => todo!(),
                         }
                     }
-                    None => break,
+                    Event::String { value } => {
+                        let mut received_event_value = "";
+
+                        if let Event::String { value } = event {
+                            received_event_value = value;
+                        }
+
+                        if string_event && received_event_value == value {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            } else {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    }
+                    Event::Numeric { value } => {
+                        let mut received_event_value = 0.0;
+
+                        if let Event::Numeric { value } = event {
+                            received_event_value = *value;
+                        }
+
+                        if numeric_event && received_event_value == *value {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            } else {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    }
+                    Event::OnComplete => {
+                        if complete_event {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            } else {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    }
+                    Event::OnPointerDown { x: _, y: _ } => todo!(),
+                    Event::OnPointerUp { x: _, y: _ } => todo!(),
+                    Event::OnPointerMove { x: _, y: _ } => todo!(),
+                    Event::OnPointerEnter { x: _, y: _ } => todo!(),
+                    Event::OnPointerExit => todo!(),
                 }
             }
 
@@ -578,15 +552,15 @@ impl StateMachine {
                 // Emit transtion occured event
                 self.observers.read().unwrap().iter().for_each(|observer| {
                     observer.on_transition(
-                        (&*self
+                        (*self
                             .current_state
                             .as_ref()
                             .unwrap()
                             .read()
                             .unwrap()
                             .get_name())
-                            .to_string(),
-                        (&*next_state.read().unwrap().get_name()).to_string(),
+                        .to_string(),
+                        (*next_state.read().unwrap().get_name()).to_string(),
                     )
                 });
 
@@ -594,14 +568,14 @@ impl StateMachine {
                 if self.current_state.is_some() {
                     self.observers.read().unwrap().iter().for_each(|observer| {
                         observer.on_state_exit(
-                            (&*self
+                            (*self
                                 .current_state
                                 .as_ref()
                                 .unwrap()
                                 .read()
                                 .unwrap()
                                 .get_name())
-                                .to_string(),
+                            .to_string(),
                         );
                     });
                 }
@@ -610,8 +584,7 @@ impl StateMachine {
 
                 // Emit entering a new state
                 self.observers.read().unwrap().iter().for_each(|observer| {
-                    observer
-                        .on_state_entered((&*next_state.read().unwrap().get_name()).to_string());
+                    observer.on_state_entered((*next_state.read().unwrap().get_name()).to_string());
                 });
 
                 self.execute_current_state();

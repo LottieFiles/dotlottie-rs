@@ -7,7 +7,7 @@ mod tests {
         transitions::{Transition::Transition, TransitionTrait},
         StateMachineObserver,
     };
-    
+
     use dotlottie_player_core::{listeners::ListenerType, parser::StringNumberBool};
 
     use dotlottie_player_core::{events::Event, states::State, Config, DotLottiePlayer, Mode};
@@ -232,17 +232,6 @@ mod tests {
 
         use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
 
-        // let file_path = format!(
-        //     "{}{}",
-        //     env!("CARGO_MANIFEST_DIR"),
-        //     "/tests/assets/pigeon_fsm_ne_guard.lottie"
-        // );
-        // let mut loaded_file = File::open(file_path.clone()).expect("no file found");
-        // let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
-
-        // let mut buffer = vec![0; meta_data.len() as usize];
-        // loaded_file.read(&mut buffer).expect("buffer overflow");
-
         let player = DotLottiePlayer::new(Config::default());
 
         player.load_dotlottie_data(
@@ -250,8 +239,6 @@ mod tests {
             100,
             100,
         );
-
-        // player.load_dotlottie_data(&buffer, 100, 100);
 
         player.load_state_machine("ne_guard");
 
@@ -312,20 +299,13 @@ mod tests {
 
     #[test]
     fn state_machine_listener_test() {
-        let file_path = format!(
-            "{}{}",
-            env!("CARGO_MANIFEST_DIR"),
-            "/tests/assets/pigeon_with_listeners.lottie"
-        );
-        let mut loaded_file = File::open(file_path.clone()).expect("no file found");
-        let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
-
-        let mut buffer = vec![0; meta_data.len() as usize];
-        loaded_file.read(&mut buffer).expect("buffer overflow");
-
         let player = DotLottiePlayer::new(Config::default());
 
-        player.load_dotlottie_data(&buffer, 100, 100);
+        player.load_dotlottie_data(
+            include_bytes!("assets/pigeon_with_listeners.lottie"),
+            100,
+            100,
+        );
 
         player.load_state_machine("pigeon_fsm");
 

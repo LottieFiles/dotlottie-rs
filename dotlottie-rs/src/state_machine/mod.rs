@@ -254,35 +254,32 @@ impl StateMachine {
                             } else if transition.on_complete_event.is_some() {
                                 new_event = Some(Event::OnComplete);
                                 state_to_attach_to = transition.from_state as i32;
+                            } else if transition.on_pointer_down_event.is_some() {
+                                // Default to 0.0 0.0 coordinates
+                                // How to manage targets?
+                                // let pointer_down_event = transition.on_pointer_down_event.unwrap();
+                                // pointer_down_event.target;
+                                new_event = Some(Event::OnPointerDown { x: 0.0, y: 0.0 });
+                                state_to_attach_to = transition.from_state as i32;
+                            } else if transition.on_pointer_up_event.is_some() {
+                                // Default to 0.0 0.0 coordinates
+                                // How to manage targets?
+                                new_event = Some(Event::OnPointerUp { x: 0.0, y: 0.0 });
+                                state_to_attach_to = transition.from_state as i32;
+                            } else if transition.on_pointer_enter_event.is_some() {
+                                // Default to 0.0 0.0 coordinates
+                                // How to manage targets?
+                                new_event = Some(Event::OnPointerEnter { x: 0.0, y: 0.0 });
+                                state_to_attach_to = transition.from_state as i32;
+                            } else if transition.on_pointer_exit_event.is_some() {
+                                new_event = Some(Event::OnPointerExit {});
+                                state_to_attach_to = transition.from_state as i32;
+                            } else if transition.on_pointer_move_event.is_some() {
+                                // Default to 0.0 0.0 coordinates
+                                // How to manage targets?
+                                new_event = Some(Event::OnPointerMove { x: 0.0, y: 0.0 });
+                                state_to_attach_to = transition.from_state as i32;
                             }
-
-                            //  else if transition.on_pointer_down_event.is_some() {
-                            // Default to 0.0 0.0 coordinates
-                            // How to manage targets?
-                            // let pointer_down_event = transition.on_pointer_down_event.unwrap();
-                            // pointer_down_event.target;
-
-                            new_event = Some(Event::OnPointerDown { x: 0.0, y: 0.0 });
-                            state_to_attach_to = transition.from_state as i32;
-                            // } else if transition.on_pointer_up_event.is_some() {
-                            // Default to 0.0 0.0 coordinates
-                            // How to manage targets?
-                            new_event = Some(Event::OnPointerUp { x: 0.0, y: 0.0 });
-                            state_to_attach_to = transition.from_state as i32;
-                            // } else if transition.on_pointer_enter_event.is_some() {
-                            // Default to 0.0 0.0 coordinates
-                            // How to manage targets?
-                            new_event = Some(Event::OnPointerEnter { x: 0.0, y: 0.0 });
-                            state_to_attach_to = transition.from_state as i32;
-                            // } else if transition.on_pointer_exit_event.is_some() {
-                            new_event = Some(Event::OnPointerExit {});
-                            state_to_attach_to = transition.from_state as i32;
-                            // } else if transition.on_pointer_move_event.is_some() {
-                            // Default to 0.0 0.0 coordinates
-                            // How to manage targets?
-                            new_event = Some(Event::OnPointerMove { x: 0.0, y: 0.0 });
-                            state_to_attach_to = transition.from_state as i32;
-                            // }
                             if let Some(event) = new_event {
                                 let new_transition = Transition::Transition {
                                     target_state: target_state_index,
@@ -641,61 +638,61 @@ impl StateMachine {
                         }
                     }
                     Event::OnPointerUp { x: _, y: _ } => {
-                                if pointer_up_event {
-                                    // If there are guards loop over them and check if theyre verified
-                                    if transition_guards.len() > 0 {
-                                        for guard in transition_guards {
-                                            if self.verify_if_guards_are_met(guard) {
-                                                tmp_state = target_state as i32;
-                                            }
-                                        }
-                                    } else {
+                        if pointer_up_event {
+                            // If there are guards loop over them and check if theyre verified
+                            if transition_guards.len() > 0 {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
                                         tmp_state = target_state as i32;
                                     }
                                 }
+                            } else {
+                                tmp_state = target_state as i32;
                             }
+                        }
+                    }
                     Event::OnPointerMove { x: _, y: _ } => {
-                                if pointer_move_event {
-                                    // If there are guards loop over them and check if theyre verified
-                                    if transition_guards.len() > 0 {
-                                        for guard in transition_guards {
-                                            if self.verify_if_guards_are_met(guard) {
-                                                tmp_state = target_state as i32;
-                                            }
-                                        }
-                                    } else {
+                        if pointer_move_event {
+                            // If there are guards loop over them and check if theyre verified
+                            if transition_guards.len() > 0 {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
                                         tmp_state = target_state as i32;
                                     }
                                 }
+                            } else {
+                                tmp_state = target_state as i32;
                             }
+                        }
+                    }
                     Event::OnPointerEnter { x: _, y: _ } => {
-                                if pointer_enter_event {
-                                    // If there are guards loop over them and check if theyre verified
-                                    if transition_guards.len() > 0 {
-                                        for guard in transition_guards {
-                                            if self.verify_if_guards_are_met(guard) {
-                                                tmp_state = target_state as i32;
-                                            }
-                                        }
-                                    } else {
+                        if pointer_enter_event {
+                            // If there are guards loop over them and check if theyre verified
+                            if transition_guards.len() > 0 {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
                                         tmp_state = target_state as i32;
                                     }
                                 }
+                            } else {
+                                tmp_state = target_state as i32;
                             }
+                        }
+                    }
                     Event::OnPointerExit => {
-                                if pointer_exit_event {
-                                    // If there are guards loop over them and check if theyre verified
-                                    if transition_guards.len() > 0 {
-                                        for guard in transition_guards {
-                                            if self.verify_if_guards_are_met(guard) {
-                                                tmp_state = target_state as i32;
-                                            }
-                                        }
-                                    } else {
+                        if pointer_exit_event {
+                            // If there are guards loop over them and check if theyre verified
+                            if transition_guards.len() > 0 {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
                                         tmp_state = target_state as i32;
                                     }
                                 }
+                            } else {
+                                tmp_state = target_state as i32;
                             }
+                        }
+                    }
                 }
             }
 

@@ -31,10 +31,8 @@ impl Guard {
 
         match &self.compare_to {
             StringNumberBool::String(compare_to) => match self.condition_type {
-                TransitionGuardConditionType::Equal => return context_value == Some(&compare_to),
-                TransitionGuardConditionType::NotEqual => {
-                    return context_value != Some(&compare_to)
-                }
+                TransitionGuardConditionType::Equal => return context_value == Some(compare_to),
+                TransitionGuardConditionType::NotEqual => return context_value != Some(compare_to),
                 _ => return false,
             },
             StringNumberBool::F32(_) => false,
@@ -54,11 +52,9 @@ impl Guard {
         match &self.compare_to {
             StringNumberBool::Bool(compare_to) => match self.condition_type {
                 TransitionGuardConditionType::Equal => {
-                    return context_value == Some(&compare_to);
+                    return context_value == Some(compare_to);
                 }
-                TransitionGuardConditionType::NotEqual => {
-                    return context_value != Some(&compare_to)
-                }
+                TransitionGuardConditionType::NotEqual => return context_value != Some(compare_to),
                 _ => return false,
             },
             StringNumberBool::String(_) => false,
@@ -77,14 +73,14 @@ impl Guard {
 
         match &self.compare_to {
             StringNumberBool::F32(compare_to) => match self.condition_type {
-                TransitionGuardConditionType::Equal => context_value == Some(&compare_to),
-                TransitionGuardConditionType::NotEqual => context_value != Some(&compare_to),
-                TransitionGuardConditionType::GreaterThan => context_value > Some(&compare_to),
-                TransitionGuardConditionType::LessThan => context_value < Some(&compare_to),
+                TransitionGuardConditionType::Equal => context_value == Some(compare_to),
+                TransitionGuardConditionType::NotEqual => context_value != Some(compare_to),
+                TransitionGuardConditionType::GreaterThan => context_value > Some(compare_to),
+                TransitionGuardConditionType::LessThan => context_value < Some(compare_to),
                 TransitionGuardConditionType::GreaterThanOrEqual => {
-                    context_value >= Some(&compare_to)
+                    context_value >= Some(compare_to)
                 }
-                TransitionGuardConditionType::LessThanOrEqual => context_value <= Some(&compare_to),
+                TransitionGuardConditionType::LessThanOrEqual => context_value <= Some(compare_to),
             },
             StringNumberBool::String(_) => false,
             StringNumberBool::Bool(_) => false,

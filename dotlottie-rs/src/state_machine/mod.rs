@@ -248,12 +248,14 @@ impl StateMachine {
                             } else if transition.on_complete_event.is_some() {
                                 new_event = Some(Event::OnComplete);
                                 state_to_attach_to = transition.from_state as i32;
-                            } else if transition.on_pointer_down_event.is_some() {
-                            } else if transition.on_pointer_up_event.is_some() {
-                            } else if transition.on_pointer_enter_event.is_some() {
-                            } else if transition.on_pointer_exit_event.is_some() {
-                            } else if transition.on_pointer_move_event.is_some() {
                             }
+
+                            //  else if transition.on_pointer_down_event.is_some() {
+                            // } else if transition.on_pointer_up_event.is_some() {
+                            // } else if transition.on_pointer_enter_event.is_some() {
+                            // } else if transition.on_pointer_exit_event.is_some() {
+                            // } else if transition.on_pointer_move_event.is_some() {
+                            // }
                             // Todo - Add the rest of the event types
                             if let Some(event) = new_event {
                                 let new_transition = Transition::Transition {

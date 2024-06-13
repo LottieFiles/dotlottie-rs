@@ -40,7 +40,8 @@ jobs:
       - name: Build Android
         if: github.event.inputs.target == 'android' || github.event.inputs.target == 'all'
         env:
-          APPLE_MACOSX_SDK: MacOSX13
+          APPLE_XCODE_APP_NAME: Xcode_13.3.1.app
+          APPLE_MACOSX_SDK: MacOSX12.3
         run: make android
 
       - name: Upload Android Artifacts
@@ -52,7 +53,8 @@ jobs:
       - name: Build Apple
         if: github.event.inputs.target == 'apple' || github.event.inputs.target == 'all'
         env:
-          APPLE_MACOSX_SDK: MacOSX13
+          APPLE_XCODE_APP_NAME: Xcode_13.3.1.app
+          APPLE_MACOSX_SDK: MacOSX12.3
         run: rm -f /usr/local/lib/libjpeg* ; make apple
 
       - name: Upload Apple Artifacts
@@ -64,7 +66,8 @@ jobs:
       - name: Build WASM
         if: github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all'
         env:
-          APPLE_MACOSX_SDK: MacOSX13
+          APPLE_XCODE_APP_NAME: Xcode_13.3.1.app
+          APPLE_MACOSX_SDK: MacOSX12.3
         run: make wasm
 
       - name: Upload WASM Artifacts

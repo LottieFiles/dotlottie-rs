@@ -626,7 +626,7 @@ impl StateMachine {
                     Event::OnPointerDown { x: _, y: _ } => {
                         if pointer_down_event {
                             // If there are guards loop over them and check if theyre verified
-                            if transition_guards.len() > 0 {
+                            if !transition_guards.is_empty() {
                                 for guard in transition_guards {
                                     if self.verify_if_guards_are_met(guard) {
                                         tmp_state = target_state as i32;
@@ -640,7 +640,7 @@ impl StateMachine {
                     Event::OnPointerUp { x: _, y: _ } => {
                         if pointer_up_event {
                             // If there are guards loop over them and check if theyre verified
-                            if transition_guards.len() > 0 {
+                            if !transition_guards.is_empty() {
                                 for guard in transition_guards {
                                     if self.verify_if_guards_are_met(guard) {
                                         tmp_state = target_state as i32;
@@ -654,7 +654,7 @@ impl StateMachine {
                     Event::OnPointerMove { x: _, y: _ } => {
                         if pointer_move_event {
                             // If there are guards loop over them and check if theyre verified
-                            if transition_guards.len() > 0 {
+                            if !transition_guards.is_empty() {
                                 for guard in transition_guards {
                                     if self.verify_if_guards_are_met(guard) {
                                         tmp_state = target_state as i32;
@@ -668,7 +668,7 @@ impl StateMachine {
                     Event::OnPointerEnter { x: _, y: _ } => {
                         if pointer_enter_event {
                             // If there are guards loop over them and check if theyre verified
-                            if transition_guards.len() > 0 {
+                            if !transition_guards.is_empty() {
                                 for guard in transition_guards {
                                     if self.verify_if_guards_are_met(guard) {
                                         tmp_state = target_state as i32;
@@ -682,7 +682,7 @@ impl StateMachine {
                     Event::OnPointerExit => {
                         if pointer_exit_event {
                             // If there are guards loop over them and check if theyre verified
-                            if transition_guards.len() > 0 {
+                            if !transition_guards.is_empty() {
                                 for guard in transition_guards {
                                     if self.verify_if_guards_are_met(guard) {
                                         tmp_state = target_state as i32;

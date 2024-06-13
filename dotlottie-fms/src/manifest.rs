@@ -1,4 +1,4 @@
-use json::{self, array, object};
+use json::{self, object};
 
 use crate::{ManifestAnimation, ManifestTheme};
 use serde::{Deserialize, Serialize};

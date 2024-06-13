@@ -1280,12 +1280,12 @@ impl DotLottiePlayer {
                             Err(_) => return vec![],
                         }
                     }
-                    return listener_types;
+                    listener_types
                 } else {
-                    return vec![];
+                    vec![]
                 }
             }
-            Err(_) => return vec![],
+            Err(_) => vec![],
         }
     }
 

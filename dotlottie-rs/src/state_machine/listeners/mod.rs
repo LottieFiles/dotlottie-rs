@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, fmt::Display};
 
 use crate::parser::StringNumberBool;
 
@@ -25,14 +25,14 @@ pub enum ListenerType {
     PointerMove,
 }
 
-impl ListenerType {
-    pub fn to_string(&self) -> String {
+impl Display for ListenerType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ListenerType::PointerUp => "PointerUp".to_string(),
-            ListenerType::PointerDown => "PointerDown".to_string(),
-            ListenerType::PointerEnter => "PointerEnter".to_string(),
-            ListenerType::PointerExit => "PointerExit".to_string(),
-            ListenerType::PointerMove => "PointerMove".to_string(),
+            ListenerType::PointerUp => write!(f, "PointerUp"),
+            ListenerType::PointerDown => write!(f, "PointerDown"),
+            ListenerType::PointerEnter => write!(f, "PointerEnter"),
+            ListenerType::PointerExit => write!(f, "PointerExit"),
+            ListenerType::PointerMove => write!(f, "PointerMove"),
         }
     }
 }

@@ -127,27 +127,27 @@ pub struct OnCompleteEventJson {}
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct OnPointerDownEventJson {
-    pub target: String,
+    pub target: Option<String>,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct OnPointerUpEventJson {
-    pub target: String,
+    pub target: Option<String>,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct OnPointerEnterEventJson {
-    pub target: String,
+    pub target: Option<String>,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct OnPointerExitEventJson {
-    pub target: String,
+    pub target: Option<String>,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct OnPointerMoveEventJson {
-    pub target: String,
+    pub target: Option<String>,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]

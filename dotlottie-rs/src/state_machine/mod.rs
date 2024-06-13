@@ -4,11 +4,13 @@ use std::sync::{Arc, RwLock};
 
 pub mod errors;
 pub mod events;
+pub mod listeners;
 pub mod parser;
 pub mod states;
 pub mod transitions;
 
 use crate::parser::StringNumberBool;
+use crate::state_machine::listeners::Listener;
 use crate::state_machine::states::StateTrait;
 use crate::state_machine::transitions::guard::Guard;
 use crate::state_machine::transitions::TransitionTrait;
@@ -32,6 +34,7 @@ pub enum StateMachineStatus {
 
 pub struct StateMachine {
     pub states: Vec<Arc<RwLock<State>>>,
+    pub listeners: Vec<Arc<RwLock<Listener>>>,
     pub current_state: Option<Arc<RwLock<State>>>,
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineStatus,
@@ -47,6 +50,7 @@ impl Default for StateMachine {
     fn default() -> StateMachine {
         StateMachine {
             states: Vec::new(),
+            listeners: Vec::new(),
             current_state: None,
             player: None,
             numeric_context: HashMap::new(),
@@ -65,6 +69,7 @@ impl StateMachine {
     ) -> Result<StateMachine, StateMachineError> {
         let mut state_machine = StateMachine {
             states: Vec::new(),
+            listeners: Vec::new(),
             current_state: None,
             player: Some(player.clone()),
             numeric_context: HashMap::new(),
@@ -135,6 +140,7 @@ impl StateMachine {
         // );
 
         let mut states: Vec<Arc<RwLock<State>>> = Vec::new();
+        let mut listeners: Vec<Arc<RwLock<Listener>>> = Vec::new();
         let mut new_state_machine = StateMachine::default();
 
         match parsed_state_machine {
@@ -248,15 +254,32 @@ impl StateMachine {
                             } else if transition.on_complete_event.is_some() {
                                 new_event = Some(Event::OnComplete);
                                 state_to_attach_to = transition.from_state as i32;
+                            } else if transition.on_pointer_down_event.is_some() {
+                                // Default to 0.0 0.0 coordinates
+                                // How to manage targets?
+                                // let pointer_down_event = transition.on_pointer_down_event.unwrap();
+                                // pointer_down_event.target;
+                                new_event = Some(Event::OnPointerDown { x: 0.0, y: 0.0 });
+                                state_to_attach_to = transition.from_state as i32;
+                            } else if transition.on_pointer_up_event.is_some() {
+                                // Default to 0.0 0.0 coordinates
+                                // How to manage targets?
+                                new_event = Some(Event::OnPointerUp { x: 0.0, y: 0.0 });
+                                state_to_attach_to = transition.from_state as i32;
+                            } else if transition.on_pointer_enter_event.is_some() {
+                                // Default to 0.0 0.0 coordinates
+                                // How to manage targets?
+                                new_event = Some(Event::OnPointerEnter { x: 0.0, y: 0.0 });
+                                state_to_attach_to = transition.from_state as i32;
+                            } else if transition.on_pointer_exit_event.is_some() {
+                                new_event = Some(Event::OnPointerExit {});
+                                state_to_attach_to = transition.from_state as i32;
+                            } else if transition.on_pointer_move_event.is_some() {
+                                // Default to 0.0 0.0 coordinates
+                                // How to manage targets?
+                                new_event = Some(Event::OnPointerMove { x: 0.0, y: 0.0 });
+                                state_to_attach_to = transition.from_state as i32;
                             }
-
-                            //  else if transition.on_pointer_down_event.is_some() {
-                            // } else if transition.on_pointer_up_event.is_some() {
-                            // } else if transition.on_pointer_enter_event.is_some() {
-                            // } else if transition.on_pointer_exit_event.is_some() {
-                            // } else if transition.on_pointer_move_event.is_some() {
-                            // }
-                            // Todo - Add the rest of the event types
                             if let Some(event) = new_event {
                                 let new_transition = Transition::Transition {
                                     target_state: target_state_index,
@@ -272,6 +295,66 @@ impl StateMachine {
                                         .add_transition(new_transition);
                                 }
                             }
+                        }
+                    }
+                }
+
+                for listener in parsed_state_machine.listeners {
+                    match listener.r#type {
+                        parser::ListenerJsonType::PointerUp => {
+                            let new_listener = Listener::PointerUp {
+                                r#type: listeners::ListenerType::PointerUp,
+                                target: listener.target,
+                                action: listener.action,
+                                value: listener.value,
+                                context_key: listener.context_key,
+                            };
+
+                            listeners.push(Arc::new(RwLock::new(new_listener)));
+                        }
+                        parser::ListenerJsonType::PointerDown => {
+                            let new_listener = Listener::PointerDown {
+                                r#type: listeners::ListenerType::PointerDown,
+                                target: listener.target,
+                                action: listener.action,
+                                value: listener.value,
+                                context_key: listener.context_key,
+                            };
+
+                            listeners.push(Arc::new(RwLock::new(new_listener)));
+                        }
+                        parser::ListenerJsonType::PointerEnter => {
+                            let new_listener = Listener::PointerEnter {
+                                r#type: listeners::ListenerType::PointerEnter,
+                                target: listener.target,
+                                action: listener.action,
+                                value: listener.value,
+                                context_key: listener.context_key,
+                            };
+
+                            listeners.push(Arc::new(RwLock::new(new_listener)));
+                        }
+                        parser::ListenerJsonType::PointerExit => {
+                            let new_listener = Listener::PointerExit {
+                                r#type: listeners::ListenerType::PointerExit,
+                                target: listener.target,
+                                action: listener.action,
+                                value: listener.value,
+                                context_key: listener.context_key,
+                            };
+
+                            listeners.push(Arc::new(RwLock::new(new_listener)));
+                        }
+                        parser::ListenerJsonType::PointerMove => {
+                            let new_listener = Listener::PointerMove {
+                                r#type: listeners::ListenerType::PointerMove,
+                                target: listener.target,
+                                action: listener.action,
+                                value: listener.value,
+                                context_key: listener.context_key,
+                            };
+
+                            listeners.push(Arc::new(RwLock::new(new_listener)));
                         }
                     }
                 }
@@ -308,6 +391,7 @@ impl StateMachine {
 
                 new_state_machine = StateMachine {
                     states,
+                    listeners,
                     current_state: initial_state,
                     player: Some(player.clone()),
                     numeric_context: new_state_machine.numeric_context,
@@ -346,6 +430,10 @@ impl StateMachine {
 
     pub fn add_state(&mut self, state: Arc<RwLock<State>>) {
         self.states.push(state);
+    }
+
+    pub fn get_listeners(&self) -> &Vec<Arc<RwLock<Listener>>> {
+        &self.listeners
     }
 
     pub fn execute_current_state(&mut self) -> bool {
@@ -418,26 +506,21 @@ impl StateMachine {
         let mut numeric_event = false;
         let mut bool_event = false;
         let mut complete_event = false;
+        let mut pointer_down_event = false;
+        let mut pointer_up_event = false;
+        let mut pointer_move_event = false;
+        let mut pointer_enter_event = false;
+        let mut pointer_exit_event = false;
 
         match event {
             Event::Bool { value: _ } => bool_event = true,
             Event::String { value: _ } => string_event = true,
             Event::Numeric { value: _ } => numeric_event = true,
-            Event::OnPointerDown { x: _, y: _ } => {
-                println!(">> OnPointerDownEvent");
-            }
-            Event::OnPointerUp { x: _, y: _ } => {
-                println!(">> OnPointerUpEvent");
-            }
-            Event::OnPointerMove { x: _, y: _ } => {
-                println!(">> OnPointerMoveEvent");
-            }
-            Event::OnPointerEnter { x: _, y: _ } => {
-                println!(">> OnPointerEnterEvent");
-            }
-            Event::OnPointerExit => {
-                println!(">> OnPointerExitEvent");
-            }
+            Event::OnPointerDown { x: _, y: _ } => pointer_down_event = true,
+            Event::OnPointerUp { x: _, y: _ } => pointer_up_event = true,
+            Event::OnPointerMove { x: _, y: _ } => pointer_move_event = true,
+            Event::OnPointerEnter { x: _, y: _ } => pointer_enter_event = true,
+            Event::OnPointerExit => pointer_exit_event = true,
             Event::OnComplete => complete_event = true,
         }
 
@@ -540,11 +623,76 @@ impl StateMachine {
                             }
                         }
                     }
-                    Event::OnPointerDown { x: _, y: _ } => todo!(),
-                    Event::OnPointerUp { x: _, y: _ } => todo!(),
-                    Event::OnPointerMove { x: _, y: _ } => todo!(),
-                    Event::OnPointerEnter { x: _, y: _ } => todo!(),
-                    Event::OnPointerExit => todo!(),
+                    Event::OnPointerDown { x: _, y: _ } => {
+                        if pointer_down_event {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            } else {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    }
+                    Event::OnPointerUp { x: _, y: _ } => {
+                        if pointer_up_event {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            } else {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    }
+                    Event::OnPointerMove { x: _, y: _ } => {
+                        if pointer_move_event {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            } else {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    }
+                    Event::OnPointerEnter { x: _, y: _ } => {
+                        if pointer_enter_event {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            } else {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    }
+                    Event::OnPointerExit => {
+                        if pointer_exit_event {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            } else {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    }
                 }
             }
 

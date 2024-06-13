@@ -1,3 +1,13 @@
+## 0.1.21 (2024-06-13)
+
+### Fixes
+
+#### 🐛 prevent inlining of already embedded image assets in .lottie (#173)
+
+#### wrong minimum OS version on binary target (#174)
+
+#### chore(dependencies): 🤖 thorvg v0.13.7, emsdk v3.1.61, uniffi-rs v0.27.3
+
 ## 0.1.20 (2024-05-31)
 
 ### Features

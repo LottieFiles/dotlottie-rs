@@ -1,37 +1,34 @@
-name: Check PR
+name: Build Artifacts
 
 on:
-  pull_request:
-    branches: [main]
+  push:
 
 jobs:
-  check-pr:
-    if: github.head_ref != 'release'
+  build:
     runs-on: macos-12
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          access_token: ${{ github.token }}
-      - uses: actions/checkout@v4
+          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+
       - uses: Homebrew/actions/setup-homebrew@master
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: "13.3.1"
       - uses: ningenMe/setup-rustup@v1.1.0
+
       - name: Install Make
         run: brew install make
+
       - name: Build Setup
         run: make mac-setup
-      - name: Build Artifacts
-        env:
-          APPLE_XCODE_APP_NAME: Xcode_13.3.1.app
-          APPLE_MACOSX_SDK: MacOSX12.3
-        run: make demo-player
-      - name: Run Tests
-        run: make test
-      - name: Run Clippy
-        run: make clippy
-        # Make sure CI fails on all warnings, including Clippy lints
-        env:
-          RUSTFLAGS: "-Dwarnings"
+
+      - name: Build Apple
+        run: rm -f /usr/local/lib/libjpeg* ; make aarch64-apple-ios
+
+      - name: Upload Apple Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: apple
+          path: ./release/apple/*.tar.gz

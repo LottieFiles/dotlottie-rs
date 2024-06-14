@@ -208,7 +208,7 @@ cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/${APPLE_XCODE_
 ld = 'ld'
 ar = 'ar'
 strip = 'strip'
-pkg-config = 'pkg-config'
+pkg-config = 'pkg-APPLE_MACOSX_SDKconfig'
 
 [properties]
 root = '/Applications/${APPLE_XCODE_APP_NAME}/Contents/Developer/Platforms/$(SDK).platform/Developer'
@@ -315,7 +315,6 @@ define SETUP_MESON
 		-Ddefault_library=static \
 		-Dbindings=capi \
 		-Dlog=$(LOG) \
-		-Dthreads=false \
 		-Dstatic=$(STATIC) \
 		-Dextra=$(EXTRA) \
 		$(CROSS_FILE) "$(THORVG_DEP_SOURCE_DIR)" "$(THORVG_DEP_BUILD_DIR)"
@@ -423,11 +422,11 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-					 -c "Add :MinimumOSVersion string $(MIN_OS_VERSION)" \
+					 -c "Add :MinimumOSVersion string 13" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \
-						$(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(INFO_PLIST)
+					$(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(INFO_PLIST)
 
 
 	$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)

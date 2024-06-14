@@ -25,6 +25,9 @@ jobs:
         run: make mac-setup
 
       - name: Build Apple
+        env:
+          APPLE_XCODE_APP_NAME: Xcode_13.3.1.app
+          APPLE_MACOSX_SDK: MacOSX13
         run: rm -f /usr/local/lib/libjpeg* ; make aarch64-apple-ios
 
       - name: Upload Apple Artifacts

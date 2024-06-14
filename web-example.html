@@ -152,6 +152,10 @@
       );
 
       if (loaded) {
+        console.log({
+          width: dotLottiePlayer.animationSize().get(0),
+          height: dotLottiePlayer.animationSize().get(1),
+        });
         resize();
       }
 

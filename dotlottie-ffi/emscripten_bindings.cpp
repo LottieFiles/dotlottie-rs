@@ -144,5 +144,6 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("activeAnimationId", &DotLottiePlayer::active_animation_id)
         .function("activeThemeId", &DotLottiePlayer::active_theme_id)
         .function("setViewport", &DotLottiePlayer::set_viewport)
-        .function("segmentDuration", &DotLottiePlayer::segment_duration);
+        .function("segmentDuration", &DotLottiePlayer::segment_duration)
+        .function("animationSize", &DotLottiePlayer::animation_size);
 }

@@ -20,9 +20,9 @@ on:
         required: false
         default: "macos-12"
       appleXcodeVersion:
-        description: "Apple Xcode version, e.g. 13.3.1"
+        description: "Apple Xcode version, e.g. Xcode_13.3.1.app"
         required: false
-        default: "13.3.1"
+        default: "Xcode_13.3.1.app"
       appleMacosxSdk:
         description: "Apple MacOSX SDK, e.g. MacOSX12.3"
         required: false

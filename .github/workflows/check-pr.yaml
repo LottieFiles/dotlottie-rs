@@ -27,7 +27,7 @@ jobs:
         env:
           APPLE_XCODE_APP_NAME: Xcode_13.3.1.app
           APPLE_MACOSX_SDK: MacOSX12.3
-        run: make all
+        run: make demo-player
       - name: Run Tests
         run: make test
       - name: Run Clippy

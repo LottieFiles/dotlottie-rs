@@ -78,6 +78,7 @@ cargo install uniffi-bindgen-cpp \
   --git https://github.com/NordSecurity/uniffi-bindgen-cpp \
   --tag "${UNIFFI_BINDGEN_CPP_VERSION}"
 
+
 echo
 echo "Setting up project ..."
 make deps
@@ -89,6 +90,7 @@ cd "${SCRIPT_DIR}/deps/modules/emsdk" || die "Could not find Emscripten SDK unde
 ./emsdk activate "${EMSDK_VERSION}"
 cd "${SCRIPT_DIR}/deps/modules/emsdk/upstream/emscripten" || die "Could not find Emscripten under ${RED}deps/modules/emsdk/upstream/emscripten${NC}!"
 npm install
+
 
 echo
 echo "Disabling unneeded webp features"
@@ -103,3 +105,5 @@ echo "${WHITE}Setup completed!${NC}"
 echo "     1. If your ${GREEN}ANDROID_NDK_HOME${NC} was not installed to ${YELLOW}/opt/homebrew/share/android-ndk${NC}, export it's location in your shell profile"
 echo "     2. You can now run ${YELLOW}make${NC} to see information on available build targets, or ${YELLOW}make all${NC} to build everything"
 echo "     3. After building everything, all following calls to ${YELLOW}make all${NC} will be incremental, i.e. it will reuse things that have already been built"
+echo "     4. If you don't define ${GREEN}APPLE_XCODE_APP_NAME${NC} under the format ${YELLOW}Xcode_[version].app${NC}, it will default to Xcode_13.3.1.app which might not be present on your system in: /Applications/. To use the latest version of Xcode on your system, set to: \"Xcode.app\"."
+echo "     5. If you don't define ${GREEN}APPLE_MACOSX_SDK${NC} under the format ${YELLOW}MacOSX[version]${NC}, it will default to MacOSX12.3 which might not be present on your system under: /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/. To use the latest version of Xcode on your system, set to: \"MacOSX\"."

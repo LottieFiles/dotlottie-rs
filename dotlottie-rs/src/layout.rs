@@ -94,8 +94,8 @@ fn validate_normalize_align(align: Vec<f32>) -> Vec<f32> {
         align = vec![0.5, 0.5];
     }
 
-    align[0] = align[0].max(0.0).min(1.0);
-    align[1] = align[1].max(0.0).min(1.0);
+    align[0] = align[0].clamp(0.0, 1.0);
+    align[1] = align[1].clamp(0.0, 1.0);
 
     align
 }

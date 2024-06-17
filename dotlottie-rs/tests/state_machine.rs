@@ -26,7 +26,7 @@ mod tests {
         // loaded_file.read(&mut buffer).expect("buffer overflow");
 
         let player = DotLottiePlayer::new(Config::default());
-        player.load_dotlottie_data(include_bytes!("assets/exploding_pigeon.lottie"), 100, 100);
+        player.load_dotlottie_data(include_bytes!("fixtures/exploding_pigeon.lottie"), 100, 100);
 
         // player.load_dotlottie_data(&buffer, 100, 100);
 
@@ -235,7 +235,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
 
         player.load_dotlottie_data(
-            include_bytes!("assets/pigeon_fsm_ne_guard.lottie"),
+            include_bytes!("fixtures/pigeon_fsm_ne_guard.lottie"),
             100,
             100,
         );
@@ -302,7 +302,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
 
         player.load_dotlottie_data(
-            include_bytes!("assets/pigeon_with_listeners.lottie"),
+            include_bytes!("fixtures/pigeon_with_listeners.lottie"),
             100,
             100,
         );

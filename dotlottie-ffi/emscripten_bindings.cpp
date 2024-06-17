@@ -152,11 +152,11 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("setViewport", &DotLottiePlayer::set_viewport)
         .function("segmentDuration", &DotLottiePlayer::segment_duration)
 
-        .function("load_state_machine", &DotLottiePlayer::load_state_machine)
-        .function("start_state_machine", &DotLottiePlayer::start_state_machine)
-        .function("end_state_machine", &DotLottiePlayer::end_state_machine)
-        .function("post_event_payload", &DotLottiePlayer::post_event_payload)
-        .function("state_machine_framework_setup", &DotLottiePlayer::state_machine_framework_setup);
+        .function("loadStateMachine", &DotLottiePlayer::load_state_machine)
+        .function("startStateMachine", &DotLottiePlayer::start_state_machine)
+        .function("stopStateMachine", &DotLottiePlayer::stop_state_machine)
+        .function("postEventPayload", &DotLottiePlayer::post_serialized_event)
+        .function("stateMachineFrameworkSetup", &DotLottiePlayer::state_machine_framework_setup);
     // .function("state_machine_subscribe", &DotLottiePlayer::state_machine_subscribe)
     // .function("state_machine_unsubscribe", &DotLottiePlayer::state_machine_unsubscribe)
 }

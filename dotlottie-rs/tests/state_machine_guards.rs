@@ -17,7 +17,7 @@ mod tests {
         // let file_path = format!(
         //     "{}{}",
         //     env!("CARGO_MANIFEST_DIR"),
-        //     "/tests/assets/pigeon_fsm_gt_gte_guard.lottie"
+        //     "/tests/fixtures/pigeon_fsm_gt_gte_guard.lottie"
         // );
         // let mut loaded_file = File::open(file_path.clone()).expect("no file found");
         // let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
@@ -27,7 +27,7 @@ mod tests {
 
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(
-            include_bytes!("assets/pigeon_fsm_gt_gte_guard.lottie"),
+            include_bytes!("fixtures/pigeon_fsm_gt_gte_guard.lottie"),
             100,
             100,
         );
@@ -133,7 +133,7 @@ mod tests {
         // let file_path = format!(
         //     "{}{}",
         //     env!("CARGO_MANIFEST_DIR"),
-        //     "/tests/assets/pigeon_fsm_ne_guard.lottie"
+        //     "/tests/fixtures/pigeon_fsm_ne_guard.lottie"
         // );
         // let mut loaded_file = File::open(file_path.clone()).expect("no file found");
         // let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
@@ -143,7 +143,7 @@ mod tests {
 
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(
-            include_bytes!("assets/pigeon_fsm_ne_guard.lottie"),
+            include_bytes!("fixtures/pigeon_fsm_ne_guard.lottie"),
             100,
             100,
         );
@@ -248,7 +248,7 @@ mod tests {
         // let file_path = format!(
         //     "{}{}",
         //     env!("CARGO_MANIFEST_DIR"),
-        //     "/tests/assets/pigeon_fsm_eq_guard.lottie"
+        //     "/tests/fixtures/pigeon_fsm_eq_guard.lottie"
         // );
         // let mut loaded_file = File::open(file_path.clone()).expect("no file found");
         // let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
@@ -259,7 +259,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         // player.load_dotlottie_data(&buffer, 100, 100);
         player.load_dotlottie_data(
-            include_bytes!("assets/pigeon_fsm_eq_guard.lottie"),
+            include_bytes!("fixtures/pigeon_fsm_eq_guard.lottie"),
             100,
             100,
         );
@@ -357,7 +357,7 @@ mod tests {
 
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(
-            include_bytes!("assets/pigeon_fsm_gt_gte_guard.lottie"),
+            include_bytes!("fixtures/pigeon_fsm_gt_gte_guard.lottie"),
             100,
             100,
         );
@@ -454,7 +454,7 @@ mod tests {
 
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(
-            include_bytes!("assets/pigeon_fsm_lt_lte_guard.lottie"),
+            include_bytes!("fixtures/pigeon_fsm_lt_lte_guard.lottie"),
             100,
             100,
         );

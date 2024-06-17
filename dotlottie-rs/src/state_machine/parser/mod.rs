@@ -209,15 +209,7 @@ pub struct StateMachineJson {
 }
 
 pub fn state_machine_parse(json: &str) -> Result<StateMachineJson, StateMachineError> {
-    let result: Result<StateMachineJson, serde_json::Error> = serde_json::from_str(json);
-
-    match result {
-        Ok(state_machine_json) => Ok(state_machine_json),
-        Err(err) => Err(StateMachineError::ParsingError {
-            reason: format!(
-                "Error parsing state machine definition file: {:?}",
-                err.to_string()
-            ),
-        }),
-    }
+    serde_json::from_str(json).map_err(|err| StateMachineError::ParsingError {
+        reason: format!("Error parsing state machine definition file: {}", err),
+    })
 }

@@ -149,7 +149,7 @@ interface DotLottiePlayer {
 
     boolean load_state_machine([ByRef] string str);
     boolean start_state_machine();
-    boolean end_state_machine();
+    boolean stop_state_machine();
     boolean post_event([ByRef] Event event);
     boolean state_machine_subscribe(StateMachineObserver observer);
     boolean state_machine_unsubscribe(StateMachineObserver observer);

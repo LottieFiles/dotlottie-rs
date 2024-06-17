@@ -24,16 +24,10 @@ pub enum Transition {
     },
 }
 
-impl Transition {}
-
 impl TransitionTrait for Transition {
     fn set_target_state(&mut self, state: u32) {
         match self {
-            Transition::Transition {
-                target_state,
-                event: _,
-                guards: _,
-            } => {
+            Transition::Transition { target_state, .. } => {
                 *target_state = state;
             }
         }
@@ -41,21 +35,13 @@ impl TransitionTrait for Transition {
 
     fn get_target_state(&self) -> u32 {
         match self {
-            Transition::Transition {
-                target_state,
-                event: _,
-                guards: _,
-            } => *target_state,
+            Transition::Transition { target_state, .. } => *target_state,
         }
     }
 
     fn set_event(&mut self, ev: Arc<RwLock<Event>>) {
         match self {
-            Transition::Transition {
-                target_state: _,
-                event,
-                guards: _,
-            } => {
+            Transition::Transition { event, .. } => {
                 *event = ev;
             }
         }
@@ -63,21 +49,13 @@ impl TransitionTrait for Transition {
 
     fn get_event(&self) -> Arc<RwLock<Event>> {
         match self {
-            Transition::Transition {
-                target_state: _,
-                event,
-                guards: _,
-            } => event.clone(),
+            Transition::Transition { event, .. } => event.clone(),
         }
     }
 
     fn get_guards(&self) -> &Vec<Guard> {
         match self {
-            Transition::Transition {
-                target_state: _,
-                event: _,
-                guards,
-            } => guards,
+            Transition::Transition { guards, .. } => guards,
         }
     }
 }

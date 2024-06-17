@@ -43,39 +43,6 @@ pub enum State {
     },
 }
 
-impl std::fmt::Display for State {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            State::Playback {
-                reset_context,
-                animation_id,
-                transitions,
-                ..
-            } => f
-                .debug_struct("State::Playback")
-                // .field("config", &(config))
-                .field("reset_context", reset_context)
-                .field("animation_id", animation_id)
-                .field("transitions", transitions)
-                .finish(),
-
-            State::Sync {
-                name: _,
-                frame_context_key,
-                reset_context,
-                animation_id,
-                transitions,
-            } => f
-                .debug_struct("State::Sync")
-                .field("frame_context_key", frame_context_key)
-                .field("reset_context", reset_context)
-                .field("animation_id", animation_id)
-                .field("transitions", transitions)
-                .finish(),
-        }
-    }
-}
-
 impl State {
     pub fn as_str(&self) -> &str {
         match self {

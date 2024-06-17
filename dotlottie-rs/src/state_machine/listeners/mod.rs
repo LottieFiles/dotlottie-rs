@@ -25,18 +25,6 @@ pub enum ListenerType {
     PointerMove,
 }
 
-impl Display for ListenerType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ListenerType::PointerUp => write!(f, "PointerUp"),
-            ListenerType::PointerDown => write!(f, "PointerDown"),
-            ListenerType::PointerEnter => write!(f, "PointerEnter"),
-            ListenerType::PointerExit => write!(f, "PointerExit"),
-            ListenerType::PointerMove => write!(f, "PointerMove"),
-        }
-    }
-}
-
 pub enum ListenerAction {
     Increment,
     Decrement,

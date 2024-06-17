@@ -1803,7 +1803,7 @@ impl DotLottiePlayer {
                             return false;
                         }
                     }
-                } else if let Err(ParsingError { reason }) = state_machine {
+                } else if let Err(ParsingError { reason: _ }) = state_machine {
                     return false;
                 }
             }

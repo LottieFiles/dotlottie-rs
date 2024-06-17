@@ -1,3 +1,9 @@
+## 0.1.22 (2024-06-13)
+
+### Fixes
+
+#### 🐛 incorrect ios build env variable (#177)
+
 ## 0.1.21 (2024-06-13)
 
 ### Fixes

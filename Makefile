@@ -67,8 +67,7 @@ APPLE_BUILD := $(BUILD)/$(APPLE)
 APPLE_IOS := ios
 APPLE_IOS_PLATFORM := iPhoneOS
 APPLE_IOS_SDK ?= iPhoneOS
-APPLE_IOS_VERSION_MIN ?= 15.4
-APPLE_XCODE_APP_NAME ?= Xcode.app
+APPLE_IOS_VERSION_MIN ?= 11.0
 
 APPLE_IOS_SIMULATOR := ios-simulator
 APPLE_IOS_SIMULATOR_PLATFORM := iPhoneSimulator
@@ -76,7 +75,7 @@ APPLE_IOS_SIMULATOR_SDK ?= iPhoneSimulator
 
 APPLE_MACOSX := macosx
 APPLE_MACOSX_PLATFORM := MacOSX
-APPLE_MACOSX_SDK ?= MacOSX
+APPLE_MACOSX_SDK ?= MacOSX12.3
 
 APPLE_IOS_FRAMEWORK_TYPE := $(APPLE_IOS)
 APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_IOS_SIMULATOR)
@@ -204,14 +203,14 @@ endef
 
 define APPLE_CROSS_FILE
 [binaries]
-cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/${APPLE_XCODE_APP_NAME}/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
+cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
 ld = 'ld'
 ar = 'ar'
 strip = 'strip'
-pkg-config = 'pkg-APPLE_MACOSX_SDKconfig'
+pkg-config = 'pkg-config'
 
 [properties]
-root = '/Applications/${APPLE_XCODE_APP_NAME}/Contents/Developer/Platforms/$(SDK).platform/Developer'
+root = '/Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/$(SDK).platform/Developer'
 has_function_printf = true
 
 $(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),\
@@ -315,6 +314,7 @@ define SETUP_MESON
 		-Ddefault_library=static \
 		-Dbindings=capi \
 		-Dlog=$(LOG) \
+		-Dthreads=false \
 		-Dstatic=$(STATIC) \
 		-Dextra=$(EXTRA) \
 		$(CROSS_FILE) "$(THORVG_DEP_SOURCE_DIR)" "$(THORVG_DEP_BUILD_DIR)"
@@ -400,14 +400,6 @@ define LIPO_CREATE
 		-o $@
 endef
 
-MIN_OS_VERSION_IOS=15.4
-MIN_OS_VERSION_MACOS=12
-ifneq (,$(findstring MacOSX,$(PLIST_ENABLE)))
-	MIN_OS_VERSION = $(MIN_OS_VERSION_IOS)
-else
-	MIN_OS_VERSION = $(MIN_OS_VERSION_MACOS)
-endif
-
 define CREATE_FRAMEWORK
 	rm -rf $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
 	mkdir -p $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/{$(FRAMEWORK_HEADERS),$(FRAMEWORK_MODULES)}
@@ -422,12 +414,11 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-					 -c "Add :MinimumOSVersion string $(MIN_OS_VERSION)" \
+                     -c "Add :MinimumOSVersion string 15.4" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \
-						$(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(INFO_PLIST)
-
+                     $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(INFO_PLIST)
 
 	$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 endef

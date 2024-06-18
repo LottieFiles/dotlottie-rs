@@ -17,7 +17,7 @@ mod tests {
         // let file_path = format!(
         //     "{}{}",
         //     env!("CARGO_MANIFEST_DIR"),
-        //     "/tests/assets/exploding_pigeon.lottie"
+        //     "/tests/fixtures/exploding_pigeon.lottie"
         // );
         // let mut loaded_file = File::open(file_path.clone()).expect("no file found");
         // let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");

@@ -67,7 +67,9 @@ APPLE_BUILD := $(BUILD)/$(APPLE)
 APPLE_IOS := ios
 APPLE_IOS_PLATFORM := iPhoneOS
 APPLE_IOS_SDK ?= iPhoneOS
-APPLE_IOS_VERSION_MIN ?= 11.0
+APPLE_IOS_VERSION_MIN ?= 15
+THORVG_APPLE_IOS_VERSION_MIN ?= 11.0 # Minimum iOS version supported by ThorVG, needs to be the same for cpp_args and cpp_link_args
+APPLE_XCODE_APP_NAME ?= Xcode_13.3.1.app
 
 APPLE_IOS_SIMULATOR := ios-simulator
 APPLE_IOS_SIMULATOR_PLATFORM := iPhoneSimulator
@@ -75,8 +77,7 @@ APPLE_IOS_SIMULATOR_SDK ?= iPhoneSimulator
 
 APPLE_MACOSX := macosx
 APPLE_MACOSX_PLATFORM := MacOSX
-APPLE_MACOSX_SDK ?= MacOSX12.3
-APPLE_XCODE_APP_NAME ?= Xcode_13.3.1.app
+APPLE_MACOSX_SDK ?= MacOSX
 
 APPLE_IOS_FRAMEWORK_TYPE := $(APPLE_IOS)
 APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_IOS_SIMULATOR)
@@ -204,20 +205,20 @@ endef
 
 define APPLE_CROSS_FILE
 [binaries]
-cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
+cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
 ld = 'ld'
 ar = 'ar'
 strip = 'strip'
 pkg-config = 'pkg-config'
 
 [properties]
-root = '/Applications/Xcode_13.3.1.app/Contents/Developer/Platforms/$(SDK).platform/Developer'
+root = '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(SDK).platform/Developer'
 has_function_printf = true
 
 $(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),\
 [built-in options]\n\
-cpp_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
-cpp_link_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
+cpp_args = ['-miphoneos-version-min=$(THORVG_APPLE_IOS_VERSION_MIN)']\n\
+cpp_link_args = ['-miphoneos-version-min=$(THORVG_APPLE_IOS_VERSION_MIN)']\n\
 ,)
 
 [host_machine]
@@ -415,7 +416,7 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :MinimumOSVersion string 15.4" \
+                     -c "Add :MinimumOSVersion string $(APPLE_IOS_VERSION_MIN)" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \

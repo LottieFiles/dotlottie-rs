@@ -89,7 +89,7 @@ mod tests {
         );
 
         assert!(
-            player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Valid path should load"
         );
 
@@ -143,7 +143,7 @@ mod tests {
         player.unsubscribe(&observer_arc);
 
         assert!(
-            player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Valid path should load"
         );
 

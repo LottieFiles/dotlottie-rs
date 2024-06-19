@@ -225,6 +225,13 @@ impl DotLottieManager {
         });
     }
 
+    ///
+    /// For the moment this isn't caching the state machines. This is so that the function can stay non-mutable.
+    ///
+    pub fn get_state_machine(&self, state_machine_id: &str) -> Result<String, DotLottieError> {
+        crate::get_state_machine(&self.zip_data, state_machine_id)
+    }
+
     pub fn manifest(&self) -> Option<Manifest> {
         if self.manifest.animations.len() == 0 {
             return None;

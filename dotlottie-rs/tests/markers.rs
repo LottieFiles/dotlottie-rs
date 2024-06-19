@@ -31,7 +31,7 @@ mod tests {
         );
 
         assert!(
-            player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 
@@ -39,7 +39,8 @@ mod tests {
 
         assert_eq!(actual_markers.len(), 4);
 
-        let expected_markers = [Marker {
+        let expected_markers = [
+            Marker {
                 name: "Marker_1".to_string(),
                 time: 0.0,
                 duration: 10.0,
@@ -58,7 +59,8 @@ mod tests {
                 name: "Marker_4".to_string(),
                 time: 30.0,
                 duration: 12.0,
-            }];
+            },
+        ];
 
         for marker in actual_markers {
             let expected = expected_markers
@@ -92,7 +94,7 @@ mod tests {
         assert_eq!(player.config().marker, marker_name.clone());
 
         assert!(
-            player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");

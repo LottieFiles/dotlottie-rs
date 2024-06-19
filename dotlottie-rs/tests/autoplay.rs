@@ -33,7 +33,7 @@ mod tests {
             ..Config::default()
         });
 
-        assert!(player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT));
+        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
         assert!(player.is_playing());
         assert!(!player.is_paused());
         assert!(!player.is_stopped());
@@ -62,7 +62,7 @@ mod tests {
             ..Config::default()
         });
 
-        let loaded = player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT);
+        let loaded = player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT);
 
         assert!(loaded);
 

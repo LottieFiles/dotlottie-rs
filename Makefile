@@ -67,9 +67,9 @@ APPLE_BUILD := $(BUILD)/$(APPLE)
 APPLE_IOS := ios
 APPLE_IOS_PLATFORM := iPhoneOS
 APPLE_IOS_SDK ?= iPhoneOS
-APPLE_IOS_VERSION_MIN ?= 15
+APPLE_IOS_VERSION_MIN ?= 15.4
 THORVG_APPLE_IOS_VERSION_MIN ?= 11.0 # Minimum iOS version supported by ThorVG, needs to be the same for cpp_args and cpp_link_args
-APPLE_XCODE_APP_NAME ?= Xcode_13.3.1.app
+APPLE_XCODE_APP_NAME ?= Xcode.app
 
 APPLE_IOS_SIMULATOR := ios-simulator
 APPLE_IOS_SIMULATOR_PLATFORM := iPhoneSimulator

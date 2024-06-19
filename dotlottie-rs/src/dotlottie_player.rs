@@ -1,4 +1,3 @@
-use core::num;
 use instant::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
@@ -1417,7 +1416,7 @@ impl DotLottiePlayer {
 
         match command_type {
             "Bool" => {
-                let bool_value = value.parse::<bool>().map_err(|_| (return false));
+                let bool_value = value.parse::<bool>().map_err(|_| (false));
 
                 match bool_value {
                     Ok(bool_value) => {
@@ -1455,7 +1454,7 @@ impl DotLottiePlayer {
                 }
             }
             "Numeric" => {
-                let numeric_value = value.parse::<f32>().map_err(|_| (return false));
+                let numeric_value = value.parse::<f32>().map_err(|_| (false));
 
                 match numeric_value {
                     Ok(numeric_value) => {
@@ -1483,14 +1482,8 @@ impl DotLottiePlayer {
                     return false;
                 }
                 let pointer_event = Event::OnPointerDown {
-                    x: values[0]
-                        .parse::<f32>()
-                        .map_err(|_| (return false))
-                        .unwrap(),
-                    y: values[1]
-                        .parse::<f32>()
-                        .map_err(|_| (return false))
-                        .unwrap(),
+                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
+                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
                 };
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
@@ -1509,14 +1502,8 @@ impl DotLottiePlayer {
                     return false;
                 }
                 let pointer_event = Event::OnPointerUp {
-                    x: values[0]
-                        .parse::<f32>()
-                        .map_err(|_| (return false))
-                        .unwrap(),
-                    y: values[1]
-                        .parse::<f32>()
-                        .map_err(|_| (return false))
-                        .unwrap(),
+                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
+                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
                 };
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
@@ -1535,14 +1522,8 @@ impl DotLottiePlayer {
                     return false;
                 }
                 let pointer_event = Event::OnPointerMove {
-                    x: values[0]
-                        .parse::<f32>()
-                        .map_err(|_| (return false))
-                        .unwrap(),
-                    y: values[1]
-                        .parse::<f32>()
-                        .map_err(|_| (return false))
-                        .unwrap(),
+                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
+                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
                 };
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
@@ -1561,14 +1542,8 @@ impl DotLottiePlayer {
                     return false;
                 }
                 let pointer_event = Event::OnPointerEnter {
-                    x: values[0]
-                        .parse::<f32>()
-                        .map_err(|_| (return false))
-                        .unwrap(),
-                    y: values[1]
-                        .parse::<f32>()
-                        .map_err(|_| (return false))
-                        .unwrap(),
+                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
+                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
                 };
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
@@ -1614,7 +1589,7 @@ impl DotLottiePlayer {
             }
             _ => return false,
         }
-        return true;
+        true
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {

@@ -1395,7 +1395,7 @@ impl DotLottiePlayer {
     /// "OnPointerEnter: 0.0 0.0"
     /// "OnPointerExit: 0.0 0.0"
     /// "OnComplete"
-    // #[cfg(target_arch = "wasm32")]
+    #[cfg(target_arch = "wasm32")]
     pub fn post_serialized_event(&self, event: String) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {

@@ -1,3 +1,4 @@
+use core::num;
 use instant::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
@@ -1395,7 +1396,7 @@ impl DotLottiePlayer {
     /// "OnPointerEnter: 0.0 0.0"
     /// "OnPointerExit: 0.0 0.0"
     /// "OnComplete"
-    #[cfg(target_arch = "wasm32")]
+    // #[cfg(target_arch = "wasm32")]
     pub fn post_serialized_event(&self, event: String) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
@@ -1417,16 +1418,20 @@ impl DotLottiePlayer {
         match command_type {
             "Bool" => {
                 let bool_value = value.parse::<bool>().map_err(|_| (return false));
-                let bool_event = Event::Bool {
-                    value: bool_value.unwrap(),
-                };
 
-                match self.state_machine.try_write() {
-                    Ok(mut state_machine) => {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&bool_event);
-                        } else {
-                            return false;
+                match bool_value {
+                    Ok(bool_value) => {
+                        let bool_event = Event::Bool { value: bool_value };
+
+                        match self.state_machine.try_write() {
+                            Ok(mut state_machine) => {
+                                if let Some(sm) = state_machine.as_mut() {
+                                    sm.post_event(&bool_event);
+                                } else {
+                                    return false;
+                                }
+                            }
+                            Err(_) => return false,
                         }
                     }
                     Err(_) => return false,
@@ -1451,16 +1456,22 @@ impl DotLottiePlayer {
             }
             "Numeric" => {
                 let numeric_value = value.parse::<f32>().map_err(|_| (return false));
-                let numeric_event = Event::Numeric {
-                    value: numeric_value.unwrap(),
-                };
 
-                match self.state_machine.try_write() {
-                    Ok(mut state_machine) => {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&numeric_event);
-                        } else {
-                            return false;
+                match numeric_value {
+                    Ok(numeric_value) => {
+                        let numeric_event = Event::Numeric {
+                            value: numeric_value,
+                        };
+
+                        match self.state_machine.try_write() {
+                            Ok(mut state_machine) => {
+                                if let Some(sm) = state_machine.as_mut() {
+                                    sm.post_event(&numeric_event);
+                                } else {
+                                    return false;
+                                }
+                            }
+                            Err(_) => return false,
                         }
                     }
                     Err(_) => return false,

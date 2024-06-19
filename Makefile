@@ -415,7 +415,7 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :MinimumOSVersion string $(APPLE_IOS_VERSION_MIN)" \
+                     -c "Add :MinimumOSVersion string 15.4" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \

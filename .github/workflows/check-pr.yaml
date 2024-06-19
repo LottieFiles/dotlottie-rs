@@ -44,6 +44,7 @@ jobs:
         env:
           APPLE_XCODE_APP_NAME: Xcode_13.3.1.app
           APPLE_MACOSX_SDK: MacOSX12.3
+          APPLE_IOS_VERSION_MIN: 11.0
         run: rm -f /usr/local/lib/libjpeg* ; make apple
 
       - name: Upload Apple Artifacts

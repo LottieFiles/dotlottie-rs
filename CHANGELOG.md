@@ -1,3 +1,9 @@
+## 0.1.23 (2024-06-19)
+
+### Features
+
+#### dotLottie interactivity v0.1 (#166)
+
 ## 0.1.22 (2024-06-13)
 
 ### Fixes

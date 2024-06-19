@@ -24,7 +24,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     // Register std::vector<float> as VectorFloat for the Config::segment field
     register_vector<float>("VectorFloat");
     register_vector<Marker>("VectorMarker");
-    // register_vector<std::string>("VectorString");
+    register_vector<std::string>("VectorString");
     // register_vector<ManifestTheme>("VectorManifestTheme");
     // register_vector<ManifestAnimation>("VectorManifestAnimation");
 
@@ -106,8 +106,14 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     //     .function("onComplete", &Observer::on_complete)
     //     .function("onStop", &Observer::on_stop);
 
+    // class_<StateMachineObserver>("StateMachineObserver")
+    //     .smart_ptr<std::shared_ptr<StateMachineObserver>>("StateMachineObserver")
+    //     .function("OnTransition", &StateMachineObserver::on_transition);
+    //     .function("onStateEntered", &StateMachineObserver::on_state_entered);
+    //     .function("onStateExit", &StateMachineObserver::on_state_exit);
+
     class_<DotLottiePlayer>("DotLottiePlayer")
-        .smart_ptr<std::shared_ptr<DotLottiePlayer> >("DotLottiePlayer")
+        .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init, allow_raw_pointers())
         .function("buffer", &buffer)
         .function("clear", &DotLottiePlayer::clear)
@@ -144,5 +150,13 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("activeAnimationId", &DotLottiePlayer::active_animation_id)
         .function("activeThemeId", &DotLottiePlayer::active_theme_id)
         .function("setViewport", &DotLottiePlayer::set_viewport)
-        .function("segmentDuration", &DotLottiePlayer::segment_duration);
+        .function("segmentDuration", &DotLottiePlayer::segment_duration)
+
+        .function("loadStateMachine", &DotLottiePlayer::load_state_machine)
+        .function("startStateMachine", &DotLottiePlayer::start_state_machine)
+        .function("stopStateMachine", &DotLottiePlayer::stop_state_machine)
+        .function("postEventPayload", &DotLottiePlayer::post_serialized_event)
+        .function("stateMachineFrameworkSetup", &DotLottiePlayer::state_machine_framework_setup);
+    // .function("state_machine_subscribe", &DotLottiePlayer::state_machine_subscribe)
+    // .function("state_machine_unsubscribe", &DotLottiePlayer::state_machine_unsubscribe)
 }

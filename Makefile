@@ -68,6 +68,7 @@ APPLE_IOS := ios
 APPLE_IOS_PLATFORM := iPhoneOS
 APPLE_IOS_SDK ?= iPhoneOS
 APPLE_IOS_VERSION_MIN ?= 15.4
+THORVG_APPLE_IOS_VERSION_MIN ?= 11.0 # Minimum iOS version supported by ThorVG, needs to be the same for cpp_args and cpp_link_args
 APPLE_XCODE_APP_NAME ?= Xcode.app
 
 APPLE_IOS_SIMULATOR := ios-simulator
@@ -204,20 +205,20 @@ endef
 
 define APPLE_CROSS_FILE
 [binaries]
-cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/${APPLE_XCODE_APP_NAME}/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
+cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
 ld = 'ld'
 ar = 'ar'
 strip = 'strip'
 pkg-config = 'pkg-config'
 
 [properties]
-root = '/Applications/${APPLE_XCODE_APP_NAME}/Contents/Developer/Platforms/$(SDK).platform/Developer'
+root = '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(SDK).platform/Developer'
 has_function_printf = true
 
 $(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),\
 [built-in options]\n\
-cpp_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
-cpp_link_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
+cpp_args = ['-miphoneos-version-min=$(THORVG_APPLE_IOS_VERSION_MIN)']\n\
+cpp_link_args = ['-miphoneos-version-min=$(THORVG_APPLE_IOS_VERSION_MIN)']\n\
 ,)
 
 [host_machine]
@@ -401,14 +402,6 @@ define LIPO_CREATE
 		-o $@
 endef
 
-MIN_OS_VERSION_IOS=15.4
-MIN_OS_VERSION_MACOS=12
-ifneq (,$(findstring MacOSX,$(PLIST_ENABLE)))
-	MIN_OS_VERSION = $(MIN_OS_VERSION_IOS)
-else
-	MIN_OS_VERSION = $(MIN_OS_VERSION_MACOS)
-endif
-
 define CREATE_FRAMEWORK
 	rm -rf $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
 	mkdir -p $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/{$(FRAMEWORK_HEADERS),$(FRAMEWORK_MODULES)}
@@ -423,12 +416,11 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-					 -c "Add :MinimumOSVersion string $(MIN_OS_VERSION)" \
+                     -c "Add :MinimumOSVersion string $(APPLE_IOS_VERSION_MIN)" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \
-						$(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(INFO_PLIST)
-
+                     $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(INFO_PLIST)
 
 	$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 endef

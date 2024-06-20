@@ -176,3 +176,20 @@ pub fn get_theme(bytes: &[u8], theme_id: &str) -> Result<String, DotLottieError>
 
     String::from_utf8(content).map_err(|_| DotLottieError::InvalidUtf8Error)
 }
+
+pub fn get_state_machine(bytes: &[u8], state_machine_id: &str) -> Result<String, DotLottieError> {
+    let mut archive =
+        ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
+    let search_file_name = format!("states/{}.json", state_machine_id);
+
+    let mut content = Vec::new();
+    archive
+        .by_name(&search_file_name)
+        .map_err(|_| DotLottieError::FileFindError {
+            file_name: search_file_name,
+        })?
+        .read_to_end(&mut content)
+        .map_err(|_| DotLottieError::ReadContentError)?;
+
+    String::from_utf8(content).map_err(|_| DotLottieError::InvalidUtf8Error)
+}

@@ -1,0 +1,87 @@
+{
+    "descriptor": {
+        "id": "multi_animation_slideshow",
+        "initial": 0
+    },
+    "states": [
+        {
+            "type": "PlaybackState",
+            "loop": true,
+            "autoplay": true,
+            "mode": "forward",
+            "speed": 1,
+            "marker": "bird",
+            "segment": [],
+            "use_frame_interpolation": true,
+            "entry_actions": [
+                {
+                    "type": "LogAction",
+                    "message": "Howdy partner!"
+                }
+            ],
+            "exit_actions": []
+        },
+        {
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "forward",
+            "speed": 0.5,
+            "marker": "explosion",
+            "segment": [],
+            "use_frame_interpolation": true,
+            "entry_actions": [],
+            "exit_actions": []
+        },
+        {
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "forward",
+            "speed": 1,
+            "marker": "feather",
+            "segment": [],
+            "use_frame_interpolation": true,
+            "entry_actions": [],
+            "exit_actions": []
+        }
+    ],
+    "transitions": [
+        {
+            "type": "Transition",
+            "from_state": 0,
+            "to_state": 1,
+            "string_event": {
+                "value": "explosion"
+            }
+        },
+        {
+            "type": "Transition",
+            "from_state": 1,
+            "to_state": 2,
+            "string_event": {
+                "value": "complete"
+            }
+        },
+        {
+            "type": "Transition",
+            "from_state": 2,
+            "to_state": 0,
+            "string_event": {
+                "value": "complete"
+            }
+        }
+    ],
+    "listeners": [
+        {
+            "type": "pointer_down"
+        }
+    ],
+    "context_variables": [
+        {
+            "type": "int",
+            "key": "counter",
+            "value": "0"
+        }
+    ]
+}

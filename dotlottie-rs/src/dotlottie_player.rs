@@ -1,17 +1,18 @@
 use instant::{Duration, Instant};
-use std::{
-    fs,
-    sync::{Arc, RwLock},
-};
+use std::sync::RwLock;
+use std::{fs, rc::Rc, sync::Arc};
 
-use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
-
+use crate::errors::StateMachineError::ParsingError;
+use crate::listeners::ListenerTrait;
+use crate::state_machine::events::Event;
 use crate::{
     extract_markers,
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
-    Marker, MarkersMap,
+    Marker, MarkersMap, StateMachine,
 };
+use crate::{StateMachineObserver, StateMachineStatus};
+use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
@@ -54,7 +55,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Config {
     pub mode: Mode,
     pub loop_animation: bool,
@@ -65,6 +66,22 @@ pub struct Config {
     pub background_color: u32,
     pub layout: Layout,
     pub marker: String,
+}
+
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("mode", &self.mode)
+            .field("loop_animation", &self.loop_animation)
+            .field("speed", &self.speed)
+            .field("use_frame_interpolation", &self.use_frame_interpolation)
+            .field("autoplay", &self.autoplay)
+            .field("segment", &self.segment)
+            .field("background_color", &self.background_color)
+            // .field("layout", &self.layout)
+            .field("marker", &self.marker)
+            .finish()
+    }
 }
 
 impl Default for Config {
@@ -238,6 +255,16 @@ impl DotLottieRuntime {
         self.dotlottie_manager.manifest()
     }
 
+    pub fn size(&self) -> (u32, u32) {
+        (self.renderer.width, self.renderer.height)
+    }
+
+    pub fn get_state_machine(&self, state_machine_id: &str) -> Option<String> {
+        self.dotlottie_manager
+            .get_state_machine(state_machine_id)
+            .ok()
+    }
+
     pub fn request_frame(&mut self) -> f32 {
         if !self.is_loaded || !self.is_playing() {
             return self.current_frame();
@@ -394,11 +421,14 @@ impl DotLottieRuntime {
             let frame_duration = effective_duration / effective_total_frames;
 
             // estimate elapsed time for current frame based on direction and segment
-            let elapsed_time_for_frame = match self.direction {
+            let mut elapsed_time_for_frame = match self.direction {
                 Direction::Forward => (frame_no - start_frame) * frame_duration,
                 Direction::Reverse => (end_frame - frame_no) * frame_duration,
             };
 
+            if elapsed_time_for_frame < 0.0 {
+                elapsed_time_for_frame = 0.0;
+            }
             // update start_time to account for the already elapsed time
             if let Some(start_time) =
                 Instant::now().checked_sub(Duration::from_secs_f32(elapsed_time_for_frame))
@@ -818,16 +848,18 @@ impl DotLottieRuntime {
     }
 }
 
-pub struct DotLottiePlayer {
+pub struct DotLottiePlayerContainer {
     runtime: RwLock<DotLottieRuntime>,
     observers: RwLock<Vec<Arc<dyn Observer>>>,
+    state_machine: Rc<RwLock<Option<StateMachine>>>,
 }
 
-impl DotLottiePlayer {
+impl DotLottiePlayerContainer {
     pub fn new(config: Config) -> Self {
-        DotLottiePlayer {
+        DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
             observers: RwLock::new(Vec::new()),
+            state_machine: Rc::new(RwLock::new(None)),
         }
     }
 
@@ -950,6 +982,10 @@ impl DotLottiePlayer {
 
     pub fn set_config(&self, config: Config) {
         self.runtime.write().unwrap().set_config(config);
+    }
+
+    pub fn size(&self) -> (u32, u32) {
+        self.runtime.read().unwrap().size()
     }
 
     pub fn speed(&self) -> f32 {
@@ -1075,6 +1111,12 @@ impl DotLottiePlayer {
                     self.observers.read().unwrap().iter().for_each(|observer| {
                         observer.on_complete();
                     });
+
+                    if let Ok(mut state_machine) = self.state_machine.try_write() {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.post_event(&Event::OnComplete);
+                        }
+                    }
                 }
             }
         }
@@ -1150,6 +1192,642 @@ impl DotLottiePlayer {
 
     pub fn active_theme_id(&self) -> String {
         self.runtime.read().unwrap().active_theme_id().to_string()
+    }
+
+    pub fn get_state_machine(&self, state_machine_id: &str) -> Option<String> {
+        match self.runtime.try_read() {
+            Ok(runtime) => runtime.get_state_machine(state_machine_id),
+            Err(_) => None,
+        }
+    }
+}
+
+pub struct DotLottiePlayer {
+    player: Rc<RwLock<DotLottiePlayerContainer>>,
+    state_machine: Rc<RwLock<Option<StateMachine>>>,
+}
+
+impl DotLottiePlayer {
+    pub fn new(config: Config) -> Self {
+        DotLottiePlayer {
+            player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config))),
+            state_machine: Rc::new(RwLock::new(None)),
+        }
+    }
+
+    pub fn load_animation_data(&self, animation_data: &str, width: u32, height: u32) -> bool {
+        self.player
+            .write()
+            .is_ok_and(|runtime| runtime.load_animation_data(animation_data, width, height))
+    }
+
+    pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachine>>> {
+        self.state_machine.clone()
+    }
+
+    pub fn start_state_machine(&self) -> bool {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if state_machine.is_none() {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.start();
+                }
+            }
+            Err(_) => return false,
+        }
+
+        true
+    }
+
+    pub fn stop_state_machine(&self) -> bool {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if state_machine.is_none() {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    if sm.status == StateMachineStatus::Running {
+                        sm.end();
+                    } else {
+                        return false;
+                    }
+                }
+            }
+            Err(_) => return false,
+        }
+
+        true
+    }
+
+    /// Returns which types of listeners need to be setup.
+    /// The frameworks should call the function after calling start_state_machine.
+    pub fn state_machine_framework_setup(&self) -> Vec<String> {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if state_machine.is_none() {
+                    return vec![];
+                }
+
+                let mut listener_types = vec![];
+
+                if let Some(sm) = state_machine.as_ref() {
+                    let listeners = sm.get_listeners();
+
+                    for listener in listeners {
+                        match listener.try_read() {
+                            Ok(listener) => {
+                                let unwrapped_listener = &*listener;
+
+                                if !listener_types
+                                    .contains(&unwrapped_listener.get_type().to_string())
+                                {
+                                    listener_types.push(unwrapped_listener.get_type().to_string());
+                                }
+                            }
+                            Err(_) => return vec![],
+                        }
+                    }
+                    listener_types
+                } else {
+                    vec![]
+                }
+            }
+            Err(_) => vec![],
+        }
+    }
+
+    // todo: Once lister actions are implemented, remove this fn
+    pub fn tmp_set_state_machine_context(&self, key: &str, value: f32) -> bool {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if state_machine.is_none() {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+
+        self.state_machine
+            .write()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .set_numeric_context(key, value);
+
+        true
+    }
+
+    pub fn tmp_set_state_machine_string_context(&self, key: &str, value: &str) -> bool {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if state_machine.is_none() {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+
+        self.state_machine
+            .write()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .set_string_context(key, value);
+
+        true
+    }
+
+    pub fn tmp_set_state_machine_bool_context(&self, key: &str, value: bool) -> bool {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if state_machine.is_none() {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+
+        self.state_machine
+            .write()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .set_bool_context(key, value);
+
+        true
+    }
+
+    pub fn post_event(&self, event: &Event) -> bool {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if state_machine.is_none() {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.post_event(event);
+                }
+            }
+            Err(_) => return false,
+        }
+
+        true
+    }
+
+    /// Post event format:
+    ///
+    /// "Bool: true"
+    /// "Bool: false"
+    /// "String: ..."
+    /// "Numeric: 0.0"
+    /// "OnPointerDown: 0.0 0.0"
+    /// "OnPointerUp: 0.0 0.0"
+    /// "OnPointerMove: 0.0 0.0"
+    /// "OnPointerEnter: 0.0 0.0"
+    /// "OnPointerExit: 0.0 0.0"
+    /// "OnComplete"
+    #[cfg(target_arch = "wasm32")]
+    pub fn post_serialized_event(&self, event: String) -> bool {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if state_machine.is_none() {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+
+        let parts: Vec<&str> = event.splitn(2, ": ").collect();
+        if parts.len() < 2 {
+            return false;
+        }
+
+        let command_type = parts[0];
+        let value = parts[1];
+
+        match command_type {
+            "Bool" => {
+                let bool_value = value.parse::<bool>().map_err(|_| (false));
+
+                match bool_value {
+                    Ok(bool_value) => {
+                        let bool_event = Event::Bool { value: bool_value };
+
+                        match self.state_machine.try_write() {
+                            Ok(mut state_machine) => {
+                                if let Some(sm) = state_machine.as_mut() {
+                                    sm.post_event(&bool_event);
+                                } else {
+                                    return false;
+                                }
+                            }
+                            Err(_) => return false,
+                        }
+                    }
+                    Err(_) => return false,
+                }
+            }
+            "String" => {
+                let string_value = value.to_string();
+                let string_event = Event::String {
+                    value: string_value,
+                };
+
+                match self.state_machine.try_write() {
+                    Ok(mut state_machine) => {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.post_event(&string_event);
+                        } else {
+                            return false;
+                        }
+                    }
+                    Err(_) => return false,
+                }
+            }
+            "Numeric" => {
+                let numeric_value = value.parse::<f32>().map_err(|_| (false));
+
+                match numeric_value {
+                    Ok(numeric_value) => {
+                        let numeric_event = Event::Numeric {
+                            value: numeric_value,
+                        };
+
+                        match self.state_machine.try_write() {
+                            Ok(mut state_machine) => {
+                                if let Some(sm) = state_machine.as_mut() {
+                                    sm.post_event(&numeric_event);
+                                } else {
+                                    return false;
+                                }
+                            }
+                            Err(_) => return false,
+                        }
+                    }
+                    Err(_) => return false,
+                }
+            }
+            "OnPointerDown" => {
+                let values: Vec<&str> = value.split_whitespace().collect();
+                if values.len() != 2 {
+                    return false;
+                }
+                let pointer_event = Event::OnPointerDown {
+                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
+                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
+                };
+                match self.state_machine.try_write() {
+                    Ok(mut state_machine) => {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.post_event(&pointer_event);
+                        } else {
+                            return false;
+                        }
+                    }
+                    Err(_) => return false,
+                }
+            }
+            "OnPointerUp" => {
+                let values: Vec<&str> = value.split_whitespace().collect();
+                if values.len() != 2 {
+                    return false;
+                }
+                let pointer_event = Event::OnPointerUp {
+                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
+                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
+                };
+                match self.state_machine.try_write() {
+                    Ok(mut state_machine) => {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.post_event(&pointer_event);
+                        } else {
+                            return false;
+                        }
+                    }
+                    Err(_) => return false,
+                }
+            }
+            "OnPointerMove" => {
+                let values: Vec<&str> = value.split_whitespace().collect();
+                if values.len() != 2 {
+                    return false;
+                }
+                let pointer_event = Event::OnPointerMove {
+                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
+                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
+                };
+                match self.state_machine.try_write() {
+                    Ok(mut state_machine) => {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.post_event(&pointer_event);
+                        } else {
+                            return false;
+                        }
+                    }
+                    Err(_) => return false,
+                }
+            }
+            "OnPointerEnter" => {
+                let values: Vec<&str> = value.split_whitespace().collect();
+                if values.len() != 2 {
+                    return false;
+                }
+                let pointer_event = Event::OnPointerEnter {
+                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
+                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
+                };
+                match self.state_machine.try_write() {
+                    Ok(mut state_machine) => {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.post_event(&pointer_event);
+                        } else {
+                            return false;
+                        }
+                    }
+                    Err(_) => return false,
+                }
+            }
+            "OnPointerExit" => {
+                let values: Vec<&str> = value.split_whitespace().collect();
+                if values.len() != 2 {
+                    return false;
+                }
+                let pointer_event = Event::OnPointerExit {};
+                match self.state_machine.try_write() {
+                    Ok(mut state_machine) => {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.post_event(&pointer_event);
+                        } else {
+                            return false;
+                        }
+                    }
+                    Err(_) => return false,
+                }
+            }
+            "OnComplete" => {
+                let pointer_event = Event::OnComplete {};
+
+                match self.state_machine.try_write() {
+                    Ok(mut state_machine) => {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.post_event(&pointer_event);
+                        } else {
+                            return false;
+                        }
+                    }
+                    Err(_) => return false,
+                }
+            }
+            _ => return false,
+        }
+        true
+    }
+
+    pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
+        self.player
+            .write()
+            .is_ok_and(|runtime| runtime.load_animation_path(animation_path, width, height))
+    }
+
+    pub fn load_dotlottie_data(&self, file_data: &[u8], width: u32, height: u32) -> bool {
+        self.player
+            .write()
+            .is_ok_and(|runtime| runtime.load_dotlottie_data(file_data, width, height))
+    }
+
+    pub fn load_animation(&self, animation_id: &str, width: u32, height: u32) -> bool {
+        self.player
+            .write()
+            .is_ok_and(|runtime| runtime.load_animation(animation_id, width, height))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn manifest(&self) -> Option<Manifest> {
+        self.player.read().unwrap().manifest()
+    }
+
+    pub fn buffer_ptr(&self) -> u64 {
+        self.player.read().unwrap().buffer_ptr()
+    }
+
+    pub fn buffer_len(&self) -> u64 {
+        self.player.read().unwrap().buffer_len()
+    }
+
+    pub fn clear(&self) {
+        self.player.write().unwrap().clear();
+    }
+
+    pub fn set_config(&self, config: Config) {
+        self.player.write().unwrap().set_config(config);
+    }
+
+    pub fn speed(&self) -> f32 {
+        self.player.read().unwrap().speed()
+    }
+
+    pub fn total_frames(&self) -> f32 {
+        self.player.read().unwrap().total_frames()
+    }
+
+    pub fn duration(&self) -> f32 {
+        self.player.read().unwrap().duration()
+    }
+
+    pub fn current_frame(&self) -> f32 {
+        self.player.read().unwrap().current_frame()
+    }
+
+    pub fn loop_count(&self) -> u32 {
+        self.player.read().unwrap().loop_count()
+    }
+
+    pub fn is_loaded(&self) -> bool {
+        self.player.read().unwrap().is_loaded()
+    }
+
+    pub fn is_playing(&self) -> bool {
+        self.player.read().unwrap().is_playing()
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.player.read().unwrap().is_paused()
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        self.player.read().unwrap().is_stopped()
+    }
+
+    pub fn segment_duration(&self) -> f32 {
+        self.player.read().unwrap().segment_duration()
+    }
+
+    pub fn set_viewport(&self, x: i32, y: i32, w: i32, h: i32) -> bool {
+        self.player.write().unwrap().set_viewport(x, y, w, h)
+    }
+
+    pub fn play(&self) -> bool {
+        self.player.write().unwrap().play()
+    }
+
+    pub fn pause(&self) -> bool {
+        self.player.write().unwrap().pause()
+    }
+
+    pub fn stop(&self) -> bool {
+        self.player.write().unwrap().stop()
+    }
+
+    pub fn request_frame(&self) -> f32 {
+        self.player.write().unwrap().request_frame()
+    }
+
+    pub fn set_frame(&self, no: f32) -> bool {
+        self.player.write().unwrap().set_frame(no)
+    }
+
+    pub fn seek(&self, no: f32) -> bool {
+        self.player.write().unwrap().seek(no)
+    }
+
+    pub fn render(&self) -> bool {
+        self.player.read().unwrap().render()
+    }
+
+    pub fn resize(&self, width: u32, height: u32) -> bool {
+        self.player.write().unwrap().resize(width, height)
+    }
+
+    pub fn config(&self) -> Config {
+        self.player.read().unwrap().config()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn subscribe(&self, observer: Arc<dyn Observer>) {
+        self.player.write().unwrap().subscribe(observer);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
+        let mut sm = self.state_machine.write().unwrap();
+
+        if sm.is_none() {
+            return false;
+        }
+        sm.as_mut().unwrap().subscribe(observer);
+
+        true
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn state_machine_unsubscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
+        let mut sm = self.state_machine.write().unwrap();
+
+        if sm.is_none() {
+            return false;
+        }
+
+        sm.as_mut().unwrap().unsubscribe(&observer);
+
+        true
+    }
+
+    pub fn manifest_string(&self) -> String {
+        self.player.read().unwrap().manifest_string()
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.player.read().unwrap().is_complete()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn unsubscribe(&self, observer: &Arc<dyn Observer>) {
+        self.player.write().unwrap().unsubscribe(observer);
+    }
+
+    pub fn load_theme(&self, theme_id: &str) -> bool {
+        self.player.write().unwrap().load_theme(theme_id)
+    }
+
+    pub fn load_state_machine(&self, state_machine_id: &str) -> bool {
+        let state_machine_string = self
+            .player
+            .read()
+            .unwrap()
+            .get_state_machine(state_machine_id);
+
+        match state_machine_string {
+            Some(machine) => {
+                let state_machine = StateMachine::new(&machine, self.player.clone());
+
+                if state_machine.is_ok() {
+                    match self.state_machine.try_write() {
+                        Ok(mut sm) => {
+                            sm.replace(state_machine.unwrap());
+                        }
+                        Err(_) => {
+                            return false;
+                        }
+                    }
+
+                    let player = self.player.try_write();
+
+                    match player {
+                        Ok(mut player) => {
+                            player.state_machine = self.state_machine.clone();
+                        }
+                        Err(_) => {
+                            return false;
+                        }
+                    }
+                } else if let Err(ParsingError { reason: _ }) = state_machine {
+                    return false;
+                }
+            }
+            None => {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn load_theme_data(&self, theme_data: &str) -> bool {
+        self.player.write().unwrap().load_theme_data(theme_data)
+    }
+
+    pub fn markers(&self) -> Vec<Marker> {
+        self.player.read().unwrap().markers()
+    }
+
+    pub fn active_animation_id(&self) -> String {
+        self.player
+            .read()
+            .unwrap()
+            .active_animation_id()
+            .to_string()
+    }
+
+    pub fn active_theme_id(&self) -> String {
+        self.player.read().unwrap().active_theme_id().to_string()
     }
 }
 

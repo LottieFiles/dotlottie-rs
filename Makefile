@@ -888,7 +888,11 @@ $(RUNTIME_FFI)/$(APPLE_BUILD)/$(MODULE_MAP): $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI
 
 .PHONY: demo-player
 demo-player: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
-	cargo build --manifest-path demo-player/Cargo.toml
+	cargo build --manifest-path examples/demo-player/Cargo.toml
+
+.PHONY: demo-state-machine
+demo-state-machine: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
+	cargo build --manifest-path examples/demo-state-machine/Cargo.toml
 
 .PHONY: $(ANDROID)
 $(ANDROID): $(ANDROID_BUILD_TARGETS)
@@ -1006,6 +1010,7 @@ help:
 	@echo
 	@echo "The following are make targets you might also find useful:"
 	@echo "  - $(YELLOW)demo-player$(NC) - build the demo player"
+	@echo "  - $(YELLOW)demo-state-machine$(NC) - build the demo state-machine player"
 	@echo "  - $(YELLOW)all$(NC)         - build everything (will take a while on the first run)"
 	@echo "  - $(YELLOW)clean$(NC)       - clean up all cargo & release files"
 	@echo "  - $(YELLOW)clean-deps$(NC)  - clean up all native dependency builds & artifacts"

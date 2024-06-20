@@ -16,7 +16,7 @@ mod tests {
             "Expected play to fail when animation is not loaded"
         );
 
-        assert!(player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT));
+        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 
         assert!(
             player.play(),
@@ -28,7 +28,7 @@ mod tests {
     fn test_play_while_playing() {
         let player = DotLottiePlayer::new(Config::default());
 
-        assert!(player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT));
+        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 
         assert!(player.play());
 
@@ -44,7 +44,7 @@ mod tests {
             ..Config::default()
         });
 
-        assert!(player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT));
+        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 
         assert!(player.play());
 
@@ -89,7 +89,7 @@ mod tests {
             ..Config::default()
         });
 
-        assert!(player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT));
+        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 
         assert!(player.play());
 
@@ -126,7 +126,7 @@ mod tests {
             ..Config::default()
         });
 
-        assert!(player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT));
+        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 
         let mid_frame = player.total_frames() / 2.0;
 

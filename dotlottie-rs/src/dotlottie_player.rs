@@ -1829,6 +1829,10 @@ impl DotLottiePlayer {
     pub fn active_theme_id(&self) -> String {
         self.player.read().unwrap().active_theme_id().to_string()
     }
+
+    pub fn animation_size(&self) -> Vec<f32> {
+        self.player.read().unwrap().animation_size()
+    }
 }
 
 unsafe impl Send for DotLottiePlayer {}

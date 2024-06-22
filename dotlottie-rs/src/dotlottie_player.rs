@@ -1168,6 +1168,16 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().load_theme_data(theme_data)
     }
 
+    pub fn animation_size(&self) -> Vec<f32> {
+        match self.runtime.try_read() {
+            Ok(runtime) => vec![
+                runtime.renderer.picture_width,
+                runtime.renderer.picture_height,
+            ],
+            _ => vec![0.0, 0.0],
+        }
+    }
+
     pub fn markers(&self) -> Vec<Marker> {
         self.runtime.read().unwrap().markers()
     }
@@ -1818,6 +1828,10 @@ impl DotLottiePlayer {
 
     pub fn active_theme_id(&self) -> String {
         self.player.read().unwrap().active_theme_id().to_string()
+    }
+
+    pub fn animation_size(&self) -> Vec<f32> {
+        self.player.read().unwrap().animation_size()
     }
 }
 

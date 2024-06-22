@@ -18,8 +18,8 @@ pub struct LottieRenderer {
     thorvg_animation: Animation,
     thorvg_canvas: Canvas,
     thorvg_background_shape: Shape,
-    picture_width: f32,
-    picture_height: f32,
+    pub picture_width: f32,
+    pub picture_height: f32,
     pub width: u32,
     pub height: u32,
     pub buffer: Vec<u32>,
@@ -63,6 +63,9 @@ impl LottieRenderer {
         copy: bool,
     ) -> Result<(), LottieRendererError> {
         self.thorvg_canvas.clear(true)?;
+
+        self.picture_width = 0.0;
+        self.picture_height = 0.0;
 
         self.width = width;
         self.height = height;

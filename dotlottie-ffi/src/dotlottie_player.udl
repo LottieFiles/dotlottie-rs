@@ -146,6 +146,7 @@ interface DotLottiePlayer {
     string active_theme_id();
     boolean set_viewport(i32 x, i32 y, i32 w, i32 h);
     f32 segment_duration();
+    sequence<f32> animation_size();
 
     boolean load_state_machine([ByRef] string str);
     boolean start_state_machine();

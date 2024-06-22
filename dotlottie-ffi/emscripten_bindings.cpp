@@ -113,7 +113,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     //     .function("onStateExit", &StateMachineObserver::on_state_exit);
 
     class_<DotLottiePlayer>("DotLottiePlayer")
-        .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
+        .smart_ptr<std::shared_ptr<DotLottiePlayer> >("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init, allow_raw_pointers())
         .function("buffer", &buffer)
         .function("clear", &DotLottiePlayer::clear)
@@ -151,6 +151,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("activeThemeId", &DotLottiePlayer::active_theme_id)
         .function("setViewport", &DotLottiePlayer::set_viewport)
         .function("segmentDuration", &DotLottiePlayer::segment_duration)
+        .function("animationSize", &DotLottiePlayer::animation_size)
 
         .function("loadStateMachine", &DotLottiePlayer::load_state_machine)
         .function("startStateMachine", &DotLottiePlayer::start_state_machine)

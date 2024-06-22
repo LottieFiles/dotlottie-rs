@@ -5,13 +5,13 @@ use std::{fs, rc::Rc, sync::Arc};
 use crate::errors::StateMachineError::ParsingError;
 use crate::listeners::ListenerTrait;
 use crate::state_machine::events::Event;
+use crate::StateMachineStatus;
 use crate::{
     extract_markers,
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap, StateMachine,
 };
-use crate::{StateMachineObserver, StateMachineStatus};
 use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 
 pub trait Observer: Send + Sync {

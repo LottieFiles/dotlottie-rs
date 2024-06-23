@@ -360,7 +360,7 @@ define CARGO_BUILD
 		source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
 		RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
 		-Z build-std=std,panic_abort \
-		-Z build-std-features=panic_immediate_abort \
+		-Z build-std-features="panic_immediate_abort,optimize_for_size" \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--release; \

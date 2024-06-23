@@ -138,10 +138,6 @@ impl DotLottieRuntime {
         }
     }
 
-    pub fn new(config: Config) -> Self {
-        Self::with_threads(config, 0)
-    }
-
     pub fn markers(&self) -> Vec<Marker> {
         self.markers
             .iter()
@@ -859,10 +855,6 @@ pub struct DotLottiePlayerContainer {
 }
 
 impl DotLottiePlayerContainer {
-    pub fn new(config: Config) -> Self {
-        Self::with_threads(config, 0)
-    }
-
     pub fn with_threads(config: Config, threads: u32) -> Self {
         DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::with_threads(config, threads)),
@@ -1217,8 +1209,14 @@ pub struct DotLottiePlayer {
 
 impl DotLottiePlayer {
     pub fn new(config: Config) -> Self {
+        Self::with_threads(config, 0)
+    }
+
+    pub fn with_threads(config: Config, threads: u32) -> Self {
         DotLottiePlayer {
-            player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config))),
+            player: Rc::new(RwLock::new(DotLottiePlayerContainer::with_threads(
+                config, threads,
+            ))),
             state_machine: Rc::new(RwLock::new(None)),
         }
     }

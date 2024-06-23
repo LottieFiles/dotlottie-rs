@@ -7,8 +7,8 @@ use std::thread;
 use std::{env, path, time::Instant};
 use sysinfo::System;
 
-pub const WIDTH: usize = 1000;
-pub const HEIGHT: usize = 1000;
+pub const WIDTH: usize = 200;
+pub const HEIGHT: usize = 200;
 
 struct DummyObserver2;
 

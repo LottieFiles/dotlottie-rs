@@ -316,7 +316,6 @@ define SETUP_MESON
 		-Ddefault_library=static \
 		-Dbindings=capi \
 		-Dlog=$(LOG) \
-		-Dthreads=false \
 		-Dstatic=$(STATIC) \
 		-Dextra=$(EXTRA) \
 		-Dthreads=true \

@@ -114,7 +114,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 
     class_<DotLottiePlayer>("DotLottiePlayer")
         .smart_ptr<std::shared_ptr<DotLottiePlayer> >("DotLottiePlayer")
-        .constructor(&DotLottiePlayer::init, allow_raw_pointers())
+        .constructor(&DotLottiePlayer::with_threads, allow_raw_pointers())
         .function("buffer", &buffer)
         .function("clear", &DotLottiePlayer::clear)
         .function("config", &DotLottiePlayer::config)

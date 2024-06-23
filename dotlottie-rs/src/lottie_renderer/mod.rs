@@ -30,7 +30,7 @@ pub struct LottieRenderer {
 
 impl Default for LottieRenderer {
     fn default() -> Self {
-        Self::new()
+        Self::new(0)
     }
 }
 

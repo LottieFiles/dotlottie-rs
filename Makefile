@@ -67,7 +67,9 @@ APPLE_BUILD := $(BUILD)/$(APPLE)
 APPLE_IOS := ios
 APPLE_IOS_PLATFORM := iPhoneOS
 APPLE_IOS_SDK ?= iPhoneOS
-APPLE_IOS_VERSION_MIN ?= 11.0
+APPLE_IOS_VERSION_MIN ?= 15.4
+THORVG_APPLE_IOS_VERSION_MIN ?= 11.0 # Minimum iOS version supported by ThorVG, needs to be the same for cpp_args and cpp_link_args
+APPLE_XCODE_APP_NAME ?= Xcode.app
 
 APPLE_IOS_SIMULATOR := ios-simulator
 APPLE_IOS_SIMULATOR_PLATFORM := iPhoneSimulator
@@ -75,7 +77,7 @@ APPLE_IOS_SIMULATOR_SDK ?= iPhoneSimulator
 
 APPLE_MACOSX := macosx
 APPLE_MACOSX_PLATFORM := MacOSX
-APPLE_MACOSX_SDK ?= MacOSX12
+APPLE_MACOSX_SDK ?= MacOSX
 
 APPLE_IOS_FRAMEWORK_TYPE := $(APPLE_IOS)
 APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_IOS_SIMULATOR)
@@ -203,20 +205,20 @@ endef
 
 define APPLE_CROSS_FILE
 [binaries]
-cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/Xcode.app/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
+cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
 ld = 'ld'
 ar = 'ar'
 strip = 'strip'
 pkg-config = 'pkg-config'
 
 [properties]
-root = '/Applications/Xcode.app/Contents/Developer/Platforms/$(SDK).platform/Developer'
+root = '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(SDK).platform/Developer'
 has_function_printf = true
 
 $(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),\
 [built-in options]\n\
-cpp_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
-cpp_link_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
+cpp_args = ['-miphoneos-version-min=$(THORVG_APPLE_IOS_VERSION_MIN)']\n\
+cpp_link_args = ['-miphoneos-version-min=$(THORVG_APPLE_IOS_VERSION_MIN)']\n\
 ,)
 
 [host_machine]
@@ -314,6 +316,7 @@ define SETUP_MESON
 		-Ddefault_library=static \
 		-Dbindings=capi \
 		-Dlog=$(LOG) \
+		-Dthreads=false \
 		-Dstatic=$(STATIC) \
 		-Dextra=$(EXTRA) \
 		-Dthreads=true \
@@ -414,7 +417,7 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :MinimumOSVersion string 13" \
+                     -c "Add :MinimumOSVersion string $(APPLE_IOS_VERSION_MIN)" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \
@@ -878,7 +881,11 @@ $(RUNTIME_FFI)/$(APPLE_BUILD)/$(MODULE_MAP): $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI
 
 .PHONY: demo-player
 demo-player: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
-	cargo build --manifest-path demo-player/Cargo.toml
+	cargo build --manifest-path examples/demo-player/Cargo.toml
+
+.PHONY: demo-state-machine
+demo-state-machine: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
+	cargo build --manifest-path examples/demo-state-machine/Cargo.toml
 
 .PHONY: $(ANDROID)
 $(ANDROID): $(ANDROID_BUILD_TARGETS)
@@ -996,6 +1003,7 @@ help:
 	@echo
 	@echo "The following are make targets you might also find useful:"
 	@echo "  - $(YELLOW)demo-player$(NC) - build the demo player"
+	@echo "  - $(YELLOW)demo-state-machine$(NC) - build the demo state-machine player"
 	@echo "  - $(YELLOW)all$(NC)         - build everything (will take a while on the first run)"
 	@echo "  - $(YELLOW)clean$(NC)       - clean up all cargo & release files"
 	@echo "  - $(YELLOW)clean-deps$(NC)  - clean up all native dependency builds & artifacts"

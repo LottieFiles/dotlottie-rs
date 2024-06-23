@@ -42,7 +42,7 @@ mod play_mode_tests {
             );
 
             assert!(
-                player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
+                player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
                 "Animation should load"
             );
 
@@ -88,7 +88,7 @@ mod play_mode_tests {
         });
 
         assert!(
-            player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -136,7 +136,7 @@ mod play_mode_tests {
         });
 
         assert!(
-            player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 
@@ -182,7 +182,7 @@ mod play_mode_tests {
         });
 
         assert!(
-            player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 
@@ -248,7 +248,7 @@ mod play_mode_tests {
         });
 
         assert!(
-            player.load_animation_path("tests/assets/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 

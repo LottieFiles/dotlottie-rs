@@ -41,39 +41,44 @@ pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotL
 
     // Loop through the parsed lottie animation and check for image assets
     if let Some(assets) = lottie_animation["assets"].as_array_mut() {
-        for i in 0..assets.len() {
-            if !assets[i]["p"].is_null() {
-                let image_asset_filename =
-                    format!("images/{}", assets[i]["p"].to_string().replace("\"", ""));
+        for asset in assets {
+            if let Some(p) = asset["p"].as_str() {
+                if p.starts_with("data:image/") {
+                    // if the asset is already inlined, force the embed flag to 1
+                    asset["e"] = 1.into();
+                } else {
+                    let image_asset_filename =
+                        format!("images/{}", asset["p"].to_string().replace("\"", ""));
 
-                let image_ext = assets[i]["p"]
-                    .to_string()
-                    .split(".")
-                    .last()
-                    .unwrap()
-                    .to_string()
-                    .replace("\"", "");
+                    let image_ext = asset["p"]
+                        .to_string()
+                        .split(".")
+                        .last()
+                        .unwrap()
+                        .to_string()
+                        .replace("\"", "");
 
-                let mut result = archive.by_name(&image_asset_filename).map_err(|_| {
-                    DotLottieError::FileFindError {
-                        file_name: image_asset_filename,
-                    }
-                })?;
+                    let mut result = archive.by_name(&image_asset_filename).map_err(|_| {
+                        DotLottieError::FileFindError {
+                            file_name: image_asset_filename,
+                        }
+                    })?;
 
-                let mut content = Vec::new();
+                    let mut content = Vec::new();
 
-                result
-                    .read_to_end(&mut content)
-                    .map_err(|_| DotLottieError::ReadContentError)?;
+                    result
+                        .read_to_end(&mut content)
+                        .map_err(|_| DotLottieError::ReadContentError)?;
 
-                // Write the image data to the lottie
-                let image_data_base64 = general_purpose::STANDARD.encode(&content);
+                    // Write the image data to the lottie
+                    let image_data_base64 = general_purpose::STANDARD.encode(&content);
 
-                assets[i]["u"] = "".into();
-                assets[i]["p"] =
-                    format!("data:image/{};base64,{}", image_ext, image_data_base64).into();
-                // explicitly indicate that the image asset is inlined
-                assets[i]["e"] = 1.into();
+                    asset["u"] = "".into();
+                    asset["p"] =
+                        format!("data:image/{};base64,{}", image_ext, image_data_base64).into();
+                    // explicitly indicate that the image asset is inlined
+                    asset["e"] = 1.into();
+                }
             }
         }
     }
@@ -159,6 +164,23 @@ pub fn get_theme(bytes: &[u8], theme_id: &str) -> Result<String, DotLottieError>
     let mut archive =
         ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
     let search_file_name = format!("themes/{}.json", theme_id);
+
+    let mut content = Vec::new();
+    archive
+        .by_name(&search_file_name)
+        .map_err(|_| DotLottieError::FileFindError {
+            file_name: search_file_name,
+        })?
+        .read_to_end(&mut content)
+        .map_err(|_| DotLottieError::ReadContentError)?;
+
+    String::from_utf8(content).map_err(|_| DotLottieError::InvalidUtf8Error)
+}
+
+pub fn get_state_machine(bytes: &[u8], state_machine_id: &str) -> Result<String, DotLottieError> {
+    let mut archive =
+        ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
+    let search_file_name = format!("states/{}.json", state_machine_id);
 
     let mut content = Vec::new();
     archive

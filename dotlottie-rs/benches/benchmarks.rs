@@ -6,7 +6,7 @@ const HEIGHT: u32 = 1000;
 
 fn load_animation_data_benchmark(c: &mut Criterion) {
     let player = DotLottiePlayer::new(Config::default());
-    let data = std::str::from_utf8(include_bytes!("../tests/assets/test.json")).unwrap();
+    let data = std::str::from_utf8(include_bytes!("../tests/fixtures/test.json")).unwrap();
 
     c.bench_function("load_animation_data", |b| {
         b.iter(|| {
@@ -18,7 +18,10 @@ fn load_animation_data_benchmark(c: &mut Criterion) {
 fn load_animation_path_benchmark(c: &mut Criterion) {
     let player = DotLottiePlayer::new(Config::default());
 
-    let path = &format!("{}/tests/assets/test.json", std::env!("CARGO_MANIFEST_DIR"));
+    let path = &format!(
+        "{}/tests/fixtures/test.json",
+        std::env!("CARGO_MANIFEST_DIR")
+    );
 
     c.bench_function("load_animation_path", |b| {
         b.iter(|| {
@@ -30,7 +33,7 @@ fn load_animation_path_benchmark(c: &mut Criterion) {
 fn load_dotlottie_data_benchmark(c: &mut Criterion) {
     let player = DotLottiePlayer::new(Config::default());
 
-    let data = include_bytes!("../tests/assets/emoji.lottie");
+    let data = include_bytes!("../tests/fixtures/emoji.lottie");
 
     c.bench_function("load_dotlottie_data", |b| {
         b.iter(|| {
@@ -47,7 +50,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
     });
 
     assert!(player.load_dotlottie_data(
-        include_bytes!("../tests/assets/emoji.lottie"),
+        include_bytes!("../tests/fixtures/emoji.lottie"),
         WIDTH,
         HEIGHT
     ));
@@ -69,7 +72,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
         ..Config::default()
     });
     assert!(player.load_dotlottie_data(
-        include_bytes!("../tests/assets/emoji.lottie"),
+        include_bytes!("../tests/fixtures/emoji.lottie"),
         WIDTH,
         HEIGHT
     ));
@@ -88,7 +91,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
 fn load_theme_benchmark(c: &mut Criterion) {
     let player = DotLottiePlayer::new(Config::default());
 
-    let data = include_bytes!("../tests/assets/test.lottie");
+    let data = include_bytes!("../tests/fixtures/test.lottie");
     assert!(player.load_dotlottie_data(data, WIDTH, HEIGHT));
 
     c.bench_function("load_theme", |b| {

@@ -20,7 +20,8 @@ jobs:
         run: make mac-setup
       - name: Build Artifacts
         env:
-          APPLE_MACOSX_SDK: MacOSX13
+          APPLE_XCODE_APP_NAME: Xcode_13.3.1.app
+          APPLE_MACOSX_SDK: MacOSX12.3
         run: make all
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.0.0

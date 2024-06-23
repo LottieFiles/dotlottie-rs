@@ -1,0 +1,120 @@
+{
+    "descriptor": {
+        "id": "multi_animation_slideshow",
+        "initial": 0
+    },
+    "states": [
+        {
+            "name": "pigeon",
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "forward",
+            "speed": 1,
+            "marker": "bird",
+            "segment": [],
+            "frame_interpolation": true,
+            "entry_actions": [
+                {
+                    "type": "LogAction",
+                    "message": "Howdy partner!"
+                }
+            ],
+            "exit_actions": [],
+            "reset_context": "*"
+        },
+        {
+            "name": "explosion",
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "forward",
+            "speed": 0.5,
+            "marker": "explosion",
+            "segment": [],
+            "frame_interpolation": true,
+            "entry_actions": [],
+            "exit_actions": []
+        },
+        {
+            "name": "feather",
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "forward",
+            "speed": 1,
+            "marker": "feather",
+            "segment": [],
+            "frame_interpolation": true,
+            "entry_actions": [],
+            "exit_actions": []  
+        }
+    ],
+    "transitions": [
+        {
+            "type": "Transition",
+            "from_state": 0,
+            "to_state": 1,
+            "on_complete_event": {}
+        },
+        {
+            "type": "Transition",
+            "from_state": 1,
+            "to_state": 2,
+            "on_complete_event": {}
+        },
+        {
+            "type": "Transition",
+            "from_state": 2,
+            "to_state": 0,
+            "on_complete_event": {}
+        }
+    ],
+    "listeners": [
+        {
+            "type": "PointerDown"
+        }
+    ],
+    "context_variables": [
+        {
+            "type": "Numeric",
+            "key": "counter_0",
+            "value": 1
+        },
+        {
+            "type": "String",
+            "key": "counter_1",
+            "value": "COUNTER HAHAHAH"
+        },
+        {
+            "type": "Boolean",
+            "key": "counter_2",
+            "value": false
+        },
+        {
+            "type": "Numeric",
+            "key": "counter_2",
+            "value": "2"
+        },
+        {
+            "type": "Numeric",
+            "key": "counter_3",
+            "value": "3"
+        },
+        {
+            "type": "Numeric",
+            "key": "counter_4",
+            "value": "4"
+        },
+        {
+            "type": "Numeric",
+            "key": "counter_5",
+            "value": "5"
+        },
+        {
+            "type": "Numeric",
+            "key": "counter_6",
+            "value": "6"
+        }
+    ]
+}

@@ -1,4 +1,4 @@
-use json::{self, array, object};
+use json::{self, object};
 
 use crate::{ManifestAnimation, ManifestTheme};
 use serde::{Deserialize, Serialize};
@@ -61,10 +61,11 @@ impl Manifest {
                 .into();
         }
         if let Some(states) = &self.states {
-            json["states"] = array!(states
+            json["states"] = states
                 .iter()
-                .map(|s| s.clone().into())
-                .collect::<Vec<json::JsonValue>>());
+                .map(|t| t.clone().into())
+                .collect::<Vec<json::JsonValue>>()
+                .into();
         }
 
         json["generator"] = self.generator.clone().into();

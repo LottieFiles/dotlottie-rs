@@ -246,6 +246,7 @@ exe_suffix = 'js'
 [built-in options]
 cpp_args = ['-Wshift-negative-value', '-flto', '-Oz', '-ffunction-sections', '-fdata-sections']
 cpp_link_args = [
+	'-sMALLOC=emmalloc',
 	'-Wl,-u,htons',
 	'-Wl,-u,ntohs',
 	'-Wl,-u,htonl',

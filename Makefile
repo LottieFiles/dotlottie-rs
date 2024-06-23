@@ -250,7 +250,7 @@ cpp_link_args = [
 	'-Wl,-u,ntohs',
 	'-Wl,-u,htonl',
 	'-Wshift-negative-value',
-	'-flto', '-Os', '--bind', '-sWASM=1',
+	'-flto', '-Oz', '--bind', '-sWASM=1',
 	'-sALLOW_MEMORY_GROWTH=1',
 	'-sFORCE_FILESYSTEM=0',
 	'-sMODULARIZE=1',
@@ -263,7 +263,7 @@ cpp_link_args = [
 	'--no-entry',
 	'--strip-all',
 	'--emit-tsd=${WASM_MODULE}.d.ts',
-	'--minify=0']
+	'--closure=1']
 
 [host_machine]
 system = '$(SYSTEM)'

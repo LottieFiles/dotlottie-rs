@@ -23,15 +23,11 @@ jobs:
         run: brew install make
       - name: Build Setup
         run: make mac-setup
-      - name: Check Rust Versions
-        run: |
-          rustc --version --verbose
-          rustc +nightly --version --verbose
       - name: Build Artifacts
         env:
           APPLE_XCODE_APP_NAME: Xcode_13.3.1.app
           APPLE_MACOSX_SDK: MacOSX12.3
-        run: make wasm
+        run: make demo-player
       - name: Run Tests
         run: make test
       - name: Run Clippy

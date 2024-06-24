@@ -115,7 +115,7 @@ struct DotLottieRuntime {
 }
 
 impl DotLottieRuntime {
-    pub fn new(config: Config) -> Self {
+    pub fn with_threads(config: Config, threads: u32) -> Self {
         let direction = match config.mode {
             Mode::Forward => Direction::Forward,
             Mode::Reverse => Direction::Reverse,
@@ -124,7 +124,7 @@ impl DotLottieRuntime {
         };
 
         DotLottieRuntime {
-            renderer: LottieRenderer::new(),
+            renderer: LottieRenderer::new(threads),
             playback_state: PlaybackState::Stopped,
             is_loaded: false,
             start_time: Instant::now(),
@@ -855,9 +855,9 @@ pub struct DotLottiePlayerContainer {
 }
 
 impl DotLottiePlayerContainer {
-    pub fn new(config: Config) -> Self {
+    pub fn with_threads(config: Config, threads: u32) -> Self {
         DotLottiePlayerContainer {
-            runtime: RwLock::new(DotLottieRuntime::new(config)),
+            runtime: RwLock::new(DotLottieRuntime::with_threads(config, threads)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
         }
@@ -1209,8 +1209,14 @@ pub struct DotLottiePlayer {
 
 impl DotLottiePlayer {
     pub fn new(config: Config) -> Self {
+        Self::with_threads(config, 0)
+    }
+
+    pub fn with_threads(config: Config, threads: u32) -> Self {
         DotLottiePlayer {
-            player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config))),
+            player: Rc::new(RwLock::new(DotLottiePlayerContainer::with_threads(
+                config, threads,
+            ))),
             state_machine: Rc::new(RwLock::new(None)),
         }
     }

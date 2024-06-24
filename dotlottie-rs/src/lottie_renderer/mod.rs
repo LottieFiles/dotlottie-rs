@@ -30,13 +30,13 @@ pub struct LottieRenderer {
 
 impl Default for LottieRenderer {
     fn default() -> Self {
-        Self::new()
+        Self::new(0)
     }
 }
 
 impl LottieRenderer {
-    pub fn new() -> Self {
-        let thorvg_canvas = Canvas::new(TvgEngine::TvgEngineSw, 0);
+    pub fn new(threads: u32) -> Self {
+        let thorvg_canvas = Canvas::new(TvgEngine::TvgEngineSw, threads);
         let thorvg_animation = Animation::new();
         let thorvg_background_shape = Shape::new();
 

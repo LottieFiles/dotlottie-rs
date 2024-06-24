@@ -1753,7 +1753,6 @@ impl DotLottiePlayer {
         true
     }
 
-    #[cfg(target_arch = "wasm32")]
     pub fn manifest_string(&self) -> String {
         self.player.try_read().map_or_else(|_| String::new(), |player| player.manifest_string())
     }

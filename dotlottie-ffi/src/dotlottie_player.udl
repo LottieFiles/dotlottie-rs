@@ -158,4 +158,5 @@ interface DotLottiePlayer {
     boolean set_state_machine_string_context([ByRef] string key, [ByRef] string value);
     boolean set_state_machine_boolean_context([ByRef] string key, boolean value);
     sequence<string> state_machine_framework_setup();
+    boolean load_state_machine_data([ByRef] string state_machine);
 };

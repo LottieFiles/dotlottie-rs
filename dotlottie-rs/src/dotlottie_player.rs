@@ -1781,6 +1781,34 @@ impl DotLottiePlayer {
         self.player.write().unwrap().load_theme(theme_id)
     }
 
+    pub fn load_state_machine_data(&self, state_machine: &str) -> bool {
+        let state_machine = StateMachine::new(state_machine, self.player.clone());
+
+        if state_machine.is_ok() {
+            match self.state_machine.try_write() {
+                Ok(mut sm) => {
+                    sm.replace(state_machine.unwrap());
+                }
+                Err(_) => {
+                    return false;
+                }
+            }
+
+            let player = self.player.try_write();
+
+            match player {
+                Ok(mut player) => {
+                    player.state_machine = self.state_machine.clone();
+                }
+                Err(_) => {
+                    return false;
+                }
+            }
+        }
+
+        false
+    }
+
     pub fn load_state_machine(&self, state_machine_id: &str) -> bool {
         let state_machine_string = self
             .player

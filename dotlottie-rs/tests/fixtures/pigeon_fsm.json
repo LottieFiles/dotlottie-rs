@@ -1,0 +1,80 @@
+{
+    "descriptor": {
+        "id": "multi_animation_slideshow",
+        "initial": 0
+    },
+    "states": [
+        {
+            "name": "pigeon",
+            "type": "PlaybackState",
+            "loop": true,
+            "autoplay": true,
+            "mode": "forward",
+            "speed": 1,
+            "marker": "bird",
+            "segment": [],
+            "frame_interpolation": true,
+            "entry_actions": [
+                {
+                    "type": "LogAction",
+                    "message": "Howdy partner!"
+                }
+            ],
+            "exit_actions": [],
+            "reset_context": "*"
+        },
+        {
+            "name": "explosion",
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "forward",
+            "speed": 0.5,
+            "marker": "explosion",
+            "segment": [],
+            "frame_interpolation": true,
+            "entry_actions": [],
+            "exit_actions": []
+        },
+        {
+            "name": "feather",
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "forward",
+            "speed": 1,
+            "marker": "feather",
+            "segment": [],
+            "frame_interpolation": true,
+            "entry_actions": [],
+            "exit_actions": []  
+        }
+    ],
+    "transitions": [
+        {
+            "type": "Transition",
+            "from_state": 0,
+            "to_state": 1,
+            "on_pointer_down_event": {}
+        },
+        {
+            "type": "Transition",
+            "from_state": 1,
+            "to_state": 2,
+            "on_pointer_down_event": {}
+        },
+        {
+            "type": "Transition",
+            "from_state": 2,
+            "to_state": 0,
+            "on_pointer_down_event": {}
+        }
+    ],
+    "listeners": [
+        {
+            "type": "PointerDown"
+        }
+    ],
+    "context_variables": [
+    ]
+}

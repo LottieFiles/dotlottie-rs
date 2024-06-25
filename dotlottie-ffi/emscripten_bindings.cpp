@@ -160,8 +160,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("stateMachineFrameworkSetup", &DotLottiePlayer::state_machine_framework_setup)
         .function("setStateMachineNumericContext", &DotLottiePlayer::set_state_machine_numeric_context)
         .function("setStateMachineStringContext", &DotLottiePlayer::set_state_machine_string_context)
-        .function("setStateMachineBooleanContext", &DotLottiePlayer::set_state_machine_boolean_context);
-
+        .function("setStateMachineBooleanContext", &DotLottiePlayer::set_state_machine_boolean_context)
+        .function("loadStateMachineData", &DotLottiePlayer::load_state_machine_data);
     // .function("state_machine_subscribe", &DotLottiePlayer::state_machine_subscribe)
     // .function("state_machine_unsubscribe", &DotLottiePlayer::state_machine_unsubscribe)
 }

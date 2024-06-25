@@ -1145,8 +1145,10 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn manifest_string(&self) -> String {
-        self.runtime.read().unwrap().manifest().unwrap().to_string()
-    }
+        self.runtime.try_read().ok()
+            .and_then(|runtime| runtime.manifest())
+            .map_or_else(String::new, |manifest| manifest.to_string())
+    }    
 
     pub fn is_complete(&self) -> bool {
         self.runtime.read().unwrap().is_complete()
@@ -1752,7 +1754,7 @@ impl DotLottiePlayer {
     }
 
     pub fn manifest_string(&self) -> String {
-        self.player.read().unwrap().manifest_string()
+        self.player.try_read().map_or_else(|_| String::new(), |player| player.manifest_string())
     }
 
     pub fn is_complete(&self) -> bool {

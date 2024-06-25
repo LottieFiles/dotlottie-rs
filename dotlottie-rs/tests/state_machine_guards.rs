@@ -184,7 +184,7 @@ mod tests {
         );
 
         // Test != with a numeric value
-        player.tmp_set_state_machine_context("counter_0", 5.0);
+        player.set_state_machine_numeric_context("counter_0", 5.0);
         player.post_event(&Event::String {
             value: "explosion".to_string(),
         });
@@ -192,7 +192,7 @@ mod tests {
         // Should stay in stage 0 since 5 = 5
         assert_eq!(get_current_transition_event(&player), "explosion");
 
-        player.tmp_set_state_machine_context("counter_0", 18.0);
+        player.set_state_machine_numeric_context("counter_0", 18.0);
         player.post_event(&Event::String {
             value: "explosion".to_string(),
         });
@@ -201,10 +201,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "complete");
 
         // Test != with a string value
-        player.tmp_set_state_machine_string_context(
-            "counter_1",
-            "to_be_the_same".to_string().as_str(),
-        );
+        player.set_state_machine_string_context("counter_1", "to_be_the_same".to_string().as_str());
         player.post_event(&Event::String {
             value: "complete".to_string(),
         });
@@ -212,8 +209,7 @@ mod tests {
         // Should stay in stage 2 since diff_value = diff_value
         assert_eq!(get_current_transition_event(&player), "complete");
 
-        player
-            .tmp_set_state_machine_string_context("counter_1", "not_the_same".to_string().as_str());
+        player.set_state_machine_string_context("counter_1", "not_the_same".to_string().as_str());
         player.post_event(&Event::String {
             value: "complete".to_string(),
         });
@@ -222,7 +218,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "done");
 
         // Test != with a bool value
-        player.tmp_set_state_machine_bool_context("counter_2", true);
+        player.set_state_machine_boolean_context("counter_2", true);
         player.post_event(&Event::String {
             value: "done".to_string(),
         });
@@ -230,7 +226,7 @@ mod tests {
         // Should stay in stage 3 since diff_value = diff_value
         assert_eq!(get_current_transition_event(&player), "done");
 
-        player.tmp_set_state_machine_bool_context("counter_2", false);
+        player.set_state_machine_boolean_context("counter_2", false);
         player.post_event(&Event::String {
             value: "done".to_string(),
         });
@@ -298,7 +294,7 @@ mod tests {
         );
 
         // Test with a numeric value
-        player.tmp_set_state_machine_context("counter_0", 4.0);
+        player.set_state_machine_numeric_context("counter_0", 4.0);
         player.post_event(&Event::String {
             value: "explosion".to_string(),
         });
@@ -306,7 +302,7 @@ mod tests {
         // Should stay on stage 0 since 4 != 5
         assert_eq!(get_current_transition_event(&player), "explosion");
 
-        player.tmp_set_state_machine_context("counter_0", 5.0);
+        player.set_state_machine_numeric_context("counter_0", 5.0);
         player.post_event(&Event::String {
             value: "explosion".to_string(),
         });
@@ -315,7 +311,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "complete");
 
         // Test with a string value
-        player.tmp_set_state_machine_string_context("counter_1", "diff");
+        player.set_state_machine_string_context("counter_1", "diff");
         player.post_event(&Event::String {
             value: "complete".to_string(),
         });
@@ -323,7 +319,7 @@ mod tests {
         // Should stay on stage 1 since to_be_the_same != diff
         assert_eq!(get_current_transition_event(&player), "complete");
 
-        player.tmp_set_state_machine_string_context("counter_1", "to_be_the_same");
+        player.set_state_machine_string_context("counter_1", "to_be_the_same");
         player.post_event(&Event::String {
             value: "complete".to_string(),
         });
@@ -332,7 +328,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "done");
 
         // Test with a bool value
-        player.tmp_set_state_machine_bool_context("counter_2", false);
+        player.set_state_machine_boolean_context("counter_2", false);
         player.post_event(&Event::String {
             value: "done".to_string(),
         });
@@ -340,7 +336,7 @@ mod tests {
         // Should stay on stage 3 since false != true
         assert_eq!(get_current_transition_event(&player), "done");
 
-        player.tmp_set_state_machine_bool_context("counter_2", true);
+        player.set_state_machine_boolean_context("counter_2", true);
         player.post_event(&Event::String {
             value: "done".to_string(),
         });
@@ -397,7 +393,7 @@ mod tests {
 
         drop(sm);
 
-        player.tmp_set_state_machine_context("counter_0", 5.0);
+        player.set_state_machine_numeric_context("counter_0", 5.0);
         player.post_event(&Event::String {
             value: "explosion".to_string(),
         });
@@ -406,7 +402,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "explosion");
 
         // Greater than, should go to stage 2
-        player.tmp_set_state_machine_context("counter_0", 6.0);
+        player.set_state_machine_numeric_context("counter_0", 6.0);
 
         player.post_event(&Event::String {
             value: "explosion".to_string(),
@@ -416,7 +412,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "complete");
 
         // Greater than or equal, since its equal should go to stage 3
-        player.tmp_set_state_machine_context("counter_0", 60.0);
+        player.set_state_machine_numeric_context("counter_0", 60.0);
 
         player.post_event(&Event::String {
             value: "complete".to_string(),
@@ -426,7 +422,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "done");
 
         // Greater than or equal, since its not >= should stay on same stage
-        player.tmp_set_state_machine_context("counter_0", 64.0);
+        player.set_state_machine_numeric_context("counter_0", 64.0);
 
         player.post_event(&Event::String {
             value: "done".to_string(),
@@ -436,7 +432,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "done");
 
         // Greater than or equal, greater than should go to stage 0
-        player.tmp_set_state_machine_context("counter_0", 66.0);
+        player.set_state_machine_numeric_context("counter_0", 66.0);
 
         player.post_event(&Event::String {
             value: "done".to_string(),
@@ -493,7 +489,7 @@ mod tests {
         );
 
         // Test less than
-        player.tmp_set_state_machine_context("counter_0", 5.0);
+        player.set_state_machine_numeric_context("counter_0", 5.0);
         player.post_event(&Event::String {
             value: "explosion".to_string(),
         });
@@ -502,7 +498,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "explosion");
 
         // Test less than
-        player.tmp_set_state_machine_context("counter_0", 1.0);
+        player.set_state_machine_numeric_context("counter_0", 1.0);
 
         let string_event = Event::String {
             value: "explosion".to_string(),
@@ -514,7 +510,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "complete");
 
         // Start testing less than equal
-        player.tmp_set_state_machine_context("counter_0", 11.0);
+        player.set_state_machine_numeric_context("counter_0", 11.0);
         player.post_event(&Event::String {
             value: "complete".to_string(),
         });
@@ -523,7 +519,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "complete");
 
         // Test equal
-        player.tmp_set_state_machine_context("counter_0", 10.0);
+        player.set_state_machine_numeric_context("counter_0", 10.0);
         player.post_event(&Event::String {
             value: "complete".to_string(),
         });
@@ -532,7 +528,7 @@ mod tests {
         assert_eq!(get_current_transition_event(&player), "done");
 
         // Test less than
-        player.tmp_set_state_machine_context("counter_0", 14.0);
+        player.set_state_machine_numeric_context("counter_0", 14.0);
         player.post_event(&Event::String {
             value: "done".to_string(),
         });

@@ -158,9 +158,9 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("stopStateMachine", &DotLottiePlayer::stop_state_machine)
         .function("postEventPayload", &DotLottiePlayer::post_serialized_event)
         .function("stateMachineFrameworkSetup", &DotLottiePlayer::state_machine_framework_setup)
-        .function("set_state_machine_numeric_context", &DotLottiePlayer::set_state_machine_numeric_context)
-        .function("set_state_machine_string_context", &DotLottiePlayer::set_state_machine_string_context)
-        .function("set_state_machine_boolean_context", &DotLottiePlayer::set_state_machine_boolean_context);
+        .function("setStateMachineNumericContext", &DotLottiePlayer::set_state_machine_numeric_context)
+        .function("setStateMachineStringContext", &DotLottiePlayer::set_state_machine_string_context)
+        .function("setStateMachineBooleanContext", &DotLottiePlayer::set_state_machine_boolean_context);
 
     // .function("state_machine_subscribe", &DotLottiePlayer::state_machine_subscribe)
     // .function("state_machine_unsubscribe", &DotLottiePlayer::state_machine_unsubscribe)

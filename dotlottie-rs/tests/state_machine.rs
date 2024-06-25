@@ -249,7 +249,7 @@ mod tests {
         assert_eq!(*observer.custom_data.read().unwrap(), "No event so far");
 
         // First test that the event doesn't fire if the guard is not met
-        player.tmp_set_state_machine_context("counter_0", 5.0);
+        player.set_state_machine_numeric_context("counter_0", 5.0);
         player.post_event(&Event::String {
             value: "explosion".to_string(),
         });
@@ -257,7 +257,7 @@ mod tests {
         // Should stay the same value we initialized it at
         assert_eq!(*observer.custom_data.read().unwrap(), "No event so far");
 
-        player.tmp_set_state_machine_context("counter_0", 18.0);
+        player.set_state_machine_numeric_context("counter_0", 18.0);
         player.post_event(&Event::String {
             value: "explosion".to_string(),
         });
@@ -274,7 +274,7 @@ mod tests {
         // Should stay the same value we initialized it at
         assert_eq!(*observer2.custom_data.read().unwrap(), "No event so far");
 
-        player.tmp_set_state_machine_string_context("counter_1", "not_the_same");
+        player.set_state_machine_string_context("counter_1", "not_the_same");
         player.post_event(&Event::String {
             value: "complete".to_string(),
         });
@@ -288,7 +288,7 @@ mod tests {
         // Should stay the same value we initialized it at
         assert_eq!(*observer3.custom_data.read().unwrap(), "No event so far");
 
-        player.tmp_set_state_machine_bool_context("counter_2", false);
+        player.set_state_machine_boolean_context("counter_2", false);
         player.post_event(&Event::String {
             value: "done".to_string(),
         });

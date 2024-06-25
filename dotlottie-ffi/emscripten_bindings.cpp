@@ -113,7 +113,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     //     .function("onStateExit", &StateMachineObserver::on_state_exit);
 
     class_<DotLottiePlayer>("DotLottiePlayer")
-        .smart_ptr<std::shared_ptr<DotLottiePlayer> >("DotLottiePlayer")
+        .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init, allow_raw_pointers())
         .function("buffer", &buffer)
         .function("clear", &DotLottiePlayer::clear)
@@ -157,7 +157,11 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("startStateMachine", &DotLottiePlayer::start_state_machine)
         .function("stopStateMachine", &DotLottiePlayer::stop_state_machine)
         .function("postEventPayload", &DotLottiePlayer::post_serialized_event)
-        .function("stateMachineFrameworkSetup", &DotLottiePlayer::state_machine_framework_setup);
+        .function("stateMachineFrameworkSetup", &DotLottiePlayer::state_machine_framework_setup)
+        .function("setStateMachineNumericContext", &DotLottiePlayer::set_state_machine_numeric_context)
+        .function("setStateMachineStringContext", &DotLottiePlayer::set_state_machine_string_context)
+        .function("setStateMachineBooleanContext", &DotLottiePlayer::set_state_machine_boolean_context);
+
     // .function("state_machine_subscribe", &DotLottiePlayer::state_machine_subscribe)
     // .function("state_machine_unsubscribe", &DotLottiePlayer::state_machine_unsubscribe)
 }

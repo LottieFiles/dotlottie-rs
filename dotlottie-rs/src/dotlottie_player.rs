@@ -1312,8 +1312,7 @@ impl DotLottiePlayer {
         }
     }
 
-    // todo: Once lister actions are implemented, remove this fn
-    pub fn tmp_set_state_machine_context(&self, key: &str, value: f32) -> bool {
+    pub fn set_state_machine_numeric_context(&self, key: &str, value: f32) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1323,17 +1322,21 @@ impl DotLottiePlayer {
             Err(_) => return false,
         }
 
-        self.state_machine
-            .write()
-            .unwrap()
-            .as_mut()
-            .unwrap()
-            .set_numeric_context(key, value);
+        let sm_write = self.state_machine.try_write();
+
+        match sm_write {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.set_numeric_context(key, value);
+                }
+            }
+            Err(_) => return false,
+        }
 
         true
     }
 
-    pub fn tmp_set_state_machine_string_context(&self, key: &str, value: &str) -> bool {
+    pub fn set_state_machine_string_context(&self, key: &str, value: &str) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1343,17 +1346,21 @@ impl DotLottiePlayer {
             Err(_) => return false,
         }
 
-        self.state_machine
-            .write()
-            .unwrap()
-            .as_mut()
-            .unwrap()
-            .set_string_context(key, value);
+        let sm_write = self.state_machine.try_write();
+
+        match sm_write {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.set_string_context(key, value);
+                }
+            }
+            Err(_) => return false,
+        }
 
         true
     }
 
-    pub fn tmp_set_state_machine_bool_context(&self, key: &str, value: bool) -> bool {
+    pub fn set_state_machine_boolean_context(&self, key: &str, value: bool) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1363,12 +1370,16 @@ impl DotLottiePlayer {
             Err(_) => return false,
         }
 
-        self.state_machine
-            .write()
-            .unwrap()
-            .as_mut()
-            .unwrap()
-            .set_bool_context(key, value);
+        let sm_write = self.state_machine.try_write();
+
+        match sm_write {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.set_bool_context(key, value);
+                }
+            }
+            Err(_) => return false,
+        }
 
         true
     }

@@ -6,7 +6,7 @@ build = "build.rs"
 
 [profile.release]
 lto = true
-opt-level = "s"
+opt-level = "z"
 strip = true 
 codegen-units = 1
 panic = "abort" 

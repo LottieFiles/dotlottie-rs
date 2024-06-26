@@ -66,6 +66,12 @@ rustup target add aarch64-linux-android \
   aarch64-apple-ios-sim \
   wasm32-unknown-emscripten
 
+
+echo "Installing nightly toolchain"
+rustup install nightly 
+rustup component add rust-src --toolchain nightly 
+rustup target add wasm32-unknown-emscripten --toolchain nightly
+
 echo
 echo "Install cargo dependencies"
 cargo install uniffi-bindgen-cpp \

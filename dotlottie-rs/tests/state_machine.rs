@@ -4,6 +4,7 @@ mod tests {
 
     use dotlottie_player_core::{
         listeners::ListenerTrait,
+        states::StateTrait,
         transitions::{Transition::Transition, TransitionTrait},
         StateMachineObserver,
     };
@@ -249,7 +250,7 @@ mod tests {
         assert_eq!(*observer.custom_data.read().unwrap(), "No event so far");
 
         // First test that the event doesn't fire if the guard is not met
-        player.tmp_set_state_machine_context("counter_0", 5.0);
+        player.set_state_machine_numeric_context("counter_0", 5.0);
         player.post_event(&Event::String {
             value: "explosion".to_string(),
         });
@@ -257,7 +258,7 @@ mod tests {
         // Should stay the same value we initialized it at
         assert_eq!(*observer.custom_data.read().unwrap(), "No event so far");
 
-        player.tmp_set_state_machine_context("counter_0", 18.0);
+        player.set_state_machine_numeric_context("counter_0", 18.0);
         player.post_event(&Event::String {
             value: "explosion".to_string(),
         });
@@ -274,7 +275,7 @@ mod tests {
         // Should stay the same value we initialized it at
         assert_eq!(*observer2.custom_data.read().unwrap(), "No event so far");
 
-        player.tmp_set_state_machine_string_context("counter_1", "not_the_same");
+        player.set_state_machine_string_context("counter_1", "not_the_same");
         player.post_event(&Event::String {
             value: "complete".to_string(),
         });
@@ -288,13 +289,94 @@ mod tests {
         // Should stay the same value we initialized it at
         assert_eq!(*observer3.custom_data.read().unwrap(), "No event so far");
 
-        player.tmp_set_state_machine_bool_context("counter_2", false);
+        player.set_state_machine_boolean_context("counter_2", false);
         player.post_event(&Event::String {
             value: "done".to_string(),
         });
 
         // Should go to stage 0 and use previous state so it should be "done"
         assert_eq!(*observer3.custom_data.read().unwrap(), "\"feather\"");
+    }
+
+    #[test]
+    fn state_machine_from_data_test() {
+        let pigeon_fsm = include_str!("fixtures/pigeon_fsm.json");
+
+        let player = DotLottiePlayer::new(Config::default());
+
+        player.load_dotlottie_data(include_bytes!("fixtures/exploding_pigeon.lottie"), 100, 100);
+
+        player.load_state_machine_data(pigeon_fsm);
+        player.start_state_machine();
+
+        match player.get_state_machine().read().unwrap().as_ref() {
+            Some(sm) => {
+                assert_eq!(sm.states.len(), 3);
+            }
+            None => {
+                panic!("State machine is not loaded");
+            }
+        }
+
+        match player.get_state_machine().read().unwrap().as_ref() {
+            Some(sm) => {
+                let cs = sm.get_current_state();
+
+                match cs {
+                    Some(sm) => match sm.try_read() {
+                        Ok(state) => {
+                            assert_eq!(state.get_name(), "pigeon");
+                        }
+                        Err(_) => panic!("State is not readable"),
+                    },
+                    None => panic!("Failed to get current state"),
+                }
+            }
+            None => {
+                panic!("State machine is not loaded");
+            }
+        }
+
+        player.post_event(&Event::OnPointerDown { x: 0.0, y: 0.0 });
+
+        match player.get_state_machine().read().unwrap().as_ref() {
+            Some(sm) => {
+                let cs = sm.get_current_state();
+
+                match cs {
+                    Some(sm) => match sm.try_read() {
+                        Ok(state) => {
+                            assert_eq!(state.get_name(), "explosion");
+                        }
+                        Err(_) => panic!("State is not readable"),
+                    },
+                    None => panic!("Failed to get current state"),
+                }
+            }
+            None => {
+                panic!("State machine is not loaded");
+            }
+        }
+        player.post_event(&Event::OnPointerDown { x: 0.0, y: 0.0 });
+
+        match player.get_state_machine().read().unwrap().as_ref() {
+            Some(sm) => {
+                let cs = sm.get_current_state();
+
+                match cs {
+                    Some(sm) => match sm.try_read() {
+                        Ok(state) => {
+                            assert_eq!(state.get_name(), "feather");
+                        }
+                        Err(_) => panic!("State is not readable"),
+                    },
+                    None => panic!("Failed to get current state"),
+                }
+            }
+            None => {
+                panic!("State machine is not loaded");
+            }
+        }
     }
 
     #[test]

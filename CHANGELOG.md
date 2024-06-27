@@ -1,3 +1,37 @@
+## 0.1.24 (2024-06-27)
+
+### Features
+
+#### 🎸 expose lottie animation original size (#180)
+
+#### added context methods (#191)
+
+#### added load_state_machine_data (#190)
+
+#### chore(wasm): 🤖 reduce WASM binary size
+
+- **WASM Binary Optimization:**
+
+  - Applied the `-Oz` flag with `emcc` for size optimization.
+  - Used the compact `emmalloc` allocator.
+  - Used the rust nightly toolchain to remove location details and panic string formatting for a smaller binary size.
+  - Reduced binary size by ~142 KB (from 1,245,102 bytes to 1,099,243 bytes).
+
+- **JavaScript Glue Optimization:**
+
+  - Enabled the Closure compiler with the `--closure=1` flag.
+  - Reduced glue code size by ~36.88 KB (from 67,964 bytes to 30,197 bytes).
+
+### Fixes
+
+#### removed commented out target_arch (#184)
+
+#### iOS bundle minimum supported version on AppStore fix (#185)
+
+#### 🐛 manifest_string() panics when no manifest available (#189)
+
+#### chore(dependencies): 🤖 upgrade uniffi-rs to v0.28.0
+
 ## 0.1.23 (2024-06-19)
 
 ### Features

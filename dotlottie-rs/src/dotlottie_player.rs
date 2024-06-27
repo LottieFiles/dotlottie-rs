@@ -11,8 +11,7 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap, StateMachine,
 };
-use crate::{StateMachineObserver, StateMachineStatus};
-use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
+use crate::{DotLottieLoader, Manifest, StateMachineObserver, StateMachineStatus};
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
@@ -55,7 +54,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Config {
     pub mode: Mode,
     pub loop_animation: bool,
@@ -66,22 +65,6 @@ pub struct Config {
     pub background_color: u32,
     pub layout: Layout,
     pub marker: String,
-}
-
-impl std::fmt::Debug for Config {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("Config")
-            .field("mode", &self.mode)
-            .field("loop_animation", &self.loop_animation)
-            .field("speed", &self.speed)
-            .field("use_frame_interpolation", &self.use_frame_interpolation)
-            .field("autoplay", &self.autoplay)
-            .field("segment", &self.segment)
-            .field("background_color", &self.background_color)
-            // .field("layout", &self.layout)
-            .field("marker", &self.marker)
-            .finish()
-    }
 }
 
 impl Default for Config {
@@ -107,7 +90,7 @@ struct DotLottieRuntime {
     start_time: Instant,
     loop_count: u32,
     config: Config,
-    dotlottie_manager: DotLottieManager,
+    dotlottie_loader: DotLottieLoader,
     direction: Direction,
     markers: MarkersMap,
     active_animation_id: String,
@@ -130,7 +113,7 @@ impl DotLottieRuntime {
             start_time: Instant::now(),
             loop_count: 0,
             config,
-            dotlottie_manager: DotLottieManager::new(None).unwrap(),
+            dotlottie_loader: DotLottieLoader::new(),
             direction,
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
@@ -252,15 +235,15 @@ impl DotLottieRuntime {
     }
 
     pub fn manifest(&self) -> Option<Manifest> {
-        self.dotlottie_manager.manifest()
+        self.dotlottie_loader.manifest()
     }
 
     pub fn size(&self) -> (u32, u32) {
         (self.renderer.width, self.renderer.height)
     }
 
-    pub fn get_state_machine(&self, state_machine_id: &str) -> Option<String> {
-        self.dotlottie_manager
+    pub fn get_state_machine(&mut self, state_machine_id: &str) -> Option<String> {
+        self.dotlottie_loader
             .get_state_machine(state_machine_id)
             .ok()
     }
@@ -654,7 +637,7 @@ impl DotLottieRuntime {
         self.active_animation_id.clear();
         self.active_theme_id.clear();
 
-        self.dotlottie_manager = DotLottieManager::new(None).unwrap();
+        self.dotlottie_loader = DotLottieLoader::new();
 
         self.markers = extract_markers(animation_data);
 
@@ -679,16 +662,38 @@ impl DotLottieRuntime {
         self.active_animation_id.clear();
         self.active_theme_id.clear();
 
-        if self.dotlottie_manager.init(file_data).is_err() {
-            return false;
-        }
+        self.dotlottie_loader = {
+            let loader = DotLottieLoader::from_bytes(file_data);
 
-        let first_animation: Result<String, DotLottieError> =
-            self.dotlottie_manager.get_active_animation();
+            match loader {
+                Ok(loader) => loader,
+                Err(_) => return false,
+            }
+        };
+
+        let first_animation_id = {
+            let active_animation_id = self.dotlottie_loader.active_animation_id();
+
+            if active_animation_id.is_empty() {
+                self.dotlottie_loader
+                    .manifest()
+                    .and_then(|manifest| {
+                        manifest
+                            .animations
+                            .first()
+                            .map(|animation| animation.id.clone())
+                    })
+                    .unwrap_or_default()
+            } else {
+                active_animation_id.to_owned()
+            }
+        };
+
+        let first_animation = self.dotlottie_loader.get_animation(&first_animation_id);
 
         let ok = match first_animation {
             Ok(animation_data) => {
-                self.markers = extract_markers(animation_data.as_str());
+                self.markers = extract_markers(&animation_data);
 
                 // For the moment we're ignoring manifest values
 
@@ -703,7 +708,7 @@ impl DotLottieRuntime {
         };
 
         if ok {
-            self.active_animation_id = self.dotlottie_manager.active_animation_id();
+            self.active_animation_id = first_animation_id;
         }
 
         ok
@@ -712,7 +717,7 @@ impl DotLottieRuntime {
     pub fn load_animation(&mut self, animation_id: &str, width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
 
-        let animation_data = self.dotlottie_manager.get_animation(animation_id);
+        let animation_data = self.dotlottie_loader.get_animation(animation_id);
 
         let ok = match animation_data {
             Ok(animation_data) => self.load_animation_common(
@@ -730,45 +735,45 @@ impl DotLottieRuntime {
         ok
     }
 
-    #[allow(dead_code)]
-    fn load_playback_settings(&mut self) -> bool {
-        let playback_settings_result: Result<ManifestAnimation, DotLottieError> =
-            self.dotlottie_manager.active_animation_playback_settings();
+    // #[allow(dead_code)]
+    // fn load_playback_settings(&mut self) -> bool {
+    //     let playback_settings_result: Result<ManifestAnimation, DotLottieError> =
+    //         self.dotlottie_manager.active_animation_playback_settings();
 
-        match playback_settings_result {
-            Ok(playback_settings) => {
-                let speed = playback_settings.speed.unwrap_or(1.0);
-                let loop_animation = playback_settings.r#loop.unwrap_or(false);
-                let direction = playback_settings.direction.unwrap_or(1);
-                let autoplay = playback_settings.autoplay.unwrap_or(false);
-                let play_mode = playback_settings.playMode.unwrap_or("normal".to_string());
+    //     match playback_settings_result {
+    //         Ok(playback_settings) => {
+    //             let speed = playback_settings.speed.unwrap_or(1.0);
+    //             let loop_animation = playback_settings.r#loop.unwrap_or(false);
+    //             let direction = playback_settings.direction.unwrap_or(1);
+    //             let autoplay = playback_settings.autoplay.unwrap_or(false);
+    //             let play_mode = playback_settings.playMode.unwrap_or("normal".to_string());
 
-                let mode = match play_mode.as_str() {
-                    "normal" => Mode::Forward,
-                    "reverse" => Mode::Reverse,
-                    "bounce" => Mode::Bounce,
-                    "reverseBounce" => Mode::ReverseBounce,
-                    _ => Mode::Forward,
-                };
+    //             let mode = match play_mode.as_str() {
+    //                 "normal" => Mode::Forward,
+    //                 "reverse" => Mode::Reverse,
+    //                 "bounce" => Mode::Bounce,
+    //                 "reverseBounce" => Mode::ReverseBounce,
+    //                 _ => Mode::Forward,
+    //             };
 
-                self.config.speed = speed;
-                self.config.autoplay = autoplay;
-                self.config.mode = if play_mode == "normal" {
-                    if direction == 1 {
-                        Mode::Forward
-                    } else {
-                        Mode::Reverse
-                    }
-                } else {
-                    mode
-                };
-                self.config.loop_animation = loop_animation;
-            }
-            Err(_error) => return false,
-        }
+    //             self.config.speed = speed;
+    //             self.config.autoplay = autoplay;
+    //             self.config.mode = if play_mode == "normal" {
+    //                 if direction == 1 {
+    //                     Mode::Forward
+    //                 } else {
+    //                     Mode::Reverse
+    //                 }
+    //             } else {
+    //                 mode
+    //             };
+    //             self.config.loop_animation = loop_animation;
+    //         }
+    //         Err(_error) => return false,
+    //     }
 
-        true
-    }
+    //     true
+    // }
 
     pub fn resize(&mut self, width: u32, height: u32) -> bool {
         self.renderer.resize(width, height).is_ok()
@@ -818,7 +823,7 @@ impl DotLottieRuntime {
 
                         is_global_or_active_animation
                             && self
-                                .dotlottie_manager
+                                .dotlottie_loader
                                 .get_theme(theme_id)
                                 .ok()
                                 .and_then(|theme_data| {
@@ -1145,10 +1150,14 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn manifest_string(&self) -> String {
-        self.runtime.try_read().ok()
+        self.runtime
+            .try_read()
+            .ok()
             .and_then(|runtime| runtime.manifest())
-            .map_or_else(String::new, |manifest| manifest.to_string())
-    }    
+            .map_or_else(String::new, |manifest| {
+                serde_json::to_string(&manifest).unwrap_or_else(|_| String::new())
+            })
+    }
 
     pub fn is_complete(&self) -> bool {
         self.runtime.read().unwrap().is_complete()
@@ -1197,8 +1206,8 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn get_state_machine(&self, state_machine_id: &str) -> Option<String> {
-        match self.runtime.try_read() {
-            Ok(runtime) => runtime.get_state_machine(state_machine_id),
+        match self.runtime.try_write() {
+            Ok(mut runtime) => runtime.get_state_machine(state_machine_id),
             Err(_) => None,
         }
     }
@@ -1765,7 +1774,9 @@ impl DotLottiePlayer {
     }
 
     pub fn manifest_string(&self) -> String {
-        self.player.try_read().map_or_else(|_| String::new(), |player| player.manifest_string())
+        self.player
+            .try_read()
+            .map_or_else(|_| String::new(), |player| player.manifest_string())
     }
 
     pub fn is_complete(&self) -> bool {

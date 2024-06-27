@@ -82,129 +82,22 @@ pub enum Listener {
     },
 }
 
-impl Debug for Listener {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::PointerUp {
-                r#type,
-                target,
-                action,
-                value,
-                context_key,
-            } => f
-                .debug_struct("PointerUp")
-                .field("r#type", r#type)
-                .field("target", target)
-                .field("action", action)
-                .field("value", value)
-                .field("context_key", context_key)
-                .finish(),
-            Self::PointerDown {
-                r#type,
-                target,
-                action,
-                value,
-                context_key,
-            } => f
-                .debug_struct("PointerDown")
-                .field("r#type", r#type)
-                .field("target", target)
-                .field("action", action)
-                .field("value", value)
-                .field("context_key", context_key)
-                .finish(),
-            Self::PointerEnter {
-                r#type,
-                target,
-                action,
-                value,
-                context_key,
-            } => f
-                .debug_struct("PointerEnter")
-                .field("r#type", r#type)
-                .field("target", target)
-                .field("action", action)
-                .field("value", value)
-                .field("context_key", context_key)
-                .finish(),
-            Self::PointerMove {
-                r#type,
-                target,
-                action,
-                value,
-                context_key,
-            } => f
-                .debug_struct("PointerMove")
-                .field("r#type", r#type)
-                .field("target", target)
-                .field("action", action)
-                .field("value", value)
-                .field("context_key", context_key)
-                .finish(),
-            Self::PointerExit {
-                r#type,
-                target,
-                action,
-                value,
-                context_key,
-            } => f
-                .debug_struct("PointerExit")
-                .field("r#type", r#type)
-                .field("target", target)
-                .field("action", action)
-                .field("value", value)
-                .field("context_key", context_key)
-                .finish(),
-        }
-    }
-}
-
 impl ListenerTrait for Listener {
     fn set_type(&mut self, r#listener_type: ListenerType) {
         match self {
-            Listener::PointerUp {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerUp { r#type, .. } => {
                 *r#type = listener_type;
             }
-            Listener::PointerDown {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerDown { r#type, .. } => {
                 *r#type = listener_type;
             }
-            Listener::PointerEnter {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerEnter { r#type, .. } => {
                 *r#type = listener_type;
             }
-            Listener::PointerExit {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerExit { r#type, .. } => {
                 *r#type = listener_type;
             }
-            Listener::PointerMove {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerMove { r#type, .. } => {
                 *r#type = listener_type;
             }
         }
@@ -212,49 +105,19 @@ impl ListenerTrait for Listener {
 
     fn set_target(&mut self, new_target: &str) {
         match self {
-            Listener::PointerUp {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerUp { target, .. } => {
                 *target = Some(new_target.to_string());
             }
-            Listener::PointerDown {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerDown { target, .. } => {
                 *target = Some(new_target.to_string());
             }
-            Listener::PointerEnter {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerEnter { target, .. } => {
                 *target = Some(new_target.to_string());
             }
-            Listener::PointerExit {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerExit { target, .. } => {
                 *target = Some(new_target.to_string());
             }
-            Listener::PointerMove {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerMove { target, .. } => {
                 *target = Some(new_target.to_string());
             }
         }
@@ -262,49 +125,19 @@ impl ListenerTrait for Listener {
 
     fn set_action(&mut self, new_action: &str) {
         match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerUp { action, .. } => {
                 *action = Some(new_action.to_string());
             }
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerDown { action, .. } => {
                 *action = Some(new_action.to_string());
             }
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerEnter { action, .. } => {
                 *action = Some(new_action.to_string());
             }
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerExit { action, .. } => {
                 *action = Some(new_action.to_string());
             }
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => {
+            Listener::PointerMove { action, .. } => {
                 *action = Some(new_action.to_string());
             }
         }
@@ -312,49 +145,19 @@ impl ListenerTrait for Listener {
 
     fn set_value(&mut self, new_value: StringNumberBool) {
         match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => {
+            Listener::PointerUp { value, .. } => {
                 *value = Some(new_value);
             }
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => {
+            Listener::PointerDown { value, .. } => {
                 *value = Some(new_value);
             }
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => {
+            Listener::PointerEnter { value, .. } => {
                 *value = Some(new_value);
             }
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => {
+            Listener::PointerExit { value, .. } => {
                 *value = Some(new_value);
             }
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => {
+            Listener::PointerMove { value, .. } => {
                 *value = Some(new_value);
             }
         }
@@ -362,49 +165,19 @@ impl ListenerTrait for Listener {
 
     fn set_context_key(&mut self, new_context_key: &str) {
         match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => {
+            Listener::PointerUp { context_key, .. } => {
                 *context_key = Some(new_context_key.to_string());
             }
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => {
+            Listener::PointerDown { context_key, .. } => {
                 *context_key = Some(new_context_key.to_string());
             }
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => {
+            Listener::PointerEnter { context_key, .. } => {
                 *context_key = Some(new_context_key.to_string());
             }
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => {
+            Listener::PointerExit { context_key, .. } => {
                 *context_key = Some(new_context_key.to_string());
             }
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => {
+            Listener::PointerMove { context_key, .. } => {
                 *context_key = Some(new_context_key.to_string());
             }
         }
@@ -412,201 +185,51 @@ impl ListenerTrait for Listener {
 
     fn get_type(&self) -> &ListenerType {
         match self {
-            Listener::PointerUp {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => r#type,
-            Listener::PointerDown {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => r#type,
-            Listener::PointerEnter {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => r#type,
-            Listener::PointerExit {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => r#type,
-            Listener::PointerMove {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => r#type,
+            Listener::PointerUp { r#type, .. } => r#type,
+            Listener::PointerDown { r#type, .. } => r#type,
+            Listener::PointerEnter { r#type, .. } => r#type,
+            Listener::PointerExit { r#type, .. } => r#type,
+            Listener::PointerMove { r#type, .. } => r#type,
         }
     }
 
     fn get_target(&self) -> Option<String> {
         match self {
-            Listener::PointerUp {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => target.clone(),
-            Listener::PointerDown {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => target.clone(),
-            Listener::PointerEnter {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => target.clone(),
-            Listener::PointerExit {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => target.clone(),
-            Listener::PointerMove {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => target.clone(),
+            Listener::PointerUp { target, .. } => target.clone(),
+            Listener::PointerDown { target, .. } => target.clone(),
+            Listener::PointerEnter { target, .. } => target.clone(),
+            Listener::PointerExit { target, .. } => target.clone(),
+            Listener::PointerMove { target, .. } => target.clone(),
         }
     }
 
     fn get_action(&self) -> Option<String> {
         match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => action.clone(),
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => action.clone(),
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => action.clone(),
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => action.clone(),
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => action.clone(),
+            Listener::PointerUp { action, .. } => action.clone(),
+            Listener::PointerDown { action, .. } => action.clone(),
+            Listener::PointerEnter { action, .. } => action.clone(),
+            Listener::PointerExit { action, .. } => action.clone(),
+            Listener::PointerMove { action, .. } => action.clone(),
         }
     }
 
     fn get_value(&self) -> Option<&StringNumberBool> {
         match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => value.as_ref(),
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => value.as_ref(),
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => value.as_ref(),
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => value.as_ref(),
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => value.as_ref(),
+            Listener::PointerUp { value, .. } => value.as_ref(),
+            Listener::PointerDown { value, .. } => value.as_ref(),
+            Listener::PointerEnter { value, .. } => value.as_ref(),
+            Listener::PointerExit { value, .. } => value.as_ref(),
+            Listener::PointerMove { value, .. } => value.as_ref(),
         }
     }
 
     fn get_context_key(&self) -> Option<String> {
         match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => context_key.clone(),
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => context_key.clone(),
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => context_key.clone(),
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => context_key.clone(),
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => context_key.clone(),
+            Listener::PointerUp { context_key, .. } => context_key.clone(),
+            Listener::PointerDown { context_key, .. } => context_key.clone(),
+            Listener::PointerEnter { context_key, .. } => context_key.clone(),
+            Listener::PointerExit { context_key, .. } => context_key.clone(),
+            Listener::PointerMove { context_key, .. } => context_key.clone(),
         }
     }
 }

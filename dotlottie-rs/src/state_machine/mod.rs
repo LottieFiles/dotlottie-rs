@@ -169,8 +169,9 @@ impl StateMachine {
                             background_color,
                             use_frame_interpolation,
                             reset_context,
+                            entry_actions,
+                            exit_actions,
                             marker,
-                            ..
                         } => {
                             let unwrapped_mode = mode.unwrap_or("Forward".to_string());
                             let mode = {

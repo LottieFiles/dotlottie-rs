@@ -24,13 +24,11 @@
             "name": "feather",
             "type": "PlaybackState",
             "autoplay": true,
-            "loop": false,
-            "marker": "feather"
-        },
-        {
-            "name": "SyncTest",
-            "type": "SyncState",
-            "frame_context_key": "sync_key"
+            "mode": "forward",
+            "speed": 1,
+            "marker": "feather",
+            "segment": [],
+            "use_frame_interpolation": true
         }
     ],
     "transitions": [
@@ -66,9 +64,44 @@
     ],
     "context_variables": [
         {
-            "key": "sync_key",
             "type": "Numeric",
-            "value": 30
+            "key": "counter_0",
+            "value": 1
+        },
+        {
+            "type": "String",
+            "key": "counter_1",
+            "value": "COUNTER HAHAHAH"
+        },
+        {
+            "type": "Boolean",
+            "key": "counter_2",
+            "value": false
+        },
+        {
+            "type": "Numeric",
+            "key": "counter_2",
+            "value": "2"
+        },
+        {
+            "type": "Numeric",
+            "key": "counter_3",
+            "value": "3"
+        },
+        {
+            "type": "Numeric",
+            "key": "counter_4",
+            "value": "4"
+        },
+        {
+            "type": "Numeric",
+            "key": "counter_5",
+            "value": "5"
+        },
+        {
+            "type": "Numeric",
+            "key": "counter_6",
+            "value": "6"
         }
     ]
 }

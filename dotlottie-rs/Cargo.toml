@@ -19,6 +19,7 @@ instant = { git = "https://github.com/hoodmane/instant", branch = "emscripten-no
 ] }
 serde_json = "1.0.107"
 serde = { version = "1.0.188", features = ["derive"] }
+serde_path_to_error = "0.1.16"
 
 [build-dependencies]
 bindgen = "0.69.1"

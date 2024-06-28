@@ -63,7 +63,6 @@ pub struct DescriptorJson {
     pub initial: u32,
 }
 
-// r#type: StateActionType,
 #[derive(Deserialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum StateActionJson {

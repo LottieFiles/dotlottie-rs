@@ -5,36 +5,34 @@
     },
     "states": [
         {
-            "name": "pigeon",
             "type": "PlaybackState",
+            "name": "pigeon",
             "loop": false,
             "autoplay": true,
             "mode": "forward",
             "speed": 1,
             "marker": "bird",
             "segment": [],
-            "frame_interpolation": true,
+            "use_frame_interpolation": true,
             "entry_actions": [
                 {
                     "type": "LogAction",
                     "message": "Howdy partner!"
                 }
             ],
-            "exit_actions": [],
             "reset_context": "*"
         },
         {
-            "name": "explosion",
             "type": "PlaybackState",
+            "name": "explosion",
             "loop": false,
             "autoplay": true,
             "mode": "forward",
             "speed": 0.5,
             "marker": "explosion",
             "segment": [],
-            "frame_interpolation": true,
-            "entry_actions": [],
-            "exit_actions": []
+            "use_frame_interpolation": true,
+            "reset_context": "*"
         },
         {
             "name": "feather",
@@ -45,9 +43,7 @@
             "speed": 1,
             "marker": "feather",
             "segment": [],
-            "frame_interpolation": true,
-            "entry_actions": [],
-            "exit_actions": []  
+            "use_frame_interpolation": true
         }
     ],
     "transitions": [

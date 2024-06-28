@@ -183,7 +183,19 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    lottie_player.load_state_machine("pigeon_fsm");
+    let pigeon_fsm = File::open("src/pigeon_fsm.json").expect("no file found");
+    // read in to string
+    let mut pigeon_fsm_buffer = String::new();
+    pigeon_fsm
+        .take(1000)
+        .read_to_string(&mut pigeon_fsm_buffer)
+        .expect("buffer overflow");
+
+    // lottie_player.load_state_machine("pigeon_fsm");
+    let r = lottie_player.load_state_machine_data(&pigeon_fsm_buffer);
+
+    println!("{}", r);
+
     lottie_player.start_state_machine();
     lottie_player.play();
 
@@ -218,7 +230,7 @@ fn main() {
             pushed -= 1.0;
 
             let p = &mut *locked_player.write().unwrap();
-            p.tmp_set_state_machine_context("counter_0", pushed);
+            p.set_state_machine_numeric_context("counter_0", pushed);
 
             p.post_event(&string_event);
         }

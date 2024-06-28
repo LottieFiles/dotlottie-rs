@@ -9,6 +9,8 @@ pub mod parser;
 pub mod states;
 pub mod transitions;
 
+use parser::PlaybackState;
+
 use crate::parser::StringNumberBool;
 use crate::state_machine::listeners::Listener;
 use crate::state_machine::states::StateTrait;
@@ -147,54 +149,131 @@ impl StateMachine {
             Ok(parsed_state_machine) => {
                 // Loop through result json states and create objects for each
                 for state in parsed_state_machine.states {
-                    match state.r#type {
-                        parser::StateType::PlaybackState => {
-                            let unwrapped_mode = state.mode.unwrap_or("Forward".to_string());
-                            let mode = {
-                                match unwrapped_mode.as_str() {
-                                    "Forward" => Mode::Forward,
-                                    "Reverse" => Mode::Reverse,
-                                    "Bounce" => Mode::Bounce,
-                                    "ReverseBounce" => Mode::ReverseBounce,
-                                    _ => Mode::Forward,
-                                }
-                            };
+                    // if state.state == parser::State::SyncState {
+                    //     let s = state as parser::SyncState;
+                    //     // let playbackState = state.state as parser::PlaybackState;
 
-                            let default_config = Config::default();
+                    //     let unwrapped_mode = state.state.mode.unwrap_or("Forward".to_string());
+                    //     let mode = {
+                    //         match unwrapped_mode.as_str() {
+                    //             "Forward" => Mode::Forward,
+                    //             "Reverse" => Mode::Reverse,
+                    //             "Bounce" => Mode::Bounce,
+                    //             "ReverseBounce" => Mode::ReverseBounce,
+                    //             _ => Mode::Forward,
+                    //         }
+                    //     };
 
-                            // Fill out a config with the state's values, if absent use default config values
-                            let playback_config = Config {
-                                mode,
-                                loop_animation: state
-                                    .r#loop
-                                    .unwrap_or(default_config.loop_animation),
-                                speed: state.speed.unwrap_or(default_config.speed),
-                                use_frame_interpolation: state
-                                    .use_frame_interpolation
-                                    .unwrap_or(default_config.use_frame_interpolation),
-                                autoplay: state.autoplay.unwrap_or(default_config.autoplay),
-                                segment: state.segment.unwrap_or(default_config.segment),
-                                background_color: state
-                                    .background_color
-                                    .unwrap_or(default_config.background_color),
-                                layout: Layout::default(),
-                                marker: state.marker.unwrap_or(default_config.marker),
-                            };
+                    //     let default_config = Config::default();
 
-                            // Construct a State with the values we've gathered
-                            let new_playback_state = State::Playback {
-                                name: state.name,
-                                config: playback_config,
-                                reset_context: state.reset_context.unwrap_or("".to_string()),
-                                animation_id: state.animation_id.unwrap_or("".to_string()),
-                                transitions: Vec::new(),
-                            };
+                    //     // Fill out a config with the state's values, if absent use default config values
+                    //     let playback_config = Config {
+                    //         mode,
+                    //         loop_animation: state.r#loop.unwrap_or(default_config.loop_animation),
+                    //         speed: state.speed.unwrap_or(default_config.speed),
+                    //         use_frame_interpolation: state
+                    //             .use_frame_interpolation
+                    //             .unwrap_or(default_config.use_frame_interpolation),
+                    //         autoplay: state.autoplay.unwrap_or(default_config.autoplay),
+                    //         segment: state.segment.unwrap_or(default_config.segment),
+                    //         background_color: state
+                    //             .background_color
+                    //             .unwrap_or(default_config.background_color),
+                    //         layout: Layout::default(),
+                    //         marker: state.marker.unwrap_or(default_config.marker),
+                    //     };
 
-                            states.push(Arc::new(RwLock::new(new_playback_state)));
-                        }
-                        parser::StateType::SyncState => {}
-                        parser::StateType::FinalState => {}
-                        parser::StateType::GlobalState => {}
+                    //     // Construct a State with the values we've gathered
+                    //     let new_playback_state = State::Playback {
+                    //         name: state.name,
+                    //         config: playback_config,
+                    //         reset_context: state.reset_context.unwrap_or("".to_string()),
+                    //         animation_id: state.animation_id.unwrap_or("".to_string()),
+                    //         transitions: Vec::new(),
+                    //     };
+
+                    //     states.push(Arc::new(RwLock::new(new_playback_state)));
+                    // }
+
+                    // match state {
+                    //     parser::StateJson::PlaybackState {
+                    //         name,
+                    //         // r#type,
+                    //         animation_id,
+                    //         r#loop,
+                    //         autoplay,
+                    //         mode,
+                    //         speed,
+                    //         marker,
+                    //         segment,
+                    //         background_color,
+                    //         use_frame_interpolation,
+                    //         entry_actions,
+                    //         exit_actions,
+                    //         reset_context,
+                    //     } => {
+                    //         let unwrapped_mode = mode.unwrap_or("Forward".to_string());
+                    //         let mode = {
+                    //             match unwrapped_mode.as_str() {
+                    //                 "Forward" => Mode::Forward,
+                    //                 "Reverse" => Mode::Reverse,
+                    //                 "Bounce" => Mode::Bounce,
+                    //                 "ReverseBounce" => Mode::ReverseBounce,
+                    //                 _ => Mode::Forward,
+                    //             }
+                    //         };
+
+                    //         let default_config = Config::default();
+
+                    //         // Fill out a config with the state's values, if absent use default config values
+                    //         let playback_config = Config {
+                    //             mode,
+                    //             loop_animation: r#loop.unwrap_or(default_config.loop_animation),
+                    //             speed: speed.unwrap_or(default_config.speed),
+                    //             use_frame_interpolation: use_frame_interpolation
+                    //                 .unwrap_or(default_config.use_frame_interpolation),
+                    //             autoplay: autoplay.unwrap_or(default_config.autoplay),
+                    //             segment: segment.unwrap_or(default_config.segment),
+                    //             background_color: background_color
+                    //                 .unwrap_or(default_config.background_color),
+                    //             layout: Layout::default(),
+                    //             marker: marker.unwrap_or(default_config.marker),
+                    //         };
+
+                    //         // Construct a State with the values we've gathered
+                    //         let new_playback_state = State::Playback {
+                    //             name: name,
+                    //             config: playback_config,
+                    //             reset_context: reset_context.unwrap_or("".to_string()),
+                    //             animation_id: animation_id.unwrap_or("".to_string()),
+                    //             transitions: Vec::new(),
+                    //         };
+
+                    //         states.push(Arc::new(RwLock::new(new_playback_state)));
+                    //     }
+                    //     parser::StateJson::SyncState {
+                    //         name,
+                    //         animation_id,
+                    //         background_color,
+                    //         use_frame_interpolation,
+                    //         entry_actions,
+                    //         exit_actions,
+                    //         reset_context,
+                    //         frame_context_key,
+                    //     } => todo!(),
+                    // }
+                    match state {
+                        parser::StateJson::PlaybackState(_) => todo!(),
+                        parser::StateJson::SyncState {
+                            name,
+                            animation_id,
+                            background_color,
+                            use_frame_interpolation,
+                            entry_actions,
+                            exit_actions,
+                            reset_context,
+                            frame_context_key,
+                        } => todo!(),
                     }
                 }
 
@@ -403,7 +482,10 @@ impl StateMachine {
 
                 Ok(new_state_machine)
             }
-            Err(error) => Err(error),
+            Err(error) => {
+                println!("{}", error);
+                Err(error)
+            }
         }
     }
 

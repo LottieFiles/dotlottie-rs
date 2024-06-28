@@ -70,18 +70,76 @@ pub struct DescriptorJson {
     pub initial: u32,
 }
 
+// #[derive(Deserialize, Debug, PartialEq)]
+// pub struct StateActionJson {
+//     pub r#type: StateActionType,
+//     pub url: Option<String>,
+//     pub target: Option<String>,
+//     pub theme_id: Option<String>,
+//     pub sound_id: Option<String>,
+//     pub message: Option<String>,
+// }
+
+// r#type: StateActionType,
 #[derive(Deserialize, Debug, PartialEq)]
-pub struct StateActionJson {
-    pub r#type: StateActionType,
-    pub url: Option<String>,
-    pub target: Option<String>,
-    pub theme_id: Option<String>,
-    pub sound_id: Option<String>,
-    pub message: Option<String>,
+#[serde(untagged)]
+pub enum StateActionJson {
+    URLAction {
+        url: String,
+        target: Option<String>,
+    },
+    ThemeAction {
+        theme_id: String,
+        target: Option<String>,
+    },
+    SoundAction {
+        sound_id: String,
+        target: Option<String>,
+    },
+    LogAction {
+        message: String,
+    },
+}
+
+// Type is the actual "type" declared in the state machine State json
+// This allows serde to determine which struct to deserialize the json into
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum StateJson {
+    PlaybackState(PlaybackState),
+    // PlaybackState {
+    //     name: String,
+    //     // r#type: StateType,
+    //     animation_id: Option<String>,
+    //     r#loop: Option<bool>,
+    //     autoplay: Option<bool>,
+    //     mode: Option<String>,
+    //     speed: Option<f32>,
+    //     marker: Option<String>,
+    //     segment: Option<Vec<f32>>,
+    //     background_color: Option<u32>,
+    //     use_frame_interpolation: Option<bool>,
+    //     entry_actions: Option<Vec<StateActionJson>>,
+    //     exit_actions: Option<Vec<StateActionJson>>,
+    //     reset_context: Option<String>,
+    // },
+    SyncState {
+        name: String,
+        // pub r#type: StateType,
+        animation_id: Option<String>,
+        background_color: Option<u32>,
+        use_frame_interpolation: Option<bool>,
+        entry_actions: Option<Vec<StateActionJson>>,
+        exit_actions: Option<Vec<StateActionJson>>,
+        reset_context: Option<String>,
+        frame_context_key: String,
+    },
+    // PlaybackState(PlaybackState),
+    // SyncState(SyncState),
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
-pub struct StateJson {
+pub struct PlaybackState {
     pub name: String,
     pub r#type: StateType,
     pub animation_id: Option<String>,
@@ -91,6 +149,19 @@ pub struct StateJson {
     pub speed: Option<f32>,
     pub marker: Option<String>,
     pub segment: Option<Vec<f32>>,
+    pub background_color: Option<u32>,
+    pub use_frame_interpolation: Option<bool>,
+    pub entry_actions: Option<Vec<StateActionJson>>,
+    pub exit_actions: Option<Vec<StateActionJson>>,
+    pub reset_context: Option<String>,
+    // pub frame_context_key: Option<String>,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub struct SyncState {
+    pub name: String,
+    pub r#type: StateType,
+    pub animation_id: Option<String>,
     pub background_color: Option<u32>,
     pub use_frame_interpolation: Option<bool>,
     pub entry_actions: Option<Vec<StateActionJson>>,
@@ -209,7 +280,36 @@ pub struct StateMachineJson {
 }
 
 pub fn state_machine_parse(json: &str) -> Result<StateMachineJson, StateMachineError> {
-    serde_json::from_str(json).map_err(|err| StateMachineError::ParsingError {
-        reason: format!("Error parsing state machine definition file: {}", err),
-    })
+    let r: Result<StateMachineJson, _> = serde_json::from_str(json);
+
+    if r.is_err() {
+        println!(
+            "Error parsing state machine definition file: {}",
+            r.err().unwrap()
+        );
+    }
+
+    // Some Deserializer.
+    let jd = &mut serde_json::Deserializer::from_str(json);
+
+    let result: Result<StateMachineJson, _> = serde_path_to_error::deserialize(jd);
+
+    match result {
+        Ok(k) => serde_json::from_str(json).map_err(|err| {
+            println!("{}", err);
+
+            StateMachineError::ParsingError {
+                reason: format!("Error parsing state machine definition file: {}", err),
+            }
+        }),
+        Err(err) => {
+            let path = err.path().to_string();
+            println!("Error path -> {}", path);
+
+            Err(StateMachineError::ParsingError {
+                reason: "failed".to_owned(),
+            })
+            // assert_eq!(path, "dependencies.serde.version");
+        }
+    }
 }

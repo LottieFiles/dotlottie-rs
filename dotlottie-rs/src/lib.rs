@@ -1,3 +1,4 @@
+mod dotlottie_loader;
 mod dotlottie_player;
 mod layout;
 mod lottie_renderer;
@@ -5,6 +6,7 @@ mod markers;
 mod state_machine;
 mod thorvg;
 
+pub use dotlottie_loader::*;
 pub use dotlottie_player::*;
 pub use layout::*;
 pub use lottie_renderer::*;

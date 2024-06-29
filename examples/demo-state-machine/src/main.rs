@@ -218,7 +218,7 @@ fn main() {
             pushed -= 1.0;
 
             let p = &mut *locked_player.write().unwrap();
-            p.tmp_set_state_machine_context("counter_0", pushed);
+            p.set_state_machine_numeric_context("counter_0", pushed);
 
             p.post_event(&string_event);
         }

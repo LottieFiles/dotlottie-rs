@@ -358,6 +358,8 @@ endef
 define CARGO_BUILD
 	if [ "$(CARGO_TARGET)" = "wasm32-unknown-emscripten" ]; then \
 		source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
+		export CC="emcc" && \
+		export CXX="em++" && \
 		RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
 		-Z build-std=std,panic_abort \
 		-Z build-std-features="panic_immediate_abort,optimize_for_size" \

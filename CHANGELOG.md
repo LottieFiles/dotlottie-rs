@@ -1,3 +1,9 @@
+## 0.1.26 (2024-07-12)
+
+### Fixes
+
+#### chore(dependencies): 🤖 upgrade thorvg@0.14.1
+
 ## 0.1.25 (2024-07-05)
 
 ### Features

@@ -108,21 +108,6 @@ impl StateMachine {
 
     pub fn set_numeric_context(&mut self, key: &str, value: f32) {
         self.numeric_context.insert(key.to_string(), value);
-
-        let s = self.current_state.clone();
-
-        // If current state is a sync state, we need to update the frame
-        if let Some(state) = s {
-            let unwrapped_state = state.try_read();
-
-            if let Ok(state) = unwrapped_state {
-                let state_value = &*state;
-
-                if let State::Sync { .. } = state_value {
-                    self.execute_current_state();
-                }
-            }
-        }
     }
 
     pub fn set_string_context(&mut self, key: &str, value: &str) {
@@ -169,9 +154,8 @@ impl StateMachine {
                             background_color,
                             use_frame_interpolation,
                             reset_context,
-                            entry_actions,
-                            exit_actions,
                             marker,
+                            ..
                         } => {
                             let unwrapped_mode = mode.unwrap_or("Forward".to_string());
                             let mode = {
@@ -496,9 +480,15 @@ impl StateMachine {
         &self.listeners
     }
 
-    pub fn execute_current_state(&mut self) -> bool {
+    // Return codes
+    // 0: Success
+    // 1: Failure
+    // 2: Play animation
+    // 3: Pause animation
+    // 4: Request and draw a new single frame of the animation (needed for sync state)
+    pub fn execute_current_state(&mut self) -> i32 {
         if self.current_state.is_none() {
-            return false;
+            return 1;
         }
 
         // Check if current_state is not None and execute the state
@@ -528,16 +518,18 @@ impl StateMachine {
             }
 
             if self.player.is_some() {
-                unwrapped_state.execute(
+                return unwrapped_state.execute(
                     self.player.as_mut().unwrap(),
                     &self.string_context,
                     &self.bool_context,
                     &self.numeric_context,
                 );
+            } else {
+                return 1;
             }
         }
 
-        true
+        0
     }
 
     fn verify_if_guards_are_met(&self, guard: &Guard) -> bool {
@@ -562,9 +554,15 @@ impl StateMachine {
         false
     }
 
-    pub fn post_event(&mut self, event: &Event) {
+    // Return codes
+    // 0: Success
+    // 1: Failure
+    // 2: Play animation
+    // 3: Pause animation
+    // 4: Request and draw a new single frame of the animation (needed for sync state)
+    pub fn post_event(&mut self, event: &Event) -> i32 {
         if self.status == StateMachineStatus::Stopped || self.status == StateMachineStatus::Paused {
-            return;
+            return 1;
         }
 
         let mut string_event = false;
@@ -587,10 +585,30 @@ impl StateMachine {
             Event::OnPointerEnter { x: _, y: _ } => pointer_enter_event = true,
             Event::OnPointerExit => pointer_exit_event = true,
             Event::OnComplete => complete_event = true,
+            Event::SetNumericContext { key, value } => {
+                self.set_numeric_context(key, *value);
+
+                let s = self.current_state.clone();
+
+                // If current state is a sync state, we need to update the frame
+                if let Some(state) = s {
+                    let unwrapped_state = state.try_read();
+
+                    if let Ok(state) = unwrapped_state {
+                        let state_value = &*state;
+
+                        if let State::Sync { .. } = state_value {
+                            return self.execute_current_state();
+                        }
+                    }
+                }
+
+                return 0;
+            }
         }
 
         if self.current_state.is_none() {
-            return;
+            return 1;
         }
 
         let curr_state = self.current_state.clone().unwrap();
@@ -758,6 +776,7 @@ impl StateMachine {
                             }
                         }
                     }
+                    Event::SetNumericContext { key: _, value: _ } => {}
                 }
             }
 
@@ -802,9 +821,12 @@ impl StateMachine {
                     observer.on_state_entered((*next_state.read().unwrap().get_name()).to_string());
                 });
 
-                self.execute_current_state();
+                println!("Returning execute state");
+                return self.execute_current_state();
             }
         }
+
+        1
     }
 
     pub fn remove_state(&mut self, state: Arc<RwLock<State>>) {

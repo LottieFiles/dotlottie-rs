@@ -105,6 +105,7 @@ interface Event {
     OnPointerEnter(f32 x, f32 y);
     OnPointerExit();
     OnComplete();
+    SetNumericContext(string key, f32 value);
 };
 
 interface DotLottiePlayer {
@@ -151,7 +152,7 @@ interface DotLottiePlayer {
     boolean load_state_machine([ByRef] string str);
     boolean start_state_machine();
     boolean stop_state_machine();
-    boolean post_event([ByRef] Event event);
+    i32 post_event([ByRef] Event event);
     boolean state_machine_subscribe(StateMachineObserver observer);
     boolean state_machine_unsubscribe(StateMachineObserver observer);
     boolean set_state_machine_numeric_context([ByRef] string key, f32 value);

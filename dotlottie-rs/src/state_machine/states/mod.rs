@@ -15,7 +15,7 @@ pub trait StateTrait {
         string_context: &HashMap<String, String>,
         bool_context: &HashMap<String, bool>,
         numeric_context: &HashMap<String, f32>,
-    );
+    ) -> i32;
     fn get_reset_context_key(&self) -> &String;
     fn get_animation_id(&self) -> &String;
     fn get_transitions(&self) -> &Vec<Arc<RwLock<Transition>>>;
@@ -62,13 +62,19 @@ impl State {
 }
 
 impl StateTrait for State {
+    // Return codes
+    // 0: Success
+    // 1: Failure
+    // 2: Play animation
+    // 3: Pause animation
+    // 4: Request and draw a new single frame of the animation (needed for sync state)
     fn execute(
         &self,
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
         _: &HashMap<String, String>,
         _: &HashMap<String, bool>,
         numeric_context: &HashMap<String, f32>,
-    ) {
+    ) -> i32 {
         match self {
             State::Playback {
                 config,
@@ -90,7 +96,15 @@ impl StateTrait for State {
 
                     if autoplay {
                         player_read.play();
+
+                        return 2;
+                    } else {
+                        player_read.pause();
+
+                        return 3;
                     }
+                } else {
+                    return 1;
                 }
             }
             State::Sync {
@@ -114,13 +128,15 @@ impl StateTrait for State {
                         let ret = player_read.set_frame(*frame_value);
 
                         if ret {
-                            player_read.request_frame();
-                            player_read.render();
+                            return 4;
                         }
+                        println!(">> Set frame failed");
                     }
                 }
             }
         }
+
+        return 1;
     }
 
     fn get_reset_context_key(&self) -> &String {

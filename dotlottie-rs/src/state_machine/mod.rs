@@ -9,8 +9,6 @@ pub mod parser;
 pub mod states;
 pub mod transitions;
 
-use parser::PlaybackState;
-
 use crate::parser::StringNumberBool;
 use crate::state_machine::listeners::Listener;
 use crate::state_machine::states::StateTrait;
@@ -81,12 +79,7 @@ impl StateMachine {
             observers: RwLock::new(Vec::new()),
         };
 
-        let sm = state_machine.create_state_machine(state_machine_definition, &player);
-
-        match sm {
-            Ok(sm) => Ok(sm),
-            Err(err) => Err(err),
-        }
+        state_machine.create_state_machine(state_machine_definition, &player)
     }
 
     pub fn subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
@@ -149,139 +142,95 @@ impl StateMachine {
             Ok(parsed_state_machine) => {
                 // Loop through result json states and create objects for each
                 for state in parsed_state_machine.states {
-                    // if state.state == parser::State::SyncState {
-                    //     let s = state as parser::SyncState;
-                    //     // let playbackState = state.state as parser::PlaybackState;
-
-                    //     let unwrapped_mode = state.state.mode.unwrap_or("Forward".to_string());
-                    //     let mode = {
-                    //         match unwrapped_mode.as_str() {
-                    //             "Forward" => Mode::Forward,
-                    //             "Reverse" => Mode::Reverse,
-                    //             "Bounce" => Mode::Bounce,
-                    //             "ReverseBounce" => Mode::ReverseBounce,
-                    //             _ => Mode::Forward,
-                    //         }
-                    //     };
-
-                    //     let default_config = Config::default();
-
-                    //     // Fill out a config with the state's values, if absent use default config values
-                    //     let playback_config = Config {
-                    //         mode,
-                    //         loop_animation: state.r#loop.unwrap_or(default_config.loop_animation),
-                    //         speed: state.speed.unwrap_or(default_config.speed),
-                    //         use_frame_interpolation: state
-                    //             .use_frame_interpolation
-                    //             .unwrap_or(default_config.use_frame_interpolation),
-                    //         autoplay: state.autoplay.unwrap_or(default_config.autoplay),
-                    //         segment: state.segment.unwrap_or(default_config.segment),
-                    //         background_color: state
-                    //             .background_color
-                    //             .unwrap_or(default_config.background_color),
-                    //         layout: Layout::default(),
-                    //         marker: state.marker.unwrap_or(default_config.marker),
-                    //     };
-
-                    //     // Construct a State with the values we've gathered
-                    //     let new_playback_state = State::Playback {
-                    //         name: state.name,
-                    //         config: playback_config,
-                    //         reset_context: state.reset_context.unwrap_or("".to_string()),
-                    //         animation_id: state.animation_id.unwrap_or("".to_string()),
-                    //         transitions: Vec::new(),
-                    //     };
-
-                    //     states.push(Arc::new(RwLock::new(new_playback_state)));
-                    // }
-
-                    // match state {
-                    //     parser::StateJson::PlaybackState {
-                    //         name,
-                    //         // r#type,
-                    //         animation_id,
-                    //         r#loop,
-                    //         autoplay,
-                    //         mode,
-                    //         speed,
-                    //         marker,
-                    //         segment,
-                    //         background_color,
-                    //         use_frame_interpolation,
-                    //         entry_actions,
-                    //         exit_actions,
-                    //         reset_context,
-                    //     } => {
-                    //         let unwrapped_mode = mode.unwrap_or("Forward".to_string());
-                    //         let mode = {
-                    //             match unwrapped_mode.as_str() {
-                    //                 "Forward" => Mode::Forward,
-                    //                 "Reverse" => Mode::Reverse,
-                    //                 "Bounce" => Mode::Bounce,
-                    //                 "ReverseBounce" => Mode::ReverseBounce,
-                    //                 _ => Mode::Forward,
-                    //             }
-                    //         };
-
-                    //         let default_config = Config::default();
-
-                    //         // Fill out a config with the state's values, if absent use default config values
-                    //         let playback_config = Config {
-                    //             mode,
-                    //             loop_animation: r#loop.unwrap_or(default_config.loop_animation),
-                    //             speed: speed.unwrap_or(default_config.speed),
-                    //             use_frame_interpolation: use_frame_interpolation
-                    //                 .unwrap_or(default_config.use_frame_interpolation),
-                    //             autoplay: autoplay.unwrap_or(default_config.autoplay),
-                    //             segment: segment.unwrap_or(default_config.segment),
-                    //             background_color: background_color
-                    //                 .unwrap_or(default_config.background_color),
-                    //             layout: Layout::default(),
-                    //             marker: marker.unwrap_or(default_config.marker),
-                    //         };
-
-                    //         // Construct a State with the values we've gathered
-                    //         let new_playback_state = State::Playback {
-                    //             name: name,
-                    //             config: playback_config,
-                    //             reset_context: reset_context.unwrap_or("".to_string()),
-                    //             animation_id: animation_id.unwrap_or("".to_string()),
-                    //             transitions: Vec::new(),
-                    //         };
-
-                    //         states.push(Arc::new(RwLock::new(new_playback_state)));
-                    //     }
-                    //     parser::StateJson::SyncState {
-                    //         name,
-                    //         animation_id,
-                    //         background_color,
-                    //         use_frame_interpolation,
-                    //         entry_actions,
-                    //         exit_actions,
-                    //         reset_context,
-                    //         frame_context_key,
-                    //     } => todo!(),
-                    // }
                     match state {
-                        parser::StateJson::PlaybackState(_) => todo!(),
+                        parser::StateJson::PlaybackState {
+                            name,
+                            animation_id,
+                            r#loop,
+                            autoplay,
+                            mode,
+                            speed,
+                            segment,
+                            background_color,
+                            use_frame_interpolation,
+                            reset_context,
+                            entry_actions,
+                            exit_actions,
+                            marker,
+                        } => {
+                            let unwrapped_mode = mode.unwrap_or("Forward".to_string());
+                            let mode = {
+                                match unwrapped_mode.as_str() {
+                                    "Forward" => Mode::Forward,
+                                    "Reverse" => Mode::Reverse,
+                                    "Bounce" => Mode::Bounce,
+                                    "ReverseBounce" => Mode::ReverseBounce,
+                                    _ => Mode::Forward,
+                                }
+                            };
+
+                            let default_config = Config::default();
+
+                            // Fill out a config with the state's values, if absent use default config values
+                            let playback_config = Config {
+                                mode,
+                                loop_animation: r#loop.unwrap_or(default_config.loop_animation),
+                                speed: speed.unwrap_or(default_config.speed),
+                                use_frame_interpolation: use_frame_interpolation
+                                    .unwrap_or(default_config.use_frame_interpolation),
+                                autoplay: autoplay.unwrap_or(default_config.autoplay),
+                                segment: segment.unwrap_or(default_config.segment),
+                                background_color: background_color
+                                    .unwrap_or(default_config.background_color),
+                                layout: Layout::default(),
+                                marker: marker.unwrap_or(default_config.marker),
+                            };
+
+                            // Construct a State with the values we've gathered
+                            let new_playback_state = State::Playback {
+                                name,
+                                config: playback_config,
+                                reset_context: reset_context.unwrap_or("".to_string()),
+                                animation_id: animation_id.unwrap_or("".to_string()),
+                                transitions: Vec::new(),
+                            };
+
+                            states.push(Arc::new(RwLock::new(new_playback_state)));
+                        }
                         parser::StateJson::SyncState {
                             name,
                             animation_id,
                             background_color,
                             use_frame_interpolation,
-                            entry_actions,
-                            exit_actions,
                             reset_context,
                             frame_context_key,
-                        } => todo!(),
+                            // r#type,
+                            entry_actions,
+                            exit_actions,
+                        } => {
+                            println!("Matched SyncState");
+                        }
                     }
                 }
 
                 // Loop through result transitions and create objects for each
                 for transition in parsed_state_machine.transitions {
-                    match transition.r#type {
-                        parser::TransitionJsonType::Transition => {
-                            let target_state_index = transition.to_state;
+                    match transition {
+                        parser::TransitionJson::Transition {
+                            from_state,
+                            to_state,
+                            guards,
+                            numeric_event,
+                            string_event,
+                            boolean_event,
+                            on_complete_event,
+                            on_pointer_down_event,
+                            on_pointer_up_event,
+                            on_pointer_enter_event,
+                            on_pointer_exit_event,
+                            on_pointer_move_event,
+                        } => {
+                            let target_state_index = to_state;
                             let mut guards_for_transition: Vec<Guard> = Vec::new();
 
                             // Use the provided index to get the state in the vec we've built
@@ -293,8 +242,8 @@ impl StateMachine {
                             }
 
                             // Loop through transition guards and create equivalent Guard objects
-                            if transition.guards.is_some() {
-                                let guards = transition.guards.unwrap();
+                            if guards.is_some() {
+                                let guards = guards.unwrap();
 
                                 for guard in guards {
                                     let new_guard = Guard {
@@ -312,52 +261,52 @@ impl StateMachine {
                             let mut new_event: Option<Event> = None;
 
                             // Capture which event this transition has
-                            if transition.numeric_event.is_some() {
-                                let numeric_event = transition.numeric_event.unwrap();
+                            if numeric_event.is_some() {
+                                let numeric_event = numeric_event.unwrap();
                                 new_event = Some(Event::Numeric {
                                     value: numeric_event.value,
                                 });
-                                state_to_attach_to = transition.from_state as i32;
-                            } else if transition.string_event.is_some() {
-                                let string_event = transition.string_event.unwrap();
+                                state_to_attach_to = from_state as i32;
+                            } else if string_event.is_some() {
+                                let string_event = string_event.unwrap();
                                 new_event = Some(Event::String {
                                     value: string_event.value,
                                 });
-                                state_to_attach_to = transition.from_state as i32;
-                            } else if transition.boolean_event.is_some() {
-                                let boolean_event = transition.boolean_event.unwrap();
+                                state_to_attach_to = from_state as i32;
+                            } else if boolean_event.is_some() {
+                                let boolean_event = boolean_event.unwrap();
                                 new_event = Some(Event::Bool {
                                     value: boolean_event.value,
                                 });
-                                state_to_attach_to = transition.from_state as i32;
-                            } else if transition.on_complete_event.is_some() {
+                                state_to_attach_to = from_state as i32;
+                            } else if on_complete_event.is_some() {
                                 new_event = Some(Event::OnComplete);
-                                state_to_attach_to = transition.from_state as i32;
-                            } else if transition.on_pointer_down_event.is_some() {
+                                state_to_attach_to = from_state as i32;
+                            } else if on_pointer_down_event.is_some() {
                                 // Default to 0.0 0.0 coordinates
                                 // How to manage targets?
-                                // let pointer_down_event = transition.on_pointer_down_event.unwrap();
+                                // let pointer_down_event = on_pointer_down_event.unwrap();
                                 // pointer_down_event.target;
                                 new_event = Some(Event::OnPointerDown { x: 0.0, y: 0.0 });
-                                state_to_attach_to = transition.from_state as i32;
-                            } else if transition.on_pointer_up_event.is_some() {
+                                state_to_attach_to = from_state as i32;
+                            } else if on_pointer_up_event.is_some() {
                                 // Default to 0.0 0.0 coordinates
                                 // How to manage targets?
                                 new_event = Some(Event::OnPointerUp { x: 0.0, y: 0.0 });
-                                state_to_attach_to = transition.from_state as i32;
-                            } else if transition.on_pointer_enter_event.is_some() {
+                                state_to_attach_to = from_state as i32;
+                            } else if on_pointer_enter_event.is_some() {
                                 // Default to 0.0 0.0 coordinates
                                 // How to manage targets?
                                 new_event = Some(Event::OnPointerEnter { x: 0.0, y: 0.0 });
-                                state_to_attach_to = transition.from_state as i32;
-                            } else if transition.on_pointer_exit_event.is_some() {
+                                state_to_attach_to = from_state as i32;
+                            } else if on_pointer_exit_event.is_some() {
                                 new_event = Some(Event::OnPointerExit {});
-                                state_to_attach_to = transition.from_state as i32;
-                            } else if transition.on_pointer_move_event.is_some() {
+                                state_to_attach_to = from_state as i32;
+                            } else if on_pointer_move_event.is_some() {
                                 // Default to 0.0 0.0 coordinates
                                 // How to manage targets?
                                 new_event = Some(Event::OnPointerMove { x: 0.0, y: 0.0 });
-                                state_to_attach_to = transition.from_state as i32;
+                                state_to_attach_to = from_state as i32;
                             }
                             if let Some(event) = new_event {
                                 let new_transition = Transition::Transition {
@@ -368,9 +317,13 @@ impl StateMachine {
 
                                 // Since the target is valid and transition created, we attach it to the state
                                 if state_to_attach_to < states.len() as i32 {
-                                    states[state_to_attach_to as usize]
-                                        .write()
-                                        .unwrap()
+                                    let try_write_state =
+                                        states[state_to_attach_to as usize].try_write();
+
+                                    try_write_state
+                                        .map_err(|_| StateMachineError::ParsingError {
+                                            reason: "Failed to write to state".to_string(),
+                                        })?
                                         .add_transition(new_transition);
                                 }
                             }
@@ -482,10 +435,7 @@ impl StateMachine {
 
                 Ok(new_state_machine)
             }
-            Err(error) => {
-                println!("{}", error);
-                Err(error)
-            }
+            Err(error) => Err(error),
         }
     }
 

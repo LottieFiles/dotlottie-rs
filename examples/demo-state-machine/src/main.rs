@@ -1,11 +1,11 @@
 use dotlottie_player_core::events::Event;
-use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Observer, StateMachineObserver};
+use dotlottie_player_core::{Config, DotLottiePlayer, Observer, StateMachineObserver};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::{env, path, time::Instant};
+use std::{env, time::Instant};
 use sysinfo::System;
 
 pub const WIDTH: usize = 500;
@@ -183,21 +183,14 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    let pigeon_fsm = File::open("src/pigeon_fsm.json").expect("no file found");
-    // read in to string
-    let mut pigeon_fsm_buffer = String::new();
-    pigeon_fsm
-        .take(1000)
-        .read_to_string(&mut pigeon_fsm_buffer)
-        .expect("buffer overflow");
+    let message: String = fs::read_to_string("src/pigeon_fsm.json").unwrap();
 
     // lottie_player.load_state_machine("pigeon_fsm");
-    let r = lottie_player.load_state_machine_data(&pigeon_fsm_buffer);
+    let r = lottie_player.load_state_machine_data(&message);
 
-    println!("{}", r);
+    println!("Load state machine data -> {}", r);
 
     lottie_player.start_state_machine();
-    lottie_player.play();
 
     lottie_player.state_machine_subscribe(observer3.clone());
 

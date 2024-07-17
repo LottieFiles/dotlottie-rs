@@ -5,45 +5,27 @@
     },
     "states": [
         {
-            "type": "PlaybackState",
             "name": "pigeon",
-            "loop": false,
+            "type": "PlaybackState",
             "autoplay": true,
-            "mode": "forward",
+            "loop": true,
             "speed": 1,
-            "marker": "bird",
-            "segment": [],
-            "use_frame_interpolation": true,
-            "entry_actions": [
-                {
-                    "type": "LogAction",
-                    "message": "Howdy partner!"
-                }
-            ],
-            "reset_context": "*"
+            "marker": "bird"
         },
         {
-            "type": "PlaybackState",
             "name": "explosion",
-            "loop": false,
+            "type": "PlaybackState",
             "autoplay": true,
-            "mode": "forward",
-            "speed": 0.5,
-            "marker": "explosion",
-            "segment": [],
-            "use_frame_interpolation": true,
-            "reset_context": "*"
+            "loop": false,
+            "speed": 1,
+            "marker": "explosion"
         },
         {
             "name": "feather",
             "type": "PlaybackState",
-            "loop": false,
             "autoplay": true,
-            "mode": "forward",
-            "speed": 1,
-            "marker": "feather",
-            "segment": [],
-            "use_frame_interpolation": true
+            "loop": false,
+            "marker": "feather"
         }
     ],
     "transitions": [
@@ -51,7 +33,7 @@
             "type": "Transition",
             "from_state": 0,
             "to_state": 1,
-            "on_complete_event": {}
+            "on_pointer_down_event": {}
         },
         {
             "type": "Transition",
@@ -71,46 +53,5 @@
             "type": "PointerDown"
         }
     ],
-    "context_variables": [
-        {
-            "type": "Numeric",
-            "key": "counter_0",
-            "value": 1
-        },
-        {
-            "type": "String",
-            "key": "counter_1",
-            "value": "COUNTER HAHAHAH"
-        },
-        {
-            "type": "Boolean",
-            "key": "counter_2",
-            "value": false
-        },
-        {
-            "type": "Numeric",
-            "key": "counter_2",
-            "value": "2"
-        },
-        {
-            "type": "Numeric",
-            "key": "counter_3",
-            "value": "3"
-        },
-        {
-            "type": "Numeric",
-            "key": "counter_4",
-            "value": "4"
-        },
-        {
-            "type": "Numeric",
-            "key": "counter_5",
-            "value": "5"
-        },
-        {
-            "type": "Numeric",
-            "key": "counter_6",
-            "value": "6"
-        }
-    ]
+    "context_variables": []
 }

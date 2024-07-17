@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     rc::Rc,
     sync::{Arc, RwLock},
 };
@@ -8,7 +9,13 @@ use crate::{Config, DotLottiePlayerContainer};
 use super::transitions::Transition;
 
 pub trait StateTrait {
-    fn execute(&self, player: &Rc<RwLock<DotLottiePlayerContainer>>);
+    fn execute(
+        &self,
+        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        string_context: &HashMap<String, String>,
+        bool_context: &HashMap<String, bool>,
+        numeric_context: &HashMap<String, f32>,
+    );
     fn get_reset_context_key(&self) -> &String;
     fn get_animation_id(&self) -> &String;
     fn get_transitions(&self) -> &Vec<Arc<RwLock<Transition>>>;
@@ -36,6 +43,7 @@ pub enum State {
     },
     Sync {
         name: String,
+        config: Config,
         frame_context_key: String,
         reset_context: String,
         animation_id: String,
@@ -53,7 +61,13 @@ impl State {
 }
 
 impl StateTrait for State {
-    fn execute(&self, player: &Rc<RwLock<DotLottiePlayerContainer>>) {
+    fn execute(
+        &self,
+        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        _: &HashMap<String, String>,
+        _: &HashMap<String, bool>,
+        numeric_context: &HashMap<String, f32>,
+    ) {
         match self {
             State::Playback {
                 config,
@@ -78,7 +92,33 @@ impl StateTrait for State {
                     }
                 }
             }
-            State::Sync { .. } => {}
+            State::Sync {
+                config,
+                frame_context_key,
+                animation_id,
+                ..
+            } => {
+                if let Ok(player_read) = player.try_read() {
+                    let size = player_read.size();
+                    let frame = numeric_context.get(frame_context_key);
+
+                    // Tell player to load new animation
+                    if !animation_id.is_empty() {
+                        player_read.load_animation(animation_id, size.0, size.1);
+                    }
+
+                    player_read.set_config(config.clone());
+
+                    if let Some(frame_value) = frame {
+                        let ret = player_read.set_frame(*frame_value);
+
+                        if ret {
+                            player_read.request_frame();
+                            player_read.render();
+                        }
+                    }
+                }
+            }
         }
     }
 

@@ -108,6 +108,24 @@ impl StateMachine {
 
     pub fn set_numeric_context(&mut self, key: &str, value: f32) {
         self.numeric_context.insert(key.to_string(), value);
+
+        let s = self.current_state.clone();
+
+        // If current state is a sync state, we need to update the frame
+        if let Some(state) = s {
+            let unwrapped_state = state.try_read();
+
+            match unwrapped_state {
+                Ok(state) => {
+                    let state_value = &*state;
+
+                    if let State::Sync { .. } = state_value {
+                        self.execute_current_state();
+                    }
+                }
+                Err(_) => {}
+            }
+        }
     }
 
     pub fn set_string_context(&mut self, key: &str, value: &str) {
@@ -154,9 +172,8 @@ impl StateMachine {
                             background_color,
                             use_frame_interpolation,
                             reset_context,
-                            entry_actions,
-                            exit_actions,
                             marker,
+                            ..
                         } => {
                             let unwrapped_mode = mode.unwrap_or("Forward".to_string());
                             let mode = {
@@ -201,14 +218,27 @@ impl StateMachine {
                             name,
                             animation_id,
                             background_color,
-                            use_frame_interpolation,
                             reset_context,
                             frame_context_key,
-                            // r#type,
-                            entry_actions,
-                            exit_actions,
+                            segment,
+                            ..
                         } => {
-                            println!("Matched SyncState");
+                            let mut config = Config::default();
+
+                            config.background_color =
+                                background_color.unwrap_or(config.background_color);
+                            config.segment = segment.unwrap_or(config.segment);
+
+                            let new_sync_state = State::Sync {
+                                name,
+                                frame_context_key,
+                                reset_context: reset_context.unwrap_or("".to_string()),
+                                animation_id: animation_id.unwrap_or("".to_string()),
+                                transitions: Vec::new(),
+                                config,
+                            };
+
+                            states.push(Arc::new(RwLock::new(new_sync_state)));
                         }
                     }
                 }
@@ -500,7 +530,12 @@ impl StateMachine {
             }
 
             if self.player.is_some() {
-                unwrapped_state.execute(self.player.as_mut().unwrap());
+                unwrapped_state.execute(
+                    self.player.as_mut().unwrap(),
+                    &self.string_context,
+                    &self.bool_context,
+                    &self.numeric_context,
+                );
             }
         }
 

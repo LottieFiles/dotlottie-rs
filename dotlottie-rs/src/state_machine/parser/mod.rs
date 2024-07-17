@@ -57,14 +57,6 @@ pub enum TransitionGuardConditionType {
     NotEqual,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
-pub enum StateType {
-    PlaybackState,
-    FinalState,
-    SyncState,
-    GlobalState,
-}
-
 #[derive(Deserialize, Debug)]
 pub struct DescriptorJson {
     pub id: String,
@@ -114,13 +106,13 @@ pub enum StateJson {
     },
     SyncState {
         name: String,
+        frame_context_key: String,
         animation_id: Option<String>,
         background_color: Option<u32>,
-        use_frame_interpolation: Option<bool>,
+        segment: Option<Vec<f32>>,
         entry_actions: Option<Vec<StateActionJson>>,
         exit_actions: Option<Vec<StateActionJson>>,
         reset_context: Option<String>,
-        frame_context_key: String,
     },
 }
 
@@ -203,6 +195,7 @@ pub struct ListenerJson {
     pub context_key: Option<String>,
 }
 
+// todo move to enum and add #[serde(tag = "type")]
 #[derive(Deserialize, Debug)]
 pub struct ContextJson {
     pub r#type: ContextJsonType,

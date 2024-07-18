@@ -42,14 +42,11 @@ check_for rustup "https://rustup.rs" "\
      1. Choose the ${GREEN}default${NC} installation option
      2. Either logout & login after the installation, or execute: ${YELLOW}source \"\$HOME/.cargo/env\""
 
-echo "Installing v1.4.1 of Meson..."
-curl https://raw.githubusercontent.com/Homebrew/homebrew-core/2f89922685ce82af272fe045178f63bfb3bc7289/Formula/m/meson.rb > meson.rb
-brew install meson.rb
-
 echo "Installing brew package(s) ..."
 brew install android-ndk \
   cmake \
   nasm \
+  meson \
   ninja \
   pkg-config \
   ktlint \

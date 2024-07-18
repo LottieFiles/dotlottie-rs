@@ -15,21 +15,8 @@ mod tests {
 
     #[test]
     pub fn load_multiple_states() {
-        // let file_path = format!(
-        //     "{}{}",
-        //     env!("CARGO_MANIFEST_DIR"),
-        //     "/tests/fixtures/exploding_pigeon.lottie"
-        // );
-        // let mut loaded_file = File::open(file_path.clone()).expect("no file found");
-        // let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
-
-        // let mut buffer = vec![0; meta_data.len() as usize];
-        // loaded_file.read(&mut buffer).expect("buffer overflow");
-
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/exploding_pigeon.lottie"), 100, 100);
-
-        // player.load_dotlottie_data(&buffer, 100, 100);
 
         player.load_state_machine("pigeon_fsm");
 
@@ -436,5 +423,87 @@ mod tests {
             first_listener_unwrapped.get_context_key() == Some("counter_0".to_string()),
             "Listener 0 is not loaded"
         );
+    }
+
+    #[test]
+    fn state_machine_sync_state_test() {
+        let sync_state = include_str!("fixtures/sync_state_machine.json");
+
+        let player = DotLottiePlayer::new(Config::default());
+
+        player.load_dotlottie_data(include_bytes!("fixtures/exploding_pigeon.lottie"), 100, 100);
+
+        player.load_state_machine_data(sync_state);
+        player.start_state_machine();
+
+        match player.get_state_machine().read().unwrap().as_ref() {
+            Some(sm) => {
+                assert_eq!(sm.states.len(), 1);
+            }
+            None => {
+                panic!("State machine is not loaded");
+            }
+        }
+
+        match player.get_state_machine().read().unwrap().as_ref() {
+            Some(sm) => {
+                let cs = sm.get_current_state();
+
+                // Test that the correct state and type is loaded
+                match cs {
+                    Some(sm) => match sm.try_read() {
+                        Ok(state) => {
+                            assert_eq!(state.get_name(), "pigeon");
+                            assert_eq!(state.get_type(), "SyncState");
+                        }
+                        Err(_) => panic!("State is not readable"),
+                    },
+                    None => panic!("Failed to get current state"),
+                }
+
+                // Test the initial context variable is correct
+                let context = sm.get_numeric_context("sync_key");
+                assert_eq!(context, Some(30.0));
+
+                // Test that the SyncState set the current frame to the initial context value
+                assert_eq!(player.current_frame(), 30.0);
+            }
+            None => {
+                panic!("State machine is not loaded");
+            }
+        }
+
+        player.set_state_machine_numeric_context("sync_key", 50.0);
+
+        match player.get_state_machine().read().unwrap().as_ref() {
+            Some(sm) => {
+                // Test the initial context variable is correct
+                let context = sm.get_numeric_context("sync_key");
+                assert_eq!(context, Some(50.0));
+
+                // Test that the SyncState set the current frame to the initial context value
+                assert_eq!(player.current_frame(), 50.0);
+            }
+            None => {
+                panic!("State machine is not loaded");
+            }
+        }
+
+        // Test that the segment boundry is repected
+        player.set_state_machine_numeric_context("sync_key", 5.0);
+
+        match player.get_state_machine().read().unwrap().as_ref() {
+            Some(sm) => {
+                // Test the initial context variable is correct
+                let context = sm.get_numeric_context("sync_key");
+                assert_eq!(context, Some(5.0));
+
+                // Test that the lower boundry is respected, should stay at previous value
+                assert_eq!(player.current_frame(), 50.0);
+            }
+            None => {
+                panic!("State machine is not loaded");
+            }
+        }
     }
 }

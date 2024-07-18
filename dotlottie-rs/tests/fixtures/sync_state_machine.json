@@ -1,0 +1,25 @@
+{
+    "descriptor": {
+        "id": "sync",
+        "initial": 0
+    },
+    "states": [
+        {
+            "name": "pigeon",
+            "type": "SyncState",
+            "frame_context_key": "sync_key",
+            "segment": [10,50]
+        }
+    ],
+    "transitions": [
+    ],
+    "listeners": [
+    ],
+    "context_variables": [
+        {
+            "key": "sync_key",
+            "type": "Numeric",
+            "value": 30
+        }
+    ]
+}

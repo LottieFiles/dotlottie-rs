@@ -22,6 +22,7 @@ pub trait StateTrait {
     fn add_transition(&mut self, transition: Transition);
     fn get_config(&self) -> Option<&Config>;
     fn get_name(&self) -> String;
+    fn get_type(&self) -> String;
     // fn set_reset_context(&mut self, reset_context: bool);
 
     // fn add_entry_action(&mut self, action: String);
@@ -165,6 +166,13 @@ impl StateTrait for State {
         match self {
             State::Playback { name, .. } => name.to_string(),
             State::Sync { name, .. } => name.to_string(),
+        }
+    }
+
+    fn get_type(&self) -> String {
+        match self {
+            State::Playback { .. } => "PlaybackState".to_string(),
+            State::Sync { .. } => "SyncState".to_string(),
         }
     }
 

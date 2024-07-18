@@ -115,15 +115,12 @@ impl StateMachine {
         if let Some(state) = s {
             let unwrapped_state = state.try_read();
 
-            match unwrapped_state {
-                Ok(state) => {
-                    let state_value = &*state;
+            if let Ok(state) = unwrapped_state {
+                let state_value = &*state;
 
-                    if let State::Sync { .. } = state_value {
-                        self.execute_current_state();
-                    }
+                if let State::Sync { .. } = state_value {
+                    self.execute_current_state();
                 }
-                Err(_) => {}
             }
         }
     }

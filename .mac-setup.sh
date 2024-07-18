@@ -46,7 +46,7 @@ echo "Installing brew package(s) ..."
 brew install android-ndk \
   cmake \
   nasm \
-  meson \
+  meson@1.4.1 \
   ninja \
   pkg-config \
   ktlint \

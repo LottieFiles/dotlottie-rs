@@ -200,6 +200,8 @@ impl LottieRenderer {
         self.buffer
             .resize((self.width * self.height * 4) as usize, 0);
 
+        self.thorvg_canvas.sync()?;
+
         self.thorvg_canvas
             .set_target(
                 &mut self.buffer,

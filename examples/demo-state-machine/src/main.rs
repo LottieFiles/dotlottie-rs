@@ -1,11 +1,11 @@
 use dotlottie_player_core::events::Event;
-use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Observer, StateMachineObserver};
+use dotlottie_player_core::{Config, DotLottiePlayer, Observer, StateMachineObserver};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::{env, path, time::Instant};
+use std::{env, time::Instant};
 use sysinfo::System;
 
 pub const WIDTH: usize = 500;
@@ -183,9 +183,14 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    lottie_player.load_state_machine("pigeon_fsm");
+    let message: String = fs::read_to_string("src/pigeon_fsm.json").unwrap();
+
+    // lottie_player.load_state_machine("pigeon_fsm");
+    let r = lottie_player.load_state_machine_data(&message);
+
+    println!("Load state machine data -> {}", r);
+
     lottie_player.start_state_machine();
-    lottie_player.play();
 
     lottie_player.state_machine_subscribe(observer3.clone());
 
@@ -208,19 +213,21 @@ fn main() {
             p.post_event(&pointer_event);
         }
 
-        if window.is_key_pressed(Key::P, KeyRepeat::No) {
-            let string_event = Event::String {
-                value: "explosion".to_string(),
-            };
+        if window.is_key_pressed(Key::P, KeyRepeat::Yes) {
+            // let string_event = Event::String {
+            //     value: "explosion".to_string(),
+            // };
 
-            pushed -= 1.0;
+            // p.post_event(&string_event);
 
-            pushed -= 1.0;
+            if pushed <= 9.0 {
+                pushed = 109.0;
+            } else {
+                pushed -= 2.0;
+            }
 
             let p = &mut *locked_player.write().unwrap();
-            p.tmp_set_state_machine_context("counter_0", pushed);
-
-            p.post_event(&string_event);
+            p.set_state_machine_numeric_context("sync_key", pushed);
         }
 
         if cpu_memory_monitor_timer.elapsed().as_secs() >= 1 {

@@ -2,7 +2,7 @@ use instant::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
-use crate::errors::StateMachineError::{self, ParsingError};
+use crate::errors::StateMachineError::ParsingError;
 use crate::listeners::ListenerTrait;
 use crate::state_machine::events::Event;
 use crate::{
@@ -1808,12 +1808,6 @@ impl DotLottiePlayer {
                     return false;
                 }
             }
-        } else {
-            let _ = state_machine.inspect_err(|e| match e {
-                StateMachineError::ParsingError { reason } => {
-                    eprintln!("Failed to parse state machine: {}", reason);
-                }
-            });
         }
 
         false

@@ -213,11 +213,7 @@ pub struct StateMachineJson {
 }
 
 pub fn state_machine_parse(json: &str) -> Result<StateMachineJson, StateMachineError> {
-    // let result: Result<StateMachineJson, _> = serde_json::from_str(json);
-
-    // Some Deserializer.
-    let jd = &mut serde_json::Deserializer::from_str(json);
-    let result: Result<StateMachineJson, _> = serde_path_to_error::deserialize(jd);
+    let result: Result<StateMachineJson, _> = serde_json::from_str(json);
 
     match result {
         Ok(k) => Ok(k),

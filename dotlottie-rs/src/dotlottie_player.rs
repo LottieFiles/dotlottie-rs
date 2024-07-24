@@ -1629,7 +1629,6 @@ impl DotLottiePlayer {
                 }
             }
             "SetNumericContext" => {
-                let event = Event::SetNumericContext { key: (), value: () };
                 let values: Vec<&str> = value.split_whitespace().collect();
 
                 if values.len() != 2 {
@@ -1639,11 +1638,15 @@ impl DotLottiePlayer {
                 let key = values[0];
                 let numeric_value = values[1].parse::<f32>().map_err(|_| (false)).unwrap();
 
+                let event = Event::SetNumericContext {
+                    key: key.to_string(),
+                    value: numeric_value,
+                };
+
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
                             return sm.post_event(&event);
-                            x
                         } else {
                             return 1;
                         }
@@ -1653,8 +1656,6 @@ impl DotLottiePlayer {
             }
             _ => return 1,
         }
-
-        return 1;
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {

@@ -135,11 +135,6 @@ fn main() {
         panic!("{}", e);
     });
 
-    let base_path = env::var("CARGO_MANIFEST_DIR").unwrap();
-
-    // let mut path = path::PathBuf::from(base_path);
-    // path.push("src/markers.json");
-
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         loop_animation: true,
         background_color: 0xffffffff,
@@ -232,15 +227,18 @@ fn main() {
                 pushed -= 2.0;
             }
 
-            let numeric_context_event = Event::SetNumericContext {
-                key: "sync_key".to_string(),
-                value: pushed,
-            };
+            // let numeric_context_event = Event::SetNumericContext {
+            //     key: "sync_key".to_string(),
+            //     value: pushed,
+            // };
 
             let p = &mut *locked_player.write().unwrap();
             let mut r = 0;
 
-            r = p.post_event(&numeric_context_event);
+            // r = p.post_event(&numeric_context_event);
+
+            let format = format!("SetNumericContext: sync_key {}", pushed);
+            r = p.post_serialized_event(format.to_string());
 
             println!("POST EVENT {}", r);
             println!("is_playing: {}", p.is_playing());

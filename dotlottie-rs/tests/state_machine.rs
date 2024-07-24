@@ -473,7 +473,10 @@ mod tests {
             }
         }
 
-        player.set_state_machine_numeric_context("sync_key", 50.0);
+        player.post_event(&Event::SetNumericContext {
+            key: "sync_key".to_string(),
+            value: 50.0,
+        });
 
         match player.get_state_machine().read().unwrap().as_ref() {
             Some(sm) => {

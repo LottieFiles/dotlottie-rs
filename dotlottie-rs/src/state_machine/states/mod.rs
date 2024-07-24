@@ -136,7 +136,7 @@ impl StateTrait for State {
             }
         }
 
-        return 1;
+        1
     }
 
     fn get_reset_context_key(&self) -> &String {

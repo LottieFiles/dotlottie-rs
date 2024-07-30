@@ -1,3 +1,9 @@
+## 0.1.28 (2024-07-30)
+
+### Fixes
+
+#### post_event return codes (#207)
+
 ## 0.1.27 (2024-07-29)
 
 ### Features

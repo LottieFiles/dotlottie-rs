@@ -5,59 +5,12 @@
     },
     "states": [
         {
-            "name": "pigeon",
-            "type": "PlaybackState",
-            "autoplay": true,
-            "loop": true,
-            "speed": 1,
-            "marker": "bird"
-        },
-        {
-            "name": "explosion",
-            "type": "PlaybackState",
-            "autoplay": true,
-            "loop": false,
-            "speed": 1,
-            "marker": "explosion"
-        },
-        {
-            "name": "feather",
-            "type": "PlaybackState",
-            "autoplay": true,
-            "loop": false,
-            "marker": "feather"
-        },
-        {
             "name": "SyncTest",
             "type": "SyncState",
             "frame_context_key": "sync_key"
         }
     ],
     "transitions": [
-        {
-            "type": "Transition",
-            "from_state": 0,
-            "to_state": 1,
-            "on_pointer_down_event": {}
-        },
-        {
-            "type": "Transition",
-            "from_state": 1,
-            "to_state": 2,
-            "on_complete_event": {}
-        },
-        {
-            "type": "Transition",
-            "from_state": 2,
-            "to_state": 3,
-            "on_complete_event": {}
-        },
-        {
-            "type": "Transition",
-            "from_state": 3,
-            "to_state": 0,
-            "on_pointer_down_event": {}
-        }
     ],
     "listeners": [
         {

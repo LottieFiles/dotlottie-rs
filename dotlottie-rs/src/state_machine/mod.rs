@@ -821,7 +821,6 @@ impl StateMachine {
                     observer.on_state_entered((*next_state.read().unwrap().get_name()).to_string());
                 });
 
-                println!("Returning execute state");
                 return self.execute_current_state();
             }
         }

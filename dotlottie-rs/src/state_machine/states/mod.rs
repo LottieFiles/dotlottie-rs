@@ -130,7 +130,6 @@ impl StateTrait for State {
                         if ret {
                             return 4;
                         }
-                        println!(">> Set frame failed");
                     }
                 }
             }

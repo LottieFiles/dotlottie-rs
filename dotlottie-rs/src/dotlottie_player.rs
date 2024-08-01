@@ -1466,15 +1466,15 @@ impl DotLottiePlayer {
                         match self.state_machine.try_write() {
                             Ok(mut state_machine) => {
                                 if let Some(sm) = state_machine.as_mut() {
-                                    return sm.post_event(&bool_event);
+                                    sm.post_event(&bool_event)
                                 } else {
-                                    return 1;
+                                    1
                                 }
                             }
-                            Err(_) => return 1,
+                            Err(_) => 1,
                         }
                     }
-                    Err(_) => return 1,
+                    Err(_) => 1,
                 }
             }
             "String" => {
@@ -1486,12 +1486,12 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            return sm.post_event(&string_event);
+                            sm.post_event(&string_event)
                         } else {
-                            return 1;
+                            1
                         }
                     }
-                    Err(_) => return 1,
+                    Err(_) => 1,
                 }
             }
             "Numeric" => {
@@ -1506,15 +1506,15 @@ impl DotLottiePlayer {
                         match self.state_machine.try_write() {
                             Ok(mut state_machine) => {
                                 if let Some(sm) = state_machine.as_mut() {
-                                    return sm.post_event(&numeric_event);
+                                    sm.post_event(&numeric_event)
                                 } else {
-                                    return 1;
+                                    1
                                 }
                             }
-                            Err(_) => return 1,
+                            Err(_) => 1,
                         }
                     }
-                    Err(_) => return 1,
+                    Err(_) => 1,
                 }
             }
             "OnPointerDown" => {
@@ -1529,12 +1529,12 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            return sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return 1;
+                            1
                         }
                     }
-                    Err(_) => return 1,
+                    Err(_) => 1,
                 }
             }
             "OnPointerUp" => {
@@ -1549,12 +1549,12 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            return sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return 1;
+                            1
                         }
                     }
-                    Err(_) => return 1,
+                    Err(_) => 1,
                 }
             }
             "OnPointerMove" => {
@@ -1569,12 +1569,12 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            return sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return 1;
+                            1
                         }
                     }
-                    Err(_) => return 1,
+                    Err(_) => 1,
                 }
             }
             "OnPointerEnter" => {
@@ -1589,12 +1589,12 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            return sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return 1;
+                            1
                         }
                     }
-                    Err(_) => return 1,
+                    Err(_) => 1,
                 }
             }
             "OnPointerExit" => {
@@ -1606,12 +1606,12 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            return sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return 1;
+                            1
                         }
                     }
-                    Err(_) => return 1,
+                    Err(_) => 1,
                 }
             }
             "OnComplete" => {
@@ -1620,12 +1620,12 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            return sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return 1;
+                            1
                         }
                     }
-                    Err(_) => return 1,
+                    Err(_) => 1,
                 }
             }
             "SetNumericContext" => {
@@ -1646,15 +1646,15 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            return sm.post_event(&event);
+                            sm.post_event(&event)
                         } else {
-                            return 1;
+                            1
                         }
                     }
-                    Err(_) => return 1,
+                    Err(_) => 1,
                 }
             }
-            _ => return 1,
+            _ => 1,
         }
     }
 

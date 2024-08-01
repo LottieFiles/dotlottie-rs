@@ -973,10 +973,10 @@ bench:
 .PHONY: clippy
 clippy:
 	$(info $(YELLOW)Running clippy for workspace$(NC))
-	cargo clippy --manifest-path $(CORE)/Cargo.toml --all-targets --all-features
+	cargo clippy --manifest-path $(CORE)/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
 	# fms has a lot of clippy warnings and errors, so we're ignoring them for now
-	# cargo clippy --manifest-path $(FMS)/Cargo.toml --all-targets --all-features
-	cargo clippy --manifest-path $(RUNTIME_FFI)/Cargo.toml --all-targets --all-features
+	# cargo clippy --manifest-path $(FMS)/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
+	cargo clippy --manifest-path $(RUNTIME_FFI)/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
 
 .PHONY: help
 help:

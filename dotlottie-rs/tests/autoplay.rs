@@ -52,7 +52,6 @@ mod tests {
         }
 
         assert!(!rendered_frames.is_empty());
-        println!("Rendered frames: {:?}", rendered_frames.len());
     }
 
     #[test]

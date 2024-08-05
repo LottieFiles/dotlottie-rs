@@ -1,11 +1,11 @@
 use dotlottie_player_core::events::Event;
-use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Observer, StateMachineObserver};
+use dotlottie_player_core::{Config, DotLottiePlayer, Observer, StateMachineObserver};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::{env, path, time::Instant};
+use std::{env, time::Instant};
 use sysinfo::System;
 
 pub const WIDTH: usize = 500;
@@ -98,12 +98,14 @@ impl StateMachineObserver for SMObserver {
 
 struct Timer {
     last_update: Instant,
+    prev_frame: f32,
 }
 
 impl Timer {
     fn new() -> Self {
         Self {
             last_update: Instant::now(),
+            prev_frame: 0.0,
         }
     }
 
@@ -113,11 +115,12 @@ impl Timer {
         // println!("next_frame: {}", next_frame);
         let updated = animation.set_frame(next_frame);
 
-        if updated {
+        if updated || next_frame != self.prev_frame {
             animation.render();
         }
 
         self.last_update = Instant::now(); // Reset the timer
+        self.prev_frame = next_frame;
     }
 }
 
@@ -131,11 +134,6 @@ fn main() {
     .unwrap_or_else(|e| {
         panic!("{}", e);
     });
-
-    let base_path = env::var("CARGO_MANIFEST_DIR").unwrap();
-
-    // let mut path = path::PathBuf::from(base_path);
-    // path.push("src/markers.json");
 
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         loop_animation: true,
@@ -183,9 +181,16 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    lottie_player.load_state_machine("pigeon_fsm");
+    let message: String = fs::read_to_string("src/pigeon_fsm.json").unwrap();
+
+    // lottie_player.load_state_machine("pigeon_fsm");
+    let r = lottie_player.load_state_machine_data(&message);
+
+    println!("Load state machine data -> {}", r);
+
     lottie_player.start_state_machine();
-    lottie_player.play();
+
+    println!("is_playing: {}", lottie_player.is_playing());
 
     lottie_player.state_machine_subscribe(observer3.clone());
 
@@ -205,22 +210,38 @@ fn main() {
             let pointer_event = Event::OnPointerDown { x: 1.0, y: 1.0 };
 
             let p = &mut *locked_player.write().unwrap();
-            p.post_event(&pointer_event);
+            println!("POST EVENT {}", p.post_event(&pointer_event));
+            println!("is_playing: {}", p.is_playing());
         }
 
-        if window.is_key_pressed(Key::P, KeyRepeat::No) {
-            let string_event = Event::String {
-                value: "explosion".to_string(),
-            };
+        if window.is_key_pressed(Key::P, KeyRepeat::Yes) {
+            // let string_event = Event::String {
+            //     value: "explosion".to_string(),
+            // };
 
-            pushed -= 1.0;
+            // p.post_event(&string_event);
 
-            pushed -= 1.0;
+            if pushed <= 9.0 {
+                pushed = 109.0;
+            } else {
+                pushed -= 2.0;
+            }
+
+            // let numeric_context_event = Event::SetNumericContext {
+            //     key: "sync_key".to_string(),
+            //     value: pushed,
+            // };
 
             let p = &mut *locked_player.write().unwrap();
-            p.tmp_set_state_machine_context("counter_0", pushed);
+            let mut r = 0;
 
-            p.post_event(&string_event);
+            // r = p.post_event(&numeric_context_event);
+
+            let format = format!("SetNumericContext: sync_key {}", pushed);
+            r = p.post_serialized_event(format.to_string());
+
+            println!("POST EVENT {}", r);
+            println!("is_playing: {}", p.is_playing());
         }
 
         if cpu_memory_monitor_timer.elapsed().as_secs() >= 1 {

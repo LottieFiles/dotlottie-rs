@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     rc::Rc,
     sync::{Arc, RwLock},
 };
@@ -8,13 +9,20 @@ use crate::{Config, DotLottiePlayerContainer};
 use super::transitions::Transition;
 
 pub trait StateTrait {
-    fn execute(&self, player: &Rc<RwLock<DotLottiePlayerContainer>>);
+    fn execute(
+        &self,
+        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        string_context: &HashMap<String, String>,
+        bool_context: &HashMap<String, bool>,
+        numeric_context: &HashMap<String, f32>,
+    ) -> i32;
     fn get_reset_context_key(&self) -> &String;
     fn get_animation_id(&self) -> &String;
     fn get_transitions(&self) -> &Vec<Arc<RwLock<Transition>>>;
     fn add_transition(&mut self, transition: Transition);
     fn get_config(&self) -> Option<&Config>;
     fn get_name(&self) -> String;
+    fn get_type(&self) -> String;
     // fn set_reset_context(&mut self, reset_context: bool);
 
     // fn add_entry_action(&mut self, action: String);
@@ -36,6 +44,7 @@ pub enum State {
     },
     Sync {
         name: String,
+        config: Config,
         frame_context_key: String,
         reset_context: String,
         animation_id: String,
@@ -53,7 +62,19 @@ impl State {
 }
 
 impl StateTrait for State {
-    fn execute(&self, player: &Rc<RwLock<DotLottiePlayerContainer>>) {
+    // Return codes
+    // 0: Success
+    // 1: Failure
+    // 2: Play animation
+    // 3: Pause animation
+    // 4: Request and draw a new single frame of the animation (needed for sync state)
+    fn execute(
+        &self,
+        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        _: &HashMap<String, String>,
+        _: &HashMap<String, bool>,
+        numeric_context: &HashMap<String, f32>,
+    ) -> i32 {
         match self {
             State::Playback {
                 config,
@@ -75,11 +96,46 @@ impl StateTrait for State {
 
                     if autoplay {
                         player_read.play();
+
+                        return 2;
+                    } else {
+                        player_read.pause();
+
+                        return 3;
+                    }
+                } else {
+                    return 1;
+                }
+            }
+            State::Sync {
+                config,
+                frame_context_key,
+                animation_id,
+                ..
+            } => {
+                if let Ok(player_read) = player.try_read() {
+                    let size = player_read.size();
+                    let frame = numeric_context.get(frame_context_key);
+
+                    // Tell player to load new animation
+                    if !animation_id.is_empty() {
+                        player_read.load_animation(animation_id, size.0, size.1);
+                    }
+
+                    player_read.set_config(config.clone());
+
+                    if let Some(frame_value) = frame {
+                        let ret = player_read.set_frame(*frame_value);
+
+                        if ret {
+                            return 4;
+                        }
                     }
                 }
             }
-            State::Sync { .. } => {}
         }
+
+        1
     }
 
     fn get_reset_context_key(&self) -> &String {
@@ -125,6 +181,13 @@ impl StateTrait for State {
         match self {
             State::Playback { name, .. } => name.to_string(),
             State::Sync { name, .. } => name.to_string(),
+        }
+    }
+
+    fn get_type(&self) -> String {
+        match self {
+            State::Playback { .. } => "PlaybackState".to_string(),
+            State::Sync { .. } => "SyncState".to_string(),
         }
     }
 

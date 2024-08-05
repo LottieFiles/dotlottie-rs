@@ -1,21 +1,19 @@
 {
     "descriptor": {
-        "id": "multi_animation_slideshow",
+        "id": "sync",
         "initial": 0
     },
     "states": [
         {
-            "name": "SyncTest",
+            "name": "pigeon",
             "type": "SyncState",
-            "frame_context_key": "sync_key"
+            "frame_context_key": "sync_key",
+            "segment": [10,50]
         }
     ],
     "transitions": [
     ],
     "listeners": [
-        {
-            "type": "PointerDown"
-        }
     ],
     "context_variables": [
         {

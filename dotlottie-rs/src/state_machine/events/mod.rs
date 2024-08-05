@@ -14,6 +14,7 @@ pub enum Event {
     OnPointerEnter { x: f32, y: f32 },
     OnPointerExit,
     OnComplete,
+    SetNumericContext { key: String, value: f32 },
 }
 
 impl Event {
@@ -28,6 +29,7 @@ impl Event {
             Event::OnPointerEnter { x, y } => format!("{}, {}", x, y),
             Event::OnPointerExit => "OnPointerExitEvent".to_string(),
             Event::OnComplete => "OnCompleteEvent".to_string(),
+            Event::SetNumericContext { key, value } => format!("{}, {}", key, value),
         }
     }
 }

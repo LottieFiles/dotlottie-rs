@@ -1,3 +1,33 @@
+## 0.1.30 (2024-08-01)
+
+### Fixes
+
+#### clippy lints (#213)
+
+## 0.1.29 (2024-07-30)
+
+### Fixes
+
+#### deleted extra println (#211)
+
+## 0.1.28 (2024-07-30)
+
+### Fixes
+
+#### post_event return codes (#207)
+
+## 0.1.27 (2024-07-29)
+
+### Features
+
+#### interactivity sync state (#203)
+
+### Fixes
+
+#### iOS build issue caused by meson 1.5.0 (#204)
+
+#### rolled thorvg back to 0.13.8 (#208)
+
 ## 0.1.26 (2024-07-12)
 
 ### Fixes

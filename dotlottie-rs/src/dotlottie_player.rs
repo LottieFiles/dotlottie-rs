@@ -1145,10 +1145,12 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn manifest_string(&self) -> String {
-        self.runtime.try_read().ok()
+        self.runtime
+            .try_read()
+            .ok()
             .and_then(|runtime| runtime.manifest())
             .map_or_else(String::new, |manifest| manifest.to_string())
-    }    
+    }
 
     pub fn is_complete(&self) -> bool {
         self.runtime.read().unwrap().is_complete()
@@ -1227,6 +1229,8 @@ impl DotLottiePlayer {
         self.state_machine.clone()
     }
 
+    // If you are in an environment that does not support events
+    // Call isPlaying() to know if the state machine started playback within the first state
     pub fn start_state_machine(&self) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
@@ -1384,26 +1388,32 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn post_event(&self, event: &Event) -> bool {
+    // Return codes
+    // 0: Success
+    // 1: Failure
+    // 2: Play animation
+    // 3: Pause animation
+    // 4: Request and draw a new single frame of the animation (needed for sync state)
+    pub fn post_event(&self, event: &Event) -> i32 {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
-                    return false;
+                    return 1;
                 }
             }
-            Err(_) => return false,
+            Err(_) => return 1,
         }
 
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    sm.post_event(event);
+                    return sm.post_event(event);
                 }
             }
-            Err(_) => return false,
+            Err(_) => return 1,
         }
 
-        true
+        1
     }
 
     /// Post event format:
@@ -1418,20 +1428,28 @@ impl DotLottiePlayer {
     /// "OnPointerEnter: 0.0 0.0"
     /// "OnPointerExit: 0.0 0.0"
     /// "OnComplete"
+    /// "SetNumericContext: key value"
+    ///
+    /// Return codes
+    /// 0: Success
+    /// 1: Failure
+    /// 2: Play animation
+    /// 3: Pause animation
+    /// 4: Request and draw a new single frame of the animation (needed for sync state)
     #[cfg(target_arch = "wasm32")]
-    pub fn post_serialized_event(&self, event: String) -> bool {
+    pub fn post_serialized_event(&self, event: String) -> i32 {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
-                    return false;
+                    return 1;
                 }
             }
-            Err(_) => return false,
+            Err(_) => return 1,
         }
 
         let parts: Vec<&str> = event.splitn(2, ": ").collect();
         if parts.len() < 2 {
-            return false;
+            return 1;
         }
 
         let command_type = parts[0];
@@ -1448,15 +1466,15 @@ impl DotLottiePlayer {
                         match self.state_machine.try_write() {
                             Ok(mut state_machine) => {
                                 if let Some(sm) = state_machine.as_mut() {
-                                    sm.post_event(&bool_event);
+                                    sm.post_event(&bool_event)
                                 } else {
-                                    return false;
+                                    1
                                 }
                             }
-                            Err(_) => return false,
+                            Err(_) => 1,
                         }
                     }
-                    Err(_) => return false,
+                    Err(_) => 1,
                 }
             }
             "String" => {
@@ -1468,12 +1486,12 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&string_event);
+                            sm.post_event(&string_event)
                         } else {
-                            return false;
+                            1
                         }
                     }
-                    Err(_) => return false,
+                    Err(_) => 1,
                 }
             }
             "Numeric" => {
@@ -1488,21 +1506,21 @@ impl DotLottiePlayer {
                         match self.state_machine.try_write() {
                             Ok(mut state_machine) => {
                                 if let Some(sm) = state_machine.as_mut() {
-                                    sm.post_event(&numeric_event);
+                                    sm.post_event(&numeric_event)
                                 } else {
-                                    return false;
+                                    1
                                 }
                             }
-                            Err(_) => return false,
+                            Err(_) => 1,
                         }
                     }
-                    Err(_) => return false,
+                    Err(_) => 1,
                 }
             }
             "OnPointerDown" => {
                 let values: Vec<&str> = value.split_whitespace().collect();
                 if values.len() != 2 {
-                    return false;
+                    return 1;
                 }
                 let pointer_event = Event::OnPointerDown {
                     x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
@@ -1511,18 +1529,18 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return false;
+                            1
                         }
                     }
-                    Err(_) => return false,
+                    Err(_) => 1,
                 }
             }
             "OnPointerUp" => {
                 let values: Vec<&str> = value.split_whitespace().collect();
                 if values.len() != 2 {
-                    return false;
+                    return 1;
                 }
                 let pointer_event = Event::OnPointerUp {
                     x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
@@ -1531,18 +1549,18 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return false;
+                            1
                         }
                     }
-                    Err(_) => return false,
+                    Err(_) => 1,
                 }
             }
             "OnPointerMove" => {
                 let values: Vec<&str> = value.split_whitespace().collect();
                 if values.len() != 2 {
-                    return false;
+                    return 1;
                 }
                 let pointer_event = Event::OnPointerMove {
                     x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
@@ -1551,18 +1569,18 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return false;
+                            1
                         }
                     }
-                    Err(_) => return false,
+                    Err(_) => 1,
                 }
             }
             "OnPointerEnter" => {
                 let values: Vec<&str> = value.split_whitespace().collect();
                 if values.len() != 2 {
-                    return false;
+                    return 1;
                 }
                 let pointer_event = Event::OnPointerEnter {
                     x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
@@ -1571,29 +1589,29 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return false;
+                            1
                         }
                     }
-                    Err(_) => return false,
+                    Err(_) => 1,
                 }
             }
             "OnPointerExit" => {
                 let values: Vec<&str> = value.split_whitespace().collect();
                 if values.len() != 2 {
-                    return false;
+                    return 1;
                 }
                 let pointer_event = Event::OnPointerExit {};
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return false;
+                            1
                         }
                     }
-                    Err(_) => return false,
+                    Err(_) => 1,
                 }
             }
             "OnComplete" => {
@@ -1602,17 +1620,42 @@ impl DotLottiePlayer {
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event);
+                            sm.post_event(&pointer_event)
                         } else {
-                            return false;
+                            1
                         }
                     }
-                    Err(_) => return false,
+                    Err(_) => 1,
                 }
             }
-            _ => return false,
+            "SetNumericContext" => {
+                let values: Vec<&str> = value.split_whitespace().collect();
+
+                if values.len() != 2 {
+                    return 1;
+                }
+
+                let key = values[0];
+                let numeric_value = values[1].parse::<f32>().map_err(|_| (false)).unwrap();
+
+                let event = Event::SetNumericContext {
+                    key: key.to_string(),
+                    value: numeric_value,
+                };
+
+                match self.state_machine.try_write() {
+                    Ok(mut state_machine) => {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.post_event(&event)
+                        } else {
+                            1
+                        }
+                    }
+                    Err(_) => 1,
+                }
+            }
+            _ => 1,
         }
-        true
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
@@ -1765,7 +1808,9 @@ impl DotLottiePlayer {
     }
 
     pub fn manifest_string(&self) -> String {
-        self.player.try_read().map_or_else(|_| String::new(), |player| player.manifest_string())
+        self.player
+            .try_read()
+            .map_or_else(|_| String::new(), |player| player.manifest_string())
     }
 
     pub fn is_complete(&self) -> bool {
@@ -1806,7 +1851,7 @@ impl DotLottiePlayer {
             }
         }
 
-        false
+        true
     }
 
     pub fn load_state_machine(&self, state_machine_id: &str) -> bool {

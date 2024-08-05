@@ -83,7 +83,7 @@ interface DotLottiePlayer {
     boolean load_state_machine([ByRef] string str);
     boolean start_state_machine();
     boolean stop_state_machine();
-    boolean post_serialized_event(string event);
+    i32 post_serialized_event(string event);
     boolean set_state_machine_numeric_context([ByRef] string key, f32 value);
     boolean set_state_machine_string_context([ByRef] string key, [ByRef] string value);
     boolean set_state_machine_boolean_context([ByRef] string key, boolean value);

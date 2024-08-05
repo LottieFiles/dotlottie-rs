@@ -14,7 +14,9 @@ name = "dotlottie_player_core"
 dotlottie_fms = { path = "../dotlottie-fms" }
 thiserror = "1.0.48"
 # "emscripten-no-leading-underscore" branch fix this issue -> https://github.com/sebcrozet/instant/issues/35
-instant = {git = "https://github.com/hoodmane/instant", branch = "emscripten-no-leading-underscore", features = ["inaccurate"]}
+instant = { git = "https://github.com/hoodmane/instant", branch = "emscripten-no-leading-underscore", features = [
+    "inaccurate",
+] }
 serde_json = "1.0.107"
 serde = { version = "1.0.188", features = ["derive"] }
 

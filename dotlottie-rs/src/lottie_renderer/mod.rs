@@ -184,6 +184,9 @@ impl LottieRenderer {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError> {
+        println!("Buffer len before resize: {}", self.buffer.len());
+        println!("before resize: {}x{}", self.width, self.height);
+        println!("resize: {}x{}", width, height);
         if (width, height) == (self.width, self.height) {
             return Ok(());
         }
@@ -199,6 +202,14 @@ impl LottieRenderer {
 
         self.buffer
             .resize((self.width * self.height * 4) as usize, 0);
+
+        println!("before sync ... ");
+        let m = self.thorvg_canvas.sync();
+        println!("sync: {:?}", m.is_ok());
+        let m = self.thorvg_canvas.sync();
+
+        println!("after resize: {}x{}", self.width, self.height);
+        println!("buffer len after sync: {}", self.buffer.len());
 
         self.thorvg_canvas
             .set_target(

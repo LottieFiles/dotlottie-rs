@@ -603,5 +603,16 @@ mod tests {
         test_config.segment = vec![0.0, 12.0];
 
         assert_eq!(test_config, player.config());
+
+        // Test if an event is received, but the GlobalState doesn't have it, continue the transition
+        player.post_event(&Event::Numeric { value: 5.0 });
+
+        player.post_event(&Event::String {
+            value: "jump".to_string(),
+        });
+
+        test_config.segment = vec![22.0, 32.0];
+
+        assert_eq!(test_config, player.config());
     }
 }

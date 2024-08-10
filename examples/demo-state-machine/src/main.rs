@@ -276,6 +276,17 @@ fn main() {
 
             println!("POST EVENT {:?}", m);
         }
+        if window.is_key_pressed(Key::Key7, KeyRepeat::No) {
+            let key = "jump";
+
+            let string_event = Event::String {
+                value: key.to_string(),
+            };
+
+            let p = &mut *locked_player.write().unwrap();
+
+            let m = p.post_event(&string_event);
+        }
 
         if window.is_key_pressed(Key::O, KeyRepeat::No) {
             let pointer_event = Event::OnPointerDown { x: 1.0, y: 1.0 };
@@ -328,7 +339,7 @@ fn main() {
             }
 
             let format = format!("SetNumericContext: sync_key {}", pushed);
-            r = p.post_serialized_event(format.to_string());
+            // r = p.post_serialized_event(format.to_string());
 
             println!("POST EVENT {}", r);
             println!("is_playing: {}", p.is_playing());

@@ -97,6 +97,14 @@
             "numeric_event": {
                 "value": 1
               }
+        },
+        {
+            "type": "Transition",
+            "from_state": 5, 
+            "to_state": 3,
+            "string_event": {
+                "value": "jump"
+              }
         }
     ],
     "listeners": [

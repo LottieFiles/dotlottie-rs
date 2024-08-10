@@ -865,9 +865,6 @@ impl StateMachine {
 
                     return self.execute_current_state();
                 }
-
-                // Error evaluating the transition, don't continue with normal state checks
-                return 1;
             }
         }
 

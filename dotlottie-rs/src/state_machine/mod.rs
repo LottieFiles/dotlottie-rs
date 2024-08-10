@@ -577,11 +577,7 @@ impl StateMachine {
         false
     }
 
-    fn evaluate_transition(
-        &self,
-        transitions: &Vec<Arc<RwLock<Transition>>>,
-        event: &Event,
-    ) -> i32 {
+    fn evaluate_transition(&self, transitions: &[Arc<RwLock<Transition>>], event: &Event) -> i32 {
         let mut tmp_state: i32 = -1;
         let iter = transitions.iter();
 
@@ -788,28 +784,25 @@ impl StateMachine {
 
         // Only match with setNumericContext as if this is the case we return early
         // Other event types are handled within self.evaluate_transition
-        match event {
-            Event::SetNumericContext { key, value } => {
-                self.set_numeric_context(key, *value);
+        if let Event::SetNumericContext { key, value } = event {
+            self.set_numeric_context(key, *value);
 
-                let s = self.current_state.clone();
+            let s = self.current_state.clone();
 
-                // If current state is a sync state, we need to update the frame
-                if let Some(state) = s {
-                    let unwrapped_state = state.try_read();
+            // If current state is a sync state, we need to update the frame
+            if let Some(state) = s {
+                let unwrapped_state = state.try_read();
 
-                    if let Ok(state) = unwrapped_state {
-                        let state_value = &*state;
+                if let Ok(state) = unwrapped_state {
+                    let state_value = &*state;
 
-                        if let State::Sync { .. } = state_value {
-                            return self.execute_current_state();
-                        }
+                    if let State::Sync { .. } = state_value {
+                        return self.execute_current_state();
                     }
                 }
-
-                return 0;
             }
-            _ => (),
+
+            return 0;
         }
 
         // Firstly check if we have a global state within the state machine.

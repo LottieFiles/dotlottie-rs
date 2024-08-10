@@ -509,4 +509,99 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn state_machine_global_state() {
+        let global_state = include_str!("fixtures/global_state_sm.json");
+
+        let player = DotLottiePlayer::new(Config::default());
+
+        player.load_dotlottie_data(include_bytes!("fixtures/exploding_pigeon.lottie"), 100, 100);
+
+        player.load_state_machine_data(global_state);
+        player.start_state_machine();
+
+        match player.get_state_machine().read().unwrap().as_ref() {
+            Some(sm) => {
+                assert_eq!(sm.states.len(), 6);
+            }
+            None => {
+                panic!("State machine is not loaded");
+            }
+        }
+
+        match player.get_state_machine().read().unwrap().as_ref() {
+            Some(sm) => {
+                let cs = sm.get_current_state();
+
+                // Test that the correct state and type is loaded
+                match cs {
+                    Some(sm) => match sm.try_read() {
+                        Ok(state) => {
+                            assert_eq!(state.get_name(), "global");
+                            assert_eq!(state.get_type(), "GlobalState");
+                        }
+                        Err(_) => panic!("State is not readable"),
+                    },
+                    None => panic!("Failed to get current state"),
+                }
+            }
+            None => {
+                panic!("State machine is not loaded");
+            }
+        }
+
+        player.post_event(&Event::Numeric { value: 1.0 });
+
+        // Test that we're on state 1
+        let mut test_config = Config {
+            mode: Mode::Forward,
+            loop_animation: false,
+            speed: Config::default().speed,
+            use_frame_interpolation: Config::default().use_frame_interpolation,
+            autoplay: true,
+            segment: vec![0.0, 12.0],
+            background_color: Config::default().background_color,
+            layout: Config::default().layout,
+            marker: Config::default().marker,
+        };
+
+        assert_eq!(test_config, player.config());
+
+        player.post_event(&Event::Numeric { value: 2.0 });
+
+        // Test that we're on state 2
+        test_config.segment = vec![12.0, 22.0];
+
+        assert_eq!(test_config, player.config());
+
+        player.post_event(&Event::Numeric { value: 3.0 });
+
+        // Test that we're on state 3
+        test_config.segment = vec![22.0, 32.0];
+
+        assert_eq!(test_config, player.config());
+
+        player.post_event(&Event::Numeric { value: 4.0 });
+
+        // Test that we're on state 4
+        test_config.segment = vec![32.0, 42.0];
+
+        assert_eq!(test_config, player.config());
+
+        player.post_event(&Event::Numeric { value: 5.0 });
+
+        // Test that we're on state 5
+        test_config.segment = vec![42.0, 65.0];
+
+        assert_eq!(test_config, player.config());
+
+        // Test that even if another transition has the same event,
+        // The GlobalState transition overrides it
+        player.post_event(&Event::Numeric { value: 1.0 });
+
+        test_config.segment = vec![0.0, 12.0];
+
+        assert_eq!(test_config, player.config());
+    }
 }

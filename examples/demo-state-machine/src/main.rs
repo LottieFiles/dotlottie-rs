@@ -137,13 +137,12 @@ fn main() {
 
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         loop_animation: true,
-        background_color: 0xffffffff,
+        background_color: 0x00000000,
         ..Config::default()
     });
 
-    let mut markers = File::open("src/pigeon_with_listeners.lottie").expect("no file found");
-    let metadatamarkers =
-        fs::metadata("src/pigeon_with_listeners.lottie").expect("unable to read metadata");
+    let mut markers = File::open("src/star-rating.lottie").expect("no file found");
+    let metadatamarkers = fs::metadata("src/star-rating.lottie").expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
@@ -181,22 +180,26 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    let message: String = fs::read_to_string("src/pigeon_fsm.json").unwrap();
+    let message: String = fs::read_to_string("src/global_state_sm.json").unwrap();
 
     // lottie_player.load_state_machine("pigeon_fsm");
     let r = lottie_player.load_state_machine_data(&message);
 
     println!("Load state machine data -> {}", r);
 
-    lottie_player.start_state_machine();
+    let sSm = lottie_player.start_state_machine();
+
+    println!("Start state machine -> {}", sSm);
 
     println!("is_playing: {}", lottie_player.is_playing());
+
+    lottie_player.render();
 
     lottie_player.state_machine_subscribe(observer3.clone());
 
     let locked_player = Arc::new(RwLock::new(lottie_player));
 
-    let mut pushed = 10.0;
+    let mut pushed = 0.0;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         timer.tick(&*locked_player.read().unwrap());
@@ -206,36 +209,123 @@ fn main() {
             p.start_state_machine();
         }
 
+        if window.is_key_pressed(Key::Key1, KeyRepeat::No) {
+            pushed = 1.0;
+
+            let pointer_event = Event::Numeric { value: pushed };
+
+            let p = &mut *locked_player.write().unwrap();
+
+            let m = p.post_event(&pointer_event);
+
+            println!("POST EVENT {:?}", m);
+        }
+
+        if window.is_key_pressed(Key::Key2, KeyRepeat::No) {
+            pushed = 2.0;
+
+            let pointer_event = Event::Numeric { value: pushed };
+
+            let p = &mut *locked_player.write().unwrap();
+
+            let m = p.post_event(&pointer_event);
+
+            println!("POST EVENT {:?}", m);
+        }
+        if window.is_key_pressed(Key::Key3, KeyRepeat::No) {
+            pushed = 3.0;
+
+            let pointer_event = Event::Numeric { value: pushed };
+
+            let p = &mut *locked_player.write().unwrap();
+
+            let m = p.post_event(&pointer_event);
+
+            println!("POST EVENT {:?}", m);
+        }
+        if window.is_key_pressed(Key::Key4, KeyRepeat::No) {
+            pushed = 4.0;
+
+            let pointer_event = Event::Numeric { value: pushed };
+
+            let p = &mut *locked_player.write().unwrap();
+
+            let m = p.post_event(&pointer_event);
+
+            println!("POST EVENT {:?}", m);
+        }
+        if window.is_key_pressed(Key::Key5, KeyRepeat::No) {
+            pushed = 5.0;
+
+            let pointer_event = Event::Numeric { value: pushed };
+
+            let p = &mut *locked_player.write().unwrap();
+
+            let m = p.post_event(&pointer_event);
+
+            println!("POST EVENT {:?}", m);
+        }
+        if window.is_key_pressed(Key::Key6, KeyRepeat::No) {
+            pushed = 6.0;
+
+            let pointer_event = Event::Numeric { value: pushed };
+
+            let p = &mut *locked_player.write().unwrap();
+
+            let m = p.post_event(&pointer_event);
+
+            println!("POST EVENT {:?}", m);
+        }
+
         if window.is_key_pressed(Key::O, KeyRepeat::No) {
             let pointer_event = Event::OnPointerDown { x: 1.0, y: 1.0 };
 
             let p = &mut *locked_player.write().unwrap();
-            println!("POST EVENT {}", p.post_event(&pointer_event));
-            println!("is_playing: {}", p.is_playing());
+
+            let m = p.post_event(&pointer_event);
+
+            println!("POST EVENT {:?}", m);
+        }
+
+        if window.is_key_pressed(Key::I, KeyRepeat::No) {
+            let pointer_event = Event::OnPointerUp { x: 1.0, y: 1.0 };
+
+            let p = &mut *locked_player.write().unwrap();
+
+            let m = p.post_event(&pointer_event);
+
+            println!("POST EVENT {:?}", m);
+        }
+        if window.is_key_pressed(Key::U, KeyRepeat::No) {
+            let pointer_event = Event::OnPointerMove { x: 1.0, y: 1.0 };
+
+            let p = &mut *locked_player.write().unwrap();
+
+            let m = p.post_event(&pointer_event);
+
+            println!("POST EVENT {:?}", m);
+        }
+        if window.is_key_pressed(Key::Y, KeyRepeat::No) {
+            let pointer_event = Event::String {
+                value: "play_all".to_string(),
+            };
+
+            let p = &mut *locked_player.write().unwrap();
+
+            let m = p.post_event(&pointer_event);
+
+            println!("POST EVENT {:?}", m);
         }
 
         if window.is_key_pressed(Key::P, KeyRepeat::Yes) {
-            // let string_event = Event::String {
-            //     value: "explosion".to_string(),
-            // };
-
-            // p.post_event(&string_event);
-
-            if pushed <= 9.0 {
-                pushed = 109.0;
-            } else {
-                pushed -= 2.0;
-            }
-
-            // let numeric_context_event = Event::SetNumericContext {
-            //     key: "sync_key".to_string(),
-            //     value: pushed,
-            // };
-
             let p = &mut *locked_player.write().unwrap();
             let mut r = 0;
 
-            // r = p.post_event(&numeric_context_event);
+            if pushed >= p.total_frames() as f32 {
+                pushed = 0.0;
+            } else {
+                pushed += 1.0;
+            }
 
             let format = format!("SetNumericContext: sync_key {}", pushed);
             r = p.post_serialized_event(format.to_string());

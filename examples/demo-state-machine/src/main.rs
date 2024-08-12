@@ -144,8 +144,8 @@ fn main() {
         ..Config::default()
     });
 
-    let mut markers = File::open("src/locker.lottie").expect("no file found");
-    let metadatamarkers = fs::metadata("src/locker.lottie").expect("unable to read metadata");
+    let mut markers = File::open("src/star-rating.lottie").expect("no file found");
+    let metadatamarkers = fs::metadata("src/star-rating.lottie").expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 

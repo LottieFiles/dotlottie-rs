@@ -177,6 +177,10 @@ impl DotLottieRuntime {
         self.total_frames()
     }
 
+    pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> bool {
+        self.renderer.hit_check(layer_name, x, y).unwrap_or(false)
+    }
+
     pub fn is_loaded(&self) -> bool {
         self.is_loaded
     }
@@ -1182,6 +1186,10 @@ impl DotLottiePlayerContainer {
         }
     }
 
+    pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> bool {
+        self.runtime.read().unwrap().hit_check(layer_name, x, y)
+    }
+
     pub fn markers(&self) -> Vec<Marker> {
         self.runtime.read().unwrap().markers()
     }
@@ -1227,6 +1235,10 @@ impl DotLottiePlayer {
 
     pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachine>>> {
         self.state_machine.clone()
+    }
+
+    pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> bool {
+        self.player.read().unwrap().hit_check(layer_name, x, y)
     }
 
     // If you are in an environment that does not support events

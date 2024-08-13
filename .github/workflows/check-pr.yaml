@@ -19,6 +19,7 @@ jobs:
         with:
           xcode-version: "13.3.1"
       - uses: ningenMe/setup-rustup@v1.1.0
+      - uses: turtlebrowser/get-conan@main
       - name: Install Make
         run: brew install make
       - name: Build Setup

@@ -1,0 +1,2 @@
+[requires]
+thorvg/0.13.8

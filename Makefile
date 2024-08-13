@@ -892,11 +892,11 @@ $(RUNTIME_FFI)/$(APPLE_BUILD)/$(MODULE_MAP): $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI
 	$(CREATE_OUTPUT_FILE)
 
 .PHONY: demo-player
-demo-player: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
+demo-player:
 	cargo build --manifest-path examples/demo-player/Cargo.toml
 
 .PHONY: demo-state-machine
-demo-state-machine: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
+demo-state-machine:
 	cargo build --manifest-path examples/demo-state-machine/Cargo.toml
 
 .PHONY: $(ANDROID)

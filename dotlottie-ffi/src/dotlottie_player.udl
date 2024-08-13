@@ -103,7 +103,7 @@ interface Event {
     OnPointerUp(f32 x, f32 y);
     OnPointerMove(f32 x, f32 y);
     OnPointerEnter(f32 x, f32 y);
-    OnPointerExit();
+    OnPointerExit(f32 x, f32 y);
     OnComplete();
     SetNumericContext(string key, f32 value);
 };

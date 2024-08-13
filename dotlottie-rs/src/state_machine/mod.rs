@@ -14,7 +14,7 @@ use crate::state_machine::listeners::Listener;
 use crate::state_machine::states::StateTrait;
 use crate::state_machine::transitions::guard::Guard;
 use crate::state_machine::transitions::TransitionTrait;
-use crate::{Config, DotLottiePlayerContainer, Layout, Mode, PointerEvent};
+use crate::{Config, DotLottiePlayerContainer, InternalEvent, Layout, Mode, PointerEvent};
 
 use self::parser::{state_machine_parse, ContextJsonType};
 use self::{errors::StateMachineError, events::Event, states::State, transitions::Transition};
@@ -45,10 +45,6 @@ pub struct StateMachine {
     bool_context: HashMap<String, bool>,
 
     observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
-}
-
-struct EventContainer {
-    string_event: Option<Event>,
 }
 
 impl Default for StateMachine {
@@ -296,46 +292,40 @@ impl StateMachine {
 
                             // let mut new_transition: Option<Transition> = None;
                             let mut state_to_attach_to: i32 = -1;
-                            let mut new_event: Option<Event> = None;
+                            let mut new_event: Option<InternalEvent> = None;
 
                             // Capture which event this transition has
                             if numeric_event.is_some() {
                                 let numeric_event = numeric_event.unwrap();
-                                new_event = Some(Event::Numeric {
+                                new_event = Some(InternalEvent::Numeric {
                                     value: numeric_event.value,
                                 });
                                 state_to_attach_to = from_state as i32;
                             } else if string_event.is_some() {
                                 let string_event = string_event.unwrap();
-                                new_event = Some(Event::String {
+                                new_event = Some(InternalEvent::String {
                                     value: string_event.value,
                                 });
                                 state_to_attach_to = from_state as i32;
                             } else if boolean_event.is_some() {
                                 let boolean_event = boolean_event.unwrap();
-                                new_event = Some(Event::Bool {
+                                new_event = Some(InternalEvent::Bool {
                                     value: boolean_event.value,
                                 });
                                 state_to_attach_to = from_state as i32;
                             } else if on_complete_event.is_some() {
-                                new_event = Some(Event::OnComplete);
+                                new_event = Some(InternalEvent::OnComplete);
                                 state_to_attach_to = from_state as i32;
                             } else if on_pointer_down_event.is_some() {
                                 // Default to 0.0 0.0 coordinates
                                 let pointer_down_event = on_pointer_down_event.unwrap();
 
                                 if pointer_down_event.target.is_some() {
-                                    new_event = Some(Event::OnPointerDown {
+                                    new_event = Some(InternalEvent::OnPointerDown {
                                         target: pointer_down_event.target,
-                                        x: 0.0,
-                                        y: 0.0,
                                     });
                                 } else {
-                                    new_event = Some(Event::OnPointerDown {
-                                        target: None,
-                                        x: 0.0,
-                                        y: 0.0,
-                                    });
+                                    new_event = Some(InternalEvent::OnPointerDown { target: None });
                                 }
 
                                 state_to_attach_to = from_state as i32;
@@ -345,17 +335,11 @@ impl StateMachine {
                                 let pointer_up_event = on_pointer_up_event.unwrap();
 
                                 if pointer_up_event.target.is_some() {
-                                    new_event = Some(Event::OnPointerUp {
+                                    new_event = Some(InternalEvent::OnPointerUp {
                                         target: pointer_up_event.target,
-                                        x: 0.0,
-                                        y: 0.0,
                                     });
                                 } else {
-                                    new_event = Some(Event::OnPointerUp {
-                                        target: None,
-                                        x: 0.0,
-                                        y: 0.0,
-                                    });
+                                    new_event = Some(InternalEvent::OnPointerUp { target: None });
                                 }
 
                                 state_to_attach_to = from_state as i32;
@@ -365,39 +349,28 @@ impl StateMachine {
                                 let pointer_enter_event = on_pointer_enter_event.unwrap();
 
                                 if pointer_enter_event.target.is_some() {
-                                    new_event = Some(Event::OnPointerEnter {
+                                    new_event = Some(InternalEvent::OnPointerEnter {
                                         target: pointer_enter_event.target,
-                                        x: 0.0,
-                                        y: 0.0,
                                     });
                                 } else {
-                                    new_event = Some(Event::OnPointerEnter {
-                                        target: None,
-                                        x: 0.0,
-                                        y: 0.0,
-                                    });
+                                    new_event =
+                                        Some(InternalEvent::OnPointerEnter { target: None });
                                 }
 
                                 state_to_attach_to = from_state as i32;
                             } else if on_pointer_exit_event.is_some() {
-                                new_event = Some(Event::OnPointerExit {});
+                                // new_event = Some(InternalEvent::OnPointerExit {});
                                 state_to_attach_to = from_state as i32;
                             } else if on_pointer_move_event.is_some() {
                                 // Default to 0.0 0.0 coordinates
                                 let pointer_move_event = on_pointer_move_event.unwrap();
 
                                 if pointer_move_event.target.is_some() {
-                                    new_event = Some(Event::OnPointerMove {
+                                    new_event = Some(InternalEvent::OnPointerMove {
                                         target: pointer_move_event.target,
-                                        x: 0.0,
-                                        y: 0.0,
                                     });
                                 } else {
-                                    new_event = Some(Event::OnPointerMove {
-                                        target: None,
-                                        x: 0.0,
-                                        y: 0.0,
-                                    });
+                                    new_event = Some(InternalEvent::OnPointerMove { target: None });
                                 }
 
                                 state_to_attach_to = from_state as i32;
@@ -637,10 +610,26 @@ impl StateMachine {
         false
     }
 
+    fn perform_hit_check(&self, target: &str, x: f32, y: f32) -> bool {
+        // A layer name was provided, we need to check if the pointer is within the layer
+        let pointer_target = target;
+
+        let p = self.player.as_ref().unwrap();
+        let player_read = p.try_read();
+
+        match player_read {
+            Ok(player) => {
+                let player = &*player;
+
+                player.hit_check(pointer_target, x, y)
+            }
+            Err(_) => false,
+        }
+    }
+
     fn evaluate_transition(&self, transitions: &[Arc<RwLock<Transition>>], event: &Event) -> i32 {
         let mut tmp_state: i32 = -1;
         let iter = transitions.iter();
-        let mut event_container: EventContainer = EventContainer { string_event: None };
 
         let mut string_event = false;
         let mut numeric_event = false;
@@ -656,27 +645,11 @@ impl StateMachine {
             Event::Bool { value: _ } => bool_event = true,
             Event::String { value: _ } => string_event = true,
             Event::Numeric { value: _ } => numeric_event = true,
-            Event::OnPointerDown {
-                target: _,
-                x: _,
-                y: _,
-            } => pointer_down_event = true,
-            Event::OnPointerUp {
-                target: _,
-                x: _,
-                y: _,
-            } => pointer_up_event = true,
-            Event::OnPointerMove {
-                target: _,
-                x: _,
-                y: _,
-            } => pointer_move_event = true,
-            Event::OnPointerEnter {
-                target: _,
-                x: _,
-                y: _,
-            } => pointer_enter_event = true,
-            Event::OnPointerExit => pointer_exit_event = true,
+            Event::OnPointerDown { x: _, y: _ } => pointer_down_event = true,
+            Event::OnPointerUp { x: _, y: _ } => pointer_up_event = true,
+            Event::OnPointerMove { x: _, y: _ } => pointer_move_event = true,
+            Event::OnPointerEnter { x: _, y: _ } => pointer_enter_event = true,
+            Event::OnPointerExit { x: _, y: _ } => pointer_exit_event = true,
             Event::OnComplete => complete_event = true,
             Event::SetNumericContext { key: _, value: _ } => {}
         }
@@ -692,7 +665,7 @@ impl StateMachine {
 
             // Match the transition's event type and compare it to the received event
             match transition_event {
-                Event::Bool { value } => {
+                InternalEvent::Bool { value } => {
                     let mut received_event_value = false;
 
                     if let Event::Bool { value } = event {
@@ -713,7 +686,7 @@ impl StateMachine {
                         }
                     }
                 }
-                Event::String { value } => {
+                InternalEvent::String { value } => {
                     let mut received_event_value = "";
 
                     if let Event::String { value } = event {
@@ -733,7 +706,7 @@ impl StateMachine {
                         }
                     }
                 }
-                Event::Numeric { value } => {
+                InternalEvent::Numeric { value } => {
                     let mut received_event_value = 0.0;
 
                     if let Event::Numeric { value } = event {
@@ -753,7 +726,7 @@ impl StateMachine {
                         }
                     }
                 }
-                Event::OnComplete => {
+                InternalEvent::OnComplete => {
                     if complete_event {
                         // If there are guards loop over them and check if theyre verified
                         if !transition_guards.is_empty() {
@@ -768,21 +741,12 @@ impl StateMachine {
                     }
                 }
                 // This is checking the state machine's event, not the passed event
-                Event::OnPointerDown { target, x, y } => {
+                InternalEvent::OnPointerDown { target } => {
                     // Grab the values from the posted event
-                    let received_event_values = if let Event::OnPointerDown { target, x, y } = event
-                    {
-                        Event::OnPointerDown {
-                            target: target.clone(),
-                            x: *x,
-                            y: *y,
-                        }
+                    let received_event_values = if let Event::OnPointerDown { x, y } = event {
+                        Event::OnPointerDown { x: *x, y: *y }
                     } else {
-                        Event::OnPointerDown {
-                            target: None,
-                            x: 0.0,
-                            y: 0.0,
-                        }
+                        Event::OnPointerDown { x: 0.0, y: 0.0 }
                     };
 
                     if pointer_down_event {
@@ -794,44 +758,24 @@ impl StateMachine {
                                 }
                             }
                         } else if target.is_some() && self.player.is_some() {
-                            // A layer name was provided, we need to check if the pointer is within the layer
-                            let pointer_target = target.clone().unwrap();
-                            let p = self.player.as_ref().unwrap();
-                            let player_read = p.try_read();
-
-                            match player_read {
-                                Ok(player) => {
-                                    let player = &*player;
-
-                                    if player.hit_check(
-                                        &pointer_target,
-                                        received_event_values.x(),
-                                        received_event_values.y(),
-                                    ) {
-                                        tmp_state = target_state as i32;
-                                    }
-                                }
-                                Err(_) => {}
+                            if self.perform_hit_check(
+                                target.as_ref().unwrap(),
+                                received_event_values.x(),
+                                received_event_values.y(),
+                            ) {
+                                tmp_state = target_state as i32;
                             }
                         } else {
                             tmp_state = target_state as i32;
                         }
                     }
                 }
-                Event::OnPointerUp { target, x: _, y: _ } => {
+                InternalEvent::OnPointerUp { target } => {
                     // Grab the values from the posted event
-                    let received_event_values = if let Event::OnPointerUp { target, x, y } = event {
-                        Event::OnPointerUp {
-                            target: target.clone(),
-                            x: *x,
-                            y: *y,
-                        }
+                    let received_event_values = if let Event::OnPointerUp { x, y } = event {
+                        Event::OnPointerUp { x: *x, y: *y }
                     } else {
-                        Event::OnPointerUp {
-                            target: None,
-                            x: 0.0,
-                            y: 0.0,
-                        }
+                        Event::OnPointerUp { x: 0.0, y: 0.0 }
                     };
 
                     if pointer_up_event {
@@ -843,31 +787,26 @@ impl StateMachine {
                                 }
                             }
                         } else if target.is_some() && self.player.is_some() {
-                            // A layer name was provided, we need to check if the pointer is within the layer
-                            let pointer_target = target.clone().unwrap();
-                            let p = self.player.as_ref().unwrap();
-                            let player_read = p.try_read();
-
-                            match player_read {
-                                Ok(player) => {
-                                    let player = &*player;
-
-                                    if player.hit_check(
-                                        &pointer_target,
-                                        received_event_values.x(),
-                                        received_event_values.y(),
-                                    ) {
-                                        tmp_state = target_state as i32;
-                                    }
-                                }
-                                Err(_) => {}
+                            if self.perform_hit_check(
+                                target.as_ref().unwrap(),
+                                received_event_values.x(),
+                                received_event_values.y(),
+                            ) {
+                                tmp_state = target_state as i32;
                             }
                         } else {
                             tmp_state = target_state as i32;
                         }
                     }
                 }
-                Event::OnPointerMove { x: _, y: _, target } => {
+                InternalEvent::OnPointerMove { target } => {
+                    // Grab the values from the posted event
+                    let received_event_values = if let Event::OnPointerMove { x, y } = event {
+                        Event::OnPointerMove { x: *x, y: *y }
+                    } else {
+                        Event::OnPointerMove { x: 0.0, y: 0.0 }
+                    };
+
                     if pointer_move_event {
                         // If there are guards loop over them and check if theyre verified
                         if !transition_guards.is_empty() {
@@ -876,12 +815,27 @@ impl StateMachine {
                                     tmp_state = target_state as i32;
                                 }
                             }
+                        } else if target.is_some() && self.player.is_some() {
+                            if self.perform_hit_check(
+                                target.as_ref().unwrap(),
+                                received_event_values.x(),
+                                received_event_values.y(),
+                            ) {
+                                tmp_state = target_state as i32;
+                            }
                         } else {
                             tmp_state = target_state as i32;
                         }
                     }
                 }
-                Event::OnPointerEnter { x: _, y: _, target } => {
+                InternalEvent::OnPointerEnter { target } => {
+                    // Grab the values from the posted event
+                    let received_event_values = if let Event::OnPointerEnter { x, y } = event {
+                        Event::OnPointerEnter { x: *x, y: *y }
+                    } else {
+                        Event::OnPointerEnter { x: 0.0, y: 0.0 }
+                    };
+
                     if pointer_enter_event {
                         // If there are guards loop over them and check if theyre verified
                         if !transition_guards.is_empty() {
@@ -890,12 +844,27 @@ impl StateMachine {
                                     tmp_state = target_state as i32;
                                 }
                             }
+                        } else if target.is_some() && self.player.is_some() {
+                            if self.perform_hit_check(
+                                target.as_ref().unwrap(),
+                                received_event_values.x(),
+                                received_event_values.y(),
+                            ) {
+                                tmp_state = target_state as i32;
+                            }
                         } else {
                             tmp_state = target_state as i32;
                         }
                     }
                 }
-                Event::OnPointerExit => {
+                InternalEvent::OnPointerExit { target } => {
+                    // Grab the values from the posted event
+                    let received_event_values = if let Event::OnPointerExit { x, y } = event {
+                        Event::OnPointerExit { x: *x, y: *y }
+                    } else {
+                        Event::OnPointerExit { x: 0.0, y: 0.0 }
+                    };
+
                     if pointer_exit_event {
                         // If there are guards loop over them and check if theyre verified
                         if !transition_guards.is_empty() {
@@ -904,12 +873,20 @@ impl StateMachine {
                                     tmp_state = target_state as i32;
                                 }
                             }
+                        } else if target.is_some() && self.player.is_some() {
+                            if !self.perform_hit_check(
+                                target.as_ref().unwrap(),
+                                received_event_values.x(),
+                                received_event_values.y(),
+                            ) {
+                                tmp_state = target_state as i32;
+                            }
                         } else {
                             tmp_state = target_state as i32;
                         }
                     }
                 }
-                Event::SetNumericContext { key: _, value: _ } => {}
+                InternalEvent::SetNumericContext { key: _, value: _ } => {}
             }
         }
 

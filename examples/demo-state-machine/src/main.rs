@@ -180,7 +180,7 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    let message: String = fs::read_to_string("src/global_state_sm.json").unwrap();
+    let message: String = fs::read_to_string("src/star_hover.json").unwrap();
 
     // lottie_player.load_state_machine("pigeon_fsm");
     let r = lottie_player.load_state_machine_data(&message);
@@ -209,6 +209,21 @@ fn main() {
         let left_down = window.get_mouse_down(MouseButton::Left);
         // println!("is left down? {}", left_down);
 
+        let mut mx = 0.0;
+        let mut my = 0.0;
+
+        window.get_mouse_pos(MouseMode::Clamp).map(|mouse| {
+            // println!("x {} y {}", mouse.0, mouse.1);
+            mx = mouse.0;
+            my = mouse.1;
+        });
+
+        let p = &mut *locked_player.write().unwrap();
+
+        let pointer_event = Event::OnPointerEnter { x: mx, y: my };
+
+        let m = p.post_event(&pointer_event);
+
         if left_down && !clicked {
             clicked = true;
             println!("left mouse button clicked");
@@ -222,11 +237,7 @@ fn main() {
 
             let p = &mut *locked_player.write().unwrap();
 
-            let pointer_event = Event::OnPointerDown {
-                target: Some("star1".to_string()),
-                x: mx,
-                y: my,
-            };
+            let pointer_event = Event::OnPointerDown { x: mx, y: my };
 
             let m = p.post_event(&pointer_event);
 
@@ -267,11 +278,7 @@ fn main() {
 
             let p = &mut *locked_player.write().unwrap();
 
-            let pointer_event = Event::OnPointerUp {
-                target: Some("star1".to_string()),
-                x: mx,
-                y: my,
-            };
+            let pointer_event = Event::OnPointerUp { x: mx, y: my };
 
             let m = p.post_event(&pointer_event);
 
@@ -364,11 +371,7 @@ fn main() {
         }
 
         if window.is_key_pressed(Key::O, KeyRepeat::No) {
-            let pointer_event = Event::OnPointerDown {
-                target: None,
-                x: 1.0,
-                y: 1.0,
-            };
+            let pointer_event = Event::OnPointerDown { x: 1.0, y: 1.0 };
 
             let p = &mut *locked_player.write().unwrap();
 
@@ -378,11 +381,7 @@ fn main() {
         }
 
         if window.is_key_pressed(Key::I, KeyRepeat::No) {
-            let pointer_event = Event::OnPointerUp {
-                target: None,
-                x: 1.0,
-                y: 1.0,
-            };
+            let pointer_event = Event::OnPointerUp { x: 1.0, y: 1.0 };
 
             let p = &mut *locked_player.write().unwrap();
 
@@ -391,11 +390,7 @@ fn main() {
             println!("POST EVENT {:?}", m);
         }
         if window.is_key_pressed(Key::U, KeyRepeat::No) {
-            let pointer_event = Event::OnPointerMove {
-                target: None,
-                x: 1.0,
-                y: 1.0,
-            };
+            let pointer_event = Event::OnPointerMove { x: 1.0, y: 1.0 };
 
             let p = &mut *locked_player.write().unwrap();
 
@@ -436,7 +431,7 @@ fn main() {
             cpu_memory_monitor_timer = Instant::now();
         }
 
-        let p = &mut *locked_player.write().unwrap();
+        // let p = &mut *locked_player.write().unwrap();
 
         let (buffer_ptr, buffer_len) = (p.buffer_ptr(), p.buffer_len());
 

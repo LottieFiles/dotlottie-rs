@@ -1,6 +1,6 @@
 use dotlottie_player_core::events::Event;
 use dotlottie_player_core::{Config, DotLottiePlayer, Observer, StateMachineObserver};
-use minifb::{Key, KeyRepeat, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, MouseButton, MouseMode, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
 use std::sync::{Arc, RwLock};
@@ -8,8 +8,8 @@ use std::thread;
 use std::{env, time::Instant};
 use sysinfo::System;
 
-pub const WIDTH: usize = 500;
-pub const HEIGHT: usize = 500;
+pub const WIDTH: usize = 1000;
+pub const HEIGHT: usize = 1000;
 
 struct DummyObserver2;
 
@@ -99,6 +99,7 @@ impl StateMachineObserver for SMObserver {
 struct Timer {
     last_update: Instant,
     prev_frame: f32,
+    first: bool,
 }
 
 impl Timer {
@@ -106,6 +107,7 @@ impl Timer {
         Self {
             last_update: Instant::now(),
             prev_frame: 0.0,
+            first: false,
         }
     }
 
@@ -115,8 +117,9 @@ impl Timer {
         // println!("next_frame: {}", next_frame);
         let updated = animation.set_frame(next_frame);
 
-        if updated || next_frame != self.prev_frame {
+        if next_frame != self.prev_frame || !self.first {
             animation.render();
+            self.first = true;
         }
 
         self.last_update = Instant::now(); // Reset the timer
@@ -137,12 +140,12 @@ fn main() {
 
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         loop_animation: true,
-        background_color: 0x00000000,
+        background_color: 0xffffffff,
         ..Config::default()
     });
 
-    let mut markers = File::open("src/star-rating.lottie").expect("no file found");
-    let metadatamarkers = fs::metadata("src/star-rating.lottie").expect("unable to read metadata");
+    let mut markers = File::open("src/locker.lottie").expect("no file found");
+    let metadatamarkers = fs::metadata("src/locker.lottie").expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
@@ -180,28 +183,65 @@ fn main() {
 
     let mut cpu_memory_monitor_timer = Instant::now();
 
-    let message: String = fs::read_to_string("src/global_state_sm.json").unwrap();
+    let message: String = fs::read_to_string("src/pigeon_fsm.json").unwrap();
 
     // lottie_player.load_state_machine("pigeon_fsm");
-    let r = lottie_player.load_state_machine_data(&message);
+    // let r = lottie_player.load_state_machine_data(&message);
 
-    println!("Load state machine data -> {}", r);
+    // println!("Load state machine data -> {}", r);
 
-    let sSm = lottie_player.start_state_machine();
-
-    println!("Start state machine -> {}", sSm);
+    lottie_player.start_state_machine();
 
     println!("is_playing: {}", lottie_player.is_playing());
 
     lottie_player.render();
 
-    lottie_player.state_machine_subscribe(observer3.clone());
+    // lottie_player.state_machine_subscribe(observer3.clone());
 
     let locked_player = Arc::new(RwLock::new(lottie_player));
 
     let mut pushed = 0.0;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        let left_down = window.get_mouse_down(MouseButton::Left);
+        // println!("is left down? {}", left_down);
+
+        if left_down {
+            let mut mx = 0.0;
+            let mut my = 0.0;
+            window.get_mouse_pos(MouseMode::Clamp).map(|mouse| {
+                // println!("x {} y {}", mouse.0, mouse.1);
+                mx = mouse.0;
+                my = mouse.1;
+            });
+
+            let p = &mut *locked_player.write().unwrap();
+            if p.hit_check("pad1", mx, my) {
+                // println!("hit");
+                let mut c = p.config();
+
+                c.segment = vec![0.0, 20.0];
+                c.loop_animation = false;
+                p.set_config(c);
+
+                p.play();
+            } else {
+                println!("not hit");
+            }
+            if p.hit_check("bar", mx, my) {
+                // println!("hit");
+                let mut c = p.config();
+
+                c.segment = vec![56.0, 82.0];
+                c.loop_animation = false;
+                p.set_config(c);
+
+                p.play();
+            } else {
+                println!("not hit");
+            }
+        }
+
         timer.tick(&*locked_player.read().unwrap());
 
         if window.is_key_down(Key::S) {
@@ -289,7 +329,11 @@ fn main() {
         }
 
         if window.is_key_pressed(Key::O, KeyRepeat::No) {
-            let pointer_event = Event::OnPointerDown { x: 1.0, y: 1.0 };
+            let pointer_event = Event::OnPointerDown {
+                target: None,
+                x: 1.0,
+                y: 1.0,
+            };
 
             let p = &mut *locked_player.write().unwrap();
 
@@ -299,7 +343,11 @@ fn main() {
         }
 
         if window.is_key_pressed(Key::I, KeyRepeat::No) {
-            let pointer_event = Event::OnPointerUp { x: 1.0, y: 1.0 };
+            let pointer_event = Event::OnPointerUp {
+                target: None,
+                x: 1.0,
+                y: 1.0,
+            };
 
             let p = &mut *locked_player.write().unwrap();
 
@@ -308,7 +356,11 @@ fn main() {
             println!("POST EVENT {:?}", m);
         }
         if window.is_key_pressed(Key::U, KeyRepeat::No) {
-            let pointer_event = Event::OnPointerMove { x: 1.0, y: 1.0 };
+            let pointer_event = Event::OnPointerMove {
+                target: None,
+                x: 1.0,
+                y: 1.0,
+            };
 
             let p = &mut *locked_player.write().unwrap();
 

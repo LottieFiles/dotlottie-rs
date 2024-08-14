@@ -1247,19 +1247,27 @@ impl DotLottiePlayer {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
+                    println!("State machine is not loaded");
                     return false;
                 }
             }
-            Err(_) => return false,
+            Err(_) => {
+                println!("Cant get read lock on state machine.");
+                return false;
+            }
         }
 
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
+                    println!("Starting state machine");
                     sm.start();
                 }
             }
-            Err(_) => return false,
+            Err(_) => {
+                println!("Cant get write lock on state machine");
+                return false;
+            }
         }
 
         true
@@ -1614,7 +1622,10 @@ impl DotLottiePlayer {
                 if values.len() != 2 {
                     return 1;
                 }
-                let pointer_event = Event::OnPointerExit {};
+                let pointer_event = Event::OnPointerExit {
+                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
+                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
+                };
                 match self.state_machine.try_write() {
                     Ok(mut state_machine) => {
                         if let Some(sm) = state_machine.as_mut() {

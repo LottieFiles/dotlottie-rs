@@ -281,6 +281,12 @@ impl LottieRenderer {
 
         Ok(())
     }
+
+    pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> Result<bool, LottieRendererError> {
+        self.thorvg_animation
+            .hit_check(layer_name, x, y)
+            .map_err(LottieRendererError::ThorvgError)
+    }
 }
 
 fn hex_to_rgba(hex_color: u32) -> (u8, u8, u8, u8) {

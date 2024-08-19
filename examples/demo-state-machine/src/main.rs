@@ -8,8 +8,8 @@ use std::thread;
 use std::{env, time::Instant};
 use sysinfo::System;
 
-pub const WIDTH: usize = 500;
-pub const HEIGHT: usize = 500;
+pub const WIDTH: usize = 1000;
+pub const HEIGHT: usize = 1000;
 
 struct DummyObserver2;
 
@@ -218,11 +218,11 @@ fn main() {
             my = mouse.1;
         });
 
-        let p = &mut *locked_player.write().unwrap();
+        // let p = &mut *locked_player.write().unwrap();
 
-        let pointer_event = Event::OnPointerEnter { x: mx, y: my };
+        // let pointer_event = Event::OnPointerEnter { x: mx, y: my };
 
-        let m = p.post_event(&pointer_event);
+        // let m = p.post_event(&pointer_event);
 
         if left_down && !clicked {
             clicked = true;
@@ -238,6 +238,8 @@ fn main() {
             let p = &mut *locked_player.write().unwrap();
 
             let pointer_event = Event::OnPointerDown { x: mx, y: my };
+
+            println!("pointer_event {:?}", pointer_event);
 
             let m = p.post_event(&pointer_event);
 
@@ -431,7 +433,7 @@ fn main() {
             cpu_memory_monitor_timer = Instant::now();
         }
 
-        // let p = &mut *locked_player.write().unwrap();
+        let p = &mut *locked_player.write().unwrap();
 
         let (buffer_ptr, buffer_len) = (p.buffer_ptr(), p.buffer_len());
 

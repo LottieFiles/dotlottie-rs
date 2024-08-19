@@ -23,7 +23,7 @@
             "autoplay": true,
             "mode": "Forward",
             "segment": [12, 20]
-        },        
+        },
         {
             "name": "forward",
             "type": "PlaybackState",
@@ -60,50 +60,50 @@
     "transitions": [
         {
             "type": "Transition",
-            "from_state": 0, 
+            "from_state": 0,
             "to_state": 1,
-            "on_pointer_enter_event": {
+            "on_pointer_down_event": {
                 "target": "star1"
               }
         },
         {
             "type": "Transition",
-            "from_state": 0, 
-            "to_state": 6,
-            "on_pointer_exit_event": {
-                "target": "star1"
-              }
-        },
-        {
-            "type": "Transition",
-            "from_state": 0, 
+            "from_state": 0,
             "to_state": 2,
-            "on_pointer_enter_event": {
+            "on_pointer_down_event": {
                 "target": "star2"
               }
         },
         {
             "type": "Transition",
-            "from_state": 0, 
+            "from_state": 0,
             "to_state": 3,
-            "on_pointer_enter_event": {
+            "on_pointer_down_event": {
                 "target": "star3"
               }
         },
         {
             "type": "Transition",
-            "from_state": 0, 
+            "from_state": 0,
             "to_state": 4,
-            "on_pointer_enter_event": {
+            "on_pointer_down_event": {
                 "target": "star4"
               }
         },
         {
             "type": "Transition",
-            "from_state": 0, 
+            "from_state": 0,
             "to_state": 5,
-            "on_pointer_enter_event": {
+            "on_pointer_down_event": {
                 "target": "star5"
+              }
+        },
+        {
+            "type": "Transition",
+            "from_state": 0,
+            "to_state": 1,
+            "string_event": {
+                "value": "star1"
               }
         }
     ],
@@ -111,4 +111,4 @@
     ],
     "context_variables": [
     ]
-}
+  }

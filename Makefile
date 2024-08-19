@@ -835,16 +835,19 @@ $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS): $(RUNTIME_FFI_SRC)
 $(eval $(call DEFINE_TARGET,aarch64-linux-android,aarch64-linux-android,arm64-v8a,arm,aarch64))
 $(eval $(call DEFINE_TARGET,armv7-linux-androideabi,armv7a-linux-androideabi,armeabi-v7a,arm,armv7))
 $(eval $(call DEFINE_TARGET,x86_64-linux-android,x86_64-linux-android,x86_64,x86_64,x86_64))
+$(eval $(call DEFINE_TARGET,i686-linux-android,i686-linux-android,x86,x86,x86))
 
 # Define all android deps builds
 $(eval $(call NEW_ANDROID_DEPS_BUILD,AARCH64_LINUX_ANDROID))
 $(eval $(call NEW_ANDROID_DEPS_BUILD,ARMV7_LINUX_ANDROIDEABI))
 $(eval $(call NEW_ANDROID_DEPS_BUILD,X86_64_LINUX_ANDROID))
+$(eval $(call NEW_ANDROID_DEPS_BUILD,I686_LINUX_ANDROID))
 
 # Define all android builds
 $(eval $(call NEW_ANDROID_BUILD,AARCH64_LINUX_ANDROID))
 $(eval $(call NEW_ANDROID_BUILD,ARMV7_LINUX_ANDROIDEABI))
 $(eval $(call NEW_ANDROID_BUILD,X86_64_LINUX_ANDROID))
+$(eval $(call NEW_ANDROID_BUILD,I686_LINUX_ANDROID))
 
 # Define all apple targets
 $(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-darwin,MAC_ARM64,arm64,arm,aarch64,$(APPLE_MACOSX),$(APPLE_MACOSX_PLATFORM),$(APPLE_MACOSX_SDK)))

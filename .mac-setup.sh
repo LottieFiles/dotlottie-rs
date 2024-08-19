@@ -62,6 +62,7 @@ echo "Installing rust target(s) ..."
 rustup target add aarch64-linux-android \
   armv7-linux-androideabi \
   x86_64-linux-android \
+  i686-linux-android \
   aarch64-apple-darwin \
   x86_64-apple-darwin \
   aarch64-apple-ios \
@@ -69,10 +70,9 @@ rustup target add aarch64-linux-android \
   aarch64-apple-ios-sim \
   wasm32-unknown-emscripten
 
-
 echo "Installing nightly toolchain"
-rustup install nightly 
-rustup component add rust-src --toolchain nightly 
+rustup install nightly
+rustup component add rust-src --toolchain nightly
 rustup target add wasm32-unknown-emscripten --toolchain nightly
 
 echo
@@ -80,7 +80,6 @@ echo "Install cargo dependencies"
 cargo install uniffi-bindgen-cpp \
   --git https://github.com/NordSecurity/uniffi-bindgen-cpp \
   --tag "${UNIFFI_BINDGEN_CPP_VERSION}"
-
 
 echo
 echo "Setting up project ..."
@@ -93,7 +92,6 @@ cd "${SCRIPT_DIR}/deps/modules/emsdk" || die "Could not find Emscripten SDK unde
 ./emsdk activate "${EMSDK_VERSION}"
 cd "${SCRIPT_DIR}/deps/modules/emsdk/upstream/emscripten" || die "Could not find Emscripten under ${RED}deps/modules/emsdk/upstream/emscripten${NC}!"
 npm install
-
 
 echo
 echo "Disabling unneeded webp features"

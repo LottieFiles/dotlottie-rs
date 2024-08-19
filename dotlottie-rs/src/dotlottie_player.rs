@@ -33,6 +33,7 @@ pub enum PlaybackState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(C)]
 pub enum Mode {
     Forward,
     Reverse,
@@ -56,6 +57,7 @@ impl Direction {
 }
 
 #[derive(Clone, PartialEq)]
+#[repr(C)]
 pub struct Config {
     pub mode: Mode,
     pub loop_animation: bool,
@@ -100,11 +102,12 @@ impl Default for Config {
     }
 }
 
-struct LayerBoundingBox {
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
+#[repr(C)]
+pub struct LayerBoundingBox {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
 }
 
 impl From<LayerBoundingBox> for Vec<f32> {
@@ -1011,6 +1014,10 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().manifest()
     }
 
+    pub fn buffer(&self) -> *const u32 {
+        self.runtime.read().unwrap().buffer().as_ptr()
+    }
+
     pub fn buffer_ptr(&self) -> u64 {
         self.runtime.read().unwrap().buffer().as_ptr().cast::<u32>() as u64
     }
@@ -1359,12 +1366,8 @@ impl DotLottiePlayer {
                     for listener in listeners {
                         match listener.try_read() {
                             Ok(listener) => {
-                                let unwrapped_listener = &*listener;
-
-                                if !listener_types
-                                    .contains(&unwrapped_listener.get_type().to_string())
-                                {
-                                    listener_types.push(unwrapped_listener.get_type().to_string());
+                                if !listener_types.contains(&listener.get_type().to_string()) {
+                                    listener_types.push(listener.get_type().to_string());
                                 }
                             }
                             Err(_) => return vec![],
@@ -1551,6 +1554,10 @@ impl DotLottiePlayer {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn manifest(&self) -> Option<Manifest> {
         self.player.read().unwrap().manifest()
+    }
+
+    pub fn buffer(&self) -> *const u32 {
+        self.player.read().unwrap().buffer()
     }
 
     pub fn buffer_ptr(&self) -> u64 {

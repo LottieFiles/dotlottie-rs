@@ -200,6 +200,8 @@ impl LottieRenderer {
         self.buffer
             .resize((self.width * self.height * 4) as usize, 0);
 
+        self.thorvg_canvas.sync()?;
+
         self.thorvg_canvas
             .set_target(
                 &mut self.buffer,
@@ -278,6 +280,12 @@ impl LottieRenderer {
         self.thorvg_animation.translate(shift_x, shift_y)?;
 
         Ok(())
+    }
+
+    pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> Result<bool, LottieRendererError> {
+        self.thorvg_animation
+            .hit_check(layer_name, x, y)
+            .map_err(LottieRendererError::ThorvgError)
     }
 }
 

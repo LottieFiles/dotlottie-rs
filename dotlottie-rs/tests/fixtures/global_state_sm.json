@@ -1,0 +1,114 @@
+{
+    "descriptor": {
+        "id": "global_state_sm",
+        "initial": 0
+    },
+    "states": [
+        {
+            "name": "global",
+            "type": "GlobalState"
+        },
+        {
+            "name": "forward",
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "Forward",
+            "segment": [0, 12]
+        },
+        {
+            "name": "forward",
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "Forward",
+            "segment": [12, 22]
+        },        
+        {
+            "name": "forward",
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "Forward",
+            "segment": [22, 32]
+        },
+        {
+            "name": "forward",
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "Forward",
+            "segment": [32, 42]
+        },
+        {
+            "name": "forward",
+            "type": "PlaybackState",
+            "loop": false,
+            "autoplay": true,
+            "mode": "Forward",
+            "segment": [42, 65]
+        }
+    ],
+    "transitions": [
+        {
+            "type": "Transition",
+            "from_state": 0, 
+            "to_state": 1,
+            "numeric_event": {
+                "value": 1
+              }
+        },
+        {
+            "type": "Transition",
+            "from_state": 0, 
+            "to_state": 2,
+            "numeric_event": {
+                "value": 2
+              }
+        },
+        {
+            "type": "Transition",
+            "from_state": 0, 
+            "to_state": 3,
+            "numeric_event": {
+                "value": 3
+              }
+        },
+        {
+            "type": "Transition",
+            "from_state": 0, 
+            "to_state":4,
+            "numeric_event": {
+                "value": 4
+              }
+        },
+        {
+            "type": "Transition",
+            "from_state": 0, 
+            "to_state":5,
+            "numeric_event": {
+                "value": 5
+              }
+        },
+        {
+            "type": "Transition",
+            "from_state": 5, 
+            "to_state": 3,
+            "numeric_event": {
+                "value": 1
+              }
+        },
+        {
+            "type": "Transition",
+            "from_state": 5, 
+            "to_state": 3,
+            "string_event": {
+                "value": "jump"
+              }
+        }
+    ],
+    "listeners": [
+    ],
+    "context_variables": [
+    ]
+}

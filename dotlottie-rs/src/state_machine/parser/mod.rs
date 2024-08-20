@@ -113,6 +113,12 @@ pub enum StateJson {
         exit_actions: Option<Vec<StateActionJson>>,
         reset_context: Option<String>,
     },
+    GlobalState {
+        name: String,
+        entry_actions: Option<Vec<StateActionJson>>,
+        exit_actions: Option<Vec<StateActionJson>>,
+        reset_context: Option<String>,
+    },
 }
 
 #[derive(Deserialize, Debug, PartialEq)]

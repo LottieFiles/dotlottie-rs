@@ -17,7 +17,7 @@ pub trait StateTrait {
         numeric_context: &HashMap<String, f32>,
     ) -> i32;
     fn get_reset_context_key(&self) -> &String;
-    fn get_animation_id(&self) -> &String;
+    fn get_animation_id(&self) -> Option<&String>;
     fn get_transitions(&self) -> &Vec<Arc<RwLock<Transition>>>;
     fn add_transition(&mut self, transition: Transition);
     fn get_config(&self) -> Option<&Config>;
@@ -50,6 +50,11 @@ pub enum State {
         animation_id: String,
         transitions: Vec<Arc<RwLock<Transition>>>,
     },
+    Global {
+        name: String,
+        reset_context: String,
+        transitions: Vec<Arc<RwLock<Transition>>>,
+    },
 }
 
 impl State {
@@ -57,6 +62,7 @@ impl State {
         match self {
             State::Playback { .. } => "Playback",
             State::Sync { .. } => "Sync",
+            State::Global { .. } => "Global",
         }
     }
 }
@@ -133,6 +139,7 @@ impl StateTrait for State {
                     }
                 }
             }
+            State::Global { .. } => {}
         }
 
         1
@@ -142,13 +149,15 @@ impl StateTrait for State {
         match self {
             State::Playback { reset_context, .. } => reset_context,
             State::Sync { reset_context, .. } => reset_context,
+            State::Global { reset_context, .. } => reset_context,
         }
     }
 
-    fn get_animation_id(&self) -> &String {
+    fn get_animation_id(&self) -> Option<&String> {
         match self {
-            State::Playback { animation_id, .. } => animation_id,
-            State::Sync { animation_id, .. } => animation_id,
+            State::Playback { animation_id, .. } => Some(animation_id),
+            State::Sync { animation_id, .. } => Some(animation_id),
+            State::Global { .. } => None,
         }
     }
 
@@ -156,6 +165,7 @@ impl StateTrait for State {
         match self {
             State::Playback { transitions, .. } => transitions,
             State::Sync { transitions, .. } => transitions,
+            State::Global { transitions, .. } => transitions,
         }
     }
 
@@ -167,6 +177,9 @@ impl StateTrait for State {
             State::Sync { transitions, .. } => {
                 transitions.push(Arc::new(RwLock::new(transition)));
             }
+            State::Global { transitions, .. } => {
+                transitions.push(Arc::new(RwLock::new(transition)));
+            }
         }
     }
 
@@ -174,6 +187,7 @@ impl StateTrait for State {
         match self {
             State::Playback { config, .. } => Some(config),
             State::Sync { .. } => None,
+            State::Global { .. } => None,
         }
     }
 
@@ -181,6 +195,7 @@ impl StateTrait for State {
         match self {
             State::Playback { name, .. } => name.to_string(),
             State::Sync { name, .. } => name.to_string(),
+            State::Global { name, .. } => name.to_string(),
         }
     }
 
@@ -188,6 +203,7 @@ impl StateTrait for State {
         match self {
             State::Playback { .. } => "PlaybackState".to_string(),
             State::Sync { .. } => "SyncState".to_string(),
+            State::Global { .. } => "GlobalState".to_string(),
         }
     }
 

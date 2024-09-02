@@ -236,10 +236,6 @@ impl Animation {
                 )
             };
 
-            println!("Layer name: {}", layer_name);
-            println!("Bounds: x:{:?} y:{:?} w:{:?} h:{:?}", px, py, pw, ph);
-            println!("Passed coordinates: x:{:?} y:{:?} ", x, y);
-
             convert_tvg_result(bounds, "tvg_paint_get_bounds")?;
 
             if x >= px && x <= px + pw && y >= py && y <= py + ph {

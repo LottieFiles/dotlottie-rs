@@ -1260,7 +1260,6 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    println!("Starting state machine");
                     sm.start();
                 }
             }

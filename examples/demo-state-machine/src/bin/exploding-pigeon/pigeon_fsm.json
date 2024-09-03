@@ -1,0 +1,22 @@
+{
+    "descriptor": {
+        "id": "multi_animation_slideshow",
+        "initial": 0
+    },
+    "states": [
+    ],
+    "transitions": [
+    ],
+    "listeners": [
+        {
+            "type": "PointerDown"
+        }
+    ],
+    "context_variables": [
+        {
+            "key": "sync_key",
+            "type": "Numeric",
+            "value": 30
+        }
+    ]
+}

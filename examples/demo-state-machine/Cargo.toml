@@ -17,3 +17,7 @@ path = "src/bin/star-rating/star-rating.rs"
 [[bin]]
 name = "exploding-pigeon"
 path = "src/bin/exploding-pigeon/exploding-pigeon.rs"
+
+[[bin]]
+name = "play-on-hover"
+path = "src/bin/play-on-hover/play-on-hover.rs"

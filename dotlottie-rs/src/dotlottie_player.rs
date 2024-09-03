@@ -181,6 +181,15 @@ impl DotLottieRuntime {
         self.renderer.hit_check(layer_name, x, y).unwrap_or(false)
     }
 
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+        let result = self
+            .renderer
+            .get_layer_bounds(layer_name)
+            .unwrap_or((0.0, 0.0, 0.0, 0.0));
+
+        vec![result.0, result.1, result.2, result.3]
+    }
+
     pub fn is_loaded(&self) -> bool {
         self.is_loaded
     }
@@ -1190,6 +1199,10 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().hit_check(layer_name, x, y)
     }
 
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+        self.runtime.read().unwrap().get_layer_bounds(layer_name)
+    }
+
     pub fn markers(&self) -> Vec<Marker> {
         self.runtime.read().unwrap().markers()
     }
@@ -1241,18 +1254,20 @@ impl DotLottiePlayer {
         self.player.read().unwrap().hit_check(layer_name, x, y)
     }
 
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+        self.player.read().unwrap().get_layer_bounds(layer_name)
+    }
+
     // If you are in an environment that does not support events
     // Call isPlaying() to know if the state machine started playback within the first state
     pub fn start_state_machine(&self) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
-                    println!("State machine is not loaded");
                     return false;
                 }
             }
             Err(_) => {
-                println!("Cant get read lock on state machine.");
                 return false;
             }
         }
@@ -1264,7 +1279,6 @@ impl DotLottiePlayer {
                 }
             }
             Err(_) => {
-                println!("Cant get write lock on state machine");
                 return false;
             }
         }
@@ -1435,249 +1449,55 @@ impl DotLottiePlayer {
         1
     }
 
-    /// Post event format:
-    ///
-    /// "Bool: true"
-    /// "Bool: false"
-    /// "String: ..."
-    /// "Numeric: 0.0"
-    /// "OnPointerDown: 0.0 0.0"
-    /// "OnPointerUp: 0.0 0.0"
-    /// "OnPointerMove: 0.0 0.0"
-    /// "OnPointerEnter: 0.0 0.0"
-    /// "OnPointerExit: 0.0 0.0"
-    /// "OnComplete"
-    /// "SetNumericContext: key value"
-    ///
-    /// Return codes
-    /// 0: Success
-    /// 1: Failure
-    /// 2: Play animation
-    /// 3: Pause animation
-    /// 4: Request and draw a new single frame of the animation (needed for sync state)
-    #[cfg(target_arch = "wasm32")]
-    pub fn post_serialized_event(&self, event: String) -> i32 {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return 1;
-                }
-            }
-            Err(_) => return 1,
-        }
+    pub fn post_bool_event(&self, value: bool) -> i32 {
+        let event = Event::Bool { value };
+        self.post_event(&event)
+    }
 
-        let parts: Vec<&str> = event.splitn(2, ": ").collect();
-        if parts.len() < 2 {
-            return 1;
-        }
+    pub fn post_string_event(&self, value: &str) -> i32 {
+        let event = Event::String {
+            value: value.to_string(),
+        };
+        self.post_event(&event)
+    }
 
-        let command_type = parts[0];
-        let value = parts[1];
+    pub fn post_numeric_event(&self, value: f32) -> i32 {
+        let event = Event::Numeric { value };
+        self.post_event(&event)
+    }
 
-        match command_type {
-            "Bool" => {
-                let bool_value = value.parse::<bool>().map_err(|_| (false));
+    pub fn post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
+        let event = Event::OnPointerDown { x, y };
+        self.post_event(&event)
+    }
 
-                match bool_value {
-                    Ok(bool_value) => {
-                        let bool_event = Event::Bool { value: bool_value };
+    pub fn post_pointer_up_event(&self, x: f32, y: f32) -> i32 {
+        let event = Event::OnPointerUp { x, y };
+        self.post_event(&event)
+    }
 
-                        match self.state_machine.try_write() {
-                            Ok(mut state_machine) => {
-                                if let Some(sm) = state_machine.as_mut() {
-                                    sm.post_event(&bool_event)
-                                } else {
-                                    1
-                                }
-                            }
-                            Err(_) => 1,
-                        }
-                    }
-                    Err(_) => 1,
-                }
-            }
-            "String" => {
-                let string_value = value.to_string();
-                let string_event = Event::String {
-                    value: string_value,
-                };
+    pub fn post_pointer_move_event(&self, x: f32, y: f32) -> i32 {
+        let event = Event::OnPointerMove { x, y };
+        self.post_event(&event)
+    }
 
-                match self.state_machine.try_write() {
-                    Ok(mut state_machine) => {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&string_event)
-                        } else {
-                            1
-                        }
-                    }
-                    Err(_) => 1,
-                }
-            }
-            "Numeric" => {
-                let numeric_value = value.parse::<f32>().map_err(|_| (false));
+    pub fn post_pointer_enter_event(&self, x: f32, y: f32) -> i32 {
+        let event = Event::OnPointerEnter { x, y };
+        self.post_event(&event)
+    }
 
-                match numeric_value {
-                    Ok(numeric_value) => {
-                        let numeric_event = Event::Numeric {
-                            value: numeric_value,
-                        };
+    pub fn post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
+        let event = Event::OnPointerExit { x, y };
+        self.post_event(&event)
+    }
 
-                        match self.state_machine.try_write() {
-                            Ok(mut state_machine) => {
-                                if let Some(sm) = state_machine.as_mut() {
-                                    sm.post_event(&numeric_event)
-                                } else {
-                                    1
-                                }
-                            }
-                            Err(_) => 1,
-                        }
-                    }
-                    Err(_) => 1,
-                }
-            }
-            "OnPointerDown" => {
-                let values: Vec<&str> = value.split_whitespace().collect();
-                if values.len() != 2 {
-                    return 1;
-                }
-                let pointer_event = Event::OnPointerDown {
-                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
-                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
-                };
-                match self.state_machine.try_write() {
-                    Ok(mut state_machine) => {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event)
-                        } else {
-                            1
-                        }
-                    }
-                    Err(_) => 1,
-                }
-            }
-            "OnPointerUp" => {
-                let values: Vec<&str> = value.split_whitespace().collect();
-                if values.len() != 2 {
-                    return 1;
-                }
-                let pointer_event = Event::OnPointerUp {
-                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
-                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
-                };
-                match self.state_machine.try_write() {
-                    Ok(mut state_machine) => {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event)
-                        } else {
-                            1
-                        }
-                    }
-                    Err(_) => 1,
-                }
-            }
-            "OnPointerMove" => {
-                let values: Vec<&str> = value.split_whitespace().collect();
-                if values.len() != 2 {
-                    return 1;
-                }
-                let pointer_event = Event::OnPointerMove {
-                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
-                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
-                };
-                match self.state_machine.try_write() {
-                    Ok(mut state_machine) => {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event)
-                        } else {
-                            1
-                        }
-                    }
-                    Err(_) => 1,
-                }
-            }
-            "OnPointerEnter" => {
-                let values: Vec<&str> = value.split_whitespace().collect();
-                if values.len() != 2 {
-                    return 1;
-                }
-                let pointer_event = Event::OnPointerEnter {
-                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
-                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
-                };
-                match self.state_machine.try_write() {
-                    Ok(mut state_machine) => {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event)
-                        } else {
-                            1
-                        }
-                    }
-                    Err(_) => 1,
-                }
-            }
-            "OnPointerExit" => {
-                let values: Vec<&str> = value.split_whitespace().collect();
-                if values.len() != 2 {
-                    return 1;
-                }
-                let pointer_event = Event::OnPointerExit {
-                    x: values[0].parse::<f32>().map_err(|_| (false)).unwrap(),
-                    y: values[1].parse::<f32>().map_err(|_| (false)).unwrap(),
-                };
-                match self.state_machine.try_write() {
-                    Ok(mut state_machine) => {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event)
-                        } else {
-                            1
-                        }
-                    }
-                    Err(_) => 1,
-                }
-            }
-            "OnComplete" => {
-                let pointer_event = Event::OnComplete {};
+    pub fn post_set_numeric_context(&self, key: &str, value: f32) -> i32 {
+        let event = Event::SetNumericContext {
+            key: key.to_string(),
+            value,
+        };
 
-                match self.state_machine.try_write() {
-                    Ok(mut state_machine) => {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&pointer_event)
-                        } else {
-                            1
-                        }
-                    }
-                    Err(_) => 1,
-                }
-            }
-            "SetNumericContext" => {
-                let values: Vec<&str> = value.split_whitespace().collect();
-
-                if values.len() != 2 {
-                    return 1;
-                }
-
-                let key = values[0];
-                let numeric_value = values[1].parse::<f32>().map_err(|_| (false)).unwrap();
-
-                let event = Event::SetNumericContext {
-                    key: key.to_string(),
-                    value: numeric_value,
-                };
-
-                match self.state_machine.try_write() {
-                    Ok(mut state_machine) => {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&event)
-                        } else {
-                            1
-                        }
-                    }
-                    Err(_) => 1,
-                }
-            }
-            _ => 1,
-        }
+        self.post_event(&event)
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {

@@ -148,6 +148,7 @@ interface DotLottiePlayer {
     boolean set_viewport(i32 x, i32 y, i32 w, i32 h);
     f32 segment_duration();
     sequence<f32> animation_size();
+    sequence<f32> get_layer_bounds([ByRef] string layer_name);
 
     boolean load_state_machine([ByRef] string str);
     boolean start_state_machine();
@@ -160,4 +161,14 @@ interface DotLottiePlayer {
     boolean set_state_machine_boolean_context([ByRef] string key, boolean value);
     sequence<string> state_machine_framework_setup();
     boolean load_state_machine_data([ByRef] string state_machine);
+
+    i32 post_bool_event(boolean value);
+    i32 post_string_event([ByRef] string value);
+    i32 post_numeric_event(f32 value);
+    i32 post_pointer_down_event(f32 x, f32 y);
+    i32 post_pointer_up_event(f32 x, f32 y);
+    i32 post_pointer_move_event(f32 x, f32 y);
+    i32 post_pointer_enter_event(f32 x, f32 y);
+    i32 post_pointer_exit_event(f32 x, f32 y);
+    i32 post_set_numeric_context([ByRef] string key, f32 value);
 };

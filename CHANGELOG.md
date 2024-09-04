@@ -1,3 +1,23 @@
+## 0.1.31 (2024-09-04)
+
+### Features
+
+#### added GlobalState node type (#215)
+
+#### bump thorvg to v0.14.5 (#216)
+
+#### layer detection api (#217)
+
+#### x86 android support (#218)
+
+#### bump thorvg to v0.14.8
+
+### Fixes
+
+#### thorvg canvas resize problem. (#206)
+
+#### corrected thorvg canvas sync (#222)
+
 ## 0.1.30 (2024-08-01)
 
 ### Fixes

@@ -1,0 +1,17 @@
+[package]
+name = "ffdotlottie"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dotlottie_player = { path = "../../dotlottie-rs" }
+video-rs = { version = "0.9", features = ["ndarray"] }
+ndarray = "0.16"
+clap = { version = "4.5", features = ["derive"] }
+env_logger = "0.11"
+log = "0.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3

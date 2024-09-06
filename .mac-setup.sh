@@ -53,7 +53,8 @@ brew install android-ndk \
   ninja \
   pkg-config \
   ktlint \
-  swiftformat
+  swiftformat \
+  conan
 
 rustup component add rust-src
 
@@ -76,7 +77,7 @@ rustup component add rust-src --toolchain nightly
 rustup target add wasm32-unknown-emscripten --toolchain nightly
 
 echo
-echo "Install cargo dependencies"
+echo "Installing cargo dependencies"
 cargo install uniffi-bindgen-cpp \
   --git https://github.com/NordSecurity/uniffi-bindgen-cpp \
   --tag "${UNIFFI_BINDGEN_CPP_VERSION}"

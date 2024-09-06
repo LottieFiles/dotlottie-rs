@@ -7,7 +7,7 @@
 To try it out quickly, an executable binary is available in the `bin/macos-arm64` folder.
 
 ```bash
-./bin/macos-arm64/ffdotlottie --input ./assets/cartoon.json --output ./output.mp4 --width 1920 --height 1080 --background-color "#00FFFFFF"
+./.bin/macos-arm64/ffdotlottie --input ./assets/cartoon.json --output ./output.mp4 --width 1920 --height 1080 --background-color "#00FFFFFF"
 ```
 
 > This won't work if you're not on an M1 Mac. If you're on a different platform, you can build the tool using the instructions below.

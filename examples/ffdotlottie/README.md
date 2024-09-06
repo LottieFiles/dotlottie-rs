@@ -7,7 +7,7 @@
 To try it out quickly, an executable binary is available in the `bin/macos-arm64` folder.
 
 ```bash
-./.bin/macos-arm64/ffdotlottie --input ./assets/cartoon.json --output ./output.mp4 --width 1920 --height 1080 --background-color "#00FFFFFF"
+./.bin/macos-arm64/ffdotlottie --input ./assets/cartoon.json --output ./output.mp4 --width 1920 --height 1080 --background-color "#00FFFFFF" --fps 60
 ```
 
 > This won't work if you're not on an M1 Mac. If you're on a different platform, you can build the tool using the instructions below.
@@ -18,6 +18,7 @@ To try it out quickly, an executable binary is available in the `bin/macos-arm64
 - Convert and encode animations into video format (H.264 YUV420p).
 - Customize video dimensions (width/height).
 - Specify a background color for the animation.
+- Control the frame rate of the output video.
 
 ## Prerequisites
 
@@ -36,13 +37,13 @@ cargo build --release
 After building the tool, run it by providing the required parameters:
 
 ```bash
-./target/release/ffdotlottie --input <input_file> --output <output_file> --width <width> --height <height> [--background-color <hex_color_string>]
+./target/release/ffdotlottie --input <input_file> --output <output_file> --width <width> --height <height> [--background-color <hex_color_string>] [--fps <frame_rate>]
 ```
 
 ### Example
 
 ```bash
-./target/release/ffdotlottie --input ./assets/cartoon.json --output ./output.mp4 --width 1920 --height 1080 --background-color "#FF0000FF"
+./target/release/ffdotlottie --input ./assets/cartoon.json --output ./output.mp4 --width 1920 --height 1080 --background-color "#FF0000FF" --fps 60
 ```
 
 ### Arguments
@@ -52,6 +53,7 @@ After building the tool, run it by providing the required parameters:
 - `--width`: Width of the output video in pixels.
 - `--height`: Height of the output video in pixels.
 - `--background-color` (optional): Background color of the animation (e.g., `#FFFF00FF`).
+- `--fps` (optional): Frame rate of the output video (default is animation frame rate).
 
 ## Work in Progress
 

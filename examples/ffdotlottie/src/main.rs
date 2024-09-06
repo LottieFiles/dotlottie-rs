@@ -1,11 +1,11 @@
 use clap::Parser;
 use dotlottie_player_core::{Config, DotLottiePlayer};
+use log::{error, info};
 use ndarray::Array3;
 use std::path::Path;
+use std::{fs, process};
 use video_rs::encode::{Encoder, Settings};
 use video_rs::time::Time;
-use log::{info, error};
-use std::{fs, process};
 
 #[derive(Parser, Debug)]
 #[command(version)]
@@ -24,6 +24,9 @@ struct Args {
 
     #[clap(long, default_value = "#00000000")]
     background_color: String,
+
+    #[clap(long, default_value = "0")]
+    fps: f32,
 }
 
 fn main() {
@@ -94,7 +97,13 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
 
     let total_frames = player.total_frames();
     let duration = player.duration();
-    let fps = total_frames / duration;
+    let default_fps = total_frames / duration;
+
+    let fps = if args.fps == 0.0 {
+        default_fps
+    } else {
+        args.fps
+    };
 
     let frame_time = Time::from_nth_of_a_second((fps) as usize);
     let mut position = Time::zero();
@@ -117,7 +126,12 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
             let rendered = player.render();
 
             if rendered {
-                convert_rgba_to_rgb_frame(buffer, &mut rgb_frame, args.width as usize, args.height as usize);
+                convert_rgba_to_rgb_frame(
+                    buffer,
+                    &mut rgb_frame,
+                    args.width as usize,
+                    args.height as usize,
+                );
 
                 info!("Encoding frame: {}", i);
                 encoder.encode(&rgb_frame, position).map_err(|e| {
@@ -129,7 +143,7 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-   
+
     encoder.finish().map_err(|e| {
         error!("Failed to finish encoding: {}", e);
         e
@@ -140,16 +154,21 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn convert_rgba_to_rgb_frame(buffer: &[u8], rgb_frame: &mut Array3<u8>, width: usize, height: usize) {
+fn convert_rgba_to_rgb_frame(
+    buffer: &[u8],
+    rgb_frame: &mut Array3<u8>,
+    width: usize,
+    height: usize,
+) {
     let num_pixels = width * height;
 
     let buffer_ptr = buffer.as_ptr();
     let rgb_frame_ptr = rgb_frame.as_mut_ptr();
 
-    // We are using unsafe code here to manually manipulate raw pointers for converting 
-    // RGBA data into RGB data. This provides a significant performance benefit because 
-    // we avoid bounds checking and unnecessary overhead. We know the number of pixels 
-    // in advance (width * height), and we're guaranteed that both buffer and rgb_frame 
+    // We are using unsafe code here to manually manipulate raw pointers for converting
+    // RGBA data into RGB data. This provides a significant performance benefit because
+    // we avoid bounds checking and unnecessary overhead. We know the number of pixels
+    // in advance (width * height), and we're guaranteed that both buffer and rgb_frame
     // are properly sized, so this is considered safe within these assumptions.
     unsafe {
         for i in 0..num_pixels {
@@ -172,8 +191,8 @@ fn parse_hex_color(color: &str) -> Result<u32, Box<dyn std::error::Error>> {
         return Err("Invalid color format. Expected #RRGGBBAA".into());
     }
 
-    let color_value = u32::from_str_radix(&color[1..], 16)
-        .map_err(|_| "Failed to parse hex color")?;
+    let color_value =
+        u32::from_str_radix(&color[1..], 16).map_err(|_| "Failed to parse hex color")?;
 
     Ok(color_value)
 }

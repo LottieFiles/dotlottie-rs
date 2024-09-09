@@ -81,18 +81,17 @@ impl DotLottieManager {
     /// Advances to the next animation and returns it's animation data as a string.
     #[allow(dead_code)]
     fn next_animation(&mut self) -> Result<String, DotLottieError> {
-        let mut i = 0;
         let new_active_animation_id: String;
 
-        for anim in self.manifest.animations.iter() {
+        for (i, anim) in self.manifest.animations.iter().enumerate() {
             if anim.id == self.active_animation_id && i + 1 < self.manifest.animations.len() {
-                self.active_animation_id.clone_from(&self.manifest.animations[i + 1].id);
+                self.active_animation_id
+                    .clone_from(&self.manifest.animations[i + 1].id);
 
                 new_active_animation_id = self.manifest.animations[i + 1].id.clone();
 
                 return self.get_animation(&new_active_animation_id);
             }
-            i += 1;
         }
 
         // std::mem::drop(animations);
@@ -106,17 +105,16 @@ impl DotLottieManager {
     #[allow(dead_code)]
     fn previous_animation(&mut self) -> Result<String, DotLottieError> {
         let new_active_animation_id: String;
-        let mut i = 0;
 
-        for anim in self.manifest.animations.iter() {
+        for (i, anim) in self.manifest.animations.iter().enumerate() {
             if anim.id == self.active_animation_id && i > 0 {
-                self.active_animation_id.clone_from(&self.manifest.animations[i - 1].id);
+                self.active_animation_id
+                    .clone_from(&self.manifest.animations[i - 1].id);
 
                 new_active_animation_id = self.manifest.animations[i - 1].id.clone();
 
                 return self.get_animation(&new_active_animation_id);
             }
-            i += 1;
         }
 
         let active_animation_id = self.active_animation_id.clone();
@@ -138,7 +136,7 @@ impl DotLottieManager {
 
         if !self.manifest.animations.is_empty() {
             for anim in self.manifest.animations.iter() {
-                if &anim.id == animation_id {
+                if anim.id == animation_id {
                     self.animation_settings_cache
                         .insert(animation_id.to_string().clone(), anim.clone());
 

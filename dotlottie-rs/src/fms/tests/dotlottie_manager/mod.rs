@@ -31,7 +31,7 @@ fn get_animation_test() {
     let anger_animation = String::from_utf8(anger_buffer).unwrap();
     let animation = dotlottie.get_animation("anger").unwrap();
 
-    assert_eq!(animation == anger_animation, true);
+    assert!(animation == anger_animation);
     // assert_eq!(animation.contains("ADBE Vector Graphic - Stroke"), true);
 }
 
@@ -88,9 +88,9 @@ fn get_manifest_test() {
 
     let first_animation = first_animation_lock.first().unwrap();
 
-    assert_eq!(first_animation.id == "anger", true);
+    assert!(first_animation.id == "anger");
 
     let last_animation = first_animation_lock.last().unwrap();
 
-    assert_eq!(last_animation.id == "yummy", true);
+    assert!(last_animation.id == "yummy");
 }

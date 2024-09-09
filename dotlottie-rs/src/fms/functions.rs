@@ -48,15 +48,15 @@ pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotL
                     asset["e"] = 1.into();
                 } else {
                     let image_asset_filename =
-                        format!("images/{}", asset["p"].to_string().replace("\"", ""));
+                        format!("images/{}", asset["p"].to_string().replace('"', ""));
 
                     let image_ext = asset["p"]
                         .to_string()
-                        .split(".")
+                        .split('.')
                         .last()
                         .unwrap()
                         .to_string()
-                        .replace("\"", "");
+                        .replace('"', "");
 
                     let mut result = archive.by_name(&image_asset_filename).map_err(|_| {
                         DotLottieError::FileFindError {

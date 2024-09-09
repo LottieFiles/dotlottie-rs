@@ -23,7 +23,7 @@ impl DotLottieManager {
 
                     if let Some(first_animation) = &manifest.active_animation_id {
                         id = first_animation.clone();
-                    } else if manifest.animations.len() > 0 {
+                    } else if !manifest.animations.is_empty() {
                         id = manifest.animations.index(0).id.clone();
                     } else {
                         return Err(DotLottieError::AnimationsNotFound);
@@ -62,7 +62,7 @@ impl DotLottieManager {
 
                 if let Some(first_animation) = &manifest.active_animation_id {
                     id = first_animation.clone();
-                } else if manifest.animations.len() > 0 {
+                } else if !manifest.animations.is_empty() {
                     id = manifest.animations.index(0).id.clone();
                 } else {
                     return Err(DotLottieError::AnimationsNotFound);
@@ -72,7 +72,7 @@ impl DotLottieManager {
                 self.manifest = manifest;
                 self.zip_data = dotlottie.to_vec();
 
-                return Ok(true);
+                Ok(true)
             }
             Err(error) => Err(error),
         }
@@ -85,14 +85,12 @@ impl DotLottieManager {
         let new_active_animation_id: String;
 
         for anim in self.manifest.animations.iter() {
-            if anim.id == self.active_animation_id {
-                if i + 1 < self.manifest.animations.len() {
-                    self.active_animation_id = self.manifest.animations[i + 1].id.clone();
+            if anim.id == self.active_animation_id && i + 1 < self.manifest.animations.len() {
+                self.active_animation_id.clone_from(&self.manifest.animations[i + 1].id);
 
-                    new_active_animation_id = self.manifest.animations[i + 1].id.clone();
+                new_active_animation_id = self.manifest.animations[i + 1].id.clone();
 
-                    return self.get_animation(&new_active_animation_id);
-                }
+                return self.get_animation(&new_active_animation_id);
             }
             i += 1;
         }
@@ -101,7 +99,7 @@ impl DotLottieManager {
 
         let active_animation_id = self.active_animation_id.clone();
 
-        return self.get_animation(&active_animation_id);
+        self.get_animation(&active_animation_id)
     }
 
     /// Reverses to the previous animation and returns it's animation data as a string.
@@ -111,14 +109,12 @@ impl DotLottieManager {
         let mut i = 0;
 
         for anim in self.manifest.animations.iter() {
-            if anim.id == self.active_animation_id {
-                if i > 0 {
-                    self.active_animation_id = self.manifest.animations[i - 1].id.clone();
+            if anim.id == self.active_animation_id && i > 0 {
+                self.active_animation_id.clone_from(&self.manifest.animations[i - 1].id);
 
-                    new_active_animation_id = self.manifest.animations[i - 1].id.clone();
+                new_active_animation_id = self.manifest.animations[i - 1].id.clone();
 
-                    return self.get_animation(&new_active_animation_id);
-                }
+                return self.get_animation(&new_active_animation_id);
             }
             i += 1;
         }
@@ -140,7 +136,7 @@ impl DotLottieManager {
             return Ok(cloned_animation);
         }
 
-        if self.manifest.animations.len() > 0 {
+        if !self.manifest.animations.is_empty() {
             for anim in self.manifest.animations.iter() {
                 if &anim.id == animation_id {
                     self.animation_settings_cache
@@ -151,13 +147,13 @@ impl DotLottieManager {
             }
         }
 
-        return Err(DotLottieError::AnimationNotFound {
+        Err(DotLottieError::AnimationNotFound {
             animation_id: animation_id.to_string(),
-        });
+        })
     }
 
     pub fn contains_animation(&self, animation_id: &str) -> Result<bool, DotLottieError> {
-        if self.manifest.animations.len() > 0 {
+        if !self.manifest.animations.is_empty() {
             for anim in self.manifest.animations.iter() {
                 if anim.id == animation_id {
                     return Ok(true);
@@ -167,7 +163,7 @@ impl DotLottieManager {
             return Ok(false);
         }
 
-        return Err(DotLottieError::MutexLockError);
+        Err(DotLottieError::MutexLockError)
     }
 
     pub fn get_active_animation(&mut self) -> Result<String, DotLottieError> {
@@ -190,7 +186,7 @@ impl DotLottieManager {
         if let Some(animation) = self.animation_data_cache.get(animation_id) {
             let cloned_animation = animation.clone(); // Clone the value
 
-            return Ok(cloned_animation);
+            Ok(cloned_animation)
         } else {
             let animation = crate::get_animation(&self.zip_data, animation_id);
 
@@ -198,11 +194,11 @@ impl DotLottieManager {
                 self.animation_data_cache
                     .insert(animation_id.to_string().clone(), animation.clone());
 
-                return Ok(animation);
+                Ok(animation)
             } else {
-                return Err(DotLottieError::AnimationNotFound {
+                Err(DotLottieError::AnimationNotFound {
                     animation_id: animation_id.to_string(),
-                });
+                })
             }
         }
     }
@@ -216,13 +212,13 @@ impl DotLottieManager {
             if contains {
                 self.active_animation_id = animation_id.to_string();
 
-                return Ok(self.get_animation(animation_id)?);
+                return self.get_animation(animation_id);
             }
         }
 
-        return Err(DotLottieError::AnimationNotFound {
+        Err(DotLottieError::AnimationNotFound {
             animation_id: animation_id.to_string(),
-        });
+        })
     }
 
     ///
@@ -233,22 +229,22 @@ impl DotLottieManager {
     }
 
     pub fn manifest(&self) -> Option<Manifest> {
-        if self.manifest.animations.len() == 0 {
+        if self.manifest.animations.is_empty() {
             return None;
         }
 
         let mut manifest = Manifest::new();
 
         manifest.active_animation_id = Some(self.active_animation_id.clone());
-        manifest.animations = self.manifest.animations.clone().into();
-        manifest.author = self.manifest.author.clone();
-        manifest.description = self.manifest.description.clone();
-        manifest.generator = self.manifest.generator.clone();
-        manifest.keywords = self.manifest.keywords.clone();
+        manifest.animations.clone_from(&self.manifest.animations);
+        manifest.author.clone_from(&self.manifest.author);
+        manifest.description.clone_from(&self.manifest.description);
+        manifest.generator.clone_from(&self.manifest.generator);
+        manifest.keywords.clone_from(&self.manifest.keywords);
         manifest.revision = self.manifest.revision;
-        manifest.themes = self.manifest.themes.clone();
-        manifest.states = self.manifest.states.clone();
-        manifest.version = self.manifest.version.clone();
+        manifest.themes.clone_from(&self.manifest.themes);
+        manifest.states.clone_from(&self.manifest.states);
+        manifest.version.clone_from(&self.manifest.version);
 
         Some(manifest)
     }

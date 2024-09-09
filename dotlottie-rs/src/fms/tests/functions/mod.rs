@@ -19,7 +19,7 @@ mod tests {
 
         let animation = get_animation(&buffer, "anger").unwrap();
 
-        assert_eq!(animation.contains("ADBE Vector Graphic - Stroke"), true);
+        assert!(animation.contains("ADBE Vector Graphic - Stroke"));
     }
 
     #[test]
@@ -67,11 +67,11 @@ mod tests {
 
         let first_animation = first_animation_lock.first().unwrap();
 
-        assert_eq!(first_animation.id == "anger", true);
+        assert!(first_animation.id == "anger");
 
         let last_animation = first_animation_lock.last().unwrap();
 
-        assert_eq!(last_animation.id == "yummy", true);
+        assert!(last_animation.id == "yummy");
     }
 
     #[test]
@@ -79,7 +79,7 @@ mod tests {
         let dotlottie_bytes = &include_bytes!("../resources/bull.lottie").to_vec();
         let animation_name = "animation_1";
 
-        let lottie_string = crate::get_animation(&dotlottie_bytes, animation_name)
+        let lottie_string = crate::get_animation(dotlottie_bytes, animation_name)
             .expect("Failed to get animation from lottie bytes");
 
         let lottie_json =

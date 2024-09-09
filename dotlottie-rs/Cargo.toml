@@ -11,7 +11,6 @@ name = "dotlottie_player_core"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dotlottie_fms = { path = "../dotlottie-fms" }
 thiserror = "1.0.48"
 # "emscripten-no-leading-underscore" branch fix this issue -> https://github.com/sebcrozet/instant/issues/35
 instant = { git = "https://github.com/hoodmane/instant", branch = "emscripten-no-leading-underscore", features = [
@@ -19,6 +18,10 @@ instant = { git = "https://github.com/hoodmane/instant", branch = "emscripten-no
 ] }
 serde_json = "1.0.107"
 serde = { version = "1.0.188", features = ["derive"] }
+zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
+base64 = "0.22.1"
+json = "0.12.4"
+jzon = "0.12.5"
 
 [build-dependencies]
 bindgen = "0.69.1"

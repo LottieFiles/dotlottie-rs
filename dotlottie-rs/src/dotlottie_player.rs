@@ -11,8 +11,8 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap, StateMachine,
 };
+use crate::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 use crate::{StateMachineObserver, StateMachineStatus};
-use dotlottie_fms::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);

@@ -1,1 +1,0 @@
-{"version":"1.0","revision":1,"keywords":"dotLottie","author":"LottieFiles","generator":"@dotlottie/dotlottie-js/node@0.5.1","animations":[{"id":"animation","direction":1,"speed":1,"playMode":"normal","loop":true,"autoplay":true,"hover":false,"intermission":0}],"activeAnimationId":"animation","themes":[{"id":"theme","animations":["animation"]}]}

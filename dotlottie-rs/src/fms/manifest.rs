@@ -20,6 +20,12 @@ pub struct Manifest {
     pub version: Option<String>,
 }
 
+impl Default for Manifest {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Manifest {
     pub fn new() -> Self {
         Self {

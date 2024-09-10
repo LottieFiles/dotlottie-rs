@@ -22,7 +22,6 @@ path = "uniffi-bindgen.rs"
 [dependencies]
 uniffi = { version = "0.25.3", features = ["cli"] }
 dotlottie_player = { path = "../dotlottie-rs" }
-dotlottie_fms = { path = "../dotlottie-fms" }
 cfg-if = "1.0"
 
 [build-dependencies]

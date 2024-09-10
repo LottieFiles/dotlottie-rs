@@ -7,13 +7,13 @@ fn get_animation_test() {
     let file_path = format!(
         "{}{}",
         env!("CARGO_MANIFEST_DIR"),
-        "/src/tests/resources/emoji-collection.lottie"
+        "/src/fms/tests/resources/emoji-collection.lottie"
     );
 
     let anger_file_path = format!(
         "{}{}",
         env!("CARGO_MANIFEST_DIR"),
-        "/src/tests/resources/anger.json"
+        "/src/fms/tests/resources/anger.json"
     );
 
     let mut animation_file = File::open(file_path).unwrap();
@@ -31,7 +31,7 @@ fn get_animation_test() {
     let anger_animation = String::from_utf8(anger_buffer).unwrap();
     let animation = dotlottie.get_animation("anger").unwrap();
 
-    assert_eq!(animation == anger_animation, true);
+    assert!(animation == anger_animation);
     // assert_eq!(animation.contains("ADBE Vector Graphic - Stroke"), true);
 }
 
@@ -43,7 +43,7 @@ fn get_animations_test() {
     let file_path = format!(
         "{}{}",
         env!("CARGO_MANIFEST_DIR"),
-        "/src/tests/resources/emoji-collection.lottie"
+        "/src/fms/tests/resources/emoji-collection.lottie"
     );
 
     let mut animation_file = File::open(file_path).unwrap();
@@ -71,7 +71,7 @@ fn get_manifest_test() {
     let file_path = format!(
         "{}{}",
         env!("CARGO_MANIFEST_DIR"),
-        "/src/tests/resources/emoji-collection.lottie"
+        "/src/fms/tests/resources/emoji-collection.lottie"
     );
 
     let mut animation_file = File::open(file_path).unwrap();
@@ -88,9 +88,9 @@ fn get_manifest_test() {
 
     let first_animation = first_animation_lock.first().unwrap();
 
-    assert_eq!(first_animation.id == "anger", true);
+    assert!(first_animation.id == "anger");
 
     let last_animation = first_animation_lock.last().unwrap();
 
-    assert_eq!(last_animation.id == "yummy", true);
+    assert!(last_animation.id == "yummy");
 }

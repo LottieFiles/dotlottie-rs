@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use json::object;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;

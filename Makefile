@@ -132,7 +132,6 @@ RELEASE := release
 # Build artifact types
 CORE := dotlottie-rs
 RUNTIME_FFI := dotlottie-ffi
-FMS := dotlottie-fms
 DOTLOTTIE_PLAYER := dotlottie-player
 
 # Build artifacts
@@ -942,7 +941,6 @@ clean-deps: clean-build
 clean: clean-build
 	@rm -rf $(RELEASE)
 	@cargo clean --manifest-path $(CORE)/Cargo.toml
-	@cargo clean --manifest-path $(FMS)/Cargo.toml
 	@cargo clean --manifest-path $(RUNTIME_FFI)/Cargo.toml
 	@rm -rf $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)
 	@rm -rf $(RUNTIME_FFI)/$(BUILD)
@@ -963,22 +961,18 @@ test: test-all
 test-all:
 	$(info $(YELLOW)Running tests for workspace$(NC))
 	@cargo test --manifest-path $(CORE)/Cargo.toml -- --test-threads=1 
-	@cargo test --manifest-path $(FMS)/Cargo.toml -- --test-threads=1 
 	@cargo test --manifest-path $(RUNTIME_FFI)/Cargo.toml -- --test-threads=1 
 
 .PHONY: bench
 bench:
 	$(info $(YELLOW)Running benchmarks for workspace$(NC))
 	cargo bench --manifest-path $(CORE)/Cargo.toml
-	cargo bench --manifest-path $(FMS)/Cargo.toml
 	cargo bench --manifest-path $(RUNTIME_FFI)/Cargo.toml
 
 .PHONY: clippy
 clippy:
 	$(info $(YELLOW)Running clippy for workspace$(NC))
 	cargo clippy --manifest-path $(CORE)/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
-	# fms has a lot of clippy warnings and errors, so we're ignoring them for now
-	# cargo clippy --manifest-path $(FMS)/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
 	cargo clippy --manifest-path $(RUNTIME_FFI)/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
 
 .PHONY: help

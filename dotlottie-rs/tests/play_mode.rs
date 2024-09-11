@@ -1,4 +1,4 @@
-use dotlottie_player_core::{Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer};
 
 mod test_utils;
 
@@ -6,7 +6,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 #[cfg(test)]
 mod play_mode_tests {
-    use dotlottie_player_core::Mode;
+    use dotlottie_rs::Mode;
 
     use super::*;
 

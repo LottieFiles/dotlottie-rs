@@ -1,4 +1,4 @@
-namespace dotlottie_player {
+namespace dotlottie_uniffi {
     Layout create_default_layout();
     Config create_default_config();
 };

@@ -131,18 +131,18 @@ RELEASE := release
 
 # Build artifact types
 CORE := dotlottie-rs
-RUNTIME_FFI := dotlottie-ffi
-DOTLOTTIE_PLAYER := dotlottie-player
+RUNTIME_FFI := dotlottie-uniffi
+DOTLOTTIE_PLAYER := dotlottie-uniffi
 
 # Build artifacts
 RUNTIME_FFI_UNIFFI_BINDINGS := uniffi-bindings
 
-RUNTIME_FFI_STATIC_LIB := libdotlottie_player.a
-RUNTIME_FFI_LIB := libdotlottie_player.so
-RUNTIME_FFI_DYLIB := libdotlottie_player.dylib
+RUNTIME_FFI_STATIC_LIB := libdotlottie_uniffi.a
+RUNTIME_FFI_LIB := libdotlottie_uniffi.so
+RUNTIME_FFI_DYLIB := libdotlottie_uniffi.dylib
 
-DOTLOTTIE_PLAYER_HEADER := dotlottie_player.h
-DOTLOTTIE_PLAYER_SWIFT := dotlottie_player.swift
+DOTLOTTIE_PLAYER_HEADER := dotlottie_uniffi.h
+DOTLOTTIE_PLAYER_SWIFT := dotlottie_uniffi.swift
 DOTLOTTIE_PLAYER_MODULE := DotLottiePlayer
 
 DOTLOTTIE_PLAYER_FRAMEWORK := $(DOTLOTTIE_PLAYER_MODULE).framework
@@ -159,7 +159,7 @@ CPLUSPLUS := cpp
 RUNTIME_FFI_ANDROID_ASSETS := assets
 DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR := $(RELEASE)/$(ANDROID)/$(DOTLOTTIE_PLAYER)
 DOTLOTTIE_PLAYER_ANDROID_SRC_DIR := $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/$(KOTLIN)
-DOTLOTTIE_PLAYER_LIB := libuniffi_dotlottie_player.so
+DOTLOTTIE_PLAYER_LIB := libuniffi_dotlottie_uniffi.so
 DOTLOTTIE_PLAYER_GRADLE_PROPERTIES := gradle.properties
 
 # Dependency build directories for the current machine architecture
@@ -296,7 +296,7 @@ if cc.get_id() == 'emscripten'
     executable('$(WASM_MODULE)',
         [$(shell find $(FFI_BINDINGS_DIR) -name "*.cpp" -exec printf "'%s'," {} \; 2>/dev/null)],
         include_directories: '$(FFI_BINDINGS_DIR)',
-        link_args: ['-L$(DEPS_LIB_DIR)', '-L$(FFI_BUILD_DIR)', '-lthorvg', '-ldotlottie_player'],
+        link_args: ['-L$(DEPS_LIB_DIR)', '-L$(FFI_BUILD_DIR)', '-lthorvg', '-ldotlottie_uniffi'],
     )
 else
     message('The compiler is not Emscripten.')
@@ -377,7 +377,7 @@ define UNIFFI_BINDINGS_BUILD
 		--manifest-path $(RUNTIME_FFI)/Cargo.toml \
 		--features=uniffi/cli \
 		--bin uniffi-bindgen \
-		generate $(RUNTIME_FFI)/src/dotlottie_player.udl \
+		generate $(RUNTIME_FFI)/src/dotlottie_uniffi.udl \
 		--language $(BINDINGS_LANGUAGE) \
 		--out-dir $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(BINDINGS_LANGUAGE)
 endef
@@ -387,7 +387,7 @@ define UNIFFI_BINDINGS_CPP_BUILD
 	$(UNIFFI_BINDGEN_CPP) \
 		--config $(RUNTIME_FFI)/uniffi.toml \
 		--out-dir $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS) \
-		$(RUNTIME_FFI)/src/dotlottie_player_cpp.udl
+		$(RUNTIME_FFI)/src/dotlottie_uniffi_cpp.udl
 	sed -i .bak 's/uint8_t/char/g' $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/*
 	cp $(RUNTIME_FFI)/emscripten_bindings.cpp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/.
 endef
@@ -638,7 +638,7 @@ define NEW_ANDROID_BUILD
 $1_RUNTIME_FFI_DEPS_BUILD_DIR := $(RUNTIME_FFI)/target/$$($1)/release
 $1_DOTLOTTIE_PLAYER_LIB_DIR := $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/jniLibs/$$($1_ABI)
 
-# Build dotlottie-ffi
+# Build dotlottie-uniffi
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_INCLUDE_DIR := ../$$($1_DEPS_INCLUDE_DIR)
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_LIB_DIR := ../$$($1_DEPS_LIB_DIR)
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_LIB64_DIR := ../$$($1_DEPS_LIB_DIR)64
@@ -667,7 +667,7 @@ define NEW_APPLE_BUILD
 # Setup final artifact variables
 $1_RUNTIME_FFI_DEPS_BUILD_DIR := $(RUNTIME_FFI)/target/$$($1)/release
 
-# Build dotlottie-ffi
+# Build dotlottie-uniffi
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_INCLUDE_DIR := ../$$($1_DEPS_INCLUDE_DIR)
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_LIB_DIR := ../$$($1_DEPS_LIB_DIR)
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): export ARTIFACTS_LIB64_DIR := ../$$($1_DEPS_LIB_DIR)64
@@ -712,7 +712,7 @@ define NEW_WASM_BUILD
 # Setup final artifact variables
 $1_RUNTIME_FFI_DEPS_BUILD_DIR := $(RUNTIME_FFI)/target/$$($1)/release
 
-# Build dotlottie-ffi
+# Build dotlottie-uniffi
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_STATIC_LIB): export ARTIFACTS_INCLUDE_DIR := ../$$($1_DEPS_INCLUDE_DIR)
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_STATIC_LIB): export ARTIFACTS_LIB_DIR := ../$$($1_DEPS_LIB_DIR)
 $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_STATIC_LIB): export ARTIFACTS_LIB64_DIR := ../$$($1_DEPS_LIB_DIR)64
@@ -977,7 +977,7 @@ clippy:
 
 .PHONY: help
 help:
-	@echo "Welcome to the $(GREEN)dotlottie-player$(NC) build system!"
+	@echo "Welcome to the $(GREEN)dotlottie-rs$(NC) build system!"
 	@echo
 	@echo "$(YELLOW)*************************************************************************************************$(NC)"
 	@echo "$(YELLOW)NOTE$(NC): If you are a $(GREEN)mac$(NC) user, run $(YELLOW)make mac-setup$(NC) the very first time before performing any builds."

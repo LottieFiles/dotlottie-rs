@@ -38,9 +38,9 @@ fn apply_build_settings(build_settings: &BuildSettings) {
 
 fn main() {
     if is_wasm_build() {
-        uniffi::generate_scaffolding("src/dotlottie_player_cpp.udl").unwrap();
+        uniffi::generate_scaffolding("src/dotlottie_uniffi_cpp.udl").unwrap();
     } else {
-        uniffi::generate_scaffolding("src/dotlottie_player.udl").unwrap();
+        uniffi::generate_scaffolding("src/dotlottie_uniffi.udl").unwrap();
     }
 
     // Apply build settings

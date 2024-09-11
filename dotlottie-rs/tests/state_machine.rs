@@ -2,16 +2,16 @@
 mod tests {
     use std::sync::{Arc, RwLock};
 
-    use dotlottie_player_core::{
+    use dotlottie_rs::{
         listeners::ListenerTrait,
         states::StateTrait,
         transitions::{Transition::Transition, TransitionTrait},
         StateMachineObserver,
     };
 
-    use dotlottie_player_core::{listeners::ListenerType, parser::StringNumberBool};
+    use dotlottie_rs::{listeners::ListenerType, parser::StringNumberBool};
 
-    use dotlottie_player_core::{events::Event, states::State, Config, DotLottiePlayer, Mode};
+    use dotlottie_rs::{events::Event, states::State, Config, DotLottiePlayer, Mode};
 
     #[test]
     pub fn load_multiple_states() {
@@ -218,7 +218,7 @@ mod tests {
             custom_data: RwLock::new("No event so far".to_string()),
         });
 
-        use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
+        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
 
         let player = DotLottiePlayer::new(Config::default());
 

@@ -26,20 +26,20 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.0.0
         with:
-          name: dotlottie-player.android.tar.gz
-          path: release/android/dotlottie-player.android.tar.gz
+          name: dotlottie-uniffi.android.tar.gz
+          path: release/android/dotlottie-uniffi.android.tar.gz
           if-no-files-found: error
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.0.0
         with:
-          name: dotlottie-player.darwin.tar.gz
-          path: release/apple/dotlottie-player.darwin.tar.gz
+          name: dotlottie-uniffi.darwin.tar.gz
+          path: release/apple/dotlottie-uniffi.darwin.tar.gz
           if-no-files-found: error
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.0.0
         with:
-          name: dotlottie-player.wasm.tar.gz
-          path: release/wasm/dotlottie-player.wasm.tar.gz
+          name: dotlottie-uniffi.wasm.tar.gz
+          path: release/wasm/dotlottie-uniffi.wasm.tar.gz
           if-no-files-found: error
 
   release:

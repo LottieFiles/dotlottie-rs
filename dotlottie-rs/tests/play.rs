@@ -1,7 +1,7 @@
 mod test_utils;
 
 use crate::test_utils::{HEIGHT, WIDTH};
-use dotlottie_player_core::{Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer};
 
 #[cfg(test)]
 mod tests {

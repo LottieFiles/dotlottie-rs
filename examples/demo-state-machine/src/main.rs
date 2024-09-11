@@ -1,5 +1,5 @@
-use dotlottie_player_core::events::Event;
-use dotlottie_player_core::{Config, DotLottiePlayer, Observer, StateMachineObserver};
+use dotlottie_rs::events::Event;
+use dotlottie_rs::{Config, DotLottiePlayer, Observer, StateMachineObserver};
 use minifb::{Key, KeyRepeat, MouseButton, MouseMode, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;

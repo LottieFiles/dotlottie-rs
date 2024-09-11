@@ -1,4 +1,4 @@
-use dotlottie_player_core::{Config, DotLottiePlayer, Marker};
+use dotlottie_rs::{Config, DotLottiePlayer, Marker};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};

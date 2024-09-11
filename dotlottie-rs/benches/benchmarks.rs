@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use dotlottie_player_core::{Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer};
 
 const WIDTH: u32 = 1000;
 const HEIGHT: u32 = 1000;

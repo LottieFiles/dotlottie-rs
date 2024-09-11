@@ -1,8 +1,8 @@
-#include "dotlottie_player.hpp"
+#include "dotlottie_uniffi.hpp"
 #include <emscripten/bind.h>
 
 using namespace emscripten;
-using namespace dotlottie_player;
+using namespace dotlottie_uniffi;
 
 val buffer(DotLottiePlayer &player)
 {

@@ -20,7 +20,7 @@ json = "0.12.4"
 jzon = "0.12.5"
 
 [build-dependencies]
-bindgen = "0.69.1"
+bindgen = "0.70.1"
 lazy_static = "1.4"
 conan2 = "0.1"
 

@@ -119,7 +119,7 @@ mod tests {
 
         let complete_event = &*players_first_transition.read().unwrap();
 
-        let complete_event_string = complete_event.get_event().read().unwrap().as_str().clone();
+        let complete_event_string = format!("{}", complete_event.get_event().read().unwrap());
 
         complete_event_string.clone()
     }
@@ -175,11 +175,13 @@ mod tests {
         let first_player_transition_unwrapped = players_first_transition.read().unwrap();
 
         assert_eq!(
-            &*first_player_transition_unwrapped
-                .get_event()
-                .read()
-                .unwrap()
-                .as_str(),
+            format!(
+                "{}",
+                &*first_player_transition_unwrapped
+                    .get_event()
+                    .read()
+                    .unwrap()
+            ),
             "explosion".to_string()
         );
 
@@ -285,11 +287,13 @@ mod tests {
         let first_player_transition_unwrapped = players_first_transition.read().unwrap();
 
         assert_eq!(
-            &*first_player_transition_unwrapped
-                .get_event()
-                .read()
-                .unwrap()
-                .as_str(),
+            format!(
+                "{}",
+                &*first_player_transition_unwrapped
+                    .get_event()
+                    .read()
+                    .unwrap()
+            ),
             "explosion".to_string()
         );
 
@@ -383,11 +387,13 @@ mod tests {
         let first_player_transition_unwrapped = players_first_transition.read().unwrap();
 
         assert_eq!(
-            &*first_player_transition_unwrapped
-                .get_event()
-                .read()
-                .unwrap()
-                .as_str(),
+            format!(
+                "{}",
+                &*first_player_transition_unwrapped
+                    .get_event()
+                    .read()
+                    .unwrap()
+            ),
             "explosion".to_string()
         );
 
@@ -480,11 +486,13 @@ mod tests {
         let first_player_transition_unwrapped = players_first_transition.read().unwrap();
 
         assert_eq!(
-            &*first_player_transition_unwrapped
-                .get_event()
-                .read()
-                .unwrap()
-                .as_str(),
+            format!(
+                "{}",
+                &*first_player_transition_unwrapped
+                    .get_event()
+                    .read()
+                    .unwrap()
+            ),
             "explosion".to_string()
         );
 

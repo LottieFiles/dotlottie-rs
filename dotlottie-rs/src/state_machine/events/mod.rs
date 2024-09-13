@@ -31,49 +31,50 @@ pub enum InternalEvent {
     SetNumericContext { key: String, value: f32 },
 }
 
-impl InternalEvent {
-    pub fn as_str(&self) -> String {
+// Display for InternalEvent
+impl std::fmt::Display for InternalEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            InternalEvent::Bool { value } => value.to_string(),
-            InternalEvent::String { value } => value.clone(),
-            InternalEvent::Numeric { value } => value.to_string(),
+            InternalEvent::Bool { value } => write!(f, "{}", value),
+            InternalEvent::String { value } => write!(f, "{}", value),
+            InternalEvent::Numeric { value } => write!(f, "{}", value),
             InternalEvent::OnPointerDown { target } => {
                 if let Some(target) = target {
-                    target.clone()
+                    write!(f, "{}", target)
                 } else {
-                    "OnPointerDownEvent".to_string()
+                    write!(f, "OnPointerDownEvent")
                 }
             }
             InternalEvent::OnPointerUp { target } => {
                 if let Some(target) = target {
-                    target.clone()
+                    write!(f, "{}", target)
                 } else {
-                    "OnPointerUpEvent".to_string()
+                    write!(f, "OnPointerUpEvent")
                 }
             }
             InternalEvent::OnPointerMove { target } => {
                 if let Some(target) = target {
-                    target.clone()
+                    write!(f, "{}", target)
                 } else {
-                    "OnPointerMoveEvent".to_string()
+                    write!(f, "OnPointerMoveEvent")
                 }
             }
             InternalEvent::OnPointerEnter { target } => {
                 if let Some(target) = target {
-                    target.clone()
+                    write!(f, "{}", target)
                 } else {
-                    "OnPointerEnterEvent".to_string()
+                    write!(f, "OnPointerEnterEvent")
                 }
             }
             InternalEvent::OnPointerExit { target } => {
                 if let Some(target) = target {
-                    target.clone()
+                    write!(f, "{}", target)
                 } else {
-                    "OnPointerExitEvent".to_string()
+                    write!(f, "OnPointerExitEvent")
                 }
             }
-            InternalEvent::OnComplete => "OnCompleteEvent".to_string(),
-            InternalEvent::SetNumericContext { key, value } => format!("{}, {}", key, value),
+            InternalEvent::OnComplete => write!(f, "OnCompleteEvent"),
+            InternalEvent::SetNumericContext { key, value } => write!(f, "{}, {}", key, value),
         }
     }
 }

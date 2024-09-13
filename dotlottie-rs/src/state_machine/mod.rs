@@ -646,29 +646,6 @@ impl StateMachine {
         let mut tmp_state: i32 = -1;
         let iter = transitions.iter();
 
-        let mut string_event = false;
-        let mut numeric_event = false;
-        let mut bool_event = false;
-        let mut complete_event = false;
-        let mut pointer_down_event = false;
-        let mut pointer_up_event = false;
-        let mut pointer_move_event = false;
-        let mut pointer_enter_event = false;
-        let mut pointer_exit_event = false;
-
-        match event {
-            Event::Bool { value: _ } => bool_event = true,
-            Event::String { value: _ } => string_event = true,
-            Event::Numeric { value: _ } => numeric_event = true,
-            Event::OnPointerDown { x: _, y: _ } => pointer_down_event = true,
-            Event::OnPointerUp { x: _, y: _ } => pointer_up_event = true,
-            Event::OnPointerMove { x: _, y: _ } => pointer_move_event = true,
-            Event::OnPointerEnter { x: _, y: _ } => pointer_enter_event = true,
-            Event::OnPointerExit { x: _, y: _ } => pointer_exit_event = true,
-            Event::OnComplete => complete_event = true,
-            Event::SetNumericContext { key: _, value: _ } => {}
-        }
-
         for transition in iter {
             let unwrapped_transition = transition.read().unwrap();
             let target_state = unwrapped_transition.get_target_state();
@@ -681,68 +658,61 @@ impl StateMachine {
             // Match the transition's event type and compare it to the received event
             match transition_event {
                 InternalEvent::Bool { value } => {
-                    let mut received_event_value = false;
+                    let bool_value = value;
 
                     if let Event::Bool { value } = event {
-                        received_event_value = *value;
-                    }
-
-                    // Check the transitions value and compare to the received one to check if we should transition
-                    if bool_event && received_event_value == *value {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
+                        if *value == *bool_value {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
                                 }
+                            } else {
+                                tmp_state = target_state as i32;
                             }
-                        } else {
-                            tmp_state = target_state as i32;
                         }
                     }
                 }
                 InternalEvent::String { value } => {
-                    let mut received_event_value = "";
+                    let string_value = value;
 
                     if let Event::String { value } = event {
-                        received_event_value = value;
-                    }
-
-                    if string_event && received_event_value == value {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
+                        if string_value == value {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
                                 }
+                            } else {
+                                tmp_state = target_state as i32;
                             }
-                        } else {
-                            tmp_state = target_state as i32;
                         }
                     }
                 }
                 InternalEvent::Numeric { value } => {
-                    let mut received_event_value = 0.0;
+                    let num_value = value;
 
                     if let Event::Numeric { value } = event {
-                        received_event_value = *value;
-                    }
-
-                    if numeric_event && received_event_value == *value {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
+                        if *value == *num_value {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
                                 }
+                            } else {
+                                tmp_state = target_state as i32;
                             }
-                        } else {
-                            tmp_state = target_state as i32;
                         }
                     }
                 }
                 InternalEvent::OnComplete => {
-                    if complete_event {
+                    if let Event::OnComplete = event {
                         // If there are guards loop over them and check if theyre verified
                         if !transition_guards.is_empty() {
                             for guard in transition_guards {
@@ -757,72 +727,57 @@ impl StateMachine {
                 }
                 // This is checking the state machine's event, not the passed event
                 InternalEvent::OnPointerDown { target } => {
-                    match event {
-                        Event::OnPointerDown { x, y } => {
-                            if pointer_down_event {
-                                // If there are guards loop over them and check if theyre verified
-                                if !transition_guards.is_empty() {
-                                    for guard in transition_guards {
-                                        if self.verify_if_guards_are_met(guard) {
-                                            tmp_state = target_state as i32;
-                                        }
-                                    }
-                                } else if target.is_some() && self.player.is_some() {
-                                    if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
-                                        tmp_state = target_state as i32;
-                                    }
-                                } else {
+                    if let Event::OnPointerDown { x, y } = event {
+                        // If there are guards loop over them and check if theyre verified
+                        if !transition_guards.is_empty() {
+                            for guard in transition_guards {
+                                if self.verify_if_guards_are_met(guard) {
                                     tmp_state = target_state as i32;
                                 }
                             }
+                        } else if target.is_some() && self.player.is_some() {
+                            if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                                tmp_state = target_state as i32;
+                            }
+                        } else {
+                            tmp_state = target_state as i32;
                         }
-                        _ => {}
                     }
                 }
                 InternalEvent::OnPointerUp { target } => {
-                    match event {
-                        Event::OnPointerUp { x, y } => {
-                            if pointer_up_event {
-                                // If there are guards loop over them and check if theyre verified
-                                if !transition_guards.is_empty() {
-                                    for guard in transition_guards {
-                                        if self.verify_if_guards_are_met(guard) {
-                                            tmp_state = target_state as i32;
-                                        }
-                                    }
-                                } else if target.is_some() && self.player.is_some() {
-                                    if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
-                                        tmp_state = target_state as i32;
-                                    }
-                                } else {
+                    if let Event::OnPointerUp { x, y } = event {
+                        // If there are guards loop over them and check if theyre verified
+                        if !transition_guards.is_empty() {
+                            for guard in transition_guards {
+                                if self.verify_if_guards_are_met(guard) {
                                     tmp_state = target_state as i32;
                                 }
                             }
+                        } else if target.is_some() && self.player.is_some() {
+                            if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                                tmp_state = target_state as i32;
+                            }
+                        } else {
+                            tmp_state = target_state as i32;
                         }
-                        _ => {}
                     }
                 }
                 InternalEvent::OnPointerMove { target } => {
-                    match event {
-                        Event::OnPointerMove { x, y } => {
-                            if pointer_move_event {
-                                // If there are guards loop over them and check if theyre verified
-                                if !transition_guards.is_empty() {
-                                    for guard in transition_guards {
-                                        if self.verify_if_guards_are_met(guard) {
-                                            tmp_state = target_state as i32;
-                                        }
-                                    }
-                                } else if target.is_some() && self.player.is_some() {
-                                    if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
-                                        tmp_state = target_state as i32;
-                                    }
-                                } else {
+                    if let Event::OnPointerMove { x, y } = event {
+                        // If there are guards loop over them and check if theyre verified
+                        if !transition_guards.is_empty() {
+                            for guard in transition_guards {
+                                if self.verify_if_guards_are_met(guard) {
                                     tmp_state = target_state as i32;
                                 }
                             }
+                        } else if target.is_some() && self.player.is_some() {
+                            if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                                tmp_state = target_state as i32;
+                            }
+                        } else {
+                            tmp_state = target_state as i32;
                         }
-                        _ => {}
                     }
                 }
                 InternalEvent::OnPointerEnter { target } => {

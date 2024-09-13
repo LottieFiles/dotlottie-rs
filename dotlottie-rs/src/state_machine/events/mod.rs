@@ -31,23 +31,6 @@ pub enum InternalEvent {
     SetNumericContext { key: String, value: f32 },
 }
 
-impl Event {
-    pub fn as_str(&self) -> String {
-        match self {
-            Event::Bool { value } => value.to_string(),
-            Event::String { value } => value.clone(),
-            Event::Numeric { value } => value.to_string(),
-            Event::OnPointerDown { x, y } => format!("{}, {}", x, y),
-            Event::OnPointerUp { x, y } => format!("{}, {}", x, y),
-            Event::OnPointerMove { x, y } => format!("{}, {}", x, y),
-            Event::OnPointerEnter { x, y } => format!("{}, {}", x, y),
-            Event::OnPointerExit { x, y } => format!("{}, {}", x, y),
-            Event::OnComplete => "OnCompleteEvent".to_string(),
-            Event::SetNumericContext { key, value } => format!("{}, {}", key, value),
-        }
-    }
-}
-
 impl InternalEvent {
     pub fn as_str(&self) -> String {
         match self {

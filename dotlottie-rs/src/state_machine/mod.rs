@@ -623,16 +623,22 @@ impl StateMachine {
         // A layer name was provided, we need to check if the pointer is within the layer
         let pointer_target = target;
 
-        let p = self.player.as_ref().unwrap();
-        let player_read = p.try_read();
+        let player_ref = self.player.as_ref();
 
-        match player_read {
-            Ok(player) => {
-                let player = &*player;
+        if player_ref.is_some() {
+            let player = player_ref.unwrap();
+            let player_read = player.try_read();
 
-                player.hit_check(pointer_target, x, y)
+            match player_read {
+                Ok(player) => {
+                    let player = &*player;
+
+                    player.hit_check(pointer_target, x, y)
+                }
+                Err(_) => false,
             }
-            Err(_) => false,
+        } else {
+            false
         }
     }
 
@@ -751,107 +757,85 @@ impl StateMachine {
                 }
                 // This is checking the state machine's event, not the passed event
                 InternalEvent::OnPointerDown { target } => {
-                    // Grab the values from the posted event
-                    let received_event_values = if let Event::OnPointerDown { x, y } = event {
-                        Event::OnPointerDown { x: *x, y: *y }
-                    } else {
-                        Event::OnPointerDown { x: 0.0, y: 0.0 }
-                    };
-
-                    if pointer_down_event {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
+                    match event {
+                        Event::OnPointerDown { x, y } => {
+                            if pointer_down_event {
+                                // If there are guards loop over them and check if theyre verified
+                                if !transition_guards.is_empty() {
+                                    for guard in transition_guards {
+                                        if self.verify_if_guards_are_met(guard) {
+                                            tmp_state = target_state as i32;
+                                        }
+                                    }
+                                } else if target.is_some() && self.player.is_some() {
+                                    if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                } else {
                                     tmp_state = target_state as i32;
                                 }
                             }
-                        } else if target.is_some() && self.player.is_some() {
-                            if self.perform_hit_check(
-                                target.as_ref().unwrap(),
-                                received_event_values.x(),
-                                received_event_values.y(),
-                            ) {
-                                tmp_state = target_state as i32;
-                            }
-                        } else {
-                            tmp_state = target_state as i32;
                         }
+                        _ => {}
                     }
                 }
                 InternalEvent::OnPointerUp { target } => {
-                    // Grab the values from the posted event
-                    let received_event_values = if let Event::OnPointerUp { x, y } = event {
-                        Event::OnPointerUp { x: *x, y: *y }
-                    } else {
-                        Event::OnPointerUp { x: 0.0, y: 0.0 }
-                    };
-
-                    if pointer_up_event {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
+                    match event {
+                        Event::OnPointerUp { x, y } => {
+                            if pointer_up_event {
+                                // If there are guards loop over them and check if theyre verified
+                                if !transition_guards.is_empty() {
+                                    for guard in transition_guards {
+                                        if self.verify_if_guards_are_met(guard) {
+                                            tmp_state = target_state as i32;
+                                        }
+                                    }
+                                } else if target.is_some() && self.player.is_some() {
+                                    if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                } else {
                                     tmp_state = target_state as i32;
                                 }
                             }
-                        } else if target.is_some() && self.player.is_some() {
-                            if self.perform_hit_check(
-                                target.as_ref().unwrap(),
-                                received_event_values.x(),
-                                received_event_values.y(),
-                            ) {
-                                tmp_state = target_state as i32;
-                            }
-                        } else {
-                            tmp_state = target_state as i32;
                         }
+                        _ => {}
                     }
                 }
                 InternalEvent::OnPointerMove { target } => {
-                    // Grab the values from the posted event
-                    let received_event_values = if let Event::OnPointerMove { x, y } = event {
-                        Event::OnPointerMove { x: *x, y: *y }
-                    } else {
-                        Event::OnPointerMove { x: 0.0, y: 0.0 }
-                    };
-
-                    if pointer_move_event {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
+                    match event {
+                        Event::OnPointerMove { x, y } => {
+                            if pointer_move_event {
+                                // If there are guards loop over them and check if theyre verified
+                                if !transition_guards.is_empty() {
+                                    for guard in transition_guards {
+                                        if self.verify_if_guards_are_met(guard) {
+                                            tmp_state = target_state as i32;
+                                        }
+                                    }
+                                } else if target.is_some() && self.player.is_some() {
+                                    if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                } else {
                                     tmp_state = target_state as i32;
                                 }
                             }
-                        } else if target.is_some() && self.player.is_some() {
-                            if self.perform_hit_check(
-                                target.as_ref().unwrap(),
-                                received_event_values.x(),
-                                received_event_values.y(),
-                            ) {
-                                tmp_state = target_state as i32;
-                            }
-                        } else {
-                            tmp_state = target_state as i32;
                         }
+                        _ => {}
                     }
                 }
                 InternalEvent::OnPointerEnter { target } => {
                     let mut received_event_values = Event::OnPointerEnter { x: 0.0, y: 0.0 };
 
-                    if pointer_enter_event {
-                        received_event_values = if let Event::OnPointerEnter { x, y } = event {
-                            Event::OnPointerEnter { x: *x, y: *y }
-                        } else {
-                            Event::OnPointerEnter { x: 0.0, y: 0.0 }
-                        };
-                    } else if pointer_move_event {
-                        received_event_values = if let Event::OnPointerMove { x, y } = event {
-                            Event::OnPointerMove { x: *x, y: *y }
-                        } else {
-                            Event::OnPointerMove { x: 0.0, y: 0.0 }
-                        };
+                    match event {
+                        Event::OnPointerEnter { x, y } => {
+                            received_event_values = Event::OnPointerEnter { x: *x, y: *y };
+                        }
+                        Event::OnPointerMove { x, y } => {
+                            received_event_values = Event::OnPointerMove { x: *x, y: *y };
+                        }
+                        _ => {}
                     }
 
                     // If there are guards loop over them and check if theyre verified
@@ -902,18 +886,14 @@ impl StateMachine {
                 InternalEvent::OnPointerExit { target } => {
                     let mut received_event_values = Event::OnPointerEnter { x: 0.0, y: 0.0 };
 
-                    if pointer_exit_event {
-                        received_event_values = if let Event::OnPointerEnter { x, y } = event {
-                            Event::OnPointerEnter { x: *x, y: *y }
-                        } else {
-                            Event::OnPointerEnter { x: 0.0, y: 0.0 }
-                        };
-                    } else if pointer_move_event {
-                        received_event_values = if let Event::OnPointerMove { x, y } = event {
-                            Event::OnPointerMove { x: *x, y: *y }
-                        } else {
-                            Event::OnPointerMove { x: 0.0, y: 0.0 }
-                        };
+                    match event {
+                        Event::OnPointerExit { x, y } => {
+                            received_event_values = Event::OnPointerExit { x: *x, y: *y };
+                        }
+                        Event::OnPointerMove { x, y } => {
+                            received_event_values = Event::OnPointerMove { x: *x, y: *y };
+                        }
+                        _ => {}
                     }
 
                     // If there are guards loop over them and check if theyre verified

@@ -141,8 +141,8 @@ RUNTIME_FFI_STATIC_LIB := libdotlottie_ffi.a
 RUNTIME_FFI_LIB := libdotlottie_ffi.so
 RUNTIME_FFI_DYLIB := libdotlottie_ffi.dylib
 
-DOTLOTTIE_PLAYER_HEADER := dotlottie_ffi.h
-DOTLOTTIE_PLAYER_SWIFT := dotlottie_ffi.swift
+DOTLOTTIE_PLAYER_HEADER := dotlottie_uniffi.h
+DOTLOTTIE_PLAYER_SWIFT := dotlottie_uniffi.swift
 DOTLOTTIE_PLAYER_MODULE := DotLottiePlayer
 
 DOTLOTTIE_PLAYER_FRAMEWORK := $(DOTLOTTIE_PLAYER_MODULE).framework

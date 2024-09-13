@@ -1,5 +1,5 @@
 [package]
-name = "dotlottie-uniffi"
+name = "dotlottie-ffi"
 version = "0.1.31"
 edition = "2021"
 build = "build.rs"
@@ -19,10 +19,10 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [dependencies]
-uniffi = { version = "0.28.1", features = ["cli"] }
+uniffi = { version = "0.28", features = ["cli"] }
 dotlottie-rs = { path = "../dotlottie-rs" }
 cfg-if = "1.0"
 
 [build-dependencies]
-uniffi = { version = "0.28.1", features = ["build"] }
+uniffi = { version = "0.28", features = ["build"] }
 lazy_static = "1.4"

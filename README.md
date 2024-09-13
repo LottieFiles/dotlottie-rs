@@ -18,11 +18,11 @@ flowchart TD
   B[dotLottie-ios] --> swift+Bindings[Swift Bindings]
   C[dotLottie-android] --> kotlin+Bindings[Kotlin Bindings]
 
-  WASM+Bindings --> dotlottie-uniffi[dotlottie-uniffi \n 'uniffi bindings']
-  swift+Bindings --> dotlottie-uniffi[dotlottie-uniffi \n 'uniffi bindings']
-  kotlin+Bindings --> dotlottie-uniffi[dotlottie-uniffi \n 'uniffi bindings']
+  WASM+Bindings --> dotlottie-ffi[dotlottie-ffi \n 'uniffi bindings']
+  swift+Bindings --> dotlottie-ffi[dotlottie-ffi \n 'uniffi bindings']
+  kotlin+Bindings --> dotlottie-ffi[dotlottie-ffi \n 'uniffi bindings']
 
-  dotlottie-uniffi --> dotlottiers[dotLottie-rs \n 'Core player']
+  dotlottie-ffi --> dotlottiers[dotLottie-rs \n 'Core player']
 
   dotlottiers --> Thorvg[Thorvg \n 'Lottie renderer']
 ```
@@ -61,7 +61,7 @@ dotLottie-rs serves as a core player from which our framework players use:
 ## Crates
 
 - [dotlottie-rs](./dotlottie-rs): The core library for dotLottie native players
-- [dotlottie-uniffi](./dotlottie-uniffi): The FFI bindings for dotLottie core player to kotlin, swift and wasm
+- [dotlottie-ffi](./dotlottie-ffi): The FFI bindings for dotLottie core player to kotlin, swift and wasm
 - [demo-player](./demo-player): A demo player for dotLottie written in Rust
 
 ## Development

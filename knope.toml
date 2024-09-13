@@ -3,20 +3,20 @@ owner = 'LottieFiles'
 repo = 'dotlottie-rs'
 
 [package]
-versioned_files = ["dotlottie-uniffi/Cargo.toml"]
+versioned_files = ["dotlottie-ffi/Cargo.toml"]
 changelog = "CHANGELOG.md"
 
 [[package.assets]]
-path = "release/dotlottie-uniffi.darwin.tar.gz"
-name = "dotlottie-uniffi.darwin.tar.gz"
+path = "release/dotlottie-ffi.darwin.tar.gz"
+name = "dotlottie-ffi.darwin.tar.gz"
 
 [[package.assets]]
-path = "release/dotlottie-uniffi.android.tar.gz"
-name = "dotlottie-uniffi.android.tar.gz"
+path = "release/dotlottie-ffi.android.tar.gz"
+name = "dotlottie-ffi.android.tar.gz"
 
 [[package.assets]]
-path = "release/dotlottie-uniffi.wasm.tar.gz"
-name = "dotlottie-uniffi.wasm.tar.gz"
+path = "release/dotlottie-ffi.wasm.tar.gz"
+name = "dotlottie-ffi.wasm.tar.gz"
 
 [[workflows]]
 name = "prepare-release"

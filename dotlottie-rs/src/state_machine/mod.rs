@@ -14,7 +14,7 @@ use crate::state_machine::listeners::Listener;
 use crate::state_machine::states::StateTrait;
 use crate::state_machine::transitions::guard::Guard;
 use crate::state_machine::transitions::TransitionTrait;
-use crate::{Config, DotLottiePlayerContainer, Layout, Mode};
+use crate::{Config, DotLottiePlayerContainer, InternalEvent, Layout, Mode, PointerEvent};
 
 use self::parser::{state_machine_parse, ContextJsonType};
 use self::{errors::StateMachineError, events::Event, states::State, transitions::Transition};
@@ -292,54 +292,96 @@ impl StateMachine {
 
                             // let mut new_transition: Option<Transition> = None;
                             let mut state_to_attach_to: i32 = -1;
-                            let mut new_event: Option<Event> = None;
+                            let mut new_event: Option<InternalEvent> = None;
 
                             // Capture which event this transition has
                             if numeric_event.is_some() {
                                 let numeric_event = numeric_event.unwrap();
-                                new_event = Some(Event::Numeric {
+                                new_event = Some(InternalEvent::Numeric {
                                     value: numeric_event.value,
                                 });
                                 state_to_attach_to = from_state as i32;
                             } else if string_event.is_some() {
                                 let string_event = string_event.unwrap();
-                                new_event = Some(Event::String {
+                                new_event = Some(InternalEvent::String {
                                     value: string_event.value,
                                 });
                                 state_to_attach_to = from_state as i32;
                             } else if boolean_event.is_some() {
                                 let boolean_event = boolean_event.unwrap();
-                                new_event = Some(Event::Bool {
+                                new_event = Some(InternalEvent::Bool {
                                     value: boolean_event.value,
                                 });
                                 state_to_attach_to = from_state as i32;
                             } else if on_complete_event.is_some() {
-                                new_event = Some(Event::OnComplete);
+                                new_event = Some(InternalEvent::OnComplete);
                                 state_to_attach_to = from_state as i32;
                             } else if on_pointer_down_event.is_some() {
                                 // Default to 0.0 0.0 coordinates
-                                // How to manage targets?
-                                // let pointer_down_event = on_pointer_down_event.unwrap();
-                                // pointer_down_event.target;
-                                new_event = Some(Event::OnPointerDown { x: 0.0, y: 0.0 });
+                                let pointer_down_event = on_pointer_down_event.unwrap();
+
+                                if pointer_down_event.target.is_some() {
+                                    new_event = Some(InternalEvent::OnPointerDown {
+                                        target: pointer_down_event.target,
+                                    });
+                                } else {
+                                    new_event = Some(InternalEvent::OnPointerDown { target: None });
+                                }
+
                                 state_to_attach_to = from_state as i32;
                             } else if on_pointer_up_event.is_some() {
                                 // Default to 0.0 0.0 coordinates
-                                // How to manage targets?
-                                new_event = Some(Event::OnPointerUp { x: 0.0, y: 0.0 });
+
+                                let pointer_up_event = on_pointer_up_event.unwrap();
+
+                                if pointer_up_event.target.is_some() {
+                                    new_event = Some(InternalEvent::OnPointerUp {
+                                        target: pointer_up_event.target,
+                                    });
+                                } else {
+                                    new_event = Some(InternalEvent::OnPointerUp { target: None });
+                                }
+
                                 state_to_attach_to = from_state as i32;
                             } else if on_pointer_enter_event.is_some() {
                                 // Default to 0.0 0.0 coordinates
-                                // How to manage targets?
-                                new_event = Some(Event::OnPointerEnter { x: 0.0, y: 0.0 });
+                                let pointer_enter_event = on_pointer_enter_event.unwrap();
+
+                                if pointer_enter_event.target.is_some() {
+                                    new_event = Some(InternalEvent::OnPointerEnter {
+                                        target: pointer_enter_event.target,
+                                    });
+                                } else {
+                                    new_event =
+                                        Some(InternalEvent::OnPointerEnter { target: None });
+                                }
+
                                 state_to_attach_to = from_state as i32;
                             } else if on_pointer_exit_event.is_some() {
-                                new_event = Some(Event::OnPointerExit {});
+                                // Default to 0.0 0.0 coordinates
+                                let pointer_exit_event = on_pointer_exit_event.unwrap();
+
+                                if pointer_exit_event.target.is_some() {
+                                    new_event = Some(InternalEvent::OnPointerExit {
+                                        target: pointer_exit_event.target,
+                                    });
+                                } else {
+                                    new_event = Some(InternalEvent::OnPointerExit { target: None });
+                                }
+
                                 state_to_attach_to = from_state as i32;
                             } else if on_pointer_move_event.is_some() {
                                 // Default to 0.0 0.0 coordinates
-                                // How to manage targets?
-                                new_event = Some(Event::OnPointerMove { x: 0.0, y: 0.0 });
+                                let pointer_move_event = on_pointer_move_event.unwrap();
+
+                                if pointer_move_event.target.is_some() {
+                                    new_event = Some(InternalEvent::OnPointerMove {
+                                        target: pointer_move_event.target,
+                                    });
+                                } else {
+                                    new_event = Some(InternalEvent::OnPointerMove { target: None });
+                                }
+
                                 state_to_attach_to = from_state as i32;
                             }
                             if let Some(event) = new_event {
@@ -577,32 +619,32 @@ impl StateMachine {
         false
     }
 
+    fn perform_hit_check(&self, target: &str, x: f32, y: f32) -> bool {
+        // A layer name was provided, we need to check if the pointer is within the layer
+        let pointer_target = target;
+
+        let player_ref = self.player.as_ref();
+
+        if player_ref.is_some() {
+            let player = player_ref.unwrap();
+            let player_read = player.try_read();
+
+            match player_read {
+                Ok(player) => {
+                    let player = &*player;
+
+                    player.hit_check(pointer_target, x, y)
+                }
+                Err(_) => false,
+            }
+        } else {
+            false
+        }
+    }
+
     fn evaluate_transition(&self, transitions: &[Arc<RwLock<Transition>>], event: &Event) -> i32 {
         let mut tmp_state: i32 = -1;
         let iter = transitions.iter();
-
-        let mut string_event = false;
-        let mut numeric_event = false;
-        let mut bool_event = false;
-        let mut complete_event = false;
-        let mut pointer_down_event = false;
-        let mut pointer_up_event = false;
-        let mut pointer_move_event = false;
-        let mut pointer_enter_event = false;
-        let mut pointer_exit_event = false;
-
-        match event {
-            Event::Bool { value: _ } => bool_event = true,
-            Event::String { value: _ } => string_event = true,
-            Event::Numeric { value: _ } => numeric_event = true,
-            Event::OnPointerDown { x: _, y: _ } => pointer_down_event = true,
-            Event::OnPointerUp { x: _, y: _ } => pointer_up_event = true,
-            Event::OnPointerMove { x: _, y: _ } => pointer_move_event = true,
-            Event::OnPointerEnter { x: _, y: _ } => pointer_enter_event = true,
-            Event::OnPointerExit => pointer_exit_event = true,
-            Event::OnComplete => complete_event = true,
-            Event::SetNumericContext { key: _, value: _ } => {}
-        }
 
         for transition in iter {
             let unwrapped_transition = transition.read().unwrap();
@@ -615,152 +657,242 @@ impl StateMachine {
 
             // Match the transition's event type and compare it to the received event
             match transition_event {
-                Event::Bool { value } => {
-                    let mut received_event_value = false;
+                InternalEvent::Bool { value } => {
+                    let bool_value = value;
 
                     if let Event::Bool { value } = event {
-                        received_event_value = *value;
-                    }
-
-                    // Check the transitions value and compare to the received one to check if we should transition
-                    if bool_event && received_event_value == *value {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
+                        if *value == *bool_value {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
                                 }
+                            } else {
+                                tmp_state = target_state as i32;
                             }
-                        } else {
-                            tmp_state = target_state as i32;
                         }
                     }
                 }
-                Event::String { value } => {
-                    let mut received_event_value = "";
+                InternalEvent::String { value } => {
+                    let string_value = value;
 
                     if let Event::String { value } = event {
-                        received_event_value = value;
-                    }
-
-                    if string_event && received_event_value == value {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
+                        if string_value == value {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
                                 }
+                            } else {
+                                tmp_state = target_state as i32;
                             }
-                        } else {
-                            tmp_state = target_state as i32;
                         }
                     }
                 }
-                Event::Numeric { value } => {
-                    let mut received_event_value = 0.0;
+                InternalEvent::Numeric { value } => {
+                    let num_value = value;
 
                     if let Event::Numeric { value } = event {
-                        received_event_value = *value;
+                        if *value == *num_value {
+                            // If there are guards loop over them and check if theyre verified
+                            if !transition_guards.is_empty() {
+                                for guard in transition_guards {
+                                    if self.verify_if_guards_are_met(guard) {
+                                        tmp_state = target_state as i32;
+                                    }
+                                }
+                            } else {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    }
+                }
+                InternalEvent::OnComplete => {
+                    if let Event::OnComplete = event {
+                        // If there are guards loop over them and check if theyre verified
+                        if !transition_guards.is_empty() {
+                            for guard in transition_guards {
+                                if self.verify_if_guards_are_met(guard) {
+                                    tmp_state = target_state as i32;
+                                }
+                            }
+                        } else {
+                            tmp_state = target_state as i32;
+                        }
+                    }
+                }
+                // This is checking the state machine's event, not the passed event
+                InternalEvent::OnPointerDown { target } => {
+                    if let Event::OnPointerDown { x, y } = event {
+                        // If there are guards loop over them and check if theyre verified
+                        if !transition_guards.is_empty() {
+                            for guard in transition_guards {
+                                if self.verify_if_guards_are_met(guard) {
+                                    tmp_state = target_state as i32;
+                                }
+                            }
+                        } else if target.is_some() && self.player.is_some() {
+                            if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                                tmp_state = target_state as i32;
+                            }
+                        } else {
+                            tmp_state = target_state as i32;
+                        }
+                    }
+                }
+                InternalEvent::OnPointerUp { target } => {
+                    if let Event::OnPointerUp { x, y } = event {
+                        // If there are guards loop over them and check if theyre verified
+                        if !transition_guards.is_empty() {
+                            for guard in transition_guards {
+                                if self.verify_if_guards_are_met(guard) {
+                                    tmp_state = target_state as i32;
+                                }
+                            }
+                        } else if target.is_some() && self.player.is_some() {
+                            if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                                tmp_state = target_state as i32;
+                            }
+                        } else {
+                            tmp_state = target_state as i32;
+                        }
+                    }
+                }
+                InternalEvent::OnPointerMove { target } => {
+                    if let Event::OnPointerMove { x, y } = event {
+                        // If there are guards loop over them and check if theyre verified
+                        if !transition_guards.is_empty() {
+                            for guard in transition_guards {
+                                if self.verify_if_guards_are_met(guard) {
+                                    tmp_state = target_state as i32;
+                                }
+                            }
+                        } else if target.is_some() && self.player.is_some() {
+                            if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                                tmp_state = target_state as i32;
+                            }
+                        } else {
+                            tmp_state = target_state as i32;
+                        }
+                    }
+                }
+                InternalEvent::OnPointerEnter { target } => {
+                    let mut received_event_values = Event::OnPointerEnter { x: 0.0, y: 0.0 };
+
+                    match event {
+                        Event::OnPointerEnter { x, y } => {
+                            received_event_values = Event::OnPointerEnter { x: *x, y: *y };
+                        }
+                        Event::OnPointerMove { x, y } => {
+                            received_event_values = Event::OnPointerMove { x: *x, y: *y };
+                        }
+                        _ => {}
                     }
 
-                    if numeric_event && received_event_value == *value {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
+                    // If there are guards loop over them and check if theyre verified
+                    if !transition_guards.is_empty() {
+                        for guard in transition_guards {
+                            if self.verify_if_guards_are_met(guard) {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    } else if target.is_some() && self.player.is_some() {
+                        if self.perform_hit_check(
+                            target.as_ref().unwrap(),
+                            received_event_values.x(),
+                            received_event_values.y(),
+                        ) {
+                            let current_state_name =
+                                if let Some(current_state) = &self.current_state {
+                                    if let Ok(state) = current_state.read() {
+                                        state.get_name()
+                                    } else {
+                                        return -1;
+                                    }
+                                } else {
+                                    return -1;
+                                };
+
+                            let target_state_name = if let Some(target_state) =
+                                self.states.get(target_state as usize)
+                            {
+                                if let Ok(state) = target_state.read() {
+                                    state.get_name()
+                                } else {
+                                    return 1; // Handle read lock error
                                 }
+                            } else {
+                                return 1; // Handle invalid index
+                            };
+
+                            // This prevent the state from transitioning to itself over and over again
+                            if current_state_name != target_state_name {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    } else {
+                        tmp_state = target_state as i32;
+                    }
+                }
+                InternalEvent::OnPointerExit { target } => {
+                    let mut received_event_values = Event::OnPointerEnter { x: 0.0, y: 0.0 };
+
+                    match event {
+                        Event::OnPointerExit { x, y } => {
+                            received_event_values = Event::OnPointerExit { x: *x, y: *y };
+                        }
+                        Event::OnPointerMove { x, y } => {
+                            received_event_values = Event::OnPointerMove { x: *x, y: *y };
+                        }
+                        _ => {}
+                    }
+
+                    // If there are guards loop over them and check if theyre verified
+                    if !transition_guards.is_empty() {
+                        for guard in transition_guards {
+                            if self.verify_if_guards_are_met(guard) {
+                                tmp_state = target_state as i32;
+                            }
+                        }
+                    } else if target.is_some() && self.player.is_some() {
+                        // Check if current state is the target state
+                        let current_state_name = if let Some(current_state) = &self.current_state {
+                            if let Ok(state) = current_state.read() {
+                                state.get_name()
+                            } else {
+                                return -1;
                             }
                         } else {
+                            return -1;
+                        };
+
+                        if current_state_name == *target.as_ref().unwrap()
+                            && !self.perform_hit_check(
+                                target.as_ref().unwrap(),
+                                received_event_values.x(),
+                                received_event_values.y(),
+                            )
+                        {
+                            tmp_state = target_state as i32;
+                        }
+                    } else {
+                        // Check if coordinates are outside of the player
+                        let (width, height) = self.player.as_ref().unwrap().read().unwrap().size();
+
+                        if received_event_values.x() < 0.0
+                            || received_event_values.x() > width as f32
+                            || received_event_values.y() < 0.0
+                            || received_event_values.y() > height as f32
+                        {
                             tmp_state = target_state as i32;
                         }
                     }
                 }
-                Event::OnComplete => {
-                    if complete_event {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
-                                }
-                            }
-                        } else {
-                            tmp_state = target_state as i32;
-                        }
-                    }
-                }
-                Event::OnPointerDown { x: _, y: _ } => {
-                    if pointer_down_event {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
-                                }
-                            }
-                        } else {
-                            tmp_state = target_state as i32;
-                        }
-                    }
-                }
-                Event::OnPointerUp { x: _, y: _ } => {
-                    if pointer_up_event {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
-                                }
-                            }
-                        } else {
-                            tmp_state = target_state as i32;
-                        }
-                    }
-                }
-                Event::OnPointerMove { x: _, y: _ } => {
-                    if pointer_move_event {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
-                                }
-                            }
-                        } else {
-                            tmp_state = target_state as i32;
-                        }
-                    }
-                }
-                Event::OnPointerEnter { x: _, y: _ } => {
-                    if pointer_enter_event {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
-                                }
-                            }
-                        } else {
-                            tmp_state = target_state as i32;
-                        }
-                    }
-                }
-                Event::OnPointerExit => {
-                    if pointer_exit_event {
-                        // If there are guards loop over them and check if theyre verified
-                        if !transition_guards.is_empty() {
-                            for guard in transition_guards {
-                                if self.verify_if_guards_are_met(guard) {
-                                    tmp_state = target_state as i32;
-                                }
-                            }
-                        } else {
-                            tmp_state = target_state as i32;
-                        }
-                    }
-                }
-                Event::SetNumericContext { key: _, value: _ } => {}
+                InternalEvent::SetNumericContext { key: _, value: _ } => {}
             }
         }
 

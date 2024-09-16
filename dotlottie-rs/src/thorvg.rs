@@ -213,6 +213,39 @@ impl Animation {
         Ok(())
     }
 
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Result<(f32, f32, f32, f32), TvgError> {
+        let paint = self.raw_paint;
+        let layer_name_cstr = CString::new(layer_name).expect("Failed to create CString");
+        let layer_id = unsafe { tvg_accessor_generate_id(layer_name_cstr.as_ptr()) };
+        let layer = unsafe { tvg_picture_get_paint(paint, layer_id) };
+
+        if !layer.is_null() {
+            let mut px: f32 = -1.0;
+            let mut py: f32 = -1.0;
+            let mut pw: f32 = -1.0;
+            let mut ph: f32 = -1.0;
+
+            let bounds = unsafe {
+                tvg_paint_get_bounds(
+                    layer,
+                    &mut px as *mut f32,
+                    &mut py as *mut f32,
+                    &mut pw as *mut f32,
+                    &mut ph as *mut f32,
+                    true,
+                )
+            };
+
+            convert_tvg_result(bounds, "tvg_paint_get_bounds")?;
+
+            Ok((px, py, pw, ph))
+        } else {
+            Err(TvgError::Unknown {
+                function_name: "tvg_picture_get_paint".to_string(),
+            })
+        }
+    }
+
     pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> Result<bool, TvgError> {
         let paint = self.raw_paint;
         let layer_name_cstr = CString::new(layer_name).expect("Failed to create CString");

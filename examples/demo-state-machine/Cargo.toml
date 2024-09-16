@@ -8,3 +8,16 @@ minifb = "0.27"
 dotlottie_player = { path = "../../dotlottie-rs" }
 sysinfo = "0.30"
 rand = "0.8"
+
+[[bin]]
+name = "star-rating"
+path = "src/bin/star-rating/star-rating.rs"
+
+
+[[bin]]
+name = "exploding-pigeon"
+path = "src/bin/exploding-pigeon/exploding-pigeon.rs"
+
+[[bin]]
+name = "play-on-hover"
+path = "src/bin/play-on-hover/play-on-hover.rs"

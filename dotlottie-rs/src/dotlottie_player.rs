@@ -100,6 +100,30 @@ impl Default for Config {
     }
 }
 
+struct LayerBoundingBox {
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+}
+
+impl From<LayerBoundingBox> for Vec<f32> {
+    fn from(bbox: LayerBoundingBox) -> Vec<f32> {
+        vec![bbox.x, bbox.y, bbox.w, bbox.h]
+    }
+}
+
+impl Default for LayerBoundingBox {
+    fn default() -> Self {
+        LayerBoundingBox {
+            x: 0.0,
+            y: 0.0,
+            w: 0.0,
+            h: 0.0,
+        }
+    }
+}
+
 struct DotLottieRuntime {
     renderer: LottieRenderer,
     playback_state: PlaybackState,
@@ -182,12 +206,21 @@ impl DotLottieRuntime {
     }
 
     pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
-        let result = self
-            .renderer
-            .get_layer_bounds(layer_name)
-            .unwrap_or((0.0, 0.0, 0.0, 0.0));
+        let bbox = self.renderer.get_layer_bounds(layer_name);
 
-        vec![result.0, result.1, result.2, result.3]
+        if bbox.is_ok() {
+            let bbox = bbox.unwrap();
+
+            return LayerBoundingBox::from(LayerBoundingBox {
+                x: bbox.0,
+                y: bbox.1,
+                w: bbox.2,
+                h: bbox.3,
+            })
+            .into();
+        } else {
+            return LayerBoundingBox::default().into();
+        }
     }
 
     pub fn is_loaded(&self) -> bool {

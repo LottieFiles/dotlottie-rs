@@ -211,15 +211,15 @@ impl DotLottieRuntime {
         if bbox.is_ok() {
             let bbox = bbox.unwrap();
 
-            return LayerBoundingBox::from(LayerBoundingBox {
+            LayerBoundingBox {
                 x: bbox.0,
                 y: bbox.1,
                 w: bbox.2,
                 h: bbox.3,
-            })
-            .into();
+            }
+            .into()
         } else {
-            return LayerBoundingBox::default().into();
+            LayerBoundingBox::default().into()
         }
     }
 

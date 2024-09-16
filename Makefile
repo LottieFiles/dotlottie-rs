@@ -315,7 +315,7 @@ define SETUP_MESON
 		-Dloaders="lottie, png, jpg, webp" \
 		-Ddefault_library=static \
 		-Dbindings=capi \
-		-Dlog=$(LOG) \
+		-Dlog=false \
 		-Dthreads=false \
 		-Dstatic=$(STATIC) \
 		-Dextra=$(EXTRA) \

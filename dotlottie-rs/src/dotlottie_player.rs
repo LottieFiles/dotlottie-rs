@@ -208,18 +208,15 @@ impl DotLottieRuntime {
     pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
         let bbox = self.renderer.get_layer_bounds(layer_name);
 
-        if bbox.is_ok() {
-            let bbox = bbox.unwrap();
-
-            LayerBoundingBox {
+        match bbox {
+            Err(_) => LayerBoundingBox::default().into(),
+            Ok(bbox) => LayerBoundingBox {
                 x: bbox.0,
                 y: bbox.1,
                 w: bbox.2,
                 h: bbox.3,
             }
-            .into()
-        } else {
-            LayerBoundingBox::default().into()
+            .into(),
         }
     }
 

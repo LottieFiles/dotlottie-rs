@@ -142,7 +142,7 @@ impl StateTrait for State {
             State::Global { .. } => {}
         }
 
-        1
+        0
     }
 
     fn get_reset_context_key(&self) -> &String {

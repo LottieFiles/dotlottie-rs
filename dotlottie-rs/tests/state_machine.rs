@@ -6,7 +6,7 @@ mod tests {
         listeners::ListenerTrait,
         states::StateTrait,
         transitions::{Transition::Transition, TransitionTrait},
-        StateMachineObserver,
+        InternalEvent, StateMachineObserver,
     };
 
     use dotlottie_rs::{listeners::ListenerType, parser::StringNumberBool};
@@ -37,7 +37,7 @@ mod tests {
 
         let pigeon_transition_0 = Transition {
             target_state: 1,
-            event: Arc::new(RwLock::new(Event::String {
+            event: Arc::new(RwLock::new(InternalEvent::String {
                 value: "explosion".to_string(),
             })),
             guards: Vec::new(),
@@ -45,7 +45,7 @@ mod tests {
 
         let pigeon_transition_1 = Transition {
             target_state: 2,
-            event: Arc::new(RwLock::new(Event::String {
+            event: Arc::new(RwLock::new(InternalEvent::String {
                 value: "complete".to_string(),
             })),
             guards: Vec::new(),
@@ -53,7 +53,7 @@ mod tests {
 
         let pigeon_transition_2 = Transition {
             target_state: 0,
-            event: Arc::new(RwLock::new(Event::String {
+            event: Arc::new(RwLock::new(InternalEvent::String {
                 value: "complete".to_string(),
             })),
             guards: Vec::new(),

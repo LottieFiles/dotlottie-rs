@@ -4,11 +4,6 @@
         "initial": 0
     },
     "states": [
-        {
-            "name": "SyncTest",
-            "type": "SyncState",
-            "frame_context_key": "sync_key"
-        }
     ],
     "transitions": [
     ],

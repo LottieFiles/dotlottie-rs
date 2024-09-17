@@ -10,7 +10,7 @@ The build process works as follows:
 1. If not already built, perform a build of `Thorvg` and it's native dependencies for the local machine architecture
 2. For each target architecture, e.g. `aarch64-apple-darwin`, build `Thorvg` and, for Apple and Android targets, its native dependencies
 3. Generate `uniffi` bindings for the target platform, e.g. Android, by first building `uniffi-bindgen`. This relies on a local architecture build of `Thorvg`
-    - For WASM, instead use `uniffi-bindgen-cpp` to generate C++ bindings
+   - For WASM, instead use `uniffi-bindgen-cpp` to generate C++ bindings
 4. Build the Rust `dotlottie-player` library
 5. Put together the final release artifacts for each platform, i.e. Android, Apple, etc. and populate the `release` directory
 
@@ -88,7 +88,7 @@ The following blocks are used to create `uniffi` bindings:
 The produce a release for Android, we must build up a directory containing all relevant
 architecture builds, the `uniffi` files for Kotlin, and other supporting files.
 
-- `ANDROID_RELEASE`: Compiles the final artifacts for an Android release 
+- `ANDROID_RELEASE`: Compiles the final artifacts for an Android release
 
 For Apple, we must:
 
@@ -159,9 +159,9 @@ this behaviour is usually what you would want to happen outside the context of `
 using `eval`, we may want certain variables to be expanded later by `eval` instead.
 
 In the example given above, we want `$2_THORVG_DEP_BUILD_DIR` to be expanded into the name of a variable
-to be created. As `$2` in this case is defined as the SCREAMING_SNAKE_CASE version of the current target
+to be created. As `$2` in this case is defined as the SCREAMING*SNAKE_CASE version of the current target
 architecture, and will be have a value such as `AARCH64_LINUX_ANDROID`, the line above will be expanded to
-something like the following, _before_ being passed to `eval`:
+something like the following, \_before* being passed to `eval`:
 
 ```
 AARCH64_LINUX_ANDROID_THORVG_DEP_BUILD_DIR := $(AARCH64_LINUX_ANDROID_DEPS_BUILD_DIR)/thorvg

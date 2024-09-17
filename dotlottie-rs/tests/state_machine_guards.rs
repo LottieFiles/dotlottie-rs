@@ -1,18 +1,18 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_player_core::states::StateTrait;
-    use dotlottie_player_core::{
+    use dotlottie_rs::states::StateTrait;
+    use dotlottie_rs::{
         parser::TransitionGuardConditionType,
         transitions::{guard::Guard, TransitionTrait},
     };
 
-    use dotlottie_player_core::DotLottiePlayer;
+    use dotlottie_rs::DotLottiePlayer;
 
     #[test]
     pub fn guards_loaded_correctly() {
-        use dotlottie_player_core::transitions::TransitionTrait;
+        use dotlottie_rs::transitions::TransitionTrait;
 
-        use dotlottie_player_core::{states::State, Config, DotLottiePlayer};
+        use dotlottie_rs::{states::State, Config, DotLottiePlayer};
 
         // let file_path = format!(
         //     "{}{}",
@@ -56,17 +56,17 @@ mod tests {
         let guard_0 = Guard {
             context_key: "counter_0".to_string(),
             condition_type: TransitionGuardConditionType::GreaterThan,
-            compare_to: dotlottie_player_core::parser::StringNumberBool::F32(5.0),
+            compare_to: dotlottie_rs::parser::StringNumberBool::F32(5.0),
         };
         let guard_1 = Guard {
             context_key: "counter_0".to_string(),
             condition_type: TransitionGuardConditionType::GreaterThanOrEqual,
-            compare_to: dotlottie_player_core::parser::StringNumberBool::F32(60.0),
+            compare_to: dotlottie_rs::parser::StringNumberBool::F32(60.0),
         };
         let guard_2 = Guard {
             context_key: "counter_0".to_string(),
             condition_type: TransitionGuardConditionType::GreaterThanOrEqual,
-            compare_to: dotlottie_player_core::parser::StringNumberBool::F32(65.0),
+            compare_to: dotlottie_rs::parser::StringNumberBool::F32(65.0),
         };
 
         let guards = [guard_0, guard_1, guard_2];
@@ -126,9 +126,9 @@ mod tests {
 
     #[test]
     pub fn not_equal_test() {
-        use dotlottie_player_core::transitions::TransitionTrait;
+        use dotlottie_rs::transitions::TransitionTrait;
 
-        use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
+        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
 
         // let file_path = format!(
         //     "{}{}",
@@ -239,9 +239,9 @@ mod tests {
 
     #[test]
     pub fn equal_test() {
-        use dotlottie_player_core::transitions::TransitionTrait;
+        use dotlottie_rs::transitions::TransitionTrait;
 
-        use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
+        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
 
         // let file_path = format!(
         //     "{}{}",
@@ -351,9 +351,9 @@ mod tests {
 
     #[test]
     pub fn greater_than_greater_than_or_equal_test() {
-        use dotlottie_player_core::transitions::TransitionTrait;
+        use dotlottie_rs::transitions::TransitionTrait;
 
-        use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
+        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
 
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(
@@ -450,9 +450,9 @@ mod tests {
 
     #[test]
     pub fn less_than_less_than_equal_test() {
-        use dotlottie_player_core::transitions::TransitionTrait;
+        use dotlottie_rs::transitions::TransitionTrait;
 
-        use dotlottie_player_core::{events::Event, Config, DotLottiePlayer};
+        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
 
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(

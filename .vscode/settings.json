@@ -6,5 +6,6 @@
     "./examples/demo-player/Cargo.toml",
     "./examples/demo-state-machine/Cargo.toml"
   ],
-  "C_Cpp.errorSquiggles": "disabled"
+  "C_Cpp.errorSquiggles": "disabled",
+  "java.configuration.updateBuildConfiguration": "disabled"
 }

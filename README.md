@@ -18,11 +18,11 @@ flowchart TD
   B[dotLottie-ios] --> swift+Bindings[Swift Bindings]
   C[dotLottie-android] --> kotlin+Bindings[Kotlin Bindings]
 
-  WASM+Bindings --> dotLottie-ffi[dotLottie-ffi \n 'uniffi bindings']
-  swift+Bindings --> dotLottie-ffi[dotLottie-ffi \n 'uniffi bindings']
-  kotlin+Bindings --> dotLottie-ffi[dotLottie-ffi \n 'uniffi bindings']
+  WASM+Bindings --> dotlottie-ffi[dotlottie-ffi \n 'uniffi bindings']
+  swift+Bindings --> dotlottie-ffi[dotlottie-ffi \n 'uniffi bindings']
+  kotlin+Bindings --> dotlottie-ffi[dotlottie-ffi \n 'uniffi bindings']
 
-  dotLottie-ffi --> dotlottiers[dotLottie-rs \n 'Core player']
+  dotlottie-ffi --> dotlottiers[dotLottie-rs \n 'Core player']
 
   dotlottiers --> Thorvg[Thorvg \n 'Lottie renderer']
 ```

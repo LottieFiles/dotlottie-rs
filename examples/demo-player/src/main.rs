@@ -1,4 +1,4 @@
-use dotlottie_player_core::{Config, DotLottiePlayer, Layout, Mode, Observer};
+use dotlottie_rs::{Config, DotLottiePlayer, Fit, Layout, Mode, Observer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
@@ -120,7 +120,7 @@ fn main() {
     let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         loop_animation: true,
         background_color: 0xffffffff,
-        layout: Layout::new(dotlottie_player_core::Fit::None, vec![1.0, 0.5]),
+        layout: Layout::new(Fit::None, vec![1.0, 0.5]),
         marker: "feather".to_string(),
         ..Config::default()
     });
@@ -271,7 +271,7 @@ fn main() {
         if window.is_key_pressed(Key::K, KeyRepeat::No) {
             let mut config = lottie_player.config();
 
-            config.layout.fit = dotlottie_player_core::Fit::None;
+            config.layout.fit = Fit::None;
             // randomize alignment
             config.layout.align =
                 vec![(rand::random::<f32>() * 1.0), (rand::random::<f32>() * 1.0)];

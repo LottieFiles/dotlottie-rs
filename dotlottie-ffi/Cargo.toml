@@ -6,7 +6,7 @@ build = "build.rs"
 
 [profile.release]
 lto = true
-opt-level = "s"
+opt-level = "z"
 strip = true 
 codegen-units = 1
 panic = "abort" 
@@ -20,10 +20,10 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [dependencies]
-uniffi = { version = "0.28.0", features = ["cli"] }
-dotlottie_player = { path = "../dotlottie-rs" }
+uniffi = { version = "0.28", features = ["cli"] }
+dotlottie-rs = { path = "../dotlottie-rs" }
 cfg-if = "1.0"
 
 [build-dependencies]
-uniffi = { version = "0.28.0", features = ["build"] }
+uniffi = { version = "0.28", features = ["build"] }
 lazy_static = "1.4"

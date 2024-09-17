@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use dotlottie_player_core::{Config, DotLottiePlayer, Observer};
+use dotlottie_rs::{Config, DotLottiePlayer, Observer};
 
 mod test_utils;
 

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_player_core::{states::StateTrait, Config, DotLottiePlayer, Event};
+    use dotlottie_rs::{states::StateTrait, Config, DotLottiePlayer, Event};
 
     #[test]
     pub fn pointer_down_up_test() {

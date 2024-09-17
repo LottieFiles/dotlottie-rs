@@ -1,4 +1,4 @@
-pub use dotlottie_player_core::*;
+pub use dotlottie_rs::*;
 
 pub fn create_default_layout() -> Layout {
     Layout::default()

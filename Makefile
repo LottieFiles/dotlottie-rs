@@ -132,17 +132,17 @@ RELEASE := release
 # Build artifact types
 CORE := dotlottie-rs
 RUNTIME_FFI := dotlottie-ffi
-DOTLOTTIE_PLAYER := dotlottie-ffi
+DOTLOTTIE_PLAYER := dotlottie-player
 
 # Build artifacts
 RUNTIME_FFI_UNIFFI_BINDINGS := uniffi-bindings
 
-RUNTIME_FFI_STATIC_LIB := libdotlottie_ffi.a
-RUNTIME_FFI_LIB := libdotlottie_ffi.so
-RUNTIME_FFI_DYLIB := libdotlottie_ffi.dylib
+RUNTIME_FFI_STATIC_LIB := libdotlottie_player.a
+RUNTIME_FFI_LIB := libdotlottie_player.so
+RUNTIME_FFI_DYLIB := libdotlottie_player.dylib
 
-DOTLOTTIE_PLAYER_HEADER := dotlottie_uniffi.h
-DOTLOTTIE_PLAYER_SWIFT := dotlottie_uniffi.swift
+DOTLOTTIE_PLAYER_HEADER := dotlottie_player.h
+DOTLOTTIE_PLAYER_SWIFT := dotlottie_player.swift
 DOTLOTTIE_PLAYER_MODULE := DotLottiePlayer
 
 DOTLOTTIE_PLAYER_FRAMEWORK := $(DOTLOTTIE_PLAYER_MODULE).framework
@@ -159,7 +159,7 @@ CPLUSPLUS := cpp
 RUNTIME_FFI_ANDROID_ASSETS := assets
 DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR := $(RELEASE)/$(ANDROID)/$(DOTLOTTIE_PLAYER)
 DOTLOTTIE_PLAYER_ANDROID_SRC_DIR := $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/$(KOTLIN)
-DOTLOTTIE_PLAYER_LIB := libuniffi_dotlottie_uniffi.so
+DOTLOTTIE_PLAYER_LIB := libuniffi_dotlottie_player.so
 DOTLOTTIE_PLAYER_GRADLE_PROPERTIES := gradle.properties
 
 # Dependency build directories for the current machine architecture
@@ -296,7 +296,7 @@ if cc.get_id() == 'emscripten'
     executable('$(WASM_MODULE)',
         [$(shell find $(FFI_BINDINGS_DIR) -name "*.cpp" -exec printf "'%s'," {} \; 2>/dev/null)],
         include_directories: '$(FFI_BINDINGS_DIR)',
-        link_args: ['-L$(DEPS_LIB_DIR)', '-L$(FFI_BUILD_DIR)', '-lthorvg', '-ldotlottie_ffi'],
+        link_args: ['-L$(DEPS_LIB_DIR)', '-L$(FFI_BUILD_DIR)', '-lthorvg', '-ldotlottie_player'],
     )
 else
     message('The compiler is not Emscripten.')
@@ -315,7 +315,7 @@ define SETUP_MESON
 		-Dloaders="lottie, png, jpg, webp" \
 		-Ddefault_library=static \
 		-Dbindings=capi \
-		-Dlog=$(LOG) \
+		-Dlog=false \
 		-Dthreads=false \
 		-Dstatic=$(STATIC) \
 		-Dextra=$(EXTRA) \
@@ -377,7 +377,7 @@ define UNIFFI_BINDINGS_BUILD
 		--manifest-path $(RUNTIME_FFI)/Cargo.toml \
 		--features=uniffi/cli \
 		--bin uniffi-bindgen \
-		generate $(RUNTIME_FFI)/src/dotlottie_uniffi.udl \
+		generate $(RUNTIME_FFI)/src/dotlottie_player.udl \
 		--language $(BINDINGS_LANGUAGE) \
 		--out-dir $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(BINDINGS_LANGUAGE)
 endef
@@ -387,7 +387,7 @@ define UNIFFI_BINDINGS_CPP_BUILD
 	$(UNIFFI_BINDGEN_CPP) \
 		--config $(RUNTIME_FFI)/uniffi.toml \
 		--out-dir $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS) \
-		$(RUNTIME_FFI)/src/dotlottie_uniffi_cpp.udl
+		$(RUNTIME_FFI)/src/dotlottie_player_cpp.udl
 	sed -i .bak 's/uint8_t/char/g' $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/*
 	cp $(RUNTIME_FFI)/emscripten_bindings.cpp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/.
 endef
@@ -592,7 +592,7 @@ $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): export PKG_CONFIG_PATH := $(PWD
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$(THORVG)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_BUILD_DIR := $$($1_THORVG_DEP_BUILD_DIR)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): CROSS_FILE := --cross-file $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE)
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): LOG := $2
+$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): LOG := false
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): STATIC := $3
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): EXTRA := $4
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE)
@@ -961,7 +961,7 @@ test: test-all
 test-all:
 	$(info $(YELLOW)Running tests for workspace$(NC))
 	@cargo test --release --manifest-path $(CORE)/Cargo.toml -- --test-threads=1 
-	@cargo test --release --manifest-path $(RUNTIME_FFI)/Cargo.toml -- --test-threads=1
+	@cargo test --release --manifest-path $(RUNTIME_FFI)/Cargo.toml -- --test-threads=1 
 
 .PHONY: bench
 bench:

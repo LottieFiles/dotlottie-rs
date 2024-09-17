@@ -10,8 +10,8 @@ pub fn create_default_config() -> Config {
 
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
-        uniffi::include_scaffolding!("dotlottie_uniffi_cpp");
+        uniffi::include_scaffolding!("dotlottie_player_cpp");
     } else {
-        uniffi::include_scaffolding!("dotlottie_uniffi");
+        uniffi::include_scaffolding!("dotlottie_player");
     }
 }

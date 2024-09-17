@@ -159,7 +159,7 @@ CPLUSPLUS := cpp
 RUNTIME_FFI_ANDROID_ASSETS := assets
 DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR := $(RELEASE)/$(ANDROID)/$(DOTLOTTIE_PLAYER)
 DOTLOTTIE_PLAYER_ANDROID_SRC_DIR := $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/$(KOTLIN)
-DOTLOTTIE_PLAYER_LIB := libuniffi_dotlottie_ffi.so
+DOTLOTTIE_PLAYER_LIB := libuniffi_dotlottie_uniffi.so
 DOTLOTTIE_PLAYER_GRADLE_PROPERTIES := gradle.properties
 
 # Dependency build directories for the current machine architecture

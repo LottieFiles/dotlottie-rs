@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.dotlottie.uniffi"
+    namespace = "com.dotlottie.dlplayer"
     compileSdk = 33
 
     defaultConfig {

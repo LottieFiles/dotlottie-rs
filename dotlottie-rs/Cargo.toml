@@ -1,14 +1,14 @@
 [package]
 name = "dotlottie-rs"
-description = "A tool for rendering Lottie/Dotlottie animations"
-keywords = ["lottie", "dotlottie", "animation", "renderer", "thorvg"]
-categories = ["graphics", "animation"]
+description = "A tool for rendering dotlottie and lottie animations."
+keywords = ["lottie", "dotlottie", "animation", "graphics", "thorvg"]
+categories = ["graphics", "rendering"]
 version = "0.1.0-alpha.1"
-authors = ["Jawish Hameed <jawish@lottiefiles.com>", "Sam Osborne <sam@lottiefiles.com>", "Afsal Ali <afsala@lottiefiles.com", "Abdelrahman Ashraf <ashraf@lottiefiles.com>"]
+authors = ["Jawish Hameed <jawish@lottiefiles.com>", "Sam Osborne <sam@lottiefiles.com>", "Afsal Ali <afsal@lottiefiles.com", "Abdelrahman Ashraf <ashraf@lottiefiles.com>"]
 license = "MIT"
 edition = "2021"
 repository = "https://github.com/LottieFiles/dotlottie-rs"
-readme = "README.md"
+readme = "../README.md"
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -16,8 +16,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 thiserror = "1.0.48"
-# "emscripten-no-leading-underscore" branch fix this issue -> https://github.com/sebcrozet/instant/issues/35
-instant = { git = "https://github.com/hoodmane/instant", branch = "emscripten-no-leading-underscore", features = ["inaccurate"] }
+instant = { version = "0.1.13", features = ["inaccurate"] }
 serde_json = "1.0.107"
 serde = { version = "1.0.188", features = ["derive"] }
 zip = { version = "2.2.0", default-features = false, features = ["deflate"] }

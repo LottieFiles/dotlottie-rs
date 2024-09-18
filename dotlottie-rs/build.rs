@@ -30,8 +30,8 @@ fn is_wasm_build() -> bool {
 }
 
 fn platform_libs() -> Vec<String> {
-    match env::var("CARGO_CFG_TARGET_VENDOR") {
-        Ok(platform) if platform == "apple" => vec![String::from("c++")],
+    match env::var("HOST") {
+        Ok(triple) if triple.contains("apple") => vec![String::from("c++")],
         Ok(_) if std::env::var("CARGO_CFG_UNIX").is_ok() => vec![String::from("stdc++")],
         Ok(_) => vec![],
         Err(_) => panic!("CARGO_CFG_TARGET_VENDOR environment variable not set"),

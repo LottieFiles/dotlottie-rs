@@ -8,7 +8,7 @@ authors = ["Jawish Hameed <jawish@lottiefiles.com>", "Sam Osborne <sam@lottiefil
 license = "MIT"
 edition = "2021"
 repository = "https://github.com/LottieFiles/dotlottie-rs"
-readme = "../README.md"
+readme = "README.md"
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]

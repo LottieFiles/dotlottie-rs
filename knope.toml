@@ -2,19 +2,23 @@
 owner = 'LottieFiles'
 repo = 'dotlottie-rs'
 
-[package]
-versioned_files = ["dotlottie-ffi/Cargo.toml"]
-changelog = "CHANGELOG.md"
+[packages.dotlottie-rs]
+versioned_files = ["dotlottie-rs/Cargo.toml"]
+changelog = "dotlottie-rs/CHANGELOG.md"
 
-[[package.assets]]
+[packages.dotlottie-ffi]
+versioned_files = ["dotlottie-ffi/Cargo.toml"]
+changelog = "dotlottie-ffi/CHANGELOG.md"
+
+[[packages.dotlottie-ffi.assets]]
 path = "release/dotlottie-player.darwin.tar.gz"
 name = "dotlottie-player.darwin.tar.gz"
 
-[[package.assets]]
+[[packages.dotlottie-ffi.assets]]
 path = "release/dotlottie-player.android.tar.gz"
 name = "dotlottie-player.android.tar.gz"
 
-[[package.assets]]
+[[packages.dotlottie-ffi.assets]]
 path = "release/dotlottie-player.wasm.tar.gz"
 name = "dotlottie-player.wasm.tar.gz"
 

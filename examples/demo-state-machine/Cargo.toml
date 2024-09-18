@@ -19,5 +19,10 @@ name = "exploding-pigeon"
 path = "src/bin/exploding-pigeon/exploding-pigeon.rs"
 
 [[bin]]
+name = "new-format"
+path = "src/bin/new-format/new-format.rs"
+
+
+[[bin]]
 name = "play-on-hover"
 path = "src/bin/play-on-hover/play-on-hover.rs"

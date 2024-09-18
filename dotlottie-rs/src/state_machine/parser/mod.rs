@@ -2,49 +2,12 @@ use serde::Deserialize;
 
 use crate::errors::StateMachineError;
 
-#[derive(Deserialize, Debug, PartialEq)]
-pub enum StateActionType {
-    URLAction,
-    ThemeAction,
-    SoundAction,
-    LogAction,
-}
-
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum StringNumberBool {
     String(String),
     F32(f32),
     Bool(bool),
-}
-
-#[derive(Deserialize, Debug, PartialEq)]
-pub enum TransitionGuardType {
-    Numeric,
-    String,
-    Boolean,
-}
-
-#[derive(Deserialize, Debug, PartialEq)]
-pub enum ContextJsonType {
-    Numeric,
-    String,
-    Boolean,
-}
-
-#[derive(Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
-pub enum TransitionJsonType {
-    Transition,
-}
-
-#[derive(Deserialize, Debug, PartialEq)]
-pub enum ListenerJsonType {
-    PointerUp,
-    PointerDown,
-    PointerEnter,
-    PointerExit,
-    PointerMove,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -60,88 +23,114 @@ pub enum TransitionGuardConditionType {
 #[derive(Deserialize, Debug)]
 pub struct DescriptorJson {
     pub id: String,
-    pub initial: u32,
+    pub initial: String,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
-pub enum StateActionJson {
-    URLAction {
+#[serde(tag = "type")]
+pub enum ActionJson {
+    OpenUrl {
         url: String,
-        target: Option<String>,
     },
     ThemeAction {
         theme_id: String,
         target: Option<String>,
     },
-    SoundAction {
-        sound_id: String,
-        target: Option<String>,
+    Increment {
+        trigger_name: String,
+        value: Option<f32>,
     },
-    LogAction {
-        message: String,
+    Decrement {
+        trigger_name: String,
+        value: Option<f32>,
+    },
+    Toggle {
+        trigger_name: String,
+    },
+    SetBoolean {
+        trigger_name: String,
+        value: bool,
+    },
+    SetString {
+        trigger_name: String,
+        value: String,
+    },
+    SetNumeric {
+        trigger_name: String,
+        value: f32,
+    },
+    Fire {
+        trigger_name: String,
+    },
+    SetExpression {
+        layer_name: String,
+        property_index: u32,
+        var_name: String,
+        value: StringNumberBool,
+    },
+    SetTheme {
+        theme_id: String,
+    },
+    SetFrame {
+        value: f32,
+    },
+    SetSlot {
+        value: String,
+    },
+    FireCustomEvent {
+        value: String,
     },
 }
 
 // Type is the actual "type" declared in the state machine State json
 // This allows serde to determine which struct to deserialize the json into
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
 pub enum StateJson {
     PlaybackState {
         name: String,
+        transitions: Vec<TransitionJson>,
         animation_id: Option<String>,
         r#loop: Option<bool>,
         autoplay: Option<bool>,
         mode: Option<String>,
         speed: Option<f32>,
-        marker: Option<String>,
-        segment: Option<Vec<f32>>,
+        segment: Option<String>,
         background_color: Option<u32>,
         use_frame_interpolation: Option<bool>,
-        entry_actions: Option<Vec<StateActionJson>>,
-        exit_actions: Option<Vec<StateActionJson>>,
-        reset_context: Option<String>,
-    },
-    SyncState {
-        name: String,
-        frame_context_key: String,
-        animation_id: Option<String>,
-        background_color: Option<u32>,
-        segment: Option<Vec<f32>>,
-        entry_actions: Option<Vec<StateActionJson>>,
-        exit_actions: Option<Vec<StateActionJson>>,
-        reset_context: Option<String>,
+        entry_actions: Option<Vec<ActionJson>>,
+        exit_actions: Option<Vec<ActionJson>>,
     },
     GlobalState {
         name: String,
-        entry_actions: Option<Vec<StateActionJson>>,
-        exit_actions: Option<Vec<StateActionJson>>,
+        transitions: Vec<TransitionJson>,
+        entry_actions: Option<Vec<ActionJson>>,
+        exit_actions: Option<Vec<ActionJson>>,
         reset_context: Option<String>,
     },
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
-pub struct TransitionGuardJson {
-    pub r#type: TransitionGuardType,
-    pub context_key: String,
-    pub condition_type: TransitionGuardConditionType,
-    pub compare_to: StringNumberBool,
-}
-
-#[derive(Deserialize, Debug, PartialEq)]
-pub struct NumericEventJson {
-    pub value: f32,
-}
-
-#[derive(Deserialize, Debug, PartialEq)]
-pub struct StringEventJson {
-    pub value: String,
-}
-
-#[derive(Deserialize, Debug, PartialEq)]
-pub struct BooleanEventJson {
-    pub value: bool,
+#[serde(tag = "type")]
+pub enum TransitionGuardJson {
+    Numeric {
+        trigger_name: String,
+        condition_type: TransitionGuardConditionType,
+        compare_to: StringNumberBool,
+    },
+    String {
+        trigger_name: String,
+        condition_type: TransitionGuardConditionType,
+        compare_to: StringNumberBool,
+    },
+    Boolean {
+        trigger_name: String,
+        condition_type: TransitionGuardConditionType,
+        compare_to: StringNumberBool,
+    },
+    Event {
+        trigger_name: String,
+    },
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -176,45 +165,55 @@ pub struct OnPointerMoveEventJson {
 #[serde(tag = "type")]
 pub enum TransitionJson {
     Transition {
-        from_state: u32,
-        to_state: u32,
+        to_state: String,
         guards: Option<Vec<TransitionGuardJson>>,
-        numeric_event: Option<NumericEventJson>,
-        string_event: Option<StringEventJson>,
-        boolean_event: Option<BooleanEventJson>,
-        on_complete_event: Option<OnCompleteEventJson>,
-        on_pointer_down_event: Option<OnPointerDownEventJson>,
-        on_pointer_up_event: Option<OnPointerUpEventJson>,
-        on_pointer_enter_event: Option<OnPointerEnterEventJson>,
-        on_pointer_exit_event: Option<OnPointerExitEventJson>,
-        on_pointer_move_event: Option<OnPointerMoveEventJson>,
     },
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ListenerJson {
-    pub r#type: ListenerJsonType,
-    pub target: Option<String>,
-    pub action: Option<String>,
-    pub value: Option<StringNumberBool>,
-    pub context_key: Option<String>,
+#[serde(tag = "type")]
+pub enum ListenerJson {
+    PointerUp {
+        layer_name: Option<String>,
+        action: ActionJson,
+    },
+    PointerDown {
+        layer_name: Option<String>,
+        action: ActionJson,
+    },
+    PointerEnter {
+        layer_name: Option<String>,
+        action: ActionJson,
+    },
+    PointerExit {
+        layer_name: Option<String>,
+        action: ActionJson,
+    },
+    PointerMove {
+        layer_name: Option<String>,
+        action: ActionJson,
+    },
+    OnComplete {
+        state_name: Option<String>,
+        action: ActionJson,
+    },
 }
 
-// todo move to enum and add #[serde(tag = "type")]
 #[derive(Deserialize, Debug)]
-pub struct ContextJson {
-    pub r#type: ContextJsonType,
-    pub key: String,
-    pub value: StringNumberBool,
+#[serde(tag = "type")]
+pub enum TriggerJson {
+    Numeric { name: String, value: f32 },
+    String { name: String, value: String },
+    Boolean { name: String, value: bool },
+    Event { name: String },
 }
 
 #[derive(Deserialize, Debug)]
 pub struct StateMachineJson {
     pub descriptor: DescriptorJson,
     pub states: Vec<StateJson>,
-    pub transitions: Vec<TransitionJson>,
     pub listeners: Vec<ListenerJson>,
-    pub context_variables: Vec<ContextJson>,
+    pub triggers: Vec<TriggerJson>,
 }
 
 pub fn state_machine_parse(json: &str) -> Result<StateMachineJson, StateMachineError> {

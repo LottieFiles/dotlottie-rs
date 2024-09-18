@@ -16,7 +16,7 @@ use crate::state_machine::transitions::guard::Guard;
 use crate::state_machine::transitions::TransitionTrait;
 use crate::{Config, DotLottiePlayerContainer, InternalEvent, Layout, Mode, PointerEvent};
 
-use self::parser::{state_machine_parse, ContextJsonType};
+use self::parser::state_machine_parse;
 use self::{errors::StateMachineError, events::Event, states::State, transitions::Transition};
 
 pub trait StateMachineObserver: Send + Sync {
@@ -130,6 +130,23 @@ impl StateMachine {
     ) -> Result<StateMachine, StateMachineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
 
+        if parsed_state_machine.is_err() {
+            println!(
+                "Error parsing state machine definition: {:?}",
+                parsed_state_machine.err()
+            );
+            return Err(StateMachineError::ParsingError {
+                reason: "Failed to parse state machine definition".to_string(),
+            });
+        }
+
+        // TODO
+        // - Report PROPER errors if there are any
+        // - Create states and transitions based on the parsed state machine
+        // - Run it through a check pipeline to ensure everything is valid. Types based on their actions, inf. loops etc.
+
+        Ok(StateMachine::default())
+
         // todo somehow get the context json without having to parse it again
         // self.json_context = Some(
         //     state_machine_parse(sm_definition)
@@ -137,383 +154,383 @@ impl StateMachine {
         //         .context_variables,
         // );
 
-        let mut states: Vec<Arc<RwLock<State>>> = Vec::new();
-        let mut global_state: Option<Arc<RwLock<State>>> = None;
-        let mut listeners: Vec<Arc<RwLock<Listener>>> = Vec::new();
-        let mut new_state_machine = StateMachine::default();
+        // let mut states: Vec<Arc<RwLock<State>>> = Vec::new();
+        // let mut global_state: Option<Arc<RwLock<State>>> = None;
+        // let mut listeners: Vec<Arc<RwLock<Listener>>> = Vec::new();
+        // let mut new_state_machine = StateMachine::default();
 
-        match parsed_state_machine {
-            Ok(parsed_state_machine) => {
-                // Loop through result json states and create objects for each
-                for state in parsed_state_machine.states {
-                    match state {
-                        parser::StateJson::PlaybackState {
-                            name,
-                            animation_id,
-                            r#loop,
-                            autoplay,
-                            mode,
-                            speed,
-                            segment,
-                            background_color,
-                            use_frame_interpolation,
-                            reset_context,
-                            marker,
-                            ..
-                        } => {
-                            let unwrapped_mode = mode.unwrap_or("Forward".to_string());
-                            let mode = {
-                                match unwrapped_mode.as_str() {
-                                    "Forward" => Mode::Forward,
-                                    "Reverse" => Mode::Reverse,
-                                    "Bounce" => Mode::Bounce,
-                                    "ReverseBounce" => Mode::ReverseBounce,
-                                    _ => Mode::Forward,
-                                }
-                            };
+        // match parsed_state_machine {
+        //     Ok(parsed_state_machine) => {
+        //         // Loop through result json states and create objects for each
+        //         for state in parsed_state_machine.states {
+        //             match state {
+        //                 parser::StateJson::PlaybackState {
+        //                     name,
+        //                     animation_id,
+        //                     r#loop,
+        //                     autoplay,
+        //                     mode,
+        //                     speed,
+        //                     segment,
+        //                     background_color,
+        //                     use_frame_interpolation,
+        //                     reset_context,
+        //                     marker,
+        //                     ..
+        //                 } => {
+        //                     let unwrapped_mode = mode.unwrap_or("Forward".to_string());
+        //                     let mode = {
+        //                         match unwrapped_mode.as_str() {
+        //                             "Forward" => Mode::Forward,
+        //                             "Reverse" => Mode::Reverse,
+        //                             "Bounce" => Mode::Bounce,
+        //                             "ReverseBounce" => Mode::ReverseBounce,
+        //                             _ => Mode::Forward,
+        //                         }
+        //                     };
 
-                            let default_config = Config::default();
+        //                     let default_config = Config::default();
 
-                            // Fill out a config with the state's values, if absent use default config values
-                            let playback_config = Config {
-                                mode,
-                                loop_animation: r#loop.unwrap_or(default_config.loop_animation),
-                                speed: speed.unwrap_or(default_config.speed),
-                                use_frame_interpolation: use_frame_interpolation
-                                    .unwrap_or(default_config.use_frame_interpolation),
-                                autoplay: autoplay.unwrap_or(default_config.autoplay),
-                                segment: segment.unwrap_or(default_config.segment),
-                                background_color: background_color
-                                    .unwrap_or(default_config.background_color),
-                                layout: Layout::default(),
-                                marker: marker.unwrap_or(default_config.marker),
-                            };
+        //                     // Fill out a config with the state's values, if absent use default config values
+        //                     let playback_config = Config {
+        //                         mode,
+        //                         loop_animation: r#loop.unwrap_or(default_config.loop_animation),
+        //                         speed: speed.unwrap_or(default_config.speed),
+        //                         use_frame_interpolation: use_frame_interpolation
+        //                             .unwrap_or(default_config.use_frame_interpolation),
+        //                         autoplay: autoplay.unwrap_or(default_config.autoplay),
+        //                         segment: segment.unwrap_or(default_config.segment),
+        //                         background_color: background_color
+        //                             .unwrap_or(default_config.background_color),
+        //                         layout: Layout::default(),
+        //                         marker: marker.unwrap_or(default_config.marker),
+        //                     };
 
-                            // Construct a State with the values we've gathered
-                            let new_playback_state = State::Playback {
-                                name,
-                                config: playback_config,
-                                reset_context: reset_context.unwrap_or("".to_string()),
-                                animation_id: animation_id.unwrap_or("".to_string()),
-                                transitions: Vec::new(),
-                            };
+        //                     // Construct a State with the values we've gathered
+        //                     let new_playback_state = State::Playback {
+        //                         name,
+        //                         config: playback_config,
+        //                         reset_context: reset_context.unwrap_or("".to_string()),
+        //                         animation_id: animation_id.unwrap_or("".to_string()),
+        //                         transitions: Vec::new(),
+        //                     };
 
-                            states.push(Arc::new(RwLock::new(new_playback_state)));
-                        }
-                        parser::StateJson::SyncState {
-                            name,
-                            animation_id,
-                            background_color,
-                            reset_context,
-                            frame_context_key,
-                            segment,
-                            ..
-                        } => {
-                            let mut config = Config::default();
+        //                     states.push(Arc::new(RwLock::new(new_playback_state)));
+        //                 }
+        //                 parser::StateJson::SyncState {
+        //                     name,
+        //                     animation_id,
+        //                     background_color,
+        //                     reset_context,
+        //                     frame_context_key,
+        //                     segment,
+        //                     ..
+        //                 } => {
+        //                     let mut config = Config::default();
 
-                            config.background_color =
-                                background_color.unwrap_or(config.background_color);
-                            config.segment = segment.unwrap_or(config.segment);
+        //                     config.background_color =
+        //                         background_color.unwrap_or(config.background_color);
+        //                     config.segment = segment.unwrap_or(config.segment);
 
-                            let new_sync_state = State::Sync {
-                                name,
-                                frame_context_key,
-                                reset_context: reset_context.unwrap_or("".to_string()),
-                                animation_id: animation_id.unwrap_or("".to_string()),
-                                transitions: Vec::new(),
-                                config,
-                            };
+        //                     let new_sync_state = State::Sync {
+        //                         name,
+        //                         frame_context_key,
+        //                         reset_context: reset_context.unwrap_or("".to_string()),
+        //                         animation_id: animation_id.unwrap_or("".to_string()),
+        //                         transitions: Vec::new(),
+        //                         config,
+        //                     };
 
-                            states.push(Arc::new(RwLock::new(new_sync_state)));
-                        }
-                        parser::StateJson::GlobalState {
-                            name,
-                            reset_context,
-                            entry_actions: _,
-                            exit_actions: _,
-                        } => {
-                            let new_global_state = State::Global {
-                                name,
-                                reset_context: reset_context.unwrap_or("".to_string()),
-                                transitions: Vec::new(),
-                            };
+        //                     states.push(Arc::new(RwLock::new(new_sync_state)));
+        //                 }
+        //                 parser::StateJson::GlobalState {
+        //                     name,
+        //                     reset_context,
+        //                     entry_actions: _,
+        //                     exit_actions: _,
+        //                 } => {
+        //                     let new_global_state = State::Global {
+        //                         name,
+        //                         reset_context: reset_context.unwrap_or("".to_string()),
+        //                         transitions: Vec::new(),
+        //                     };
 
-                            let locked_global_state = Arc::new(RwLock::new(new_global_state));
+        //                     let locked_global_state = Arc::new(RwLock::new(new_global_state));
 
-                            global_state = Some(locked_global_state.clone());
+        //                     global_state = Some(locked_global_state.clone());
 
-                            states.push(locked_global_state);
-                        }
-                    }
-                }
+        //                     states.push(locked_global_state);
+        //                 }
+        //             }
+        //         }
 
-                // Loop through result transitions and create objects for each
-                for transition in parsed_state_machine.transitions {
-                    match transition {
-                        parser::TransitionJson::Transition {
-                            from_state,
-                            to_state,
-                            guards,
-                            numeric_event,
-                            string_event,
-                            boolean_event,
-                            on_complete_event,
-                            on_pointer_down_event,
-                            on_pointer_up_event,
-                            on_pointer_enter_event,
-                            on_pointer_exit_event,
-                            on_pointer_move_event,
-                        } => {
-                            let target_state_index = to_state;
-                            let mut guards_for_transition: Vec<Guard> = Vec::new();
+        //         // Loop through result transitions and create objects for each
+        //         for transition in parsed_state_machine.transitions {
+        //             match transition {
+        //                 parser::TransitionJson::Transition {
+        //                     from_state,
+        //                     to_state,
+        //                     guards,
+        //                     numeric_event,
+        //                     string_event,
+        //                     boolean_event,
+        //                     on_complete_event,
+        //                     on_pointer_down_event,
+        //                     on_pointer_up_event,
+        //                     on_pointer_enter_event,
+        //                     on_pointer_exit_event,
+        //                     on_pointer_move_event,
+        //                 } => {
+        //                     let target_state_index = to_state;
+        //                     let mut guards_for_transition: Vec<Guard> = Vec::new();
 
-                            // Use the provided index to get the state in the vec we've built
-                            if target_state_index >= states.len() as u32 {
-                                return Err(StateMachineError::ParsingError {
-                                    reason: "Transition has an invalid target state index value!"
-                                        .to_string(),
-                                });
-                            }
+        //                     // Use the provided index to get the state in the vec we've built
+        //                     if target_state_index >= states.len() as u32 {
+        //                         return Err(StateMachineError::ParsingError {
+        //                             reason: "Transition has an invalid target state index value!"
+        //                                 .to_string(),
+        //                         });
+        //                     }
 
-                            // Loop through transition guards and create equivalent Guard objects
-                            if guards.is_some() {
-                                let guards = guards.unwrap();
+        //                     // Loop through transition guards and create equivalent Guard objects
+        //                     if guards.is_some() {
+        //                         let guards = guards.unwrap();
 
-                                for guard in guards {
-                                    let new_guard = Guard {
-                                        context_key: guard.context_key,
-                                        condition_type: guard.condition_type,
-                                        compare_to: guard.compare_to,
-                                    };
+        //                         for guard in guards {
+        //                             let new_guard = Guard {
+        //                                 context_key: guard.context_key,
+        //                                 condition_type: guard.condition_type,
+        //                                 compare_to: guard.compare_to,
+        //                             };
 
-                                    guards_for_transition.push(new_guard);
-                                }
-                            }
+        //                             guards_for_transition.push(new_guard);
+        //                         }
+        //                     }
 
-                            // let mut new_transition: Option<Transition> = None;
-                            let mut state_to_attach_to: i32 = -1;
-                            let mut new_event: Option<InternalEvent> = None;
+        //                     // let mut new_transition: Option<Transition> = None;
+        //                     let mut state_to_attach_to: i32 = -1;
+        //                     let mut new_event: Option<InternalEvent> = None;
 
-                            // Capture which event this transition has
-                            if numeric_event.is_some() {
-                                let numeric_event = numeric_event.unwrap();
-                                new_event = Some(InternalEvent::Numeric {
-                                    value: numeric_event.value,
-                                });
-                                state_to_attach_to = from_state as i32;
-                            } else if string_event.is_some() {
-                                let string_event = string_event.unwrap();
-                                new_event = Some(InternalEvent::String {
-                                    value: string_event.value,
-                                });
-                                state_to_attach_to = from_state as i32;
-                            } else if boolean_event.is_some() {
-                                let boolean_event = boolean_event.unwrap();
-                                new_event = Some(InternalEvent::Bool {
-                                    value: boolean_event.value,
-                                });
-                                state_to_attach_to = from_state as i32;
-                            } else if on_complete_event.is_some() {
-                                new_event = Some(InternalEvent::OnComplete);
-                                state_to_attach_to = from_state as i32;
-                            } else if on_pointer_down_event.is_some() {
-                                // Default to 0.0 0.0 coordinates
-                                let pointer_down_event = on_pointer_down_event.unwrap();
+        //                     // Capture which event this transition has
+        //                     if numeric_event.is_some() {
+        //                         let numeric_event = numeric_event.unwrap();
+        //                         new_event = Some(InternalEvent::Numeric {
+        //                             value: numeric_event.value,
+        //                         });
+        //                         state_to_attach_to = from_state as i32;
+        //                     } else if string_event.is_some() {
+        //                         let string_event = string_event.unwrap();
+        //                         new_event = Some(InternalEvent::String {
+        //                             value: string_event.value,
+        //                         });
+        //                         state_to_attach_to = from_state as i32;
+        //                     } else if boolean_event.is_some() {
+        //                         let boolean_event = boolean_event.unwrap();
+        //                         new_event = Some(InternalEvent::Bool {
+        //                             value: boolean_event.value,
+        //                         });
+        //                         state_to_attach_to = from_state as i32;
+        //                     } else if on_complete_event.is_some() {
+        //                         new_event = Some(InternalEvent::OnComplete);
+        //                         state_to_attach_to = from_state as i32;
+        //                     } else if on_pointer_down_event.is_some() {
+        //                         // Default to 0.0 0.0 coordinates
+        //                         let pointer_down_event = on_pointer_down_event.unwrap();
 
-                                if pointer_down_event.target.is_some() {
-                                    new_event = Some(InternalEvent::OnPointerDown {
-                                        target: pointer_down_event.target,
-                                    });
-                                } else {
-                                    new_event = Some(InternalEvent::OnPointerDown { target: None });
-                                }
+        //                         if pointer_down_event.target.is_some() {
+        //                             new_event = Some(InternalEvent::OnPointerDown {
+        //                                 target: pointer_down_event.target,
+        //                             });
+        //                         } else {
+        //                             new_event = Some(InternalEvent::OnPointerDown { target: None });
+        //                         }
 
-                                state_to_attach_to = from_state as i32;
-                            } else if on_pointer_up_event.is_some() {
-                                // Default to 0.0 0.0 coordinates
+        //                         state_to_attach_to = from_state as i32;
+        //                     } else if on_pointer_up_event.is_some() {
+        //                         // Default to 0.0 0.0 coordinates
 
-                                let pointer_up_event = on_pointer_up_event.unwrap();
+        //                         let pointer_up_event = on_pointer_up_event.unwrap();
 
-                                if pointer_up_event.target.is_some() {
-                                    new_event = Some(InternalEvent::OnPointerUp {
-                                        target: pointer_up_event.target,
-                                    });
-                                } else {
-                                    new_event = Some(InternalEvent::OnPointerUp { target: None });
-                                }
+        //                         if pointer_up_event.target.is_some() {
+        //                             new_event = Some(InternalEvent::OnPointerUp {
+        //                                 target: pointer_up_event.target,
+        //                             });
+        //                         } else {
+        //                             new_event = Some(InternalEvent::OnPointerUp { target: None });
+        //                         }
 
-                                state_to_attach_to = from_state as i32;
-                            } else if on_pointer_enter_event.is_some() {
-                                // Default to 0.0 0.0 coordinates
-                                let pointer_enter_event = on_pointer_enter_event.unwrap();
+        //                         state_to_attach_to = from_state as i32;
+        //                     } else if on_pointer_enter_event.is_some() {
+        //                         // Default to 0.0 0.0 coordinates
+        //                         let pointer_enter_event = on_pointer_enter_event.unwrap();
 
-                                if pointer_enter_event.target.is_some() {
-                                    new_event = Some(InternalEvent::OnPointerEnter {
-                                        target: pointer_enter_event.target,
-                                    });
-                                } else {
-                                    new_event =
-                                        Some(InternalEvent::OnPointerEnter { target: None });
-                                }
+        //                         if pointer_enter_event.target.is_some() {
+        //                             new_event = Some(InternalEvent::OnPointerEnter {
+        //                                 target: pointer_enter_event.target,
+        //                             });
+        //                         } else {
+        //                             new_event =
+        //                                 Some(InternalEvent::OnPointerEnter { target: None });
+        //                         }
 
-                                state_to_attach_to = from_state as i32;
-                            } else if on_pointer_exit_event.is_some() {
-                                // Default to 0.0 0.0 coordinates
-                                let pointer_exit_event = on_pointer_exit_event.unwrap();
+        //                         state_to_attach_to = from_state as i32;
+        //                     } else if on_pointer_exit_event.is_some() {
+        //                         // Default to 0.0 0.0 coordinates
+        //                         let pointer_exit_event = on_pointer_exit_event.unwrap();
 
-                                if pointer_exit_event.target.is_some() {
-                                    new_event = Some(InternalEvent::OnPointerExit {
-                                        target: pointer_exit_event.target,
-                                    });
-                                } else {
-                                    new_event = Some(InternalEvent::OnPointerExit { target: None });
-                                }
+        //                         if pointer_exit_event.target.is_some() {
+        //                             new_event = Some(InternalEvent::OnPointerExit {
+        //                                 target: pointer_exit_event.target,
+        //                             });
+        //                         } else {
+        //                             new_event = Some(InternalEvent::OnPointerExit { target: None });
+        //                         }
 
-                                state_to_attach_to = from_state as i32;
-                            } else if on_pointer_move_event.is_some() {
-                                // Default to 0.0 0.0 coordinates
-                                let pointer_move_event = on_pointer_move_event.unwrap();
+        //                         state_to_attach_to = from_state as i32;
+        //                     } else if on_pointer_move_event.is_some() {
+        //                         // Default to 0.0 0.0 coordinates
+        //                         let pointer_move_event = on_pointer_move_event.unwrap();
 
-                                if pointer_move_event.target.is_some() {
-                                    new_event = Some(InternalEvent::OnPointerMove {
-                                        target: pointer_move_event.target,
-                                    });
-                                } else {
-                                    new_event = Some(InternalEvent::OnPointerMove { target: None });
-                                }
+        //                         if pointer_move_event.target.is_some() {
+        //                             new_event = Some(InternalEvent::OnPointerMove {
+        //                                 target: pointer_move_event.target,
+        //                             });
+        //                         } else {
+        //                             new_event = Some(InternalEvent::OnPointerMove { target: None });
+        //                         }
 
-                                state_to_attach_to = from_state as i32;
-                            }
-                            if let Some(event) = new_event {
-                                let new_transition = Transition::Transition {
-                                    target_state: target_state_index,
-                                    event: Arc::new(RwLock::new(event)),
-                                    guards: guards_for_transition,
-                                };
+        //                         state_to_attach_to = from_state as i32;
+        //                     }
+        //                     if let Some(event) = new_event {
+        //                         let new_transition = Transition::Transition {
+        //                             target_state: target_state_index,
+        //                             event: Arc::new(RwLock::new(event)),
+        //                             guards: guards_for_transition,
+        //                         };
 
-                                // Since the target is valid and transition created, we attach it to the state
-                                if state_to_attach_to < states.len() as i32 {
-                                    let try_write_state =
-                                        states[state_to_attach_to as usize].try_write();
+        //                         // Since the target is valid and transition created, we attach it to the state
+        //                         if state_to_attach_to < states.len() as i32 {
+        //                             let try_write_state =
+        //                                 states[state_to_attach_to as usize].try_write();
 
-                                    try_write_state
-                                        .map_err(|_| StateMachineError::ParsingError {
-                                            reason: "Failed to write to state".to_string(),
-                                        })?
-                                        .add_transition(new_transition);
-                                }
-                            }
-                        }
-                    }
-                }
+        //                             try_write_state
+        //                                 .map_err(|_| StateMachineError::ParsingError {
+        //                                     reason: "Failed to write to state".to_string(),
+        //                                 })?
+        //                                 .add_transition(new_transition);
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
 
-                for listener in parsed_state_machine.listeners {
-                    match listener.r#type {
-                        parser::ListenerJsonType::PointerUp => {
-                            let new_listener = Listener::PointerUp {
-                                r#type: listeners::ListenerType::PointerUp,
-                                target: listener.target,
-                                action: listener.action,
-                                value: listener.value,
-                                context_key: listener.context_key,
-                            };
+        //         for listener in parsed_state_machine.listeners {
+        //             match listener.r#type {
+        //                 parser::ListenerJsonType::PointerUp => {
+        //                     let new_listener = Listener::PointerUp {
+        //                         r#type: listeners::ListenerType::PointerUp,
+        //                         target: listener.target,
+        //                         action: listener.action,
+        //                         value: listener.value,
+        //                         context_key: listener.context_key,
+        //                     };
 
-                            listeners.push(Arc::new(RwLock::new(new_listener)));
-                        }
-                        parser::ListenerJsonType::PointerDown => {
-                            let new_listener = Listener::PointerDown {
-                                r#type: listeners::ListenerType::PointerDown,
-                                target: listener.target,
-                                action: listener.action,
-                                value: listener.value,
-                                context_key: listener.context_key,
-                            };
+        //                     listeners.push(Arc::new(RwLock::new(new_listener)));
+        //                 }
+        //                 parser::ListenerJsonType::PointerDown => {
+        //                     let new_listener = Listener::PointerDown {
+        //                         r#type: listeners::ListenerType::PointerDown,
+        //                         target: listener.target,
+        //                         action: listener.action,
+        //                         value: listener.value,
+        //                         context_key: listener.context_key,
+        //                     };
 
-                            listeners.push(Arc::new(RwLock::new(new_listener)));
-                        }
-                        parser::ListenerJsonType::PointerEnter => {
-                            let new_listener = Listener::PointerEnter {
-                                r#type: listeners::ListenerType::PointerEnter,
-                                target: listener.target,
-                                action: listener.action,
-                                value: listener.value,
-                                context_key: listener.context_key,
-                            };
+        //                     listeners.push(Arc::new(RwLock::new(new_listener)));
+        //                 }
+        //                 parser::ListenerJsonType::PointerEnter => {
+        //                     let new_listener = Listener::PointerEnter {
+        //                         r#type: listeners::ListenerType::PointerEnter,
+        //                         target: listener.target,
+        //                         action: listener.action,
+        //                         value: listener.value,
+        //                         context_key: listener.context_key,
+        //                     };
 
-                            listeners.push(Arc::new(RwLock::new(new_listener)));
-                        }
-                        parser::ListenerJsonType::PointerExit => {
-                            let new_listener = Listener::PointerExit {
-                                r#type: listeners::ListenerType::PointerExit,
-                                target: listener.target,
-                                action: listener.action,
-                                value: listener.value,
-                                context_key: listener.context_key,
-                            };
+        //                     listeners.push(Arc::new(RwLock::new(new_listener)));
+        //                 }
+        //                 parser::ListenerJsonType::PointerExit => {
+        //                     let new_listener = Listener::PointerExit {
+        //                         r#type: listeners::ListenerType::PointerExit,
+        //                         target: listener.target,
+        //                         action: listener.action,
+        //                         value: listener.value,
+        //                         context_key: listener.context_key,
+        //                     };
 
-                            listeners.push(Arc::new(RwLock::new(new_listener)));
-                        }
-                        parser::ListenerJsonType::PointerMove => {
-                            let new_listener = Listener::PointerMove {
-                                r#type: listeners::ListenerType::PointerMove,
-                                target: listener.target,
-                                action: listener.action,
-                                value: listener.value,
-                                context_key: listener.context_key,
-                            };
+        //                     listeners.push(Arc::new(RwLock::new(new_listener)));
+        //                 }
+        //                 parser::ListenerJsonType::PointerMove => {
+        //                     let new_listener = Listener::PointerMove {
+        //                         r#type: listeners::ListenerType::PointerMove,
+        //                         target: listener.target,
+        //                         action: listener.action,
+        //                         value: listener.value,
+        //                         context_key: listener.context_key,
+        //                     };
 
-                            listeners.push(Arc::new(RwLock::new(new_listener)));
-                        }
-                    }
-                }
+        //                     listeners.push(Arc::new(RwLock::new(new_listener)));
+        //                 }
+        //             }
+        //         }
 
-                // Since value can either be a string, int or bool, we need to check the type and set the context accordingly
-                for variable in parsed_state_machine.context_variables {
-                    match variable.r#type {
-                        ContextJsonType::Numeric => {
-                            if let StringNumberBool::F32(value) = variable.value {
-                                new_state_machine.set_numeric_context(&variable.key, value);
-                            }
-                        }
-                        ContextJsonType::String => {
-                            if let StringNumberBool::String(value) = variable.value {
-                                new_state_machine.set_string_context(&variable.key, value.as_str());
-                            }
-                        }
-                        ContextJsonType::Boolean => {
-                            if let StringNumberBool::Bool(value) = variable.value {
-                                new_state_machine.set_bool_context(&variable.key, value);
-                            }
-                        }
-                    }
-                }
+        //         // Since value can either be a string, int or bool, we need to check the type and set the context accordingly
+        //         for variable in parsed_state_machine.context_variables {
+        //             match variable.r#type {
+        //                 ContextJsonType::Numeric => {
+        //                     if let StringNumberBool::F32(value) = variable.value {
+        //                         new_state_machine.set_numeric_context(&variable.key, value);
+        //                     }
+        //                 }
+        //                 ContextJsonType::String => {
+        //                     if let StringNumberBool::String(value) = variable.value {
+        //                         new_state_machine.set_string_context(&variable.key, value.as_str());
+        //                     }
+        //                 }
+        //                 ContextJsonType::Boolean => {
+        //                     if let StringNumberBool::Bool(value) = variable.value {
+        //                         new_state_machine.set_bool_context(&variable.key, value);
+        //                     }
+        //                 }
+        //             }
+        //         }
 
-                let mut initial_state = None;
+        //         let mut initial_state = None;
 
-                // All states and transitions have been created, we can set the state machine's initial state
-                let initial_state_index = parsed_state_machine.descriptor.initial;
+        //         // All states and transitions have been created, we can set the state machine's initial state
+        //         let initial_state_index = parsed_state_machine.descriptor.initial;
 
-                if initial_state_index < states.len() as u32 {
-                    initial_state = Some(states[initial_state_index as usize].clone());
-                }
+        //         if initial_state_index < states.len() as u32 {
+        //             initial_state = Some(states[initial_state_index as usize].clone());
+        //         }
 
-                new_state_machine = StateMachine {
-                    global_state,
-                    states,
-                    listeners,
-                    current_state: initial_state,
-                    player: Some(player.clone()),
-                    numeric_context: new_state_machine.numeric_context,
-                    string_context: new_state_machine.string_context,
-                    bool_context: new_state_machine.bool_context,
-                    status: StateMachineStatus::Stopped,
-                    observers: RwLock::new(Vec::new()),
-                };
+        //         new_state_machine = StateMachine {
+        //             global_state,
+        //             states,
+        //             listeners,
+        //             current_state: initial_state,
+        //             player: Some(player.clone()),
+        //             numeric_context: new_state_machine.numeric_context,
+        //             string_context: new_state_machine.string_context,
+        //             bool_context: new_state_machine.bool_context,
+        //             status: StateMachineStatus::Stopped,
+        //             observers: RwLock::new(Vec::new()),
+        //         };
 
-                Ok(new_state_machine)
-            }
-            Err(error) => Err(error),
-        }
+        //         Ok(new_state_machine)
+        //     }
+        //     Err(error) => Err(error),
+        // }
     }
 
     pub fn start(&mut self) {

@@ -2,17 +2,17 @@ use instant::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
-use crate::errors::StateMachineError::ParsingError;
-use crate::listeners::ListenerTrait;
-use crate::state_machine::events::Event;
+use crate::state_machine_engine::events::Event;
 use crate::{
     extract_markers,
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
-    Marker, MarkersMap, StateMachine,
+    Marker, MarkersMap, StateMachineEngine,
 };
-use crate::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
-use crate::{StateMachineObserver, StateMachineStatus};
+use crate::{
+    DotLottieError, DotLottieManager, Manifest, ManifestAnimation, StateMachineEngineError,
+};
+use crate::{StateMachineEngineStatus, StateMachineObserver};
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
@@ -894,7 +894,7 @@ impl DotLottieRuntime {
 pub struct DotLottiePlayerContainer {
     runtime: RwLock<DotLottieRuntime>,
     observers: RwLock<Vec<Arc<dyn Observer>>>,
-    state_machine: Rc<RwLock<Option<StateMachine>>>,
+    state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
 }
 
 impl DotLottiePlayerContainer {
@@ -1259,7 +1259,7 @@ impl DotLottiePlayerContainer {
 
 pub struct DotLottiePlayer {
     player: Rc<RwLock<DotLottiePlayerContainer>>,
-    state_machine: Rc<RwLock<Option<StateMachine>>>,
+    state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
 }
 
 impl DotLottiePlayer {
@@ -1276,7 +1276,7 @@ impl DotLottiePlayer {
             .is_ok_and(|runtime| runtime.load_animation_data(animation_data, width, height))
     }
 
-    pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachine>>> {
+    pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachineEngine>>> {
         self.state_machine.clone()
     }
 
@@ -1329,7 +1329,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    if sm.status == StateMachineStatus::Running {
+                    if sm.status == StateMachineEngineStatus::Running {
                         sm.end();
                     } else {
                         return false;
@@ -1707,7 +1707,7 @@ impl DotLottiePlayer {
     }
 
     pub fn load_state_machine_data(&self, state_machine: &str) -> bool {
-        let state_machine = StateMachine::new(state_machine, self.player.clone());
+        let state_machine = StateMachineEngine::new(state_machine, self.player.clone());
 
         if state_machine.is_ok() {
             match self.state_machine.try_write() {
@@ -1743,30 +1743,29 @@ impl DotLottiePlayer {
 
         match state_machine_string {
             Some(machine) => {
-                let state_machine = StateMachine::new(&machine, self.player.clone());
+                let state_machine: Result<StateMachineEngine, StateMachineEngineError> =
+                    StateMachineEngine::new(&machine, self.player.clone());
 
-                if state_machine.is_ok() {
-                    match self.state_machine.try_write() {
-                        Ok(mut sm) => {
-                            sm.replace(state_machine.unwrap());
+                match state_machine {
+                    Ok(sm) => {
+                        if let Ok(mut state_machine) = self.state_machine.try_write() {
+                            state_machine.replace(sm);
                         }
-                        Err(_) => {
-                            return false;
+
+                        let player = self.player.try_write();
+
+                        match player {
+                            Ok(mut player) => {
+                                player.state_machine = self.state_machine.clone();
+                            }
+                            Err(_) => {
+                                return false;
+                            }
                         }
                     }
-
-                    let player = self.player.try_write();
-
-                    match player {
-                        Ok(mut player) => {
-                            player.state_machine = self.state_machine.clone();
-                        }
-                        Err(_) => {
-                            return false;
-                        }
+                    Err(_) => {
+                        return false;
                     }
-                } else if let Err(ParsingError { reason: _ }) = state_machine {
-                    return false;
                 }
             }
             None => {

@@ -1,10 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::states::StateTrait;
-    use dotlottie_rs::{
-        parser::TransitionGuardConditionType,
-        transitions::{guard::Guard, TransitionTrait},
-    };
+    use dotlottie_rs::transitions::guard::Guard;
 
     use dotlottie_rs::DotLottiePlayer;
 
@@ -56,17 +52,17 @@ mod tests {
         let guard_0 = Guard {
             context_key: "counter_0".to_string(),
             condition_type: TransitionGuardConditionType::GreaterThan,
-            compare_to: dotlottie_rs::parser::StringNumberBool::F32(5.0),
+            compare_to: dotlottie_rs::state_machine::StringNumberBool::F32(5.0),
         };
         let guard_1 = Guard {
             context_key: "counter_0".to_string(),
             condition_type: TransitionGuardConditionType::GreaterThanOrEqual,
-            compare_to: dotlottie_rs::parser::StringNumberBool::F32(60.0),
+            compare_to: dotlottie_rs::state_machine::StringNumberBool::F32(60.0),
         };
         let guard_2 = Guard {
             context_key: "counter_0".to_string(),
             condition_type: TransitionGuardConditionType::GreaterThanOrEqual,
-            compare_to: dotlottie_rs::parser::StringNumberBool::F32(65.0),
+            compare_to: dotlottie_rs::state_machine::StringNumberBool::F32(65.0),
         };
 
         let guards = [guard_0, guard_1, guard_2];

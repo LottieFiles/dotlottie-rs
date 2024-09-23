@@ -9,7 +9,7 @@ mod tests {
         InternalEvent, StateMachineObserver,
     };
 
-    use dotlottie_rs::{listeners::ListenerType, parser::StringNumberBool};
+    use dotlottie_rs::{listeners::ListenerType, state_machine::StringNumberBool};
 
     use dotlottie_rs::{events::Event, states::State, Config, DotLottiePlayer, Mode};
 

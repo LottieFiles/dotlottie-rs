@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use crate::errors::StateMachineError;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum StringNumberBool {
     String(String),
@@ -10,7 +10,7 @@ pub enum StringNumberBool {
     Bool(bool),
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Clone, Copy, Deserialize, Debug, PartialEq)]
 pub enum TransitionGuardConditionType {
     GreaterThan,
     GreaterThanOrEqual,
@@ -66,7 +66,7 @@ pub enum ActionJson {
         layer_name: String,
         property_index: u32,
         var_name: String,
-        value: StringNumberBool,
+        value: f32,
     },
     SetTheme {
         theme_id: String,
@@ -106,7 +106,6 @@ pub enum StateJson {
         transitions: Vec<TransitionJson>,
         entry_actions: Option<Vec<ActionJson>>,
         exit_actions: Option<Vec<ActionJson>>,
-        reset_context: Option<String>,
     },
 }
 
@@ -175,27 +174,27 @@ pub enum TransitionJson {
 pub enum ListenerJson {
     PointerUp {
         layer_name: Option<String>,
-        action: ActionJson,
+        actions: Vec<ActionJson>,
     },
     PointerDown {
         layer_name: Option<String>,
-        action: ActionJson,
+        actions: Vec<ActionJson>,
     },
     PointerEnter {
         layer_name: Option<String>,
-        action: ActionJson,
+        actions: Vec<ActionJson>,
     },
     PointerExit {
         layer_name: Option<String>,
-        action: ActionJson,
+        actions: Vec<ActionJson>,
     },
     PointerMove {
         layer_name: Option<String>,
-        action: ActionJson,
+        actions: Vec<ActionJson>,
     },
     OnComplete {
         state_name: Option<String>,
-        action: ActionJson,
+        actions: Vec<ActionJson>,
     },
 }
 
@@ -212,8 +211,8 @@ pub enum TriggerJson {
 pub struct StateMachineJson {
     pub descriptor: DescriptorJson,
     pub states: Vec<StateJson>,
-    pub listeners: Vec<ListenerJson>,
-    pub triggers: Vec<TriggerJson>,
+    pub listeners: Option<Vec<ListenerJson>>,
+    pub triggers: Option<Vec<TriggerJson>>,
 }
 
 pub fn state_machine_parse(json: &str) -> Result<StateMachineJson, StateMachineError> {

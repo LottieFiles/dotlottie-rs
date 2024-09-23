@@ -1357,17 +1357,25 @@ impl DotLottiePlayer {
                     let listeners = sm.get_listeners();
 
                     for listener in listeners {
-                        match listener.try_read() {
-                            Ok(listener) => {
-                                let unwrapped_listener = &*listener;
-
-                                if !listener_types
-                                    .contains(&unwrapped_listener.get_type().to_string())
-                                {
-                                    listener_types.push(unwrapped_listener.get_type().to_string());
-                                }
+                        match listener {
+                            crate::listeners::Listener::PointerUp { .. } => {
+                                listener_types.push("PointerUp".to_string())
                             }
-                            Err(_) => return vec![],
+                            crate::listeners::Listener::PointerDown { .. } => {
+                                listener_types.push("PointerDown".to_string())
+                            }
+                            crate::listeners::Listener::PointerEnter { .. } => {
+                                listener_types.push("PointerEnter".to_string())
+                            }
+                            crate::listeners::Listener::PointerMove { .. } => {
+                                listener_types.push("PointerMove".to_string())
+                            }
+                            crate::listeners::Listener::PointerExit { .. } => {
+                                listener_types.push("PointerExit".to_string())
+                            }
+                            crate::listeners::Listener::OnComplete { .. } => {
+                                listener_types.push("OnComplete".to_string())
+                            }
                         }
                     }
                     listener_types
@@ -1379,7 +1387,7 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn set_state_machine_numeric_context(&self, key: &str, value: f32) -> bool {
+    pub fn set_numeric_trigger(&self, key: &str, value: f32) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1394,7 +1402,7 @@ impl DotLottiePlayer {
         match sm_write {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    sm.set_numeric_context(key, value);
+                    sm.set_numeric_trigger(key, value);
                 }
             }
             Err(_) => return false,
@@ -1403,7 +1411,7 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn set_state_machine_string_context(&self, key: &str, value: &str) -> bool {
+    pub fn set_string_trigger(&self, key: &str, value: &str) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1418,7 +1426,7 @@ impl DotLottiePlayer {
         match sm_write {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    sm.set_string_context(key, value);
+                    sm.set_string_trigger(key, value);
                 }
             }
             Err(_) => return false,
@@ -1427,7 +1435,7 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn set_state_machine_boolean_context(&self, key: &str, value: bool) -> bool {
+    pub fn set_bool_trigger(&self, key: &str, value: bool) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1442,7 +1450,7 @@ impl DotLottiePlayer {
         match sm_write {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    sm.set_bool_context(key, value);
+                    sm.set_bool_trigger(key, value);
                 }
             }
             Err(_) => return false,
@@ -1655,7 +1663,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
+    pub fn state_machine_subscribe(&self, observer: Rc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
         if sm.is_none() {
@@ -1667,7 +1675,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn state_machine_unsubscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
+    pub fn state_machine_unsubscribe(&self, observer: Rc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
         if sm.is_none() {

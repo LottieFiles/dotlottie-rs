@@ -1,40 +1,10 @@
-use std::fmt::{Debug, Display};
+use std::fmt::Display;
 
-use crate::parser::StringNumberBool;
+use super::actions::Action;
 
 pub trait ListenerTrait {
-    fn set_type(&mut self, r#type: ListenerType);
-    fn set_target(&mut self, target: &str);
-    fn set_action(&mut self, action: &str);
-    fn set_value(&mut self, value: StringNumberBool);
-    fn set_context_key(&mut self, context_key: &str);
-
-    fn get_type(&self) -> &ListenerType;
-    fn get_target(&self) -> Option<String>;
+    fn get_layer_name(&self) -> Option<String>;
     fn get_action(&self) -> Option<String>;
-    fn get_value(&self) -> Option<&StringNumberBool>;
-    fn get_context_key(&self) -> Option<String>;
-}
-
-#[derive(Debug, PartialEq)]
-pub enum ListenerType {
-    PointerUp,
-    PointerDown,
-    PointerEnter,
-    PointerExit,
-    PointerMove,
-}
-
-impl Display for ListenerType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ListenerType::PointerUp => write!(f, "PointerUp"),
-            ListenerType::PointerDown => write!(f, "PointerDown"),
-            ListenerType::PointerEnter => write!(f, "PointerEnter"),
-            ListenerType::PointerExit => write!(f, "PointerExit"),
-            ListenerType::PointerMove => write!(f, "PointerMove"),
-        }
-    }
 }
 
 pub enum ListenerAction {
@@ -44,569 +14,95 @@ pub enum ListenerAction {
     None,
 }
 
+#[derive(Debug)]
 pub enum Listener {
     PointerUp {
-        r#type: ListenerType,
-        target: Option<String>,
-        action: Option<String>,
-        value: Option<StringNumberBool>,
-        context_key: Option<String>,
+        layer_name: Option<String>,
+        actions: Vec<Action>,
     },
     PointerDown {
-        r#type: ListenerType,
-        target: Option<String>,
-        action: Option<String>,
-        value: Option<StringNumberBool>,
-        context_key: Option<String>,
+        layer_name: Option<String>,
+        actions: Vec<Action>,
     },
     PointerEnter {
-        r#type: ListenerType,
-        target: Option<String>,
-        action: Option<String>,
-        value: Option<StringNumberBool>,
-        context_key: Option<String>,
+        layer_name: Option<String>,
+        actions: Vec<Action>,
     },
     PointerMove {
-        r#type: ListenerType,
-        target: Option<String>,
-        action: Option<String>,
-        value: Option<StringNumberBool>,
-        context_key: Option<String>,
+        layer_name: Option<String>,
+        actions: Vec<Action>,
     },
     PointerExit {
-        r#type: ListenerType,
-        target: Option<String>,
-        action: Option<String>,
-        value: Option<StringNumberBool>,
-        context_key: Option<String>,
+        layer_name: Option<String>,
+        actions: Vec<Action>,
+    },
+    OnComplete {
+        state_name: Option<String>,
+        actions: Vec<Action>,
     },
 }
 
-impl Debug for Listener {
+impl Display for Listener {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::PointerUp {
-                r#type,
-                target,
-                action,
-                value,
-                context_key,
+                layer_name,
+                actions,
             } => f
                 .debug_struct("PointerUp")
-                .field("r#type", r#type)
-                .field("target", target)
-                .field("action", action)
-                .field("value", value)
-                .field("context_key", context_key)
+                .field("layer_name", layer_name)
+                .field("action", actions)
                 .finish(),
             Self::PointerDown {
-                r#type,
-                target,
-                action,
-                value,
-                context_key,
+                layer_name,
+                actions,
             } => f
-                .debug_struct("PointerDown")
-                .field("r#type", r#type)
-                .field("target", target)
-                .field("action", action)
-                .field("value", value)
-                .field("context_key", context_key)
+                .debug_struct("PointerUp")
+                .field("layer_name", layer_name)
+                .field("action", actions)
                 .finish(),
             Self::PointerEnter {
-                r#type,
-                target,
-                action,
-                value,
-                context_key,
+                layer_name,
+                actions,
             } => f
-                .debug_struct("PointerEnter")
-                .field("r#type", r#type)
-                .field("target", target)
-                .field("action", action)
-                .field("value", value)
-                .field("context_key", context_key)
+                .debug_struct("PointerUp")
+                .field("layer_name", layer_name)
+                .field("action", actions)
                 .finish(),
             Self::PointerMove {
-                r#type,
-                target,
-                action,
-                value,
-                context_key,
+                layer_name,
+                actions,
             } => f
-                .debug_struct("PointerMove")
-                .field("r#type", r#type)
-                .field("target", target)
-                .field("action", action)
-                .field("value", value)
-                .field("context_key", context_key)
+                .debug_struct("PointerUp")
+                .field("layer_name", layer_name)
+                .field("action", actions)
                 .finish(),
             Self::PointerExit {
-                r#type,
-                target,
-                action,
-                value,
-                context_key,
+                layer_name,
+                actions,
             } => f
-                .debug_struct("PointerExit")
-                .field("r#type", r#type)
-                .field("target", target)
-                .field("action", action)
-                .field("value", value)
-                .field("context_key", context_key)
+                .debug_struct("PointerUp")
+                .field("layer_name", layer_name)
+                .field("action", actions)
+                .finish(),
+            Self::OnComplete {
+                state_name,
+                actions,
+            } => f
+                .debug_struct("PointerUp")
+                .field("state_name", state_name)
+                .field("action", actions)
                 .finish(),
         }
     }
 }
 
 impl ListenerTrait for Listener {
-    fn set_type(&mut self, r#listener_type: ListenerType) {
-        match self {
-            Listener::PointerUp {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
-                *r#type = listener_type;
-            }
-            Listener::PointerDown {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
-                *r#type = listener_type;
-            }
-            Listener::PointerEnter {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
-                *r#type = listener_type;
-            }
-            Listener::PointerExit {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
-                *r#type = listener_type;
-            }
-            Listener::PointerMove {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
-                *r#type = listener_type;
-            }
-        }
-    }
-
-    fn set_target(&mut self, new_target: &str) {
-        match self {
-            Listener::PointerUp {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
-                *target = Some(new_target.to_string());
-            }
-            Listener::PointerDown {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
-                *target = Some(new_target.to_string());
-            }
-            Listener::PointerEnter {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
-                *target = Some(new_target.to_string());
-            }
-            Listener::PointerExit {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
-                *target = Some(new_target.to_string());
-            }
-            Listener::PointerMove {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => {
-                *target = Some(new_target.to_string());
-            }
-        }
-    }
-
-    fn set_action(&mut self, new_action: &str) {
-        match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => {
-                *action = Some(new_action.to_string());
-            }
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => {
-                *action = Some(new_action.to_string());
-            }
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => {
-                *action = Some(new_action.to_string());
-            }
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => {
-                *action = Some(new_action.to_string());
-            }
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => {
-                *action = Some(new_action.to_string());
-            }
-        }
-    }
-
-    fn set_value(&mut self, new_value: StringNumberBool) {
-        match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => {
-                *value = Some(new_value);
-            }
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => {
-                *value = Some(new_value);
-            }
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => {
-                *value = Some(new_value);
-            }
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => {
-                *value = Some(new_value);
-            }
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => {
-                *value = Some(new_value);
-            }
-        }
-    }
-
-    fn set_context_key(&mut self, new_context_key: &str) {
-        match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => {
-                *context_key = Some(new_context_key.to_string());
-            }
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => {
-                *context_key = Some(new_context_key.to_string());
-            }
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => {
-                *context_key = Some(new_context_key.to_string());
-            }
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => {
-                *context_key = Some(new_context_key.to_string());
-            }
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => {
-                *context_key = Some(new_context_key.to_string());
-            }
-        }
-    }
-
-    fn get_type(&self) -> &ListenerType {
-        match self {
-            Listener::PointerUp {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => r#type,
-            Listener::PointerDown {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => r#type,
-            Listener::PointerEnter {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => r#type,
-            Listener::PointerExit {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => r#type,
-            Listener::PointerMove {
-                r#type,
-                target: _,
-                action: _,
-                value: _,
-                context_key: _,
-            } => r#type,
-        }
-    }
-
-    fn get_target(&self) -> Option<String> {
-        match self {
-            Listener::PointerUp {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => target.clone(),
-            Listener::PointerDown {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => target.clone(),
-            Listener::PointerEnter {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => target.clone(),
-            Listener::PointerExit {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => target.clone(),
-            Listener::PointerMove {
-                r#type: _,
-                target,
-                action: _,
-                value: _,
-                context_key: _,
-            } => target.clone(),
-        }
+    fn get_layer_name(&self) -> Option<String> {
+        todo!()
     }
 
     fn get_action(&self) -> Option<String> {
-        match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => action.clone(),
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => action.clone(),
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => action.clone(),
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => action.clone(),
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action,
-                value: _,
-                context_key: _,
-            } => action.clone(),
-        }
-    }
-
-    fn get_value(&self) -> Option<&StringNumberBool> {
-        match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => value.as_ref(),
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => value.as_ref(),
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => value.as_ref(),
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => value.as_ref(),
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action: _,
-                value,
-                context_key: _,
-            } => value.as_ref(),
-        }
-    }
-
-    fn get_context_key(&self) -> Option<String> {
-        match self {
-            Listener::PointerUp {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => context_key.clone(),
-            Listener::PointerDown {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => context_key.clone(),
-            Listener::PointerEnter {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => context_key.clone(),
-            Listener::PointerExit {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => context_key.clone(),
-            Listener::PointerMove {
-                r#type: _,
-                target: _,
-                action: _,
-                value: _,
-                context_key,
-            } => context_key.clone(),
-        }
+        todo!()
     }
 }

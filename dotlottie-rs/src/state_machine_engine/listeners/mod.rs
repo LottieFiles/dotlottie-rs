@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use serde::Deserialize;
+
 use super::actions::Action;
 
 pub trait ListenerTrait {
@@ -14,7 +16,8 @@ pub enum ListenerAction {
     None,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug)]
+#[serde(tag = "type")]
 pub enum Listener {
     PointerUp {
         layer_name: Option<String>,

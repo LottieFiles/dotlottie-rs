@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use serde::Deserialize;
+
 use std::{collections::HashMap, rc::Rc, sync::RwLock};
 
 use crate::DotLottiePlayerContainer;
@@ -21,8 +23,15 @@ pub trait ActionTrait {
     ) -> Result<(), StateMachineActionError>;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type")]
 pub enum Action {
+    OpenUrl {
+        url: String,
+    },
+    ThemeAction {
+        theme_id: String,
+    },
     Increment {
         trigger_name: String,
         value: Option<f32>,
@@ -38,13 +47,13 @@ pub enum Action {
         trigger_name: String,
         value: bool,
     },
-    SetNumeric {
-        trigger_name: String,
-        value: f32,
-    },
     SetString {
         trigger_name: String,
         value: String,
+    },
+    SetNumeric {
+        trigger_name: String,
+        value: f32,
     },
     Fire {
         trigger_name: String,
@@ -66,9 +75,6 @@ pub enum Action {
     },
     SetSlot {
         value: String,
-    },
-    OpenUrl {
-        url: String,
     },
     FireCustomEvent {
         value: String,
@@ -220,6 +226,23 @@ impl ActionTrait for Action {
                             "Error getting read lock on player".to_string(),
                         ));
                     }
+                }
+            }
+            Action::ThemeAction { theme_id } => {
+                let read_lock = player.read();
+
+                match read_lock {
+                    Ok(player) => {
+                        if !player.load_theme(theme_id) {
+                            return Err(StateMachineActionError::ExecuteError(
+                                "Error loading theme".to_string(),
+                            ));
+                        }
+                        Ok(())
+                    }
+                    Err(_) => Err(StateMachineActionError::ExecuteError(
+                        "Error getting read lock on player".to_string(),
+                    )),
                 }
             }
         }

@@ -51,15 +51,13 @@ fn main() {
     });
 
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        loop_animation: true,
         background_color: 0xffffffff,
         ..Config::default()
     });
 
-    let mut markers =
-        File::open("./src/bin/exploding-pigeon/pigeon.lottie").expect("no file found");
+    let mut markers = File::open("./src/bin/new-format/pigeon.lottie").expect("no file found");
     let metadatamarkers =
-        fs::metadata("./src/bin/exploding-pigeon/pigeon.lottie").expect("unable to read metadata");
+        fs::metadata("./src/bin/new-format/pigeon.lottie").expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
@@ -67,13 +65,16 @@ fn main() {
 
     let mut timer = Timer::new();
 
-    let message: String = fs::read_to_string("./src/bin/exploding-pigeon/pigeon_fsm.json").unwrap();
+    let message: String = fs::read_to_string("./src/bin/new-format/events_test.json").unwrap();
 
     let r = lottie_player.load_state_machine_data(&message);
+    // let r = lottie_player.load_state_machine("pigeon_fsm");
 
     println!("Load state machine data -> {}", r);
 
-    lottie_player.start_state_machine();
+    let s = lottie_player.start_state_machine();
+
+    println!("Start state machine -> {}", s);
 
     println!("is_playing: {}", lottie_player.is_playing());
 
@@ -81,6 +82,7 @@ fn main() {
 
     let locked_player = Arc::new(RwLock::new(lottie_player));
 
+    // return;
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let left_down = window.get_mouse_down(MouseButton::Left);
         if left_down {
@@ -92,6 +94,13 @@ fn main() {
         }
 
         timer.tick(&*locked_player.read().unwrap());
+
+        // Send event on key press
+        if window.is_key_pressed(Key::Space, minifb::KeyRepeat::No) {
+            let p = &mut *locked_player.write().unwrap();
+
+            p.state_machine_fire_event("Step");
+        }
 
         let p = &mut *locked_player.write().unwrap();
 

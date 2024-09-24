@@ -17,8 +17,10 @@
                   "to_state": "Explosion",
                   "guards": [
                     {
-                        "type": "Event",
-                        "trigger_name": "Explode"
+                        "type": "Numeric",
+                        "trigger_name": "a",
+                        "condition_type": "Equal",
+                        "compare_to": 1
                     }
                   ]
               }]
@@ -35,10 +37,12 @@
                   "type": "Transition",
                   "to_state": "Feathers falling",
                   "guards": [
-                      {
-                          "type": "Event",
-                          "trigger_name": "Rain feathers"
-                      }
+                    {
+                        "type": "Numeric",
+                        "trigger_name": "b",
+                        "condition_type": "Equal",
+                       "compare_to": 2
+                    }
                   ]
               }]
           },
@@ -47,17 +51,19 @@
               "name": "Feathers falling",
               "loop": false,
               "autoplay": true,
-              "segment": "feathers",
+              "segment": "feather",
               
               "transitions": [
               {
                   "type": "Transition",
                   "to_state": "Pigeon Running",
                   "guards": [
-                      {
-                          "type": "Event",
-                          "trigger_name": "Restart"
-                      }
+                    {
+                        "type": "Numeric",
+                        "trigger_name": "c",
+                        "condition_type": "Equal",
+                        "compare_to": 3
+                    }
                   ]
               }]
           }
@@ -87,17 +93,20 @@
       }
       ],
       "triggers": [
-          {
-              "type": "Event",
-              "name": "Explode"
-          },
-          {
-              "type": "Event",
-              "name": "Rain feathers"
-          },
-          {
-              "type": "Event",
-              "name": "Restart"
-          }
+        {
+            "type": "Numeric",
+            "name": "a",
+            "value": 1
+        },
+        {
+            "type": "Numeric",
+            "name": "b",
+            "value": 2
+        },
+        {
+            "type": "Numeric",
+            "name": "c",
+            "value": 3
+        }
       ]
   }

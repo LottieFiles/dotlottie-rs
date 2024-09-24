@@ -15,7 +15,7 @@ pub enum StateMachineActionError {
 pub trait ActionTrait {
     fn execute(
         &self,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        player: &Option<Rc<RwLock<DotLottiePlayerContainer>>>,
         string_trigger: &mut HashMap<String, String>,
         bool_trigger: &mut HashMap<String, bool>,
         numeric_trigger: &mut HashMap<String, f32>,
@@ -82,9 +82,12 @@ pub enum Action {
 }
 
 impl ActionTrait for Action {
+    // Todo: How can we:
+    // - Insert inside trigger and alert the StateMachine
+    // - Fire an event to the state machine
     fn execute(
         &self,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        player: &Option<Rc<RwLock<DotLottiePlayerContainer>>>,
         string_trigger: &mut HashMap<String, String>,
         bool_trigger: &mut HashMap<String, bool>,
         numeric_trigger: &mut HashMap<String, f32>,
@@ -189,16 +192,18 @@ impl ActionTrait for Action {
             }
             Action::SetSlot { value } => {
                 println!("Setting slot to {}", value);
-                let read_lock = player.read();
+                if let Some(player) = player {
+                    let read_lock = player.read();
 
-                match read_lock {
-                    Ok(player) => {
-                        player.load_theme_data(&value);
-                    }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ));
+                    match read_lock {
+                        Ok(player) => {
+                            player.load_theme_data(&value);
+                        }
+                        Err(_) => {
+                            return Err(StateMachineActionError::ExecuteError(
+                                "Error getting read lock on player".to_string(),
+                            ));
+                        }
                     }
                 }
 
@@ -214,36 +219,46 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::SetFrame { value } => {
-                let read_lock = player.read();
+                if let Some(player) = player {
+                    let read_lock = player.read();
 
-                match read_lock {
-                    Ok(player) => {
-                        player.set_frame(*value);
-                        Ok(())
-                    }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ));
-                    }
-                }
-            }
-            Action::ThemeAction { theme_id } => {
-                let read_lock = player.read();
-
-                match read_lock {
-                    Ok(player) => {
-                        if !player.load_theme(theme_id) {
+                    match read_lock {
+                        Ok(player) => {
+                            player.set_frame(*value);
+                            return Ok(());
+                        }
+                        Err(_) => {
                             return Err(StateMachineActionError::ExecuteError(
-                                "Error loading theme".to_string(),
+                                "Error getting read lock on player".to_string(),
                             ));
                         }
-                        Ok(())
                     }
-                    Err(_) => Err(StateMachineActionError::ExecuteError(
-                        "Error getting read lock on player".to_string(),
-                    )),
                 }
+
+                Ok(())
+            }
+            Action::ThemeAction { theme_id } => {
+                if let Some(player) = player {
+                    let read_lock = player.read();
+
+                    match read_lock {
+                        Ok(player) => {
+                            if !player.load_theme(theme_id) {
+                                return Err(StateMachineActionError::ExecuteError(
+                                    "Error loading theme".to_string(),
+                                ));
+                            }
+                            return Ok(());
+                        }
+                        Err(_) => {
+                            return Err(StateMachineActionError::ExecuteError(
+                                "Error getting read lock on player".to_string(),
+                            ))
+                        }
+                    }
+                }
+
+                Ok(())
             }
         }
     }

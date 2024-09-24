@@ -16,8 +16,9 @@ pub enum TransitionGuardConditionType {
 
 pub trait GuardTrait {
     fn string_trigger_is_satisfied(&self, context: &HashMap<String, String>) -> bool;
-    fn bool_trigger_is_satisfied(&self, context: &HashMap<String, bool>) -> bool;
+    fn boolean_trigger_is_satisfied(&self, context: &HashMap<String, bool>) -> bool;
     fn numeric_trigger_is_satisfied(&self, context: &HashMap<String, f32>) -> bool;
+    fn event_trigger_is_satisfied(&self, event: &String) -> bool;
 }
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
@@ -44,7 +45,7 @@ pub enum Guard {
 }
 
 impl GuardTrait for Guard {
-    fn bool_trigger_is_satisfied(&self, context: &HashMap<String, bool>) -> bool {
+    fn boolean_trigger_is_satisfied(&self, context: &HashMap<String, bool>) -> bool {
         match self {
             Guard::Boolean {
                 trigger_name,
@@ -112,7 +113,7 @@ impl GuardTrait for Guard {
 
     fn numeric_trigger_is_satisfied(&self, context: &HashMap<String, f32>) -> bool {
         match self {
-            Guard::Boolean {
+            Guard::Numeric {
                 trigger_name,
                 condition_type,
                 compare_to,
@@ -120,12 +121,16 @@ impl GuardTrait for Guard {
                 let context_value = context.get(trigger_name);
 
                 if context_value.is_none() {
+                    println!("🚧 Context value is none");
                     return false;
                 }
 
                 match compare_to {
                     StringNumberBool::F32(compare_to) => match condition_type {
-                        TransitionGuardConditionType::Equal => context_value == Some(compare_to),
+                        TransitionGuardConditionType::Equal => {
+                            println!("🚧 Comparing {:?} == {:?}", context_value, compare_to);
+                            context_value == Some(compare_to)
+                        }
                         TransitionGuardConditionType::NotEqual => context_value != Some(compare_to),
                         TransitionGuardConditionType::GreaterThan => {
                             context_value > Some(compare_to)
@@ -140,6 +145,19 @@ impl GuardTrait for Guard {
                     },
                     StringNumberBool::String(_) => false,
                     StringNumberBool::Bool(_) => false,
+                }
+            }
+            _ => false,
+        }
+    }
+
+    fn event_trigger_is_satisfied(&self, event: &String) -> bool {
+        match self {
+            Guard::Event { trigger_name } => {
+                if event == trigger_name {
+                    true
+                } else {
+                    false
                 }
             }
             _ => false,

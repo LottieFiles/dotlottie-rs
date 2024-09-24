@@ -1408,78 +1408,6 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn set_numeric_trigger(&self, key: &str, value: f32) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        let sm_write = self.state_machine.try_write();
-
-        match sm_write {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.set_numeric_trigger(key, value);
-                }
-            }
-            Err(_) => return false,
-        }
-
-        true
-    }
-
-    pub fn set_string_trigger(&self, key: &str, value: &str) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        let sm_write = self.state_machine.try_write();
-
-        match sm_write {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.set_string_trigger(key, value);
-                }
-            }
-            Err(_) => return false,
-        }
-
-        true
-    }
-
-    pub fn set_bool_trigger(&self, key: &str, value: bool) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        let sm_write = self.state_machine.try_write();
-
-        match sm_write {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.set_bool_trigger(key, value);
-                }
-            }
-            Err(_) => return false,
-        }
-
-        true
-    }
-
     // Return codes
     // 0: Success
     // 1: Failure
@@ -1508,23 +1436,6 @@ impl DotLottiePlayer {
         1
     }
 
-    pub fn post_bool_event(&self, value: bool) -> i32 {
-        let event = Event::Bool { value };
-        self.post_event(&event)
-    }
-
-    pub fn post_string_event(&self, value: &str) -> i32 {
-        let event = Event::String {
-            value: value.to_string(),
-        };
-        self.post_event(&event)
-    }
-
-    pub fn post_numeric_event(&self, value: f32) -> i32 {
-        let event = Event::Numeric { value };
-        self.post_event(&event)
-    }
-
     pub fn post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::OnPointerDown { x, y };
         self.post_event(&event)
@@ -1546,17 +1457,58 @@ impl DotLottiePlayer {
     }
 
     pub fn post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
-        let event = Event::OnPointerExit { x, y };
+        let event: Event = Event::OnPointerExit { x, y };
         self.post_event(&event)
     }
 
-    pub fn post_set_numeric_context(&self, key: &str, value: f32) -> i32 {
-        let event = Event::SetNumericContext {
-            key: key.to_string(),
-            value,
-        };
+    // Todo: Rather than methods for each trigger, return the SM object
+    pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> Option<f32> {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    return sm.set_numeric_trigger(key, value);
+                }
+                None
+            }
+            Err(_) => return None,
+        }
+    }
+    // Todo: Rather than methods for each trigger, return the SM object
+    pub fn state_machine_set_string_trigger(&self, key: &str, value: &String) -> Option<String> {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    return sm.set_string_trigger(key, value);
+                }
+                None
+            }
+            Err(_) => return None,
+        }
+    }
+    // Todo: Rather than methods for each trigger, return the SM object
+    pub fn state_machine_set_boolean_trigger(&self, key: &str, value: bool) -> Option<bool> {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    return sm.set_boolean_trigger(key, value);
+                }
+                None
+            }
+            Err(_) => return None,
+        }
+    }
 
-        self.post_event(&event)
+    pub fn state_machine_fire_event(&self, event: &str) {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.fire(event);
+
+                    return;
+                }
+            }
+            Err(_) => return,
+        }
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
@@ -1729,7 +1681,7 @@ impl DotLottiePlayer {
     }
 
     pub fn load_state_machine_data(&self, state_machine: &str) -> bool {
-        let state_machine = StateMachineEngine::new(state_machine, self.player.clone());
+        let state_machine = StateMachineEngine::new(state_machine, self.player.clone(), None);
 
         if state_machine.is_ok() {
             match self.state_machine.try_write() {
@@ -1766,7 +1718,7 @@ impl DotLottiePlayer {
         match state_machine_string {
             Some(machine) => {
                 let state_machine: Result<StateMachineEngine, StateMachineEngineError> =
-                    StateMachineEngine::new(&machine, self.player.clone());
+                    StateMachineEngine::new(&machine, self.player.clone(), None);
 
                 match state_machine {
                     Ok(sm) => {

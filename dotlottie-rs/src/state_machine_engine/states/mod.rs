@@ -4,7 +4,19 @@ use serde::Deserialize;
 
 use crate::{Config, DotLottiePlayerContainer, Layout, Mode};
 
-use super::{actions::Action, transitions::Transition};
+use super::{
+    actions::{self, Action, ActionTrait, StateMachineActionError},
+    transitions::Transition,
+};
+
+#[derive(Debug, thiserror::Error)]
+pub enum StatesError {
+    #[error("Failed to parse JSON state machine definition")]
+    ParsingError { reason: String },
+
+    #[error("Failed to create StateMachineEngine")]
+    CreationError { reason: String },
+}
 
 pub trait StateTrait {
     fn execute(
@@ -15,15 +27,15 @@ pub trait StateTrait {
         numeric_trigger: &HashMap<String, f32>,
         event_trigger: &HashMap<String, String>,
     ) -> i32;
-    fn perform_entry_actions(
+    fn enter(
         &self,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
-        string_trigger: &HashMap<String, String>,
-        bool_trigger: &HashMap<String, bool>,
-        numeric_trigger: &HashMap<String, f32>,
+        player: &Option<Rc<RwLock<DotLottiePlayerContainer>>>,
+        string_trigger: &mut HashMap<String, String>,
+        bool_trigger: &mut HashMap<String, bool>,
+        numeric_trigger: &mut HashMap<String, f32>,
         event_trigger: &HashMap<String, String>,
-    ) -> i32;
-    fn perform_exit_actions(
+    ) -> Result<(), StateMachineActionError>;
+    fn exit(
         &self,
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
         string_trigger: &HashMap<String, String>,
@@ -168,13 +180,6 @@ impl StateTrait for State {
         }
     }
 
-    // fn add_transition(&mut self, transition: &Transition) {
-    //     match self {
-    //         State::PlaybackState { transitions, .. } => transitions.push(transition.clone()),
-    //         State::GlobalState { transitions, .. } => transitions.push(transition.clone()),
-    //     }
-    // }
-
     // fn get_config(&self) -> Option<&Config> {
     //     match self {
     //         State::PlaybackState { config, .. } => Some(config),
@@ -196,18 +201,64 @@ impl StateTrait for State {
         }
     }
 
-    fn perform_entry_actions(
+    fn enter(
         &self,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
-        string_trigger: &HashMap<String, String>,
-        bool_trigger: &HashMap<String, bool>,
-        numeric_trigger: &HashMap<String, f32>,
+        player: &Option<Rc<RwLock<DotLottiePlayerContainer>>>,
+        string_trigger: &mut HashMap<String, String>,
+        bool_trigger: &mut HashMap<String, bool>,
+        numeric_trigger: &mut HashMap<String, f32>,
         event_trigger: &HashMap<String, String>,
-    ) -> i32 {
-        todo!()
+    ) -> Result<(), StateMachineActionError> {
+        match self {
+            State::PlaybackState {
+                entry_actions,
+                animation_id,
+                ..
+            } => {
+                /* Perform entry actions */
+                if let Some(actions) = entry_actions {
+                    for action in actions {
+                        let _ = action.execute(
+                            player,
+                            string_trigger,
+                            bool_trigger,
+                            numeric_trigger,
+                            event_trigger,
+                        );
+                    }
+                }
+
+                /* If theres an animation id, load it. */
+                if let Some(anim_id) = animation_id {
+                    if let Some(player) = player {
+                        if let Ok(player_read) = player.try_read() {
+                            let size = player_read.size();
+
+                            player_read.load_animation(anim_id, size.0, size.1);
+                        }
+                    }
+                }
+            }
+
+            State::GlobalState { entry_actions, .. } => {
+                if let Some(actions) = entry_actions {
+                    for action in actions {
+                        let _ = action.execute(
+                            player,
+                            string_trigger,
+                            bool_trigger,
+                            numeric_trigger,
+                            event_trigger,
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
-    fn perform_exit_actions(
+    fn exit(
         &self,
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
         string_trigger: &HashMap<String, String>,
@@ -215,6 +266,7 @@ impl StateTrait for State {
         numeric_trigger: &HashMap<String, f32>,
         event_trigger: &HashMap<String, String>,
     ) -> i32 {
-        todo!()
+        println!("🚨 Exit state not yet implemented");
+        0
     }
 }

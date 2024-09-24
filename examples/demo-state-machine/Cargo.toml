@@ -8,6 +8,9 @@ minifb = "0.27"
 dotlottie-rs = { path = "../../dotlottie-rs" }
 sysinfo = "0.30"
 rand = "0.8"
+ratatui = "0.20.1"
+crossterm = "0.25"
+
 
 [[bin]]
 name = "star-rating"
@@ -26,3 +29,7 @@ path = "src/bin/new-format/new-format.rs"
 [[bin]]
 name = "play-on-hover"
 path = "src/bin/play-on-hover/play-on-hover.rs"
+
+[[bin]]
+name = "tui"
+path = "src/bin/tui/tui.rs"

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display};
 use std::rc::Rc;
 use std::sync::RwLock;
@@ -13,6 +13,9 @@ pub mod transitions;
 pub mod triggers;
 
 use state_machine::StateMachine;
+use states::StateTrait;
+use transitions::guard::GuardTrait;
+use transitions::TransitionTrait;
 use triggers::Trigger;
 
 use crate::state_machine_engine::listeners::Listener;
@@ -57,12 +60,16 @@ pub struct StateMachineEngine {
 
     numeric_trigger: HashMap<String, f32>,
     string_trigger: HashMap<String, String>,
-    bool_trigger: HashMap<String, bool>,
+    boolean_trigger: HashMap<String, bool>,
     event_trigger: HashMap<String, String>,
 
     observers: RwLock<Vec<Rc<dyn StateMachineObserver>>>,
 
     state_machine: StateMachine,
+
+    state_history: Vec<String>,
+    max_cycle_count: usize,
+    current_cycle_count: usize,
 }
 
 impl Default for StateMachineEngine {
@@ -76,10 +83,13 @@ impl Default for StateMachineEngine {
             player: None,
             numeric_trigger: HashMap::new(),
             string_trigger: HashMap::new(),
-            bool_trigger: HashMap::new(),
+            boolean_trigger: HashMap::new(),
             event_trigger: HashMap::new(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
+            state_history: Vec::new(),
+            max_cycle_count: 20,
+            current_cycle_count: 0,
         }
     }
 }
@@ -93,7 +103,7 @@ impl Display for StateMachineEngine {
             .field("current_state", &self.current_state)
             .field("numeric_trigger", &self.numeric_trigger)
             .field("string_trigger", &self.string_trigger)
-            .field("bool_trigger", &self.bool_trigger)
+            .field("boolean_trigger", &self.boolean_trigger)
             .field("event_trigger", &self.event_trigger)
             .field("status", &self.status)
             .finish()
@@ -104,6 +114,7 @@ impl StateMachineEngine {
     pub fn new(
         state_machine_definition: &str,
         player: Rc<RwLock<DotLottiePlayerContainer>>,
+        max_cycle_count: Option<usize>,
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
         let mut state_machine = StateMachineEngine {
             global_state: None,
@@ -114,10 +125,13 @@ impl StateMachineEngine {
             player: Some(player.clone()),
             numeric_trigger: HashMap::new(),
             string_trigger: HashMap::new(),
-            bool_trigger: HashMap::new(),
+            boolean_trigger: HashMap::new(),
             event_trigger: HashMap::new(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
+            state_history: Vec::new(),
+            max_cycle_count: max_cycle_count.unwrap_or(20),
+            current_cycle_count: 0,
         };
 
         state_machine.create_state_machine(state_machine_definition, &player)
@@ -143,21 +157,38 @@ impl StateMachineEngine {
         self.string_trigger.get(key).cloned()
     }
 
-    pub fn get_bool_trigger(&self, key: &str) -> Option<bool> {
-        self.bool_trigger.get(key).cloned()
+    pub fn get_boolean_trigger(&self, key: &str) -> Option<bool> {
+        self.boolean_trigger.get(key).cloned()
     }
 
-    pub fn set_numeric_trigger(&mut self, key: &str, value: f32) {
-        self.numeric_trigger.insert(key.to_string(), value);
+    pub fn set_numeric_trigger(&mut self, key: &str, value: f32) -> Option<f32> {
+        let ret = self.numeric_trigger.insert(key.to_string(), value);
+
+        let _ = self.run_current_state_pipeline(None);
+
+        ret
     }
 
-    pub fn set_string_trigger(&mut self, key: &str, value: &str) {
-        self.string_trigger
+    pub fn set_string_trigger(&mut self, key: &str, value: &str) -> Option<String> {
+        let ret = self
+            .string_trigger
             .insert(key.to_string(), value.to_string());
+
+        let _ = self.run_current_state_pipeline(None);
+
+        ret
     }
 
-    pub fn set_bool_trigger(&mut self, key: &str, value: bool) {
-        self.bool_trigger.insert(key.to_string(), value);
+    pub fn set_boolean_trigger(&mut self, key: &str, value: bool) -> Option<bool> {
+        let ret = self.boolean_trigger.insert(key.to_string(), value);
+
+        let _ = self.run_current_state_pipeline(None);
+
+        ret
+    }
+
+    pub fn fire(&mut self, event: &str) {
+        let _ = self.run_current_state_pipeline(Some(&event.to_string()));
     }
 
     // Parses the JSON of the state machine definition and creates the states and transitions
@@ -182,44 +213,49 @@ impl StateMachineEngine {
         match parsed_state_machine {
             Ok(parsed_state_machine) => {
                 /* Build all trigger variables into hashmaps for easier use */
-                if let Some(triggers) = parsed_state_machine.triggers {
+                if let Some(triggers) = &parsed_state_machine.triggers {
                     for trigger in triggers {
                         match trigger {
                             Trigger::Numeric { name, value } => {
-                                new_state_machine.set_numeric_trigger(&name, value);
+                                new_state_machine.set_numeric_trigger(&name, *value);
                             }
                             Trigger::String { name, value } => {
                                 new_state_machine.set_string_trigger(&name, &value);
                             }
                             Trigger::Boolean { name, value } => {
-                                new_state_machine.set_bool_trigger(&name, value);
+                                new_state_machine.set_boolean_trigger(&name, *value);
                             }
                             Trigger::Event { name } => {
-                                new_state_machine.event_trigger.insert(name, "".to_string());
+                                new_state_machine
+                                    .event_trigger
+                                    .insert(name.to_string(), "".to_string());
                             }
                         }
                     }
                 }
 
                 /* Setup the global & initial state */
-                let initial_state_index = parsed_state_machine.descriptor.initial;
+                let initial_state_index = &parsed_state_machine.descriptor.initial;
 
                 for state in &parsed_state_machine.states {
                     match state {
                         State::GlobalState { name, .. } => {
-                            if name == &initial_state_index {
+                            if name == initial_state_index {
                                 new_state_machine.current_state = Some(Rc::new(state.clone()));
                             }
 
                             new_state_machine.global_state = Some(Rc::new(state.clone()));
                         }
                         State::PlaybackState { name, .. } => {
-                            if name == &initial_state_index {
+                            if name == initial_state_index {
                                 new_state_machine.current_state = Some(Rc::new(state.clone()));
                             }
                         }
                     }
                 }
+
+                new_state_machine.player = Some(player.clone());
+                new_state_machine.state_machine = parsed_state_machine;
 
                 Ok(new_state_machine)
             }
@@ -240,7 +276,7 @@ impl StateMachineEngine {
 
     pub fn start(&mut self) {
         self.status = StateMachineEngineStatus::Running;
-        // self.execute_current_state();
+        let _ = self.run_current_state_pipeline(None);
     }
 
     pub fn pause(&mut self) {
@@ -259,14 +295,172 @@ impl StateMachineEngine {
         &self.listeners
     }
 
+    fn get_state(&self, state_name: &str) -> Option<Rc<State>> {
+        if let Some(global_state) = &self.global_state {
+            if global_state.get_name() == state_name {
+                return Some(global_state.clone());
+            }
+        }
+
+        for state in self.state_machine.states.iter() {
+            if state.get_name() == state_name {
+                return Some(Rc::new(state.clone()));
+            }
+        }
+
+        None
+    }
+
+    /* Returns the target state, otherwise None */
+    fn evaluate_transitions(&self, event: Option<&String>) -> Option<&str> {
+        if let Some(current_state) = &self.current_state {
+            let transitions = current_state.get_transitions();
+
+            for transition in transitions {
+                /* Todo: Check if there is an event needed */
+                if let Some(guards) = transition.get_guards() {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            transitions::guard::Guard::Numeric { .. } => {
+                                println!("🚧 Evaluating numeric guard");
+                                if !guard.numeric_trigger_is_satisfied(&self.numeric_trigger) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            transitions::guard::Guard::String { .. } => {
+                                if !guard.string_trigger_is_satisfied(&self.string_trigger) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            transitions::guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_trigger_is_satisfied(&self.boolean_trigger) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            transitions::guard::Guard::Event { .. } => {
+                                println!("⛔️⛔️ Event guard not implemented yet");
+                                todo!();
+                            }
+                        }
+                    }
+
+                    /* If all guard are satsified, take the transition as they are in order of priority inside the vec */
+                    if all_guards_satisfied {
+                        let target_state = transition.get_target_state();
+
+                        return Some(target_state);
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
     // Return codes
     // 0: Success
     // 1: Failure
     // 2: Play animation
     // 3: Pause animation
     // 4: Request and draw a new single frame of the animation (needed for sync state)
-    pub fn execute_current_state(&mut self) -> i32 {
-        0
+    pub fn run_current_state_pipeline(&mut self, event: Option<&String>) -> Result<(), String> {
+        // Reset cycle count for each pipeline run
+        self.current_cycle_count = 0;
+
+        loop {
+            if let Some(cycle) = self.detect_cycle() {
+                self.current_cycle_count += 1;
+
+                if self.current_cycle_count >= self.max_cycle_count {
+                    return Err(format!(
+                        "Maximum cycle count ({}) exceeded. Possible infinite loop.",
+                        self.max_cycle_count
+                    ));
+                }
+
+                // Clear the history to allow for detecting new cycles
+                self.state_history.clear();
+            }
+
+            // Record the current state
+            if let Some(state) = &self.current_state {
+                self.state_history.push(state.get_name().to_string());
+            }
+
+            // Perform entry actions if any
+            if let Some(state) = &self.current_state {
+                let _ = state.enter(
+                    &self.player,
+                    &mut self.string_trigger,
+                    &mut self.boolean_trigger,
+                    &mut self.numeric_trigger,
+                    &mut self.event_trigger,
+                );
+            }
+
+            // Evaluate the transitions
+            let target_state = self.evaluate_transitions(event);
+
+            if let Some(state) = target_state {
+                self.current_state = self.get_state(state);
+                // Continue the loop to process the new state
+            } else {
+                // No transition occurred, exit the loop
+                break;
+            }
+        }
+
+        // If we've exited the loop, perform the final state actions
+        if let Some(state) = &self.current_state {
+            if let Some(player) = &self.player {
+                state.execute(
+                    &player,
+                    &mut self.string_trigger,
+                    &mut self.boolean_trigger,
+                    &mut self.numeric_trigger,
+                    &mut self.event_trigger,
+                );
+                state.exit(
+                    &player,
+                    &self.string_trigger,
+                    &self.boolean_trigger,
+                    &self.numeric_trigger,
+                    &self.event_trigger,
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn detect_cycle(&self) -> Option<Vec<String>> {
+        let mut seen = HashSet::new();
+        let mut cycle = Vec::new();
+
+        for state in self.state_history.iter().rev() {
+            if !seen.insert(state) {
+                // We've found the start of a cycle
+                let cycle_start = state;
+                cycle.push(cycle_start.clone());
+
+                for s in self.state_history.iter().rev() {
+                    if s == cycle_start {
+                        break;
+                    }
+                    cycle.push(s.clone());
+                }
+
+                cycle.reverse();
+                return Some(cycle);
+            }
+        }
+
+        None
     }
 
     // Return codes

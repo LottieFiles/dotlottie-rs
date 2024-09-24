@@ -1,0 +1,112 @@
+{
+    "descriptor": {
+      "id": "Exploding pigeon",
+      "initial": "Pigeon Running"
+    },
+      "states": [
+          {
+              "type": "PlaybackState",
+              "name": "Pigeon Running",
+              "loop": true,
+              "autoplay": true,
+              "segment": "bird",
+              
+              "transitions": [
+              {
+                  "type": "Transition",
+                  "to_state": "Explosion",
+                  "guards": [
+                    {
+                        "type": "Numeric",
+                        "trigger_name": "a",
+                        "condition_type": "Equal",
+                        "compare_to": 1
+                    }
+                  ]
+              }]
+          },
+          {
+              "type": "PlaybackState",
+              "name": "Explosion",
+              "loop": false,
+              "autoplay": true,
+              "segment": "explosion",
+              
+              "transitions": [
+              {
+                  "type": "Transition",
+                  "to_state": "Feathers falling",
+                  "guards": [
+                    {
+                        "type": "Numeric",
+                        "trigger_name": "b",
+                        "condition_type": "Equal",
+                       "compare_to": 3
+                    }
+                  ]
+              }]
+          },
+          {
+              "type": "PlaybackState",
+              "name": "Feathers falling",
+              "loop": false,
+              "autoplay": true,
+              "segment": "feather",
+              
+              "transitions": [
+              {
+                  "type": "Transition",
+                  "to_state": "Pigeon Running",
+                  "guards": [
+                    {
+                        "type": "Numeric",
+                        "trigger_name": "c",
+                        "condition_type": "Equal",
+                        "compare_to": 3
+                    }
+                  ]
+              }]
+          }
+      ],
+      "listeners": [
+          {
+              "type": "PointerDown",
+              "actions": [{
+                    "type": "Fire",
+                    "trigger_name": "Explode"
+              }]
+          },
+          {
+              "type": "OnComplete",
+              "state": "Explosion",
+              "actions": [{
+                "type": "Fire",
+                "trigger_name": "Raing feathers"
+          }]
+      },
+          {
+              "type": "PointerDown",
+              "actions": [{
+                "type": "Fire",
+                "trigger_name": "Restart"
+          }]
+      }
+      ],
+      "triggers": [
+        {
+            "type": "Numeric",
+            "name": "a",
+            "value": 1
+        },
+        {
+            "type": "Numeric",
+            "name": "b",
+            "value": 2
+        },
+        {
+            "type": "Numeric",
+            "name": "c",
+            "value": 3
+        }
+      ]
+  }

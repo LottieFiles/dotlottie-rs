@@ -44,6 +44,9 @@ pub enum StateMachineEngineError {
 
     #[error("Failed to create StateMachineEngine")]
     CreationError { reason: String },
+
+    #[error("Event can not be fired as it does not exist.")]
+    FireEventError,
 }
 
 pub struct StateMachineEngine {
@@ -187,8 +190,14 @@ impl StateMachineEngine {
         ret
     }
 
-    pub fn fire(&mut self, event: &str) {
-        let _ = self.run_current_state_pipeline(Some(&event.to_string()));
+    pub fn fire(&mut self, event: &str) -> Result<(), StateMachineEngineError> {
+        if let Some(_event) = self.event_trigger.get(event) {
+            let _ = self.run_current_state_pipeline(Some(&event.to_string()));
+
+            return Ok(());
+        }
+
+        Err(StateMachineEngineError::FireEventError)
     }
 
     // Parses the JSON of the state machine definition and creates the states and transitions
@@ -317,7 +326,6 @@ impl StateMachineEngine {
             let transitions = current_state.get_transitions();
 
             for transition in transitions {
-                /* Todo: Check if there is an event needed */
                 if let Some(guards) = transition.get_guards() {
                     let mut all_guards_satisfied = true;
 
@@ -331,20 +339,34 @@ impl StateMachineEngine {
                                 }
                             }
                             transitions::guard::Guard::String { .. } => {
+                                println!("🚧 Evaluating string guard");
+
                                 if !guard.string_trigger_is_satisfied(&self.string_trigger) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
                             transitions::guard::Guard::Boolean { .. } => {
+                                println!("🚧 Evaluating boolean guard");
                                 if !guard.boolean_trigger_is_satisfied(&self.boolean_trigger) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
                             transitions::guard::Guard::Event { .. } => {
-                                println!("⛔️⛔️ Event guard not implemented yet");
-                                todo!();
+                                println!("🚧 Evaluating event guard");
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if event.is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = event {
+                                    if !guard.event_trigger_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
@@ -371,9 +393,10 @@ impl StateMachineEngine {
     pub fn run_current_state_pipeline(&mut self, event: Option<&String>) -> Result<(), String> {
         // Reset cycle count for each pipeline run
         self.current_cycle_count = 0;
+        let mut loop_count = 0;
 
         loop {
-            if let Some(cycle) = self.detect_cycle() {
+            if let Some(_cycle) = self.detect_cycle() {
                 self.current_cycle_count += 1;
 
                 if self.current_cycle_count >= self.max_cycle_count {
@@ -404,10 +427,13 @@ impl StateMachineEngine {
             }
 
             // Evaluate the transitions
-            let target_state = self.evaluate_transitions(event);
+            // Only send event on the first loop
+            let target_state = self.evaluate_transitions(if loop_count > 0 { None } else { event });
 
             if let Some(state) = target_state {
                 self.current_state = self.get_state(state);
+
+                loop_count += 1;
                 // Continue the loop to process the new state
             } else {
                 // No transition occurred, exit the loop

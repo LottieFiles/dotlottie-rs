@@ -1,22 +1,103 @@
 {
     "descriptor": {
-        "id": "multi_animation_slideshow",
-        "initial": 0
+      "id": "Exploding pigeon",
+      "initial": "Pigeon Running"
     },
-    "states": [
-    ],
-    "transitions": [
-    ],
-    "listeners": [
-        {
-            "type": "PointerDown"
-        }
-    ],
-    "context_variables": [
-        {
-            "key": "sync_key",
-            "type": "Numeric",
-            "value": 30
-        }
-    ]
-}
+      "states": [
+          {
+              "type": "PlaybackState",
+              "name": "Pigeon Running",
+              "loop": true,
+              "autoplay": true,
+              "segment": "pigeon",
+              
+              "transitions": [
+              {
+                  "type": "Transition",
+                  "to_state": "Explosion",
+                  "guards": [
+                    {
+                        "type": "Event",
+                        "trigger_name": "Explode"
+                    }
+                  ]
+              }]
+          },
+          {
+              "type": "PlaybackState",
+              "name": "Explosion",
+              "loop": false,
+              "autoplay": true,
+              "segment": "explosion",
+              
+              "transitions": [
+              {
+                  "type": "Transition",
+                  "to_state": "Feathers falling",
+                  "guards": [
+                      {
+                          "type": "Event",
+                          "trigger_name": "Rain feathers"
+                      }
+                  ]
+              }]
+          },
+          {
+              "type": "PlaybackState",
+              "name": "Feathers falling",
+              "loop": false,
+              "autoplay": true,
+              "segment": "feathers",
+              
+              "transitions": [
+              {
+                  "type": "Transition",
+                  "to_state": "Pigeon Running",
+                  "guards": [
+                      {
+                          "type": "Event",
+                          "trigger_name": "Restart"
+                      }
+                  ]
+              }]
+          }
+      ],
+      "listeners": [
+          {
+              "type": "PointerDown",
+              "actions": [{
+                    "type": "Fire",
+                    "trigger_name": "Explode"
+              }]
+          },
+          {
+              "type": "OnComplete",
+              "state": "Explosion",
+              "actions": [{
+                "type": "Fire",
+                "trigger_name": "Raing feathers"
+          }]
+      },
+          {
+              "type": "PointerDown",
+              "actions": [{
+                "type": "Fire",
+                "trigger_name": "Restart"
+          }]
+      }
+      ],
+      "triggers": [
+          {
+              "type": "Event",
+              "name": "Explode"
+          },
+          {
+              "type": "Event",
+              "name": "Rain feathers"
+          },
+          {
+              "type": "Event",
+              "name": "Restart"
+          }
+      ]
+  }

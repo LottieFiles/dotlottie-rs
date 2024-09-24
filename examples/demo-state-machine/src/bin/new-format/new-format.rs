@@ -51,7 +51,6 @@ fn main() {
     });
 
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        loop_animation: true,
         background_color: 0xffffffff,
         ..Config::default()
     });
@@ -66,7 +65,7 @@ fn main() {
 
     let mut timer = Timer::new();
 
-    let message: String = fs::read_to_string("./src/bin/new-format/no_events_test.json").unwrap();
+    let message: String = fs::read_to_string("./src/bin/new-format/events_test.json").unwrap();
 
     let r = lottie_player.load_state_machine_data(&message);
     // let r = lottie_player.load_state_machine("pigeon_fsm");
@@ -95,6 +94,13 @@ fn main() {
         }
 
         timer.tick(&*locked_player.read().unwrap());
+
+        // Send event on key press
+        if window.is_key_pressed(Key::Space, minifb::KeyRepeat::No) {
+            let p = &mut *locked_player.write().unwrap();
+
+            p.state_machine_fire_event("Step");
+        }
 
         let p = &mut *locked_player.write().unwrap();
 

@@ -332,29 +332,24 @@ impl StateMachineEngine {
                     for guard in guards {
                         match guard {
                             transitions::guard::Guard::Numeric { .. } => {
-                                println!("🚧 Evaluating numeric guard");
                                 if !guard.numeric_trigger_is_satisfied(&self.numeric_trigger) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
                             transitions::guard::Guard::String { .. } => {
-                                println!("🚧 Evaluating string guard");
-
                                 if !guard.string_trigger_is_satisfied(&self.string_trigger) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
                             transitions::guard::Guard::Boolean { .. } => {
-                                println!("🚧 Evaluating boolean guard");
                                 if !guard.boolean_trigger_is_satisfied(&self.boolean_trigger) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
                             transitions::guard::Guard::Event { .. } => {
-                                println!("🚧 Evaluating event guard");
                                 /* If theres a guard, but no event has been fired, we can't validate any guards. */
                                 if event.is_none() {
                                     all_guards_satisfied = false;
@@ -497,6 +492,18 @@ impl StateMachineEngine {
     // 4: Request and draw a new single frame of the animation (needed for sync state)
     pub fn post_event(&mut self, event: &Event) -> i32 {
         0
+    }
+
+    pub fn get_state_machine(&self) -> &StateMachine {
+        &self.state_machine
+    }
+
+    pub fn get_current_state_name(&self) -> String {
+        if let Some(state) = &self.current_state {
+            return state.get_name();
+        }
+
+        "".to_string()
     }
 }
 

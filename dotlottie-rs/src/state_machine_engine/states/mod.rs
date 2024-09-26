@@ -117,8 +117,6 @@ impl StateTrait for State {
                     }
                 }
 
-                println!("🚨 Segment: {:?}", segment);
-
                 if let Some(new_segment) = segment {
                     defined_segment = new_segment.clone();
                 }
@@ -143,8 +141,6 @@ impl StateTrait for State {
                     if let Some(anim_id) = animation_id {
                         player_read.load_animation(anim_id, size.0, size.1);
                     }
-
-                    println!("🚨 Playback config: {:?}", playback_config);
 
                     player_read.set_config(playback_config);
 
@@ -270,7 +266,6 @@ impl StateTrait for State {
         numeric_trigger: &HashMap<String, f32>,
         event_trigger: &HashMap<String, String>,
     ) -> i32 {
-        println!("🚨 Exit state not yet implemented");
         0
     }
 }

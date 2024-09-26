@@ -121,16 +121,12 @@ impl GuardTrait for Guard {
                 let context_value = context.get(trigger_name);
 
                 if context_value.is_none() {
-                    println!("🚧 Context value is none");
                     return false;
                 }
 
                 match compare_to {
                     StringNumberBool::F32(compare_to) => match condition_type {
-                        TransitionGuardConditionType::Equal => {
-                            println!("🚧 Comparing {:?} == {:?}", context_value, compare_to);
-                            context_value == Some(compare_to)
-                        }
+                        TransitionGuardConditionType::Equal => context_value == Some(compare_to),
                         TransitionGuardConditionType::NotEqual => context_value != Some(compare_to),
                         TransitionGuardConditionType::GreaterThan => {
                             context_value > Some(compare_to)

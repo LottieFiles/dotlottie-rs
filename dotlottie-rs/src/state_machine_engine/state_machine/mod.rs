@@ -2,7 +2,11 @@ use serde::Deserialize;
 
 use crate::errors::StateMachineError;
 
-use super::{listeners::Listener, states::State, triggers::Trigger};
+use super::{
+    listeners::Listener,
+    states::{State, StateTrait},
+    triggers::Trigger,
+};
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(untagged)]
@@ -51,6 +55,22 @@ impl StateMachine {
             listeners,
             triggers,
         }
+    }
+
+    pub fn states(&self) -> &Vec<State> {
+        &self.states
+    }
+
+    pub fn listeners(&self) -> Option<&Vec<Listener>> {
+        self.listeners.as_ref()
+    }
+
+    pub fn triggers(&self) -> Option<&Vec<Trigger>> {
+        self.triggers.as_ref()
+    }
+
+    pub fn get_state_by_name(&self, name: &str) -> Option<&State> {
+        self.states.iter().find(|state| state.get_name() == name)
     }
 }
 

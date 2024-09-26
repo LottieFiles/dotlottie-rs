@@ -25,7 +25,7 @@ use std::{
 
 const WIDTH: usize = 400;
 const HEIGHT: usize = 300;
-const LOADED_STATE_MACHINE: &str = "events";
+const LOADED_STATE_MACHINE: &str = "rating";
 
 struct Timer {
     last_update: Instant,

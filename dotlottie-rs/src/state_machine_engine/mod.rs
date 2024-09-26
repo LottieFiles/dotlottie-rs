@@ -54,7 +54,6 @@ pub struct StateMachineEngine {
 
     /* We keep references to the StateMachine's States. */
     /* This prevents duplicating the data inside the engine. */
-    // pub states: HashMap<String, Rc<State>>,
     pub global_state: Option<Rc<State>>,
     pub current_state: Option<Rc<State>>,
 
@@ -263,6 +262,12 @@ impl StateMachineEngine {
                     }
                 }
 
+                if new_state_machine.current_state.is_none() {
+                    return Err(StateMachineEngineError::CreationError {
+                        reason: "Failed to find inital state.".to_string(),
+                    });
+                }
+
                 new_state_machine.player = Some(player.clone());
                 new_state_machine.state_machine = parsed_state_machine;
 
@@ -321,8 +326,15 @@ impl StateMachineEngine {
     }
 
     /* Returns the target state, otherwise None */
+    /* Todo: Integrate transitions with no guards */
     fn evaluate_transitions(&self, event: Option<&String>) -> Option<&str> {
-        if let Some(current_state) = &self.current_state {
+        let state_to_evalute = if self.global_state.is_some() {
+            &self.global_state
+        } else {
+            &self.current_state
+        };
+
+        if let Some(current_state) = state_to_evalute {
             let transitions = current_state.get_transitions();
 
             for transition in transitions {

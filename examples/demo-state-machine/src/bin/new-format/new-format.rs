@@ -65,7 +65,7 @@ fn main() {
 
     let mut timer = Timer::new();
 
-    let message: String = fs::read_to_string("./src/bin/new-format/events_test.json").unwrap();
+    let message: String = fs::read_to_string("./src/bin/new-format/rating.json").unwrap();
 
     let r = lottie_player.load_state_machine_data(&message);
     // let r = lottie_player.load_state_machine("pigeon_fsm");

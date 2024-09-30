@@ -26,6 +26,7 @@ use std::{
 const WIDTH: usize = 400;
 const HEIGHT: usize = 300;
 const LOADED_STATE_MACHINE: &str = "rating";
+const LOADED_ANIMATION: &str = "star_marked";
 
 struct Timer {
     last_update: Instant,
@@ -402,9 +403,10 @@ fn main() -> Result<(), io::Error> {
         ..Config::default()
     });
 
-    let mut markers = File::open("./src/bin/new-format/pigeon.lottie").expect("no file found");
-    let metadatamarkers =
-        fs::metadata("./src/bin/new-format/pigeon.lottie").expect("unable to read metadata");
+    let mut markers =
+        File::open(format!("./src/bin/tui/{}.lottie", LOADED_ANIMATION)).expect("no file found");
+    let metadatamarkers = fs::metadata(format!("./src/bin/tui/{}.lottie", LOADED_ANIMATION))
+        .expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
@@ -751,7 +753,7 @@ fn run_app<B: ratatui::backend::Backend>(
             if let Event::Key(key) = event::read()? {
                 if input_mode {
                     handle_input_mode(&mut menus[current_menu], key);
-                    if key.code == KeyCode::Esc {
+                    if key.code == KeyCode::Esc || key.code == KeyCode::Enter {
                         send_input_to_state_machine(&mut menus[current_menu], key, player);
 
                         log_sender

@@ -55,9 +55,9 @@ fn main() {
         ..Config::default()
     });
 
-    let mut markers = File::open("./src/bin/new-format/pigeon.lottie").expect("no file found");
+    let mut markers = File::open("./src/bin/new-format/star_marked.lottie").expect("no file found");
     let metadatamarkers =
-        fs::metadata("./src/bin/new-format/pigeon.lottie").expect("unable to read metadata");
+        fs::metadata("./src/bin/new-format/star_marked.lottie").expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
@@ -68,7 +68,6 @@ fn main() {
     let message: String = fs::read_to_string("./src/bin/new-format/rating.json").unwrap();
 
     let r = lottie_player.load_state_machine_data(&message);
-    // let r = lottie_player.load_state_machine("pigeon_fsm");
 
     println!("Load state machine data -> {}", r);
 
@@ -82,6 +81,7 @@ fn main() {
 
     let locked_player = Arc::new(RwLock::new(lottie_player));
 
+    let mut rating = 0.0;
     // return;
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let left_down = window.get_mouse_down(MouseButton::Left);
@@ -97,9 +97,12 @@ fn main() {
 
         // Send event on key press
         if window.is_key_pressed(Key::Space, minifb::KeyRepeat::No) {
-            let p = &mut *locked_player.write().unwrap();
+            // let p = &mut *locked_player.write().unwrap();
+            // p.state_machine_fire_event("Step");
 
-            p.state_machine_fire_event("Step");
+            let p = &mut *locked_player.write().unwrap();
+            rating += 1.0;
+            p.state_machine_set_numeric_trigger("rating", rating);
         }
 
         let p = &mut *locked_player.write().unwrap();

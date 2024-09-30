@@ -5,7 +5,7 @@ use serde::Deserialize;
 use crate::{Config, DotLottiePlayerContainer, Layout, Mode};
 
 use super::{
-    actions::{self, Action, ActionTrait, StateMachineActionError},
+    actions::{Action, ActionTrait, StateMachineActionError},
     transitions::Transition,
 };
 
@@ -13,9 +13,6 @@ use super::{
 pub enum StatesError {
     #[error("Failed to parse JSON state machine definition")]
     ParsingError { reason: String },
-
-    #[error("Failed to create StateMachineEngine")]
-    CreationError { reason: String },
 }
 
 pub trait StateTrait {
@@ -260,11 +257,11 @@ impl StateTrait for State {
 
     fn exit(
         &self,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
-        string_trigger: &HashMap<String, String>,
-        bool_trigger: &HashMap<String, bool>,
-        numeric_trigger: &HashMap<String, f32>,
-        event_trigger: &HashMap<String, String>,
+        _player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        _string_trigger: &HashMap<String, String>,
+        _bool_trigger: &HashMap<String, bool>,
+        _numeric_trigger: &HashMap<String, f32>,
+        _event_trigger: &HashMap<String, String>,
     ) -> i32 {
         0
     }

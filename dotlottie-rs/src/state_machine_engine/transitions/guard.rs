@@ -18,7 +18,7 @@ pub trait GuardTrait {
     fn string_trigger_is_satisfied(&self, context: &HashMap<String, String>) -> bool;
     fn boolean_trigger_is_satisfied(&self, context: &HashMap<String, bool>) -> bool;
     fn numeric_trigger_is_satisfied(&self, context: &HashMap<String, f32>) -> bool;
-    fn event_trigger_is_satisfied(&self, event: &String) -> bool;
+    fn event_trigger_is_satisfied(&self, event: &str) -> bool;
 }
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
@@ -147,15 +147,9 @@ impl GuardTrait for Guard {
         }
     }
 
-    fn event_trigger_is_satisfied(&self, event: &String) -> bool {
+    fn event_trigger_is_satisfied(&self, event: &str) -> bool {
         match self {
-            Guard::Event { trigger_name } => {
-                if event == trigger_name {
-                    true
-                } else {
-                    false
-                }
-            }
+            Guard::Event { trigger_name } => trigger_name == event,
             _ => false,
         }
     }

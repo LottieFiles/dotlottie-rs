@@ -19,13 +19,13 @@ pub enum Transition {
 impl TransitionTrait for Transition {
     fn get_target_state(&self) -> &str {
         match self {
-            Transition::Transition { to_state, .. } => &to_state,
+            Transition::Transition { to_state, .. } => to_state,
         }
     }
 
     fn get_guards(&self) -> &Option<Vec<Guard>> {
         match self {
-            Transition::Transition { guards, .. } => &guards,
+            Transition::Transition { guards, .. } => guards,
         }
     }
 }

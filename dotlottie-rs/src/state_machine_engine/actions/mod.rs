@@ -197,7 +197,7 @@ impl ActionTrait for Action {
 
                     match read_lock {
                         Ok(player) => {
-                            player.load_theme_data(&value);
+                            player.load_theme_data(value);
                         }
                         Err(_) => {
                             return Err(StateMachineActionError::ExecuteError(

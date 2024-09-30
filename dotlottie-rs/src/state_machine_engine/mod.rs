@@ -39,14 +39,20 @@ pub enum StateMachineEngineStatus {
 
 #[derive(Debug, thiserror::Error)]
 pub enum StateMachineEngineError {
-    #[error("Failed to parse JSON state machine definition")]
+    #[error("Failed to parse JSON state machine definition.")]
     ParsingError { reason: String },
 
-    #[error("Failed to create StateMachineEngine")]
+    #[error("Failed to create StateMachineEngine.")]
     CreationError { reason: String },
 
     #[error("Event can not be fired as it does not exist.")]
     FireEventError,
+
+    #[error("Infinite loop detected.")]
+    InfiniteLoopError,
+
+    #[error("State machine engine is not running.")]
+    NotRunningError,
 }
 
 pub struct StateMachineEngine {
@@ -54,7 +60,6 @@ pub struct StateMachineEngine {
 
     /* We keep references to the StateMachine's States. */
     /* This prevents duplicating the data inside the engine. */
-    // pub states: HashMap<String, Rc<State>>,
     pub global_state: Option<Rc<State>>,
     pub current_state: Option<Rc<State>>,
 
@@ -221,6 +226,8 @@ impl StateMachineEngine {
 
         match parsed_state_machine {
             Ok(parsed_state_machine) => {
+                let initial_state_index = parsed_state_machine.descriptor.initial.clone();
+
                 /* Build all trigger variables into hashmaps for easier use */
                 if let Some(triggers) = &parsed_state_machine.triggers {
                     for trigger in triggers {
@@ -243,32 +250,35 @@ impl StateMachineEngine {
                     }
                 }
 
-                /* Setup the global & initial state */
-                let initial_state_index = &parsed_state_machine.descriptor.initial;
-
+                /*
+                   Set the reference to the global state so that we can easily
+                   Access it when evaluating transitions
+                */
                 for state in &parsed_state_machine.states {
-                    match state {
-                        State::GlobalState { name, .. } => {
-                            if name == initial_state_index {
-                                new_state_machine.current_state = Some(Rc::new(state.clone()));
-                            }
-
-                            new_state_machine.global_state = Some(Rc::new(state.clone()));
-                        }
-                        State::PlaybackState { name, .. } => {
-                            if name == initial_state_index {
-                                new_state_machine.current_state = Some(Rc::new(state.clone()));
-                            }
-                        }
+                    if let State::GlobalState { .. } = state {
+                        new_state_machine.global_state = Some(Rc::new(state.clone()));
                     }
                 }
 
                 new_state_machine.player = Some(player.clone());
                 new_state_machine.state_machine = parsed_state_machine;
 
+                let err = new_state_machine.set_current_state(&initial_state_index);
+                match err {
+                    Ok(_) => {}
+                    Err(error) => {
+                        println!("🚨 Error setting initial state: {:?}", error);
+                        return Err(StateMachineEngineError::CreationError {
+                            reason: error.to_string(),
+                        });
+                    }
+                }
+
                 Ok(new_state_machine)
             }
-            Err(_) => todo!(),
+            Err(error) => Err(StateMachineEngineError::CreationError {
+                reason: error.to_string(),
+            }),
         }
 
         // Todo: Report errors in proper way
@@ -320,58 +330,116 @@ impl StateMachineEngine {
         None
     }
 
+    // Set the current state to the target state
+    // Manage performing entry and exit actions
+    // As well as executing the state's type (Currently on PlaybackState has an effect on playback)
+    fn set_current_state(&mut self, state_name: &str) -> Result<(), StateMachineEngineError> {
+        let new_state = self.get_state(&state_name);
+
+        if new_state.is_some() {
+            // We have a new state
+            // Perofrm exit actions on the current state
+            if let Some(state) = &self.current_state {
+                if let Some(player) = &self.player {
+                    // Perform exit actions
+                    state.exit(
+                        &player,
+                        &self.string_trigger,
+                        &self.boolean_trigger,
+                        &self.numeric_trigger,
+                        &self.event_trigger,
+                    );
+                }
+            }
+
+            // Assign the new state to the current_state
+            self.current_state = new_state;
+
+            // Perform entry actions
+            // Execute its type of state
+            if let Some(state) = &self.current_state {
+                let _ = state.enter(
+                    &self.player,
+                    &mut self.string_trigger,
+                    &mut self.boolean_trigger,
+                    &mut self.numeric_trigger,
+                    &self.event_trigger,
+                );
+
+                if let Some(player) = &self.player {
+                    state.execute(
+                        player,
+                        &mut self.string_trigger,
+                        &mut self.boolean_trigger,
+                        &mut self.numeric_trigger,
+                        &mut self.event_trigger,
+                    );
+                }
+            }
+            return Ok(());
+        }
+
+        Err(StateMachineEngineError::CreationError {
+            reason: format!("Failed to find state: {}", state_name),
+        })
+    }
+
     /* Returns the target state, otherwise None */
-    fn evaluate_transitions(&self, event: Option<&String>) -> Option<&str> {
-        if let Some(current_state) = &self.current_state {
-            let transitions = current_state.get_transitions();
+    /* Todo: Integrate transitions with no guards */
+    /* Todo: Integrate if only one transitions with no guard */
+    fn evaluate_transitions(
+        &self,
+        state_to_evalaute: &Rc<State>,
+        event: Option<&String>,
+    ) -> Option<String> {
+        let transitions = state_to_evalaute.get_transitions();
 
-            for transition in transitions {
-                if let Some(guards) = transition.get_guards() {
-                    let mut all_guards_satisfied = true;
+        for transition in transitions {
+            if let Some(guards) = transition.get_guards() {
+                let mut all_guards_satisfied = true;
 
-                    for guard in guards {
-                        match guard {
-                            transitions::guard::Guard::Numeric { .. } => {
-                                if !guard.numeric_trigger_is_satisfied(&self.numeric_trigger) {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
+                for guard in guards {
+                    match guard {
+                        transitions::guard::Guard::Numeric { .. } => {
+                            if !guard.numeric_trigger_is_satisfied(&self.numeric_trigger) {
+                                all_guards_satisfied = false;
+                                break;
                             }
-                            transitions::guard::Guard::String { .. } => {
-                                if !guard.string_trigger_is_satisfied(&self.string_trigger) {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
+                        }
+                        transitions::guard::Guard::String { .. } => {
+                            if !guard.string_trigger_is_satisfied(&self.string_trigger) {
+                                all_guards_satisfied = false;
+                                break;
                             }
-                            transitions::guard::Guard::Boolean { .. } => {
-                                if !guard.boolean_trigger_is_satisfied(&self.boolean_trigger) {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
+                        }
+                        transitions::guard::Guard::Boolean { .. } => {
+                            if !guard.boolean_trigger_is_satisfied(&self.boolean_trigger) {
+                                all_guards_satisfied = false;
+                                break;
                             }
-                            transitions::guard::Guard::Event { .. } => {
-                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
-                                if event.is_none() {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
+                        }
+                        transitions::guard::Guard::Event { .. } => {
+                            /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                            if event.is_none() {
+                                all_guards_satisfied = false;
+                                break;
+                            }
 
-                                if let Some(event) = event {
-                                    if !guard.event_trigger_is_satisfied(event) {
-                                        all_guards_satisfied = false;
-                                        break;
-                                    }
+                            if let Some(event) = event {
+                                if !guard.event_trigger_is_satisfied(event) {
+                                    all_guards_satisfied = false;
+                                    break;
                                 }
                             }
                         }
                     }
+                }
 
-                    /* If all guard are satsified, take the transition as they are in order of priority inside the vec */
-                    if all_guards_satisfied {
-                        let target_state = transition.get_target_state();
+                /* If all guard are satsified, take the transition as they are in order of priority inside the vec */
+                if all_guards_satisfied {
+                    let target_state = transition.get_target_state();
 
-                        return Some(target_state);
-                    }
+                    return Some(target_state.to_string());
                 }
             }
         }
@@ -385,20 +453,42 @@ impl StateMachineEngine {
     // 2: Play animation
     // 3: Pause animation
     // 4: Request and draw a new single frame of the animation (needed for sync state)
-    pub fn run_current_state_pipeline(&mut self, event: Option<&String>) -> Result<(), String> {
+    pub fn run_current_state_pipeline(
+        &mut self,
+        event: Option<&String>,
+    ) -> Result<(), StateMachineEngineError> {
         // Reset cycle count for each pipeline run
         self.current_cycle_count = 0;
         let mut loop_count = 0;
 
+        // If the state machine is not running, or there is no current state, return an error
+        // Otherwise this will block the pipeline in a loop
+        if self.status != StateMachineEngineStatus::Running
+            || (self.current_state.is_none() && self.global_state.is_none())
+        {
+            return Err(StateMachineEngineError::NotRunningError);
+        }
+
+        // Check for global state before drilling down on states
+        if let Some(state_to_evaluate) = &self.global_state {
+            let target_state = self.evaluate_transitions(state_to_evaluate, event);
+
+            if let Some(state) = target_state {
+                let _ = self.set_current_state(&state);
+            }
+        }
+
+        // Start drilling down on the current state and it's transitions
+        // As long as there are transitions evaluating to true, we continue the loop
         loop {
+            // Infinite loop detection
             if let Some(_cycle) = self.detect_cycle() {
                 self.current_cycle_count += 1;
 
                 if self.current_cycle_count >= self.max_cycle_count {
-                    return Err(format!(
-                        "Maximum cycle count ({}) exceeded. Possible infinite loop.",
-                        self.max_cycle_count
-                    ));
+                    println!("🚨 Cycle detected, exiting");
+                    self.end();
+                    return Err(StateMachineEngineError::InfiniteLoopError);
                 }
 
                 // Clear the history to allow for detecting new cycles
@@ -410,49 +500,26 @@ impl StateMachineEngine {
                 self.state_history.push(state.get_name().to_string());
             }
 
-            // Perform entry actions if any
-            if let Some(state) = &self.current_state {
-                let _ = state.enter(
-                    &self.player,
-                    &mut self.string_trigger,
-                    &mut self.boolean_trigger,
-                    &mut self.numeric_trigger,
-                    &mut self.event_trigger,
-                );
-            }
-
             // Evaluate the transitions
-            // Only send event on the first loop
-            let target_state = self.evaluate_transitions(if loop_count > 0 { None } else { event });
+            // If theres a global state, evaluate the transitions of the global state
+            // If the global state transitions fail, check the current state transitions
+            // If both return None, do nothing
 
-            if let Some(state) = target_state {
-                self.current_state = self.get_state(state);
-
-                loop_count += 1;
-                // Continue the loop to process the new state
-            } else {
-                // No transition occurred, exit the loop
-                break;
-            }
-        }
-
-        // If we've exited the loop, perform the final state actions
-        if let Some(state) = &self.current_state {
-            if let Some(player) = &self.player {
-                state.execute(
-                    &player,
-                    &mut self.string_trigger,
-                    &mut self.boolean_trigger,
-                    &mut self.numeric_trigger,
-                    &mut self.event_trigger,
+            if let Some(current_state_to_evaluate) = &self.current_state {
+                let target_state = self.evaluate_transitions(
+                    current_state_to_evaluate,
+                    if loop_count > 0 { None } else { event },
                 );
-                state.exit(
-                    &player,
-                    &self.string_trigger,
-                    &self.boolean_trigger,
-                    &self.numeric_trigger,
-                    &self.event_trigger,
-                );
+
+                if let Some(state) = target_state {
+                    let _ = self.set_current_state(&state);
+
+                    loop_count += 1;
+                    // Continue the loop to process the new state-
+                } else {
+                    // No transitions were found, exit the loop
+                    break;
+                }
             }
         }
 

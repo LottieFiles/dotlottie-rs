@@ -1462,39 +1462,51 @@ impl DotLottiePlayer {
     }
 
     // Todo: Rather than methods for each trigger, return the SM object
-    pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> Option<f32> {
+    pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> i32 {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    return sm.set_numeric_trigger(key, value);
+                    let ret = sm.set_numeric_trigger(key, value);
+
+                    if ret.is_some() {
+                        return 0;
+                    }
                 }
-                None
+                -1
             }
-            Err(_) => return None,
+            Err(_) => -1,
         }
     }
     // Todo: Rather than methods for each trigger, return the SM object
-    pub fn state_machine_set_string_trigger(&self, key: &str, value: &String) -> Option<String> {
+    pub fn state_machine_set_string_trigger(&self, key: &str, value: &str) -> i32 {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    return sm.set_string_trigger(key, value);
+                    let ret = sm.set_string_trigger(key, value);
+
+                    if ret.is_some() {
+                        return 0;
+                    }
                 }
-                None
+                -1
             }
-            Err(_) => return None,
+            Err(_) => return -1,
         }
     }
     // Todo: Rather than methods for each trigger, return the SM object
-    pub fn state_machine_set_boolean_trigger(&self, key: &str, value: bool) -> Option<bool> {
+    pub fn state_machine_set_boolean_trigger(&self, key: &str, value: bool) -> i32 {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    return sm.set_boolean_trigger(key, value);
+                    let ret = sm.set_boolean_trigger(key, value);
+
+                    if ret.is_some() {
+                        return 0;
+                    }
                 }
-                None
+                -1
             }
-            Err(_) => return None,
+            Err(_) => -1,
         }
     }
 

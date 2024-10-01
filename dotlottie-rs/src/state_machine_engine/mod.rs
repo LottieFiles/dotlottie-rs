@@ -395,51 +395,56 @@ impl StateMachineEngine {
         let transitions = state_to_evalaute.get_transitions();
 
         for transition in transitions {
-            if let Some(guards) = transition.get_guards() {
-                let mut all_guards_satisfied = true;
+            /* If in the transitions we need an event, and there wasn't one fired, don't run the checks */
+            if (transition.transitions_contain_event() && event.is_some())
+                || (!transition.transitions_contain_event() && event.is_none())
+            {
+                if let Some(guards) = transition.get_guards() {
+                    let mut all_guards_satisfied = true;
 
-                for guard in guards {
-                    match guard {
-                        transitions::guard::Guard::Numeric { .. } => {
-                            if !guard.numeric_trigger_is_satisfied(&self.numeric_trigger) {
-                                all_guards_satisfied = false;
-                                break;
-                            }
-                        }
-                        transitions::guard::Guard::String { .. } => {
-                            if !guard.string_trigger_is_satisfied(&self.string_trigger) {
-                                all_guards_satisfied = false;
-                                break;
-                            }
-                        }
-                        transitions::guard::Guard::Boolean { .. } => {
-                            if !guard.boolean_trigger_is_satisfied(&self.boolean_trigger) {
-                                all_guards_satisfied = false;
-                                break;
-                            }
-                        }
-                        transitions::guard::Guard::Event { .. } => {
-                            /* If theres a guard, but no event has been fired, we can't validate any guards. */
-                            if event.is_none() {
-                                all_guards_satisfied = false;
-                                break;
-                            }
-
-                            if let Some(event) = event {
-                                if !guard.event_trigger_is_satisfied(event) {
+                    for guard in guards {
+                        match guard {
+                            transitions::guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_trigger_is_satisfied(&self.numeric_trigger) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
+                            transitions::guard::Guard::String { .. } => {
+                                if !guard.string_trigger_is_satisfied(&self.string_trigger) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            transitions::guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_trigger_is_satisfied(&self.boolean_trigger) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            transitions::guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if event.is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = event {
+                                    if !guard.event_trigger_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
                         }
                     }
-                }
 
-                /* If all guard are satsified, take the transition as they are in order of priority inside the vec */
-                if all_guards_satisfied {
-                    let target_state = transition.get_target_state();
+                    /* If all guard are satsified, take the transition as they are in order of priority inside the vec */
+                    if all_guards_satisfied {
+                        let target_state = transition.get_target_state();
 
-                    return Some(target_state.to_string());
+                        return Some(target_state.to_string());
+                    }
                 }
             }
         }

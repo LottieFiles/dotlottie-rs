@@ -1,3 +1,4 @@
+pub mod actions;
 pub mod errors;
 pub mod events;
 pub mod listeners;
@@ -6,6 +7,7 @@ pub mod state_machine;
 pub mod states;
 pub mod transitions;
 
+pub use crate::actions::*;
 pub use crate::errors::*;
 pub use crate::events::*;
 pub use crate::listeners::*;

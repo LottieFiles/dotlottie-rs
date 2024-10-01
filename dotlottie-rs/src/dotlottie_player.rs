@@ -2,17 +2,17 @@ use instant::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
-use crate::errors::StateMachineError::ParsingError;
-use crate::listeners::ListenerTrait;
-use crate::state_machine::events::Event;
+use crate::state_machine_engine::events::Event;
 use crate::{
     extract_markers,
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
-    Marker, MarkersMap, StateMachine,
+    Marker, MarkersMap, StateMachineEngine,
 };
-use crate::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
-use crate::{StateMachineObserver, StateMachineStatus};
+use crate::{
+    DotLottieError, DotLottieManager, Manifest, ManifestAnimation, StateMachineEngineError,
+};
+use crate::{StateMachineEngineStatus, StateMachineObserver};
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
@@ -894,7 +894,7 @@ impl DotLottieRuntime {
 pub struct DotLottiePlayerContainer {
     runtime: RwLock<DotLottieRuntime>,
     observers: RwLock<Vec<Arc<dyn Observer>>>,
-    state_machine: Rc<RwLock<Option<StateMachine>>>,
+    state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
 }
 
 impl DotLottiePlayerContainer {
@@ -1259,7 +1259,7 @@ impl DotLottiePlayerContainer {
 
 pub struct DotLottiePlayer {
     player: Rc<RwLock<DotLottiePlayerContainer>>,
-    state_machine: Rc<RwLock<Option<StateMachine>>>,
+    state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
 }
 
 impl DotLottiePlayer {
@@ -1276,7 +1276,7 @@ impl DotLottiePlayer {
             .is_ok_and(|runtime| runtime.load_animation_data(animation_data, width, height))
     }
 
-    pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachine>>> {
+    pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachineEngine>>> {
         self.state_machine.clone()
     }
 
@@ -1329,7 +1329,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    if sm.status == StateMachineStatus::Running {
+                    if sm.status == StateMachineEngineStatus::Running {
                         sm.end();
                     } else {
                         return false;
@@ -1357,17 +1357,25 @@ impl DotLottiePlayer {
                     let listeners = sm.get_listeners();
 
                     for listener in listeners {
-                        match listener.try_read() {
-                            Ok(listener) => {
-                                let unwrapped_listener = &*listener;
-
-                                if !listener_types
-                                    .contains(&unwrapped_listener.get_type().to_string())
-                                {
-                                    listener_types.push(unwrapped_listener.get_type().to_string());
-                                }
+                        match listener {
+                            crate::listeners::Listener::PointerUp { .. } => {
+                                listener_types.push("PointerUp".to_string())
                             }
-                            Err(_) => return vec![],
+                            crate::listeners::Listener::PointerDown { .. } => {
+                                listener_types.push("PointerDown".to_string())
+                            }
+                            crate::listeners::Listener::PointerEnter { .. } => {
+                                listener_types.push("PointerEnter".to_string())
+                            }
+                            crate::listeners::Listener::PointerMove { .. } => {
+                                listener_types.push("PointerMove".to_string())
+                            }
+                            crate::listeners::Listener::PointerExit { .. } => {
+                                listener_types.push("PointerExit".to_string())
+                            }
+                            crate::listeners::Listener::OnComplete { .. } => {
+                                listener_types.push("OnComplete".to_string())
+                            }
                         }
                     }
                     listener_types
@@ -1377,78 +1385,6 @@ impl DotLottiePlayer {
             }
             Err(_) => vec![],
         }
-    }
-
-    pub fn set_state_machine_numeric_context(&self, key: &str, value: f32) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        let sm_write = self.state_machine.try_write();
-
-        match sm_write {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.set_numeric_context(key, value);
-                }
-            }
-            Err(_) => return false,
-        }
-
-        true
-    }
-
-    pub fn set_state_machine_string_context(&self, key: &str, value: &str) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        let sm_write = self.state_machine.try_write();
-
-        match sm_write {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.set_string_context(key, value);
-                }
-            }
-            Err(_) => return false,
-        }
-
-        true
-    }
-
-    pub fn set_state_machine_boolean_context(&self, key: &str, value: bool) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        let sm_write = self.state_machine.try_write();
-
-        match sm_write {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.set_bool_context(key, value);
-                }
-            }
-            Err(_) => return false,
-        }
-
-        true
     }
 
     // Return codes
@@ -1479,23 +1415,6 @@ impl DotLottiePlayer {
         1
     }
 
-    pub fn post_bool_event(&self, value: bool) -> i32 {
-        let event = Event::Bool { value };
-        self.post_event(&event)
-    }
-
-    pub fn post_string_event(&self, value: &str) -> i32 {
-        let event = Event::String {
-            value: value.to_string(),
-        };
-        self.post_event(&event)
-    }
-
-    pub fn post_numeric_event(&self, value: f32) -> i32 {
-        let event = Event::Numeric { value };
-        self.post_event(&event)
-    }
-
     pub fn post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::OnPointerDown { x, y };
         self.post_event(&event)
@@ -1517,17 +1436,70 @@ impl DotLottiePlayer {
     }
 
     pub fn post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
-        let event = Event::OnPointerExit { x, y };
+        let event: Event = Event::OnPointerExit { x, y };
         self.post_event(&event)
     }
 
-    pub fn post_set_numeric_context(&self, key: &str, value: f32) -> i32 {
-        let event = Event::SetNumericContext {
-            key: key.to_string(),
-            value,
-        };
+    // Todo: Rather than methods for each trigger, return the SM object
+    pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> i32 {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    let ret = sm.set_numeric_trigger(key, value);
 
-        self.post_event(&event)
+                    if ret.is_some() {
+                        return 0;
+                    }
+                }
+                -1
+            }
+            Err(_) => -1,
+        }
+    }
+    // Todo: Rather than methods for each trigger, return the SM object
+    pub fn state_machine_set_string_trigger(&self, key: &str, value: &str) -> i32 {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    let ret = sm.set_string_trigger(key, value);
+
+                    if ret.is_some() {
+                        return 0;
+                    }
+                }
+                -1
+            }
+            Err(_) => return -1,
+        }
+    }
+    // Todo: Rather than methods for each trigger, return the SM object
+    pub fn state_machine_set_boolean_trigger(&self, key: &str, value: bool) -> i32 {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    let ret = sm.set_boolean_trigger(key, value);
+
+                    if ret.is_some() {
+                        return 0;
+                    }
+                }
+                -1
+            }
+            Err(_) => -1,
+        }
+    }
+
+    pub fn state_machine_fire_event(&self, event: &str) {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.fire(event);
+
+                    return;
+                }
+            }
+            Err(_) => return,
+        }
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
@@ -1655,7 +1627,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
+    pub fn state_machine_subscribe(&self, observer: Rc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
         if sm.is_none() {
@@ -1667,7 +1639,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn state_machine_unsubscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
+    pub fn state_machine_unsubscribe(&self, observer: Rc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
         if sm.is_none() {
@@ -1699,7 +1671,7 @@ impl DotLottiePlayer {
     }
 
     pub fn load_state_machine_data(&self, state_machine: &str) -> bool {
-        let state_machine = StateMachine::new(state_machine, self.player.clone());
+        let state_machine = StateMachineEngine::new(state_machine, self.player.clone(), None);
 
         if state_machine.is_ok() {
             match self.state_machine.try_write() {
@@ -1735,30 +1707,29 @@ impl DotLottiePlayer {
 
         match state_machine_string {
             Some(machine) => {
-                let state_machine = StateMachine::new(&machine, self.player.clone());
+                let state_machine: Result<StateMachineEngine, StateMachineEngineError> =
+                    StateMachineEngine::new(&machine, self.player.clone(), None);
 
-                if state_machine.is_ok() {
-                    match self.state_machine.try_write() {
-                        Ok(mut sm) => {
-                            sm.replace(state_machine.unwrap());
+                match state_machine {
+                    Ok(sm) => {
+                        if let Ok(mut state_machine) = self.state_machine.try_write() {
+                            state_machine.replace(sm);
                         }
-                        Err(_) => {
-                            return false;
+
+                        let player = self.player.try_write();
+
+                        match player {
+                            Ok(mut player) => {
+                                player.state_machine = self.state_machine.clone();
+                            }
+                            Err(_) => {
+                                return false;
+                            }
                         }
                     }
-
-                    let player = self.player.try_write();
-
-                    match player {
-                        Ok(mut player) => {
-                            player.state_machine = self.state_machine.clone();
-                        }
-                        Err(_) => {
-                            return false;
-                        }
+                    Err(_) => {
+                        return false;
                     }
-                } else if let Err(ParsingError { reason: _ }) = state_machine {
-                    return false;
                 }
             }
             None => {

@@ -2,9 +2,11 @@ use thiserror::Error;
 
 use serde::Deserialize;
 
-use std::{collections::HashMap, rc::Rc, sync::RwLock};
+use std::{rc::Rc, sync::RwLock};
 
 use crate::DotLottiePlayerContainer;
+
+use super::StateMachineEngine;
 
 #[derive(Error, Debug)]
 pub enum StateMachineActionError {
@@ -15,11 +17,8 @@ pub enum StateMachineActionError {
 pub trait ActionTrait {
     fn execute(
         &self,
-        player: &Option<Rc<RwLock<DotLottiePlayerContainer>>>,
-        string_trigger: &mut HashMap<String, String>,
-        bool_trigger: &mut HashMap<String, bool>,
-        numeric_trigger: &mut HashMap<String, f32>,
-        event_trigger: &HashMap<String, String>,
+        engine: &mut StateMachineEngine,
+        player: Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<(), StateMachineActionError>;
 }
 
@@ -87,30 +86,29 @@ impl ActionTrait for Action {
     // - Fire an event to the state machine
     fn execute(
         &self,
-        player: &Option<Rc<RwLock<DotLottiePlayerContainer>>>,
-        string_trigger: &mut HashMap<String, String>,
-        bool_trigger: &mut HashMap<String, bool>,
-        numeric_trigger: &mut HashMap<String, f32>,
-        event_trigger: &HashMap<String, String>,
+        engine: &mut StateMachineEngine,
+        player: Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<(), StateMachineActionError> {
         match self {
             Action::Increment {
                 trigger_name,
                 value,
             } => {
-                println!("Incrementing trigger {} by {:?}", trigger_name, value);
+                let val = engine.get_numeric_trigger(trigger_name);
 
-                if let Some(value) = value {
-                    numeric_trigger.insert(
-                        trigger_name.to_string(),
-                        numeric_trigger.get(trigger_name).unwrap_or(&0.0) + value,
-                    );
-                } else {
-                    numeric_trigger.insert(
-                        trigger_name.to_string(),
-                        numeric_trigger.get(trigger_name).unwrap_or(&0.0) + 1.0,
-                    );
+                if let Some(val) = val {
+                    if let Some(value) = value {
+                        engine.set_numeric_trigger(trigger_name, val + value, false);
+                    } else {
+                        engine.set_numeric_trigger(trigger_name, val + 1.0, false);
+
+                        println!(
+                            "🚧 Updated Trigger value: {:?}",
+                            engine.get_numeric_trigger(trigger_name)
+                        );
+                    }
                 }
+
                 Ok(())
             }
             Action::Decrement {
@@ -119,25 +117,25 @@ impl ActionTrait for Action {
             } => {
                 println!("Decrementing trigger {} by {:?}", trigger_name, value);
 
-                if let Some(value) = value {
-                    numeric_trigger.insert(
-                        trigger_name.to_string(),
-                        numeric_trigger.get(trigger_name).unwrap_or(&0.0) - value,
-                    );
-                } else {
-                    numeric_trigger.insert(
-                        trigger_name.to_string(),
-                        numeric_trigger.get(trigger_name).unwrap_or(&0.0) - 1.0,
-                    );
+                let val = engine.get_numeric_trigger(trigger_name);
+
+                if let Some(val) = val {
+                    if let Some(value) = value {
+                        engine.set_numeric_trigger(trigger_name, val - value, false);
+                    } else {
+                        engine.set_numeric_trigger(trigger_name, val - 1.0, false);
+                    }
                 }
                 Ok(())
             }
             Action::Toggle { trigger_name } => {
                 println!("Toggling trigger {}", trigger_name);
-                bool_trigger.insert(
-                    trigger_name.to_string(),
-                    !bool_trigger.get(trigger_name).unwrap_or(&false),
-                );
+
+                let val = engine.get_boolean_trigger(trigger_name);
+
+                if let Some(val) = val {
+                    engine.set_boolean_trigger(trigger_name, !val, false);
+                }
 
                 Ok(())
             }
@@ -146,7 +144,8 @@ impl ActionTrait for Action {
                 value,
             } => {
                 println!("Setting trigger {} to {}", trigger_name, value);
-                bool_trigger.insert(trigger_name.to_string(), *value);
+
+                engine.set_boolean_trigger(trigger_name, *value, false);
                 Ok(())
             }
             Action::SetNumeric {
@@ -154,7 +153,8 @@ impl ActionTrait for Action {
                 value,
             } => {
                 println!("Setting trigger {} to {}", trigger_name, value);
-                numeric_trigger.insert(trigger_name.to_string(), *value);
+
+                engine.set_numeric_trigger(trigger_name, *value, false);
                 Ok(())
             }
             Action::SetString {
@@ -162,12 +162,15 @@ impl ActionTrait for Action {
                 value,
             } => {
                 println!("Setting trigger {} to {}", trigger_name, value);
-                string_trigger.insert(trigger_name.to_string(), value.to_string());
+
+                engine.set_string_trigger(trigger_name, value, false);
 
                 Ok(())
             }
             Action::Fire { trigger_name } => {
                 println!("Firing trigger {}", trigger_name);
+
+                engine.fire(&trigger_name);
                 Ok(())
             }
             Action::Reset { trigger_name } => {
@@ -192,18 +195,16 @@ impl ActionTrait for Action {
             }
             Action::SetSlot { value } => {
                 println!("Setting slot to {}", value);
-                if let Some(player) = player {
-                    let read_lock = player.read();
+                let read_lock = player.read();
 
-                    match read_lock {
-                        Ok(player) => {
-                            player.load_theme_data(value);
-                        }
-                        Err(_) => {
-                            return Err(StateMachineActionError::ExecuteError(
-                                "Error getting read lock on player".to_string(),
-                            ));
-                        }
+                match read_lock {
+                    Ok(player) => {
+                        player.load_theme_data(value);
+                    }
+                    Err(_) => {
+                        return Err(StateMachineActionError::ExecuteError(
+                            "Error getting read lock on player".to_string(),
+                        ));
                     }
                 }
 
@@ -219,45 +220,40 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::SetFrame { value } => {
-                if let Some(player) = player {
-                    let read_lock = player.read();
+                let read_lock = player.read();
 
-                    match read_lock {
-                        Ok(player) => {
-                            player.set_frame(*value);
-                            return Ok(());
-                        }
-                        Err(_) => {
-                            return Err(StateMachineActionError::ExecuteError(
-                                "Error getting read lock on player".to_string(),
-                            ));
-                        }
+                match read_lock {
+                    Ok(player) => {
+                        player.set_frame(*value);
+                        return Ok(());
+                    }
+                    Err(_) => {
+                        return Err(StateMachineActionError::ExecuteError(
+                            "Error getting read lock on player".to_string(),
+                        ));
                     }
                 }
 
                 Ok(())
             }
             Action::ThemeAction { theme_id } => {
-                if let Some(player) = player {
-                    let read_lock = player.read();
+                let read_lock = player.read();
 
-                    match read_lock {
-                        Ok(player) => {
-                            if !player.load_theme(theme_id) {
-                                return Err(StateMachineActionError::ExecuteError(
-                                    "Error loading theme".to_string(),
-                                ));
-                            }
-                            return Ok(());
-                        }
-                        Err(_) => {
+                match read_lock {
+                    Ok(player) => {
+                        if !player.load_theme(theme_id) {
                             return Err(StateMachineActionError::ExecuteError(
-                                "Error getting read lock on player".to_string(),
-                            ))
+                                "Error loading theme".to_string(),
+                            ));
                         }
+                        return Ok(());
+                    }
+                    Err(_) => {
+                        return Err(StateMachineActionError::ExecuteError(
+                            "Error getting read lock on player".to_string(),
+                        ))
                     }
                 }
-
                 Ok(())
             }
         }

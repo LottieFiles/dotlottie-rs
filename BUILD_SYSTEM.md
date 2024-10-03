@@ -1,7 +1,7 @@
 ## Build System
 
-The build system uses GNU `make` to build all artifacts for `android`, `apple`, and `wasm`. This
-documentation provides some low-level implementation details relating to these builds. You can use
+The build system uses GNU `make` to build all artifacts for `android`, `apple`, `wasm`, and `native`.
+This documentation provides some low-level implementation details relating to these builds. You can use
 this information to better understand how the builds work in order to extend the build system and
 make changes to it.
 
@@ -76,7 +76,8 @@ dependencies:
 
 `Cargo` is used to build `uniffi-bindgen` and the `dotlottie-player` library:
 
-- `CARGO_BUILD`: Performs a `Cargo` build for Rust code
+- `SIMPLE_CARGO_BUILD`: Performs a `Cargo` build for Rust code using the default target
+- `CARGO_BUILD`: Performs a `Cargo` build for Rust code using a specified target
 
 The following blocks are used to create `uniffi` bindings:
 
@@ -111,6 +112,10 @@ the final release artifacts.
 - `WASM_MESON_BUILD_FILE`: Creates the `Meson` file used to build the WASM release artifacts
 - `SETUP_WASM_MESON`: Runs `Meson` to setup a WASM build using `Ninja`
 - `WASM_RELEASE`: Compiles the final artifacts for a WASM release
+
+For native builds, the `dotlottie-ffi` project must be built, which will automatically produce
+the related cbindgen-generated C header file. The library file(s) generated as part of the build
+and the header file are then copied to the `release/native` directory.
 
 #### Top-level
 

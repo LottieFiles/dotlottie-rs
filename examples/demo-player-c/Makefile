@@ -6,7 +6,7 @@ DOTLOTTIE_PLAYER_LIB=dotlottie_player
 all: demo-player
 
 demo-player: main.c
-	gcc -ggdb main.c -L$(DOTLOTTIE_PLAYER_LIB_PATH) -lX11 -l$(DOTLOTTIE_PLAYER_LIB) -o $@
+	$(CC) -g main.c -L$(DOTLOTTIE_PLAYER_LIB_PATH) -lSDL2 -l$(DOTLOTTIE_PLAYER_LIB) -o $@
 
 run: export LD_LIBRARY_PATH = $(DOTLOTTIE_PLAYER_LIB_PATH)
 run: demo-player
@@ -15,3 +15,6 @@ run: demo-player
 debug: export LD_LIBRARY_PATH = $(DOTLOTTIE_PLAYER_LIB_PATH)
 debug: demo-player
 	@gdb demo-player
+
+clean:
+	rm -rf demo-player

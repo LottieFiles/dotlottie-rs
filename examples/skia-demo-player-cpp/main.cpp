@@ -3,12 +3,25 @@
 #include <SDL2/SDL_pixels.h>
 #include <libgen.h> // For dirname
 #include <limits.h> // For PATH_MAX
+#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h> // For readlink
 
+extern "C" {
 #include "../../dotlottie-ffi/bindings.h"
+}
+
+#include "include/codec/SkCodec.h"
+#include "include/core/SkAlphaType.h"
+#include "include/core/SkBitmap.h"
+#include "include/core/SkCanvas.h"
+#include "include/core/SkColorType.h"
+#include "include/core/SkData.h"
+#include "include/core/SkGraphics.h"
+#include "include/core/SkImageInfo.h"
+#include "include/core/SkSurface.h"
 
 #define WIDTH 1000
 #define HEIGHT 1000
@@ -83,9 +96,17 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  // Setup skia buffer
+  SkImageInfo info = SkImageInfo::MakeN32Premul(WIDTH, HEIGHT);
+  size_t rowBytes = info.minRowBytes();
+  size_t size = info.computeByteSize(rowBytes);
+  void *pixels = malloc(size);
+  // Setup Skia canvas
+  std::unique_ptr<SkCanvas> canvas = SkCanvas::MakeRasterDirect(info, pixels, rowBytes);
+
   // Setup SDL window
-  window = SDL_CreateWindow("demo-player-c", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                            WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
+  window = SDL_CreateWindow("skia-demo-player-cpp", SDL_WINDOWPOS_UNDEFINED,
+                            SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
   if (!window) {
     fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
     ret = 1;
@@ -104,7 +125,7 @@ int main(int argc, char **argv) {
     ret = 1;
     goto quit;
   }
-  SDL_UpdateTexture(texture, NULL, buffer, WIDTH * sizeof(Uint32));
+  SDL_UpdateTexture(texture, NULL, pixels, WIDTH * sizeof(Uint32));
 
   current_frame = 0;
   while (1) {
@@ -138,8 +159,18 @@ int main(int argc, char **argv) {
       // Process the next frame
       dotlottie_set_frame(player, next_frame);
       dotlottie_render(player);
+      // Use skia to render an image
+      SkImageInfo imageInfo =
+        SkImageInfo::Make(WIDTH, HEIGHT, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
+      sk_sp<SkData> imageData = SkData::MakeWithoutCopy(buffer, WIDTH * HEIGHT * 4);
+      sk_sp<SkImage> bitmapImage = SkImages::RasterFromData(imageInfo, imageData, WIDTH * 4);
+      // Draw the image
+      SkRect src = SkRect::MakeWH(bitmapImage->width(), bitmapImage->height());
+      SkRect dst = SkRect::MakeWH(WIDTH, HEIGHT);
+      canvas->drawImageRect(bitmapImage, src, dst, SkSamplingOptions(), nullptr,
+          SkCanvas::kStrict_SrcRectConstraint);
       // Render the image in the window
-      SDL_UpdateTexture(texture, NULL, buffer, WIDTH * sizeof(Uint32));
+      SDL_UpdateTexture(texture, NULL, pixels, WIDTH * sizeof(Uint32));
       SDL_RenderCopy(renderer, texture, NULL, NULL);
       SDL_RenderPresent(renderer);
       current_frame = next_frame;

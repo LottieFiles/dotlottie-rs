@@ -423,7 +423,7 @@ define NATIVE_RELEASE
 	rm -rf $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)
   mkdir -p $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR) $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)
 	cp $(RUNTIME_FFI)/bindings.h $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR)/$(RUNTIME_FFI_HEADER)
-	find $(RUNTIME_FFI)/target/$(RELEASE)/ -maxdepth 1 \( -name '*.so' -or -name '*.dylib' \) \
+	find $(RUNTIME_FFI)/target/$(RELEASE)/ -maxdepth 1 \( -name '*.so' -or -name '*.dylib' -or -name "*.dll" \) \
 		-exec cp {} $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR) \;
 	cd $(RELEASE)/$(NATIVE) && \
 		rm -f $(DOTLOTTIE_PLAYER).$(NATIVE).tar.gz && \

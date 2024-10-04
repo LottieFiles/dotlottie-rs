@@ -75,12 +75,12 @@ jobs:
           name: apple
           path: ./release/apple/*.tar.gz
 
-      - name: Build Artifacts
+      - name: Build WASM
         if: github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all'
         env:
           APPLE_XCODE_APP_NAME: ${{ github.event.inputs.appleXcodeVersion }}
           APPLE_MACOSX_SDK: ${{ github.event.inputs.appleMacosxSdk }}
-        run: make demo-player
+        run: make wasm
 
       - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v3

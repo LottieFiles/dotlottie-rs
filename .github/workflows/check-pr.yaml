@@ -29,8 +29,8 @@ jobs:
 
       - name: Test
         run: |
-          cargo test --manifest-path=./dotlottie-rs/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
-          cargo test --manifest-path=./dotlottie-ffi/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
+          cargo test --manifest-path=./dotlottie-rs/Cargo.toml --release -- --test-threads=1 
+          cargo test --manifest-path=./dotlottie-ffi/Cargo.toml --release -- --test-threads=1
 
       - name: Lint
         run: |

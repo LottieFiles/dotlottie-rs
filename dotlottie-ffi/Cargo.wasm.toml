@@ -23,7 +23,9 @@ path = "uniffi-bindgen.rs"
 uniffi = { version = "0.25", features = ["cli"] }
 dotlottie-rs = { path = "../dotlottie-rs" }
 cfg-if = "1.0"
+bitflags = "2.6.0"
 
 [build-dependencies]
 uniffi = { version = "0.25", features = ["build"] }
 lazy_static = "1.4"
+cbindgen = "0.26.0"

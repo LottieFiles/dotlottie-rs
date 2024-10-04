@@ -1009,7 +1009,6 @@ impl DotLottiePlayerContainer {
         is_ok
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn manifest(&self) -> Option<Manifest> {
         self.runtime.read().unwrap().manifest()
     }
@@ -1189,7 +1188,6 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().config()
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn subscribe(&self, observer: Arc<dyn Observer>) {
         self.observers.write().unwrap().push(observer);
     }
@@ -1206,7 +1204,6 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().is_complete()
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn unsubscribe(&self, observer: &Arc<dyn Observer>) {
         self.observers
             .write()
@@ -1551,7 +1548,6 @@ impl DotLottiePlayer {
             .is_ok_and(|runtime| runtime.load_animation(animation_id, width, height))
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn manifest(&self) -> Option<Manifest> {
         self.player.read().unwrap().manifest()
     }
@@ -1656,12 +1652,10 @@ impl DotLottiePlayer {
         self.player.read().unwrap().config()
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn subscribe(&self, observer: Arc<dyn Observer>) {
         self.player.write().unwrap().subscribe(observer);
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
@@ -1673,7 +1667,6 @@ impl DotLottiePlayer {
         true
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn state_machine_unsubscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
@@ -1696,7 +1689,6 @@ impl DotLottiePlayer {
         self.player.read().unwrap().is_complete()
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn unsubscribe(&self, observer: &Arc<dyn Observer>) {
         self.player.write().unwrap().unsubscribe(observer);
     }

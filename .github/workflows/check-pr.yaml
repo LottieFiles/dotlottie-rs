@@ -22,13 +22,10 @@ jobs:
       - uses: turtlebrowser/get-conan@main
       - name: Install Make
         run: brew install make
-      - name: Build Setup
-        run: make mac-setup
-      - name: Build Artifacts
-        env:
-          APPLE_XCODE_APP_NAME: Xcode_13.3.1.app
-          APPLE_MACOSX_SDK: MacOSX12.3
-        run: make demo-player
+      - name: Build (dotlottie-rs)
+        run: cargo build --manifest-path=./dotlottie-rs/Cargo.toml --release
+      - name: Build (dotlottie-ffi)
+        run: cargo build --manifest-path=./dotlottie-ffi/Cargo.toml --release
       - name: Run Tests
         run: make test
       - name: Run Clippy

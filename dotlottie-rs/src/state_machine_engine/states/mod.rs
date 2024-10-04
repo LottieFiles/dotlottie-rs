@@ -41,6 +41,7 @@ pub trait StateTrait {
     fn get_animation_id(&self) -> Option<String>;
     fn get_transitions(&self) -> &Vec<Transition>;
     fn get_entry_actions(&self) -> Option<&Vec<Action>>;
+    fn get_exit_actions(&self) -> Option<&Vec<Action>>;
     // fn add_transition(&mut self, transition: &Transition);
     // fn get_config(&self) -> Option<&Config>;
     fn get_name(&self) -> String;
@@ -234,6 +235,13 @@ impl StateTrait for State {
         match self {
             State::PlaybackState { entry_actions, .. } => entry_actions.as_ref(),
             State::GlobalState { entry_actions, .. } => entry_actions.as_ref(),
+        }
+    }
+
+    fn get_exit_actions(&self) -> Option<&Vec<Action>> {
+        match self {
+            State::PlaybackState { exit_actions, .. } => exit_actions.as_ref(),
+            State::GlobalState { exit_actions, .. } => exit_actions.as_ref(),
         }
     }
 }

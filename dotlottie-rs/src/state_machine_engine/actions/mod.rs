@@ -2,11 +2,11 @@ use thiserror::Error;
 
 use serde::Deserialize;
 
-use std::{rc::Rc, sync::RwLock};
+use std::{process::Command, rc::Rc, sync::RwLock};
 
 use crate::DotLottiePlayerContainer;
 
-use super::StateMachineEngine;
+use super::{state_machine::StringNumber, StateMachineEngine};
 
 #[derive(Error, Debug)]
 pub enum StateMachineActionError {
@@ -70,7 +70,7 @@ pub enum Action {
         theme_id: String,
     },
     SetFrame {
-        value: f32,
+        value: StringNumber,
     },
     SetSlot {
         value: String,
@@ -211,7 +211,10 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::OpenUrl { url } => {
-                println!("Opening URL {}", url);
+                Command::new("open")
+                    .arg(url)
+                    .spawn()
+                    .expect("Failed to open URL");
                 Ok(())
             }
             Action::FireCustomEvent { value } => {
@@ -222,18 +225,38 @@ impl ActionTrait for Action {
             Action::SetFrame { value } => {
                 let read_lock = player.read();
 
-                match read_lock {
-                    Ok(player) => {
-                        player.set_frame(*value);
-                        return Ok(());
+                match value {
+                    StringNumber::String(value) => {
+                        if let Ok(player) = read_lock {
+                            // Get the frame number from the trigger
+
+                            // Remove the "$" prefix from the value
+                            let value = value.trim_start_matches('$');
+
+                            let frame = engine.get_numeric_trigger(value);
+                            if let Some(frame) = frame {
+                                player.set_frame(frame);
+                            } else {
+                                println!("Couldn't get frame from trigger");
+                            }
+                            // player.set_frame(*value);
+                            return Ok(());
+                        } else {
+                            return Err(StateMachineActionError::ExecuteError(
+                                "Error getting read lock on player".to_string(),
+                            ));
+                        }
                     }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ));
+                    StringNumber::F32(value) => {
+                        if let Ok(player) = read_lock {
+                            player.set_frame(*value);
+                        } else {
+                            return Err(StateMachineActionError::ExecuteError(
+                                "Error getting read lock on player".to_string(),
+                            ));
+                        }
                     }
                 }
-
                 Ok(())
             }
             Action::ThemeAction { theme_id } => {

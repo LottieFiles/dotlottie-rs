@@ -78,6 +78,7 @@ pub struct StateMachineEngine {
     state_history: Vec<String>,
     max_cycle_count: usize,
     current_cycle_count: usize,
+    action_mutated_triggers: bool,
 }
 
 impl Default for StateMachineEngine {
@@ -98,6 +99,7 @@ impl Default for StateMachineEngine {
             state_history: Vec::new(),
             max_cycle_count: 20,
             current_cycle_count: 0,
+            action_mutated_triggers: false,
         }
     }
 }
@@ -140,6 +142,7 @@ impl StateMachineEngine {
             state_history: Vec::new(),
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
+            action_mutated_triggers: false,
         };
 
         state_machine.create_state_machine(state_machine_definition, &player)
@@ -177,6 +180,8 @@ impl StateMachineEngine {
     ) -> Option<f32> {
         let ret = self.numeric_trigger.insert(key.to_string(), value);
 
+        self.action_mutated_triggers = true;
+
         if run_pipeline {
             let _ = self.run_current_state_pipeline(None);
         }
@@ -193,6 +198,8 @@ impl StateMachineEngine {
             .string_trigger
             .insert(key.to_string(), value.to_string());
 
+        self.action_mutated_triggers = true;
+
         if run_pipeline {
             let _ = self.run_current_state_pipeline(None);
         }
@@ -207,6 +214,8 @@ impl StateMachineEngine {
         run_pipeline: bool,
     ) -> Option<bool> {
         let ret = self.boolean_trigger.insert(key.to_string(), value);
+
+        self.action_mutated_triggers = true;
 
         if run_pipeline {
             let _ = self.run_current_state_pipeline(None);
@@ -314,6 +323,9 @@ impl StateMachineEngine {
     }
 
     pub fn start(&mut self) {
+        if self.status == StateMachineEngineStatus::Running {
+            return;
+        }
         self.status = StateMachineEngineStatus::Running;
         let _ = self.run_current_state_pipeline(None);
     }
@@ -430,11 +442,6 @@ impl StateMachineEngine {
         state_to_evaluate: &Rc<State>,
         event: Option<&String>,
     ) -> Option<String> {
-        println!(
-            "🐍 Evaluating transitions for state: {}",
-            state_to_evaluate.get_name()
-        );
-
         let transitions = state_to_evaluate.get_transitions();
 
         for transition in transitions {
@@ -524,11 +531,7 @@ impl StateMachineEngine {
         while tick {
             // Safety fallback to prevent infinite loops
             tick = false;
-
-            if self.current_state.is_none() {
-                println!("🥴 Something went wrong in the matrix, no current state");
-                break;
-            }
+            self.action_mutated_triggers = false;
 
             // Infinite loop detection
             // Todo: Infinite loop on same state
@@ -550,19 +553,28 @@ impl StateMachineEngine {
                 self.state_history.push(state.get_name().to_string());
             }
 
-            // Check for global state before drilling down on states
+            // Check if there is a global state
+            // If there is, evaluate the transitions of the global state first
+            // If theres a target state, check for actions as this would need for us to re-evaluate the transitions
             if let Some(state_to_evaluate) = &self.global_state {
                 let target_state = self.evaluate_transitions(state_to_evaluate, event);
 
                 if let Some(state) = target_state {
-                    let res = self.set_current_state(&state);
+                    let success = self.set_current_state(&state);
+                    match success {
+                        Ok(_) => {
+                            if self.action_mutated_triggers {
+                                tick = true;
+                            }
+                        }
+                        Err(_) => {
+                            println!("🚨 Error setting current state");
+                            break;
+                        }
+                    }
                 }
             }
 
-            // Evaluate the transitions
-            // If theres a global state, evaluate the transitions of the global state
-            // If the global state transitions fail, check the current state transitions
-            // If both return None, do nothing
             if let Some(current_state_to_evaluate) = &self.current_state {
                 let target_state = self.evaluate_transitions(
                     current_state_to_evaluate,
@@ -570,13 +582,13 @@ impl StateMachineEngine {
                 );
 
                 if let Some(state) = target_state {
-                    println!("🚧 Transitioning to state: {}", state);
                     let success = self.set_current_state(&state);
 
                     match success {
                         Ok(_) => {
-                            tick = true;
-                            println!("💜 tick is true");
+                            if self.action_mutated_triggers {
+                                tick = true;
+                            }
                         }
                         Err(_) => {
                             println!("🚨 Error setting current state");
@@ -585,10 +597,6 @@ impl StateMachineEngine {
                     }
 
                     loop_count += 1;
-                    // Continue the loop to process the new state-
-                } else {
-                    // No transitions were found, exit the loop
-                    // break;
                 }
             }
         }

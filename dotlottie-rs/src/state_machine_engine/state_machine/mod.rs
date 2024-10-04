@@ -16,6 +16,13 @@ pub enum StringNumberBool {
     Bool(bool),
 }
 
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum StringNumber {
+    String(String),
+    F32(f32),
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Descriptor {
     pub id: String,

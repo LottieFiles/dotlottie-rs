@@ -1688,6 +1688,8 @@ impl DotLottiePlayer {
             match player {
                 Ok(mut player) => {
                     player.state_machine = self.state_machine.clone();
+
+                    return true;
                 }
                 Err(_) => {
                     return false;
@@ -1695,7 +1697,7 @@ impl DotLottiePlayer {
             }
         }
 
-        true
+        false
     }
 
     pub fn load_state_machine(&self, state_machine_id: &str) -> bool {

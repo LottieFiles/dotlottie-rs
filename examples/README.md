@@ -64,5 +64,15 @@ if (ret != DOTLOTTIE_SUCCESS) {
 }
 ```
 
+Finally, the player can be destroyed as follows:
+
+```C
+ret = dotlottie_destroy(player);
+if (ret != DOTLOTTIE_SUCCESS) {
+    fprintf(stderr, "Could not destroy dotlottie player\n");
+    return 1;
+}
+```
+
 Every API call will return `DOTLOTTIE_SUCCESS` on success, and some other value on error. The set of
 possible error return values can be found in the `dotlottie_player.h` header file.

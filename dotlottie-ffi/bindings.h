@@ -262,6 +262,8 @@ int32_t dotlottie_config(struct DotLottiePlayer *ptr, struct DotLottieConfig *re
 
 int32_t dotlottie_current_frame(struct DotLottiePlayer *ptr, float *result);
 
+int32_t dotlottie_destroy(struct DotLottiePlayer *ptr);
+
 int32_t dotlottie_duration(struct DotLottiePlayer *ptr, float *result);
 
 int32_t dotlottie_init_config(struct DotLottieConfig *config);

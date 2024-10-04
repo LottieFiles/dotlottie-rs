@@ -108,6 +108,12 @@ files in `release/native`:
 make native
 ```
 
+On Windows, you should use the `Makefile.win` make file:
+
+```bash
+make -f Makefile.win native
+```
+
 Examples for using the native interface can be found in the `examples` directory, which also contains a
 [README](./examples/README.md) with information on getting started.
 

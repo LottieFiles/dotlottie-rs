@@ -5,12 +5,20 @@
 ### Running the examples
 
 In order to try out the `demo-player-c` and `skia-demo-player-cpp` examples, you must first ensure that
-`dotlottie-ffi` has been built, which can be done by executing `cargo build` in the `dotlottie-ffi`
-directory.
+`dotlottie-ffi` has been built, which can be done by executing `cargo build --release` in the `dotlottie-ffi`
+directory, or by running `make native` from the root of the repo.
 
 You can then build each of the demos by running `make` in their respective directories. You will
 need the `SDL2` libraries and headers available on your system to perform the build. On Windows, you should
 use a WSL2 environment, or build the sources manually.
+
+For the Skia demo, you should run `make skia-build` in the `skia-demo-player-cpp` directory first.
+
+On a Mac, the SDL2 dependencies can be installed through `brew`:
+
+```Bash
+brew install sdl2 sdl2_image
+```
 
 You can then run the examples using a command such as the following:
 

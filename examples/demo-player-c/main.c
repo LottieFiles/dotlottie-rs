@@ -1,6 +1,6 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_pixels.h>
+#include <SDL.h>
+#include <SDL_image.h>
+#include <SDL_pixels.h>
 #include <libgen.h> // For dirname
 #include <limits.h> // For PATH_MAX
 #include <stdio.h>

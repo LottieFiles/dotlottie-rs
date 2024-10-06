@@ -38,6 +38,14 @@ pub unsafe extern "C" fn dotlottie_new_player(ptr: *const DotLottieConfig) -> *m
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn dotlottie_destroy(ptr: *mut DotLottiePlayer) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        std::mem::drop(std::ptr::read(dotlottie_player));
+        DOTLOTTIE_SUCCESS
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn dotlottie_init_config(config: *mut DotLottieConfig) -> i32 {
     if config.is_null() {
         return DOTLOTTIE_INVALID_PARAMETER;

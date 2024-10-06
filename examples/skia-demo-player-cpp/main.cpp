@@ -1,6 +1,6 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_pixels.h>
+#include <SDL.h>
+#include <SDL_image.h>
+#include <SDL_pixels.h>
 #include <libgen.h> // For dirname
 #include <limits.h> // For PATH_MAX
 #include <memory>
@@ -161,14 +161,14 @@ int main(int argc, char **argv) {
       dotlottie_render(player);
       // Use skia to render an image
       SkImageInfo imageInfo =
-        SkImageInfo::Make(WIDTH, HEIGHT, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
+          SkImageInfo::Make(WIDTH, HEIGHT, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
       sk_sp<SkData> imageData = SkData::MakeWithoutCopy(buffer, WIDTH * HEIGHT * 4);
       sk_sp<SkImage> bitmapImage = SkImages::RasterFromData(imageInfo, imageData, WIDTH * 4);
       // Draw the image
       SkRect src = SkRect::MakeWH(bitmapImage->width(), bitmapImage->height());
       SkRect dst = SkRect::MakeWH(WIDTH, HEIGHT);
       canvas->drawImageRect(bitmapImage, src, dst, SkSamplingOptions(), nullptr,
-          SkCanvas::kStrict_SrcRectConstraint);
+                            SkCanvas::kStrict_SrcRectConstraint);
       // Render the image in the window
       SDL_UpdateTexture(texture, NULL, pixels, WIDTH * sizeof(Uint32));
       SDL_RenderCopy(renderer, texture, NULL, NULL);

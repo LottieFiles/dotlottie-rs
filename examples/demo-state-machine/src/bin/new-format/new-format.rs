@@ -67,7 +67,7 @@ fn main() {
     let mut timer = Timer::new();
 
     let state_machine: String =
-        fs::read_to_string("./src/bin/new-format/state_machines/sync_loader.json").unwrap();
+        fs::read_to_string("./src/bin/new-format/state_machines/self_looping_state.json").unwrap();
 
     let r = lottie_player.load_state_machine_data(&state_machine);
 

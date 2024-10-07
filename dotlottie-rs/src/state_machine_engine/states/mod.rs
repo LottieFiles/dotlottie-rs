@@ -199,10 +199,8 @@ impl StateTrait for State {
         match self {
             State::PlaybackState { entry_actions, .. } => {
                 /* Perform entry actions */
-                println!("🚧 Entry actions: {:?}", entry_actions);
                 if let Some(actions) = entry_actions {
                     for action in actions {
-                        println!("🚧 Executing action: {:?}", action);
                         let _ = action.execute(engine, player.clone());
                     }
                 }

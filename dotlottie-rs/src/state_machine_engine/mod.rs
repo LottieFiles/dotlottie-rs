@@ -128,7 +128,6 @@ impl StateMachineEngine {
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
         let mut state_machine = StateMachineEngine {
             global_state: None,
-            // states: HashMap::new(),
             state_machine: StateMachine::default(),
             listeners: Vec::new(),
             current_state: None,
@@ -417,23 +416,6 @@ impl StateMachineEngine {
         })
     }
 
-    // Set the current state to the target state
-    fn set_current_state_without_actions(
-        &mut self,
-        state_name: &str,
-    ) -> Result<(), StateMachineEngineError> {
-        let new_state = self.get_state(&state_name);
-
-        if new_state.is_some() {
-            self.current_state = new_state;
-            return Ok(());
-        }
-
-        Err(StateMachineEngineError::CreationError {
-            reason: format!("Failed to find state: {}", state_name),
-        })
-    }
-
     /* Returns the target state, otherwise None */
     /* Todo: Integrate transitions with no guards */
     /* Todo: Integrate if only one transitions with no guard */
@@ -555,7 +537,6 @@ impl StateMachineEngine {
 
             // Check if there is a global state
             // If there is, evaluate the transitions of the global state first
-            // If theres a target state, check for actions as this would need for us to re-evaluate the transitions
             if let Some(state_to_evaluate) = &self.global_state {
                 let target_state = self.evaluate_transitions(state_to_evaluate, event);
 
@@ -575,6 +556,7 @@ impl StateMachineEngine {
                 }
             }
 
+            // Now we evaluate the transitions of the current state
             if let Some(current_state_to_evaluate) = &self.current_state {
                 let target_state = self.evaluate_transitions(
                     current_state_to_evaluate,

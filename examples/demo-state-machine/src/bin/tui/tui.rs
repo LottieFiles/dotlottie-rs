@@ -380,6 +380,41 @@ impl Logger {
     }
 }
 
+fn load_animation_and_state_machine(
+    player: &DotLottiePlayer,
+    animation_name: &str,
+    state_machine_name: &str,
+) -> (bool, bool) {
+    let mut markers = File::open(format!(
+        "./src/bin/tui/animations/{}.lottie",
+        animation_name
+    ))
+    .expect("no file found");
+    let metadatamarkers = fs::metadata(format!(
+        "./src/bin/tui/animations/{}.lottie",
+        animation_name
+    ))
+    .expect("unable to read metadata");
+    let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
+    markers.read(&mut markers_buffer).expect("buffer overflow");
+
+    player.load_dotlottie_data(&markers_buffer, WIDTH as u32, HEIGHT as u32);
+    player.pause();
+    player.render();
+
+    let message: String = fs::read_to_string(format!(
+        "./src/bin/tui/statemachines/{}.json",
+        state_machine_name
+    ))
+    .unwrap();
+
+    let r = player.load_state_machine_data(&message);
+
+    let s = player.start_state_machine();
+
+    (r, s)
+}
+
 fn main() -> Result<(), io::Error> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -403,10 +438,16 @@ fn main() -> Result<(), io::Error> {
         ..Config::default()
     });
 
-    let mut markers =
-        File::open(format!("./src/bin/tui/{}.lottie", LOADED_ANIMATION)).expect("no file found");
-    let metadatamarkers = fs::metadata(format!("./src/bin/tui/{}.lottie", LOADED_ANIMATION))
-        .expect("unable to read metadata");
+    let mut markers = File::open(format!(
+        "./src/bin/tui/animations/{}.lottie",
+        LOADED_ANIMATION
+    ))
+    .expect("no file found");
+    let metadatamarkers = fs::metadata(format!(
+        "./src/bin/tui/animations/{}.lottie",
+        LOADED_ANIMATION
+    ))
+    .expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
@@ -414,8 +455,11 @@ fn main() -> Result<(), io::Error> {
 
     let mut timer = Timer::new();
 
-    let message: String =
-        fs::read_to_string(format!("./src/bin/tui/{}.json", LOADED_STATE_MACHINE)).unwrap();
+    let message: String = fs::read_to_string(format!(
+        "./src/bin/tui/statemachines/{}.json",
+        LOADED_STATE_MACHINE
+    ))
+    .unwrap();
 
     let r = lottie_player.load_state_machine_data(&message);
 
@@ -464,17 +508,10 @@ fn main() -> Result<(), io::Error> {
     Ok(())
 }
 
-fn run_app<B: ratatui::backend::Backend>(
-    terminal: &mut Terminal<B>,
-    window: &mut Window,
-    buffer: &mut Vec<u32>,
-    mut logger: Logger,
-    log_sender: Sender<LogMessage>,
-    timer: &mut Timer,
-    player: &DotLottiePlayer,
-) -> io::Result<()> {
+fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
     let sm = player.get_state_machine();
     let read_lock = sm.try_read();
+
     let mut triggers: Vec<Trigger> = Vec::new();
     let mut trigger_buttons: Vec<MenuItemType> = Vec::new();
 
@@ -525,7 +562,7 @@ fn run_app<B: ratatui::backend::Backend>(
 
                                 trigger_buttons.push(MenuItemType::Button {
                                     name: new_name.to_string(),
-                                    color: 0x000000,
+                                    color: 0x00ff00,
                                 });
                             }
                         }
@@ -541,12 +578,20 @@ fn run_app<B: ratatui::backend::Backend>(
 
     let mut menus = vec![
         Menu::new(
-            "🚧 [Unavailable]".to_string(),
+            "🚧 [Load preset]".to_string(),
             vec![
-                // MenuItemType::Button {
-                //     name: "Red".to_string(),
-                //     color: 0xFF0000,
-                // },
+                MenuItemType::Button {
+                    name: "[Exploding pigeon]".to_string(),
+                    color: 0xFF0000,
+                },
+                MenuItemType::Button {
+                    name: "[Sync Frame]".to_string(),
+                    color: 0xFF0000,
+                },
+                MenuItemType::Button {
+                    name: "[Star Rating]".to_string(),
+                    color: 0xFF0000,
+                },
                 // MenuItemType::Button {
                 //     name: "Green".to_string(),
                 //     color: 0x00FF00,
@@ -559,24 +604,37 @@ fn run_app<B: ratatui::backend::Backend>(
         ),
         Menu::new("Triggers".to_string(), trigger_buttons),
         Menu::new(
-            "🚧 [Unavailable] Actions".to_string(),
+            "🚧 [Unavailable] Listeners".to_string(),
             vec![
                 MenuItemType::Button {
-                    name: "Clear".to_string(),
+                    name: "PointerDown".to_string(),
                     color: 0x000000,
                 },
                 MenuItemType::Button {
-                    name: "Random".to_string(),
+                    name: "PointerUp".to_string(),
                     color: 0xFFFFFF,
                 },
                 MenuItemType::Button {
-                    name: "Quit".to_string(),
+                    name: "PointerMove".to_string(),
                     color: 0x000000,
                 },
             ],
         ),
     ];
 
+    menus
+}
+
+fn run_app<B: ratatui::backend::Backend>(
+    terminal: &mut Terminal<B>,
+    window: &mut Window,
+    buffer: &mut Vec<u32>,
+    mut logger: Logger,
+    log_sender: Sender<LogMessage>,
+    timer: &mut Timer,
+    player: &DotLottiePlayer,
+) -> io::Result<()> {
+    let mut menus = refresh_menus(player);
     let mut graph = Graph::new(&player);
 
     let mut current_menu = 0;
@@ -786,28 +844,88 @@ fn run_app<B: ratatui::backend::Backend>(
                             let i = menu.state.selected().unwrap_or(0);
                             match &mut menu.items[i] {
                                 MenuItemType::Button { name, color } => match name.as_str() {
-                                    "Quit" => {
+                                    "[Exploding pigeon]" => {
                                         log_sender
                                             .send(LogMessage {
-                                                content: "User selected Quit".to_string(),
+                                                content: "User selected [Exploding pigeon]"
+                                                    .to_string(),
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        return Ok(());
-                                    }
-                                    "Clear" => {
-                                        player.state_machine_fire_event("Step");
-                                    }
-                                    "Random" => {
+                                        player.stop_state_machine();
+                                        let (r, s) = load_animation_and_state_machine(
+                                            player, "pigeon", "events",
+                                        );
                                         log_sender
                                             .send(LogMessage {
-                                                content: "Set random color".to_string(),
+                                                content: format!(
+                                                    "Load state machine data returned: [{}] Start state machine returned: [{}]",
+                                                    r,s
+                                                ),
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        selected_color = rand::random::<u32>() | 0xFF000000;
+                                        // menus.clear();
+                                        menus = refresh_menus(player);
+                                    }
+                                    "[Sync Frame]" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [Sync Frame]".to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        player.stop_state_machine();
+                                        let (r, s) = load_animation_and_state_machine(
+                                            player,
+                                            "loader",
+                                            "sync_loader",
+                                        );
+                                        log_sender
+                                        .send(LogMessage {
+                                            content: format!(
+                                                "Load state machine data returned: [{}] Start state machine returned: [{}]",
+                                                r,s
+                                            ),
+                                            level: LogLevel::Info,
+                                        })
+                                        .unwrap();
+                                        menus = refresh_menus(player);
+                                    }
+                                    "[Star Rating]" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [Star Rating]".to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        player.stop_state_machine();
+                                        let (r, s) = load_animation_and_state_machine(
+                                            player,
+                                            "star_marked",
+                                            "rating",
+                                        );
+                                        log_sender
+                                        .send(LogMessage {
+                                            content: format!(
+                                                "Load state machine data returned: [{}] Start state machine returned: [{}]",
+                                                r,s
+                                            ),
+                                            level: LogLevel::Info,
+                                        })
+                                        .unwrap();
+                                        menus = refresh_menus(player);
+                                    }
+                                    "PointerDown" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [PointerDown]".to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
                                     }
                                     _ => {
+                                        // Fire event
                                         let new_name = name.replace("[Event] ", "");
 
                                         log_sender
@@ -928,32 +1046,4 @@ fn send_input_to_state_machine(menu: &mut Menu, key: event::KeyEvent, player: &D
         }
         _ => {}
     }
-}
-
-fn draw_triangle(buffer: &mut Vec<u32>, color: u32) {
-    buffer.fill(0);
-    let w = WIDTH as i32;
-    let h = HEIGHT as i32;
-    let vertices = [(w / 2, 50), (w / 4, h - 50), (3 * w / 4, h - 50)];
-    for y in 0..h {
-        for x in 0..w {
-            if point_in_triangle(x, y, vertices) {
-                buffer[(y * w + x) as usize] = color;
-            }
-        }
-    }
-}
-
-fn point_in_triangle(x: i32, y: i32, vertices: [(i32, i32); 3]) -> bool {
-    let [(x1, y1), (x2, y2), (x3, y3)] = vertices;
-    let d1 = sign(x, y, x1, y1, x2, y2);
-    let d2 = sign(x, y, x2, y2, x3, y3);
-    let d3 = sign(x, y, x3, y3, x1, y1);
-    let has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
-    let has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
-    !(has_neg && has_pos)
-}
-
-fn sign(x1: i32, y1: i32, x2: i32, y2: i32, x3: i32, y3: i32) -> i32 {
-    (x1 - x3) * (y2 - y3) - (x2 - x3) * (y1 - y3)
 }

@@ -1,8 +1,21 @@
 #include "dotlottie_player.hpp"
 #include <emscripten/bind.h>
+#include <emscripten/emscripten.h>
 
 using namespace emscripten;
 using namespace dotlottie_player;
+
+extern "C"
+{
+    /*
+        This is a workaround as instant crate expects a _ prefix for the emscripten_get_now function
+        https://github.com/sebcrozet/instant/issues/35
+    */
+    double _emscripten_get_now()
+    {
+        return emscripten_get_now();
+    }
+}
 
 val buffer(DotLottiePlayer &player)
 {

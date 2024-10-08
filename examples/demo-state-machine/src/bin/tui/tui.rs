@@ -576,7 +576,7 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
         }
     }
 
-    let mut menus = vec![
+    let menus = vec![
         Menu::new(
             "🚧 [Load preset]".to_string(),
             vec![
@@ -592,14 +592,14 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
                     name: "[Star Rating]".to_string(),
                     color: 0xFF0000,
                 },
-                // MenuItemType::Button {
-                //     name: "Green".to_string(),
-                //     color: 0x00FF00,
-                // },
-                // MenuItemType::Button {
-                //     name: "Blue".to_string(),
-                //     color: 0x0000FF,
-                // },
+                MenuItemType::Button {
+                    name: "[Entry Action Demo]".to_string(),
+                    color: 0xFF0000,
+                },
+                MenuItemType::Button {
+                    name: "[Boolean Toggling]".to_string(),
+                    color: 0xFF0000,
+                },
             ],
         ),
         Menu::new("Triggers".to_string(), trigger_buttons),
@@ -904,6 +904,56 @@ fn run_app<B: ratatui::backend::Backend>(
                                             player,
                                             "star_marked",
                                             "rating",
+                                        );
+                                        log_sender
+                                        .send(LogMessage {
+                                            content: format!(
+                                                "Load state machine data returned: [{}] Start state machine returned: [{}]",
+                                                r,s
+                                            ),
+                                            level: LogLevel::Info,
+                                        })
+                                        .unwrap();
+                                        menus = refresh_menus(player);
+                                    }
+                                    "[Entry Action Demo]" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [Entry Action Demo]"
+                                                    .to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        player.stop_state_machine();
+                                        let (r, s) = load_animation_and_state_machine(
+                                            player,
+                                            "star_marked",
+                                            "entry_action",
+                                        );
+                                        log_sender
+                                        .send(LogMessage {
+                                            content: format!(
+                                                "Load state machine data returned: [{}] Start state machine returned: [{}]",
+                                                r,s
+                                            ),
+                                            level: LogLevel::Info,
+                                        })
+                                        .unwrap();
+                                        menus = refresh_menus(player);
+                                    }
+                                    "[Boolean Toggling]" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [Entry Action Demo]"
+                                                    .to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        player.stop_state_machine();
+                                        let (r, s) = load_animation_and_state_machine(
+                                            player,
+                                            "star_marked",
+                                            "toggle",
                                         );
                                         log_sender
                                         .send(LogMessage {

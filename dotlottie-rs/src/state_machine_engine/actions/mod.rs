@@ -100,10 +100,14 @@ impl ActionTrait for Action {
                     if let Some(value) = value {
                         match value {
                             StringNumber::String(value) => {
-                                let value = value.trim_start_matches('$');
-                                let value = engine.get_numeric_trigger(value);
-                                if let Some(value) = value {
-                                    engine.set_numeric_trigger(trigger_name, val + value, false);
+                                let trimmed_value = value.trim_start_matches('$');
+                                let opt_trigger_value = engine.get_numeric_trigger(trimmed_value);
+                                if let Some(trigger_value) = opt_trigger_value {
+                                    engine.set_numeric_trigger(
+                                        trigger_name,
+                                        val + trigger_value,
+                                        false,
+                                    );
                                 } else {
                                     engine.set_numeric_trigger(trigger_name, val + 1.0, false);
                                 }
@@ -129,10 +133,14 @@ impl ActionTrait for Action {
                     if let Some(value) = value {
                         match value {
                             StringNumber::String(value) => {
-                                let value = value.trim_start_matches('$');
-                                let value = engine.get_numeric_trigger(value);
-                                if let Some(value) = value {
-                                    engine.set_numeric_trigger(trigger_name, val - value, false);
+                                let trimmed_value = value.trim_start_matches('$');
+                                let opt_trigger_value = engine.get_numeric_trigger(trimmed_value);
+                                if let Some(trigger_value) = opt_trigger_value {
+                                    engine.set_numeric_trigger(
+                                        trigger_name,
+                                        val - trigger_value,
+                                        false,
+                                    );
                                 } else {
                                     engine.set_numeric_trigger(trigger_name, val - 1.0, false);
                                 }
@@ -179,7 +187,7 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::Fire { trigger_name } => {
-                let _ = engine.fire(&trigger_name);
+                let _ = engine.fire(&trigger_name, false);
                 Ok(())
             }
             Action::Reset { trigger_name } => {

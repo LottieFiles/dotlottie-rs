@@ -1,0 +1,160 @@
+{
+    "descriptor": {
+        "id": "star-rating",
+        "initial": "global"
+    },
+    "states": [
+        {
+            "name": "global",
+            "type": "GlobalState",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "to_state": "e",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "NumericTrigger",
+                            "compare_to": 10.0
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "d",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "NumericTrigger",
+                            "compare_to": 20.0
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "f",
+                    "guards": [
+                        {
+                            "type": "String",
+                            "condition_type": "Equal",
+                            "trigger_name": "StringTrigger",
+                            "compare_to": "second"
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "a",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "condition_type": "Equal",
+                            "trigger_name": "OnOffSwitch",
+                            "compare_to": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "b",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "condition_type": "Equal",
+                            "trigger_name": "OnOffSwitch",
+                            "compare_to": false
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "c",
+                    "guards": [
+                        {
+                            "type": "Event",
+                            "trigger_name": "Step"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "a",
+            "type": "PlaybackState",
+            "transitions": []
+        },
+        {
+            "name": "b",
+            "type": "PlaybackState",
+            "transitions": []
+        },
+        {
+            "name": "c",
+            "type": "PlaybackState",
+            "transitions": [],
+            "entry_actions": [
+                {
+                    "type": "SetBoolean",
+                    "trigger_name": "OnOffSwitch",
+                    "value": true
+                }
+            ]
+        },
+        {
+            "name": "d",
+            "type": "PlaybackState",
+            "transitions": []
+        },
+        {
+            "name": "e",
+            "type": "PlaybackState",
+            "transitions": [],
+            "entry_actions": [
+                {
+                    "type": "SetNumeric",
+                    "trigger_name": "NumericTrigger",
+                    "value": 20
+                },
+                {
+                    "type": "SetString",
+                    "trigger_name": "StringTrigger",
+                    "value": "second"
+                }
+            ]
+        },
+        {
+            "name": "f",
+            "type": "PlaybackState",
+            "transitions": []
+        }
+    ],
+    "listeners": [],
+    "triggers": [
+        {
+            "type": "Boolean",
+            "name": "OnOffSwitch",
+            "value": false
+        },
+        {
+            "type": "Event",
+            "name": "Step"
+        },
+        {
+            "type": "Numeric",
+            "name": "NumericTrigger",
+            "value": 0
+        },
+        {
+            "type": "Numeric",
+            "name": "NumericTrigger",
+            "value": 0
+        },
+        {
+            "type": "String",
+            "name": "StringTrigger",
+            "value": "first"
+        }
+    ]
+}

@@ -1,0 +1,81 @@
+{
+    "descriptor": {
+        "id": "star-rating",
+        "initial": "global"
+    },
+    "states": [
+        {
+            "name": "global",
+            "type": "GlobalState",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "to_state": "a",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "condition_type": "Equal",
+                            "trigger_name": "OnOffSwitch",
+                            "compare_to": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "b",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "condition_type": "Equal",
+                            "trigger_name": "OnOffSwitch",
+                            "compare_to": false
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "c",
+                    "guards": [
+                        {
+                            "type": "Event",
+                            "trigger_name": "Step"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "a",
+            "type": "PlaybackState",
+            "transitions": []
+        },
+        {
+            "name": "b",
+            "type": "PlaybackState",
+            "transitions": []
+        },
+        {
+            "name": "c",
+            "type": "PlaybackState",
+            "transitions": [],
+            "entry_actions": [
+                {
+                    "type": "Toggle",
+                    "trigger_name": "OnOffSwitch"
+                }
+            ]
+        }
+    ],
+    "listeners": [],
+    "triggers": [
+        {
+            "type": "Boolean",
+            "name": "OnOffSwitch",
+            "value": false
+        },
+        {
+            "type": "Event",
+            "name": "Step"
+        }
+    ]
+}

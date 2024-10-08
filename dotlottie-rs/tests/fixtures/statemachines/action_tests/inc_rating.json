@@ -1,0 +1,229 @@
+{
+    "descriptor": {
+        "id": "star-rating",
+        "initial": "global"
+    },
+    "states": [
+        {
+            "name": "global",
+            "type": "GlobalState",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "to_state": "global",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 0
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_1",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 1
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_2",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 2
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_3",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 3
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_4",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 4
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_5",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 5
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_6",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 6
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_12",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 12
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_13",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 13
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_14",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 14
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_1",
+            "autoplay": true,
+            "segment": "star_1",
+            "transitions": [],
+            "entry_actions":[
+                {
+                    "type": "Increment",
+                    "trigger_name": "rating"
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_2",
+            "autoplay": true,
+            "segment": "star_2",
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_3",
+            "autoplay": true,
+            "segment": "star_3",
+            "transitions": [],
+            "entry_actions":[
+                {
+                    "type": "Increment",
+                    "trigger_name": "rating",
+                    "value": 2.0
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_4",
+            "autoplay": true,
+            "segment": "star_4",
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_5",
+            "autoplay": true,
+            "segment": "star_5",
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_6",
+            "autoplay": true,
+            "transitions": [],
+            "entry_actions":[
+                {
+                    "type": "Increment",
+                    "trigger_name": "rating",
+                    "value": "$rating"
+                }
+            ]    
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_12",
+            "autoplay": true,
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_13",
+            "autoplay": true,
+            "transitions": [],
+            "entry_actions":[
+                {
+                    "type": "Increment",
+                    "trigger_name": "rating",
+                    "value": "$bad_trigger_name"
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_14",
+            "autoplay": true,
+            "transitions": []
+        }
+    ],
+    "listeners": [
+    ],
+    "triggers": [
+        {
+            "type": "Numeric",
+            "name": "rating",
+            "value": 0.0
+        }
+    ]
+}

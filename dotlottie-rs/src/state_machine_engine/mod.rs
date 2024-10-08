@@ -79,13 +79,14 @@ pub struct StateMachineEngine {
     max_cycle_count: usize,
     current_cycle_count: usize,
     action_mutated_triggers: bool,
+
+    action_fired_event: Option<String>,
 }
 
 impl Default for StateMachineEngine {
     fn default() -> StateMachineEngine {
         StateMachineEngine {
             global_state: None,
-            // states: HashMap::new(),
             state_machine: StateMachine::default(),
             listeners: Vec::new(),
             current_state: None,
@@ -100,6 +101,7 @@ impl Default for StateMachineEngine {
             max_cycle_count: 20,
             current_cycle_count: 0,
             action_mutated_triggers: false,
+            action_fired_event: None,
         }
     }
 }
@@ -142,6 +144,7 @@ impl StateMachineEngine {
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
             action_mutated_triggers: false,
+            action_fired_event: None,
         };
 
         state_machine.create_state_machine(state_machine_definition, &player)
@@ -223,9 +226,13 @@ impl StateMachineEngine {
         ret
     }
 
-    pub fn fire(&mut self, event: &str) -> Result<(), StateMachineEngineError> {
+    pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), StateMachineEngineError> {
         if let Some(_event) = self.event_trigger.get(event) {
-            let _ = self.run_current_state_pipeline(Some(&event.to_string()));
+            if run_pipeline {
+                let _ = self.run_current_state_pipeline(Some(&event.to_string()));
+            } else {
+                self.action_fired_event = Some(event.to_string());
+            }
 
             return Ok(());
         }
@@ -516,7 +523,6 @@ impl StateMachineEngine {
             self.action_mutated_triggers = false;
 
             // Infinite loop detection
-            // Todo: Infinite loop on same state
             if let Some(_cycle) = self.detect_cycle() {
                 self.current_cycle_count += 1;
 
@@ -538,7 +544,16 @@ impl StateMachineEngine {
             // Check if there is a global state
             // If there is, evaluate the transitions of the global state first
             if let Some(state_to_evaluate) = &self.global_state {
-                let target_state = self.evaluate_transitions(state_to_evaluate, event);
+                let target_state = if self.action_fired_event.is_some() {
+                    self.evaluate_transitions(state_to_evaluate, self.action_fired_event.as_ref())
+                } else {
+                    self.evaluate_transitions(
+                        state_to_evaluate,
+                        if loop_count == 0 { event } else { None },
+                    )
+                };
+
+                self.action_fired_event = None;
 
                 if let Some(state) = target_state {
                     let success = self.set_current_state(&state);
@@ -558,10 +573,17 @@ impl StateMachineEngine {
 
             // Now we evaluate the transitions of the current state
             if let Some(current_state_to_evaluate) = &self.current_state {
-                let target_state = self.evaluate_transitions(
-                    current_state_to_evaluate,
-                    if loop_count > 0 { None } else { event },
-                );
+                let target_state = if self.action_fired_event.is_some() {
+                    self.evaluate_transitions(
+                        current_state_to_evaluate,
+                        self.action_fired_event.as_ref(),
+                    )
+                } else {
+                    self.evaluate_transitions(
+                        current_state_to_evaluate,
+                        if loop_count == 0 { event } else { None },
+                    )
+                };
 
                 if let Some(state) = target_state {
                     let success = self.set_current_state(&state);
@@ -577,10 +599,15 @@ impl StateMachineEngine {
                             break;
                         }
                     }
-
-                    loop_count += 1;
                 }
             }
+
+            // One of the states fired an event, we need to re-evaluate the pipeline
+            if self.action_fired_event.is_some() {
+                tick = true;
+            }
+
+            loop_count += 1;
         }
 
         Ok(())

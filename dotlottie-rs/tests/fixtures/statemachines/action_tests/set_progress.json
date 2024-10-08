@@ -1,0 +1,73 @@
+{
+    "descriptor": {
+        "id": "star-rating",
+        "initial": "global"
+    },
+    "states": [
+        {
+            "name": "global",
+            "type": "GlobalState",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "to_state": "a",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "condition_type": "Equal",
+                            "trigger_name": "OnOffSwitch",
+                            "compare_to": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "b",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "condition_type": "Equal",
+                            "trigger_name": "OnOffSwitch",
+                            "compare_to": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "a",
+            "type": "PlaybackState",
+            "transitions": [],
+            "entry_actions": [
+                {
+                    "type": "SetProgress",
+                    "value": 10
+                }
+            ]
+        },
+        {
+            "name": "b",
+            "type": "PlaybackState",
+            "transitions": [],
+            "entry_actions": [
+                {
+                    "type": "SetProgress",
+                    "value": "$frame_holder"
+                }
+            ]
+        }
+    ],
+    "listeners": [],
+    "triggers": [
+        {
+            "type": "Boolean",
+            "name": "OnOffSwitch",
+            "value": false
+        },
+        {
+            "type": "Numeric",
+            "name": "frame_holder",
+            "value": 75
+        }
+    ]
+}

@@ -7,6 +7,7 @@ use crate::{Config, DotLottiePlayerContainer, Layout, Mode};
 use super::{
     actions::{Action, ActionTrait, StateMachineActionError},
     transitions::Transition,
+    StateMachineEngine,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -26,11 +27,8 @@ pub trait StateTrait {
     ) -> i32;
     fn enter(
         &self,
-        player: &Option<Rc<RwLock<DotLottiePlayerContainer>>>,
-        string_trigger: &mut HashMap<String, String>,
-        bool_trigger: &mut HashMap<String, bool>,
-        numeric_trigger: &mut HashMap<String, f32>,
-        event_trigger: &HashMap<String, String>,
+        engine: &mut StateMachineEngine,
+        player: &Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<(), StateMachineActionError>;
     fn exit(
         &self,
@@ -42,6 +40,8 @@ pub trait StateTrait {
     ) -> i32;
     fn get_animation_id(&self) -> Option<String>;
     fn get_transitions(&self) -> &Vec<Transition>;
+    fn get_entry_actions(&self) -> Option<&Vec<Action>>;
+    fn get_exit_actions(&self) -> Option<&Vec<Action>>;
     // fn add_transition(&mut self, transition: &Transition);
     // fn get_config(&self) -> Option<&Config>;
     fn get_name(&self) -> String;
@@ -177,13 +177,6 @@ impl StateTrait for State {
         }
     }
 
-    // fn get_config(&self) -> Option<&Config> {
-    //     match self {
-    //         State::PlaybackState { config, .. } => Some(config),
-    //         State::GlobalState { .. } => None,
-    //     }
-    // }
-
     fn get_name(&self) -> String {
         match self {
             State::PlaybackState { name, .. } => name.to_string(),
@@ -200,39 +193,15 @@ impl StateTrait for State {
 
     fn enter(
         &self,
-        player: &Option<Rc<RwLock<DotLottiePlayerContainer>>>,
-        string_trigger: &mut HashMap<String, String>,
-        bool_trigger: &mut HashMap<String, bool>,
-        numeric_trigger: &mut HashMap<String, f32>,
-        event_trigger: &HashMap<String, String>,
+        engine: &mut StateMachineEngine,
+        player: &Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<(), StateMachineActionError> {
         match self {
-            State::PlaybackState {
-                entry_actions,
-                animation_id,
-                ..
-            } => {
+            State::PlaybackState { entry_actions, .. } => {
                 /* Perform entry actions */
                 if let Some(actions) = entry_actions {
                     for action in actions {
-                        let _ = action.execute(
-                            player,
-                            string_trigger,
-                            bool_trigger,
-                            numeric_trigger,
-                            event_trigger,
-                        );
-                    }
-                }
-
-                /* If theres an animation id, load it. */
-                if let Some(anim_id) = animation_id {
-                    if let Some(player) = player {
-                        if let Ok(player_read) = player.try_read() {
-                            let size = player_read.size();
-
-                            player_read.load_animation(anim_id, size.0, size.1);
-                        }
+                        let _ = action.execute(engine, player.clone());
                     }
                 }
             }
@@ -240,13 +209,7 @@ impl StateTrait for State {
             State::GlobalState { entry_actions, .. } => {
                 if let Some(actions) = entry_actions {
                     for action in actions {
-                        let _ = action.execute(
-                            player,
-                            string_trigger,
-                            bool_trigger,
-                            numeric_trigger,
-                            event_trigger,
-                        );
+                        let _ = action.execute(engine, player.clone());
                     }
                 }
             }
@@ -264,5 +227,19 @@ impl StateTrait for State {
         _event_trigger: &HashMap<String, String>,
     ) -> i32 {
         0
+    }
+
+    fn get_entry_actions(&self) -> Option<&Vec<Action>> {
+        match self {
+            State::PlaybackState { entry_actions, .. } => entry_actions.as_ref(),
+            State::GlobalState { entry_actions, .. } => entry_actions.as_ref(),
+        }
+    }
+
+    fn get_exit_actions(&self) -> Option<&Vec<Action>> {
+        match self {
+            State::PlaybackState { exit_actions, .. } => exit_actions.as_ref(),
+            State::GlobalState { exit_actions, .. } => exit_actions.as_ref(),
+        }
     }
 }

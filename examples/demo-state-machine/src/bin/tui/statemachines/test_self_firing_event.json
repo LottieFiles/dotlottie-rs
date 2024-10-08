@@ -1,0 +1,73 @@
+{
+    "descriptor": {
+        "id": "star-rating",
+        "initial": "star_1"
+    },
+    "states": [
+        {
+            "type": "PlaybackState",
+            "name": "star_1",
+            "autoplay": true,
+            "segment": "star_1",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "to_state": "star_2",
+                    "guards": [
+                        {
+                            "type": "Event",
+                            "trigger_name": "Step"
+                        }
+                    ]
+                }
+            ],
+            "entry_actions": [
+                {
+                    "type": "Fire",
+                    "trigger_name": "Step"
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_2",
+            "autoplay": true,
+            "segment": "star_2",
+            "transitions": [],
+            "entry_actions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_3",
+            "autoplay": true,
+            "segment": "star_3",
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_4",
+            "autoplay": true,
+            "segment": "star_4",
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_5",
+            "autoplay": true,
+            "segment": "star_5",
+            "transitions": []
+        }
+    ],
+    "listeners": [],
+    "triggers": [
+        {
+            "type": "Numeric",
+            "name": "rating",
+            "value": 0
+        },
+        {
+            "type": "Event",
+            "name": "Step"
+        }
+    ]
+}

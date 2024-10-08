@@ -553,6 +553,7 @@ impl StateMachineEngine {
                     )
                 };
 
+                // We've consumed the event, set it to None
                 self.action_fired_event = None;
 
                 if let Some(state) = target_state {
@@ -584,6 +585,13 @@ impl StateMachineEngine {
                         if loop_count == 0 { event } else { None },
                     )
                 };
+
+                // We've consumed the event, but the event might be valid for the global state
+                // If there is a global state, it will consume and clear it for us
+                // If there isn't, we need to clear it here
+                if self.global_state.is_none() {
+                    self.action_fired_event = None;
+                }
 
                 if let Some(state) = target_state {
                     let success = self.set_current_state(&state);

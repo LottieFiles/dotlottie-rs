@@ -9,6 +9,9 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
+pub const STATE_MACHINE_NAME: &str = "test_self_firing_event";
+pub const ANIMATION_NAME: &str = "star_marked";
+
 struct Timer {
     last_update: Instant,
     prev_frame: f32,
@@ -55,10 +58,16 @@ fn main() {
         ..Config::default()
     });
 
-    let mut markers =
-        File::open("./src/bin/new-format/animations/loader.lottie").expect("no file found");
-    let metadatamarkers = fs::metadata("./src/bin/new-format/animations/loader.lottie")
-        .expect("unable to read metadata");
+    let mut markers = File::open(format!(
+        "./src/bin/new-format/animations/{}.lottie",
+        ANIMATION_NAME
+    ))
+    .expect("no file found");
+    let metadatamarkers = fs::metadata(format!(
+        "./src/bin/new-format/animations/{}.lottie",
+        ANIMATION_NAME
+    ))
+    .expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
@@ -66,8 +75,11 @@ fn main() {
 
     let mut timer = Timer::new();
 
-    let state_machine: String =
-        fs::read_to_string("./src/bin/new-format/state_machines/self_looping_state.json").unwrap();
+    let state_machine: String = fs::read_to_string(format!(
+        "./src/bin/new-format/state_machines/{}.json",
+        STATE_MACHINE_NAME
+    ))
+    .unwrap();
 
     let r = lottie_player.load_state_machine_data(&state_machine);
 

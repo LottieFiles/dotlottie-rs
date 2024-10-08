@@ -55,9 +55,10 @@ fn main() {
         ..Config::default()
     });
 
-    let mut markers = File::open("./src/bin/new-format/star_marked.lottie").expect("no file found");
-    let metadatamarkers =
-        fs::metadata("./src/bin/new-format/star_marked.lottie").expect("unable to read metadata");
+    let mut markers =
+        File::open("./src/bin/new-format/animations/loader.lottie").expect("no file found");
+    let metadatamarkers = fs::metadata("./src/bin/new-format/animations/loader.lottie")
+        .expect("unable to read metadata");
     let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
@@ -65,9 +66,10 @@ fn main() {
 
     let mut timer = Timer::new();
 
-    let message: String = fs::read_to_string("./src/bin/new-format/rating.json").unwrap();
+    let state_machine: String =
+        fs::read_to_string("./src/bin/new-format/state_machines/self_looping_state.json").unwrap();
 
-    let r = lottie_player.load_state_machine_data(&message);
+    let r = lottie_player.load_state_machine_data(&state_machine);
 
     println!("Load state machine data -> {}", r);
 
@@ -96,13 +98,18 @@ fn main() {
         timer.tick(&*locked_player.read().unwrap());
 
         // Send event on key press
-        if window.is_key_pressed(Key::Space, minifb::KeyRepeat::No) {
+        if window.is_key_pressed(Key::Space, minifb::KeyRepeat::Yes) {
             // let p = &mut *locked_player.write().unwrap();
             // p.state_machine_fire_event("Step");
 
             let p = &mut *locked_player.write().unwrap();
             rating += 1.0;
-            p.state_machine_set_numeric_trigger("rating", rating);
+
+            if rating > 160.0 {
+                rating = 0.0;
+            }
+            p.state_machine_set_numeric_trigger("progress", rating);
+            // p.state_machine_fire_event("step");
         }
 
         let p = &mut *locked_player.write().unwrap();

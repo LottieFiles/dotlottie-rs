@@ -78,13 +78,15 @@ pub struct StateMachineEngine {
     state_history: Vec<String>,
     max_cycle_count: usize,
     current_cycle_count: usize,
+    action_mutated_triggers: bool,
+
+    action_fired_event: Option<String>,
 }
 
 impl Default for StateMachineEngine {
     fn default() -> StateMachineEngine {
         StateMachineEngine {
             global_state: None,
-            // states: HashMap::new(),
             state_machine: StateMachine::default(),
             listeners: Vec::new(),
             current_state: None,
@@ -98,6 +100,8 @@ impl Default for StateMachineEngine {
             state_history: Vec::new(),
             max_cycle_count: 20,
             current_cycle_count: 0,
+            action_mutated_triggers: false,
+            action_fired_event: None,
         }
     }
 }
@@ -126,7 +130,6 @@ impl StateMachineEngine {
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
         let mut state_machine = StateMachineEngine {
             global_state: None,
-            // states: HashMap::new(),
             state_machine: StateMachine::default(),
             listeners: Vec::new(),
             current_state: None,
@@ -140,6 +143,8 @@ impl StateMachineEngine {
             state_history: Vec::new(),
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
+            action_mutated_triggers: false,
+            action_fired_event: None,
         };
 
         state_machine.create_state_machine(state_machine_definition, &player)
@@ -169,35 +174,65 @@ impl StateMachineEngine {
         self.boolean_trigger.get(key).cloned()
     }
 
-    pub fn set_numeric_trigger(&mut self, key: &str, value: f32) -> Option<f32> {
+    pub fn set_numeric_trigger(
+        &mut self,
+        key: &str,
+        value: f32,
+        run_pipeline: bool,
+    ) -> Option<f32> {
         let ret = self.numeric_trigger.insert(key.to_string(), value);
 
-        let _ = self.run_current_state_pipeline(None);
+        self.action_mutated_triggers = true;
 
+        if run_pipeline {
+            let _ = self.run_current_state_pipeline(None);
+        }
         ret
     }
 
-    pub fn set_string_trigger(&mut self, key: &str, value: &str) -> Option<String> {
+    pub fn set_string_trigger(
+        &mut self,
+        key: &str,
+        value: &str,
+        run_pipeline: bool,
+    ) -> Option<String> {
         let ret = self
             .string_trigger
             .insert(key.to_string(), value.to_string());
 
-        let _ = self.run_current_state_pipeline(None);
+        self.action_mutated_triggers = true;
+
+        if run_pipeline {
+            let _ = self.run_current_state_pipeline(None);
+        }
 
         ret
     }
 
-    pub fn set_boolean_trigger(&mut self, key: &str, value: bool) -> Option<bool> {
+    pub fn set_boolean_trigger(
+        &mut self,
+        key: &str,
+        value: bool,
+        run_pipeline: bool,
+    ) -> Option<bool> {
         let ret = self.boolean_trigger.insert(key.to_string(), value);
 
-        let _ = self.run_current_state_pipeline(None);
+        self.action_mutated_triggers = true;
+
+        if run_pipeline {
+            let _ = self.run_current_state_pipeline(None);
+        }
 
         ret
     }
 
-    pub fn fire(&mut self, event: &str) -> Result<(), StateMachineEngineError> {
+    pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), StateMachineEngineError> {
         if let Some(_event) = self.event_trigger.get(event) {
-            let _ = self.run_current_state_pipeline(Some(&event.to_string()));
+            if run_pipeline {
+                let _ = self.run_current_state_pipeline(Some(&event.to_string()));
+            } else {
+                self.action_fired_event = Some(event.to_string());
+            }
 
             return Ok(());
         }
@@ -233,13 +268,13 @@ impl StateMachineEngine {
                     for trigger in triggers {
                         match trigger {
                             Trigger::Numeric { name, value } => {
-                                new_state_machine.set_numeric_trigger(&name, *value);
+                                new_state_machine.set_numeric_trigger(&name, *value, false);
                             }
                             Trigger::String { name, value } => {
-                                new_state_machine.set_string_trigger(&name, &value);
+                                new_state_machine.set_string_trigger(&name, &value, false);
                             }
                             Trigger::Boolean { name, value } => {
-                                new_state_machine.set_boolean_trigger(&name, *value);
+                                new_state_machine.set_boolean_trigger(&name, *value, false);
                             }
                             Trigger::Event { name } => {
                                 new_state_machine
@@ -294,6 +329,9 @@ impl StateMachineEngine {
     }
 
     pub fn start(&mut self) {
+        if self.status == StateMachineEngineStatus::Running {
+            return;
+        }
         self.status = StateMachineEngineStatus::Running;
         let _ = self.run_current_state_pipeline(None);
     }
@@ -357,25 +395,26 @@ impl StateMachineEngine {
 
             // Perform entry actions
             // Execute its type of state
-            if let Some(state) = &self.current_state {
-                let _ = state.enter(
-                    &self.player,
+            let state = self.current_state.take();
+            let player = self.player.take();
+
+            // Now use the extracted information
+            if let (Some(state), Some(player)) = (state, player) {
+                let _ = state.enter(self, &player);
+
+                state.execute(
+                    &player,
                     &mut self.string_trigger,
                     &mut self.boolean_trigger,
                     &mut self.numeric_trigger,
-                    &self.event_trigger,
+                    &mut self.event_trigger,
                 );
 
-                if let Some(player) = &self.player {
-                    state.execute(
-                        player,
-                        &mut self.string_trigger,
-                        &mut self.boolean_trigger,
-                        &mut self.numeric_trigger,
-                        &mut self.event_trigger,
-                    );
-                }
+                // Don't forget to put things back
+                self.current_state = Some(state);
+                self.player = Some(player);
             }
+
             return Ok(());
         }
 
@@ -389,10 +428,10 @@ impl StateMachineEngine {
     /* Todo: Integrate if only one transitions with no guard */
     fn evaluate_transitions(
         &self,
-        state_to_evalaute: &Rc<State>,
+        state_to_evaluate: &Rc<State>,
         event: Option<&String>,
     ) -> Option<String> {
-        let transitions = state_to_evalaute.get_transitions();
+        let transitions = state_to_evaluate.get_transitions();
 
         for transition in transitions {
             /* If in the transitions we need an event, and there wasn't one fired, don't run the checks */
@@ -474,24 +513,21 @@ impl StateMachineEngine {
             return Err(StateMachineEngineError::NotRunningError);
         }
 
-        // Check for global state before drilling down on states
-        if let Some(state_to_evaluate) = &self.global_state {
-            let target_state = self.evaluate_transitions(state_to_evaluate, event);
-
-            if let Some(state) = target_state {
-                let _ = self.set_current_state(&state);
-            }
-        }
-
         // Start drilling down on the current state and it's transitions
         // As long as there are transitions evaluating to true, we continue the loop
-        loop {
+        let mut tick = true;
+
+        while tick {
+            // Safety fallback to prevent infinite loops
+            tick = false;
+            self.action_mutated_triggers = false;
+
             // Infinite loop detection
             if let Some(_cycle) = self.detect_cycle() {
                 self.current_cycle_count += 1;
 
                 if self.current_cycle_count >= self.max_cycle_count {
-                    println!("🚨 Cycle detected, exiting");
+                    println!("🚨 Infinite loop detected, ending state machine.");
                     self.end();
                     return Err(StateMachineEngineError::InfiniteLoopError);
                 }
@@ -505,27 +541,73 @@ impl StateMachineEngine {
                 self.state_history.push(state.get_name().to_string());
             }
 
-            // Evaluate the transitions
-            // If theres a global state, evaluate the transitions of the global state
-            // If the global state transitions fail, check the current state transitions
-            // If both return None, do nothing
+            // Check if there is a global state
+            // If there is, evaluate the transitions of the global state first
+            if let Some(state_to_evaluate) = &self.global_state {
+                let target_state = if self.action_fired_event.is_some() {
+                    self.evaluate_transitions(state_to_evaluate, self.action_fired_event.as_ref())
+                } else {
+                    self.evaluate_transitions(
+                        state_to_evaluate,
+                        if loop_count == 0 { event } else { None },
+                    )
+                };
 
-            if let Some(current_state_to_evaluate) = &self.current_state {
-                let target_state = self.evaluate_transitions(
-                    current_state_to_evaluate,
-                    if loop_count > 0 { None } else { event },
-                );
+                self.action_fired_event = None;
 
                 if let Some(state) = target_state {
-                    let _ = self.set_current_state(&state);
-
-                    loop_count += 1;
-                    // Continue the loop to process the new state-
-                } else {
-                    // No transitions were found, exit the loop
-                    break;
+                    let success = self.set_current_state(&state);
+                    match success {
+                        Ok(_) => {
+                            if self.action_mutated_triggers {
+                                tick = true;
+                            }
+                        }
+                        Err(_) => {
+                            println!("🚨 Error setting current state");
+                            break;
+                        }
+                    }
                 }
             }
+
+            // Now we evaluate the transitions of the current state
+            if let Some(current_state_to_evaluate) = &self.current_state {
+                let target_state = if self.action_fired_event.is_some() {
+                    self.evaluate_transitions(
+                        current_state_to_evaluate,
+                        self.action_fired_event.as_ref(),
+                    )
+                } else {
+                    self.evaluate_transitions(
+                        current_state_to_evaluate,
+                        if loop_count == 0 { event } else { None },
+                    )
+                };
+
+                if let Some(state) = target_state {
+                    let success = self.set_current_state(&state);
+
+                    match success {
+                        Ok(_) => {
+                            if self.action_mutated_triggers {
+                                tick = true;
+                            }
+                        }
+                        Err(_) => {
+                            println!("🚨 Error setting current state");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // One of the states fired an event, we need to re-evaluate the pipeline
+            if self.action_fired_event.is_some() {
+                tick = true;
+            }
+
+            loop_count += 1;
         }
 
         Ok(())

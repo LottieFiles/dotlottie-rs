@@ -1,0 +1,55 @@
+{
+    "descriptor": {
+        "id": "star-rating",
+        "initial": "first"
+    },
+    "states": [
+        {
+            "type": "PlaybackState",
+            "name": "first",
+            "autoplay": true,
+            "transitions": [],
+            "entry_actions":[]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_2",
+            "autoplay": true,
+            "segment": "star_2",
+            "transitions": [],
+            "entry_actions":[
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_3",
+            "autoplay": true,
+            "segment": "star_3",
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_4",
+            "autoplay": true,
+            "segment": "star_4",
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_5",
+            "autoplay": true,
+            "segment": "star_5",
+            "transitions": []
+        }
+
+    ],
+    "listeners": [
+    ],
+    "triggers": [
+        {
+            "type": "Numeric",
+            "name": "rating",
+            "value": 0
+        }
+    ]
+}

@@ -1466,7 +1466,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    let ret = sm.set_numeric_trigger(key, value);
+                    let ret = sm.set_numeric_trigger(key, value, true);
 
                     if ret.is_some() {
                         return 0;
@@ -1482,7 +1482,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    let ret = sm.set_string_trigger(key, value);
+                    let ret = sm.set_string_trigger(key, value, true);
 
                     if ret.is_some() {
                         return 0;
@@ -1498,7 +1498,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    let ret = sm.set_boolean_trigger(key, value);
+                    let ret = sm.set_boolean_trigger(key, value, true);
 
                     if ret.is_some() {
                         return 0;
@@ -1514,7 +1514,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    sm.fire(event);
+                    let _ = sm.fire(event, true);
 
                     return;
                 }
@@ -1710,6 +1710,8 @@ impl DotLottiePlayer {
             match player {
                 Ok(mut player) => {
                     player.state_machine = self.state_machine.clone();
+
+                    return true;
                 }
                 Err(_) => {
                     return false;
@@ -1717,7 +1719,7 @@ impl DotLottiePlayer {
             }
         }
 
-        true
+        false
     }
 
     pub fn load_state_machine(&self, state_machine_id: &str) -> bool {

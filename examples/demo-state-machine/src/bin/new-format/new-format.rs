@@ -9,8 +9,8 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const STATE_MACHINE_NAME: &str = "pigeon_fsm";
-pub const ANIMATION_NAME: &str = "pigeon";
+pub const STATE_MACHINE_NAME: &str = "rating";
+pub const ANIMATION_NAME: &str = "star_marked";
 
 struct Timer {
     last_update: Instant,

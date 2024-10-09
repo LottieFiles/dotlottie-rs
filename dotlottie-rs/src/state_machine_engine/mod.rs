@@ -12,6 +12,8 @@ pub mod states;
 pub mod transitions;
 pub mod triggers;
 
+use actions::{Action, ActionTrait};
+use listeners::ListenerTrait;
 use state_machine::StateMachine;
 use states::StateTrait;
 use transitions::guard::GuardTrait;
@@ -19,7 +21,7 @@ use transitions::TransitionTrait;
 use triggers::Trigger;
 
 use crate::state_machine_engine::listeners::Listener;
-use crate::DotLottiePlayerContainer;
+use crate::{DotLottiePlayerContainer, EventName};
 
 use self::state_machine::state_machine_parse;
 use self::{events::Event, states::State};
@@ -56,7 +58,7 @@ pub enum StateMachineEngineError {
 }
 
 pub struct StateMachineEngine {
-    pub listeners: Vec<Listener>,
+    // pub listeners: Vec<Listener>,
 
     /* We keep references to the StateMachine's States. */
     /* This prevents duplicating the data inside the engine. */
@@ -88,7 +90,7 @@ impl Default for StateMachineEngine {
         StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
-            listeners: Vec::new(),
+            // listeners: Vec::new(),
             current_state: None,
             player: None,
             numeric_trigger: HashMap::new(),
@@ -111,7 +113,7 @@ impl Display for StateMachineEngine {
         f.debug_struct("StateMachine")
             .field("global_state", &self.global_state)
             // .field("states", &self.states)
-            .field("listeners", &self.listeners)
+            .field("listeners", &self.state_machine.listeners)
             .field("current_state", &self.current_state)
             .field("numeric_trigger", &self.numeric_trigger)
             .field("string_trigger", &self.string_trigger)
@@ -131,7 +133,7 @@ impl StateMachineEngine {
         let mut state_machine = StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
-            listeners: Vec::new(),
+            // listeners: Vec::new(),
             current_state: None,
             player: Some(player.clone()),
             numeric_trigger: HashMap::new(),
@@ -333,6 +335,7 @@ impl StateMachineEngine {
             return;
         }
         self.status = StateMachineEngineStatus::Running;
+
         let _ = self.run_current_state_pipeline(None);
     }
 
@@ -348,8 +351,26 @@ impl StateMachineEngine {
         self.current_state.clone()
     }
 
-    pub fn get_listeners(&self) -> &Vec<Listener> {
-        &self.listeners
+    pub fn listeners(&self, filter: Option<String>) -> Vec<&Listener> {
+        let mut listeners_clone = Vec::new();
+        let filter = filter.unwrap_or("".to_string());
+
+        if let Some(listeners) = &self.state_machine.listeners {
+            for listener in listeners {
+                if !filter.is_empty() {
+                    // If the filter type and the listener type don't match, skip
+                    if filter == listener.type_name() {
+                        // Clones the references
+                        listeners_clone.push(listener);
+                    }
+                } else {
+                    // No filter used, clone the reference
+                    listeners_clone.push(listener);
+                }
+            }
+        }
+
+        listeners_clone
     }
 
     fn get_state(&self, state_name: &str) -> Option<Rc<State>> {
@@ -413,6 +434,8 @@ impl StateMachineEngine {
                 // Don't forget to put things back
                 self.current_state = Some(state);
                 self.player = Some(player);
+            } else {
+                println!("FAILED WHILST EXECUTING STATE");
             }
 
             return Ok(());
@@ -646,6 +669,113 @@ impl StateMachineEngine {
         None
     }
 
+    fn get_correct_pointer_actions_from_listener(
+        &self,
+        layer_name: Option<String>,
+        actions: &Vec<Action>,
+        x: f32,
+        y: f32,
+    ) -> Vec<Action> {
+        let mut actions_to_execute = Vec::new();
+
+        if let Some(layer) = layer_name {
+            // Check if the layer was hit, otherwise we ignore this listener
+
+            if let Some(rc_player) = &self.player {
+                let try_read_lock = rc_player.try_read();
+
+                match try_read_lock {
+                    Ok(player_container) => {
+                        // Hit check will return true if the layer was hit
+                        if player_container.hit_check(&layer, x, y) {
+                            println!("🎯 Layer hit: {}", layer);
+                            for action in actions {
+                                actions_to_execute.push(action.clone());
+                            }
+                        }
+                    }
+                    Err(_) => {}
+                }
+            }
+        } else {
+            for action in actions {
+                actions_to_execute.push(action.clone());
+            }
+        }
+
+        actions_to_execute
+    }
+
+    fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32) {
+        let listeners = self.listeners(Some(event.type_name()));
+
+        if listeners.is_empty() {
+            return;
+        }
+
+        let mut actions_to_execute = Vec::new();
+
+        for listener in listeners {
+            let action_vec = self.get_correct_pointer_actions_from_listener(
+                listener.get_layer_name(),
+                listener.get_actions(),
+                x,
+                y,
+            );
+
+            // Action vec was moved in to action_to_execute, it can't be used again
+            actions_to_execute.extend(action_vec);
+        }
+
+        for action in actions_to_execute {
+            // Run the pipeline because listeners are outside of the evaluation pipeline loop
+            if let Some(player_ref) = &self.player {
+                let _ = action.execute(self, player_ref.clone(), true);
+            }
+        }
+    }
+
+    fn manage_on_complete_event(&mut self, event: &Event) {
+        let listeners = self.listeners(Some(event.type_name()));
+
+        if listeners.is_empty() {
+            return;
+        }
+
+        let mut actions_to_execute = Vec::new();
+
+        for listener in listeners {
+            if let Listener::OnComplete {
+                state_name,
+                actions,
+            } = listener
+            {
+                if let Some(current_state) = &self.current_state {
+                    if let Some(state_name) = state_name {
+                        if current_state.get_name() == *state_name {
+                            for action in actions {
+                                // Clones the reference to action
+                                actions_to_execute.push(action.clone());
+                            }
+                        }
+                    } else {
+                        for action in actions {
+                            // Clones the reference to action
+                            actions_to_execute.push(action.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        for action in actions_to_execute {
+            // Run the pipeline because listeners are outside of the evaluation pipeline loop
+            if let Some(player_ref) = &self.player {
+                let _ = action.execute(self, player_ref.clone(), true);
+            }
+        }
+    }
+
     // Return codes
     // 0: Success
     // 1: Failure
@@ -653,6 +783,27 @@ impl StateMachineEngine {
     // 3: Pause animation
     // 4: Request and draw a new single frame of the animation (needed for sync state)
     pub fn post_event(&mut self, event: &Event) -> i32 {
+        match event {
+            Event::PointerDown { x, y } => {
+                self.manage_pointer_event(event, *x, *y);
+            }
+            Event::PointerUp { x, y } => {
+                self.manage_pointer_event(event, *x, *y);
+            }
+            Event::PointerMove { x, y } => {
+                self.manage_pointer_event(event, *x, *y);
+            }
+            Event::PointerEnter { x, y } => {
+                self.manage_pointer_event(event, *x, *y);
+            }
+            Event::PointerExit { x, y } => {
+                self.manage_pointer_event(event, *x, *y);
+            }
+            Event::OnComplete => {
+                self.manage_on_complete_event(event);
+            }
+        }
+
         0
     }
 

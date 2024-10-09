@@ -4,9 +4,10 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use dotlottie_rs::{
-    states::StateTrait, transitions::TransitionTrait, triggers::Trigger, Config, DotLottiePlayer,
+    listeners::Listener, states::StateTrait, transitions::TransitionTrait, triggers::Trigger,
+    Config, DotLottiePlayer,
 };
-use minifb::{Key, Window, WindowOptions};
+use minifb::{Key, MouseButton, Window, WindowOptions};
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
@@ -25,7 +26,7 @@ use std::{
 
 const WIDTH: usize = 400;
 const HEIGHT: usize = 300;
-const LOADED_STATE_MACHINE: &str = "events";
+const LOADED_STATE_MACHINE: &str = "pigeon_with_listeners";
 const LOADED_ANIMATION: &str = "pigeon";
 
 struct Timer {
@@ -515,6 +516,8 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
     let mut triggers: Vec<Trigger> = Vec::new();
     let mut trigger_buttons: Vec<MenuItemType> = Vec::new();
 
+    let mut listener_buttons: Vec<MenuItemType> = Vec::new();
+
     match read_lock {
         Ok(locked_machine) => {
             let optional_machine = &*locked_machine;
@@ -522,6 +525,7 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
             if let Some(machine_engine) = optional_machine {
                 let machine = machine_engine.get_state_machine();
 
+                // Load the triggers in to the trigger menu vec
                 let triggers_opt = machine.triggers();
                 if let Some(triggers_opt) = triggers_opt {
                     triggers = triggers_opt.to_vec();
@@ -568,6 +572,87 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
                         }
                     }
                 }
+
+                // Load the listeners in to listener menu vec
+                let listeners_opt = machine.listeners();
+                if let Some(listeners) = listeners_opt {
+                    for listener in listeners {
+                        match listener {
+                            Listener::PointerUp {
+                                layer_name,
+                                actions,
+                            } => {
+                                let mut new_name = "PointerUp".to_string();
+                                new_name = format!("[Listener] {}", new_name);
+
+                                listener_buttons.push(MenuItemType::Button {
+                                    name: new_name.to_string(),
+                                    color: 0x00ff00,
+                                });
+                            }
+                            Listener::PointerDown {
+                                layer_name,
+                                actions,
+                            } => {
+                                let mut new_name = "PointerDown".to_string();
+                                new_name = format!("[Listener] {}", new_name);
+
+                                listener_buttons.push(MenuItemType::Button {
+                                    name: new_name.to_string(),
+                                    color: 0x00ff00,
+                                });
+                            }
+                            Listener::PointerEnter {
+                                layer_name,
+                                actions,
+                            } => {
+                                let mut new_name = "PointerEnter".to_string();
+                                new_name = format!("[Listener] {}", new_name);
+
+                                listener_buttons.push(MenuItemType::Button {
+                                    name: new_name.to_string(),
+                                    color: 0x00ff00,
+                                });
+                            }
+                            Listener::PointerMove {
+                                layer_name,
+                                actions,
+                            } => {
+                                let mut new_name = "PointerMove".to_string();
+                                new_name = format!("[Listener] {}", new_name);
+
+                                listener_buttons.push(MenuItemType::Button {
+                                    name: new_name.to_string(),
+                                    color: 0x00ff00,
+                                });
+                            }
+                            Listener::PointerExit {
+                                layer_name,
+                                actions,
+                            } => {
+                                let mut new_name = "PointerExit".to_string();
+                                new_name = format!("[Listener] {}", new_name);
+
+                                listener_buttons.push(MenuItemType::Button {
+                                    name: new_name.to_string(),
+                                    color: 0x00ff00,
+                                });
+                            }
+                            Listener::OnComplete {
+                                state_name,
+                                actions,
+                            } => {
+                                let mut new_name = "OnComplete".to_string();
+                                new_name = format!("[Listener] {}", new_name);
+
+                                listener_buttons.push(MenuItemType::Button {
+                                    name: new_name.to_string(),
+                                    color: 0x00ff00,
+                                });
+                            }
+                        }
+                    }
+                }
             }
         }
         Err(err) => {
@@ -582,6 +667,10 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
             vec![
                 MenuItemType::Button {
                     name: "[Exploding pigeon]".to_string(),
+                    color: 0xFF0000,
+                },
+                MenuItemType::Button {
+                    name: "[Exploding pigeon with Listeners]".to_string(),
                     color: 0xFF0000,
                 },
                 MenuItemType::Button {
@@ -603,23 +692,7 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
             ],
         ),
         Menu::new("Triggers".to_string(), trigger_buttons),
-        Menu::new(
-            "🚧 [Unavailable] Listeners".to_string(),
-            vec![
-                MenuItemType::Button {
-                    name: "PointerDown".to_string(),
-                    color: 0x000000,
-                },
-                MenuItemType::Button {
-                    name: "PointerUp".to_string(),
-                    color: 0xFFFFFF,
-                },
-                MenuItemType::Button {
-                    name: "PointerMove".to_string(),
-                    color: 0x000000,
-                },
-            ],
-        ),
+        Menu::new("Listeners".to_string(), listener_buttons),
     ];
 
     menus
@@ -854,7 +927,35 @@ fn run_app<B: ratatui::backend::Backend>(
                                             .unwrap();
                                         player.stop_state_machine();
                                         let (r, s) = load_animation_and_state_machine(
-                                            player, "pigeon", "events",
+                                            player,
+                                            "pigeon",
+                                            "pigeon_with_events",
+                                        );
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: format!(
+                                                    "Load state machine data returned: [{}] Start state machine returned: [{}]",
+                                                    r,s
+                                                ),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        // menus.clear();
+                                        menus = refresh_menus(player);
+                                    }
+                                    "[Exploding pigeon with Listeners]" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [Exploding pigeon with Listeners]"
+                                                    .to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        player.stop_state_machine();
+                                        let (r, s) = load_animation_and_state_machine(
+                                            player,
+                                            "pigeon",
+                                            "pigeon_with_listeners",
                                         );
                                         log_sender
                                             .send(LogMessage {
@@ -966,13 +1067,74 @@ fn run_app<B: ratatui::backend::Backend>(
                                         .unwrap();
                                         menus = refresh_menus(player);
                                     }
-                                    "PointerDown" => {
+                                    "[Listener] PointerDown" => {
                                         log_sender
                                             .send(LogMessage {
                                                 content: "User selected [PointerDown]".to_string(),
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
+                                        player.post_event(&dotlottie_rs::Event::PointerDown {
+                                            x: 0.0,
+                                            y: 0.0,
+                                        });
+                                    }
+                                    "[Listener] PointerUp" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [PointerUp]".to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        player.post_event(&dotlottie_rs::Event::PointerUp {
+                                            x: 0.0,
+                                            y: 0.0,
+                                        });
+                                    }
+                                    "[Listener] PointerEnter" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [PointerEnter]".to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        player.post_event(&dotlottie_rs::Event::PointerEnter {
+                                            x: 0.0,
+                                            y: 0.0,
+                                        });
+                                    }
+                                    "[Listener] PointerExit" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [PointerExit]".to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        player.post_event(&dotlottie_rs::Event::PointerExit {
+                                            x: 0.0,
+                                            y: 0.0,
+                                        });
+                                    }
+                                    "[Listener] PointerMove" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [PointerMove]".to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        player.post_event(&dotlottie_rs::Event::PointerMove {
+                                            x: 0.0,
+                                            y: 0.0,
+                                        });
+                                    }
+                                    "[Listener] OnComplete" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [OnComplete]".to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        player.post_event(&dotlottie_rs::Event::OnComplete);
                                     }
                                     _ => {
                                         // Fire event
@@ -1028,6 +1190,16 @@ fn run_app<B: ratatui::backend::Backend>(
 
         if !window.is_open() || window.is_key_down(Key::Escape) {
             return Ok(());
+        }
+
+        if window.is_open() {
+            let left_down = window.get_mouse_down(MouseButton::Left);
+            if left_down {
+                // Get the coordinates
+                let (x, y) = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap();
+
+                player.post_event(&dotlottie_rs::Event::PointerDown { x, y });
+            }
         }
     }
 }

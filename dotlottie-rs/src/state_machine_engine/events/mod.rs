@@ -17,60 +17,6 @@ pub enum Event {
     OnComplete,
 }
 
-// #[derive(Debug, Clone)]
-// pub enum InternalEvent {
-//     OnPointerDown { target: Option<String> },
-//     OnPointerUp { target: Option<String> },
-//     OnPointerMove { target: Option<String> },
-//     OnPointerEnter { target: Option<String> },
-//     OnPointerExit { target: Option<String> },
-//     OnComplete,
-// }
-
-// Display for InternalEvent
-// impl std::fmt::Display for InternalEvent {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         match self {
-//             InternalEvent::OnPointerDown { target } => {
-//                 if let Some(target) = target {
-//                     write!(f, "{}", target)
-//                 } else {
-//                     write!(f, "OnPointerDownEvent")
-//                 }
-//             }
-//             InternalEvent::OnPointerUp { target } => {
-//                 if let Some(target) = target {
-//                     write!(f, "{}", target)
-//                 } else {
-//                     write!(f, "OnPointerUpEvent")
-//                 }
-//             }
-//             InternalEvent::OnPointerMove { target } => {
-//                 if let Some(target) = target {
-//                     write!(f, "{}", target)
-//                 } else {
-//                     write!(f, "OnPointerMoveEvent")
-//                 }
-//             }
-//             InternalEvent::OnPointerEnter { target } => {
-//                 if let Some(target) = target {
-//                     write!(f, "{}", target)
-//                 } else {
-//                     write!(f, "OnPointerEnterEvent")
-//                 }
-//             }
-//             InternalEvent::OnPointerExit { target } => {
-//                 if let Some(target) = target {
-//                     write!(f, "{}", target)
-//                 } else {
-//                     write!(f, "OnPointerExitEvent")
-//                 }
-//             }
-//             InternalEvent::OnComplete => write!(f, "OnCompleteEvent"),
-//         }
-//     }
-// }
-
 impl PointerEvent for Event {
     fn x(&self) -> f32 {
         match self {

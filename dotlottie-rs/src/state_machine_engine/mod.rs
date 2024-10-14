@@ -55,6 +55,9 @@ pub enum StateMachineEngineError {
 
     #[error("State machine engine is not running.")]
     NotRunningError,
+
+    #[error("Failed to change the current state.")]
+    SetStateError,
 }
 
 pub struct StateMachineEngine {
@@ -90,7 +93,6 @@ impl Default for StateMachineEngine {
         StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
-            // listeners: Vec::new(),
             current_state: None,
             player: None,
             numeric_trigger: HashMap::new(),
@@ -133,7 +135,6 @@ impl StateMachineEngine {
         let mut state_machine = StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
-            // listeners: Vec::new(),
             current_state: None,
             player: Some(player.clone()),
             numeric_trigger: HashMap::new(),
@@ -435,7 +436,7 @@ impl StateMachineEngine {
                 self.current_state = Some(state);
                 self.player = Some(player);
             } else {
-                println!("FAILED WHILST EXECUTING STATE");
+                return Err(StateMachineEngineError::SetStateError {});
             }
 
             return Ok(());

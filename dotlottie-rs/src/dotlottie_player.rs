@@ -1354,7 +1354,7 @@ impl DotLottiePlayer {
                 let mut listener_types = vec![];
 
                 if let Some(sm) = state_machine.as_ref() {
-                    let listeners = sm.get_listeners();
+                    let listeners = sm.listeners(None);
 
                     for listener in listeners {
                         match listener {
@@ -1416,27 +1416,27 @@ impl DotLottiePlayer {
     }
 
     pub fn post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
-        let event = Event::OnPointerDown { x, y };
+        let event = Event::PointerDown { x, y };
         self.post_event(&event)
     }
 
     pub fn post_pointer_up_event(&self, x: f32, y: f32) -> i32 {
-        let event = Event::OnPointerUp { x, y };
+        let event = Event::PointerUp { x, y };
         self.post_event(&event)
     }
 
     pub fn post_pointer_move_event(&self, x: f32, y: f32) -> i32 {
-        let event = Event::OnPointerMove { x, y };
+        let event = Event::PointerMove { x, y };
         self.post_event(&event)
     }
 
     pub fn post_pointer_enter_event(&self, x: f32, y: f32) -> i32 {
-        let event = Event::OnPointerEnter { x, y };
+        let event = Event::PointerEnter { x, y };
         self.post_event(&event)
     }
 
     pub fn post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
-        let event: Event = Event::OnPointerExit { x, y };
+        let event: Event = Event::PointerExit { x, y };
         self.post_event(&event)
     }
 

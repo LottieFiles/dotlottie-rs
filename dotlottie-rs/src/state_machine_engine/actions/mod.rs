@@ -19,6 +19,7 @@ pub trait ActionTrait {
         &self,
         engine: &mut StateMachineEngine,
         player: Rc<RwLock<DotLottiePlayerContainer>>,
+        run_pipeline: bool,
     ) -> Result<(), StateMachineActionError>;
 }
 
@@ -88,6 +89,7 @@ impl ActionTrait for Action {
         &self,
         engine: &mut StateMachineEngine,
         player: Rc<RwLock<DotLottiePlayerContainer>>,
+        run_pipeline: bool,
     ) -> Result<(), StateMachineActionError> {
         match self {
             Action::Increment {
@@ -109,15 +111,19 @@ impl ActionTrait for Action {
                                         false,
                                     );
                                 } else {
-                                    engine.set_numeric_trigger(trigger_name, val + 1.0, false);
+                                    engine.set_numeric_trigger(
+                                        trigger_name,
+                                        val + 1.0,
+                                        run_pipeline,
+                                    );
                                 }
                             }
                             StringNumber::F32(value) => {
-                                engine.set_numeric_trigger(trigger_name, val + value, false);
+                                engine.set_numeric_trigger(trigger_name, val + value, run_pipeline);
                             }
                         }
                     } else {
-                        engine.set_numeric_trigger(trigger_name, val + 1.0, false);
+                        engine.set_numeric_trigger(trigger_name, val + 1.0, run_pipeline);
                     }
                 }
 
@@ -142,15 +148,19 @@ impl ActionTrait for Action {
                                         false,
                                     );
                                 } else {
-                                    engine.set_numeric_trigger(trigger_name, val - 1.0, false);
+                                    engine.set_numeric_trigger(
+                                        trigger_name,
+                                        val - 1.0,
+                                        run_pipeline,
+                                    );
                                 }
                             }
                             StringNumber::F32(value) => {
-                                engine.set_numeric_trigger(trigger_name, val - value, false);
+                                engine.set_numeric_trigger(trigger_name, val - value, run_pipeline);
                             }
                         }
                     } else {
-                        engine.set_numeric_trigger(trigger_name, val - 1.0, false);
+                        engine.set_numeric_trigger(trigger_name, val - 1.0, run_pipeline);
                     }
                 }
                 Ok(())
@@ -159,7 +169,7 @@ impl ActionTrait for Action {
                 let val = engine.get_boolean_trigger(trigger_name);
 
                 if let Some(val) = val {
-                    engine.set_boolean_trigger(trigger_name, !val, false);
+                    engine.set_boolean_trigger(trigger_name, !val, run_pipeline);
                 }
 
                 Ok(())
@@ -168,26 +178,26 @@ impl ActionTrait for Action {
                 trigger_name,
                 value,
             } => {
-                engine.set_boolean_trigger(trigger_name, *value, false);
+                engine.set_boolean_trigger(trigger_name, *value, run_pipeline);
                 Ok(())
             }
             Action::SetNumeric {
                 trigger_name,
                 value,
             } => {
-                engine.set_numeric_trigger(trigger_name, *value, false);
+                engine.set_numeric_trigger(trigger_name, *value, run_pipeline);
                 Ok(())
             }
             Action::SetString {
                 trigger_name,
                 value,
             } => {
-                engine.set_string_trigger(trigger_name, value, false);
+                engine.set_string_trigger(trigger_name, value, run_pipeline);
 
                 Ok(())
             }
             Action::Fire { trigger_name } => {
-                let _ = engine.fire(&trigger_name, false);
+                let _ = engine.fire(&trigger_name, run_pipeline);
                 Ok(())
             }
             Action::Reset { trigger_name } => {

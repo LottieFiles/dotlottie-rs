@@ -201,7 +201,7 @@ impl StateTrait for State {
                 /* Perform entry actions */
                 if let Some(actions) = entry_actions {
                     for action in actions {
-                        let _ = action.execute(engine, player.clone());
+                        let _ = action.execute(engine, player.clone(), false);
                     }
                 }
             }
@@ -209,7 +209,7 @@ impl StateTrait for State {
             State::GlobalState { entry_actions, .. } => {
                 if let Some(actions) = entry_actions {
                     for action in actions {
-                        let _ = action.execute(engine, player.clone());
+                        let _ = action.execute(engine, player.clone(), false);
                     }
                 }
             }

@@ -9,8 +9,8 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const STATE_MACHINE_NAME: &str = "test_self_firing_event";
-pub const ANIMATION_NAME: &str = "star_marked";
+pub const STATE_MACHINE_NAME: &str = "pigeon_fsm";
+pub const ANIMATION_NAME: &str = "pigeon";
 
 struct Timer {
     last_update: Instant,
@@ -97,14 +97,36 @@ fn main() {
 
     let mut rating = 0.0;
     // return;
+
+    let mut mx = 0.0;
+    let mut my = 0.0;
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let left_down = window.get_mouse_down(MouseButton::Left);
         if left_down {
-            let pointer_event = Event::OnPointerDown { x: 0.0, y: 0.0 };
+            // if left_down {
+            window.get_mouse_pos(minifb::MouseMode::Pass).map(|mouse| {
+                if mouse.0 != mx || mouse.1 != my {
+                    mx = mouse.0;
+                    my = mouse.1;
 
-            let p = &mut *locked_player.write().unwrap();
+                    let event = Event::PointerDown { x: mx, y: my };
 
-            p.post_event(&pointer_event);
+                    let p = &mut *locked_player.write().unwrap();
+                    let _m = p.post_event(&event);
+                }
+            });
+
+            // Get the coordinates
+            // let (x, y) = window.get_mouse_pos(minifb::MouseMode::Pass).unwrap();
+
+            // let pointer_event = Event::PointerDown { x, y };
+
+            // let p = &mut *locked_player.write().unwrap();
+
+            // println!("PointerDown -> x: {}, y: {}", x, y);
+
+            // p.post_event(&pointer_event);
         }
 
         timer.tick(&*locked_player.read().unwrap());
@@ -124,6 +146,13 @@ fn main() {
             // p.state_machine_fire_event("step");
         }
 
+        if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
+            // let p = &mut *locked_player.write().unwrap();
+            // p.state_machine_fire_event("Step");
+
+            let p = &mut *locked_player.write().unwrap();
+            p.post_event(&Event::PointerDown { x: 0.0, y: 0.0 });
+        }
         let p = &mut *locked_player.write().unwrap();
 
         let (buffer_ptr, buffer_len) = (p.buffer_ptr(), p.buffer_len());

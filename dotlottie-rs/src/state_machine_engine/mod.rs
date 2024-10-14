@@ -21,7 +21,7 @@ use transitions::TransitionTrait;
 use triggers::Trigger;
 
 use crate::state_machine_engine::listeners::Listener;
-use crate::{DotLottiePlayerContainer, EventName};
+use crate::{DotLottiePlayerContainer, EventName, PointerEvent};
 
 use self::state_machine::state_machine_parse;
 use self::{events::Event, states::State};
@@ -671,6 +671,7 @@ impl StateMachineEngine {
 
     fn get_correct_pointer_actions_from_listener(
         &self,
+        event: &Event,
         layer_name: Option<String>,
         actions: &Vec<Action>,
         x: f32,
@@ -678,19 +679,27 @@ impl StateMachineEngine {
     ) -> Vec<Action> {
         let mut actions_to_execute = Vec::new();
 
+        // User defined a specific layer to check if hit
         if let Some(layer) = layer_name {
             // Check if the layer was hit, otherwise we ignore this listener
-
             if let Some(rc_player) = &self.player {
                 let try_read_lock = rc_player.try_read();
 
                 match try_read_lock {
                     Ok(player_container) => {
-                        // Hit check will return true if the layer was hit
-                        if player_container.hit_check(&layer, x, y) {
-                            println!("🎯 Layer hit: {}", layer);
-                            for action in actions {
-                                actions_to_execute.push(action.clone());
+                        // If we have a pointer down event, we need to check if the pointer is outside of the layer
+                        if let Event::PointerExit { x, y } = event {
+                            if !player_container.hit_check(&layer, *x, *y) {
+                                for action in actions {
+                                    actions_to_execute.push(action.clone());
+                                }
+                            }
+                        } else {
+                            // Hit check will return true if the layer was hit
+                            if player_container.hit_check(&layer, x, y) {
+                                for action in actions {
+                                    actions_to_execute.push(action.clone());
+                                }
                             }
                         }
                     }
@@ -698,6 +707,7 @@ impl StateMachineEngine {
                 }
             }
         } else {
+            // No layer was specified, add all actions
             for action in actions {
                 actions_to_execute.push(action.clone());
             }
@@ -717,6 +727,7 @@ impl StateMachineEngine {
 
         for listener in listeners {
             let action_vec = self.get_correct_pointer_actions_from_listener(
+                event,
                 listener.get_layer_name(),
                 listener.get_actions(),
                 x,
@@ -783,25 +794,10 @@ impl StateMachineEngine {
     // 3: Pause animation
     // 4: Request and draw a new single frame of the animation (needed for sync state)
     pub fn post_event(&mut self, event: &Event) -> i32 {
-        match event {
-            Event::PointerDown { x, y } => {
-                self.manage_pointer_event(event, *x, *y);
-            }
-            Event::PointerUp { x, y } => {
-                self.manage_pointer_event(event, *x, *y);
-            }
-            Event::PointerMove { x, y } => {
-                self.manage_pointer_event(event, *x, *y);
-            }
-            Event::PointerEnter { x, y } => {
-                self.manage_pointer_event(event, *x, *y);
-            }
-            Event::PointerExit { x, y } => {
-                self.manage_pointer_event(event, *x, *y);
-            }
-            Event::OnComplete => {
-                self.manage_on_complete_event(event);
-            }
+        if event.type_name().contains("Pointer") {
+            self.manage_pointer_event(event, event.x(), event.y());
+        } else {
+            self.manage_on_complete_event(event);
         }
 
         0

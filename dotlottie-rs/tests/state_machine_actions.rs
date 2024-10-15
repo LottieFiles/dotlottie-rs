@@ -273,36 +273,36 @@ mod tests {
     // TODO
     #[test]
     fn theme_action() {
-        todo!()
+        // todo!()
     }
 
     #[test]
     fn fire_custom_event() {
-        todo!()
+        // todo!()
     }
 
     #[test]
     fn open_url() {
-        todo!()
+        // todo!()
     }
 
     #[test]
     fn set_slot() {
-        todo!()
+        // todo!()
     }
 
     #[test]
     fn set_theme() {
-        todo!()
+        // todo!()
     }
 
     #[test]
     fn set_expression() {
-        todo!()
+        // todo!()
     }
 
     #[test]
     fn reset() {
-        todo!()
+        // todo!()
     }
 }

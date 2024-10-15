@@ -26,18 +26,6 @@ mod tests {
     }
 
     #[test]
-    pub fn load_multiple_states() {}
-
-    #[test]
-    fn state_machine_observer_test() {}
-
-    #[test]
-    fn state_machine_from_data_test() {}
-
-    #[test]
-    fn state_machine_listener_test() {}
-
-    #[test]
     fn increment() {
         let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
         let player = DotLottiePlayer::new(Config::default());

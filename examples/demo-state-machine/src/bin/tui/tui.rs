@@ -26,8 +26,8 @@ use std::{
 
 const WIDTH: usize = 400;
 const HEIGHT: usize = 300;
-const LOADED_STATE_MACHINE: &str = "pigeon_with_listeners";
-const LOADED_ANIMATION: &str = "pigeon";
+const LOADED_STATE_MACHINE: &str = "test_guardless_and_event";
+const LOADED_ANIMATION: &str = "smileys";
 
 struct Timer {
     last_update: Instant,
@@ -137,7 +137,7 @@ impl Graph {
                         });
 
                         for transition in state.get_transitions() {
-                            let target = machine.get_state_by_name(&transition.get_target_state());
+                            let target = machine.get_state_by_name(&transition.target_state());
                             if let Some(target) = target {
                                 let target_index = states
                                     .iter()
@@ -190,7 +190,7 @@ impl Graph {
                         });
 
                         for transition in state.get_transitions() {
-                            let target = machine.get_state_by_name(&transition.get_target_state());
+                            let target = machine.get_state_by_name(&transition.target_state());
                             if let Some(target) = target {
                                 let target_index = states
                                     .iter()
@@ -387,12 +387,12 @@ fn load_animation_and_state_machine(
     state_machine_name: &str,
 ) -> (bool, bool) {
     let mut markers = File::open(format!(
-        "./src/bin/tui/animations/{}.lottie",
+        "./src/bin/shared/animations/{}.lottie",
         animation_name
     ))
     .expect("no file found");
     let metadatamarkers = fs::metadata(format!(
-        "./src/bin/tui/animations/{}.lottie",
+        "./src/bin/shared/animations/{}.lottie",
         animation_name
     ))
     .expect("unable to read metadata");
@@ -404,7 +404,7 @@ fn load_animation_and_state_machine(
     player.render();
 
     let message: String = fs::read_to_string(format!(
-        "./src/bin/tui/statemachines/{}.json",
+        "./src/bin/shared/statemachines/{}.json",
         state_machine_name
     ))
     .unwrap();
@@ -424,7 +424,7 @@ fn main() -> Result<(), io::Error> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut window = Window::new(
-        "Color-changing Triangle",
+        "DTF - DotLottie TUI Framework",
         WIDTH,
         HEIGHT,
         WindowOptions::default(),
@@ -440,12 +440,12 @@ fn main() -> Result<(), io::Error> {
     });
 
     let mut markers = File::open(format!(
-        "./src/bin/tui/animations/{}.lottie",
+        "./src/bin/shared/animations/{}.lottie",
         LOADED_ANIMATION
     ))
     .expect("no file found");
     let metadatamarkers = fs::metadata(format!(
-        "./src/bin/tui/animations/{}.lottie",
+        "./src/bin/shared/animations/{}.lottie",
         LOADED_ANIMATION
     ))
     .expect("unable to read metadata");
@@ -457,7 +457,7 @@ fn main() -> Result<(), io::Error> {
     let mut timer = Timer::new();
 
     let message: String = fs::read_to_string(format!(
-        "./src/bin/tui/statemachines/{}.json",
+        "./src/bin/shared/statemachines/{}.json",
         LOADED_STATE_MACHINE
     ))
     .unwrap();

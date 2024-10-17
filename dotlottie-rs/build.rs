@@ -97,6 +97,10 @@ fn apply_build_settings(build_settings: &BuildSettings) {
 }
 
 fn main() {
+    if !cfg!(feature = "thorvg") {
+        return;
+    }
+
     let mut builder = bindgen::Builder::default().header("wrapper.h");
     if is_artifacts_provided() {
         let include_dir = find_path(ARTIFACTS_INCLUDE_DIR, true);

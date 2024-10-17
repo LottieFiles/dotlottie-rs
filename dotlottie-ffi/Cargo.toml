@@ -21,7 +21,7 @@ path = "uniffi-bindgen.rs"
 
 [dependencies]
 uniffi = { version = "0.28", features = ["cli"] }
-dotlottie-rs = { path = "../dotlottie-rs" }
+dotlottie-rs = { path = "../dotlottie-rs", features = ["thorvg"] }
 cfg-if = "1.0"
 bitflags = "2.6.0"
 

@@ -80,6 +80,30 @@
                             "compareTo": 5
                         }
                     ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_6",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 6
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_6",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "trigger_name": "rating",
+                            "compare_to": 6
+                        }
+                    ]
                 }
             ]
         },
@@ -124,6 +148,12 @@
             "autoplay": true,
             "segment": "star_5",
             "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_6",
+            "autoplay": true,
+            "transitions": []
         }
     ],
     "listeners": [
@@ -133,7 +163,7 @@
                 {
                     "type": "SetNumeric",
                     "triggerName": "rating",
-                    "value": 0
+                    "value": 6
                 }
             ]
         },

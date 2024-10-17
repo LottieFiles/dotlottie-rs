@@ -201,5 +201,10 @@ mod tests {
         assert_eq!(curr_state_name, "star_3");
     }
 
+    #[test]
+    pub fn guardless_transition() {
+        
+    }
+
     // Todo cases
 }

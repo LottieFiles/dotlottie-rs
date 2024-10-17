@@ -26,8 +26,30 @@ use std::{
 
 const WIDTH: usize = 400;
 const HEIGHT: usize = 300;
-const LOADED_STATE_MACHINE: &str = "test_guardless_and_event";
-const LOADED_ANIMATION: &str = "smileys";
+const LOADED_STATE_MACHINE: &str = "not_equal";
+const LOADED_ANIMATION: &str = "star_marked";
+const ANIMATION_FILES: [(&str, &str, &str); 8] = [
+    ("[Exploding Pigeon]", "pigeon", "pigeon_with_events"),
+    (
+        "[Exploding Pigeon with Listeners]",
+        "pigeon",
+        "pigeon_with_listeners",
+    ),
+    ("[Sync Frame]", "loader", "sync_loader"),
+    ("[Star Rating]", "star_marked", "rating"),
+    ("[Entry Action Demo]", "star_marked", "entry_action"),
+    ("[Boolean Toggle]", "star_marked", "toggle"),
+    (
+        "[Test Guardless Event Propagation]",
+        "smileys",
+        "test_guardless_and_event_propagation",
+    ),
+    (
+        "[Test Guardless And Event]",
+        "smileys",
+        "test_guardless_and_event",
+    ),
+];
 
 struct Timer {
     last_update: Instant,
@@ -664,32 +686,13 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
     let menus = vec![
         Menu::new(
             "🚧 [Load preset]".to_string(),
-            vec![
-                MenuItemType::Button {
-                    name: "[Exploding pigeon]".to_string(),
+            ANIMATION_FILES
+                .iter()
+                .map(|animation| MenuItemType::Button {
+                    name: animation.0.to_string(),
                     color: 0xFF0000,
-                },
-                MenuItemType::Button {
-                    name: "[Exploding pigeon with Listeners]".to_string(),
-                    color: 0xFF0000,
-                },
-                MenuItemType::Button {
-                    name: "[Sync Frame]".to_string(),
-                    color: 0xFF0000,
-                },
-                MenuItemType::Button {
-                    name: "[Star Rating]".to_string(),
-                    color: 0xFF0000,
-                },
-                MenuItemType::Button {
-                    name: "[Entry Action Demo]".to_string(),
-                    color: 0xFF0000,
-                },
-                MenuItemType::Button {
-                    name: "[Boolean Toggling]".to_string(),
-                    color: 0xFF0000,
-                },
-            ],
+                })
+                .collect(),
         ),
         Menu::new("Triggers".to_string(), trigger_buttons),
         Menu::new("Listeners".to_string(), listener_buttons),
@@ -915,158 +918,9 @@ fn run_app<B: ratatui::backend::Backend>(
                         KeyCode::Enter => {
                             let menu = &mut menus[current_menu];
                             let i = menu.state.selected().unwrap_or(0);
+
                             match &mut menu.items[i] {
                                 MenuItemType::Button { name, color } => match name.as_str() {
-                                    "[Exploding pigeon]" => {
-                                        log_sender
-                                            .send(LogMessage {
-                                                content: "User selected [Exploding pigeon]"
-                                                    .to_string(),
-                                                level: LogLevel::Info,
-                                            })
-                                            .unwrap();
-                                        player.stop_state_machine();
-                                        let (r, s) = load_animation_and_state_machine(
-                                            player,
-                                            "pigeon",
-                                            "pigeon_with_events",
-                                        );
-                                        log_sender
-                                            .send(LogMessage {
-                                                content: format!(
-                                                    "Load state machine data returned: [{}] Start state machine returned: [{}]",
-                                                    r,s
-                                                ),
-                                                level: LogLevel::Info,
-                                            })
-                                            .unwrap();
-                                        // menus.clear();
-                                        menus = refresh_menus(player);
-                                    }
-                                    "[Exploding pigeon with Listeners]" => {
-                                        log_sender
-                                            .send(LogMessage {
-                                                content: "User selected [Exploding pigeon with Listeners]"
-                                                    .to_string(),
-                                                level: LogLevel::Info,
-                                            })
-                                            .unwrap();
-                                        player.stop_state_machine();
-                                        let (r, s) = load_animation_and_state_machine(
-                                            player,
-                                            "pigeon",
-                                            "pigeon_with_listeners",
-                                        );
-                                        log_sender
-                                            .send(LogMessage {
-                                                content: format!(
-                                                    "Load state machine data returned: [{}] Start state machine returned: [{}]",
-                                                    r,s
-                                                ),
-                                                level: LogLevel::Info,
-                                            })
-                                            .unwrap();
-                                        // menus.clear();
-                                        menus = refresh_menus(player);
-                                    }
-                                    "[Sync Frame]" => {
-                                        log_sender
-                                            .send(LogMessage {
-                                                content: "User selected [Sync Frame]".to_string(),
-                                                level: LogLevel::Info,
-                                            })
-                                            .unwrap();
-                                        player.stop_state_machine();
-                                        let (r, s) = load_animation_and_state_machine(
-                                            player,
-                                            "loader",
-                                            "sync_loader",
-                                        );
-                                        log_sender
-                                        .send(LogMessage {
-                                            content: format!(
-                                                "Load state machine data returned: [{}] Start state machine returned: [{}]",
-                                                r,s
-                                            ),
-                                            level: LogLevel::Info,
-                                        })
-                                        .unwrap();
-                                        menus = refresh_menus(player);
-                                    }
-                                    "[Star Rating]" => {
-                                        log_sender
-                                            .send(LogMessage {
-                                                content: "User selected [Star Rating]".to_string(),
-                                                level: LogLevel::Info,
-                                            })
-                                            .unwrap();
-                                        player.stop_state_machine();
-                                        let (r, s) = load_animation_and_state_machine(
-                                            player,
-                                            "star_marked",
-                                            "rating",
-                                        );
-                                        log_sender
-                                        .send(LogMessage {
-                                            content: format!(
-                                                "Load state machine data returned: [{}] Start state machine returned: [{}]",
-                                                r,s
-                                            ),
-                                            level: LogLevel::Info,
-                                        })
-                                        .unwrap();
-                                        menus = refresh_menus(player);
-                                    }
-                                    "[Entry Action Demo]" => {
-                                        log_sender
-                                            .send(LogMessage {
-                                                content: "User selected [Entry Action Demo]"
-                                                    .to_string(),
-                                                level: LogLevel::Info,
-                                            })
-                                            .unwrap();
-                                        player.stop_state_machine();
-                                        let (r, s) = load_animation_and_state_machine(
-                                            player,
-                                            "star_marked",
-                                            "entry_action",
-                                        );
-                                        log_sender
-                                        .send(LogMessage {
-                                            content: format!(
-                                                "Load state machine data returned: [{}] Start state machine returned: [{}]",
-                                                r,s
-                                            ),
-                                            level: LogLevel::Info,
-                                        })
-                                        .unwrap();
-                                        menus = refresh_menus(player);
-                                    }
-                                    "[Boolean Toggling]" => {
-                                        log_sender
-                                            .send(LogMessage {
-                                                content: "User selected [Entry Action Demo]"
-                                                    .to_string(),
-                                                level: LogLevel::Info,
-                                            })
-                                            .unwrap();
-                                        player.stop_state_machine();
-                                        let (r, s) = load_animation_and_state_machine(
-                                            player,
-                                            "star_marked",
-                                            "toggle",
-                                        );
-                                        log_sender
-                                        .send(LogMessage {
-                                            content: format!(
-                                                "Load state machine data returned: [{}] Start state machine returned: [{}]",
-                                                r,s
-                                            ),
-                                            level: LogLevel::Info,
-                                        })
-                                        .unwrap();
-                                        menus = refresh_menus(player);
-                                    }
                                     "[Listener] PointerDown" => {
                                         log_sender
                                             .send(LogMessage {
@@ -1137,16 +991,49 @@ fn run_app<B: ratatui::backend::Backend>(
                                         player.post_event(&dotlottie_rs::Event::OnComplete);
                                     }
                                     _ => {
-                                        // Fire event
-                                        let new_name = name.replace("[Event] ", "");
+                                        if name.contains("[Listener]") {
+                                        } else if name.contains("[Event]") {
+                                            // Fire event
+                                            let new_name = name.replace("[Event] ", "");
 
-                                        log_sender
-                                            .send(LogMessage {
-                                                content: format!("Firing event: {}", new_name),
-                                                level: LogLevel::Info,
-                                            })
-                                            .unwrap();
-                                        player.state_machine_fire_event(&new_name);
+                                            log_sender
+                                                .send(LogMessage {
+                                                    content: format!("Firing event: {}", new_name),
+                                                    level: LogLevel::Info,
+                                                })
+                                                .unwrap();
+                                            player.state_machine_fire_event(&new_name);
+                                        } else {
+                                            for animation in ANIMATION_FILES {
+                                                if animation.0.eq(name) {
+                                                    log_sender
+                                                        .send(LogMessage {
+                                                            content: format!(
+                                                                "User selected {}",
+                                                                name
+                                                            ),
+                                                            level: LogLevel::Info,
+                                                        })
+                                                        .unwrap();
+                                                    player.stop_state_machine();
+                                                    let (r, s) = load_animation_and_state_machine(
+                                                        player,
+                                                        animation.1,
+                                                        animation.2,
+                                                    );
+                                                    log_sender
+                                                .send(LogMessage {
+                                                    content: format!(
+                                                        "Load state machine data returned: [{}] Start state machine returned: [{}]",
+                                                        r,s
+                                                    ),
+                                                    level: LogLevel::Info,
+                                                })
+                                                .unwrap();
+                                                }
+                                            }
+                                            menus = refresh_menus(player);
+                                        }
                                     }
                                 },
                                 MenuItemType::StringInput { name, value } => {

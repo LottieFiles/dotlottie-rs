@@ -82,7 +82,7 @@ mod tests {
         // Tests decrement from a trigger
         player.state_machine_set_numeric_trigger("rating", 6.0);
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "global");
+        assert_eq!(curr_state_name, "star_6");
 
         // Tests decrementing with value
         player.state_machine_set_numeric_trigger("rating", 3.0);
@@ -272,8 +272,7 @@ mod tests {
 
     // TODO
     #[test]
-    fn theme_action() {
-        // todo!()
+    fn theme_action() { // todo!()
     }
 
     #[test]

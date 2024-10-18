@@ -11,18 +11,6 @@
             "transitions": [
                 {
                     "type": "Transition",
-                    "toState": "global",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "Equal",
-                            "triggerName": "rating",
-                            "compareTo": 0
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
                     "toState": "star_1",
                     "guards": [
                         {
@@ -190,7 +178,7 @@
             "name": "star_6",
             "autoplay": true,
             "transitions": [],
-            "entryActions": [
+            "entry_actions": [
                 {
                     "type": "Increment",
                     "triggerName": "rating",
@@ -227,6 +215,7 @@
             "transitions": []
         }
     ],
+    "listeners": [],
     "listeners": [],
     "triggers": [
         {

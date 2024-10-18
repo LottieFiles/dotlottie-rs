@@ -1,23 +1,24 @@
 {
     "descriptor": {
-        "id": "Exploding pigeon",
-        "initial": "Pigeon Running"
+        "id": "explodingPigeon",
+        "initial": "pigeonRunning"
     },
     "states": [
         {
             "type": "PlaybackState",
-            "name": "Pigeon Running",
+            "name": "pigeonRunning",
+            "animationId": "",
             "loop": true,
             "autoplay": true,
             "segment": "bird",
             "transitions": [
                 {
                     "type": "Transition",
-                    "to_state": "Explosion",
+                    "toState": "explosion",
                     "guards": [
                         {
                             "type": "Event",
-                            "trigger_name": "Explode"
+                            "triggerName": "explode"
                         }
                     ]
                 }
@@ -25,18 +26,19 @@
         },
         {
             "type": "PlaybackState",
-            "name": "Explosion",
+            "name": "explosion",
+            "animationId": "",
             "loop": false,
             "autoplay": true,
             "segment": "explosion",
             "transitions": [
                 {
                     "type": "Transition",
-                    "to_state": "Feathers falling",
+                    "toState": "feathersFalling",
                     "guards": [
                         {
                             "type": "Event",
-                            "trigger_name": "Rain feathers"
+                            "triggerName": "rainFeathers"
                         }
                     ]
                 }
@@ -44,18 +46,19 @@
         },
         {
             "type": "PlaybackState",
-            "name": "Feathers falling",
+            "name": "feathersFalling",
+            "animationId": "",
             "loop": false,
             "autoplay": true,
             "segment": "feathers",
             "transitions": [
                 {
                     "type": "Transition",
-                    "to_state": "Pigeon Running",
+                    "toState": "pigeonRunning",
                     "guards": [
                         {
                             "type": "Event",
-                            "trigger_name": "Restart"
+                            "triggerName": "restart"
                         }
                     ]
                 }
@@ -68,17 +71,17 @@
             "actions": [
                 {
                     "type": "Fire",
-                    "trigger_name": "Explode"
+                    "triggerName": "explode"
                 }
             ]
         },
         {
             "type": "OnComplete",
-            "state_name": "Explosion",
+            "stateName": "explosion",
             "actions": [
                 {
                     "type": "Fire",
-                    "trigger_name": "Rain feathers"
+                    "triggerName": "rainFeathers"
                 }
             ]
         },
@@ -87,7 +90,7 @@
             "actions": [
                 {
                     "type": "Fire",
-                    "trigger_name": "Restart"
+                    "triggerName": "restart"
                 }
             ]
         }
@@ -95,15 +98,15 @@
     "triggers": [
         {
             "type": "Event",
-            "name": "Explode"
+            "name": "explode"
         },
         {
             "type": "Event",
-            "name": "Rain feathers"
+            "name": "rainFeathers"
         },
         {
             "type": "Event",
-            "name": "Restart"
+            "name": "restart"
         }
     ]
 }

@@ -24,6 +24,7 @@ pub trait ActionTrait {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
 pub enum Action {
     OpenUrl {

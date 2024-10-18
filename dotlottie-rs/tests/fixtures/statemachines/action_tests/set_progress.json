@@ -1,34 +1,35 @@
 {
     "descriptor": {
-        "id": "star-rating",
+        "id": "starRating",
         "initial": "global"
     },
     "states": [
         {
             "name": "global",
             "type": "GlobalState",
+            "animationId": "",
             "transitions": [
                 {
                     "type": "Transition",
-                    "to_state": "a",
+                    "toState": "a",
                     "guards": [
                         {
                             "type": "Boolean",
-                            "condition_type": "Equal",
-                            "trigger_name": "OnOffSwitch",
-                            "compare_to": true
+                            "conditionType": "Equal",
+                            "triggerName": "OnOffSwitch",
+                            "compareTo": true
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "b",
+                    "toState": "b",
                     "guards": [
                         {
                             "type": "Boolean",
-                            "condition_type": "Equal",
-                            "trigger_name": "OnOffSwitch",
-                            "compare_to": false
+                            "conditionType": "Equal",
+                            "triggerName": "OnOffSwitch",
+                            "compareTo": false
                         }
                     ]
                 }
@@ -37,8 +38,9 @@
         {
             "name": "a",
             "type": "PlaybackState",
+            "animationId": "",
             "transitions": [],
-            "entry_actions": [
+            "entryActions": [
                 {
                     "type": "SetProgress",
                     "value": 10
@@ -48,11 +50,12 @@
         {
             "name": "b",
             "type": "PlaybackState",
+            "animationId": "",
             "transitions": [],
-            "entry_actions": [
+            "entryActions": [
                 {
                     "type": "SetProgress",
-                    "value": "$frame_holder"
+                    "value": "$frameHolder"
                 }
             ]
         }
@@ -66,7 +69,7 @@
         },
         {
             "type": "Numeric",
-            "name": "frame_holder",
+            "name": "frameHolder",
             "value": 75
         }
     ]

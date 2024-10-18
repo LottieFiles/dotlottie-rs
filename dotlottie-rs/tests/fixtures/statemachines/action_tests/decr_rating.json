@@ -6,125 +6,126 @@
     "states": [
         {
             "name": "global",
+            "animationId": "",
             "type": "GlobalState",
             "transitions": [
                 {
                     "type": "Transition",
-                    "to_state": "global",
+                    "toState": "global",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 0
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 0
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_1",
+                    "toState": "star_1",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 1
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 1
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_2",
+                    "toState": "star_2",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 2
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 2
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_3",
+                    "toState": "star_3",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 3
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 3
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_4",
+                    "toState": "star_4",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 4
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 4
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_5",
+                    "toState": "star_5",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 5
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 5
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_6",
+                    "toState": "star_6",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 6
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 6
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_12",
+                    "toState": "star_12",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 12
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 12
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_13",
+                    "toState": "star_13",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 13
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 13
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_14",
+                    "toState": "star_14",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 14
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 14
                         }
                     ]
                 }
@@ -132,6 +133,7 @@
         },
         {
             "type": "PlaybackState",
+            "animationId": "",
             "name": "star_1",
             "autoplay": true,
             "segment": "star_1",
@@ -139,6 +141,7 @@
         },
         {
             "type": "PlaybackState",
+            "animationId": "",
             "name": "star_2",
             "autoplay": true,
             "segment": "star_2",
@@ -146,20 +149,22 @@
         },
         {
             "type": "PlaybackState",
+            "animationId": "",
             "name": "star_3",
             "autoplay": true,
             "segment": "star_3",
             "transitions": [],
-            "entry_actions":[
+            "entryActions": [
                 {
                     "type": "Decrement",
-                    "trigger_name": "rating",
+                    "triggerName": "rating",
                     "value": 2.0
                 }
             ]
         },
         {
             "type": "PlaybackState",
+            "animationId": "",
             "name": "star_4",
             "autoplay": true,
             "segment": "star_4",
@@ -167,58 +172,62 @@
         },
         {
             "type": "PlaybackState",
+            "animationId": "",
             "name": "star_5",
             "autoplay": true,
             "segment": "star_5",
             "transitions": [],
-            "entry_actions": [
+            "entryActions": [
                 {
                     "type": "Decrement",
-                    "trigger_name": "rating"
+                    "triggerName": "rating"
                 }
             ]
         },
         {
             "type": "PlaybackState",
             "name": "star_6",
+            "animationId": "",
             "autoplay": true,
             "transitions": [],
-            "entry_actions":[
+            "entryActions": [
                 {
                     "type": "Decrement",
-                    "trigger_name": "rating",
+                    "triggerName": "rating",
                     "value": "$rating"
                 }
-            ]    
+            ]
         },
         {
             "type": "PlaybackState",
             "name": "star_12",
+            "animationId": "",
             "autoplay": true,
             "transitions": []
         },
         {
             "type": "PlaybackState",
             "name": "star_13",
+            "animationId": "",
             "autoplay": true,
             "transitions": [],
-            "entry_actions":[
+            "entryActions": [
                 {
                     "type": "Decrement",
-                    "trigger_name": "rating",
-                    "value": "$bad_trigger_name"
+                    "triggerName": "rating",
+                    "value": "$badTriggerName"
                 }
             ]
         },
         {
             "type": "PlaybackState",
             "name": "star_14",
+            "animationId": "",
             "autoplay": true,
             "transitions": []
         }
     ],
-    "listeners": [
-    ],
+    "listeners": [],
     "triggers": [
         {
             "type": "Numeric",

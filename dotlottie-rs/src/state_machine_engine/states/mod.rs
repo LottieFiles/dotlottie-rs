@@ -38,23 +38,24 @@ pub trait StateTrait {
         numeric_trigger: &HashMap<String, f32>,
         event_trigger: &HashMap<String, String>,
     ) -> i32;
-    fn get_animation_id(&self) -> Option<String>;
-    fn get_transitions(&self) -> &Vec<Transition>;
-    fn get_entry_actions(&self) -> Option<&Vec<Action>>;
-    fn get_exit_actions(&self) -> Option<&Vec<Action>>;
+    fn animation_id(&self) -> &str;
+    fn transitions(&self) -> &Vec<Transition>;
+    fn entry_actions(&self) -> Option<&Vec<Action>>;
+    fn exit_actions(&self) -> Option<&Vec<Action>>;
     // fn add_transition(&mut self, transition: &Transition);
-    // fn get_config(&self) -> Option<&Config>;
-    fn get_name(&self) -> String;
+    // fn config(&self) -> Option<&Config>;
+    fn name(&self) -> String;
     fn get_type(&self) -> String;
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
 pub enum State {
     PlaybackState {
         name: String,
         transitions: Vec<Transition>,
-        animation_id: Option<String>,
+        animation_id: String,
         r#loop: Option<bool>,
         autoplay: Option<bool>,
         mode: Option<String>,
@@ -135,8 +136,8 @@ impl StateTrait for State {
                     let size = player_read.size();
 
                     // Tell player to load new animation
-                    if let Some(anim_id) = animation_id {
-                        player_read.load_animation(anim_id, size.0, size.1);
+                    if !animation_id.eq(self.animation_id()) {
+                        player_read.load_animation(animation_id, size.0, size.1);
                     }
 
                     player_read.set_config(playback_config);
@@ -163,21 +164,21 @@ impl StateTrait for State {
         0
     }
 
-    fn get_animation_id(&self) -> Option<String> {
+    fn animation_id(&self) -> &str {
         match self {
-            State::PlaybackState { animation_id, .. } => animation_id.clone(),
-            State::GlobalState { .. } => None,
+            State::PlaybackState { animation_id, .. } => animation_id,
+            State::GlobalState { .. } => "",
         }
     }
 
-    fn get_transitions(&self) -> &Vec<Transition> {
+    fn transitions(&self) -> &Vec<Transition> {
         match self {
             State::PlaybackState { transitions, .. } => transitions,
             State::GlobalState { transitions, .. } => transitions,
         }
     }
 
-    fn get_name(&self) -> String {
+    fn name(&self) -> String {
         match self {
             State::PlaybackState { name, .. } => name.to_string(),
             State::GlobalState { name, .. } => name.to_string(),
@@ -229,14 +230,14 @@ impl StateTrait for State {
         0
     }
 
-    fn get_entry_actions(&self) -> Option<&Vec<Action>> {
+    fn entry_actions(&self) -> Option<&Vec<Action>> {
         match self {
             State::PlaybackState { entry_actions, .. } => entry_actions.as_ref(),
             State::GlobalState { entry_actions, .. } => entry_actions.as_ref(),
         }
     }
 
-    fn get_exit_actions(&self) -> Option<&Vec<Action>> {
+    fn exit_actions(&self) -> Option<&Vec<Action>> {
         match self {
             State::PlaybackState { exit_actions, .. } => exit_actions.as_ref(),
             State::GlobalState { exit_actions, .. } => exit_actions.as_ref(),

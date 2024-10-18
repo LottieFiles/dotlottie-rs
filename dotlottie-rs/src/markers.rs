@@ -47,14 +47,13 @@ mod tests {
 
     #[test]
     fn test_extract_markers_normal() {
-        let json_data =
-            json!({
-                "markers": [
-                    {"cm": "Marker1", "dr": 1.5, "tm": 0.5},
-                    {"cm": "Marker2", "dr": 2.5, "tm": 1.5}
-                ]
-            })
-            .to_string();
+        let json_data = json!({
+            "markers": [
+                {"cm": "Marker1", "dr": 1.5, "tm": 0.5},
+                {"cm": "Marker2", "dr": 2.5, "tm": 1.5}
+            ]
+        })
+        .to_string();
 
         let markers = extract_markers(&json_data);
 
@@ -67,14 +66,13 @@ mod tests {
 
     #[test]
     fn test_extract_markers_empty_name() {
-        let json_data =
-            json!({
-                "markers": [
-                    {"cm": "", "dr": 1.5, "tm": 0.5},
-                    {"cm": "Marker2", "dr": 2.5, "tm": 1.5}
-                ]
-            })
-            .to_string();
+        let json_data = json!({
+            "markers": [
+                {"cm": "", "dr": 1.5, "tm": 0.5},
+                {"cm": "Marker2", "dr": 2.5, "tm": 1.5}
+            ]
+        })
+        .to_string();
 
         let markers = extract_markers(&json_data);
 
@@ -102,14 +100,13 @@ mod tests {
 
     #[test]
     fn test_extract_markers_duplicate_names() {
-        let json_data =
-            json!({
-                "markers": [
-                    {"cm": "Marker1", "dr": 1.5, "tm": 0.5},
-                    {"cm": "Marker1", "dr": 2.5, "tm": 1.5}
-                ]
-            })
-            .to_string();
+        let json_data = json!({
+            "markers": [
+                {"cm": "Marker1", "dr": 1.5, "tm": 0.5},
+                {"cm": "Marker1", "dr": 2.5, "tm": 1.5}
+            ]
+        })
+        .to_string();
 
         let markers = extract_markers(&json_data);
 

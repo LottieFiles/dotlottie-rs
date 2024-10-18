@@ -11,7 +11,7 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap, StateMachine,
 };
-use crate::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
+use crate::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation, Renderer};
 use crate::{StateMachineObserver, StateMachineStatus};
 
 pub trait Observer: Send + Sync {
@@ -128,7 +128,7 @@ impl Default for LayerBoundingBox {
 }
 
 struct DotLottieRuntime {
-    renderer: LottieRenderer,
+    renderer: Box<dyn LottieRenderer>,
     playback_state: PlaybackState,
     is_loaded: bool,
     start_time: Instant,
@@ -142,7 +142,15 @@ struct DotLottieRuntime {
 }
 
 impl DotLottieRuntime {
+    #[cfg(feature = "thorvg")]
     pub fn new(config: Config) -> Self {
+        Self::with_renderer(
+            config,
+            crate::TvgRenderer::new(crate::TvgEngine::TvgEngineSw, 0),
+        )
+    }
+
+    pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
         let direction = match config.mode {
             Mode::Forward => Direction::Forward,
             Mode::Reverse => Direction::Reverse,
@@ -151,7 +159,7 @@ impl DotLottieRuntime {
         };
 
         DotLottieRuntime {
-            renderer: LottieRenderer::new(),
+            renderer: <dyn LottieRenderer>::new(renderer),
             playback_state: PlaybackState::Stopped,
             is_loaded: false,
             start_time: Instant::now(),
@@ -302,7 +310,7 @@ impl DotLottieRuntime {
     }
 
     pub fn size(&self) -> (u32, u32) {
-        (self.renderer.width, self.renderer.height)
+        (self.renderer.width(), self.renderer.height())
     }
 
     pub fn get_state_machine(&self, state_machine_id: &str) -> Option<String> {
@@ -575,7 +583,7 @@ impl DotLottieRuntime {
     }
 
     pub fn current_frame(&self) -> f32 {
-        self.renderer.current_frame
+        self.renderer.current_frame()
     }
 
     pub fn loop_count(&self) -> u32 {
@@ -587,7 +595,7 @@ impl DotLottieRuntime {
     }
 
     pub fn buffer(&self) -> &[u32] {
-        &self.renderer.buffer
+        self.renderer.buffer()
     }
 
     pub fn clear(&mut self) {
@@ -662,20 +670,22 @@ impl DotLottieRuntime {
 
     fn load_animation_common<F>(&mut self, loader: F, width: u32, height: u32) -> bool
     where
-        F: FnOnce(&mut LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
+        F: FnOnce(&mut dyn LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
     {
         self.clear();
         self.playback_state = PlaybackState::Stopped;
         self.start_time = Instant::now();
         self.loop_count = 0;
 
-        let loaded = loader(&mut self.renderer, width, height).is_ok()
+        let loaded = loader(&mut *self.renderer, width, height).is_ok()
             && self
                 .renderer
                 .set_background_color(self.config.background_color)
                 .is_ok();
 
-        self.renderer.set_layout(&self.config.layout).unwrap();
+        if self.renderer.set_layout(&self.config.layout).is_err() {
+            return false;
+        }
 
         self.is_loaded = loaded;
 
@@ -901,9 +911,18 @@ pub struct DotLottiePlayerContainer {
 }
 
 impl DotLottiePlayerContainer {
+    #[cfg(feature = "thorvg")]
     pub fn new(config: Config) -> Self {
         DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
+            observers: RwLock::new(Vec::new()),
+            state_machine: Rc::new(RwLock::new(None)),
+        }
+    }
+
+    pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
+        DotLottiePlayerContainer {
+            runtime: RwLock::new(DotLottieRuntime::with_renderer(config, renderer)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
         }
@@ -1222,8 +1241,8 @@ impl DotLottiePlayerContainer {
     pub fn animation_size(&self) -> Vec<f32> {
         match self.runtime.try_read() {
             Ok(runtime) => vec![
-                runtime.renderer.picture_width,
-                runtime.renderer.picture_height,
+                runtime.renderer.picture_width(),
+                runtime.renderer.picture_height(),
             ],
             _ => vec![0.0, 0.0],
         }
@@ -1267,9 +1286,19 @@ pub struct DotLottiePlayer {
 }
 
 impl DotLottiePlayer {
+    #[cfg(feature = "thorvg")]
     pub fn new(config: Config) -> Self {
         DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config))),
+            state_machine: Rc::new(RwLock::new(None)),
+        }
+    }
+
+    pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
+        DotLottiePlayer {
+            player: Rc::new(RwLock::new(DotLottiePlayerContainer::with_renderer(
+                config, renderer,
+            ))),
             state_machine: Rc::new(RwLock::new(None)),
         }
     }

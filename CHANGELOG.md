@@ -1,3 +1,13 @@
+## 0.1.33 (2024-10-18)
+
+### Features
+
+#### made thorvg an optional dependency (#248)
+
+### Fixes
+
+#### removed unused lib.rs file (#247)
+
 ## 0.1.32 (2024-10-07)
 
 ### Features

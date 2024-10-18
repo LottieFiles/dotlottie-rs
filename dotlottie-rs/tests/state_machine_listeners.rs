@@ -14,7 +14,7 @@ mod tests {
                     let curr_state = &engine.current_state;
 
                     if let Some(curr_state) = curr_state {
-                        let name = curr_state.get_name();
+                        let name = curr_state.name();
                         return name;
                     }
                 }
@@ -200,12 +200,12 @@ mod tests {
         assert_eq!(s, true);
 
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "Pigeon Running");
+        assert_eq!(curr_state_name, "pigeonRunning");
 
         player.post_event(&Event::PointerDown { x: 0.0, y: 0.0 });
 
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "Explosion");
+        assert_eq!(curr_state_name, "explosion");
 
         while !player.is_complete() {
             let next_frame = player.request_frame();
@@ -215,6 +215,6 @@ mod tests {
         }
 
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "Feathers falling");
+        assert_eq!(curr_state_name, "feathersFalling");
     }
 }

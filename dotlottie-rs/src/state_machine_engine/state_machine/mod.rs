@@ -77,7 +77,7 @@ impl StateMachine {
     }
 
     pub fn get_state_by_name(&self, name: &str) -> Option<&State> {
-        self.states.iter().find(|state| state.get_name() == name)
+        self.states.iter().find(|state| state.name() == name)
     }
 }
 

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, f32::consts::E};
+use std::collections::HashMap;
 
 use serde::Deserialize;
 
@@ -22,6 +22,7 @@ pub trait GuardTrait {
 }
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
+#[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
 pub enum Guard {
     Numeric {

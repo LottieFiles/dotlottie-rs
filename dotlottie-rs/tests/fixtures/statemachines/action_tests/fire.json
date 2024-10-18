@@ -7,38 +7,39 @@
         {
             "name": "global",
             "type": "GlobalState",
+            "animationId": "",
             "transitions": [
                 {
                     "type": "Transition",
-                    "to_state": "c",
+                    "toState": "c",
                     "guards": [
                         {
                             "type": "Event",
-                            "trigger_name": "Step"
+                            "triggerName": "Step"
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "a",
+                    "toState": "a",
                     "guards": [
                         {
                             "type": "Boolean",
-                            "condition_type": "Equal",
-                            "trigger_name": "OnOffSwitch",
-                            "compare_to": true
+                            "conditionType": "Equal",
+                            "triggerName": "OnOffSwitch",
+                            "compareTo": true
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "b",
+                    "toState": "b",
                     "guards": [
                         {
                             "type": "Boolean",
-                            "condition_type": "Equal",
-                            "trigger_name": "OnOffSwitch",
-                            "compare_to": false
+                            "conditionType": "Equal",
+                            "triggerName": "OnOffSwitch",
+                            "compareTo": false
                         }
                     ]
                 }
@@ -47,22 +48,25 @@
         {
             "name": "a",
             "type": "PlaybackState",
+            "animationId": "",
             "transitions": [],
-            "entry_actions": [
+            "entryActions": [
                 {
                     "type": "Fire",
-                    "trigger_name": "Step"
+                    "triggerName": "Step"
                 }
             ]
         },
         {
             "name": "b",
             "type": "PlaybackState",
+            "animationId": "",
             "transitions": []
         },
         {
             "name": "c",
             "type": "PlaybackState",
+            "animationId": "",
             "transitions": []
         }
     ],

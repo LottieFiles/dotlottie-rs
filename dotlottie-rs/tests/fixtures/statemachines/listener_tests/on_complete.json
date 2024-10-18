@@ -7,76 +7,77 @@
         {
             "name": "global",
             "type": "GlobalState",
+            "animationId": "",
             "transitions": [
                 {
                     "type": "Transition",
-                    "to_state": "global",
+                    "toState": "global",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 0
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 0
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_1",
+                    "toState": "star_1",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 1
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 1
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_2",
+                    "toState": "star_2",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 2
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 2
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_3",
+                    "toState": "star_3",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 3
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 3
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_4",
+                    "toState": "star_4",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 4
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 4
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_5",
+                    "toState": "star_5",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 5
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 5
                         }
                     ]
                 }
@@ -85,22 +86,25 @@
         {
             "type": "PlaybackState",
             "name": "star_1",
+            "animationId": "",
             "autoplay": true,
             "segment": "star_1",
             "transitions": [],
-            "entry_actions": []
+            "entryActions": []
         },
         {
             "type": "PlaybackState",
             "name": "star_2",
+            "animationId": "",
             "autoplay": true,
             "segment": "star_2",
             "transitions": [],
-            "entry_actions": []
+            "entryActions": []
         },
         {
             "type": "PlaybackState",
             "name": "star_3",
+            "animationId": "",
             "autoplay": true,
             "segment": "star_3",
             "transitions": []
@@ -108,6 +112,7 @@
         {
             "type": "PlaybackState",
             "name": "star_4",
+            "animationId": "",
             "autoplay": true,
             "segment": "star_4",
             "transitions": []
@@ -115,6 +120,7 @@
         {
             "type": "PlaybackState",
             "name": "star_5",
+            "animationId": "",
             "autoplay": true,
             "segment": "star_5",
             "transitions": []
@@ -126,7 +132,7 @@
             "actions": [
                 {
                     "type": "Increment",
-                    "trigger_name": "rating",
+                    "triggerName": "rating",
                     "value": 1
                 }
             ]

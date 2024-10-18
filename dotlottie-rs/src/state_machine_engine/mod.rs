@@ -7,6 +7,7 @@ pub mod actions;
 pub mod errors;
 pub mod events;
 pub mod listeners;
+mod security;
 pub mod state_machine;
 pub mod states;
 pub mod transitions;
@@ -14,10 +15,11 @@ pub mod triggers;
 
 use actions::{Action, ActionTrait};
 use listeners::ListenerTrait;
+use security::check_states_for_guardless_transitions;
 use state_machine::StateMachine;
 use states::StateTrait;
 use transitions::guard::GuardTrait;
-use transitions::TransitionTrait;
+use transitions::{Transition, TransitionTrait};
 use triggers::Trigger;
 
 use crate::state_machine_engine::listeners::Listener;
@@ -58,6 +60,18 @@ pub enum StateMachineEngineError {
 
     #[error("Failed to change the current state.")]
     SetStateError,
+
+    #[error(
+        "The state: {} has multiple transitions without guards. This is not allowed.",
+        state_name
+    )]
+    SecurityCheckErrorMultipleGuardlessTransitions { state_name: String },
+
+    #[error(
+        "The state name: {} has been used multiple times. This is not allowed.",
+        state_name
+    )]
+    SecurityCheckErrorDuplicateStateName { state_name: String },
 }
 
 pub struct StateMachineEngine {
@@ -301,6 +315,13 @@ impl StateMachineEngine {
                 new_state_machine.player = Some(player.clone());
                 new_state_machine.state_machine = parsed_state_machine;
 
+                // Run the security check pipeline
+                let check_report = self.security_check_pipeline(&new_state_machine);
+
+                if check_report.is_err() {
+                    return Err(check_report.err().unwrap());
+                }
+
                 let err = new_state_machine.set_current_state(&initial_state_index);
                 match err {
                     Ok(_) => {}
@@ -329,6 +350,13 @@ impl StateMachineEngine {
         // self.runCheckingPipeline(state_machine);
 
         // Todo: Implement the restore action. Save the original values of triggers.
+    }
+
+    fn security_check_pipeline(
+        &self,
+        state_machine: &StateMachineEngine,
+    ) -> Result<(), StateMachineEngineError> {
+        check_states_for_guardless_transitions(state_machine)
     }
 
     pub fn start(&mut self) {
@@ -456,13 +484,17 @@ impl StateMachineEngine {
         event: Option<&String>,
     ) -> Option<String> {
         let transitions = state_to_evaluate.transitions();
+        let mut guardless_transition: Option<&Transition> = None;
 
         for transition in transitions {
+            if transition.guards().is_none() || transition.guards().as_ref().unwrap().is_empty() {
+                guardless_transition = Some(transition);
+            }
             /* If in the transitions we need an event, and there wasn't one fired, don't run the checks */
-            if (transition.transitions_contain_event() && event.is_some())
+            else if (transition.transitions_contain_event() && event.is_some())
                 || (!transition.transitions_contain_event() && event.is_none())
             {
-                if let Some(guards) = transition.get_guards() {
+                if let Some(guards) = transition.guards() {
                     let mut all_guards_satisfied = true;
 
                     for guard in guards {
@@ -504,7 +536,7 @@ impl StateMachineEngine {
 
                     /* If all guard are satsified, take the transition as they are in order of priority inside the vec */
                     if all_guards_satisfied {
-                        let target_state = transition.get_target_state();
+                        let target_state = transition.target_state();
 
                         return Some(target_state.to_string());
                     }
@@ -512,7 +544,9 @@ impl StateMachineEngine {
             }
         }
 
-        None
+        // Enforces the rule that a guardless transition should be taken in to account last
+        let target_state = guardless_transition?.target_state();
+        return Some(target_state.to_string());
     }
 
     // Return codes
@@ -527,7 +561,7 @@ impl StateMachineEngine {
     ) -> Result<(), StateMachineEngineError> {
         // Reset cycle count for each pipeline run
         self.current_cycle_count = 0;
-        let mut loop_count = 0;
+        let mut ignore_global = false;
 
         // If the state machine is not running, or there is no current state, return an error
         // Otherwise this will block the pipeline in a loop
@@ -544,7 +578,6 @@ impl StateMachineEngine {
         while tick {
             // Safety fallback to prevent infinite loops
             tick = false;
-            self.action_mutated_triggers = false;
 
             // Infinite loop detection
             if let Some(_cycle) = self.detect_cycle() {
@@ -567,30 +600,40 @@ impl StateMachineEngine {
 
             // Check if there is a global state
             // If there is, evaluate the transitions of the global state first
-            if let Some(state_to_evaluate) = &self.global_state {
-                let target_state = if self.action_fired_event.is_some() {
-                    self.evaluate_transitions(state_to_evaluate, self.action_fired_event.as_ref())
-                } else {
-                    self.evaluate_transitions(
-                        state_to_evaluate,
-                        if loop_count == 0 { event } else { None },
-                    )
-                };
-
-                // We've consumed the event, set it to None
-                self.action_fired_event = None;
-
-                if let Some(state) = target_state {
-                    let success = self.set_current_state(&state);
-                    match success {
-                        Ok(_) => {
+            if !ignore_global {
+                if let Some(state_to_evaluate) = &self.global_state {
+                    let target_state = if self.action_fired_event.is_some() {
+                        self.evaluate_transitions(
+                            state_to_evaluate,
+                            self.action_fired_event.as_ref(),
+                        )
+                    } else {
+                        self.evaluate_transitions(
+                            state_to_evaluate,
                             if self.action_mutated_triggers {
-                                tick = true;
+                                None
+                            } else {
+                                event
+                            },
+                        )
+                    };
+
+                    // We've consumed the event, set it to None
+                    self.action_fired_event = None;
+                    self.action_mutated_triggers = false;
+
+                    if let Some(state) = target_state {
+                        let success = self.set_current_state(&state);
+                        match success {
+                            Ok(_) => {
+                                if self.action_mutated_triggers {
+                                    tick = true;
+                                }
                             }
-                        }
-                        Err(_) => {
-                            println!("🚨 Error setting current state");
-                            break;
+                            Err(_) => {
+                                println!("🚨 Error setting current state");
+                                break;
+                            }
                         }
                     }
                 }
@@ -598,15 +641,22 @@ impl StateMachineEngine {
 
             // Now we evaluate the transitions of the current state
             if let Some(current_state_to_evaluate) = &self.current_state {
+                // If there was an action fired event, we need to call evaluate_transitions with it
+                // Othwerwise we call it with the event that was passed in if there was one
                 let target_state = if self.action_fired_event.is_some() {
                     self.evaluate_transitions(
                         current_state_to_evaluate,
                         self.action_fired_event.as_ref(),
                     )
                 } else {
+                    // If we're not propagating events, set to else { None }
                     self.evaluate_transitions(
                         current_state_to_evaluate,
-                        if loop_count == 0 { event } else { None },
+                        if self.action_mutated_triggers {
+                            None
+                        } else {
+                            event
+                        },
                     )
                 };
 
@@ -618,12 +668,23 @@ impl StateMachineEngine {
                 }
 
                 if let Some(state) = target_state {
+                    // Rest this boolean so that it reflects correctly if the actions mutated triggers
+                    self.action_mutated_triggers = false;
+
                     let success = self.set_current_state(&state);
 
                     match success {
                         Ok(_) => {
+                            // Since setting the current state modified triggers, we need to
+                            // Complete another loop with the Global state included
+                            //
+                            // If we didn't mutate triggers, we re-evalaute the current state's transitions
                             if self.action_mutated_triggers {
                                 tick = true;
+                                ignore_global = false;
+                            } else {
+                                tick = true;
+                                ignore_global = true;
                             }
                         }
                         Err(_) => {
@@ -638,8 +699,6 @@ impl StateMachineEngine {
             if self.action_fired_event.is_some() {
                 tick = true;
             }
-
-            loop_count += 1;
         }
 
         Ok(())

@@ -32,6 +32,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.load_state_machine_data(global_state);
+
         let s = player.start_state_machine();
 
         assert_eq!(l, true);
@@ -63,7 +64,7 @@ mod tests {
         // Test that pointerUp anywhere on the canvas sets us back to global
         player.post_event(&Event::PointerUp { x: 0.0, y: 0.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "global");
+        assert_eq!(curr_state_name, "star_6");
     }
 
     #[test]
@@ -98,7 +99,7 @@ mod tests {
         assert_eq!(s, true);
 
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "global");
+        assert_eq!(curr_state_name, "star_0");
 
         player.post_event(&Event::PointerEnter { x: 15.0, y: 45.0 });
         let curr_state_name = get_current_state_name(&player);
@@ -128,7 +129,7 @@ mod tests {
         // This should no keep rating at 5 since we're not in the last star
         player.post_event(&Event::PointerExit { x: 0.0, y: 0.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "global");
+        assert_eq!(curr_state_name, "star_0");
     }
 
     #[test]

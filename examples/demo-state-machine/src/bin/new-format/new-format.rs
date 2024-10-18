@@ -9,8 +9,8 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const STATE_MACHINE_NAME: &str = "pigeon_fsm";
-pub const ANIMATION_NAME: &str = "pigeon";
+pub const STATE_MACHINE_NAME: &str = "not_equal";
+pub const ANIMATION_NAME: &str = "star_marked";
 
 struct Timer {
     last_update: Instant,
@@ -59,12 +59,12 @@ fn main() {
     });
 
     let mut markers = File::open(format!(
-        "./src/bin/new-format/animations/{}.lottie",
+        "./src/bin/shared/animations/{}.lottie",
         ANIMATION_NAME
     ))
     .expect("no file found");
     let metadatamarkers = fs::metadata(format!(
-        "./src/bin/new-format/animations/{}.lottie",
+        "./src/bin/shared/animations/{}.lottie",
         ANIMATION_NAME
     ))
     .expect("unable to read metadata");
@@ -76,7 +76,7 @@ fn main() {
     let mut timer = Timer::new();
 
     let state_machine: String = fs::read_to_string(format!(
-        "./src/bin/new-format/state_machines/{}.json",
+        "./src/bin/shared/statemachines/{}.json",
         STATE_MACHINE_NAME
     ))
     .unwrap();
@@ -133,25 +133,14 @@ fn main() {
 
         // Send event on key press
         if window.is_key_pressed(Key::Space, minifb::KeyRepeat::Yes) {
-            // let p = &mut *locked_player.write().unwrap();
-            // p.state_machine_fire_event("Step");
-
             let p = &mut *locked_player.write().unwrap();
-            rating += 1.0;
 
-            if rating > 160.0 {
-                rating = 0.0;
-            }
-            p.state_machine_set_numeric_trigger("progress", rating);
-            // p.state_machine_fire_event("step");
+            p.state_machine_set_numeric_trigger("Rating", 1.0);
         }
 
         if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
-            // let p = &mut *locked_player.write().unwrap();
-            // p.state_machine_fire_event("Step");
-
             let p = &mut *locked_player.write().unwrap();
-            p.post_event(&Event::PointerDown { x: 0.0, y: 0.0 });
+            p.state_machine_fire_event("Step");
         }
         let p = &mut *locked_player.write().unwrap();
 

@@ -96,16 +96,12 @@ dictionary Marker {
 
 [Enum]
 interface Event {
-    Bool(boolean value);
-    String(string value);
-    Numeric(f32 value);
-    OnPointerDown(f32 x, f32 y);
-    OnPointerUp(f32 x, f32 y);
-    OnPointerMove(f32 x, f32 y);
-    OnPointerEnter(f32 x, f32 y);
-    OnPointerExit(f32 x, f32 y);
+    PointerDown(f32 x, f32 y);
+    PointerUp(f32 x, f32 y);
+    PointerMove(f32 x, f32 y);
+    PointerEnter(f32 x, f32 y);
+    PointerExit(f32 x, f32 y);
     OnComplete();
-    SetNumericContext(string key, f32 value);
 };
 
 interface DotLottiePlayer {
@@ -154,21 +150,16 @@ interface DotLottiePlayer {
     boolean start_state_machine();
     boolean stop_state_machine();
     i32 post_event([ByRef] Event event);
-    boolean state_machine_subscribe(StateMachineObserver observer);
-    boolean state_machine_unsubscribe(StateMachineObserver observer);
-    boolean set_state_machine_numeric_context([ByRef] string key, f32 value);
-    boolean set_state_machine_string_context([ByRef] string key, [ByRef] string value);
-    boolean set_state_machine_boolean_context([ByRef] string key, boolean value);
     sequence<string> state_machine_framework_setup();
     boolean load_state_machine_data([ByRef] string state_machine);
 
-    i32 post_bool_event(boolean value);
-    i32 post_string_event([ByRef] string value);
-    i32 post_numeric_event(f32 value);
     i32 post_pointer_down_event(f32 x, f32 y);
     i32 post_pointer_up_event(f32 x, f32 y);
     i32 post_pointer_move_event(f32 x, f32 y);
     i32 post_pointer_enter_event(f32 x, f32 y);
     i32 post_pointer_exit_event(f32 x, f32 y);
-    i32 post_set_numeric_context([ByRef] string key, f32 value);
+    void state_machine_fire_event([ByRef] string event);
+    i32 state_machine_set_boolean_trigger([ByRef] string key, boolean value);
+    i32 state_machine_set_string_trigger([ByRef] string key, [ByRef] string value);
+    i32 state_machine_set_numeric_trigger([ByRef] string key, f32 value);
 };

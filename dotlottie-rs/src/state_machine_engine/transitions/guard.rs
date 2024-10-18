@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, f32::consts::E};
 
 use serde::Deserialize;
 
@@ -15,9 +15,9 @@ pub enum TransitionGuardConditionType {
 }
 
 pub trait GuardTrait {
-    fn string_trigger_is_satisfied(&self, context: &HashMap<String, String>) -> bool;
-    fn boolean_trigger_is_satisfied(&self, context: &HashMap<String, bool>) -> bool;
-    fn numeric_trigger_is_satisfied(&self, context: &HashMap<String, f32>) -> bool;
+    fn string_trigger_is_satisfied(&self, triggers: &HashMap<String, String>) -> bool;
+    fn boolean_trigger_is_satisfied(&self, triggers: &HashMap<String, bool>) -> bool;
+    fn numeric_trigger_is_satisfied(&self, triggers: &HashMap<String, f32>) -> bool;
     fn event_trigger_is_satisfied(&self, event: &str) -> bool;
 }
 
@@ -45,102 +45,172 @@ pub enum Guard {
 }
 
 impl GuardTrait for Guard {
-    fn boolean_trigger_is_satisfied(&self, context: &HashMap<String, bool>) -> bool {
+    // Check if the trigger is satisfied
+    // If the user uses compare_to as a string and pass "$" as a prefix, we use the trigger value
+    // If the trigger_value is not found, we return false
+    fn boolean_trigger_is_satisfied(&self, trigger: &HashMap<String, bool>) -> bool {
         match self {
             Guard::Boolean {
                 trigger_name,
                 condition_type,
                 compare_to,
             } => {
-                let context_value = context.get(trigger_name);
+                if let Some(trigger_value) = trigger.get(trigger_name) {
+                    match compare_to {
+                        StringNumberBool::Bool(compare_to) => match condition_type {
+                            TransitionGuardConditionType::Equal => {
+                                return trigger_value == compare_to;
+                            }
+                            TransitionGuardConditionType::NotEqual => {
+                                return trigger_value != compare_to;
+                            }
+                            _ => return false,
+                        },
+                        StringNumberBool::String(compare_to) => {
+                            // Get the number from the trigger
+                            // Remove the "$" prefix from the value
+                            let value = compare_to.trim_start_matches('$');
+                            let opt_bool_value = trigger.get(value);
+                            if let Some(bool_value) = opt_bool_value {
+                                match condition_type {
+                                    TransitionGuardConditionType::Equal => {
+                                        return trigger_value == bool_value;
+                                    }
+                                    TransitionGuardConditionType::NotEqual => {
+                                        return trigger_value != bool_value;
+                                    }
+                                    _ => return false,
+                                }
+                            }
 
-                if context_value.is_none() {
-                    return false;
+                            // Failed to get value from triggers
+                            false
+                        }
+                        StringNumberBool::F32(_) => false,
+                    };
                 }
 
-                match compare_to {
-                    StringNumberBool::Bool(compare_to) => match condition_type {
-                        TransitionGuardConditionType::Equal => {
-                            return context_value == Some(compare_to);
-                        }
-                        TransitionGuardConditionType::NotEqual => {
-                            return context_value != Some(compare_to)
-                        }
-                        _ => return false,
-                    },
-                    StringNumberBool::String(_) => false,
-                    StringNumberBool::F32(_) => false,
-                };
-
+                // Failed to get value from triggers
                 false
             }
             _ => false,
         }
     }
 
-    fn string_trigger_is_satisfied(&self, context: &HashMap<String, String>) -> bool {
+    fn string_trigger_is_satisfied(&self, trigger: &HashMap<String, String>) -> bool {
         match self {
             Guard::String {
                 trigger_name,
                 condition_type,
                 compare_to,
             } => {
-                let context_value = context.get(trigger_name);
+                if let Some(trigger_value) = trigger.get(trigger_name) {
+                    match compare_to {
+                        StringNumberBool::String(compare_to) => {
+                            let mut mut_compare_to = compare_to;
 
-                if context_value.is_none() {
-                    return false;
+                            if mut_compare_to.starts_with("$") {
+                                // Get the string from the trigger
+                                // Remove the "$" prefix from the value
+                                let value = mut_compare_to.trim_start_matches('$');
+                                let opt_string_value = trigger.get(value);
+                                if let Some(string_value) = opt_string_value {
+                                    mut_compare_to = string_value;
+                                } else {
+                                    // Failed to get value from triggers
+                                    return false;
+                                }
+                            }
+
+                            match condition_type {
+                                TransitionGuardConditionType::Equal => {
+                                    return trigger_value == mut_compare_to;
+                                }
+                                TransitionGuardConditionType::NotEqual => {
+                                    return trigger_value != mut_compare_to;
+                                }
+                                _ => return false,
+                            }
+                        }
+                        StringNumberBool::F32(_) => false,
+                        StringNumberBool::Bool(_) => false,
+                    };
                 }
 
-                match compare_to {
-                    StringNumberBool::String(compare_to) => match condition_type {
-                        TransitionGuardConditionType::Equal => {
-                            return context_value == Some(compare_to)
-                        }
-                        TransitionGuardConditionType::NotEqual => {
-                            return context_value != Some(compare_to)
-                        }
-                        _ => return false,
-                    },
-                    StringNumberBool::F32(_) => false,
-                    StringNumberBool::Bool(_) => false,
-                };
-
+                // Failed to get value from triggers
                 false
             }
             _ => false,
         }
     }
 
-    fn numeric_trigger_is_satisfied(&self, context: &HashMap<String, f32>) -> bool {
+    fn numeric_trigger_is_satisfied(&self, trigger: &HashMap<String, f32>) -> bool {
         match self {
             Guard::Numeric {
                 trigger_name,
                 condition_type,
                 compare_to,
             } => {
-                let context_value = context.get(trigger_name);
-
-                if context_value.is_none() {
+                if let Some(trigger_value) = trigger.get(trigger_name) {
+                    match compare_to {
+                        StringNumberBool::String(compare_to) => {
+                            if compare_to.starts_with("$") {
+                                // Remove the "$" prefix from the value
+                                let value = compare_to.trim_start_matches('$');
+                                let opt_numeric_value = trigger.get(value);
+                                if let Some(numeric_value) = opt_numeric_value {
+                                    match condition_type {
+                                        TransitionGuardConditionType::GreaterThan => {
+                                            return trigger_value > numeric_value;
+                                        }
+                                        TransitionGuardConditionType::GreaterThanOrEqual => {
+                                            return trigger_value >= numeric_value;
+                                        }
+                                        TransitionGuardConditionType::LessThan => {
+                                            return trigger_value < numeric_value;
+                                        }
+                                        TransitionGuardConditionType::LessThanOrEqual => {
+                                            return trigger_value <= numeric_value;
+                                        }
+                                        TransitionGuardConditionType::Equal => {
+                                            return trigger_value == numeric_value;
+                                        }
+                                        TransitionGuardConditionType::NotEqual => {
+                                            return trigger_value != numeric_value;
+                                        }
+                                    }
+                                } else {
+                                    // Failed to get value from triggers
+                                    return false;
+                                }
+                            } else {
+                                return false;
+                            }
+                        }
+                        StringNumberBool::F32(value) => match condition_type {
+                            TransitionGuardConditionType::GreaterThan => {
+                                return trigger_value > value;
+                            }
+                            TransitionGuardConditionType::GreaterThanOrEqual => {
+                                return trigger_value >= value;
+                            }
+                            TransitionGuardConditionType::LessThan => {
+                                return trigger_value < value;
+                            }
+                            TransitionGuardConditionType::LessThanOrEqual => {
+                                return trigger_value <= value;
+                            }
+                            TransitionGuardConditionType::Equal => {
+                                return trigger_value == value;
+                            }
+                            TransitionGuardConditionType::NotEqual => {
+                                return trigger_value != value;
+                            }
+                        },
+                        StringNumberBool::Bool(_) => return false,
+                    }
+                } else {
                     return false;
-                }
-
-                match compare_to {
-                    StringNumberBool::F32(compare_to) => match condition_type {
-                        TransitionGuardConditionType::Equal => context_value == Some(compare_to),
-                        TransitionGuardConditionType::NotEqual => context_value != Some(compare_to),
-                        TransitionGuardConditionType::GreaterThan => {
-                            context_value > Some(compare_to)
-                        }
-                        TransitionGuardConditionType::LessThan => context_value < Some(compare_to),
-                        TransitionGuardConditionType::GreaterThanOrEqual => {
-                            context_value >= Some(compare_to)
-                        }
-                        TransitionGuardConditionType::LessThanOrEqual => {
-                            context_value <= Some(compare_to)
-                        }
-                    },
-                    StringNumberBool::String(_) => false,
-                    StringNumberBool::Bool(_) => false,
                 }
             }
             _ => false,

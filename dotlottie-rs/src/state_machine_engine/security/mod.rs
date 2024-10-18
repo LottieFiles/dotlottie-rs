@@ -14,7 +14,7 @@ pub fn check_states_for_guardless_transitions(
     let mut name_set: HashSet<String> = HashSet::new();
 
     for state in states {
-        let state_name = state.get_name();
+        let state_name = state.name();
         if !name_set.insert(state_name.to_string()) {
             println!("🚨 Error: State name: {} is not unique.", state_name);
             return Err(
@@ -24,7 +24,7 @@ pub fn check_states_for_guardless_transitions(
             );
         }
 
-        let transitions = state.get_transitions();
+        let transitions = state.transitions();
         let mut count = 0;
 
         for transition in transitions {
@@ -40,7 +40,7 @@ pub fn check_states_for_guardless_transitions(
         if count > 1 {
             return Err(
                 StateMachineEngineError::SecurityCheckErrorMultipleGuardlessTransitions {
-                    state_name: state.get_name(),
+                    state_name: state.name(),
                 },
             );
         }

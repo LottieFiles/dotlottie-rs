@@ -14,7 +14,7 @@ mod tests {
                     let curr_state = &engine.current_state;
 
                     if let Some(curr_state) = curr_state {
-                        let name = curr_state.get_name();
+                        let name = curr_state.name();
                         return name;
                     }
                 }
@@ -202,9 +202,7 @@ mod tests {
     }
 
     #[test]
-    pub fn guardless_transition() {
-        
-    }
+    pub fn guardless_transition() {}
 
     // Todo cases
 }

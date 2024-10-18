@@ -10,43 +10,44 @@
             "transitions": [
                 {
                     "type": "Transition",
-                    "to_state": "star_3",
+                    "toState": "star_3",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "LessThan",
-                            "trigger_name": "rating",
-                            "compare_to": 3.0
+                            "conditionType": "LessThan",
+                            "triggerName": "rating",
+                            "compareTo": 3.0
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_4",
+                    "toState": "star_4",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 4.0
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 4.0
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_5",
+                    "toState": "star_5",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 5.0
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 5.0
                         }
                     ]
                 }
             ]
         },
         {
+            "animationId": "",
             "type": "PlaybackState",
             "name": "star_1",
             "autoplay": true,
@@ -55,6 +56,7 @@
             "entry_actions": []
         },
         {
+            "animationId": "",
             "type": "PlaybackState",
             "name": "star_2",
             "autoplay": true,
@@ -63,6 +65,7 @@
             "entry_actions": []
         },
         {
+            "animationId": "",
             "type": "PlaybackState",
             "name": "star_3",
             "autoplay": true,
@@ -71,6 +74,7 @@
             "entry_actions": []
         },
         {
+            "animationId": "",
             "type": "PlaybackState",
             "name": "star_4",
             "autoplay": true,
@@ -79,6 +83,7 @@
             "entry_actions": []
         },
         {
+            "animationId": "",
             "type": "PlaybackState",
             "name": "star_5",
             "autoplay": true,

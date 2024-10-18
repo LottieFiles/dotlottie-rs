@@ -178,7 +178,7 @@
             "name": "star_6",
             "autoplay": true,
             "transitions": [],
-            "entry_actions": [
+            "entryActions": [
                 {
                     "type": "Increment",
                     "triggerName": "rating",
@@ -215,7 +215,6 @@
             "transitions": []
         }
     ],
-    "listeners": [],
     "listeners": [],
     "triggers": [
         {

@@ -9,6 +9,7 @@ pub trait TransitionTrait {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
 pub enum Transition {
     Transition {

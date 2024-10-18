@@ -376,13 +376,13 @@ impl StateMachineEngine {
 
     fn get_state(&self, state_name: &str) -> Option<Rc<State>> {
         if let Some(global_state) = &self.global_state {
-            if global_state.get_name() == state_name {
+            if global_state.name() == state_name {
                 return Some(global_state.clone());
             }
         }
 
         for state in self.state_machine.states.iter() {
-            if state.get_name() == state_name {
+            if state.name() == state_name {
                 return Some(Rc::new(state.clone()));
             }
         }
@@ -455,7 +455,7 @@ impl StateMachineEngine {
         state_to_evaluate: &Rc<State>,
         event: Option<&String>,
     ) -> Option<String> {
-        let transitions = state_to_evaluate.get_transitions();
+        let transitions = state_to_evaluate.transitions();
 
         for transition in transitions {
             /* If in the transitions we need an event, and there wasn't one fired, don't run the checks */
@@ -562,7 +562,7 @@ impl StateMachineEngine {
 
             // Record the current state
             if let Some(state) = &self.current_state {
-                self.state_history.push(state.get_name().to_string());
+                self.state_history.push(state.name().to_string());
             }
 
             // Check if there is a global state
@@ -764,7 +764,7 @@ impl StateMachineEngine {
             {
                 if let Some(current_state) = &self.current_state {
                     if let Some(state_name) = state_name {
-                        if current_state.get_name() == *state_name {
+                        if current_state.name() == *state_name {
                             for action in actions {
                                 // Clones the reference to action
                                 actions_to_execute.push(action.clone());
@@ -810,7 +810,7 @@ impl StateMachineEngine {
 
     pub fn get_current_state_name(&self) -> String {
         if let Some(state) = &self.current_state {
-            return state.get_name();
+            return state.name();
         }
 
         "".to_string()

@@ -19,6 +19,7 @@ pub enum ListenerAction {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
 pub enum Listener {
     PointerUp {

@@ -11,18 +11,6 @@
             "transitions": [
                 {
                     "type": "Transition",
-                    "toState": "global",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "Equal",
-                            "triggerName": "rating",
-                            "compareTo": 0
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
                     "toState": "star_1",
                     "guards": [
                         {
@@ -80,6 +68,30 @@
                             "compareTo": 5
                         }
                     ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "star_6",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 6
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "star_6",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 6
+                        }
+                    ]
                 }
             ]
         },
@@ -124,6 +136,13 @@
             "autoplay": true,
             "segment": "star_5",
             "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "animationId": "",
+            "name": "star_6",
+            "autoplay": true,
+            "transitions": []
         }
     ],
     "listeners": [
@@ -133,7 +152,7 @@
                 {
                     "type": "SetNumeric",
                     "triggerName": "rating",
-                    "value": 0
+                    "value": 6
                 }
             ]
         },

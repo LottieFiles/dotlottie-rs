@@ -1,47 +1,22 @@
 {
     "descriptor": {
-        "id": "star-rating",
+        "id": "not-equal",
         "initial": "global"
     },
     "states": [
         {
             "name": "global",
             "type": "GlobalState",
-            "animationId": "",
             "transitions": [
-                {
-                    "type": "Transition",
-                    "toState": "star_1",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "Equal",
-                            "triggerName": "rating",
-                            "compareTo": 1
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "star_2",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "Equal",
-                            "triggerName": "rating",
-                            "compareTo": 2
-                        }
-                    ]
-                },
                 {
                     "type": "Transition",
                     "toState": "star_3",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "conditionType": "Equal",
+                            "conditionType": "LessThanOrEqual",
                             "triggerName": "rating",
-                            "compareTo": 3
+                            "compareTo": 3.0
                         }
                     ]
                 },
@@ -53,7 +28,7 @@
                             "type": "Numeric",
                             "conditionType": "Equal",
                             "triggerName": "rating",
-                            "compareTo": 4
+                            "compareTo": 4.0
                         }
                     ]
                 },
@@ -65,72 +40,64 @@
                             "type": "Numeric",
                             "conditionType": "Equal",
                             "triggerName": "rating",
-                            "compareTo": 5
+                            "compareTo": 5.0
                         }
                     ]
                 }
             ]
         },
         {
+            "animationId": "",
             "type": "PlaybackState",
             "name": "star_1",
-            "animationId": "",
             "autoplay": true,
             "segment": "star_1",
             "transitions": [],
-            "entryActions": []
+            "entry_actions": []
         },
         {
+            "animationId": "",
             "type": "PlaybackState",
             "name": "star_2",
-            "animationId": "",
             "autoplay": true,
             "segment": "star_2",
             "transitions": [],
-            "entryActions": []
+            "entry_actions": []
         },
         {
+            "animationId": "",
             "type": "PlaybackState",
             "name": "star_3",
-            "animationId": "",
             "autoplay": true,
             "segment": "star_3",
-            "transitions": []
+            "transitions": [],
+            "entry_actions": []
         },
         {
+            "animationId": "",
             "type": "PlaybackState",
             "name": "star_4",
-            "animationId": "",
             "autoplay": true,
             "segment": "star_4",
-            "transitions": []
+            "transitions": [],
+            "entry_actions": []
         },
         {
+            "animationId": "",
             "type": "PlaybackState",
             "name": "star_5",
-            "animationId": "",
             "autoplay": true,
             "segment": "star_5",
-            "transitions": []
+            "transitions": [],
+            "entry_actions": []
         }
     ],
-    "listeners": [
-        {
-            "type": "OnComplete",
-            "actions": [
-                {
-                    "type": "Increment",
-                    "triggerName": "rating",
-                    "value": 1
-                }
-            ]
-        }
-    ],
+    "listeners": [],
     "triggers": [
         {
             "type": "Numeric",
             "name": "rating",
-            "value": 0
+            "value": 0.0
         }
     ]
 }

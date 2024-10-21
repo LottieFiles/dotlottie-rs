@@ -1466,7 +1466,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    let ret = sm.set_numeric_trigger(key, value, true);
+                    let ret = sm.set_numeric_trigger(key, value, true, false);
 
                     if ret.is_some() {
                         return 0;
@@ -1482,7 +1482,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    let ret = sm.set_string_trigger(key, value, true);
+                    let ret = sm.set_string_trigger(key, value, true, false);
 
                     if ret.is_some() {
                         return 0;
@@ -1498,7 +1498,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    let ret = sm.set_boolean_trigger(key, value, true);
+                    let ret = sm.set_boolean_trigger(key, value, true, false);
 
                     if ret.is_some() {
                         return 0;

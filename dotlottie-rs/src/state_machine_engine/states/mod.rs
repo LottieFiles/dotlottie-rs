@@ -32,12 +32,9 @@ pub trait StateTrait {
     ) -> Result<(), StateMachineActionError>;
     fn exit(
         &self,
+        engine: &mut StateMachineEngine,
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
-        string_trigger: &HashMap<String, String>,
-        bool_trigger: &HashMap<String, bool>,
-        numeric_trigger: &HashMap<String, f32>,
-        event_trigger: &HashMap<String, String>,
-    ) -> i32;
+    ) -> Result<(), StateMachineActionError>;
     fn animation_id(&self) -> &str;
     fn transitions(&self) -> &Vec<Transition>;
     fn entry_actions(&self) -> Option<&Vec<Action>>;
@@ -135,8 +132,8 @@ impl StateTrait for State {
                 if let Ok(player_read) = player.try_read() {
                     let size = player_read.size();
 
-                    // Tell player to load new animation
-                    if !animation_id.eq(self.animation_id()) {
+                    // Todo compare against currently loaded animation
+                    if !animation_id.is_empty() {
                         player_read.load_animation(animation_id, size.0, size.1);
                     }
 
@@ -145,11 +142,12 @@ impl StateTrait for State {
                     if let Some(autoplay) = autoplay {
                         if *autoplay {
                             player_read.play();
-
+                            println!(">> Returning 2 | play");
                             return 2;
                         } else {
                             player_read.pause();
 
+                            println!(">> Returning 3 | pause");
                             return 3;
                         }
                     } else {
@@ -221,13 +219,30 @@ impl StateTrait for State {
 
     fn exit(
         &self,
-        _player: &Rc<RwLock<DotLottiePlayerContainer>>,
-        _string_trigger: &HashMap<String, String>,
-        _bool_trigger: &HashMap<String, bool>,
-        _numeric_trigger: &HashMap<String, f32>,
-        _event_trigger: &HashMap<String, String>,
-    ) -> i32 {
-        0
+        engine: &mut StateMachineEngine,
+        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+    ) -> Result<(), StateMachineActionError> {
+        match self {
+            State::PlaybackState { exit_actions, .. } => {
+                /* Perform exit actions */
+                if let Some(actions) = exit_actions {
+                    for action in actions {
+                        println!("Executing exit action: {:?}", action);
+                        let _ = action.execute(engine, player.clone(), false);
+                    }
+                }
+            }
+
+            State::GlobalState { exit_actions, .. } => {
+                if let Some(actions) = exit_actions {
+                    for action in actions {
+                        let _ = action.execute(engine, player.clone(), false);
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn entry_actions(&self) -> Option<&Vec<Action>> {

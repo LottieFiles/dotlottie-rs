@@ -10,18 +10,6 @@
             "transitions": [
                 {
                     "type": "Transition",
-                    "to_state": "global",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 0
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
                     "to_state": "star_1",
                     "guards": [
                         {
@@ -88,9 +76,7 @@
             "autoplay": true,
             "segment": "star_1",
             "transitions": [],
-            "entry_actions":[
-
-            ]
+            "entry_actions": []
         },
         {
             "type": "PlaybackState",
@@ -98,8 +84,7 @@
             "autoplay": true,
             "segment": "star_2",
             "transitions": [],
-            "entry_actions":[
-            ]
+            "entry_actions": []
         },
         {
             "type": "PlaybackState",
@@ -122,10 +107,8 @@
             "segment": "star_5",
             "transitions": []
         }
-
     ],
-    "listeners": [
-    ],
+    "listeners": [],
     "triggers": [
         {
             "type": "Numeric",

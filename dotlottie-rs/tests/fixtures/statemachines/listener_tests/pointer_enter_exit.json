@@ -11,7 +11,7 @@
             "transitions": [
                 {
                     "type": "Transition",
-                    "toState": "global",
+                    "toState": "star_0",
                     "guards": [
                         {
                             "type": "Numeric",
@@ -82,6 +82,15 @@
                     ]
                 }
             ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_0",
+            "animationId": "",
+            "autoplay": true,
+            "segment": "star_0",
+            "transitions": [],
+            "entryActions": []
         },
         {
             "type": "PlaybackState",

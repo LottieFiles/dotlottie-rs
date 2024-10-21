@@ -109,22 +109,29 @@ impl ActionTrait for Action {
                                     engine.set_numeric_trigger(
                                         trigger_name,
                                         val + trigger_value,
-                                        false,
+                                        run_pipeline,
+                                        true,
                                     );
                                 } else {
                                     engine.set_numeric_trigger(
                                         trigger_name,
                                         val + 1.0,
                                         run_pipeline,
+                                        true,
                                     );
                                 }
                             }
                             StringNumber::F32(value) => {
-                                engine.set_numeric_trigger(trigger_name, val + value, run_pipeline);
+                                engine.set_numeric_trigger(
+                                    trigger_name,
+                                    val + value,
+                                    run_pipeline,
+                                    true,
+                                );
                             }
                         }
                     } else {
-                        engine.set_numeric_trigger(trigger_name, val + 1.0, run_pipeline);
+                        engine.set_numeric_trigger(trigger_name, val + 1.0, run_pipeline, true);
                     }
                 }
 
@@ -146,22 +153,29 @@ impl ActionTrait for Action {
                                     engine.set_numeric_trigger(
                                         trigger_name,
                                         val - trigger_value,
-                                        false,
+                                        run_pipeline,
+                                        true,
                                     );
                                 } else {
                                     engine.set_numeric_trigger(
                                         trigger_name,
                                         val - 1.0,
                                         run_pipeline,
+                                        true,
                                     );
                                 }
                             }
                             StringNumber::F32(value) => {
-                                engine.set_numeric_trigger(trigger_name, val - value, run_pipeline);
+                                engine.set_numeric_trigger(
+                                    trigger_name,
+                                    val - value,
+                                    run_pipeline,
+                                    true,
+                                );
                             }
                         }
                     } else {
-                        engine.set_numeric_trigger(trigger_name, val - 1.0, run_pipeline);
+                        engine.set_numeric_trigger(trigger_name, val - 1.0, run_pipeline, true);
                     }
                 }
                 Ok(())
@@ -170,7 +184,7 @@ impl ActionTrait for Action {
                 let val = engine.get_boolean_trigger(trigger_name);
 
                 if let Some(val) = val {
-                    engine.set_boolean_trigger(trigger_name, !val, run_pipeline);
+                    engine.set_boolean_trigger(trigger_name, !val, run_pipeline, true);
                 }
 
                 Ok(())
@@ -180,7 +194,7 @@ impl ActionTrait for Action {
                 trigger_name,
                 value,
             } => {
-                engine.set_boolean_trigger(trigger_name, *value, run_pipeline);
+                engine.set_boolean_trigger(trigger_name, *value, run_pipeline, true);
                 Ok(())
             }
             // Todo: Add support for setting a trigger to a trigger value
@@ -188,7 +202,7 @@ impl ActionTrait for Action {
                 trigger_name,
                 value,
             } => {
-                engine.set_numeric_trigger(trigger_name, *value, run_pipeline);
+                engine.set_numeric_trigger(trigger_name, *value, run_pipeline, true);
                 Ok(())
             }
             // Todo: Add support for setting a trigger to a trigger value
@@ -196,7 +210,7 @@ impl ActionTrait for Action {
                 trigger_name,
                 value,
             } => {
-                engine.set_string_trigger(trigger_name, value, run_pipeline);
+                engine.set_string_trigger(trigger_name, value, run_pipeline, true);
 
                 Ok(())
             }

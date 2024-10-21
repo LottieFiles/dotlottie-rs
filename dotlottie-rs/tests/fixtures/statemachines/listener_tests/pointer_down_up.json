@@ -71,25 +71,25 @@
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_6",
+                    "toState": "star_6",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 6
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 6
                         }
                     ]
                 },
                 {
                     "type": "Transition",
-                    "to_state": "star_6",
+                    "toState": "star_6",
                     "guards": [
                         {
                             "type": "Numeric",
-                            "condition_type": "Equal",
-                            "trigger_name": "rating",
-                            "compare_to": 6
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 6
                         }
                     ]
                 }
@@ -139,6 +139,7 @@
         },
         {
             "type": "PlaybackState",
+            "animationId": "",
             "name": "star_6",
             "autoplay": true,
             "transitions": []

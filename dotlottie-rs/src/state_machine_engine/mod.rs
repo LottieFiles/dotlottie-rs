@@ -191,15 +191,22 @@ impl StateMachineEngine {
         self.boolean_trigger.get(key).cloned()
     }
 
+    // key: The key of the trigger
+    // value: The value to set the trigger to
+    // run_pipeline: If true, the pipeline will be run after setting the trigger. This is most likely false if called from an action or during initialization.
+    // called_from_action: If true, the trigger was set from an action. We need this so that action_mutated_triggers is correctly set.
     pub fn set_numeric_trigger(
         &mut self,
         key: &str,
         value: f32,
         run_pipeline: bool,
+        called_from_action: bool,
     ) -> Option<f32> {
         let ret = self.numeric_trigger.insert(key.to_string(), value);
 
-        self.action_mutated_triggers = true;
+        if called_from_action {
+            self.action_mutated_triggers = true;
+        }
 
         if run_pipeline {
             let _ = self.run_current_state_pipeline(None);
@@ -212,13 +219,15 @@ impl StateMachineEngine {
         key: &str,
         value: &str,
         run_pipeline: bool,
+        called_from_action: bool,
     ) -> Option<String> {
         let ret = self
             .string_trigger
             .insert(key.to_string(), value.to_string());
 
-        self.action_mutated_triggers = true;
-
+        if called_from_action {
+            self.action_mutated_triggers = true;
+        }
         if run_pipeline {
             let _ = self.run_current_state_pipeline(None);
         }
@@ -231,11 +240,13 @@ impl StateMachineEngine {
         key: &str,
         value: bool,
         run_pipeline: bool,
+        called_from_action: bool,
     ) -> Option<bool> {
         let ret = self.boolean_trigger.insert(key.to_string(), value);
 
-        self.action_mutated_triggers = true;
-
+        if called_from_action {
+            self.action_mutated_triggers = true;
+        }
         if run_pipeline {
             let _ = self.run_current_state_pipeline(None);
         }
@@ -285,13 +296,13 @@ impl StateMachineEngine {
                     for trigger in triggers {
                         match trigger {
                             Trigger::Numeric { name, value } => {
-                                new_state_machine.set_numeric_trigger(&name, *value, false);
+                                new_state_machine.set_numeric_trigger(&name, *value, false, false);
                             }
                             Trigger::String { name, value } => {
-                                new_state_machine.set_string_trigger(&name, &value, false);
+                                new_state_machine.set_string_trigger(&name, &value, false, false);
                             }
                             Trigger::Boolean { name, value } => {
-                                new_state_machine.set_boolean_trigger(&name, *value, false);
+                                new_state_machine.set_boolean_trigger(&name, *value, false, false);
                             }
                             Trigger::Event { name } => {
                                 new_state_machine
@@ -490,9 +501,11 @@ impl StateMachineEngine {
             if transition.guards().is_none() || transition.guards().as_ref().unwrap().is_empty() {
                 guardless_transition = Some(transition);
             }
-            /* If in the transitions we need an event, and there wasn't one fired, don't run the checks */
+            // If in the transitions we need an event, and there wasn't one fired, don't run the checks.
+            // If there wasn't an event needed, but we are sending an event, still do the checks.
+            // Events might be passed even if not needed because they are passed down to child states.
             else if (transition.transitions_contain_event() && event.is_some())
-                || (!transition.transitions_contain_event() && event.is_none())
+                || (!transition.transitions_contain_event())
             {
                 if let Some(guards) = transition.guards() {
                     let mut all_guards_satisfied = true;
@@ -666,7 +679,6 @@ impl StateMachineEngine {
                 if self.global_state.is_none() {
                     self.action_fired_event = None;
                 }
-
                 if let Some(state) = target_state {
                     // Rest this boolean so that it reflects correctly if the actions mutated triggers
                     self.action_mutated_triggers = false;

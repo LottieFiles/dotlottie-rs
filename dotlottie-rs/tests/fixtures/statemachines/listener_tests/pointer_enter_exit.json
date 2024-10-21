@@ -11,6 +11,18 @@
             "transitions": [
                 {
                     "type": "Transition",
+                    "toState": "star_0",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 0
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
                     "toState": "star_1",
                     "guards": [
                         {
@@ -74,10 +86,11 @@
         {
             "type": "PlaybackState",
             "name": "star_0",
+            "animationId": "",
             "autoplay": true,
             "segment": "star_0",
             "transitions": [],
-            "entry_actions": []
+            "entryActions": []
         },
         {
             "type": "PlaybackState",

@@ -437,21 +437,24 @@ impl StateMachineEngine {
 
         if new_state.is_some() {
             // We have a new state
-            // Perofrm exit actions on the current state
-            if let Some(state) = &self.current_state {
-                if let Some(player) = &self.player {
-                    // Perform exit actions
-                    state.exit(
-                        &player,
-                        &self.string_trigger,
-                        &self.boolean_trigger,
-                        &self.numeric_trigger,
-                        &self.event_trigger,
-                    );
+
+            // Perform exit actions on the current state if there is one.
+            if self.current_state.is_some() {
+                let state = self.current_state.take();
+                let player = self.player.take();
+
+                // Now use the extracted information
+                if let (Some(state), Some(player)) = (state, player) {
+                    let _ = state.exit(self, &player);
+
+                    // Don't forget to put things back
+                    // new_state becomes the current state
+                    self.current_state = Some(state);
+                    self.player = Some(player);
                 }
             }
 
-            // Assign the new state to the current_state
+            // // Assign the new state to the current_state
             self.current_state = new_state;
 
             // Perform entry actions
@@ -472,6 +475,7 @@ impl StateMachineEngine {
                 );
 
                 // Don't forget to put things back
+                // new_state becomes the current state
                 self.current_state = Some(state);
                 self.player = Some(player);
             } else {
@@ -624,7 +628,7 @@ impl StateMachineEngine {
                         self.evaluate_transitions(
                             state_to_evaluate,
                             if self.action_mutated_triggers {
-                                None
+                                event
                             } else {
                                 event
                             },
@@ -640,6 +644,7 @@ impl StateMachineEngine {
                         match success {
                             Ok(_) => {
                                 if self.action_mutated_triggers {
+                                    println!("🚨 Ticking");
                                     tick = true;
                                 }
                             }
@@ -666,6 +671,7 @@ impl StateMachineEngine {
                     self.evaluate_transitions(
                         current_state_to_evaluate,
                         if self.action_mutated_triggers {
+                            // event
                             None
                         } else {
                             event
@@ -680,6 +686,8 @@ impl StateMachineEngine {
                     self.action_fired_event = None;
                 }
                 if let Some(state) = target_state {
+                    println!("Target State: {}", state);
+
                     // Rest this boolean so that it reflects correctly if the actions mutated triggers
                     self.action_mutated_triggers = false;
 
@@ -768,6 +776,12 @@ impl StateMachineEngine {
                             }
                         } else {
                             // Hit check will return true if the layer was hit
+                            println!("Checking if layer was hit: {}", layer);
+                            println!("You sent: {} {} ", x, y);
+                            println!(
+                                "Layer coordinates are: {:?}",
+                                player_container.get_layer_bounds(&layer)
+                            );
                             if player_container.hit_check(&layer, x, y) {
                                 for action in actions {
                                     actions_to_execute.push(action.clone());
@@ -813,6 +827,7 @@ impl StateMachineEngine {
         for action in actions_to_execute {
             // Run the pipeline because listeners are outside of the evaluation pipeline loop
             if let Some(player_ref) = &self.player {
+                println!("Executing action: {:?}", action);
                 let _ = action.execute(self, player_ref.clone(), true);
             }
         }
@@ -834,14 +849,7 @@ impl StateMachineEngine {
             } = listener
             {
                 if let Some(current_state) = &self.current_state {
-                    if let Some(state_name) = state_name {
-                        if current_state.name() == *state_name {
-                            for action in actions {
-                                // Clones the reference to action
-                                actions_to_execute.push(action.clone());
-                            }
-                        }
-                    } else {
+                    if current_state.name() == *state_name {
                         for action in actions {
                             // Clones the reference to action
                             actions_to_execute.push(action.clone());

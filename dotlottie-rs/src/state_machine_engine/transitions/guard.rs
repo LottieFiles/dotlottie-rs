@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
-use crate::state_machine::StringNumberBool;
+use crate::state_machine::{StringBool, StringNumberBool};
 
 #[derive(Deserialize, PartialEq, Debug, Clone)]
 pub enum TransitionGuardConditionType {
@@ -38,7 +38,7 @@ pub enum Guard {
     Boolean {
         trigger_name: String,
         condition_type: TransitionGuardConditionType,
-        compare_to: StringNumberBool,
+        compare_to: StringBool,
     },
     Event {
         trigger_name: String,
@@ -58,7 +58,7 @@ impl GuardTrait for Guard {
             } => {
                 if let Some(trigger_value) = trigger.get(trigger_name) {
                     match compare_to {
-                        StringNumberBool::Bool(compare_to) => match condition_type {
+                        StringBool::Bool(compare_to) => match condition_type {
                             TransitionGuardConditionType::Equal => {
                                 return trigger_value == compare_to;
                             }
@@ -67,7 +67,7 @@ impl GuardTrait for Guard {
                             }
                             _ => return false,
                         },
-                        StringNumberBool::String(compare_to) => {
+                        StringBool::String(compare_to) => {
                             // Get the number from the trigger
                             // Remove the "$" prefix from the value
                             let value = compare_to.trim_start_matches('$');
@@ -87,7 +87,6 @@ impl GuardTrait for Guard {
                             // Failed to get value from triggers
                             false
                         }
-                        StringNumberBool::F32(_) => false,
                     };
                 }
 

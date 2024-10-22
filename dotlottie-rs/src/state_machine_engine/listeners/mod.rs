@@ -43,7 +43,7 @@ pub enum Listener {
         actions: Vec<Action>,
     },
     OnComplete {
-        state_name: Option<String>,
+        state_name: String,
         actions: Vec<Action>,
     },
 }
@@ -133,7 +133,7 @@ impl ListenerTrait for Listener {
             Listener::PointerEnter { .. } => None,
             Listener::PointerMove { .. } => None,
             Listener::PointerExit { .. } => None,
-            Listener::OnComplete { state_name, .. } => state_name.clone(),
+            Listener::OnComplete { state_name, .. } => Some(state_name.clone()),
         }
     }
 

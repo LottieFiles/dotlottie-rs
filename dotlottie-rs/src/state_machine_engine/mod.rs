@@ -471,9 +471,15 @@ impl StateMachineEngine {
                     &mut self.event_trigger,
                 );
 
+                let state_is_final = state.is_final();
+
                 // Don't forget to put things back
                 self.current_state = Some(state);
                 self.player = Some(player);
+
+                if state_is_final {
+                    self.end();
+                }
             } else {
                 return Err(StateMachineEngineError::SetStateError {});
             }

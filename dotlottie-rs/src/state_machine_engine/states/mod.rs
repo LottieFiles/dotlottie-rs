@@ -46,6 +46,7 @@ pub trait StateTrait {
     // fn config(&self) -> Option<&Config>;
     fn name(&self) -> String;
     fn get_type(&self) -> String;
+    fn is_final(&self) -> bool;
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -59,6 +60,7 @@ pub enum State {
         r#loop: Option<bool>,
         autoplay: Option<bool>,
         mode: Option<String>,
+        r#final: Option<bool>,
         speed: Option<f32>,
         segment: Option<String>,
         background_color: Option<u32>,
@@ -241,6 +243,13 @@ impl StateTrait for State {
         match self {
             State::PlaybackState { exit_actions, .. } => exit_actions.as_ref(),
             State::GlobalState { exit_actions, .. } => exit_actions.as_ref(),
+        }
+    }
+
+    fn is_final(&self) -> bool {
+        match self {
+            State::PlaybackState { r#final, .. } => r#final.unwrap_or(false),
+            State::GlobalState { .. } => false,
         }
     }
 }

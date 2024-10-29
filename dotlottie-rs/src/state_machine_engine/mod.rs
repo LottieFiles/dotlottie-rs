@@ -7,7 +7,7 @@ pub mod actions;
 pub mod errors;
 pub mod events;
 pub mod listeners;
-mod security;
+pub mod security;
 pub mod state_machine;
 pub mod states;
 pub mod transitions;
@@ -15,7 +15,7 @@ pub mod triggers;
 
 use actions::{Action, ActionTrait};
 use listeners::ListenerTrait;
-use security::check_states_for_guardless_transitions;
+use security::StateMachineEngineError;
 use state_machine::StateMachine;
 use states::StateTrait;
 use transitions::guard::GuardTrait;
@@ -23,7 +23,9 @@ use transitions::{Transition, TransitionTrait};
 use triggers::Trigger;
 
 use crate::state_machine_engine::listeners::Listener;
-use crate::{DotLottiePlayerContainer, EventName, PointerEvent};
+use crate::{
+    state_machine_state_check_pipeline, DotLottiePlayerContainer, EventName, PointerEvent,
+};
 
 use self::state_machine::state_machine_parse;
 use self::{events::Event, states::State};
@@ -39,39 +41,6 @@ pub enum StateMachineEngineStatus {
     Running,
     Paused,
     Stopped,
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum StateMachineEngineError {
-    #[error("Failed to parse JSON state machine definition.")]
-    ParsingError { reason: String },
-
-    #[error("Failed to create StateMachineEngine.")]
-    CreationError { reason: String },
-
-    #[error("Event can not be fired as it does not exist.")]
-    FireEventError,
-
-    #[error("Infinite loop detected.")]
-    InfiniteLoopError,
-
-    #[error("State machine engine is not running.")]
-    NotRunningError,
-
-    #[error("Failed to change the current state.")]
-    SetStateError,
-
-    #[error(
-        "The state: {} has multiple transitions without guards. This is not allowed.",
-        state_name
-    )]
-    SecurityCheckErrorMultipleGuardlessTransitions { state_name: String },
-
-    #[error(
-        "The state name: {} has been used multiple times. This is not allowed.",
-        state_name
-    )]
-    SecurityCheckErrorDuplicateStateName { state_name: String },
 }
 
 pub struct StateMachineEngine {
@@ -367,7 +336,7 @@ impl StateMachineEngine {
         &self,
         state_machine: &StateMachineEngine,
     ) -> Result<(), StateMachineEngineError> {
-        check_states_for_guardless_transitions(state_machine)
+        state_machine_state_check_pipeline(state_machine)
     }
 
     pub fn start(&mut self) {

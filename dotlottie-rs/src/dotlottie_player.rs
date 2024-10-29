@@ -7,11 +7,9 @@ use crate::{
     extract_markers,
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
-    Marker, MarkersMap, StateMachineEngine,
+    Marker, MarkersMap, StateMachineEngine, StateMachineEngineError,
 };
-use crate::{
-    DotLottieError, DotLottieManager, Manifest, ManifestAnimation, StateMachineEngineError,
-};
+use crate::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
 use crate::{StateMachineEngineStatus, StateMachineObserver};
 
 pub trait Observer: Send + Sync {

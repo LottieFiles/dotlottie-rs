@@ -12,5 +12,6 @@ pub use layout::*;
 pub use lottie_renderer::*;
 pub use markers::*;
 pub use state_machine_engine::events::*;
+pub use state_machine_engine::security::*;
 pub use state_machine_engine::*;
 pub use thorvg::*;

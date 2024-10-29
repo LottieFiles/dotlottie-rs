@@ -1365,19 +1365,24 @@ impl DotLottiePlayer {
                                 listener_types.push("PointerDown".to_string())
                             }
                             crate::listeners::Listener::PointerEnter { .. } => {
-                                listener_types.push("PointerEnter".to_string())
+                                // Push PointerMove so that can determine if the pointer entered the layer
+                                listener_types.push("PointerMove".to_string())
                             }
                             crate::listeners::Listener::PointerMove { .. } => {
                                 listener_types.push("PointerMove".to_string())
                             }
                             crate::listeners::Listener::PointerExit { .. } => {
-                                listener_types.push("PointerExit".to_string())
+                                // Push PointerMove so that can determine if the pointer exited the layer
+                                listener_types.push("PointerMove".to_string())
                             }
                             crate::listeners::Listener::OnComplete { .. } => {
                                 listener_types.push("OnComplete".to_string())
                             }
                         }
                     }
+
+                    listener_types.sort();
+                    listener_types.dedup();
                     listener_types
                 } else {
                     vec![]

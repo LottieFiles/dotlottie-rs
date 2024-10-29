@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 minifb = "0.27"
-dotlottie-rs = { path = "../../dotlottie-rs" }
+dotlottie-rs = { path = "../../dotlottie-rs", features = ["thorvg"] }
 sysinfo = "0.30"
 rand = "0.8"

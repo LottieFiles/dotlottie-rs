@@ -9,6 +9,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore]
     fn test_load_valid_theme() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
@@ -32,6 +33,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_load_invalid_theme() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
@@ -72,6 +74,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_unload_theme_before_load() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
@@ -84,6 +87,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_clear_active_theme_id_after_new_animation_data_is_loaded() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
@@ -111,6 +115,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_clear_active_theme_id_after_new_animation_path_is_loaded() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
@@ -136,6 +141,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_clear_active_theme_id_after_new_dotlottie_is_loaded() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,

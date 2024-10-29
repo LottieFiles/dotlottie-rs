@@ -56,36 +56,25 @@ dictionary Config {
     string marker;
 };
 
-dictionary ManifestTheme {
-    string id;
-    sequence<string> animations;
+dictionary ManifestInitial {
+    string? animation;
+    string? state_machine;
 };
 
 dictionary ManifestAnimation {
-    boolean? autoplay;
-    string? defaultTheme;
-    i8? direction;
-    boolean? hover;
     string id;
-    u32? intermission;
-    boolean? loop;
-    u32? loop_count;
-    string? playMode;
-    f32? speed;
-    string? themeColor;
+    string? initial_theme;
+    sequence<string>? themes;
+    string? background;
 };
 
 dictionary Manifest {
-    string? active_animation_id;
-    sequence<ManifestAnimation> animations;
-    string? author;
-    string? description;
-    string? generator;
-    string? keywords;
-    u32? revision;
-    sequence<ManifestTheme>? themes;
-    sequence<string>? states;
     string? version;
+    string? generator;
+    ManifestInitial? initial;
+    sequence<ManifestAnimation> animations;
+    sequence<string>? themes;
+    sequence<string>? state_machines;
 };
 
 dictionary Marker {

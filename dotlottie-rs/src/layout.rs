@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Fit {
     Contain,
     Fill,
@@ -8,7 +8,7 @@ pub enum Fit {
     None,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Layout {
     pub fit: Fit,
     pub align: Vec<f32>,

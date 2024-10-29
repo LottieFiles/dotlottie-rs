@@ -11,7 +11,7 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap, StateMachine,
 };
-use crate::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation, Renderer};
+use crate::{DotLottieManager, Manifest, Renderer};
 use crate::{StateMachineObserver, StateMachineStatus};
 
 pub trait Observer: Send + Sync {
@@ -56,7 +56,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 #[repr(C)]
 pub struct Config {
     pub mode: Mode,
@@ -68,22 +68,6 @@ pub struct Config {
     pub background_color: u32,
     pub layout: Layout,
     pub marker: String,
-}
-
-impl std::fmt::Debug for Config {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("Config")
-            .field("mode", &self.mode)
-            .field("loop_animation", &self.loop_animation)
-            .field("speed", &self.speed)
-            .field("use_frame_interpolation", &self.use_frame_interpolation)
-            .field("autoplay", &self.autoplay)
-            .field("segment", &self.segment)
-            .field("background_color", &self.background_color)
-            // .field("layout", &self.layout)
-            .field("marker", &self.marker)
-            .finish()
-    }
 }
 
 impl Default for Config {
@@ -134,7 +118,7 @@ struct DotLottieRuntime {
     start_time: Instant,
     loop_count: u32,
     config: Config,
-    dotlottie_manager: DotLottieManager,
+    dotlottie_manager: Option<DotLottieManager>,
     direction: Direction,
     markers: MarkersMap,
     active_animation_id: String,
@@ -165,7 +149,7 @@ impl DotLottieRuntime {
             start_time: Instant::now(),
             loop_count: 0,
             config,
-            dotlottie_manager: DotLottieManager::new(None).unwrap(),
+            dotlottie_manager: None,
             direction,
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
@@ -305,8 +289,10 @@ impl DotLottieRuntime {
         }
     }
 
-    pub fn manifest(&self) -> Option<Manifest> {
-        self.dotlottie_manager.manifest()
+    pub fn manifest(&self) -> Option<&Manifest> {
+        self.dotlottie_manager
+            .as_ref()
+            .map(|manager| manager.manifest())
     }
 
     pub fn size(&self) -> (u32, u32) {
@@ -315,8 +301,8 @@ impl DotLottieRuntime {
 
     pub fn get_state_machine(&self, state_machine_id: &str) -> Option<String> {
         self.dotlottie_manager
-            .get_state_machine(state_machine_id)
-            .ok()
+            .as_ref()
+            .and_then(|manager| manager.get_state_machine(state_machine_id).ok())
     }
 
     pub fn request_frame(&mut self) -> f32 {
@@ -707,10 +693,9 @@ impl DotLottieRuntime {
     }
 
     pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
+        self.dotlottie_manager = None;
         self.active_animation_id.clear();
         self.active_theme_id.clear();
-
-        self.dotlottie_manager = DotLottieManager::new(None).unwrap();
 
         self.markers = extract_markers(animation_data);
 
@@ -722,6 +707,7 @@ impl DotLottieRuntime {
     }
 
     pub fn load_animation_path(&mut self, file_path: &str, width: u32, height: u32) -> bool {
+        self.dotlottie_manager = None;
         self.active_animation_id.clear();
         self.active_theme_id.clear();
 
@@ -735,95 +721,48 @@ impl DotLottieRuntime {
         self.active_animation_id.clear();
         self.active_theme_id.clear();
 
-        if self.dotlottie_manager.init(file_data).is_err() {
-            return false;
-        }
-
-        let first_animation: Result<String, DotLottieError> =
-            self.dotlottie_manager.get_active_animation();
-
-        let ok = match first_animation {
-            Ok(animation_data) => {
-                self.markers = extract_markers(animation_data.as_str());
-
-                // For the moment we're ignoring manifest values
-
-                // self.load_playback_settings();
-                self.load_animation_common(
-                    |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
-                    width,
-                    height,
-                )
+        match DotLottieManager::new(file_data) {
+            Ok(manager) => {
+                self.dotlottie_manager = Some(manager);
+                if let Some(manager) = &mut self.dotlottie_manager {
+                    let first_animation = manager.get_active_animation();
+                    if let Ok(animation_data) = first_animation {
+                        self.markers = extract_markers(animation_data.as_str());
+                        return self.load_animation_common(
+                            |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
+                            width,
+                            height,
+                        );
+                    }
+                }
+                false
             }
-            Err(_error) => false,
-        };
-
-        if ok {
-            self.active_animation_id = self.dotlottie_manager.active_animation_id();
+            Err(_) => false,
         }
-
-        ok
     }
 
     pub fn load_animation(&mut self, animation_id: &str, width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
+        if let Some(manager) = &mut self.dotlottie_manager {
+            let animation_data = manager.get_animation(animation_id);
 
-        let animation_data = self.dotlottie_manager.get_animation(animation_id);
+            let ok = match animation_data {
+                Ok(animation_data) => self.load_animation_common(
+                    |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
+                    width,
+                    height,
+                ),
+                Err(_error) => false,
+            };
 
-        let ok = match animation_data {
-            Ok(animation_data) => self.load_animation_common(
-                |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
-                width,
-                height,
-            ),
-            Err(_error) => false,
-        };
-
-        if ok {
-            self.active_animation_id = animation_id.to_string();
-        }
-
-        ok
-    }
-
-    #[allow(dead_code)]
-    fn load_playback_settings(&mut self) -> bool {
-        let playback_settings_result: Result<ManifestAnimation, DotLottieError> =
-            self.dotlottie_manager.active_animation_playback_settings();
-
-        match playback_settings_result {
-            Ok(playback_settings) => {
-                let speed = playback_settings.speed.unwrap_or(1.0);
-                let loop_animation = playback_settings.r#loop.unwrap_or(false);
-                let direction = playback_settings.direction.unwrap_or(1);
-                let autoplay = playback_settings.autoplay.unwrap_or(false);
-                let play_mode = playback_settings.playMode.unwrap_or("normal".to_string());
-
-                let mode = match play_mode.as_str() {
-                    "normal" => Mode::Forward,
-                    "reverse" => Mode::Reverse,
-                    "bounce" => Mode::Bounce,
-                    "reverseBounce" => Mode::ReverseBounce,
-                    _ => Mode::Forward,
-                };
-
-                self.config.speed = speed;
-                self.config.autoplay = autoplay;
-                self.config.mode = if play_mode == "normal" {
-                    if direction == 1 {
-                        Mode::Forward
-                    } else {
-                        Mode::Reverse
-                    }
-                } else {
-                    mode
-                };
-                self.config.loop_animation = loop_animation;
+            if ok {
+                self.active_animation_id = animation_id.to_string();
             }
-            Err(_error) => return false,
-        }
 
-        true
+            ok
+        } else {
+            false
+        }
     }
 
     pub fn resize(&mut self, width: u32, height: u32) -> bool {
@@ -857,32 +796,36 @@ impl DotLottieRuntime {
             return self.renderer.load_theme_data("").is_ok();
         }
 
-        let ok = self
+        let theme_exists = self
             .manifest()
-            .and_then(|manifest| manifest.themes)
-            .map_or(false, |themes| {
-                themes
-                    .iter()
-                    .find(|t| t.id == theme_id)
-                    .map_or(false, |theme| {
-                        // check if the theme is either global or scoped to the currently active animation
-                        let is_global_or_active_animation = theme.animations.is_empty()
-                            || theme
-                                .animations
-                                .iter()
-                                .any(|animation| animation == &self.active_animation_id);
+            .and_then(|manifest| manifest.themes.as_ref())
+            .map_or(false, |themes| themes.contains(&theme_id.to_string()));
 
-                        is_global_or_active_animation
-                            && self
-                                .dotlottie_manager
-                                .get_theme(theme_id)
-                                .ok()
-                                .and_then(|theme_data| {
-                                    self.renderer.load_theme_data(&theme_data).ok()
-                                })
-                                .is_some()
-                    })
-            });
+        if !theme_exists {
+            return false;
+        }
+
+        let can_load_theme = self.manifest().map_or(false, |manifest| {
+            manifest.animations.iter().any(|animation| {
+                animation.themes.is_none()
+                    || animation
+                        .themes
+                        .as_ref()
+                        .unwrap()
+                        .contains(&theme_id.to_string())
+            })
+        });
+
+        if !can_load_theme {
+            return false;
+        }
+
+        let ok = self
+            .dotlottie_manager
+            .as_mut()
+            .and_then(|manager| manager.get_theme(theme_id).ok())
+            .and_then(|theme_data| self.renderer.load_theme_data(&theme_data.clone()).ok())
+            .is_some();
 
         if ok {
             self.active_theme_id = theme_id.to_string();
@@ -1029,7 +972,10 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn manifest(&self) -> Option<Manifest> {
-        self.runtime.read().unwrap().manifest()
+        self.runtime
+            .read()
+            .ok()
+            .and_then(|runtime| runtime.manifest().cloned())
     }
 
     pub fn buffer(&self) -> *const u32 {
@@ -1215,8 +1161,10 @@ impl DotLottiePlayerContainer {
         self.runtime
             .try_read()
             .ok()
-            .and_then(|runtime| runtime.manifest())
-            .map_or_else(String::new, |manifest| manifest.to_string())
+            .and_then(|runtime| runtime.manifest().cloned())
+            .map_or_else(String::new, |manifest| {
+                serde_json::to_string(&manifest).unwrap()
+            })
     }
 
     pub fn is_complete(&self) -> bool {

@@ -14,7 +14,7 @@ pub struct DotLottieManager {
 
 fn get_dotlottie_version(manifest: &Manifest) -> u8 {
     if let Some(version) = manifest.version.as_deref() {
-        if version == "2.0.0" {
+        if version == "2" {
             return 2;
         }
     }

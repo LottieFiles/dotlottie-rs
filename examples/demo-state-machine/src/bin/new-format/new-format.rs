@@ -9,7 +9,7 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const STATE_MACHINE_NAME: &str = "not_equal";
+pub const STATE_MACHINE_NAME: &str = "rating";
 pub const ANIMATION_NAME: &str = "star_marked";
 
 struct Timer {

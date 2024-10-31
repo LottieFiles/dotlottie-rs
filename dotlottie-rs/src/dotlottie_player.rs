@@ -10,8 +10,9 @@ use crate::{
     Marker, MarkersMap, StateMachineEngine,
 };
 use crate::{
-    DotLottieError, DotLottieManager, Manifest, ManifestAnimation, StateMachineEngineError,
-, Renderer};
+    DotLottieError, DotLottieManager, Manifest, ManifestAnimation, Renderer,
+    StateMachineEngineError,
+};
 use crate::{StateMachineEngineStatus, StateMachineObserver};
 
 pub trait Observer: Send + Sync {
@@ -1390,15 +1391,32 @@ impl DotLottiePlayer {
                     let listeners = sm.listeners(None);
 
                     for listener in listeners {
-                        match listener.try_read() {
-                            Ok(listener) => {
-                                if !listener_types.contains(&listener.get_type().to_string()) {
-                                    listener_types.push(listener.get_type().to_string());
-                                }
+                        match listener {
+                            crate::listeners::Listener::PointerUp { .. } => {
+                                listener_types.push("PointerUp".to_string())
                             }
-                            Err(_) => return vec![],
+                            crate::listeners::Listener::PointerDown { .. } => {
+                                listener_types.push("PointerDown".to_string())
+                            }
+                            crate::listeners::Listener::PointerEnter { .. } => {
+                                // Push PointerMove so that can determine if the pointer entered the layer
+                                listener_types.push("PointerMove".to_string())
+                            }
+                            crate::listeners::Listener::PointerMove { .. } => {
+                                listener_types.push("PointerMove".to_string())
+                            }
+                            crate::listeners::Listener::PointerExit { .. } => {
+                                // Push PointerMove so that can determine if the pointer exited the layer
+                                listener_types.push("PointerMove".to_string())
+                            }
+                            crate::listeners::Listener::OnComplete { .. } => {
+                                listener_types.push("OnComplete".to_string())
+                            }
                         }
                     }
+
+                    listener_types.sort();
+                    listener_types.dedup();
                     listener_types
                 } else {
                     vec![]

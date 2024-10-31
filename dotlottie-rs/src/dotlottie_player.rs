@@ -11,7 +11,7 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap, StateMachine,
 };
-use crate::{DotLottieManager, Manifest, Renderer};
+use crate::{transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer};
 use crate::{StateMachineObserver, StateMachineStatus};
 
 pub trait Observer: Send + Sync {
@@ -793,7 +793,7 @@ impl DotLottieRuntime {
         self.active_theme_id.clear();
 
         if theme_id.is_empty() {
-            return self.renderer.load_theme_data("").is_ok();
+            return self.renderer.set_slots("").is_ok();
         }
 
         let theme_exists = self
@@ -824,7 +824,11 @@ impl DotLottieRuntime {
             .dotlottie_manager
             .as_mut()
             .and_then(|manager| manager.get_theme(theme_id).ok())
-            .and_then(|theme_data| self.renderer.load_theme_data(&theme_data.clone()).ok())
+            .and_then(|theme_data| {
+                let slots = transform_theme_to_lottie_slots(&theme_data, &self.active_animation_id)
+                    .unwrap();
+                self.renderer.set_slots(&slots).ok()
+            })
             .is_some();
 
         if ok {
@@ -835,7 +839,14 @@ impl DotLottieRuntime {
     }
 
     pub fn load_theme_data(&mut self, theme_data: &str) -> bool {
-        self.renderer.load_theme_data(theme_data).is_ok()
+        match transform_theme_to_lottie_slots(theme_data, &self.active_animation_id) {
+            Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
+            Err(_) => false,
+        }
+    }
+
+    pub fn set_slots(&mut self, slots: &str) -> bool {
+        self.renderer.set_slots(slots).is_ok()
     }
 
     pub fn active_animation_id(&self) -> &str {
@@ -1184,6 +1195,10 @@ impl DotLottiePlayerContainer {
 
     pub fn load_theme_data(&self, theme_data: &str) -> bool {
         self.runtime.write().unwrap().load_theme_data(theme_data)
+    }
+
+    pub fn set_slots(&self, slots: &str) -> bool {
+        self.runtime.write().unwrap().set_slots(slots)
     }
 
     pub fn animation_size(&self) -> Vec<f32> {
@@ -1746,6 +1761,10 @@ impl DotLottiePlayer {
 
     pub fn load_theme_data(&self, theme_data: &str) -> bool {
         self.player.write().unwrap().load_theme_data(theme_data)
+    }
+
+    pub fn set_slots(&self, slots: &str) -> bool {
+        self.player.write().unwrap().set_slots(slots)
     }
 
     pub fn markers(&self) -> Vec<Marker> {

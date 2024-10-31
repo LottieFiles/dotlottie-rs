@@ -69,7 +69,7 @@ pub trait LottieRenderer {
 
     fn set_background_color(&mut self, hex_color: u32) -> Result<(), LottieRendererError>;
 
-    fn load_theme_data(&mut self, slots: &str) -> Result<(), LottieRendererError>;
+    fn set_slots(&mut self, slots: &str) -> Result<(), LottieRendererError>;
 
     fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError>;
 
@@ -322,7 +322,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)
     }
 
-    fn load_theme_data(&mut self, slots: &str) -> Result<(), LottieRendererError> {
+    fn set_slots(&mut self, slots: &str) -> Result<(), LottieRendererError> {
         self.animation.set_slots(slots).map_err(into_lottie::<R>)
     }
 

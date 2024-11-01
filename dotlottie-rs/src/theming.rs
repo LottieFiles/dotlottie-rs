@@ -23,6 +23,7 @@ pub fn transform_theme_to_lottie_slots(
         let p = match slot_type {
             "Image" => handle_image_slot(rule),
             "Gradient" => handle_gradient_slot(rule),
+            "Scalar" => handle_scalar_slot(rule),
             _ => handle_other_slot_types(rule),
         };
 
@@ -47,30 +48,28 @@ fn should_process_rule(rule: &Value, active_animation_id: &str) -> bool {
 
 fn handle_image_slot(rule: &Value) -> Value {
     if let Some(value) = rule["value"].as_object() {
-        let width = value.get("width").and_then(|v| v.as_u64()).unwrap_or(0);
-        let height = value.get("height").and_then(|v| v.as_u64()).unwrap_or(0);
-        let path = value.get("path").and_then(|v| v.as_str()).unwrap_or("");
-        let data_url = value.get("dataUrl").and_then(|v| v.as_str()).unwrap_or("");
+        let mut image_data = json!({});
 
-        let u = if !path.is_empty() {
-            let parts: Vec<&str> = path.rsplitn(2, '/').collect();
-            parts.get(1).map(|s| format!("{}/", s)).unwrap_or_default()
-        } else {
-            String::new()
-        };
-        let p_str = if !path.is_empty() {
-            path.split('/').last().unwrap_or("")
-        } else {
-            data_url
-        };
+        if let Some(width) = value.get("width").and_then(|v| v.as_u64()) {
+            image_data["w"] = json!(width);
+        }
 
-        json!({
-            "w": width,
-            "h": height,
-            "u": u,
-            "p": p_str,
-            "e": if !data_url.is_empty() { 1 } else { 0 }
-        })
+        if let Some(height) = value.get("height").and_then(|v| v.as_u64()) {
+            image_data["h"] = json!(height);
+        }
+
+        if let Some(path) = value.get("path").and_then(|v| v.as_str()) {
+            image_data["u"] = json!(path); // should be the path
+            image_data["p"] = json!(path.split('/').last().unwrap_or("")); // should be the file name
+            image_data["e"] = json!(0);
+        }
+
+        if let Some(data_url) = value.get("dataUrl").and_then(|v| v.as_str()) {
+            image_data["p"] = json!(data_url);
+            image_data["e"] = json!(1);
+        }
+
+        image_data
     } else {
         json!({})
     }
@@ -113,6 +112,65 @@ fn handle_gradient_slot(rule: &Value) -> Value {
     } else {
         json!({})
     }
+}
+
+fn handle_scalar_slot(rule: &Value) -> Value {
+    if let Some(keyframes) = rule["keyframes"].as_array() {
+        let lottie_keyframes: Vec<Value> = keyframes
+            .iter()
+            .map(|keyframe| handle_scalar_keyframe(keyframe))
+            .collect();
+
+        json!({
+            "a": 1,
+            "k": json!(lottie_keyframes)
+        })
+    } else if let Some(value) = rule["value"].as_f64() {
+        json!({
+            "a": 0,
+            "k": json!(vec![value])
+        })
+    } else {
+        json!({})
+    }
+}
+
+fn handle_scalar_keyframe(keyframe: &Value) -> Value {
+    let mut frame_data = json!({});
+
+    if let Some(frame) = keyframe["frame"].as_u64() {
+        frame_data["t"] = json!(frame);
+    }
+
+    if let Some(value) = keyframe["value"].as_f64() {
+        frame_data["s"] = json!(vec![value]);
+    }
+
+    if let Some(in_tangent) = keyframe["inTangent"].as_object() {
+        if let (Some(x), Some(y)) = (in_tangent.get("x"), in_tangent.get("y")) {
+            frame_data["i"] = json!({ "x": x, "y": y });
+        }
+    }
+
+    if let Some(out_tangent) = keyframe["outTangent"].as_object() {
+        if let (Some(x), Some(y)) = (out_tangent.get("x"), out_tangent.get("y")) {
+            frame_data["o"] = json!({ "x": x, "y": y });
+        }
+    }
+
+    if let Some(value_in_tangent) = keyframe["valueInTangent"].as_array() {
+        frame_data["ti"] = json!(value_in_tangent);
+    }
+
+    if let Some(value_out_tangent) = keyframe["valueOutTangent"].as_array() {
+        frame_data["to"] = json!(value_out_tangent);
+    }
+
+    if let Some(hold) = keyframe["hold"].as_bool() {
+        frame_data["h"] = json!(if hold { 1 } else { 0 });
+    }
+
+    frame_data
 }
 
 fn handle_gradient_keyframe(frame: &Value) -> Value {
@@ -184,25 +242,31 @@ fn handle_generic_keyframe(keyframe: &Value) -> Value {
     if let Some(frame) = keyframe["frame"].as_u64() {
         frame_data["t"] = json!(frame);
     }
+
     if let Some(value) = keyframe["value"].as_array() {
         frame_data["s"] = json!(value);
     }
+
     if let Some(in_tangent) = keyframe["inTangent"].as_object() {
         if let (Some(x), Some(y)) = (in_tangent.get("x"), in_tangent.get("y")) {
             frame_data["i"] = json!({ "x": x, "y": y });
         }
     }
+
     if let Some(out_tangent) = keyframe["outTangent"].as_object() {
         if let (Some(x), Some(y)) = (out_tangent.get("x"), out_tangent.get("y")) {
             frame_data["o"] = json!({ "x": x, "y": y });
         }
     }
+
     if let Some(value_in_tangent) = keyframe["valueInTangent"].as_array() {
         frame_data["ti"] = json!(value_in_tangent);
     }
+
     if let Some(value_out_tangent) = keyframe["valueOutTangent"].as_array() {
         frame_data["to"] = json!(value_out_tangent);
     }
+
     if let Some(hold) = keyframe["hold"].as_bool() {
         frame_data["h"] = json!(if hold { 1 } else { 0 });
     }

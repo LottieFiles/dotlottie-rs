@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WASM test</title>
   </head>
+
   <body>
     <h1>Test</h1>
     <div style="width: 800px">
@@ -352,17 +353,33 @@
         const theme = event.target.value;
 
         if (theme) {
-          dotLottiePlayer.loadThemeData(
-            JSON.stringify({
-              rules: [
-                {
-                  slotId: "ball_color",
-                  type: "Color",
-                  value: [0, 1, 0],
-                },
-              ],
-            })
-          );
+          dotLottiePlayer.loadThemeData(JSON.stringify({
+            id: "dark",
+            rules: [
+              {
+                slotId: "ball_color",
+                type: "Color",
+                keyframes: [
+                  {
+                    frame: 0,
+                    value: [1, 1, 0],
+                    outTangent: {
+                      x: 0.167,
+                      y: 0.167,
+                    },
+                    inTangent: {
+                      x: 0.833,
+                      y: 0.833,
+                    },
+                  },
+                  {
+                    frame: 100,
+                    value: [0, 0, 1],
+                  },
+                ],
+              },
+            ],
+          }))
         } else {
           dotLottiePlayer.setSlots("");
         }

@@ -85,8 +85,10 @@ fn handle_gradient_slot(rule: &Value) -> Value {
                 .collect();
 
             json!({
-                "a": 1,
-                "k": lottie_keyframes,
+                "k": json!({
+                    "a": 1,
+                    "k": lottie_keyframes
+                }),
                 "p": keyframes[0]["value"].as_array().map(|v| v.len()).unwrap_or(0)
             })
         } else {
@@ -106,7 +108,10 @@ fn handle_gradient_slot(rule: &Value) -> Value {
             }
         }
         json!({
-            "k": gradient_data,
+            "k": json!({
+                "a": 0,
+                "k": gradient_data
+            }),
             "p": value.len()
         })
     } else {

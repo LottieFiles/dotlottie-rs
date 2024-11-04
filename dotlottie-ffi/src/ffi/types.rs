@@ -15,7 +15,6 @@ pub const DOTLOTTIE_SUCCESS: i32 = 0;
 pub const DOTLOTTIE_ERROR: i32 = 1;
 pub const DOTLOTTIE_INVALID_PARAMETER: i32 = 2;
 pub const DOTLOTTIE_MANIFEST_NOT_AVAILABLE: i32 = 3;
-pub const DOTLOTTIE_MANIFEST_THEMES_NOT_AVAILABLE: i32 = 4;
 
 // Other constant(s)
 pub const DOTLOTTIE_MAX_STR_LENGTH: usize = 512;

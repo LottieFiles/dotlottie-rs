@@ -17,7 +17,7 @@ pub fn transform_theme_to_lottie_slots(
             continue;
         }
 
-        let slot_id = rule["slotId"].as_str().unwrap_or("");
+        let slot_id = rule["id"].as_str().unwrap_or("");
         let slot_type = rule["type"].as_str().unwrap_or("");
 
         let p = match slot_type {

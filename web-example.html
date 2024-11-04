@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WASM test</title>
   </head>
+
   <body>
     <h1>Test</h1>
     <div style="width: 800px">
@@ -128,10 +129,6 @@
         marker: "feather",
       });
 
-      // const data = await fetch("./demo-player/src/markers.json").then((res) =>
-      //   res.text()
-      // );
-
       const data = await fetch(
         // "https://lottie.host/5c89381e-0d1a-4422-8247-f5b7e4b3c4e2/mqs5juC4PW.lottie"
         "./examples/demo-player/src/v2/bouncy-ball.lottie"
@@ -141,16 +138,16 @@
 
       const canvas = document.querySelector("canvas");
 
-      // const loaded = dotLottiePlayer.loadAnimationData(
-      //   data,
-      //   canvas.width,
-      //   canvas.height
-      // );
-      const loaded = dotLottiePlayer.loadDotLottieData(
+      const loaded = dotLottiePlayer.loadAnimationData(
         data,
         canvas.width,
         canvas.height
       );
+      // const loaded = dotLottiePlayer.loadDotLottieData(
+      //   data,
+      //   canvas.width,
+      //   canvas.height
+      // );
 
       console.log(JSON.parse(dotLottiePlayer.manifestString()));
 
@@ -354,9 +351,37 @@
         const theme = event.target.value;
 
         if (theme) {
-          dotLottiePlayer.loadTheme(theme);
+          dotLottiePlayer.loadThemeData(
+            JSON.stringify({
+              id: "dark",
+              rules: [
+                {
+                  slotId: "ball_color",
+                  type: "Color",
+                  keyframes: [
+                    {
+                      frame: 0,
+                      value: [1, 1, 0],
+                      outTangent: {
+                        x: 0.167,
+                        y: 0.167,
+                      },
+                      inTangent: {
+                        x: 0.833,
+                        y: 0.833,
+                      },
+                    },
+                    {
+                      frame: 100,
+                      value: [0, 0, 1],
+                    },
+                  ],
+                },
+              ],
+            })
+          );
         } else {
-          dotLottiePlayer.loadTheme("");
+          dotLottiePlayer.setSlots("");
         }
       });
     </script>

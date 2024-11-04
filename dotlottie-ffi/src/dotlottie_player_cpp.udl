@@ -1,6 +1,7 @@
 namespace dotlottie_player {
     Layout create_default_layout();
     Config create_default_config();
+    string transform_theme_to_lottie_slots([ByRef] string theme_data, [ByRef] string animation_id);
 };
 
 enum Mode {
@@ -73,6 +74,7 @@ interface DotLottiePlayer {
     boolean is_complete();
     boolean load_theme([ByRef] string theme_id);
     boolean load_theme_data([ByRef] string theme_data);
+    boolean set_slots([ByRef] string slots);
     sequence<Marker> markers();
     string active_animation_id();
     string active_theme_id();

@@ -78,6 +78,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("marker", &Config::marker);
 
     function("createDefaultConfig", &create_default_config);
+    function("transformThemeToLottieSlots", &transform_theme_to_lottie_slots);
 
     // value_object<ManifestTheme>("ManifestTheme")
     //     .field("id", &ManifestTheme::id)
@@ -159,6 +160,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("isComplete", &DotLottiePlayer::is_complete)
         .function("loadTheme", &DotLottiePlayer::load_theme)
         .function("loadThemeData", &DotLottiePlayer::load_theme_data)
+        .function("setSlots", &DotLottiePlayer::set_slots)
         .function("markers", &DotLottiePlayer::markers)
         .function("activeAnimationId", &DotLottiePlayer::active_animation_id)
         .function("activeThemeId", &DotLottiePlayer::active_theme_id)

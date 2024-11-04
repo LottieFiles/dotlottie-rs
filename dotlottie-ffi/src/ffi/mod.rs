@@ -161,7 +161,7 @@ pub unsafe extern "C" fn dotlottie_manifest_themes(
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         let manifest = match dotlottie_player.manifest() {
             Some(v) => v,
-            None => return DOTLOTTIE_MANIFEST_THEMES_NOT_AVAILABLE,
+            None => return DOTLOTTIE_MANIFEST_NOT_AVAILABLE,
         };
         if let Some(themes) = manifest.themes {
             DotLottieManifestTheme::transfer_all(&themes, result, size)

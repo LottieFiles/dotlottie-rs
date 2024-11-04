@@ -130,15 +130,11 @@
       });
 
       const data = await fetch(
-        "./examples/demo-player/src/bouncy_ball.json"
-      ).then((res) => res.text());
-
-      // const data = await fetch(
-      //   // "https://lottie.host/5c89381e-0d1a-4422-8247-f5b7e4b3c4e2/mqs5juC4PW.lottie"
-      //   "./examples/demo-player/src/v2/bull.lottie"
-      //   // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie",
-      //   // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
-      // ).then((res) => res.arrayBuffer());
+        // "https://lottie.host/5c89381e-0d1a-4422-8247-f5b7e4b3c4e2/mqs5juC4PW.lottie"
+        "./examples/demo-player/src/v2/bouncy-ball.lottie"
+        // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie",
+        // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
+      ).then((res) => res.arrayBuffer());
 
       const canvas = document.querySelector("canvas");
 
@@ -152,6 +148,8 @@
       //   canvas.width,
       //   canvas.height
       // );
+
+      console.log(JSON.parse(dotLottiePlayer.manifestString()));
 
       if (loaded) {
         console.log({
@@ -353,33 +351,35 @@
         const theme = event.target.value;
 
         if (theme) {
-          dotLottiePlayer.loadThemeData(JSON.stringify({
-            id: "dark",
-            rules: [
-              {
-                slotId: "ball_color",
-                type: "Color",
-                keyframes: [
-                  {
-                    frame: 0,
-                    value: [1, 1, 0],
-                    outTangent: {
-                      x: 0.167,
-                      y: 0.167,
+          dotLottiePlayer.loadThemeData(
+            JSON.stringify({
+              id: "dark",
+              rules: [
+                {
+                  slotId: "ball_color",
+                  type: "Color",
+                  keyframes: [
+                    {
+                      frame: 0,
+                      value: [1, 1, 0],
+                      outTangent: {
+                        x: 0.167,
+                        y: 0.167,
+                      },
+                      inTangent: {
+                        x: 0.833,
+                        y: 0.833,
+                      },
                     },
-                    inTangent: {
-                      x: 0.833,
-                      y: 0.833,
+                    {
+                      frame: 100,
+                      value: [0, 0, 1],
                     },
-                  },
-                  {
-                    frame: 100,
-                    value: [0, 0, 1],
-                  },
-                ],
-              },
-            ],
-          }))
+                  ],
+                },
+              ],
+            })
+          );
         } else {
           dotLottiePlayer.setSlots("");
         }

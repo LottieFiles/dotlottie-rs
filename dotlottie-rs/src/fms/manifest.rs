@@ -9,9 +9,23 @@ pub struct ManifestInitial {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct ManifestTheme {
+    pub id: String,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ManifestStateMachine {
+    pub id: String,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ManifestAnimation {
     pub id: String,
-
+    pub name: Option<String>,
     pub themes: Option<Vec<String>>,
     pub background: Option<String>,
     pub initial_theme: Option<String>,
@@ -26,6 +40,6 @@ pub struct Manifest {
     pub initial: Option<ManifestInitial>,
 
     pub animations: Vec<ManifestAnimation>,
-    pub themes: Option<Vec<String>>,
-    pub state_machines: Option<Vec<String>>,
+    pub themes: Option<Vec<ManifestTheme>>,
+    pub state_machines: Option<Vec<ManifestStateMachine>>,
 }

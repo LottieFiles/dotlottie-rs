@@ -5,7 +5,10 @@ use std::ffi::{c_char, CStr, CString};
 use std::io;
 use std::sync::Arc;
 
-use dotlottie_rs::{Config, Event, Fit, Layout, Manifest, ManifestAnimation, Marker, Mode};
+use dotlottie_rs::{
+    Config, Event, Fit, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme,
+    Marker, Mode,
+};
 
 // Function return codes
 pub const DOTLOTTIE_SUCCESS: i32 = 0;
@@ -318,6 +321,7 @@ impl Transferable<Marker> for DotLottieMarker {
 #[repr(C)]
 pub struct DotLottieManifestAnimation {
     pub id: DotLottieOption<DotLottieString>,
+    pub name: DotLottieOption<DotLottieString>,
     pub initial_theme: DotLottieOption<DotLottieString>,
     pub background: DotLottieOption<DotLottieString>,
 }
@@ -326,6 +330,7 @@ impl Transferable<ManifestAnimation> for DotLottieManifestAnimation {
     unsafe fn new(animation: &ManifestAnimation) -> Result<DotLottieManifestAnimation, io::Error> {
         Ok(DotLottieManifestAnimation {
             id: DotLottieOption::new(&animation.id)?,
+            name: DotLottieOption::new(&animation.name)?,
             initial_theme: DotLottieOption::new(&animation.initial_theme)?,
             background: DotLottieOption::new(&animation.background)?,
         })
@@ -334,28 +339,34 @@ impl Transferable<ManifestAnimation> for DotLottieManifestAnimation {
 
 #[derive(Clone, PartialEq)]
 #[repr(C)]
-pub struct DotLottieManifestStateMachine {
-    pub state_machine: DotLottieString,
+pub struct DotLottieManifestTheme {
+    pub id: DotLottieString,
+    pub name: DotLottieOption<DotLottieString>,
 }
 
-impl Transferable<String> for DotLottieManifestStateMachine {
-    unsafe fn new(state_machine: &String) -> Result<DotLottieManifestStateMachine, io::Error> {
-        Ok(DotLottieManifestStateMachine {
-            state_machine: DotLottieString::new(state_machine)?,
+impl Transferable<ManifestTheme> for DotLottieManifestTheme {
+    unsafe fn new(theme: &ManifestTheme) -> Result<DotLottieManifestTheme, io::Error> {
+        Ok(DotLottieManifestTheme {
+            id: DotLottieString::new(&theme.id)?,
+            name: DotLottieOption::new(&theme.name)?,
         })
     }
 }
 
 #[derive(Clone, PartialEq)]
 #[repr(C)]
-pub struct DotLottieManifestTheme {
-    pub theme: DotLottieString,
+pub struct DotLottieManifestStateMachine {
+    pub id: DotLottieString,
+    pub name: DotLottieOption<DotLottieString>,
 }
 
-impl Transferable<String> for DotLottieManifestTheme {
-    unsafe fn new(theme: &String) -> Result<DotLottieManifestTheme, io::Error> {
-        Ok(DotLottieManifestTheme {
-            theme: DotLottieString::new(theme)?,
+impl Transferable<ManifestStateMachine> for DotLottieManifestStateMachine {
+    unsafe fn new(
+        state_machine: &ManifestStateMachine,
+    ) -> Result<DotLottieManifestStateMachine, io::Error> {
+        Ok(DotLottieManifestStateMachine {
+            id: DotLottieString::new(&state_machine.id)?,
+            name: DotLottieOption::new(&state_machine.name)?,
         })
     }
 }

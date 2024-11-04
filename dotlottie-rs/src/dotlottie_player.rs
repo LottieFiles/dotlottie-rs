@@ -799,7 +799,9 @@ impl DotLottieRuntime {
         let theme_exists = self
             .manifest()
             .and_then(|manifest| manifest.themes.as_ref())
-            .map_or(false, |themes| themes.contains(&theme_id.to_string()));
+            .map_or(false, |themes| {
+                themes.iter().any(|theme| theme.id == theme_id)
+            });
 
         if !theme_exists {
             return false;

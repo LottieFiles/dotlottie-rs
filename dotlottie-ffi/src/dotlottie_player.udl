@@ -63,9 +63,20 @@ dictionary ManifestInitial {
 
 dictionary ManifestAnimation {
     string id;
+    string? name;
     string? initial_theme;
     sequence<string>? themes;
     string? background;
+};
+
+dictionary ManifestTheme {
+    string id;
+    string? name;
+};
+
+dictionary ManifestStateMachine {
+    string id;
+    string? name;
 };
 
 dictionary Manifest {
@@ -73,8 +84,8 @@ dictionary Manifest {
     string? generator;
     ManifestInitial? initial;
     sequence<ManifestAnimation> animations;
-    sequence<string>? themes;
-    sequence<string>? state_machines;
+    sequence<ManifestTheme>? themes;
+    sequence<ManifestStateMachine>? state_machines;
 };
 
 dictionary Marker {

@@ -89,16 +89,19 @@ typedef struct DotLottieManifest {
 
 typedef struct DotLottieManifestAnimation {
   struct DotLottieOption_DotLottieString id;
+  struct DotLottieOption_DotLottieString name;
   struct DotLottieOption_DotLottieString initial_theme;
   struct DotLottieOption_DotLottieString background;
 } DotLottieManifestAnimation;
 
 typedef struct DotLottieManifestStateMachine {
-  struct DotLottieString state_machine;
+  struct DotLottieString id;
+  struct DotLottieOption_DotLottieString name;
 } DotLottieManifestStateMachine;
 
 typedef struct DotLottieManifestTheme {
-  struct DotLottieString theme;
+  struct DotLottieString id;
+  struct DotLottieOption_DotLottieString name;
 } DotLottieManifestTheme;
 
 typedef struct DotLottieMarker {

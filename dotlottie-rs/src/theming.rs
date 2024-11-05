@@ -35,7 +35,7 @@ pub fn transform_theme_to_lottie_slots(
 }
 
 fn should_process_rule(rule: &Value, active_animation_id: &str) -> bool {
-    if !rule.get("animations").is_some() {
+    if rule.get("animations").is_none() {
         return true;
     }
 
@@ -79,10 +79,8 @@ fn handle_gradient_slot(rule: &Value) -> Value {
     if let Some(keyframes) = rule["keyframes"].as_array() {
         if keyframes.len() > 1 {
             // Animated gradient
-            let lottie_keyframes: Vec<Value> = keyframes
-                .iter()
-                .map(|frame| handle_gradient_keyframe(frame))
-                .collect();
+            let lottie_keyframes: Vec<Value> =
+                keyframes.iter().map(handle_gradient_keyframe).collect();
 
             json!({
                 "k": json!({
@@ -121,10 +119,7 @@ fn handle_gradient_slot(rule: &Value) -> Value {
 
 fn handle_scalar_slot(rule: &Value) -> Value {
     if let Some(keyframes) = rule["keyframes"].as_array() {
-        let lottie_keyframes: Vec<Value> = keyframes
-            .iter()
-            .map(|keyframe| handle_scalar_keyframe(keyframe))
-            .collect();
+        let lottie_keyframes: Vec<Value> = keyframes.iter().map(handle_scalar_keyframe).collect();
 
         json!({
             "a": 1,

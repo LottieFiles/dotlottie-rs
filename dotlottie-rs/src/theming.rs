@@ -217,10 +217,7 @@ fn handle_gradient_keyframe(frame: &Value) -> Value {
 
 fn handle_other_slot_types(rule: &Value) -> Value {
     if let Some(keyframes) = rule["keyframes"].as_array() {
-        let lottie_keyframes: Vec<Value> = keyframes
-            .iter()
-            .map(|keyframe| handle_generic_keyframe(keyframe))
-            .collect();
+        let lottie_keyframes: Vec<Value> = keyframes.iter().map(handle_generic_keyframe).collect();
 
         json!({
             "a": if keyframes.len() > 1 { 1 } else { 0 },

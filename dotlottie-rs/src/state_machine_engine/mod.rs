@@ -661,7 +661,7 @@ impl StateMachineEngine {
             if let Some(current_state_to_evaluate) = &self.current_state {
                 // If there was an action fired event, we need to call evaluate_transitions with it
                 // Othwerwise we call it with the event that was passed in if there was one
-                let target_state = if self.action_fired_event.is_some() {
+                let target_state: Option<String> = if self.action_fired_event.is_some() {
                     self.evaluate_transitions(
                         current_state_to_evaluate,
                         self.action_fired_event.as_ref(),

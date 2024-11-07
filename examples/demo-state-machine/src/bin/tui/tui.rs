@@ -26,7 +26,7 @@ use std::{
 
 const WIDTH: usize = 400;
 const HEIGHT: usize = 300;
-const LOADED_STATE_MACHINE: &str = "not_equal";
+const LOADED_STATE_MACHINE: &str = "rating";
 const LOADED_ANIMATION: &str = "star_marked";
 const ANIMATION_FILES: [(&str, &str, &str); 8] = [
     ("[Exploding Pigeon]", "pigeon", "pigeon_with_events"),
@@ -154,16 +154,16 @@ impl Graph {
                         nodes.push(Node {
                             x,
                             y,
-                            label: state.get_name(),
-                            active: machine_engine.get_current_state_name() == state.get_name(),
+                            label: state.name(),
+                            active: machine_engine.get_current_state_name() == state.name(),
                         });
 
-                        for transition in state.get_transitions() {
+                        for transition in state.transitions() {
                             let target = machine.get_state_by_name(&transition.target_state());
                             if let Some(target) = target {
                                 let target_index = states
                                     .iter()
-                                    .position(|s| s.get_name() == target.get_name())
+                                    .position(|s| s.name() == target.name())
                                     .unwrap();
                                 edges.push(Edge {
                                     from: i,
@@ -207,16 +207,16 @@ impl Graph {
                         nodes.push(Node {
                             x,
                             y,
-                            label: state.get_name(),
-                            active: machine_engine.get_current_state_name() == state.get_name(),
+                            label: state.name(),
+                            active: machine_engine.get_current_state_name() == state.name(),
                         });
 
-                        for transition in state.get_transitions() {
+                        for transition in state.transitions() {
                             let target = machine.get_state_by_name(&transition.target_state());
                             if let Some(target) = target {
                                 let target_index = states
                                     .iter()
-                                    .position(|s| s.get_name() == target.get_name())
+                                    .position(|s| s.name() == target.name())
                                     .unwrap();
                                 edges.push(Edge {
                                     from: i,

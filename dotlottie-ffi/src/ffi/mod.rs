@@ -222,13 +222,13 @@ pub unsafe extern "C" fn dotlottie_manifest_states(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_post_event(
+pub unsafe extern "C" fn dotlottie_state_machine_post_event(
     ptr: *mut DotLottiePlayer,
     event: *const DotLottieEvent,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Some(event) = event.as_ref() {
-            dotlottie_player.post_event(&event.to_event())
+            dotlottie_player.state_machine_post_event(&event.to_event())
         } else {
             DOTLOTTIE_ERROR
         }
@@ -590,13 +590,13 @@ pub unsafe extern "C" fn dotlottie_layer_bounds(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_load_state_machine(
+pub unsafe extern "C" fn dotlottie_state_machine_load(
     ptr: *mut DotLottiePlayer,
     state_machine_id: *const c_char,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Ok(state_machine_id) = DotLottieString::read(state_machine_id) {
-            to_exit_status(dotlottie_player.load_state_machine(&state_machine_id))
+            to_exit_status(dotlottie_player.state_machine_load(&state_machine_id))
         } else {
             DOTLOTTIE_INVALID_PARAMETER
         }
@@ -604,28 +604,28 @@ pub unsafe extern "C" fn dotlottie_load_state_machine(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_start_state_machine(ptr: *mut DotLottiePlayer) -> i32 {
+pub unsafe extern "C" fn dotlottie_state_machine_start(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.start_state_machine())
+        to_exit_status(dotlottie_player.state_machine_start())
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_stop_state_machine(ptr: *mut DotLottiePlayer) -> i32 {
+pub unsafe extern "C" fn dotlottie_state_machine_stop(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.stop_state_machine())
+        to_exit_status(dotlottie_player.state_machine_stop())
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_state_machine_numeric_context(
+pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_trigger(
     ptr: *mut DotLottiePlayer,
     key: *const c_char,
     value: f32,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Ok(key) = DotLottieString::read(key) {
-            to_exit_status(dotlottie_player.set_state_machine_numeric_context(&key, value))
+            to_exit_status(dotlottie_player.state_machine_set_numeric_trigger(&key, value))
         } else {
             DOTLOTTIE_INVALID_PARAMETER
         }
@@ -633,7 +633,7 @@ pub unsafe extern "C" fn dotlottie_set_state_machine_numeric_context(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_state_machine_string_context(
+pub unsafe extern "C" fn dotlottie_state_machine_set_string_trigger(
     ptr: *mut DotLottiePlayer,
     key: *const c_char,
     value: *const c_char,
@@ -641,7 +641,7 @@ pub unsafe extern "C" fn dotlottie_set_state_machine_string_context(
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         match (DotLottieString::read(key), DotLottieString::read(value)) {
             (Ok(key), Ok(value)) => {
-                to_exit_status(dotlottie_player.set_state_machine_string_context(&key, &value))
+                to_exit_status(dotlottie_player.state_machine_set_string_trigger(&key, &value))
             }
             _ => DOTLOTTIE_INVALID_PARAMETER,
         }
@@ -649,14 +649,14 @@ pub unsafe extern "C" fn dotlottie_set_state_machine_string_context(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_state_machine_boolean_context(
+pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_trigger(
     ptr: *mut DotLottiePlayer,
     key: *const c_char,
     value: bool,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Ok(key) = DotLottieString::read(key) {
-            to_exit_status(dotlottie_player.set_state_machine_boolean_context(&key, value))
+            to_exit_status(dotlottie_player.state_machine_set_boolean_trigger(&key, value))
         } else {
             DOTLOTTIE_INVALID_PARAMETER
         }
@@ -683,13 +683,13 @@ pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_load_state_machine_data(
+pub unsafe extern "C" fn dotlottie_state_machine_load_data(
     ptr: *mut DotLottiePlayer,
     state_machine_definition: *const c_char,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Ok(state_machine_definition) = DotLottieString::read(state_machine_definition) {
-            to_exit_status(dotlottie_player.load_state_machine_data(&state_machine_definition))
+            to_exit_status(dotlottie_player.state_machine_load_data(&state_machine_definition))
         } else {
             DOTLOTTIE_ERROR
         }

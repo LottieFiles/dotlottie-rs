@@ -81,11 +81,11 @@ fn main() {
     ))
     .unwrap();
 
-    let r = lottie_player.load_state_machine_data(&state_machine);
+    let r = lottie_player.state_machine_load_data(&state_machine);
 
     println!("Load state machine data -> {}", r);
 
-    let s = lottie_player.start_state_machine();
+    let s = lottie_player.state_machine_start();
 
     println!("Start state machine -> {}", s);
 
@@ -113,7 +113,7 @@ fn main() {
                     let event = Event::PointerDown { x: mx, y: my };
 
                     let p = &mut *locked_player.write().unwrap();
-                    let _m = p.post_event(&event);
+                    let _m = p.state_machine_post_event(&event);
                 }
             });
 

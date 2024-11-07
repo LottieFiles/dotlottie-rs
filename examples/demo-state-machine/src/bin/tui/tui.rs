@@ -431,9 +431,9 @@ fn load_animation_and_state_machine(
     ))
     .unwrap();
 
-    let r = player.load_state_machine_data(&message);
+    let r = player.state_machine_load_data(&message);
 
-    let s = player.start_state_machine();
+    let s = player.state_machine_start();
 
     (r, s)
 }
@@ -484,9 +484,9 @@ fn main() -> Result<(), io::Error> {
     ))
     .unwrap();
 
-    let r = lottie_player.load_state_machine_data(&message);
+    let r = lottie_player.state_machine_load_data(&message);
 
-    let s = lottie_player.start_state_machine();
+    let s = lottie_player.state_machine_start();
 
     lottie_player.render();
 
@@ -928,10 +928,9 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.post_event(&dotlottie_rs::Event::PointerDown {
-                                            x: 0.0,
-                                            y: 0.0,
-                                        });
+                                        player.state_machine_post_event(
+                                            &dotlottie_rs::Event::PointerDown { x: 0.0, y: 0.0 },
+                                        );
                                     }
                                     "[Listener] PointerUp" => {
                                         log_sender
@@ -940,10 +939,9 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.post_event(&dotlottie_rs::Event::PointerUp {
-                                            x: 0.0,
-                                            y: 0.0,
-                                        });
+                                        player.state_machine_post_event(
+                                            &dotlottie_rs::Event::PointerUp { x: 0.0, y: 0.0 },
+                                        );
                                     }
                                     "[Listener] PointerEnter" => {
                                         log_sender
@@ -952,10 +950,9 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.post_event(&dotlottie_rs::Event::PointerEnter {
-                                            x: 0.0,
-                                            y: 0.0,
-                                        });
+                                        player.state_machine_post_event(
+                                            &dotlottie_rs::Event::PointerEnter { x: 0.0, y: 0.0 },
+                                        );
                                     }
                                     "[Listener] PointerExit" => {
                                         log_sender
@@ -964,10 +961,9 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.post_event(&dotlottie_rs::Event::PointerExit {
-                                            x: 0.0,
-                                            y: 0.0,
-                                        });
+                                        player.state_machine_post_event(
+                                            &dotlottie_rs::Event::PointerExit { x: 0.0, y: 0.0 },
+                                        );
                                     }
                                     "[Listener] PointerMove" => {
                                         log_sender
@@ -976,10 +972,9 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.post_event(&dotlottie_rs::Event::PointerMove {
-                                            x: 0.0,
-                                            y: 0.0,
-                                        });
+                                        player.state_machine_post_event(
+                                            &dotlottie_rs::Event::PointerMove { x: 0.0, y: 0.0 },
+                                        );
                                     }
                                     "[Listener] OnComplete" => {
                                         log_sender
@@ -988,7 +983,9 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.post_event(&dotlottie_rs::Event::OnComplete);
+                                        player.state_machine_post_event(
+                                            &dotlottie_rs::Event::OnComplete,
+                                        );
                                     }
                                     _ => {
                                         if name.contains("[Listener]") {
@@ -1015,7 +1012,7 @@ fn run_app<B: ratatui::backend::Backend>(
                                                             level: LogLevel::Info,
                                                         })
                                                         .unwrap();
-                                                    player.stop_state_machine();
+                                                    player.state_machine_stop();
                                                     let (r, s) = load_animation_and_state_machine(
                                                         player,
                                                         animation.1,
@@ -1085,7 +1082,7 @@ fn run_app<B: ratatui::backend::Backend>(
                 // Get the coordinates
                 let (x, y) = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap();
 
-                player.post_event(&dotlottie_rs::Event::PointerDown { x, y });
+                player.state_machine_post_event(&dotlottie_rs::Event::PointerDown { x, y });
             }
         }
     }

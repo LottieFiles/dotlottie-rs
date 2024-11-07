@@ -489,36 +489,23 @@ impl DotLottieLayout {
 #[allow(dead_code)]
 #[repr(C)]
 pub enum DotLottieEvent {
-    Boolean { value: bool },
-    String { value: DotLottieString },
-    Numeric { value: f32 },
-    OnPointerDown { x: f32, y: f32 },
-    OnPointerUp { x: f32, y: f32 },
-    OnPointerMove { x: f32, y: f32 },
-    OnPointerEnter { x: f32, y: f32 },
-    OnPointerExit { x: f32, y: f32 },
+    PointerDown { x: f32, y: f32 },
+    PointerUp { x: f32, y: f32 },
+    PointerMove { x: f32, y: f32 },
+    PointerEnter { x: f32, y: f32 },
+    PointerExit { x: f32, y: f32 },
     OnComplete,
-    SetNumericContext { key: DotLottieString, value: f32 },
 }
 
 impl DotLottieEvent {
     pub unsafe fn to_event(&self) -> Event {
         match self {
-            DotLottieEvent::Boolean { value } => Event::Bool { value: *value },
-            DotLottieEvent::String { value } => Event::String {
-                value: value.to_string(),
-            },
-            DotLottieEvent::Numeric { value } => Event::Numeric { value: *value },
-            DotLottieEvent::OnPointerDown { x, y } => Event::OnPointerDown { x: *x, y: *y },
-            DotLottieEvent::OnPointerUp { x, y } => Event::OnPointerUp { x: *x, y: *y },
-            DotLottieEvent::OnPointerMove { x, y } => Event::OnPointerMove { x: *x, y: *y },
-            DotLottieEvent::OnPointerEnter { x, y } => Event::OnPointerEnter { x: *x, y: *y },
-            DotLottieEvent::OnPointerExit { x, y } => Event::OnPointerExit { x: *x, y: *y },
+            DotLottieEvent::PointerDown { x, y } => Event::PointerDown { x: *x, y: *y },
+            DotLottieEvent::PointerUp { x, y } => Event::PointerUp { x: *x, y: *y },
+            DotLottieEvent::PointerMove { x, y } => Event::PointerMove { x: *x, y: *y },
+            DotLottieEvent::PointerEnter { x, y } => Event::PointerEnter { x: *x, y: *y },
+            DotLottieEvent::PointerExit { x, y } => Event::PointerExit { x: *x, y: *y },
             DotLottieEvent::OnComplete => Event::OnComplete,
-            DotLottieEvent::SetNumericContext { key, value } => Event::SetNumericContext {
-                key: key.to_string(),
-                value: *value,
-            },
         }
     }
 }

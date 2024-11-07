@@ -136,16 +136,16 @@ interface DotLottiePlayer {
     sequence<f32> animation_size();
     sequence<f32> get_layer_bounds([ByRef] string layer_name);
 
-    boolean load_state_machine([ByRef] string state_machine_id);
-    boolean load_state_machine_data([ByRef] string state_machine);
-    boolean start_state_machine();
-    boolean stop_state_machine();
+    boolean state_machine_load([ByRef] string state_machine_id);
+    boolean state_machine_load_data([ByRef] string state_machine);
+    boolean state_machine_start();
+    boolean state_machine_stop();
     sequence<string> state_machine_framework_setup();
-    i32 post_pointer_down_event(f32 x, f32 y);
-    i32 post_pointer_up_event(f32 x, f32 y);
-    i32 post_pointer_move_event(f32 x, f32 y);
-    i32 post_pointer_enter_event(f32 x, f32 y);
-    i32 post_pointer_exit_event(f32 x, f32 y);
+    i32 state_machine_post_pointer_down_event(f32 x, f32 y);
+    i32 state_machine_post_pointer_up_event(f32 x, f32 y);
+    i32 state_machine_post_pointer_move_event(f32 x, f32 y);
+    i32 state_machine_post_pointer_enter_event(f32 x, f32 y);
+    i32 state_machine_post_pointer_exit_event(f32 x, f32 y);
     void state_machine_fire_event([ByRef] string event);
     i32 state_machine_set_boolean_trigger([ByRef] string key, boolean value);
     i32 state_machine_set_string_trigger([ByRef] string key, [ByRef] string value);

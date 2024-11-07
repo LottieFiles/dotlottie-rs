@@ -1324,7 +1324,7 @@ impl DotLottiePlayer {
 
     // If you are in an environment that does not support events
     // Call isPlaying() to know if the state machine started playback within the first state
-    pub fn start_state_machine(&self) -> bool {
+    pub fn state_machine_start(&self) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1350,7 +1350,7 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn stop_state_machine(&self) -> bool {
+    pub fn state_machine_stop(&self) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1432,7 +1432,7 @@ impl DotLottiePlayer {
     // 2: Play animation
     // 3: Pause animation
     // 4: Request and draw a new single frame of the animation (needed for sync state)
-    pub fn post_event(&self, event: &Event) -> i32 {
+    pub fn state_machine_post_event(&self, event: &Event) -> i32 {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1454,29 +1454,29 @@ impl DotLottiePlayer {
         1
     }
 
-    pub fn post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerDown { x, y };
-        self.post_event(&event)
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_up_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_up_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerUp { x, y };
-        self.post_event(&event)
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_move_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_move_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerMove { x, y };
-        self.post_event(&event)
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_enter_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_enter_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerEnter { x, y };
-        self.post_event(&event)
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
         let event: Event = Event::PointerExit { x, y };
-        self.post_event(&event)
+        self.state_machine_post_event(&event)
     }
 
     // Todo: Rather than methods for each trigger, return the SM object
@@ -1710,7 +1710,7 @@ impl DotLottiePlayer {
         self.player.write().unwrap().load_theme(theme_id)
     }
 
-    pub fn load_state_machine_data(&self, state_machine: &str) -> bool {
+    pub fn state_machine_load_data(&self, state_machine: &str) -> bool {
         let state_machine = StateMachineEngine::new(state_machine, self.player.clone(), None);
 
         if state_machine.is_ok() {
@@ -1740,7 +1740,7 @@ impl DotLottiePlayer {
         false
     }
 
-    pub fn load_state_machine(&self, state_machine_id: &str) -> bool {
+    pub fn state_machine_load(&self, state_machine_id: &str) -> bool {
         let state_machine_string = self
             .player
             .read()

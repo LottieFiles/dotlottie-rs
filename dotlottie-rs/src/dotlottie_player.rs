@@ -1480,51 +1480,51 @@ impl DotLottiePlayer {
     }
 
     // Todo: Rather than methods for each trigger, return the SM object
-    pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> i32 {
+    pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
                     let ret = sm.set_numeric_trigger(key, value, true, false);
 
                     if ret.is_some() {
-                        return 0;
+                        return true;
                     }
                 }
-                -1
+                false
             }
-            Err(_) => -1,
+            Err(_) => false,
         }
     }
     // Todo: Rather than methods for each trigger, return the SM object
-    pub fn state_machine_set_string_trigger(&self, key: &str, value: &str) -> i32 {
+    pub fn state_machine_set_string_trigger(&self, key: &str, value: &str) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
                     let ret = sm.set_string_trigger(key, value, true, false);
 
                     if ret.is_some() {
-                        return 0;
+                        return true;
                     }
                 }
-                -1
+                false
             }
-            Err(_) => return -1,
+            Err(_) => return false,
         }
     }
     // Todo: Rather than methods for each trigger, return the SM object
-    pub fn state_machine_set_boolean_trigger(&self, key: &str, value: bool) -> i32 {
+    pub fn state_machine_set_boolean_trigger(&self, key: &str, value: bool) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
                     let ret = sm.set_boolean_trigger(key, value, true, false);
 
                     if ret.is_some() {
-                        return 0;
+                        return true;
                     }
                 }
-                -1
+                false
             }
-            Err(_) => -1,
+            Err(_) => false,
         }
     }
 

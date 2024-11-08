@@ -732,6 +732,7 @@ pub unsafe extern "C" fn dotlottie_unsubscribe(
     })
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_subscribe(
     ptr: *mut DotLottiePlayer,
@@ -749,6 +750,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_subscribe(
     })
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_unsubscribe(
     ptr: *mut DotLottiePlayer,

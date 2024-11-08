@@ -1,4 +1,5 @@
 use instant::{Duration, Instant};
+use serde_json::Value;
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
@@ -699,11 +700,23 @@ impl DotLottieRuntime {
 
         self.markers = extract_markers(animation_data);
 
-        self.load_animation_common(
+        let loaded = self.load_animation_common(
             |renderer, w, h| renderer.load_data(animation_data, w, h, false),
             width,
             height,
-        )
+        );
+
+        // FIXME: Temporary workaround till thorvg supports default slots
+        if let Some(slots) = serde_json::from_str::<Value>(animation_data)
+            .ok()
+            .and_then(|v| v["slots"].as_object().cloned())
+        {
+            let _ = self
+                .renderer
+                .set_slots(&serde_json::to_string(&slots).unwrap_or_default());
+        }
+
+        loaded
     }
 
     pub fn load_animation_path(&mut self, file_path: &str, width: u32, height: u32) -> bool {

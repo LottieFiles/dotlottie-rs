@@ -3,6 +3,7 @@ use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
 use crate::state_machine_engine::events::Event;
+use crate::state_machine_engine::events::Event;
 use crate::{
     extract_markers,
     layout::Layout,
@@ -1668,7 +1669,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
+    pub fn state_machine_subscribe(&self, observer: Rc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
         if sm.is_none() {
@@ -1680,7 +1681,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn state_machine_unsubscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
+    pub fn state_machine_unsubscribe(&self, observer: Rc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
         if sm.is_none() {

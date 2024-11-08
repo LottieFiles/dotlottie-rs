@@ -94,6 +94,16 @@ dictionary Marker {
     f32 duration;
 };
 
+[Enum]
+interface Event {
+    PointerDown(f32 x, f32 y);
+    PointerUp(f32 x, f32 y);
+    PointerMove(f32 x, f32 y);
+    PointerEnter(f32 x, f32 y);
+    PointerExit(f32 x, f32 y);
+    OnComplete();
+};
+
 interface DotLottiePlayer {
     constructor(Config config);
     boolean load_animation_data([ByRef] string animation_data, u32 width, u32 height);

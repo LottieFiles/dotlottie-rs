@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use super::{
+    state_machine::StringBool,
     states::StateTrait,
     transitions::{
         guard::{self, Guard},
@@ -13,25 +14,7 @@ use super::{
 use crate::state_machine::StringNumberBool;
 
 #[derive(Debug, thiserror::Error)]
-pub enum StateMachineEngineError {
-    #[error("Failed to parse JSON state machine definition.")]
-    ParsingError { reason: String },
-
-    #[error("Failed to create StateMachineEngine.")]
-    CreationError { reason: String },
-
-    #[error("Event can not be fired as it does not exist.")]
-    FireEventError,
-
-    #[error("Infinite loop detected.")]
-    InfiniteLoopError,
-
-    #[error("State machine engine is not running.")]
-    NotRunningError,
-
-    #[error("Failed to change the current state.")]
-    SetStateError,
-
+pub enum StateMachineEngineSecurityError {
     #[error(
         "The state: {} has multiple transitions without guards. This is not allowed.",
         state_name
@@ -58,7 +41,7 @@ pub enum StateMachineEngineError {
 // - Checks guards using events are valid
 pub fn state_machine_state_check_pipeline(
     state_machine: &StateMachineEngine,
-) -> Result<(), StateMachineEngineError> {
+) -> Result<(), StateMachineEngineSecurityError> {
     let states = state_machine.state_machine.states();
     let mut name_set: HashSet<String> = HashSet::new();
 
@@ -68,7 +51,7 @@ pub fn state_machine_state_check_pipeline(
         // Check if the state names are unique
         if !name_set.insert(state_name.to_string()) {
             return Err(
-                StateMachineEngineError::SecurityCheckErrorDuplicateStateName {
+                StateMachineEngineSecurityError::SecurityCheckErrorDuplicateStateName {
                     state_name: state_name.to_string(),
                 },
             );
@@ -100,7 +83,7 @@ pub fn state_machine_state_check_pipeline(
         // Checks for multiple guardless transitions
         if count > 1 {
             return Err(
-                StateMachineEngineError::SecurityCheckErrorMultipleGuardlessTransitions {
+                StateMachineEngineSecurityError::SecurityCheckErrorMultipleGuardlessTransitions {
                     state_name: state.name(),
                 },
             );
@@ -117,7 +100,7 @@ pub fn state_machine_state_check_pipeline(
 pub fn check_guards_for_existing_triggers(
     state_machine: &StateMachineEngine,
     transition: &Transition,
-) -> Result<(), StateMachineEngineError> {
+) -> Result<(), StateMachineEngineSecurityError> {
     let guards = transition.guards();
     let triggers = state_machine.state_machine.triggers();
 
@@ -125,7 +108,7 @@ pub fn check_guards_for_existing_triggers(
         for guard in guards {
             match guard {
                 guard::Guard::Boolean { compare_to, .. } => {
-                    if let StringNumberBool::String(trigger_name) = compare_to {
+                    if let StringBool::String(trigger_name) = compare_to {
                         let value = trigger_name.trim_start_matches('$');
                         let mut found = false;
 
@@ -143,7 +126,7 @@ pub fn check_guards_for_existing_triggers(
                         }
 
                         if !found {
-                            return Err(StateMachineEngineError::SecurityCheckErrorTriggerCompareToIsWrong {
+                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorTriggerCompareToIsWrong {
                                             trigger_name: trigger_name.to_string(),
                                         });
                         }
@@ -165,7 +148,7 @@ pub fn check_guards_for_existing_triggers(
                         }
 
                         if !found {
-                            return Err(StateMachineEngineError::SecurityCheckErrorTriggerCompareToIsWrong {
+                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorTriggerCompareToIsWrong {
                                             trigger_name: trigger_name.to_string(),
                                         });
                         }
@@ -188,7 +171,7 @@ pub fn check_guards_for_existing_triggers(
                             }
 
                             if !found {
-                                return Err(StateMachineEngineError::SecurityCheckErrorTriggerCompareToIsWrong {
+                                return Err(StateMachineEngineSecurityError::SecurityCheckErrorTriggerCompareToIsWrong {
                                                 trigger_name: trigger_name.to_string(),
                                             });
                             }
@@ -208,7 +191,7 @@ pub fn check_guards_for_existing_triggers(
 pub fn check_guards_for_existing_events(
     state_machine: &StateMachineEngine,
     transition: &Transition,
-) -> Result<(), StateMachineEngineError> {
+) -> Result<(), StateMachineEngineSecurityError> {
     let triggers = state_machine.state_machine.triggers();
 
     let guards = transition.guards();
@@ -230,7 +213,7 @@ pub fn check_guards_for_existing_events(
 
                 if !found {
                     return Err(
-                        StateMachineEngineError::SecurityCheckErrorTriggerCompareToIsWrong {
+                        StateMachineEngineSecurityError::SecurityCheckErrorTriggerCompareToIsWrong {
                             trigger_name: trigger_name.to_string(),
                         },
                     );

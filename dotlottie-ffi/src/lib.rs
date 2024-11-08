@@ -1,5 +1,7 @@
 pub use dotlottie_rs::*;
 
+mod ffi;
+
 pub fn create_default_layout() -> Layout {
     Layout::default()
 }

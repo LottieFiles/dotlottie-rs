@@ -1,8 +1,21 @@
 #include "dotlottie_player.hpp"
 #include <emscripten/bind.h>
+#include <emscripten/emscripten.h>
 
 using namespace emscripten;
 using namespace dotlottie_player;
+
+extern "C"
+{
+    /*
+        This is a workaround as instant crate expects a _ prefix for the emscripten_get_now function
+        https://github.com/sebcrozet/instant/issues/35
+    */
+    double _emscripten_get_now()
+    {
+        return emscripten_get_now();
+    }
+}
 
 val buffer(DotLottiePlayer &player)
 {
@@ -153,21 +166,21 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("segmentDuration", &DotLottiePlayer::segment_duration)
         .function("animationSize", &DotLottiePlayer::animation_size)
 
-        .function("loadStateMachine", &DotLottiePlayer::load_state_machine)
-        .function("startStateMachine", &DotLottiePlayer::start_state_machine)
-        .function("stopStateMachine", &DotLottiePlayer::stop_state_machine)
+        .function("stateMachineLoad", &DotLottiePlayer::state_machine_load)
+        .function("stateMachineStart", &DotLottiePlayer::state_machine_start)
+        .function("stateMachineStop", &DotLottiePlayer::state_machine_stop)
         .function("stateMachineFrameworkSetup", &DotLottiePlayer::state_machine_framework_setup)
-        .function("loadStateMachineData", &DotLottiePlayer::load_state_machine_data)
+        .function("stateMachineLoadData", &DotLottiePlayer::state_machine_load_data)
         .function("stateMachineFireEvent", &DotLottiePlayer::state_machine_fire_event)
         .function("stateMachineSetNumericTrigger", &DotLottiePlayer::state_machine_set_numeric_trigger)
         .function("stateMachineSetStringTrigger", &DotLottiePlayer::state_machine_set_string_trigger)
         .function("stateMachineSetBooleanTrigger", &DotLottiePlayer::state_machine_set_boolean_trigger)
         .function("getLayerBounds", &DotLottiePlayer::get_layer_bounds)
-        .function("postPointerDownEvent", &DotLottiePlayer::post_pointer_down_event)
-        .function("postPointerUpEvent", &DotLottiePlayer::post_pointer_up_event)
-        .function("postPointerMoveEvent", &DotLottiePlayer::post_pointer_move_event)
-        .function("postPointerEnterEvent", &DotLottiePlayer::post_pointer_enter_event)
-        .function("postPointerExitEvent", &DotLottiePlayer::post_pointer_exit_event);
+        .function("stateMachinePostPointerDownEvent", &DotLottiePlayer::state_machine_post_pointer_down_event)
+        .function("stateMachinePostPointerUpEvent", &DotLottiePlayer::state_machine_post_pointer_up_event)
+        .function("stateMachinePostPointerMoveEvent", &DotLottiePlayer::state_machine_post_pointer_move_event)
+        .function("stateMachinePostPointerEnterEvent", &DotLottiePlayer::state_machine_post_pointer_enter_event)
+        .function("stateMachinePostPointerExitEvent", &DotLottiePlayer::state_machine_post_pointer_exit_event);
     // .function("state_machine_subscribe", &DotLottiePlayer::state_machine_subscribe)
     // .function("state_machine_unsubscribe", &DotLottiePlayer::state_machine_unsubscribe)
 }

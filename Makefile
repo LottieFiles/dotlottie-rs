@@ -96,13 +96,16 @@ WASM_BUILD := $(BUILD)/$(WASM)
 
 EMSDK := emsdk
 EMSDK_DIR := $(PROJECT_DIR)/$(DEPS_MODULES_DIR)/$(EMSDK)
-EMSDK_VERSION := 3.1.57
+EMSDK_VERSION := 3.1.68
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
-UNIFFI_BINDGEN_CPP_VERSION := v0.6.0+v0.25.0
+UNIFFI_BINDGEN_CPP_VERSION := v0.6.3+v0.25.0
 
 WASM_MODULE := DotLottiePlayer
+
+# Native
+NATIVE := native
 
 # External dependencies
 THORVG := thorvg
@@ -137,9 +140,12 @@ DOTLOTTIE_PLAYER := dotlottie-player
 # Build artifacts
 RUNTIME_FFI_UNIFFI_BINDINGS := uniffi-bindings
 
-RUNTIME_FFI_STATIC_LIB := libdotlottie_player.a
-RUNTIME_FFI_LIB := libdotlottie_player.so
-RUNTIME_FFI_DYLIB := libdotlottie_player.dylib
+RUNTIME_FFI_HEADER := dotlottie_player.h
+
+RUNTIME_FFI_LIB_BASE := libdotlottie_player
+RUNTIME_FFI_STATIC_LIB := $(RUNTIME_FFI_LIB_BASE).a
+RUNTIME_FFI_LIB := $(RUNTIME_FFI_LIB_BASE).so
+RUNTIME_FFI_DYLIB := $(RUNTIME_FFI_LIB_BASE).dylib
 
 DOTLOTTIE_PLAYER_HEADER := dotlottie_player.h
 DOTLOTTIE_PLAYER_SWIFT := dotlottie_player.swift
@@ -161,6 +167,10 @@ DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR := $(RELEASE)/$(ANDROID)/$(DOTLOTTIE_PLAYER
 DOTLOTTIE_PLAYER_ANDROID_SRC_DIR := $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/$(KOTLIN)
 DOTLOTTIE_PLAYER_LIB := libuniffi_dotlottie_player.so
 DOTLOTTIE_PLAYER_GRADLE_PROPERTIES := gradle.properties
+
+DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR := $(RELEASE)/$(NATIVE)/$(DOTLOTTIE_PLAYER)
+DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR := $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)/include
+DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR := $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)/lib
 
 # Dependency build directories for the current machine architecture
 LOCAL_ARCH := local-arch
@@ -260,6 +270,7 @@ cpp_link_args = [
 	'-sENVIRONMENT=web',
 	'-sFILESYSTEM=0',
 	'-sDYNAMIC_EXECUTION=0',
+	'-sERROR_ON_UNDEFINED_SYMBOLS=0',
 	'--no-entry',
 	'--strip-all',
 	'--emit-tsd=${WASM_MODULE}.d.ts',
@@ -354,6 +365,12 @@ define CLEAN_LIBGJPEG
 	rm -f /usr/local/lib/libjpeg*
 endef
 
+define SIMPLE_CARGO_BUILD
+	cargo build \
+	--manifest-path $(PROJECT_DIR)/Cargo.toml \
+	--release;
+endef
+
 define CARGO_BUILD
 	if [ "$(CARGO_TARGET)" = "wasm32-unknown-emscripten" ]; then \
 		source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
@@ -401,6 +418,17 @@ define ANDROID_RELEASE
 	cd $(RELEASE)/$(ANDROID) && \
 		rm -f $(DOTLOTTIE_PLAYER).$(ANDROID).tar.gz && \
 		tar zcf $(DOTLOTTIE_PLAYER).$(ANDROID).tar.gz *
+endef
+
+define NATIVE_RELEASE
+	rm -rf $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)
+  mkdir -p $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR) $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)
+	cp $(RUNTIME_FFI)/bindings.h $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR)/$(RUNTIME_FFI_HEADER)
+	find $(RUNTIME_FFI)/target/$(RELEASE)/ -maxdepth 1 \( -name '*.so' -or -name '*.dylib' -or -name "*.dll" \) \
+		-exec cp {} $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR) \;
+	cd $(RELEASE)/$(NATIVE) && \
+		rm -f $(DOTLOTTIE_PLAYER).$(NATIVE).tar.gz && \
+		tar zcf $(DOTLOTTIE_PLAYER).$(NATIVE).tar.gz *
 endef
 
 define LIPO_CREATE
@@ -830,6 +858,11 @@ $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(SWIFT): $(RUNTIME_FFI_SRC)
 $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS): $(RUNTIME_FFI_SRC)
 	$(UNIFFI_BINDINGS_CPP_BUILD)
 
+# Uniffi
+$(RUNTIME_FFI)/target/$(RELEASE)/$(RUNTIME_FFI_LIB): PROJECT_DIR := $(RUNTIME_FFI)
+$(RUNTIME_FFI)/target/$(RELEASE)/$(RUNTIME_FFI_LIB):
+	$(SIMPLE_CARGO_BUILD)
+
 # Define all android targets
 $(eval $(call DEFINE_TARGET,aarch64-linux-android,aarch64-linux-android,arm64-v8a,arm,aarch64))
 $(eval $(call DEFINE_TARGET,armv7-linux-androideabi,armv7a-linux-androideabi,armeabi-v7a,arm,armv7))
@@ -920,8 +953,12 @@ $(WASM):
 	@$(MAKE) $(WASM_BUILD_TARGETS)
 	@$(MAKE) post-make-wasm
 
+.PHONY: $(NATIVE)
+$(NATIVE): $(RUNTIME_FFI)/target/$(RELEASE)/$(RUNTIME_FFI_LIB)
+	$(NATIVE_RELEASE)
+
 .PHONY: all
-all: $(APPLE) $(ANDROID) $(WASM)
+all: $(APPLE) $(ANDROID) $(WASM) $(NATIVE)
 
 .PHONY: deps
 deps:

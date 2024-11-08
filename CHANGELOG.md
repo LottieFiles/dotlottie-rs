@@ -1,3 +1,15 @@
+## 0.1.32 (2024-10-07)
+
+### Features
+
+#### migration to conan for dotlottie-rs (#225)
+
+#### c-api (#237)
+
+#### chore(dependencies): 🤖 upgrade thorvg v0.14.9
+
+#### chore(dependencies): 🤖 upgrade thorvg v0.15.0
+
 ## 0.1.31 (2024-09-04)
 
 ### Features

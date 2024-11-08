@@ -238,7 +238,6 @@ impl ActionTrait for Action {
                 );
                 // Ok(())
             }
-            // Todo: Add support for setting a trigger to a trigger value
             Action::SetTheme { theme_id } => {
                 let read_lock = player.try_read();
 
@@ -280,7 +279,6 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            // Todo: Add support for setting a trigger to a trigger value
             Action::OpenUrl { url } => {
                 Command::new("open")
                     .arg(url)
@@ -293,7 +291,6 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            // Todo: Add support for setting a trigger to a trigger value
             Action::SetFrame { value } => {
                 let read_lock = player.read();
 
@@ -328,7 +325,6 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            // Todo: Add support for setting a trigger to a trigger value
             Action::SetProgress { value } => {
                 let read_lock = player.read();
 
@@ -364,7 +360,6 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            // Todo: Add support for setting a trigger to a trigger value
             Action::ThemeAction { theme_id } => {
                 let read_lock = player.read();
 

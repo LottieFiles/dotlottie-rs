@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display};
 use std::rc::Rc;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 pub mod actions;
 pub mod errors;
@@ -15,7 +15,6 @@ pub mod triggers;
 
 use actions::{Action, ActionTrait};
 use listeners::ListenerTrait;
-use security::StateMachineEngineError;
 use state_machine::StateMachine;
 use states::StateTrait;
 use transitions::guard::GuardTrait;
@@ -25,6 +24,7 @@ use triggers::Trigger;
 use crate::state_machine_engine::listeners::Listener;
 use crate::{
     state_machine_state_check_pipeline, DotLottiePlayerContainer, EventName, PointerEvent,
+    StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -43,6 +43,39 @@ pub enum StateMachineEngineStatus {
     Stopped,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum StateMachineEngineError {
+    #[error("Failed to parse JSON state machine definition.")]
+    ParsingError { reason: String },
+
+    #[error("Failed to create StateMachineEngine.")]
+    CreationError { reason: String },
+
+    #[error("Event can not be fired as it does not exist.")]
+    FireEventError,
+
+    #[error("Infinite loop detected.")]
+    InfiniteLoopError,
+
+    #[error("State machine engine is not running.")]
+    NotRunningError,
+
+    #[error("Failed to change the current state.")]
+    SetStateError,
+
+    #[error(
+        "The state: {} has multiple transitions without guards. This is not allowed.",
+        state_name
+    )]
+    SecurityCheckErrorMultipleGuardlessTransitions { state_name: String },
+
+    #[error(
+        "The state name: {} has been used multiple times. This is not allowed.",
+        state_name
+    )]
+    SecurityCheckErrorDuplicateStateName { state_name: String },
+}
+
 pub struct StateMachineEngine {
     // pub listeners: Vec<Listener>,
 
@@ -59,7 +92,7 @@ pub struct StateMachineEngine {
     boolean_trigger: HashMap<String, bool>,
     event_trigger: HashMap<String, String>,
 
-    observers: RwLock<Vec<Rc<dyn StateMachineObserver>>>,
+    observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
 
     state_machine: StateMachine,
 
@@ -136,16 +169,16 @@ impl StateMachineEngine {
         state_machine.create_state_machine(state_machine_definition, &player)
     }
 
-    pub fn subscribe(&self, observer: Rc<dyn StateMachineObserver>) {
+    pub fn subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
         let mut observers = self.observers.write().unwrap();
         observers.push(observer);
     }
 
-    pub fn unsubscribe(&self, observer: &Rc<dyn StateMachineObserver>) {
+    pub fn unsubscribe(&self, observer: &Arc<dyn StateMachineObserver>) {
         self.observers
             .write()
             .unwrap()
-            .retain(|o| !Rc::ptr_eq(o, observer));
+            .retain(|o| !Arc::ptr_eq(o, observer));
     }
 
     pub fn get_numeric_trigger(&self, key: &str) -> Option<f32> {
@@ -298,15 +331,19 @@ impl StateMachineEngine {
                 // Run the security check pipeline
                 let check_report = self.security_check_pipeline(&new_state_machine);
 
-                if check_report.is_err() {
-                    return Err(check_report.err().unwrap());
+                match check_report {
+                    Ok(_) => {}
+                    Err(error) => {
+                        return Err(StateMachineEngineError::ParsingError {
+                            reason: error.to_string(),
+                        });
+                    }
                 }
 
                 let err = new_state_machine.set_current_state(&initial_state_index);
                 match err {
                     Ok(_) => {}
                     Err(error) => {
-                        println!("🚨 Error setting initial state: {:?}", error);
                         return Err(StateMachineEngineError::CreationError {
                             reason: error.to_string(),
                         });
@@ -335,7 +372,7 @@ impl StateMachineEngine {
     fn security_check_pipeline(
         &self,
         state_machine: &StateMachineEngine,
-    ) -> Result<(), StateMachineEngineError> {
+    ) -> Result<(), StateMachineEngineSecurityError> {
         state_machine_state_check_pipeline(state_machine)
     }
 
@@ -406,21 +443,24 @@ impl StateMachineEngine {
 
         if new_state.is_some() {
             // We have a new state
-            // Perofrm exit actions on the current state
-            if let Some(state) = &self.current_state {
-                if let Some(player) = &self.player {
-                    // Perform exit actions
-                    state.exit(
-                        &player,
-                        &self.string_trigger,
-                        &self.boolean_trigger,
-                        &self.numeric_trigger,
-                        &self.event_trigger,
-                    );
+
+            // Perform exit actions on the current state if there is one.
+            if self.current_state.is_some() {
+                let state = self.current_state.take();
+                let player = self.player.take();
+
+                // Now use the extracted information
+                if let (Some(state), Some(player)) = (state, player) {
+                    let _ = state.exit(self, &player);
+
+                    // Don't forget to put things back
+                    // new_state becomes the current state
+                    self.current_state = Some(state);
+                    self.player = Some(player);
                 }
             }
 
-            // Assign the new state to the current_state
+            // // Assign the new state to the current_state
             self.current_state = new_state;
 
             // Perform entry actions
@@ -432,23 +472,12 @@ impl StateMachineEngine {
             if let (Some(state), Some(player)) = (state, player) {
                 let _ = state.enter(self, &player);
 
-                state.execute(
-                    &player,
-                    &mut self.string_trigger,
-                    &mut self.boolean_trigger,
-                    &mut self.numeric_trigger,
-                    &mut self.event_trigger,
-                );
-
-                let state_is_final = state.is_final();
+                state.execute(&player);
 
                 // Don't forget to put things back
+                // new_state becomes the current state
                 self.current_state = Some(state);
                 self.player = Some(player);
-
-                if state_is_final {
-                    self.end();
-                }
             } else {
                 return Err(StateMachineEngineError::SetStateError {});
             }
@@ -599,7 +628,7 @@ impl StateMachineEngine {
                         self.evaluate_transitions(
                             state_to_evaluate,
                             if self.action_mutated_triggers {
-                                None
+                                event
                             } else {
                                 event
                             },
@@ -615,6 +644,7 @@ impl StateMachineEngine {
                         match success {
                             Ok(_) => {
                                 if self.action_mutated_triggers {
+                                    println!("🚨 Ticking");
                                     tick = true;
                                 }
                             }
@@ -631,7 +661,7 @@ impl StateMachineEngine {
             if let Some(current_state_to_evaluate) = &self.current_state {
                 // If there was an action fired event, we need to call evaluate_transitions with it
                 // Othwerwise we call it with the event that was passed in if there was one
-                let target_state = if self.action_fired_event.is_some() {
+                let target_state: Option<String> = if self.action_fired_event.is_some() {
                     self.evaluate_transitions(
                         current_state_to_evaluate,
                         self.action_fired_event.as_ref(),
@@ -641,6 +671,7 @@ impl StateMachineEngine {
                     self.evaluate_transitions(
                         current_state_to_evaluate,
                         if self.action_mutated_triggers {
+                            // event
                             None
                         } else {
                             event
@@ -655,6 +686,8 @@ impl StateMachineEngine {
                     self.action_fired_event = None;
                 }
                 if let Some(state) = target_state {
+                    println!("Target State: {}", state);
+
                     // Rest this boolean so that it reflects correctly if the actions mutated triggers
                     self.action_mutated_triggers = false;
 
@@ -809,14 +842,7 @@ impl StateMachineEngine {
             } = listener
             {
                 if let Some(current_state) = &self.current_state {
-                    if let Some(state_name) = state_name {
-                        if current_state.name() == *state_name {
-                            for action in actions {
-                                // Clones the reference to action
-                                actions_to_execute.push(action.clone());
-                            }
-                        }
-                    } else {
+                    if current_state.name() == *state_name {
                         for action in actions {
                             // Clones the reference to action
                             actions_to_execute.push(action.clone());

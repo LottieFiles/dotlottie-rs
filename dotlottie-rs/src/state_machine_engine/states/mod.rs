@@ -17,14 +17,7 @@ pub enum StatesError {
 }
 
 pub trait StateTrait {
-    fn execute(
-        &self,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
-        string_trigger: &HashMap<String, String>,
-        bool_trigger: &HashMap<String, bool>,
-        numeric_trigger: &HashMap<String, f32>,
-        event_trigger: &HashMap<String, String>,
-    ) -> i32;
+    fn execute(&self, player: &Rc<RwLock<DotLottiePlayerContainer>>) -> i32;
     fn enter(
         &self,
         engine: &mut StateMachineEngine,
@@ -32,12 +25,9 @@ pub trait StateTrait {
     ) -> Result<(), StateMachineActionError>;
     fn exit(
         &self,
+        engine: &mut StateMachineEngine,
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
-        string_trigger: &HashMap<String, String>,
-        bool_trigger: &HashMap<String, bool>,
-        numeric_trigger: &HashMap<String, f32>,
-        event_trigger: &HashMap<String, String>,
-    ) -> i32;
+    ) -> Result<(), StateMachineActionError>;
     fn animation_id(&self) -> &str;
     fn transitions(&self) -> &Vec<Transition>;
     fn entry_actions(&self) -> Option<&Vec<Action>>;
@@ -46,7 +36,6 @@ pub trait StateTrait {
     // fn config(&self) -> Option<&Config>;
     fn name(&self) -> String;
     fn get_type(&self) -> String;
-    fn is_final(&self) -> bool;
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -60,7 +49,6 @@ pub enum State {
         r#loop: Option<bool>,
         autoplay: Option<bool>,
         mode: Option<String>,
-        r#final: Option<bool>,
         speed: Option<f32>,
         segment: Option<String>,
         background_color: Option<u32>,
@@ -83,14 +71,7 @@ impl StateTrait for State {
     // 2: Play animation
     // 3: Pause animation
     // 4: Request and draw a new single frame of the animation (needed for sync state)
-    fn execute(
-        &self,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
-        _: &HashMap<String, String>,
-        _: &HashMap<String, bool>,
-        _: &HashMap<String, f32>,
-        _: &HashMap<String, String>,
-    ) -> i32 {
+    fn execute(&self, player: &Rc<RwLock<DotLottiePlayerContainer>>) -> i32 {
         match self {
             State::PlaybackState {
                 animation_id,
@@ -147,11 +128,9 @@ impl StateTrait for State {
                     if let Some(autoplay) = autoplay {
                         if *autoplay {
                             player_read.play();
-
                             return 2;
                         } else {
                             player_read.pause();
-
                             return 3;
                         }
                     } else {
@@ -223,13 +202,30 @@ impl StateTrait for State {
 
     fn exit(
         &self,
-        _player: &Rc<RwLock<DotLottiePlayerContainer>>,
-        _string_trigger: &HashMap<String, String>,
-        _bool_trigger: &HashMap<String, bool>,
-        _numeric_trigger: &HashMap<String, f32>,
-        _event_trigger: &HashMap<String, String>,
-    ) -> i32 {
-        0
+        engine: &mut StateMachineEngine,
+        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+    ) -> Result<(), StateMachineActionError> {
+        match self {
+            State::PlaybackState { exit_actions, .. } => {
+                /* Perform exit actions */
+                if let Some(actions) = exit_actions {
+                    for action in actions {
+                        println!("Executing exit action: {:?}", action);
+                        let _ = action.execute(engine, player.clone(), false);
+                    }
+                }
+            }
+
+            State::GlobalState { exit_actions, .. } => {
+                if let Some(actions) = exit_actions {
+                    for action in actions {
+                        let _ = action.execute(engine, player.clone(), false);
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn entry_actions(&self) -> Option<&Vec<Action>> {
@@ -243,13 +239,6 @@ impl StateTrait for State {
         match self {
             State::PlaybackState { exit_actions, .. } => exit_actions.as_ref(),
             State::GlobalState { exit_actions, .. } => exit_actions.as_ref(),
-        }
-    }
-
-    fn is_final(&self) -> bool {
-        match self {
-            State::PlaybackState { r#final, .. } => r#final.unwrap_or(false),
-            State::GlobalState { .. } => false,
         }
     }
 }

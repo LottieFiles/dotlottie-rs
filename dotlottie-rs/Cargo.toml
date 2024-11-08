@@ -7,11 +7,13 @@ links = "thorvg"
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+thorvg = []
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 thiserror = "1.0.48"
-# "emscripten-no-leading-underscore" branch fix this issue -> https://github.com/sebcrozet/instant/issues/35
-instant = { git = "https://github.com/hoodmane/instant", branch = "emscripten-no-leading-underscore", features = ["inaccurate"] }
+instant = { version = "0.1.13", features = ["inaccurate"] }
 serde_json = "1.0.107"
 serde = { version = "1.0.188", features = ["derive"] }
 zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
@@ -26,6 +28,8 @@ conan2 = "0.1"
 
 [dev-dependencies]
 criterion = "0.5.1"
+# This is a workaround to enable this feature only on dev.
+dotlottie-rs= { path = ".", features = ["thorvg"] }
 
 [[bench]]
 name = "benchmarks"

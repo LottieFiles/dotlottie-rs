@@ -7,9 +7,12 @@ use crate::{
     extract_markers,
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
-    Marker, MarkersMap, StateMachineEngine, StateMachineEngineError,
+    Marker, MarkersMap, StateMachineEngine,
 };
-use crate::{DotLottieError, DotLottieManager, Manifest, ManifestAnimation};
+use crate::{
+    DotLottieError, DotLottieManager, Manifest, ManifestAnimation, Renderer,
+    StateMachineEngineError,
+};
 use crate::{StateMachineEngineStatus, StateMachineObserver};
 
 pub trait Observer: Send + Sync {
@@ -31,6 +34,7 @@ pub enum PlaybackState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(C)]
 pub enum Mode {
     Forward,
     Reverse,
@@ -54,6 +58,7 @@ impl Direction {
 }
 
 #[derive(Clone, PartialEq)]
+#[repr(C)]
 pub struct Config {
     pub mode: Mode,
     pub loop_animation: bool,
@@ -98,11 +103,12 @@ impl Default for Config {
     }
 }
 
-struct LayerBoundingBox {
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
+#[repr(C)]
+pub struct LayerBoundingBox {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
 }
 
 impl From<LayerBoundingBox> for Vec<f32> {
@@ -123,7 +129,7 @@ impl Default for LayerBoundingBox {
 }
 
 struct DotLottieRuntime {
-    renderer: LottieRenderer,
+    renderer: Box<dyn LottieRenderer>,
     playback_state: PlaybackState,
     is_loaded: bool,
     start_time: Instant,
@@ -137,7 +143,15 @@ struct DotLottieRuntime {
 }
 
 impl DotLottieRuntime {
+    #[cfg(feature = "thorvg")]
     pub fn new(config: Config) -> Self {
+        Self::with_renderer(
+            config,
+            crate::TvgRenderer::new(crate::TvgEngine::TvgEngineSw, 0),
+        )
+    }
+
+    pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
         let direction = match config.mode {
             Mode::Forward => Direction::Forward,
             Mode::Reverse => Direction::Reverse,
@@ -146,7 +160,7 @@ impl DotLottieRuntime {
         };
 
         DotLottieRuntime {
-            renderer: LottieRenderer::new(),
+            renderer: <dyn LottieRenderer>::new(renderer),
             playback_state: PlaybackState::Stopped,
             is_loaded: false,
             start_time: Instant::now(),
@@ -297,7 +311,7 @@ impl DotLottieRuntime {
     }
 
     pub fn size(&self) -> (u32, u32) {
-        (self.renderer.width, self.renderer.height)
+        (self.renderer.width(), self.renderer.height())
     }
 
     pub fn get_state_machine(&self, state_machine_id: &str) -> Option<String> {
@@ -570,7 +584,7 @@ impl DotLottieRuntime {
     }
 
     pub fn current_frame(&self) -> f32 {
-        self.renderer.current_frame
+        self.renderer.current_frame()
     }
 
     pub fn loop_count(&self) -> u32 {
@@ -582,7 +596,7 @@ impl DotLottieRuntime {
     }
 
     pub fn buffer(&self) -> &[u32] {
-        &self.renderer.buffer
+        self.renderer.buffer()
     }
 
     pub fn clear(&mut self) {
@@ -657,20 +671,22 @@ impl DotLottieRuntime {
 
     fn load_animation_common<F>(&mut self, loader: F, width: u32, height: u32) -> bool
     where
-        F: FnOnce(&mut LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
+        F: FnOnce(&mut dyn LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
     {
         self.clear();
         self.playback_state = PlaybackState::Stopped;
         self.start_time = Instant::now();
         self.loop_count = 0;
 
-        let loaded = loader(&mut self.renderer, width, height).is_ok()
+        let loaded = loader(&mut *self.renderer, width, height).is_ok()
             && self
                 .renderer
                 .set_background_color(self.config.background_color)
                 .is_ok();
 
-        self.renderer.set_layout(&self.config.layout).unwrap();
+        if self.renderer.set_layout(&self.config.layout).is_err() {
+            return false;
+        }
 
         self.is_loaded = loaded;
 
@@ -896,9 +912,18 @@ pub struct DotLottiePlayerContainer {
 }
 
 impl DotLottiePlayerContainer {
+    #[cfg(feature = "thorvg")]
     pub fn new(config: Config) -> Self {
         DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
+            observers: RwLock::new(Vec::new()),
+            state_machine: Rc::new(RwLock::new(None)),
+        }
+    }
+
+    pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
+        DotLottiePlayerContainer {
+            runtime: RwLock::new(DotLottieRuntime::with_renderer(config, renderer)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
         }
@@ -1004,9 +1029,12 @@ impl DotLottiePlayerContainer {
         is_ok
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn manifest(&self) -> Option<Manifest> {
         self.runtime.read().unwrap().manifest()
+    }
+
+    pub fn buffer(&self) -> *const u32 {
+        self.runtime.read().unwrap().buffer().as_ptr()
     }
 
     pub fn buffer_ptr(&self) -> u64 {
@@ -1180,7 +1208,6 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().config()
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn subscribe(&self, observer: Arc<dyn Observer>) {
         self.observers.write().unwrap().push(observer);
     }
@@ -1197,7 +1224,6 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().is_complete()
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn unsubscribe(&self, observer: &Arc<dyn Observer>) {
         self.observers
             .write()
@@ -1216,8 +1242,8 @@ impl DotLottiePlayerContainer {
     pub fn animation_size(&self) -> Vec<f32> {
         match self.runtime.try_read() {
             Ok(runtime) => vec![
-                runtime.renderer.picture_width,
-                runtime.renderer.picture_height,
+                runtime.renderer.picture_width(),
+                runtime.renderer.picture_height(),
             ],
             _ => vec![0.0, 0.0],
         }
@@ -1261,9 +1287,19 @@ pub struct DotLottiePlayer {
 }
 
 impl DotLottiePlayer {
+    #[cfg(feature = "thorvg")]
     pub fn new(config: Config) -> Self {
         DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config))),
+            state_machine: Rc::new(RwLock::new(None)),
+        }
+    }
+
+    pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
+        DotLottiePlayer {
+            player: Rc::new(RwLock::new(DotLottiePlayerContainer::with_renderer(
+                config, renderer,
+            ))),
             state_machine: Rc::new(RwLock::new(None)),
         }
     }
@@ -1288,7 +1324,7 @@ impl DotLottiePlayer {
 
     // If you are in an environment that does not support events
     // Call isPlaying() to know if the state machine started playback within the first state
-    pub fn start_state_machine(&self) -> bool {
+    pub fn state_machine_start(&self) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1314,7 +1350,7 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn stop_state_machine(&self) -> bool {
+    pub fn state_machine_stop(&self) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1396,7 +1432,7 @@ impl DotLottiePlayer {
     // 2: Play animation
     // 3: Pause animation
     // 4: Request and draw a new single frame of the animation (needed for sync state)
-    pub fn post_event(&self, event: &Event) -> i32 {
+    pub fn state_machine_post_event(&self, event: &Event) -> i32 {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1418,77 +1454,77 @@ impl DotLottiePlayer {
         1
     }
 
-    pub fn post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerDown { x, y };
-        self.post_event(&event)
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_up_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_up_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerUp { x, y };
-        self.post_event(&event)
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_move_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_move_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerMove { x, y };
-        self.post_event(&event)
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_enter_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_enter_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerEnter { x, y };
-        self.post_event(&event)
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
         let event: Event = Event::PointerExit { x, y };
-        self.post_event(&event)
+        self.state_machine_post_event(&event)
     }
 
     // Todo: Rather than methods for each trigger, return the SM object
-    pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> i32 {
+    pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
                     let ret = sm.set_numeric_trigger(key, value, true, false);
 
                     if ret.is_some() {
-                        return 0;
+                        return true;
                     }
                 }
-                -1
+                false
             }
-            Err(_) => -1,
+            Err(_) => false,
         }
     }
     // Todo: Rather than methods for each trigger, return the SM object
-    pub fn state_machine_set_string_trigger(&self, key: &str, value: &str) -> i32 {
+    pub fn state_machine_set_string_trigger(&self, key: &str, value: &str) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
                     let ret = sm.set_string_trigger(key, value, true, false);
 
                     if ret.is_some() {
-                        return 0;
+                        return true;
                     }
                 }
-                -1
+                false
             }
-            Err(_) => return -1,
+            Err(_) => return false,
         }
     }
     // Todo: Rather than methods for each trigger, return the SM object
-    pub fn state_machine_set_boolean_trigger(&self, key: &str, value: bool) -> i32 {
+    pub fn state_machine_set_boolean_trigger(&self, key: &str, value: bool) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
                     let ret = sm.set_boolean_trigger(key, value, true, false);
 
                     if ret.is_some() {
-                        return 0;
+                        return true;
                     }
                 }
-                -1
+                false
             }
-            Err(_) => -1,
+            Err(_) => false,
         }
     }
 
@@ -1523,9 +1559,12 @@ impl DotLottiePlayer {
             .is_ok_and(|runtime| runtime.load_animation(animation_id, width, height))
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn manifest(&self) -> Option<Manifest> {
         self.player.read().unwrap().manifest()
+    }
+
+    pub fn buffer(&self) -> *const u32 {
+        self.player.read().unwrap().buffer()
     }
 
     pub fn buffer_ptr(&self) -> u64 {
@@ -1624,13 +1663,12 @@ impl DotLottiePlayer {
         self.player.read().unwrap().config()
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn subscribe(&self, observer: Arc<dyn Observer>) {
         self.player.write().unwrap().subscribe(observer);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn state_machine_subscribe(&self, observer: Rc<dyn StateMachineObserver>) -> bool {
+    pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
         if sm.is_none() {
@@ -1642,7 +1680,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn state_machine_unsubscribe(&self, observer: Rc<dyn StateMachineObserver>) -> bool {
+    pub fn state_machine_unsubscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
         if sm.is_none() {
@@ -1664,7 +1702,6 @@ impl DotLottiePlayer {
         self.player.read().unwrap().is_complete()
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn unsubscribe(&self, observer: &Arc<dyn Observer>) {
         self.player.write().unwrap().unsubscribe(observer);
     }
@@ -1673,7 +1710,7 @@ impl DotLottiePlayer {
         self.player.write().unwrap().load_theme(theme_id)
     }
 
-    pub fn load_state_machine_data(&self, state_machine: &str) -> bool {
+    pub fn state_machine_load_data(&self, state_machine: &str) -> bool {
         let state_machine = StateMachineEngine::new(state_machine, self.player.clone(), None);
 
         if state_machine.is_ok() {
@@ -1703,7 +1740,7 @@ impl DotLottiePlayer {
         false
     }
 
-    pub fn load_state_machine(&self, state_machine_id: &str) -> bool {
+    pub fn state_machine_load(&self, state_machine_id: &str) -> bool {
         let state_machine_string = self
             .player
             .read()

@@ -1,0 +1,24 @@
+RUNTIME_FFI := dotlottie-ffi
+
+RELEASE := release
+NATIVE := native
+
+DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR := $(RELEASE)\$(NATIVE)\dotlottie-player
+DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR := $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)\include
+DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR := $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)\lib
+
+RUNTIME_FFI_HEADER := dotlottie_player.h
+
+define NATIVE_RELEASE
+	if exist "$(RELEASE)\$(NATIVE)" rmdir /s /q $(RELEASE)\$(NATIVE)
+	mkdir $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR)
+	mkdir $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)
+	copy $(RUNTIME_FFI)\bindings.h $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR)\$(RUNTIME_FFI_HEADER)
+	copy $(RUNTIME_FFI)\target\release\dotlottie_player.dll $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)\dotlottie_player.dll
+	copy $(RUNTIME_FFI)\target\release\dotlottie_player.lib $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)\dotlottie_player.lib
+	cd $(RELEASE)\$(NATIVE) && tar.exe -a -c -f "dotlottie_player.native.zip" dotlottie-player
+endef
+
+native:
+	cargo build --manifest-path $(RUNTIME_FFI)/Cargo.toml --release
+	$(NATIVE_RELEASE)

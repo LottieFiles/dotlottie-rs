@@ -31,9 +31,9 @@ mod tests {
             include_str!("fixtures/statemachines/sanity_tests/test_global_and_guardless.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100);
-        let l = player.load_state_machine_data(global_state);
+        let l = player.state_machine_load_data(global_state);
 
-        let s = player.start_state_machine();
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);
@@ -57,9 +57,9 @@ mod tests {
             include_str!("fixtures/statemachines/sanity_tests/test_guarded_and_guardless.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100);
-        let l = player.load_state_machine_data(global_state);
+        let l = player.state_machine_load_data(global_state);
 
-        let s = player.start_state_machine();
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);
@@ -88,9 +88,9 @@ mod tests {
         );
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100);
-        let l = player.load_state_machine_data(global_state);
+        let l = player.state_machine_load_data(global_state);
 
-        let s = player.start_state_machine();
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);
@@ -110,9 +110,9 @@ mod tests {
             include_str!("fixtures/statemachines/sanity_tests/test_guardless_and_event.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100);
-        let l = player.load_state_machine_data(global_state);
+        let l = player.state_machine_load_data(global_state);
 
-        let s = player.start_state_machine();
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);

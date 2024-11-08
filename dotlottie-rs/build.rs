@@ -30,8 +30,8 @@ fn is_wasm_build() -> bool {
 }
 
 fn platform_libs() -> Vec<String> {
-    match env::var("CARGO_CFG_TARGET_VENDOR") {
-        Ok(platform) if platform == "apple" => vec![String::from("c++")],
+    match env::var("HOST") {
+        Ok(triple) if triple.contains("apple") => vec![String::from("c++")],
         Ok(_) if std::env::var("CARGO_CFG_UNIX").is_ok() => vec![String::from("stdc++")],
         Ok(_) => vec![],
         Err(_) => panic!("CARGO_CFG_TARGET_VENDOR environment variable not set"),
@@ -97,6 +97,10 @@ fn apply_build_settings(build_settings: &BuildSettings) {
 }
 
 fn main() {
+    if !cfg!(feature = "thorvg") {
+        return;
+    }
+
     let mut builder = bindgen::Builder::default().header("wrapper.h");
     if is_artifacts_provided() {
         let include_dir = find_path(ARTIFACTS_INCLUDE_DIR, true);

@@ -18,6 +18,13 @@ pub enum StringNumberBool {
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(untagged)]
+pub enum StringBool {
+    String(String),
+    Bool(bool),
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(untagged)]
 pub enum StringNumber {
     String(String),
     F32(f32),

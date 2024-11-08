@@ -7,7 +7,7 @@ pub mod actions;
 pub mod errors;
 pub mod events;
 pub mod listeners;
-mod security;
+pub mod security;
 pub mod state_machine;
 pub mod states;
 pub mod transitions;
@@ -15,7 +15,6 @@ pub mod triggers;
 
 use actions::{Action, ActionTrait};
 use listeners::ListenerTrait;
-use security::check_states_for_guardless_transitions;
 use state_machine::StateMachine;
 use states::StateTrait;
 use transitions::guard::GuardTrait;
@@ -23,7 +22,10 @@ use transitions::{Transition, TransitionTrait};
 use triggers::Trigger;
 
 use crate::state_machine_engine::listeners::Listener;
-use crate::{DotLottiePlayerContainer, EventName, PointerEvent};
+use crate::{
+    state_machine_state_check_pipeline, DotLottiePlayerContainer, EventName, PointerEvent,
+    StateMachineEngineSecurityError,
+};
 
 use self::state_machine::state_machine_parse;
 use self::{events::Event, states::State};
@@ -329,15 +331,19 @@ impl StateMachineEngine {
                 // Run the security check pipeline
                 let check_report = self.security_check_pipeline(&new_state_machine);
 
-                if check_report.is_err() {
-                    return Err(check_report.err().unwrap());
+                match check_report {
+                    Ok(_) => {}
+                    Err(error) => {
+                        return Err(StateMachineEngineError::ParsingError {
+                            reason: error.to_string(),
+                        });
+                    }
                 }
 
                 let err = new_state_machine.set_current_state(&initial_state_index);
                 match err {
                     Ok(_) => {}
                     Err(error) => {
-                        println!("🚨 Error setting initial state: {:?}", error);
                         return Err(StateMachineEngineError::CreationError {
                             reason: error.to_string(),
                         });
@@ -366,8 +372,8 @@ impl StateMachineEngine {
     fn security_check_pipeline(
         &self,
         state_machine: &StateMachineEngine,
-    ) -> Result<(), StateMachineEngineError> {
-        check_states_for_guardless_transitions(state_machine)
+    ) -> Result<(), StateMachineEngineSecurityError> {
+        state_machine_state_check_pipeline(state_machine)
     }
 
     pub fn start(&mut self) {
@@ -466,13 +472,7 @@ impl StateMachineEngine {
             if let (Some(state), Some(player)) = (state, player) {
                 let _ = state.enter(self, &player);
 
-                state.execute(
-                    &player,
-                    &mut self.string_trigger,
-                    &mut self.boolean_trigger,
-                    &mut self.numeric_trigger,
-                    &mut self.event_trigger,
-                );
+                state.execute(&player);
 
                 // Don't forget to put things back
                 // new_state becomes the current state
@@ -776,12 +776,6 @@ impl StateMachineEngine {
                             }
                         } else {
                             // Hit check will return true if the layer was hit
-                            println!("Checking if layer was hit: {}", layer);
-                            println!("You sent: {} {} ", x, y);
-                            println!(
-                                "Layer coordinates are: {:?}",
-                                player_container.get_layer_bounds(&layer)
-                            );
                             if player_container.hit_check(&layer, x, y) {
                                 for action in actions {
                                     actions_to_execute.push(action.clone());
@@ -827,7 +821,6 @@ impl StateMachineEngine {
         for action in actions_to_execute {
             // Run the pipeline because listeners are outside of the evaluation pipeline loop
             if let Some(player_ref) = &self.player {
-                println!("Executing action: {:?}", action);
                 let _ = action.execute(self, player_ref.clone(), true);
             }
         }

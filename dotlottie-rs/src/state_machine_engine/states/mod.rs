@@ -17,14 +17,7 @@ pub enum StatesError {
 }
 
 pub trait StateTrait {
-    fn execute(
-        &self,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
-        string_trigger: &HashMap<String, String>,
-        bool_trigger: &HashMap<String, bool>,
-        numeric_trigger: &HashMap<String, f32>,
-        event_trigger: &HashMap<String, String>,
-    ) -> i32;
+    fn execute(&self, player: &Rc<RwLock<DotLottiePlayerContainer>>) -> i32;
     fn enter(
         &self,
         engine: &mut StateMachineEngine,
@@ -78,14 +71,7 @@ impl StateTrait for State {
     // 2: Play animation
     // 3: Pause animation
     // 4: Request and draw a new single frame of the animation (needed for sync state)
-    fn execute(
-        &self,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
-        _: &HashMap<String, String>,
-        _: &HashMap<String, bool>,
-        _: &HashMap<String, f32>,
-        _: &HashMap<String, String>,
-    ) -> i32 {
+    fn execute(&self, player: &Rc<RwLock<DotLottiePlayerContainer>>) -> i32 {
         match self {
             State::PlaybackState {
                 animation_id,
@@ -142,12 +128,9 @@ impl StateTrait for State {
                     if let Some(autoplay) = autoplay {
                         if *autoplay {
                             player_read.play();
-                            println!(">> Returning 2 | play");
                             return 2;
                         } else {
                             player_read.pause();
-
-                            println!(">> Returning 3 | pause");
                             return 3;
                         }
                     } else {

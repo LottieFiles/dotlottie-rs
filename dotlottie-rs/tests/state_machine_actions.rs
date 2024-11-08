@@ -30,8 +30,8 @@ mod tests {
         let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-        let l = player.load_state_machine_data(global_state);
-        let s = player.start_state_machine();
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);
@@ -65,8 +65,8 @@ mod tests {
         let global_state = include_str!("fixtures/statemachines/action_tests/decr_rating.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-        let l = player.load_state_machine_data(global_state);
-        let s = player.start_state_machine();
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);
@@ -100,8 +100,8 @@ mod tests {
         let global_state = include_str!("fixtures/statemachines/action_tests/toggle.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-        let l = player.load_state_machine_data(global_state);
-        let s = player.start_state_machine();
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);
@@ -128,8 +128,8 @@ mod tests {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_triggers.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-        let l = player.load_state_machine_data(global_state);
-        let s = player.start_state_machine();
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);
@@ -150,8 +150,8 @@ mod tests {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_triggers.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-        let l = player.load_state_machine_data(global_state);
-        let s = player.start_state_machine();
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);
@@ -172,8 +172,8 @@ mod tests {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_triggers.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-        let l = player.load_state_machine_data(global_state);
-        let s = player.start_state_machine();
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);
@@ -194,8 +194,8 @@ mod tests {
         let global_state = include_str!("fixtures/statemachines/action_tests/fire.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-        let l = player.load_state_machine_data(global_state);
-        let s = player.start_state_machine();
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);
@@ -218,8 +218,8 @@ mod tests {
 
         assert_eq!(player.current_frame(), 0.0);
 
-        let l = player.load_state_machine_data(global_state);
-        let s = player.start_state_machine();
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);
@@ -248,8 +248,8 @@ mod tests {
 
         assert_eq!(player.current_frame(), 0.0);
 
-        let l = player.load_state_machine_data(global_state);
-        let s = player.start_state_machine();
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start();
 
         assert_eq!(l, true);
         assert_eq!(s, true);

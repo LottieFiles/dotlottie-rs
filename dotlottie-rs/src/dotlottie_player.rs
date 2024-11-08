@@ -1668,7 +1668,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn state_machine_subscribe(&self, observer: Rc<dyn StateMachineObserver>) -> bool {
+    pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
         if sm.is_none() {
@@ -1680,7 +1680,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn state_machine_unsubscribe(&self, observer: Rc<dyn StateMachineObserver>) -> bool {
+    pub fn state_machine_unsubscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
         if sm.is_none() {

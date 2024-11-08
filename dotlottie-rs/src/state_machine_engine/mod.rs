@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display};
 use std::rc::Rc;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 pub mod actions;
 pub mod errors;
@@ -90,7 +90,7 @@ pub struct StateMachineEngine {
     boolean_trigger: HashMap<String, bool>,
     event_trigger: HashMap<String, String>,
 
-    observers: RwLock<Vec<Rc<dyn StateMachineObserver>>>,
+    observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
 
     state_machine: StateMachine,
 
@@ -167,16 +167,16 @@ impl StateMachineEngine {
         state_machine.create_state_machine(state_machine_definition, &player)
     }
 
-    pub fn subscribe(&self, observer: Rc<dyn StateMachineObserver>) {
+    pub fn subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
         let mut observers = self.observers.write().unwrap();
         observers.push(observer);
     }
 
-    pub fn unsubscribe(&self, observer: &Rc<dyn StateMachineObserver>) {
+    pub fn unsubscribe(&self, observer: &Arc<dyn StateMachineObserver>) {
         self.observers
             .write()
             .unwrap()
-            .retain(|o| !Rc::ptr_eq(o, observer));
+            .retain(|o| !Arc::ptr_eq(o, observer));
     }
 
     pub fn get_numeric_trigger(&self, key: &str) -> Option<f32> {

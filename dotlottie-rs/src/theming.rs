@@ -205,21 +205,27 @@ fn handle_gradient_slot(rule: &Value) -> Value {
 }
 
 fn handle_scalar_slot(rule: &Value) -> Value {
+    let mut result = json!({});
+
     if let Some(keyframes) = rule["keyframes"].as_array() {
         let lottie_keyframes: Vec<Value> = keyframes.iter().map(handle_scalar_keyframe).collect();
 
-        json!({
+        result = json!({
             "a": 1,
             "k": json!(lottie_keyframes)
-        })
+        });
     } else if let Some(value) = rule["value"].as_f64() {
-        json!({
+        result = json!({
             "a": 0,
             "k": json!(vec![value])
-        })
-    } else {
-        json!({})
+        });
     }
+
+    if let Some(expression) = rule["expression"].as_str() {
+        result["x"] = json!(expression);
+    }
+
+    result
 }
 
 fn handle_scalar_keyframe(keyframe: &Value) -> Value {
@@ -261,21 +267,27 @@ fn handle_scalar_keyframe(keyframe: &Value) -> Value {
 }
 
 fn handle_other_slot_types(rule: &Value) -> Value {
+    let mut result = json!({});
+
     if let Some(keyframes) = rule["keyframes"].as_array() {
         let lottie_keyframes: Vec<Value> = keyframes.iter().map(handle_generic_keyframe).collect();
 
-        json!({
+        result = json!({
             "a": if keyframes.len() > 1 { 1 } else { 0 },
-            "k": if keyframes.len() > 1 { json!(lottie_keyframes) } else { lottie_keyframes[0].clone() }
-        })
+            "k": if keyframes.len() > 1 { json!(lottie_keyframes) } else { lottie_keyframes[0].clone() },
+        });
     } else if let Some(value) = rule["value"].as_array() {
-        json!({
+        result = json!({
             "a": 0,
             "k": json!(value)
-        })
-    } else {
-        json!({})
+        });
     }
+
+    if let Some(expression) = rule["expression"].as_str() {
+        result["x"] = json!(expression);
+    }
+
+    result
 }
 
 fn handle_generic_keyframe(keyframe: &Value) -> Value {

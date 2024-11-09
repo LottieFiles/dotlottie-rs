@@ -77,24 +77,97 @@ fn handle_image_slot(rule: &Value) -> Value {
 
 fn handle_gradient_slot(rule: &Value) -> Value {
     if let Some(keyframes) = rule["keyframes"].as_array() {
-        if keyframes.len() > 1 {
-            // Animated gradient
-            let lottie_keyframes: Vec<Value> =
-                keyframes.iter().map(handle_gradient_keyframe).collect();
+        let lottie_keyframes: Vec<Value> = keyframes
+            .iter()
+            .map(|keyframe| {
+                let mut frame_data = json!({});
 
-            json!({
-                "k": json!({
-                    "a": 1,
-                    "k": lottie_keyframes
-                }),
-                "p": keyframes[0]["value"].as_array().map(|v| v.len()).unwrap_or(0)
+                if let Some(frame_number) = keyframe["frame"].as_u64() {
+                    frame_data["t"] = json!(frame_number);
+                }
+
+                if let Some(value) = keyframe["value"].as_array() {
+                    let mut gradient_data = vec![];
+                    let mut transparency_data = vec![];
+                    let mut alpha_present = false;
+
+                    for stop in value {
+                        if let Some(color) = stop["color"].as_array() {
+                            if color.len() == 4 {
+                                alpha_present = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    for stop in value {
+                        if let Some(offset) = stop["offset"].as_f64() {
+                            if let Some(color) = stop["color"].as_array() {
+                                gradient_data.push(offset);
+                                for component in color.iter().take(3) {
+                                    gradient_data.push(component.as_f64().unwrap_or(0.0));
+                                }
+
+                                let alpha = if color.len() == 4 {
+                                    color[3].as_f64().unwrap_or(1.0)
+                                } else if alpha_present {
+                                    1.0
+                                } else {
+                                    continue;
+                                };
+
+                                transparency_data.push(offset);
+                                transparency_data.push(alpha);
+                            }
+                        }
+                    }
+
+                    gradient_data.extend(transparency_data);
+
+                    frame_data["s"] = json!(gradient_data);
+                }
+
+                if let Some(in_tangent) = keyframe["inTangent"].as_object() {
+                    if let (Some(x), Some(y)) = (in_tangent.get("x"), in_tangent.get("y")) {
+                        frame_data["i"] = json!({ "x": x, "y": y });
+                    }
+                }
+
+                if let Some(out_tangent) = keyframe["outTangent"].as_object() {
+                    if let (Some(x), Some(y)) = (out_tangent.get("x"), out_tangent.get("y")) {
+                        frame_data["o"] = json!({ "x": x, "y": y });
+                    }
+                }
+
+                if let Some(hold) = keyframe["hold"].as_bool() {
+                    frame_data["h"] = json!(if hold { 1 } else { 0 });
+                }
+
+                frame_data
             })
-        } else {
-            json!({})
-        }
+            .collect();
+
+        json!({
+            "k": json!({
+                "a": 1,
+                "k": lottie_keyframes
+            }),
+            "p": keyframes[0]["value"].as_array().map(|v| v.len()).unwrap_or(0)
+        })
     } else if let Some(value) = rule["value"].as_array() {
-        // Static gradient
         let mut gradient_data = vec![];
+        let mut transparency_data = vec![];
+        let mut alpha_present = false;
+
+        for stop in value {
+            if let Some(color) = stop["color"].as_array() {
+                if color.len() == 4 {
+                    alpha_present = true;
+                    break;
+                }
+            }
+        }
+
         for stop in value {
             if let Some(offset) = stop["offset"].as_f64() {
                 if let Some(color) = stop["color"].as_array() {
@@ -102,9 +175,23 @@ fn handle_gradient_slot(rule: &Value) -> Value {
                     for component in color.iter().take(3) {
                         gradient_data.push(component.as_f64().unwrap_or(0.0));
                     }
+
+                    let alpha = if color.len() == 4 {
+                        color[3].as_f64().unwrap_or(1.0)
+                    } else if alpha_present {
+                        1.0
+                    } else {
+                        continue;
+                    };
+
+                    transparency_data.push(offset);
+                    transparency_data.push(alpha);
                 }
             }
         }
+
+        gradient_data.extend(transparency_data);
+
         json!({
             "k": json!({
                 "a": 0,
@@ -167,48 +254,6 @@ fn handle_scalar_keyframe(keyframe: &Value) -> Value {
     }
 
     if let Some(hold) = keyframe["hold"].as_bool() {
-        frame_data["h"] = json!(if hold { 1 } else { 0 });
-    }
-
-    frame_data
-}
-
-fn handle_gradient_keyframe(frame: &Value) -> Value {
-    let mut frame_data = json!({});
-
-    if let Some(frame_number) = frame["frame"].as_u64() {
-        frame_data["t"] = json!(frame_number);
-    }
-
-    if let Some(value) = frame["value"].as_array() {
-        let mut gradient_data = vec![];
-
-        for stop in value {
-            if let Some(offset) = stop["offset"].as_f64() {
-                if let Some(color) = stop["color"].as_array() {
-                    gradient_data.push(offset);
-                    for component in color.iter().take(3) {
-                        gradient_data.push(component.as_f64().unwrap_or(0.0));
-                    }
-                }
-            }
-        }
-
-        frame_data["s"] = json!(gradient_data);
-    }
-
-    if let Some(in_tangent) = frame["inTangent"].as_object() {
-        if let (Some(x), Some(y)) = (in_tangent.get("x"), in_tangent.get("y")) {
-            frame_data["i"] = json!({ "x": x, "y": y });
-        }
-    }
-    if let Some(out_tangent) = frame["outTangent"].as_object() {
-        if let (Some(x), Some(y)) = (out_tangent.get("x"), out_tangent.get("y")) {
-            frame_data["o"] = json!({ "x": x, "y": y });
-        }
-    }
-
-    if let Some(hold) = frame["hold"].as_bool() {
         frame_data["h"] = json!(if hold { 1 } else { 0 });
     }
 

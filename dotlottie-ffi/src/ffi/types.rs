@@ -613,8 +613,8 @@ impl dotlottie_rs::StateMachineObserver for StateMachineObserver {
 }
 
 impl StateMachineObserver {
-    pub unsafe fn as_observer(&mut self) -> Rc<dyn dotlottie_rs::StateMachineObserver> {
-        Rc::from(Box::from_raw(
+    pub unsafe fn as_observer(&mut self) -> Arc<dyn dotlottie_rs::StateMachineObserver> {
+        Arc::from(Box::from_raw(
             self as *mut dyn dotlottie_rs::StateMachineObserver,
         ))
     }

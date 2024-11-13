@@ -255,6 +255,7 @@ pub struct DotLottieConfig {
     pub background_color: u32,
     pub layout: DotLottieLayout,
     pub marker: DotLottieString,
+    pub theme_id: DotLottieString,
 }
 
 impl Transferable<Config> for DotLottieConfig {
@@ -274,6 +275,7 @@ impl Transferable<Config> for DotLottieConfig {
             background_color: config.background_color,
             layout: DotLottieLayout::new(&config.layout),
             marker: DotLottieString::new(&config.marker)?,
+            theme_id: DotLottieString::new(&config.theme_id)?,
         })
     }
 }
@@ -294,6 +296,7 @@ impl DotLottieConfig {
             background_color: self.background_color,
             layout: self.layout.to_layout(),
             marker: self.marker.to_string(),
+            theme_id: self.theme_id.to_string(),
         })
     }
 }

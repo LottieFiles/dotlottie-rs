@@ -417,13 +417,13 @@ pub unsafe extern "C" fn dotlottie_is_complete(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_load_theme(
+pub unsafe extern "C" fn dotlottie_set_theme(
     ptr: *mut DotLottiePlayer,
     theme_id: *const c_char,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Ok(theme_id) = DotLottieString::read(theme_id) {
-            to_exit_status(dotlottie_player.load_theme(&theme_id))
+            to_exit_status(dotlottie_player.set_theme(&theme_id))
         } else {
             DOTLOTTIE_INVALID_PARAMETER
         }
@@ -431,13 +431,20 @@ pub unsafe extern "C" fn dotlottie_load_theme(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_load_theme_data(
+pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut DotLottiePlayer) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        to_exit_status(dotlottie_player.reset_theme())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_theme_data(
     ptr: *mut DotLottiePlayer,
     theme_data: *const c_char,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Ok(theme_data) = DotLottieString::read(theme_data) {
-            to_exit_status(dotlottie_player.load_theme_data(&theme_data))
+            to_exit_status(dotlottie_player.set_theme_data(&theme_data))
         } else {
             DOTLOTTIE_INVALID_PARAMETER
         }

@@ -187,6 +187,7 @@ impl StateMachine {
                                     .unwrap_or(default_config.background_color),
                                 layout: Layout::default(),
                                 marker: marker.unwrap_or(default_config.marker),
+                                theme_id: String::from(""),
                             };
 
                             // Construct a State with the values we've gathered

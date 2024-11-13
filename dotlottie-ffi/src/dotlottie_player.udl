@@ -54,6 +54,7 @@ dictionary Config {
     u32 background_color;
     Layout layout;
     string marker;
+    string theme_id;
 };
 
 dictionary ManifestInitial {
@@ -140,8 +141,9 @@ interface DotLottiePlayer {
     void subscribe(Observer observer);
     void unsubscribe([ByRef] Observer observer);
     boolean is_complete();
-    boolean load_theme([ByRef] string theme_id);
-    boolean load_theme_data([ByRef] string theme_data);
+    boolean set_theme([ByRef] string theme_id);
+    boolean set_theme_data([ByRef] string theme_data);
+    boolean reset_theme();
     boolean set_slots([ByRef] string slots);
     sequence<Marker> markers();
     string active_animation_id();

@@ -218,13 +218,13 @@ fn main() {
                 if let Some(themes) = manifest.themes {
                     let theme = &themes[0];
 
-                    lottie_player.load_theme(&theme.as_str());
+                    lottie_player.set_theme(&theme.id);
                 }
             }
         }
 
         if window.is_key_pressed(Key::Y, KeyRepeat::No) {
-            lottie_player.load_theme("");
+            lottie_player.reset_theme();
         }
 
         if window.is_key_pressed(Key::Right, KeyRepeat::No) {

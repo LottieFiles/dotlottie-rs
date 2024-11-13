@@ -68,6 +68,7 @@ pub struct Config {
     pub background_color: u32,
     pub layout: Layout,
     pub marker: String,
+    pub theme_id: String,
 }
 
 impl Default for Config {
@@ -82,6 +83,7 @@ impl Default for Config {
             background_color: 0x00000000,
             layout: Layout::default(),
             marker: String::new(),
+            theme_id: String::new(),
         }
     }
 }
@@ -721,7 +723,7 @@ impl DotLottieRuntime {
         self.active_animation_id.clear();
         self.active_theme_id.clear();
 
-        match DotLottieManager::new(file_data) {
+        let loaded = match DotLottieManager::new(file_data) {
             Ok(manager) => {
                 self.dotlottie_manager = Some(manager);
                 if let Some(manager) = &mut self.dotlottie_manager {
@@ -738,7 +740,13 @@ impl DotLottieRuntime {
                 false
             }
             Err(_) => false,
+        };
+
+        if loaded && !self.config.theme_id.is_empty() {
+            self.set_theme(&self.config.theme_id.clone());
         }
+
+        loaded
     }
 
     pub fn load_animation(&mut self, animation_id: &str, width: u32, height: u32) -> bool {
@@ -789,7 +797,7 @@ impl DotLottieRuntime {
         }
     }
 
-    pub fn load_theme(&mut self, theme_id: &str) -> bool {
+    pub fn set_theme(&mut self, theme_id: &str) -> bool {
         self.active_theme_id.clear();
 
         if theme_id.is_empty() {
@@ -807,7 +815,7 @@ impl DotLottieRuntime {
             return false;
         }
 
-        let can_load_theme = self.manifest().map_or(false, |manifest| {
+        let can_set_theme = self.manifest().map_or(false, |manifest| {
             manifest.animations.iter().any(|animation| {
                 animation.themes.is_none()
                     || animation
@@ -818,7 +826,7 @@ impl DotLottieRuntime {
             })
         });
 
-        if !can_load_theme {
+        if !can_set_theme {
             return false;
         }
 
@@ -840,7 +848,12 @@ impl DotLottieRuntime {
         ok
     }
 
-    pub fn load_theme_data(&mut self, theme_data: &str) -> bool {
+    pub fn reset_theme(&mut self) -> bool {
+        self.active_theme_id.clear();
+        self.renderer.set_slots("").is_ok()
+    }
+
+    pub fn set_theme_data(&mut self, theme_data: &str) -> bool {
         match transform_theme_to_lottie_slots(theme_data, &self.active_animation_id) {
             Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
             Err(_) => false,
@@ -1191,12 +1204,16 @@ impl DotLottiePlayerContainer {
             .retain(|o| !Arc::ptr_eq(o, observer));
     }
 
-    pub fn load_theme(&self, theme_id: &str) -> bool {
-        self.runtime.write().unwrap().load_theme(theme_id)
+    pub fn set_theme(&self, theme_id: &str) -> bool {
+        self.runtime.write().unwrap().set_theme(theme_id)
     }
 
-    pub fn load_theme_data(&self, theme_data: &str) -> bool {
-        self.runtime.write().unwrap().load_theme_data(theme_data)
+    pub fn reset_theme(&self) -> bool {
+        self.runtime.write().unwrap().reset_theme()
+    }
+
+    pub fn set_theme_data(&self, theme_data: &str) -> bool {
+        self.runtime.write().unwrap().set_theme_data(theme_data)
     }
 
     pub fn set_slots(&self, slots: &str) -> bool {
@@ -1687,8 +1704,12 @@ impl DotLottiePlayer {
         self.player.write().unwrap().unsubscribe(observer);
     }
 
-    pub fn load_theme(&self, theme_id: &str) -> bool {
-        self.player.write().unwrap().load_theme(theme_id)
+    pub fn set_theme(&self, theme_id: &str) -> bool {
+        self.player.write().unwrap().set_theme(theme_id)
+    }
+
+    pub fn reset_theme(&self) -> bool {
+        self.player.write().unwrap().reset_theme()
     }
 
     pub fn load_state_machine_data(&self, state_machine: &str) -> bool {
@@ -1761,8 +1782,8 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn load_theme_data(&self, theme_data: &str) -> bool {
-        self.player.write().unwrap().load_theme_data(theme_data)
+    pub fn set_theme_data(&self, theme_data: &str) -> bool {
+        self.player.write().unwrap().set_theme_data(theme_data)
     }
 
     pub fn set_slots(&self, slots: &str) -> bool {

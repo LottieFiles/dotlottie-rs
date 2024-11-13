@@ -66,6 +66,7 @@ typedef struct DotLottieConfig {
   uint32_t background_color;
   struct DotLottieLayout layout;
   struct DotLottieString marker;
+  struct DotLottieString theme_id;
 } DotLottieConfig;
 
 typedef struct LayerBoundingBox {
@@ -272,10 +273,6 @@ int32_t dotlottie_load_state_machine(struct DotLottiePlayer *ptr, const char *st
 int32_t dotlottie_load_state_machine_data(struct DotLottiePlayer *ptr,
                                           const char *state_machine_definition);
 
-int32_t dotlottie_load_theme(struct DotLottiePlayer *ptr, const char *theme_id);
-
-int32_t dotlottie_load_theme_data(struct DotLottiePlayer *ptr, const char *theme_data);
-
 int32_t dotlottie_loop_count(struct DotLottiePlayer *ptr, uint32_t *result);
 
 int32_t dotlottie_manifest(struct DotLottiePlayer *ptr, struct DotLottieManifest *result);
@@ -308,6 +305,8 @@ int32_t dotlottie_render(struct DotLottiePlayer *ptr);
 
 int32_t dotlottie_request_frame(struct DotLottiePlayer *ptr, float *result);
 
+int32_t dotlottie_reset_theme(struct DotLottiePlayer *ptr);
+
 int32_t dotlottie_resize(struct DotLottiePlayer *ptr, uint32_t width, uint32_t height);
 
 int32_t dotlottie_seek(struct DotLottiePlayer *ptr, float no);
@@ -327,6 +326,10 @@ int32_t dotlottie_set_state_machine_numeric_context(struct DotLottiePlayer *ptr,
 int32_t dotlottie_set_state_machine_string_context(struct DotLottiePlayer *ptr,
                                                    const char *key,
                                                    const char *value);
+
+int32_t dotlottie_set_theme(struct DotLottiePlayer *ptr, const char *theme_id);
+
+int32_t dotlottie_set_theme_data(struct DotLottiePlayer *ptr, const char *theme_data);
 
 int32_t dotlottie_set_viewport(struct DotLottiePlayer *ptr,
                                int32_t x,

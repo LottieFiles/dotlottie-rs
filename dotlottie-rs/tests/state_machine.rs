@@ -72,6 +72,7 @@ mod tests {
                 background_color: Config::default().background_color,
                 layout: Config::default().layout,
                 marker: "bird".to_string(),
+                theme_id: "".to_string(),
             },
             reset_context: "".to_string(),
             animation_id: "".to_string(),
@@ -90,6 +91,7 @@ mod tests {
                 background_color: Config::default().background_color,
                 layout: Config::default().layout,
                 marker: "explosion".to_string(),
+                theme_id: "".to_string(),
             },
             reset_context: "".to_string(),
             animation_id: "".to_string(),
@@ -108,6 +110,7 @@ mod tests {
                 background_color: Config::default().background_color,
                 layout: Config::default().layout,
                 marker: "feathers".to_string(),
+                theme_id: "".to_string(),
             },
             reset_context: "".to_string(),
             animation_id: "".to_string(),
@@ -570,6 +573,7 @@ mod tests {
             background_color: Config::default().background_color,
             layout: Config::default().layout,
             marker: Config::default().marker,
+            theme_id: Config::default().theme_id,
         };
 
         assert_eq!(test_config, player.config());

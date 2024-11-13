@@ -761,7 +761,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_unsubscribe(
             return DOTLOTTIE_INVALID_PARAMETER;
         }
         if let Some(v) = observer.as_mut() {
-            to_exit_status(dotlottie_player.state_machine_unsubscribe(v.as_observer()))
+            to_exit_status(dotlottie_player.state_machine_unsubscribe(&v.as_observer()))
         } else {
             DOTLOTTIE_ERROR
         }

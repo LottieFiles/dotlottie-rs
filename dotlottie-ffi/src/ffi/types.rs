@@ -3,7 +3,6 @@ use core::fmt;
 use core::str::FromStr;
 use std::ffi::{c_char, CStr, CString};
 use std::io;
-use std::rc::Rc;
 use std::sync::Arc;
 
 use dotlottie_rs::{

@@ -1,14 +1,13 @@
-use std::{collections::HashMap, rc::Rc, sync::RwLock};
+use std::{rc::Rc, sync::RwLock};
 
 use serde::Deserialize;
 
 use crate::{Config, DotLottiePlayerContainer, Layout, Mode};
 
-use super::{
-    actions::{Action, ActionTrait, StateMachineActionError},
-    transitions::Transition,
-    StateMachineEngine,
-};
+use super::{actions::StateMachineActionError, transitions::Transition, StateMachineEngine};
+
+#[cfg(feature = "entry_exit_actions")]
+use super::actions::{Action, ActionTrait};
 
 #[derive(Debug, thiserror::Error)]
 pub enum StatesError {
@@ -30,10 +29,10 @@ pub trait StateTrait {
     ) -> Result<(), StateMachineActionError>;
     fn animation_id(&self) -> &str;
     fn transitions(&self) -> &Vec<Transition>;
+    #[cfg(feature = "entry_exit_actions")]
     fn entry_actions(&self) -> Option<&Vec<Action>>;
+    #[cfg(feature = "entry_exit_actions")]
     fn exit_actions(&self) -> Option<&Vec<Action>>;
-    // fn add_transition(&mut self, transition: &Transition);
-    // fn config(&self) -> Option<&Config>;
     fn name(&self) -> String;
     fn get_type(&self) -> String;
 }
@@ -53,13 +52,17 @@ pub enum State {
         segment: Option<String>,
         background_color: Option<u32>,
         use_frame_interpolation: Option<bool>,
+        #[cfg(feature = "entry_exit_actions")]
         entry_actions: Option<Vec<Action>>,
+        #[cfg(feature = "entry_exit_actions")]
         exit_actions: Option<Vec<Action>>,
     },
     GlobalState {
         name: String,
         transitions: Vec<Transition>,
+        #[cfg(feature = "entry_exit_actions")]
         entry_actions: Option<Vec<Action>>,
+        #[cfg(feature = "entry_exit_actions")]
         exit_actions: Option<Vec<Action>>,
     },
 }
@@ -175,23 +178,26 @@ impl StateTrait for State {
 
     fn enter(
         &self,
-        engine: &mut StateMachineEngine,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        _engine: &mut StateMachineEngine,
+        _player: &Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<(), StateMachineActionError> {
-        match self {
-            State::PlaybackState { entry_actions, .. } => {
-                /* Perform entry actions */
-                if let Some(actions) = entry_actions {
-                    for action in actions {
-                        let _ = action.execute(engine, player.clone(), false);
+        #[cfg(feature = "entry_exit_actions")]
+        {
+            match self {
+                State::PlaybackState { entry_actions, .. } => {
+                    /* Perform entry actions */
+                    if let Some(actions) = entry_actions {
+                        for action in actions {
+                            let _ = action.execute(_engine, _player.clone(), false);
+                        }
                     }
                 }
-            }
 
-            State::GlobalState { entry_actions, .. } => {
-                if let Some(actions) = entry_actions {
-                    for action in actions {
-                        let _ = action.execute(engine, player.clone(), false);
+                State::GlobalState { entry_actions, .. } => {
+                    if let Some(actions) = entry_actions {
+                        for action in actions {
+                            let _ = action.execute(_engine, _player.clone(), false);
+                        }
                     }
                 }
             }
@@ -202,24 +208,27 @@ impl StateTrait for State {
 
     fn exit(
         &self,
-        engine: &mut StateMachineEngine,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        _engine: &mut StateMachineEngine,
+        _player: &Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<(), StateMachineActionError> {
-        match self {
-            State::PlaybackState { exit_actions, .. } => {
-                /* Perform exit actions */
-                if let Some(actions) = exit_actions {
-                    for action in actions {
-                        println!("Executing exit action: {:?}", action);
-                        let _ = action.execute(engine, player.clone(), false);
+        #[cfg(feature = "entry_exit_actions")]
+        {
+            match self {
+                State::PlaybackState { exit_actions, .. } => {
+                    /* Perform exit actions */
+                    if let Some(actions) = exit_actions {
+                        for action in actions {
+                            println!("Executing exit action: {:?}", action);
+                            let _ = action.execute(_engine, _player.clone(), false);
+                        }
                     }
                 }
-            }
 
-            State::GlobalState { exit_actions, .. } => {
-                if let Some(actions) = exit_actions {
-                    for action in actions {
-                        let _ = action.execute(engine, player.clone(), false);
+                State::GlobalState { exit_actions, .. } => {
+                    if let Some(actions) = exit_actions {
+                        for action in actions {
+                            let _ = action.execute(_engine, _player.clone(), false);
+                        }
                     }
                 }
             }
@@ -228,6 +237,7 @@ impl StateTrait for State {
         Ok(())
     }
 
+    #[cfg(feature = "entry_exit_actions")]
     fn entry_actions(&self) -> Option<&Vec<Action>> {
         match self {
             State::PlaybackState { entry_actions, .. } => entry_actions.as_ref(),
@@ -235,6 +245,7 @@ impl StateTrait for State {
         }
     }
 
+    #[cfg(feature = "entry_exit_actions")]
     fn exit_actions(&self) -> Option<&Vec<Action>> {
         match self {
             State::PlaybackState { exit_actions, .. } => exit_actions.as_ref(),

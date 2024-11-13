@@ -117,6 +117,40 @@
     "listeners": [
         {
             "type": "OnComplete",
+            "stateName": "global",
+            "actions": [
+                {
+                    "type": "Increment",
+                    "triggerName": "rating",
+                    "value": 1
+                }
+            ]
+        },
+        {
+            "type": "OnComplete",
+            "stateName": "star_1",
+            "actions": [
+                {
+                    "type": "Increment",
+                    "triggerName": "rating",
+                    "value": 1
+                }
+            ]
+        },
+        {
+            "type": "OnComplete",
+            "stateName": "star_2",
+            "actions": [
+                {
+                    "type": "Increment",
+                    "triggerName": "rating",
+                    "value": 1
+                }
+            ]
+        },
+        {
+            "type": "OnComplete",
+            "stateName": "star_3",
             "actions": [
                 {
                     "type": "Increment",

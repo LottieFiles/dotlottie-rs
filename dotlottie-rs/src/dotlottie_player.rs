@@ -596,12 +596,14 @@ impl DotLottieRuntime {
         self.update_speed(&new_config);
         self.update_loop_animation(&new_config);
         self.update_layout(&new_config.layout);
+        self.set_theme(&new_config.theme_id);
 
         // directly updating fields that don't require special handling
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
         self.config.segment = new_config.segment;
         self.config.autoplay = new_config.autoplay;
         self.config.marker = new_config.marker;
+        self.config.theme_id = new_config.theme_id;
     }
 
     pub fn update_layout(&mut self, layout: &Layout) {
@@ -723,30 +725,28 @@ impl DotLottieRuntime {
         self.active_animation_id.clear();
         self.active_theme_id.clear();
 
-        let loaded = match DotLottieManager::new(file_data) {
+        match DotLottieManager::new(file_data) {
             Ok(manager) => {
                 self.dotlottie_manager = Some(manager);
                 if let Some(manager) = &mut self.dotlottie_manager {
                     let first_animation = manager.get_active_animation();
                     if let Ok(animation_data) = first_animation {
                         self.markers = extract_markers(animation_data.as_str());
-                        return self.load_animation_common(
+                        let animation_loaded = self.load_animation_common(
                             |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
                             width,
                             height,
                         );
+                        if animation_loaded && !self.config.theme_id.is_empty() {
+                            self.set_theme(&self.config.theme_id.clone());
+                        }
+                        return animation_loaded;
                     }
                 }
                 false
             }
             Err(_) => false,
-        };
-
-        if loaded && !self.config.theme_id.is_empty() {
-            self.set_theme(&self.config.theme_id.clone());
         }
-
-        loaded
     }
 
     pub fn load_animation(&mut self, animation_id: &str, width: u32, height: u32) -> bool {
@@ -798,6 +798,14 @@ impl DotLottieRuntime {
     }
 
     pub fn set_theme(&mut self, theme_id: &str) -> bool {
+        if self.active_theme_id == theme_id {
+            return true;
+        }
+
+        if self.dotlottie_manager.is_none() {
+            return false;
+        }
+
         self.active_theme_id.clear();
 
         if theme_id.is_empty() {

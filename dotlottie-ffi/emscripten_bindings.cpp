@@ -75,7 +75,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("segment", &Config::segment)
         .field("backgroundColor", &Config::background_color)
         .field("layout", &Config::layout)
-        .field("marker", &Config::marker);
+        .field("marker", &Config::marker)
+        .field("themeId", &Config::theme_id);
 
     function("createDefaultConfig", &create_default_config);
     function("transformThemeToLottieSlots", &transform_theme_to_lottie_slots);

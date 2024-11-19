@@ -28,28 +28,29 @@ const WIDTH: usize = 400;
 const HEIGHT: usize = 300;
 const LOADED_STATE_MACHINE: &str = "rating";
 const LOADED_ANIMATION: &str = "star_marked";
-const ANIMATION_FILES: [(&str, &str, &str); 8] = [
-    ("[Exploding Pigeon]", "pigeon", "pigeon_with_events"),
-    (
-        "[Exploding Pigeon with Listeners]",
-        "pigeon",
-        "pigeon_with_listeners",
-    ),
-    ("[Sync Frame]", "loader", "sync_loader"),
-    ("[Star Rating]", "star_marked", "rating"),
-    ("[Entry Action Demo]", "star_marked", "entry_action"),
-    ("[Boolean Toggle]", "star_marked", "toggle"),
-    (
-        "[Test Guardless Event Propagation]",
-        "smileys",
-        "test_guardless_and_event_propagation",
-    ),
-    (
-        "[Test Guardless And Event]",
-        "smileys",
-        "test_guardless_and_event",
-    ),
-];
+
+// const ANIMATION_FILES: [(&str, &str, &str); 8] = [
+//     ("[Exploding Pigeon]", "pigeon", "pigeon_with_events"),
+//     (
+//         "[Exploding Pigeon with Listeners]",
+//         "pigeon",
+//         "pigeon_with_listeners",
+//     ),
+//     ("[Sync Frame]", "loader", "sync_loader"),
+//     ("[Star Rating]", "star_marked", "rating"),
+//     ("[Entry Action Demo]", "star_marked", "entry_action"),
+//     ("[Boolean Toggle]", "star_marked", "toggle"),
+//     (
+//         "[Test Guardless Event Propagation]",
+//         "smileys",
+//         "test_guardless_and_event_propagation",
+//     ),
+//     (
+//         "[Test Guardless And Event]",
+//         "smileys",
+//         "test_guardless_and_event",
+//     ),
+// ];
 
 struct Timer {
     last_update: Instant,
@@ -402,6 +403,74 @@ impl Logger {
         }
     }
 }
+fn load_state_machine(
+    player: &DotLottiePlayer,
+    state_machine_name: &str,
+    log_sender: &Sender<LogMessage>,
+) -> (bool, bool) {
+    let cleaned_name = state_machine_name.replace("[State Machine]", "");
+
+    // remove whitespace
+    let cleaned_name = cleaned_name.trim();
+    println!("Loading state machine: {}", cleaned_name);
+
+    let message: String =
+        fs::read_to_string(format!("./src/bin/shared/statemachines/{}", cleaned_name)).unwrap();
+
+    log_sender
+        .send(LogMessage {
+            content: format!("Loading state machine: {}", cleaned_name),
+            level: LogLevel::Info,
+        })
+        .unwrap();
+
+    let r = player.state_machine_load_data(&message);
+
+    if !r {
+        log_sender
+            .send(LogMessage {
+                content: format!("Failed to load state machine."),
+                level: LogLevel::Info,
+            })
+            .unwrap();
+    }
+
+    let s = player.state_machine_start();
+
+    if !s {
+        log_sender
+            .send(LogMessage {
+                content: format!("Failed to start state machine."),
+                level: LogLevel::Info,
+            })
+            .unwrap();
+    }
+
+    (r, s)
+}
+
+fn load_animation(player: &DotLottiePlayer, animation_name: &str, log_sender: &Sender<LogMessage>) {
+    // let mut cleaned_name = animation_name.replace("[Animation] ", "");
+    let cleaned_name = animation_name.replace("[Animation]", "").trim().to_string();
+
+    log_sender
+        .send(LogMessage {
+            content: format!("Loading animation: {}", cleaned_name),
+            level: LogLevel::Info,
+        })
+        .unwrap();
+
+    let mut markers =
+        File::open(format!("./src/bin/shared/animations/{}", cleaned_name)).expect("no file found");
+    let metadatamarkers = fs::metadata(format!("./src/bin/shared/animations/{}", cleaned_name))
+        .expect("unable to read metadata");
+    let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
+    markers.read(&mut markers_buffer).expect("buffer overflow");
+
+    player.load_dotlottie_data(&markers_buffer, WIDTH as u32, HEIGHT as u32);
+    player.pause();
+    player.render();
+}
 
 fn load_animation_and_state_machine(
     player: &DotLottiePlayer,
@@ -537,8 +606,20 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
 
     let mut triggers: Vec<Trigger> = Vec::new();
     let mut trigger_buttons: Vec<MenuItemType> = Vec::new();
-
     let mut listener_buttons: Vec<MenuItemType> = Vec::new();
+
+    // Load the file names of animation from the shared folder in to the animation_files vec
+    let animation_files = fs::read_dir("./src/bin/shared/animations")
+        .unwrap()
+        .map(|res| res.map(|e| e.file_name()))
+        .collect::<Result<Vec<_>, io::Error>>()
+        .unwrap();
+
+    let state_machine_files = fs::read_dir("./src/bin/shared/statemachines")
+        .unwrap()
+        .map(|res| res.map(|e| e.file_name()))
+        .collect::<Result<Vec<_>, io::Error>>()
+        .unwrap();
 
     match read_lock {
         Ok(locked_machine) => {
@@ -600,10 +681,7 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
                 if let Some(listeners) = listeners_opt {
                     for listener in listeners {
                         match listener {
-                            Listener::PointerUp {
-                                layer_name,
-                                actions,
-                            } => {
+                            Listener::PointerUp { .. } => {
                                 let mut new_name = "PointerUp".to_string();
                                 new_name = format!("[Listener] {}", new_name);
 
@@ -612,10 +690,7 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
                                     color: 0x00ff00,
                                 });
                             }
-                            Listener::PointerDown {
-                                layer_name,
-                                actions,
-                            } => {
+                            Listener::PointerDown { .. } => {
                                 let mut new_name = "PointerDown".to_string();
                                 new_name = format!("[Listener] {}", new_name);
 
@@ -624,10 +699,7 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
                                     color: 0x00ff00,
                                 });
                             }
-                            Listener::PointerEnter {
-                                layer_name,
-                                actions,
-                            } => {
+                            Listener::PointerEnter { .. } => {
                                 let mut new_name = "PointerEnter".to_string();
                                 new_name = format!("[Listener] {}", new_name);
 
@@ -636,10 +708,7 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
                                     color: 0x00ff00,
                                 });
                             }
-                            Listener::PointerMove {
-                                layer_name,
-                                actions,
-                            } => {
+                            Listener::PointerMove { .. } => {
                                 let mut new_name = "PointerMove".to_string();
                                 new_name = format!("[Listener] {}", new_name);
 
@@ -648,10 +717,7 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
                                     color: 0x00ff00,
                                 });
                             }
-                            Listener::PointerExit {
-                                layer_name,
-                                actions,
-                            } => {
+                            Listener::PointerExit { .. } => {
                                 let mut new_name = "PointerExit".to_string();
                                 new_name = format!("[Listener] {}", new_name);
 
@@ -660,10 +726,7 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
                                     color: 0x00ff00,
                                 });
                             }
-                            Listener::OnComplete {
-                                state_name,
-                                actions,
-                            } => {
+                            Listener::OnComplete { .. } => {
                                 let mut new_name = "OnComplete".to_string();
                                 new_name = format!("[Listener] {}", new_name);
 
@@ -685,11 +748,21 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
 
     let menus = vec![
         Menu::new(
-            "🚧 [Load preset]".to_string(),
-            ANIMATION_FILES
+            "[Load Animation]".to_string(),
+            animation_files
                 .iter()
-                .map(|animation| MenuItemType::Button {
-                    name: animation.0.to_string(),
+                .map(|file| MenuItemType::Button {
+                    name: format!("[Animation] {}", file.to_string_lossy().into_owned()),
+                    color: 0xFF0000,
+                })
+                .collect(),
+        ),
+        Menu::new(
+            "[Load State Machine]".to_string(),
+            state_machine_files
+                .iter()
+                .map(|file| MenuItemType::Button {
+                    name: format!("[State Machine] {}", file.to_string_lossy().into_owned()),
                     color: 0xFF0000,
                 })
                 .collect(),
@@ -734,11 +807,12 @@ fn run_app<B: ratatui::backend::Backend>(
                 .direction(Direction::Vertical)
                 .constraints(
                     [
-                        Constraint::Percentage(20),
-                        Constraint::Percentage(20),
-                        Constraint::Percentage(20),
-                        Constraint::Percentage(20),
-                        Constraint::Percentage(20),
+                        Constraint::Percentage(15),
+                        Constraint::Percentage(15),
+                        Constraint::Percentage(15),
+                        Constraint::Percentage(15),
+                        Constraint::Percentage(30),
+                        Constraint::Percentage(10),
                     ]
                     .as_ref(),
                 )
@@ -839,7 +913,7 @@ fn run_app<B: ratatui::backend::Backend>(
                     .title(LOADED_STATE_MACHINE)
                     .borders(Borders::ALL),
             );
-            f.render_widget(graph_widget, chunks[3]);
+            f.render_widget(graph_widget, chunks[4]);
 
             // Render the log area
             let log_widget = Paragraph::new(Text::from(
@@ -867,7 +941,7 @@ fn run_app<B: ratatui::backend::Backend>(
             ))
             .block(Block::default().title("Logs").borders(Borders::ALL))
             .wrap(ratatui::widgets::Wrap { trim: true });
-            f.render_widget(log_widget, chunks[4]);
+            f.render_widget(log_widget, chunks[5]);
         })?;
 
         if last_update.elapsed() >= Duration::from_millis(16) {
@@ -1000,35 +1074,11 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 })
                                                 .unwrap();
                                             player.state_machine_fire_event(&new_name);
-                                        } else {
-                                            for animation in ANIMATION_FILES {
-                                                if animation.0.eq(name) {
-                                                    log_sender
-                                                        .send(LogMessage {
-                                                            content: format!(
-                                                                "User selected {}",
-                                                                name
-                                                            ),
-                                                            level: LogLevel::Info,
-                                                        })
-                                                        .unwrap();
-                                                    player.state_machine_stop();
-                                                    let (r, s) = load_animation_and_state_machine(
-                                                        player,
-                                                        animation.1,
-                                                        animation.2,
-                                                    );
-                                                    log_sender
-                                                .send(LogMessage {
-                                                    content: format!(
-                                                        "Load state machine data returned: [{}] Start state machine returned: [{}]",
-                                                        r,s
-                                                    ),
-                                                    level: LogLevel::Info,
-                                                })
-                                                .unwrap();
-                                                }
-                                            }
+                                        } else if name.contains("[Animation]") {
+                                            load_animation(player, name, &log_sender);
+                                            menus = refresh_menus(player);
+                                        } else if name.contains("[State Machine]") {
+                                            load_state_machine(player, name, &log_sender);
                                             menus = refresh_menus(player);
                                         }
                                     }

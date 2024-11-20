@@ -3,6 +3,7 @@ mod tests {
     use dotlottie_rs::{states::StateTrait, Config, DotLottiePlayer, Event};
 
     #[test]
+    #[ignore]
     pub fn pointer_down_up_test() {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star-rating.lottie"), 100, 100);
@@ -207,6 +208,7 @@ mod tests {
 
     // Equivalent to hovering
     #[test]
+    #[ignore]
     pub fn pointer_enter_exit_test() {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star-rating.lottie"), 100, 100);

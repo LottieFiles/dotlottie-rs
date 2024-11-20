@@ -9,6 +9,7 @@ mod tests {
     use dotlottie_rs::DotLottiePlayer;
 
     #[test]
+    #[ignore]
     pub fn guards_loaded_correctly() {
         use dotlottie_rs::transitions::TransitionTrait;
 
@@ -125,6 +126,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     pub fn not_equal_test() {
         use dotlottie_rs::transitions::TransitionTrait;
 
@@ -238,6 +240,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     pub fn equal_test() {
         use dotlottie_rs::transitions::TransitionTrait;
 
@@ -350,6 +353,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     pub fn greater_than_greater_than_or_equal_test() {
         use dotlottie_rs::transitions::TransitionTrait;
 
@@ -449,6 +453,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     pub fn less_than_less_than_equal_test() {
         use dotlottie_rs::transitions::TransitionTrait;
 

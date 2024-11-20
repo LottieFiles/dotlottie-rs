@@ -11,8 +11,6 @@
 
 #define DOTLOTTIE_MANIFEST_NOT_AVAILABLE 3
 
-#define DOTLOTTIE_MANIFEST_THEMES_NOT_AVAILABLE 4
-
 #define DOTLOTTIE_MAX_STR_LENGTH 512
 
 #define DOTLOTTIE_SUCCESS 0
@@ -68,6 +66,7 @@ typedef struct DotLottieConfig {
   uint32_t background_color;
   struct DotLottieLayout layout;
   struct DotLottieString marker;
+  struct DotLottieString theme_id;
 } DotLottieConfig;
 
 typedef struct LayerBoundingBox {
@@ -82,61 +81,27 @@ typedef struct DotLottieOption_DotLottieString {
   bool defined;
 } DotLottieOption_DotLottieString;
 
-typedef struct DotLottieOption_u32 {
-  uint32_t value;
-  bool defined;
-} DotLottieOption_u32;
-
 typedef struct DotLottieManifest {
-  struct DotLottieOption_DotLottieString active_animation_id;
-  struct DotLottieOption_DotLottieString author;
-  struct DotLottieOption_DotLottieString description;
   struct DotLottieOption_DotLottieString generator;
-  struct DotLottieOption_DotLottieString keywords;
-  struct DotLottieOption_u32 revision;
   struct DotLottieOption_DotLottieString version;
 } DotLottieManifest;
 
-typedef struct DotLottieOption_bool {
-  bool value;
-  bool defined;
-} DotLottieOption_bool;
-
-typedef struct DotLottieOption_i8 {
-  int8_t value;
-  bool defined;
-} DotLottieOption_i8;
-
-typedef struct DotLottieOption_f32 {
-  float value;
-  bool defined;
-} DotLottieOption_f32;
-
 typedef struct DotLottieManifestAnimation {
-  struct DotLottieOption_bool autoplay;
-  struct DotLottieOption_DotLottieString default_theme;
-  struct DotLottieOption_i8 direction;
-  struct DotLottieOption_bool hover;
   struct DotLottieOption_DotLottieString id;
-  struct DotLottieOption_u32 intermission;
-  struct DotLottieOption_bool loop;
-  struct DotLottieOption_u32 loop_count;
-  struct DotLottieOption_DotLottieString play_mode;
-  struct DotLottieOption_f32 speed;
-  struct DotLottieOption_DotLottieString theme_color;
+  struct DotLottieOption_DotLottieString name;
+  struct DotLottieOption_DotLottieString initial_theme;
+  struct DotLottieOption_DotLottieString background;
 } DotLottieManifestAnimation;
 
-typedef struct DotLottieManifestState {
-  struct DotLottieString state;
-} DotLottieManifestState;
+typedef struct DotLottieManifestStateMachine {
+  struct DotLottieString id;
+  struct DotLottieOption_DotLottieString name;
+} DotLottieManifestStateMachine;
 
 typedef struct DotLottieManifestTheme {
   struct DotLottieString id;
+  struct DotLottieOption_DotLottieString name;
 } DotLottieManifestTheme;
-
-typedef struct DotLottieManifestThemeAnimation {
-  struct DotLottieString id;
-} DotLottieManifestThemeAnimation;
 
 typedef struct DotLottieMarker {
   struct DotLottieString name;
@@ -308,10 +273,6 @@ int32_t dotlottie_load_state_machine(struct DotLottiePlayer *ptr, const char *st
 int32_t dotlottie_load_state_machine_data(struct DotLottiePlayer *ptr,
                                           const char *state_machine_definition);
 
-int32_t dotlottie_load_theme(struct DotLottiePlayer *ptr, const char *theme_id);
-
-int32_t dotlottie_load_theme_data(struct DotLottiePlayer *ptr, const char *theme_data);
-
 int32_t dotlottie_loop_count(struct DotLottiePlayer *ptr, uint32_t *result);
 
 int32_t dotlottie_manifest(struct DotLottiePlayer *ptr, struct DotLottieManifest *result);
@@ -320,14 +281,9 @@ int32_t dotlottie_manifest_animations(struct DotLottiePlayer *ptr,
                                       struct DotLottieManifestAnimation *result,
                                       size_t *size);
 
-int32_t dotlottie_manifest_states(struct DotLottiePlayer *ptr,
-                                  struct DotLottieManifestState *result,
-                                  size_t *size);
-
-int32_t dotlottie_manifest_theme_animations(struct DotLottiePlayer *ptr,
-                                            const struct DotLottieManifestTheme *theme,
-                                            struct DotLottieManifestThemeAnimation *result,
-                                            size_t *size);
+int32_t dotlottie_manifest_state_machines(struct DotLottiePlayer *ptr,
+                                          struct DotLottieManifestStateMachine *result,
+                                          size_t *size);
 
 int32_t dotlottie_manifest_themes(struct DotLottiePlayer *ptr,
                                   struct DotLottieManifestTheme *result,
@@ -349,6 +305,8 @@ int32_t dotlottie_render(struct DotLottiePlayer *ptr);
 
 int32_t dotlottie_request_frame(struct DotLottiePlayer *ptr, float *result);
 
+int32_t dotlottie_reset_theme(struct DotLottiePlayer *ptr);
+
 int32_t dotlottie_resize(struct DotLottiePlayer *ptr, uint32_t width, uint32_t height);
 
 int32_t dotlottie_seek(struct DotLottiePlayer *ptr, float no);
@@ -368,6 +326,10 @@ int32_t dotlottie_set_state_machine_numeric_context(struct DotLottiePlayer *ptr,
 int32_t dotlottie_set_state_machine_string_context(struct DotLottiePlayer *ptr,
                                                    const char *key,
                                                    const char *value);
+
+int32_t dotlottie_set_theme(struct DotLottiePlayer *ptr, const char *theme_id);
+
+int32_t dotlottie_set_theme_data(struct DotLottiePlayer *ptr, const char *theme_data);
 
 int32_t dotlottie_set_viewport(struct DotLottiePlayer *ptr,
                                int32_t x,

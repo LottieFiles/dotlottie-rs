@@ -5,6 +5,9 @@ use types::*;
 
 pub mod types;
 
+// TODO: dotlottie_manifest_initial
+// TODO: dotlottie_manifest_animation_themes
+
 // Allows to wrap every C API call with some additional logic. This is currently used to
 // check if the dotlottie player pointer is valid or not
 unsafe fn exec_dotlottie_player_op<Op>(ptr: *mut DotLottiePlayer, op: Op) -> i32
@@ -160,8 +163,8 @@ pub unsafe extern "C" fn dotlottie_manifest_themes(
             Some(v) => v,
             None => return DOTLOTTIE_MANIFEST_NOT_AVAILABLE,
         };
-        if let Some(themes) = &manifest.themes {
-            DotLottieManifestTheme::transfer_all(themes, result, size)
+        if let Some(themes) = manifest.themes {
+            DotLottieManifestTheme::transfer_all(&themes, result, size)
         } else {
             *size = 0;
             DOTLOTTIE_SUCCESS
@@ -170,41 +173,9 @@ pub unsafe extern "C" fn dotlottie_manifest_themes(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_theme_animations(
+pub unsafe extern "C" fn dotlottie_manifest_state_machines(
     ptr: *mut DotLottiePlayer,
-    theme: *const types::DotLottieManifestTheme,
-    result: *mut types::DotLottieManifestThemeAnimation,
-    size: *mut usize,
-) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        if theme.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
-        }
-        let theme = match theme.as_ref() {
-            Some(v) => v,
-            None => return DOTLOTTIE_INVALID_PARAMETER,
-        };
-        let theme_id = theme.id.to_string();
-        let manifest = match dotlottie_player.manifest() {
-            Some(v) => v,
-            None => return DOTLOTTIE_MANIFEST_NOT_AVAILABLE,
-        };
-        let themes = match manifest.themes {
-            Some(v) => v,
-            None => return DOTLOTTIE_MANIFEST_THEMES_NOT_AVAILABLE,
-        };
-        if let Some(theme) = themes.iter().find(|&v| v.id == theme_id) {
-            DotLottieManifestThemeAnimation::transfer_all(&theme.animations, result, size)
-        } else {
-            DOTLOTTIE_INVALID_PARAMETER
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_states(
-    ptr: *mut DotLottiePlayer,
-    result: *mut types::DotLottieManifestState,
+    result: *mut types::DotLottieManifestStateMachine,
     size: *mut usize,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -212,8 +183,8 @@ pub unsafe extern "C" fn dotlottie_manifest_states(
             Some(v) => v,
             None => return DOTLOTTIE_MANIFEST_NOT_AVAILABLE,
         };
-        if let Some(states) = manifest.states {
-            DotLottieManifestState::transfer_all(&states, result, size)
+        if let Some(state_machines) = manifest.state_machines {
+            DotLottieManifestStateMachine::transfer_all(&state_machines, result, size)
         } else {
             *size = 0;
             DOTLOTTIE_SUCCESS
@@ -446,13 +417,13 @@ pub unsafe extern "C" fn dotlottie_is_complete(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_load_theme(
+pub unsafe extern "C" fn dotlottie_set_theme(
     ptr: *mut DotLottiePlayer,
     theme_id: *const c_char,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Ok(theme_id) = DotLottieString::read(theme_id) {
-            to_exit_status(dotlottie_player.load_theme(&theme_id))
+            to_exit_status(dotlottie_player.set_theme(&theme_id))
         } else {
             DOTLOTTIE_INVALID_PARAMETER
         }
@@ -460,13 +431,20 @@ pub unsafe extern "C" fn dotlottie_load_theme(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_load_theme_data(
+pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut DotLottiePlayer) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        to_exit_status(dotlottie_player.reset_theme())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_theme_data(
     ptr: *mut DotLottiePlayer,
     theme_data: *const c_char,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Ok(theme_data) = DotLottieString::read(theme_data) {
-            to_exit_status(dotlottie_player.load_theme_data(&theme_data))
+            to_exit_status(dotlottie_player.set_theme_data(&theme_data))
         } else {
             DOTLOTTIE_INVALID_PARAMETER
         }

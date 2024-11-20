@@ -54,38 +54,39 @@ dictionary Config {
     u32 background_color;
     Layout layout;
     string marker;
+    string theme_id;
+};
+
+dictionary ManifestInitial {
+    string? animation;
+    string? state_machine;
+};
+
+dictionary ManifestAnimation {
+    string id;
+    string? name;
+    string? initial_theme;
+    sequence<string>? themes;
+    string? background;
 };
 
 dictionary ManifestTheme {
     string id;
-    sequence<string> animations;
+    string? name;
 };
 
-dictionary ManifestAnimation {
-    boolean? autoplay;
-    string? defaultTheme;
-    i8? direction;
-    boolean? hover;
+dictionary ManifestStateMachine {
     string id;
-    u32? intermission;
-    boolean? loop;
-    u32? loop_count;
-    string? playMode;
-    f32? speed;
-    string? themeColor;
+    string? name;
 };
 
 dictionary Manifest {
-    string? active_animation_id;
-    sequence<ManifestAnimation> animations;
-    string? author;
-    string? description;
-    string? generator;
-    string? keywords;
-    u32? revision;
-    sequence<ManifestTheme>? themes;
-    sequence<string>? states;
     string? version;
+    string? generator;
+    ManifestInitial? initial;
+    sequence<ManifestAnimation> animations;
+    sequence<ManifestTheme>? themes;
+    sequence<ManifestStateMachine>? state_machines;
 };
 
 dictionary Marker {
@@ -140,8 +141,10 @@ interface DotLottiePlayer {
     void subscribe(Observer observer);
     void unsubscribe([ByRef] Observer observer);
     boolean is_complete();
-    boolean load_theme([ByRef] string theme_id);
-    boolean load_theme_data([ByRef] string theme_data);
+    boolean set_theme([ByRef] string theme_id);
+    boolean set_theme_data([ByRef] string theme_data);
+    boolean reset_theme();
+    boolean set_slots([ByRef] string slots);
     sequence<Marker> markers();
     string active_animation_id();
     string active_theme_id();

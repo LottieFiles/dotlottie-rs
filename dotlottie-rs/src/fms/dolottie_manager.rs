@@ -1,55 +1,54 @@
-use std::{collections::HashMap, ops::Index};
+use std::collections::HashMap;
 
-use super::{get_manifest, AnimationContainer, DotLottieError, Manifest, ManifestAnimation};
+use super::{get_manifest, DotLottieError, Manifest, ManifestAnimation};
 
 pub struct DotLottieManager {
     active_animation_id: String,
     manifest: Manifest,
+    version: u8,
     zip_data: Vec<u8>,
     animation_settings_cache: HashMap<String, ManifestAnimation>,
     animation_data_cache: HashMap<String, String>,
     theme_cache: HashMap<String, String>,
 }
 
-impl DotLottieManager {
-    pub fn new(dotlottie: Option<Vec<u8>>) -> Result<Self, DotLottieError> {
-        if let Some(dotlottie) = dotlottie {
-            // Initialize the manager with the dotLottie file
-            let manifest = get_manifest(&dotlottie);
-
-            match manifest {
-                Ok(manifest) => {
-                    let id: String;
-
-                    if let Some(first_animation) = &manifest.active_animation_id {
-                        id = first_animation.clone();
-                    } else if !manifest.animations.is_empty() {
-                        id = manifest.animations.index(0).id.clone();
-                    } else {
-                        return Err(DotLottieError::AnimationsNotFound);
-                    }
-
-                    Ok(DotLottieManager {
-                        active_animation_id: id,
-                        manifest,
-                        zip_data: dotlottie,
-                        animation_settings_cache: HashMap::new(),
-                        animation_data_cache: HashMap::new(),
-                        theme_cache: HashMap::new(),
-                    })
-                }
-                Err(error) => Err(error),
-            }
-        } else {
-            Ok(DotLottieManager {
-                active_animation_id: String::new(),
-                manifest: Manifest::new(),
-                zip_data: vec![],
-                animation_settings_cache: HashMap::new(),
-                animation_data_cache: HashMap::new(),
-                theme_cache: HashMap::new(),
-            })
+fn get_dotlottie_version(manifest: &Manifest) -> u8 {
+    if let Some(version) = manifest.version.as_deref() {
+        if version == "2" {
+            return 2;
         }
+    }
+
+    1
+}
+
+impl DotLottieManager {
+    pub fn new(dotlottie: &[u8]) -> Result<Self, DotLottieError> {
+        let manifest = get_manifest(dotlottie)?;
+
+        let id = if let Some(first_animation) = manifest
+            .initial
+            .as_ref()
+            .and_then(|initial| initial.animation.as_ref())
+        {
+            first_animation.clone()
+        } else if !manifest.animations.is_empty() {
+            manifest.animations[0].id.clone()
+        } else {
+            return Err(DotLottieError::AnimationsNotFound);
+        };
+
+        let version = get_dotlottie_version(&manifest);
+
+        Ok(DotLottieManager {
+            active_animation_id: id,
+            manifest,
+            version,
+            zip_data: dotlottie.to_vec(),
+            animation_settings_cache: HashMap::new(),
+            animation_data_cache: HashMap::new(),
+            theme_cache: HashMap::new(),
+        })
     }
 
     pub fn init(&mut self, dotlottie: &[u8]) -> Result<bool, DotLottieError> {
@@ -60,10 +59,14 @@ impl DotLottieManager {
             Ok(manifest) => {
                 let id: String;
 
-                if let Some(first_animation) = &manifest.active_animation_id {
+                if let Some(first_animation) = manifest
+                    .initial
+                    .as_ref()
+                    .and_then(|initial| initial.animation.as_ref())
+                {
                     id = first_animation.clone();
                 } else if !manifest.animations.is_empty() {
-                    id = manifest.animations.index(0).id.clone();
+                    id = manifest.animations[0].id.clone();
                 } else {
                     return Err(DotLottieError::AnimationsNotFound);
                 }
@@ -186,7 +189,7 @@ impl DotLottieManager {
 
             Ok(cloned_animation)
         } else {
-            let animation = crate::get_animation(&self.zip_data, animation_id);
+            let animation = crate::get_animation(&self.zip_data, animation_id, self.version);
 
             if let Ok(animation) = animation {
                 self.animation_data_cache
@@ -199,10 +202,6 @@ impl DotLottieManager {
                 })
             }
         }
-    }
-
-    pub fn get_animations(&self) -> Result<Vec<AnimationContainer>, DotLottieError> {
-        crate::get_animations(&self.zip_data)
     }
 
     pub fn set_active_animation(&mut self, animation_id: &str) -> Result<String, DotLottieError> {
@@ -226,25 +225,8 @@ impl DotLottieManager {
         crate::get_state_machine(&self.zip_data, state_machine_id)
     }
 
-    pub fn manifest(&self) -> Option<Manifest> {
-        if self.manifest.animations.is_empty() {
-            return None;
-        }
-
-        let mut manifest = Manifest::new();
-
-        manifest.active_animation_id = Some(self.active_animation_id.clone());
-        manifest.animations.clone_from(&self.manifest.animations);
-        manifest.author.clone_from(&self.manifest.author);
-        manifest.description.clone_from(&self.manifest.description);
-        manifest.generator.clone_from(&self.manifest.generator);
-        manifest.keywords.clone_from(&self.manifest.keywords);
-        manifest.revision = self.manifest.revision;
-        manifest.themes.clone_from(&self.manifest.themes);
-        manifest.states.clone_from(&self.manifest.states);
-        manifest.version.clone_from(&self.manifest.version);
-
-        Some(manifest)
+    pub fn manifest(&self) -> &Manifest {
+        &self.manifest
     }
 
     pub fn active_animation_id(&self) -> String {

@@ -1,6 +1,5 @@
-use super::{AnimationContainer, DotLottieError, Manifest};
+use super::{DotLottieError, Manifest};
 use std::io::{self, Read};
-use std::path::Path;
 
 use base64::{engine::general_purpose, Engine};
 use serde_json::Value;
@@ -12,11 +11,19 @@ use zip::ZipArchive;
 /// animation_id: The id of the animation to extract
 /// Result<String, DotLottieError>: The extracted animation, or an error
 /// Notes: This function uses jzon rather than serde as serde was exporting invalid JSON
-pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotLottieError> {
+pub fn get_animation(
+    bytes: &Vec<u8>,
+    animation_id: &str,
+    version: u8,
+) -> Result<String, DotLottieError> {
     let mut archive =
         ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
 
-    let search_file_name = format!("animations/{}.json", animation_id);
+    let search_file_name: String = if version == 2 {
+        format!("a/{}.json", animation_id)
+    } else {
+        format!("animations/{}.json", animation_id)
+    };
 
     let mut result =
         archive
@@ -47,8 +54,11 @@ pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotL
                     // if the asset is already inlined, force the embed flag to 1
                     asset["e"] = 1.into();
                 } else {
-                    let image_asset_filename =
-                        format!("images/{}", asset["p"].to_string().replace('"', ""));
+                    let image_asset_filename: String = if version == 2 {
+                        format!("i/{}", asset["p"].to_string().replace('"', ""))
+                    } else {
+                        format!("images/{}", asset["p"].to_string().replace('"', ""))
+                    };
 
                     let image_ext = asset["p"]
                         .to_string()
@@ -84,44 +94,6 @@ pub fn get_animation(bytes: &Vec<u8>, animation_id: &str) -> Result<String, DotL
     }
 
     Ok(jzon::stringify(lottie_animation))
-}
-
-/// Extract every animation with its image assets inlined.
-///
-/// bytes: The bytes of the dotLottie file
-/// Result<Vec<AnimationData>, DotLottieError>: The extracted animations, or an error
-pub fn get_animations(bytes: &Vec<u8>) -> Result<Vec<AnimationContainer>, DotLottieError> {
-    let mut archive =
-        ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
-    let mut file_contents = Vec::new();
-
-    for i in 0..archive.len() {
-        let file = archive.by_index(i).unwrap();
-
-        if (*file.name()).starts_with("animations/") && (*file.name()).ends_with(".json") {
-            // Create a Path from the file path string
-            let path = Path::new(file.name());
-
-            // Get the file stem (file name without extension)
-            if let Some(file_stem) = path.file_stem() {
-                if let Some(file_stem_str) = file_stem.to_str() {
-                    let animation = get_animation(bytes, file_stem_str).unwrap();
-
-                    let item = AnimationContainer {
-                        id: file_stem_str.to_string(),
-                        animation_data: animation,
-                    };
-
-                    file_contents.push(item);
-                }
-            } else {
-                // Handle the case where the path has no file stem
-                return Err(DotLottieError::ReadContentError);
-            }
-        }
-    }
-
-    Ok(file_contents)
 }
 
 /// Get the manifest of a dotLottie file.
@@ -163,7 +135,7 @@ pub fn get_width_height(animation_data: &str) -> (u32, u32) {
 pub fn get_theme(bytes: &[u8], theme_id: &str) -> Result<String, DotLottieError> {
     let mut archive =
         ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
-    let search_file_name = format!("themes/{}.json", theme_id);
+    let search_file_name = format!("t/{}.json", theme_id);
 
     let mut content = Vec::new();
     archive
@@ -180,7 +152,7 @@ pub fn get_theme(bytes: &[u8], theme_id: &str) -> Result<String, DotLottieError>
 pub fn get_state_machine(bytes: &[u8], state_machine_id: &str) -> Result<String, DotLottieError> {
     let mut archive =
         ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
-    let search_file_name = format!("states/{}.json", state_machine_id);
+    let search_file_name = format!("s/{}.json", state_machine_id);
 
     let mut content = Vec::new();
     archive

@@ -17,32 +17,9 @@ mod tests {
 
         animation_file.read_to_end(&mut buffer).unwrap();
 
-        let animation = get_animation(&buffer, "anger").unwrap();
+        let animation = get_animation(&buffer, "anger", 1).unwrap();
 
         assert!(animation.contains("ADBE Vector Graphic - Stroke"));
-    }
-
-    #[test]
-    fn get_animations_test() {
-        use std::{fs::File, io::Read};
-
-        let file_path = format!(
-            "{}{}",
-            env!("CARGO_MANIFEST_DIR"),
-            "/src/fms/tests/resources/emoji-collection.lottie"
-        );
-
-        let mut animation_file = File::open(file_path).unwrap();
-        let mut buffer = Vec::new();
-
-        animation_file.read_to_end(&mut buffer).unwrap();
-
-        let animation = crate::get_animations(&buffer).unwrap();
-
-        assert_eq!(animation.len(), 62);
-
-        assert_eq!(animation[0].id, "anger");
-        assert_eq!(animation[5].id, "confused");
     }
 
     #[test]
@@ -79,7 +56,7 @@ mod tests {
         let dotlottie_bytes = &include_bytes!("../resources/bull.lottie").to_vec();
         let animation_name = "animation_1";
 
-        let lottie_string = crate::get_animation(dotlottie_bytes, animation_name)
+        let lottie_string = crate::get_animation(dotlottie_bytes, animation_name, 1)
             .expect("Failed to get animation from lottie bytes");
 
         let lottie_json =

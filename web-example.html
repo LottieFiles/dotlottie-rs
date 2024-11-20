@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WASM test</title>
   </head>
+
   <body>
     <h1>Test</h1>
     <div style="width: 800px">
@@ -128,29 +129,29 @@
         marker: "feather",
       });
 
-      // const data = await fetch("./demo-player/src/markers.json").then((res) =>
-      //   res.text()
-      // );
-
       const data = await fetch(
         // "https://lottie.host/5c89381e-0d1a-4422-8247-f5b7e4b3c4e2/mqs5juC4PW.lottie"
-        "./examples/demo-player/src/theming_example.lottie"
+        "./examples/demo-player/src/v2/gradient.json"
         // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie",
         // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
-      ).then((res) => res.arrayBuffer());
+      ).then((res) => res.text());
 
       const canvas = document.querySelector("canvas");
 
-      // const loaded = dotLottiePlayer.loadAnimationData(
-      //   data,
-      //   canvas.width,
-      //   canvas.height
-      // );
-      const loaded = dotLottiePlayer.loadDotLottieData(
+      const loaded = dotLottiePlayer.loadAnimationData(
         data,
         canvas.width,
         canvas.height
       );
+      // const loaded = dotLottiePlayer.loadDotLottieData(
+      //   data,
+      //   canvas.width,
+      //   canvas.height
+      // );
+
+      // const manifest = JSON.parse(dotLottiePlayer.manifestString());
+
+      // console.log(manifest);
 
       if (loaded) {
         console.log({
@@ -352,9 +353,88 @@
         const theme = event.target.value;
 
         if (theme) {
-          dotLottiePlayer.loadTheme(theme);
+          const slots = Module.transformThemeToLottieSlots(
+            JSON.stringify({
+              rules: [
+                {
+                  id: "gradient_fill",
+                  type: "Gradient",
+                  keyframes: [
+                    {
+                      frame: 0,
+                      value: [
+                        {
+                          color: [1, 0, 1], // RGB (initial color)
+                          offset: 0,
+                        },
+                        {
+                          color: [0, 1, 0, 0.2], // RGBA (green with 20% opacity)
+                          offset: 1,
+                        },
+                      ],
+                      inTangent: {
+                        x: 0.2,
+                        y: 0.2,
+                      },
+                      outTangent: {
+                        x: 0.8,
+                        y: 0.8,
+                      },
+                    },
+                    {
+                      frame: 30,
+                      value: [
+                        {
+                          color: [1, 1, 0], // Yellow RGB
+                          offset: 0,
+                        },
+                        {
+                          color: [0, 0, 1, 0.5], // Blue with 50% opacity
+                          offset: 1,
+                        },
+                      ],
+                      inTangent: {
+                        x: 0.4,
+                        y: 0.4,
+                      },
+                      outTangent: {
+                        x: 0.6,
+                        y: 0.6,
+                      },
+                    },
+                    {
+                      frame: 60,
+                      value: [
+                        {
+                          color: [0, 1, 1, 0.8], // Cyan with 80% opacity
+                          offset: 0,
+                        },
+                        {
+                          color: [1, 0, 0], // Red RGB (fully opaque)
+                          offset: 1,
+                        },
+                      ],
+                      inTangent: {
+                        x: 0.3,
+                        y: 0.3,
+                      },
+                      outTangent: {
+                        x: 0.7,
+                        y: 0.7,
+                      },
+                    },
+                  ],
+                },
+              ],
+            }),
+            ""
+          );
+
+          console.log(slots);
+
+          dotLottiePlayer.setSlots(slots);
         } else {
-          dotLottiePlayer.loadTheme("");
+          dotLottiePlayer.setSlots("");
         }
       });
     </script>

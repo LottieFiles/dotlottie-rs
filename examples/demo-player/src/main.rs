@@ -128,12 +128,12 @@ fn main() {
     // read dotlottie in to vec<u8>
     let mut f = File::open(
         // "src/emoji.lottie"
-        "src/theming_example.lottie",
+        "src/v2/bull.lottie",
     )
     .expect("no file found");
     let metadata = fs::metadata(
         // "src/emoji.lottie"
-        "src/theming_example.lottie",
+        "src/v2/bull.lottie",
     )
     .expect("unable to read metadata");
 
@@ -218,13 +218,13 @@ fn main() {
                 if let Some(themes) = manifest.themes {
                     let theme = &themes[0];
 
-                    lottie_player.load_theme(&theme.id.as_str());
+                    lottie_player.set_theme(&theme.id);
                 }
             }
         }
 
         if window.is_key_pressed(Key::Y, KeyRepeat::No) {
-            lottie_player.load_theme("");
+            lottie_player.reset_theme();
         }
 
         if window.is_key_pressed(Key::Right, KeyRepeat::No) {

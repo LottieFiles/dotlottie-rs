@@ -1,12 +1,18 @@
 name: Release
+
 on:
   pull_request:
     types: [closed]
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-artifacts:
-    if: github.head_ref == 'release' && github.event.pull_request.merged == true
+  build-apple:
     runs-on: macos-12
+    if: github.head_ref == 'release' && github.event.pull_request.merged == true
     steps:
       - uses: actions/checkout@v4
       - uses: Homebrew/actions/setup-homebrew@master
@@ -14,36 +20,82 @@ jobs:
         with:
           xcode-version: "13.3.1"
       - uses: ningenMe/setup-rustup@v1.1.0
+
       - name: Install Make
         run: brew install make
+
       - name: Build Setup
         run: make mac-setup
-      - name: Build Artifacts
+        env:
+          TARGET: apple
+
+      - name: Build Apple
         env:
           APPLE_XCODE_APP_NAME: Xcode_13.3.1.app
           APPLE_MACOSX_SDK: MacOSX12.3
-        run: make all
-      - name: Upload Artifact
+        run: rm -f /usr/local/lib/libjpeg* ; make apple
+
+      - name: Upload Apple Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.darwin.tar.gz
+          path: release/apple/dotlottie-player.darwin.tar.gz
+          if-no-files-found: error
+
+  build-android:
+    runs-on: macos-latest
+    if: github.head_ref == 'release' && github.event.pull_request.merged == true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@master
+      - uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Install Make
+        run: brew install make
+
+      - name: Build Setup
+        run: make mac-setup
+        env:
+          TARGET: android
+
+      - name: Build Android
+        run: make android
+
+      - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4.0.0
         with:
           name: dotlottie-player.android.tar.gz
           path: release/android/dotlottie-player.android.tar.gz
           if-no-files-found: error
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4.0.0
-        with:
-          name: dotlottie-player.darwin.tar.gz
-          path: release/apple/dotlottie-player.darwin.tar.gz
-          if-no-files-found: error
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4.0.0
+
+  build-wasm:
+    runs-on: macos-latest
+    if: github.head_ref == 'release' && github.event.pull_request.merged == true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@master
+      - uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Install Make
+        run: brew install make
+
+      - name: Build Setup
+        run: make mac-setup
+        env:
+          TARGET: wasm
+
+      - name: Build WASM
+        run: make wasm
+
+      - name: Upload WASM Artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.wasm.tar.gz
           path: release/wasm/dotlottie-player.wasm.tar.gz
           if-no-files-found: error
 
   release:
-    needs: [build-artifacts]
+    needs: [build-apple, build-android, build-wasm]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

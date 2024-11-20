@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+TARGET=${TARGET:-all}
+
+echo "Target: ${TARGET}"
+
 SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
 # Formatting
@@ -42,57 +46,86 @@ check_for rustup "https://rustup.rs" "\
      1. Choose the ${GREEN}default${NC} installation option
      2. Either logout & login after the installation, or execute: ${YELLOW}source \"\$HOME/.cargo/env\""
 
-echo "Installing v1.4.1 of Meson..."
-curl https://raw.githubusercontent.com/Homebrew/homebrew-core/2f89922685ce82af272fe045178f63bfb3bc7289/Formula/m/meson.rb > meson.rb
+echo "Installing v1.6.0 of Meson..."
+curl https://raw.githubusercontent.com/Homebrew/homebrew-core/8ae7edfa2242b04dc01562dcb4536df60191593c/Formula/m/meson.rb > meson.rb
 brew install meson.rb
 
 echo "Installing brew package(s) ..."
-brew install android-ndk \
-  cmake \
+brew install cmake \
   nasm \
   ninja \
   pkg-config \
+  conan \
   ktlint \
-  swiftformat \
-  conan
+  swiftformat
+
+if [[ "${TARGET}" == "android" || "${TARGET}" == "all" ]]; then
+  brew install android-ndk
+fi
 
 rustup component add rust-src
 
 echo
 echo "Installing rust target(s) ..."
-rustup target add aarch64-linux-android \
-  armv7-linux-androideabi \
-  x86_64-linux-android \
-  i686-linux-android \
-  aarch64-apple-darwin \
-  x86_64-apple-darwin \
-  aarch64-apple-ios \
-  x86_64-apple-ios \
-  aarch64-apple-ios-sim \
-  wasm32-unknown-emscripten
-
-echo "Installing nightly toolchain"
-rustup install nightly
-rustup component add rust-src --toolchain nightly
-rustup target add wasm32-unknown-emscripten --toolchain nightly
-
-echo
-echo "Installing cargo dependencies"
-cargo install uniffi-bindgen-cpp \
-  --git https://github.com/NordSecurity/uniffi-bindgen-cpp \
-  --tag "${UNIFFI_BINDGEN_CPP_VERSION}"
+case "${TARGET}" in
+  android)
+    rustup target add aarch64-linux-android \
+      armv7-linux-androideabi \
+      x86_64-linux-android \
+      i686-linux-android
+    ;;
+  apple)
+    rustup target add aarch64-apple-darwin \
+      x86_64-apple-darwin \
+      aarch64-apple-ios \
+      x86_64-apple-ios \
+      aarch64-apple-ios-sim
+    ;;
+  wasm)
+    rustup target add wasm32-unknown-emscripten
+    ;;
+  all)
+    rustup target add aarch64-linux-android \
+      armv7-linux-androideabi \
+      x86_64-linux-android \
+      i686-linux-android \
+      aarch64-apple-darwin \
+      x86_64-apple-darwin \
+      aarch64-apple-ios \
+      x86_64-apple-ios \
+      aarch64-apple-ios-sim \
+      wasm32-unknown-emscripten
+    ;;
+  *)
+    echo "${RED}Invalid target specified: ${TARGET}${NC}"
+    exit 1
+    ;;
+esac
 
 echo
 echo "Setting up project ..."
 make deps
 
-echo
-echo "Setting up emsdk"
-cd "${SCRIPT_DIR}/deps/modules/emsdk" || die "Could not find Emscripten SDK under ${RED}deps/modules/emsdk${NC}!"
-./emsdk install "${EMSDK_VERSION}"
-./emsdk activate "${EMSDK_VERSION}"
-cd "${SCRIPT_DIR}/deps/modules/emsdk/upstream/emscripten" || die "Could not find Emscripten under ${RED}deps/modules/emsdk/upstream/emscripten${NC}!"
-npm install
+if [[ "${TARGET}" == "wasm" || "${TARGET}" == "all" ]]; then
+  echo "Installing nightly toolchain"
+  rustup install nightly
+  rustup component add rust-src --toolchain nightly
+  rustup target add wasm32-unknown-emscripten --toolchain nightly
+
+  echo
+  echo "Installing cargo dependencies"
+  cargo install uniffi-bindgen-cpp \
+    --git https://github.com/NordSecurity/uniffi-bindgen-cpp \
+    --tag "${UNIFFI_BINDGEN_CPP_VERSION}"
+
+  echo
+  echo "Setting up emsdk"
+  cd "${SCRIPT_DIR}/deps/modules/emsdk" || die "Could not find Emscripten SDK under ${RED}deps/modules/emsdk${NC}!"
+  ./emsdk install "${EMSDK_VERSION}"
+  ./emsdk activate "${EMSDK_VERSION}"
+  cd "${SCRIPT_DIR}/deps/modules/emsdk/upstream/emscripten" || die "Could not find Emscripten under ${RED}deps/modules/emsdk/upstream/emscripten${NC}!"
+  npm install
+fi
 
 echo
 echo "Disabling unneeded webp features"

@@ -1,3 +1,19 @@
+## 0.1.33 (2024-11-20)
+
+### Features
+
+#### made thorvg an optional dependency (#248)
+
+#### update thorvg to version 0.15.2 (#255)
+
+#### Update thorvg to v0.15.4 (#262)
+
+#### handling of dotLottie v2 specs  (#254)
+
+### Fixes
+
+#### removed unused lib.rs file (#247)
+
 ## 0.1.32 (2024-10-07)
 
 ### Features

@@ -71,16 +71,34 @@ pub enum TvgEngine {
     TvgEngineGl,
 }
 
-impl From<TvgEngine> for tvg::Tvg_Engine {
-    fn from(engine_method: TvgEngine) -> Self {
-        match engine_method {
-            TvgEngine::TvgEngineSw => tvg::Tvg_Engine_TVG_ENGINE_SW,
-            TvgEngine::TvgEngineGl => tvg::Tvg_Engine_TVG_ENGINE_GL,
-        }
+fn convert_tvg_result(result: tvg::Tvg_Result, function_name: &str) -> Result<(), TvgError> {
+    let func_name = function_name.to_string();
+
+    match result {
+        tvg::Tvg_Result_TVG_RESULT_SUCCESS => Ok(()),
+        tvg::Tvg_Result_TVG_RESULT_INVALID_ARGUMENT => Err(TvgError::InvalidArgument {
+            function_name: func_name,
+        }),
+        tvg::Tvg_Result_TVG_RESULT_INSUFFICIENT_CONDITION => Err(TvgError::InsufficientCondition {
+            function_name: func_name,
+        }),
+        tvg::Tvg_Result_TVG_RESULT_FAILED_ALLOCATION => Err(TvgError::FailedAllocation {
+            function_name: func_name,
+        }),
+        tvg::Tvg_Result_TVG_RESULT_MEMORY_CORRUPTION => Err(TvgError::MemoryCorruption {
+            function_name: func_name,
+        }),
+        tvg::Tvg_Result_TVG_RESULT_NOT_SUPPORTED => Err(TvgError::NotSupported {
+            function_name: func_name,
+        }),
+        tvg::Tvg_Result_TVG_RESULT_UNKNOWN => Err(TvgError::Unknown {
+            function_name: func_name,
+        }),
+        _ => Err(TvgError::Unknown {
+            function_name: func_name,
+        }),
     }
 }
-
-static RENDERERS_COUNT: spin::Mutex<usize> = spin::Mutex::new(0);
 
 pub struct TvgRenderer {
     raw_canvas: *mut tvg::Tvg_Canvas,

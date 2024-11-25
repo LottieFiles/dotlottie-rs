@@ -1479,6 +1479,36 @@ impl DotLottiePlayer {
         self.state_machine_post_event(&event)
     }
 
+    pub fn state_machine_set_propagate_events(&self, propagate: bool) -> bool {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.set_propagate_events(propagate);
+
+                    return true;
+                }
+            }
+            Err(_) => return false,
+        }
+
+        false
+    }
+
+    pub fn state_machine_set_playback_actions_active(&self, active: bool) -> bool {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.set_playback_actions_active(active);
+
+                    return true;
+                }
+            }
+            Err(_) => return false,
+        }
+
+        false
+    }
+
     // Todo: Rather than methods for each trigger, return the SM object
     pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> bool {
         match self.state_machine.try_write() {

@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use std::{process::Command, rc::Rc, sync::RwLock};
 
-use crate::DotLottiePlayerContainer;
+use crate::{DotLottiePlayerContainer, Mode};
 
 use super::{state_machine::StringNumber, StateMachineEngine};
 
@@ -56,8 +56,26 @@ pub enum Action {
         trigger_name: String,
         value: f32,
     },
+    Loop {
+        value: bool,
+    },
+    Play {
+        value: bool,
+    },
+    Mode {
+        value: String,
+    },
+    Speed {
+        value: f32,
+    },
+    Segment {
+        value: String,
+    },
     Fire {
         trigger_name: String,
+    },
+    FrameInterpolation {
+        value: bool,
     },
     Reset {
         trigger_name: String,
@@ -370,6 +388,135 @@ impl ActionTrait for Action {
                                 "Error loading theme".to_string(),
                             ));
                         }
+                        return Ok(());
+                    }
+                    Err(_) => {
+                        return Err(StateMachineActionError::ExecuteError(
+                            "Error getting read lock on player".to_string(),
+                        ))
+                    }
+                }
+            }
+            Action::Loop { value } => {
+                let read_lock = player.read();
+
+                match read_lock {
+                    Ok(player) => {
+                        let mut config = player.config();
+
+                        config.loop_animation = *value;
+                        player.set_config(config);
+                        return Ok(());
+                    }
+                    Err(_) => {
+                        return Err(StateMachineActionError::ExecuteError(
+                            "Error getting read lock on player".to_string(),
+                        ))
+                    }
+                }
+            }
+            Action::Play { value } => {
+                let read_lock = player.read();
+
+                match read_lock {
+                    Ok(player) => {
+                        if *value {
+                            println!("EXECUTING PLAY FROM ACTION");
+
+                            if !player.play() {
+                                return Err(StateMachineActionError::ExecuteError(
+                                    "Error playing animation".to_string(),
+                                ));
+                            }
+
+                            let mut config = player.config();
+
+                            config.autoplay = *value;
+                            player.set_config(config);
+                        } else {
+                            // player.pause();
+                        }
+                        return Ok(());
+                    }
+                    Err(_) => {
+                        return Err(StateMachineActionError::ExecuteError(
+                            "Error getting read lock on player".to_string(),
+                        ))
+                    }
+                }
+            }
+            Action::Mode { value } => {
+                let read_lock = player.read();
+
+                match read_lock {
+                    Ok(player) => {
+                        let defined_mode;
+                        let mut config = player.config();
+
+                        match value.as_str() {
+                            "Forward" => defined_mode = Mode::Forward,
+                            "Reverse" => defined_mode = Mode::Reverse,
+                            "Bounce" => defined_mode = Mode::Bounce,
+                            "ReverseBounce" => defined_mode = Mode::ReverseBounce,
+                            _ => defined_mode = Mode::ReverseBounce,
+                        }
+
+                        config.mode = defined_mode;
+                        player.set_config(config);
+                        return Ok(());
+                    }
+                    Err(_) => {
+                        return Err(StateMachineActionError::ExecuteError(
+                            "Error getting read lock on player".to_string(),
+                        ))
+                    }
+                }
+            }
+            Action::Speed { value } => {
+                let read_lock = player.read();
+
+                match read_lock {
+                    Ok(player) => {
+                        let mut config = player.config();
+
+                        config.speed = *value;
+                        player.set_config(config);
+                        return Ok(());
+                    }
+                    Err(_) => {
+                        return Err(StateMachineActionError::ExecuteError(
+                            "Error getting read lock on player".to_string(),
+                        ))
+                    }
+                }
+            }
+            Action::Segment { value } => {
+                let read_lock = player.read();
+
+                match read_lock {
+                    Ok(player) => {
+                        let mut config = player.config();
+
+                        config.marker = value.to_string();
+                        player.set_config(config);
+                        return Ok(());
+                    }
+                    Err(_) => {
+                        return Err(StateMachineActionError::ExecuteError(
+                            "Error getting read lock on player".to_string(),
+                        ))
+                    }
+                }
+            }
+            Action::FrameInterpolation { value } => {
+                let read_lock = player.read();
+
+                match read_lock {
+                    Ok(player) => {
+                        let mut config = player.config();
+
+                        config.use_frame_interpolation = *value;
+                        player.set_config(config);
                         return Ok(());
                     }
                     Err(_) => {

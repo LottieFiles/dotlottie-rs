@@ -9,8 +9,8 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const STATE_MACHINE_NAME: &str = "rating";
-pub const ANIMATION_NAME: &str = "star_marked";
+pub const STATE_MACHINE_NAME: &str = "new-actions";
+pub const ANIMATION_NAME: &str = "smileys";
 
 struct Timer {
     last_update: Instant,
@@ -140,7 +140,14 @@ fn main() {
 
         if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
             let p = &mut *locked_player.write().unwrap();
+
+            let r = p.state_machine_set_numeric_trigger("Progress", rating);
+            let m = p.state_machine_set_propagate_events(false);
             p.state_machine_fire_event("Step");
+            // println!("{}", r);
+            println!("{}", m);
+            rating += 1.0;
+            // p.state_machine_fire_event("Step");
         }
         let p = &mut *locked_player.write().unwrap();
 

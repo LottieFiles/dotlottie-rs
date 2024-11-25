@@ -87,6 +87,7 @@ pub struct StateMachineEngine {
 
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineEngineStatus,
+    pub playback_actions_active: bool,
 
     numeric_trigger: HashMap<String, f32>,
     string_trigger: HashMap<String, String>,
@@ -118,6 +119,7 @@ impl Default for StateMachineEngine {
             boolean_trigger: HashMap::new(),
             event_trigger: HashMap::new(),
             propagate_events: true,
+            playback_actions_active: false,
             curr_event: None,
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
@@ -163,6 +165,7 @@ impl StateMachineEngine {
             event_trigger: HashMap::new(),
             curr_event: None,
             propagate_events: true,
+            playback_actions_active: false,
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
             state_history: Vec::new(),
@@ -197,6 +200,14 @@ impl StateMachineEngine {
 
     pub fn get_boolean_trigger(&self, key: &str) -> Option<bool> {
         self.boolean_trigger.get(key).cloned()
+    }
+
+    pub fn set_propagate_events(&mut self, propagate: bool) {
+        self.propagate_events = propagate;
+    }
+
+    pub fn set_playback_actions_active(&mut self, active: bool) {
+        self.playback_actions_active = active
     }
 
     // key: The key of the trigger
@@ -459,7 +470,6 @@ impl StateMachineEngine {
 
                 // Now use the extracted information
                 if let (Some(state), Some(player)) = (state, player) {
-                    // Note: To use entry and exit actions, the feature flag "entry_exit_actions" must be enabled.
                     let _ = state.exit(self, &player);
 
                     // Don't forget to put things back
@@ -479,10 +489,9 @@ impl StateMachineEngine {
 
             // Now use the extracted information
             if let (Some(state), Some(player)) = (state, player) {
-                // Note: To use entry and exit actions, the feature flag "entry_exit_actions" must be enabled.
-                let _ = state.enter(self, &player);
+                state.execute(self, &player);
 
-                state.execute(&player);
+                let _ = state.enter(self, &player);
 
                 // Don't forget to put things back
                 // new_state becomes the current state

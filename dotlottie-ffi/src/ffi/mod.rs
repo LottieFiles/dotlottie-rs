@@ -633,6 +633,26 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_trigger(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_set_propagate_events(
+    ptr: *mut DotLottiePlayer,
+    propagate: bool,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        to_exit_status(dotlottie_player.state_machine_set_propagate_events(propagate))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_set_playback_actions_active(
+    ptr: *mut DotLottiePlayer,
+    active: bool,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        to_exit_status(dotlottie_player.state_machine_set_playback_actions_active(active))
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_set_string_trigger(
     ptr: *mut DotLottiePlayer,
     key: *const c_char,

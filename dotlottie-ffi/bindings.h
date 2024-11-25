@@ -349,6 +349,11 @@ int32_t dotlottie_state_machine_set_numeric_trigger(struct DotLottiePlayer *ptr,
                                                     const char *key,
                                                     float value);
 
+int32_t dotlottie_state_machine_set_playback_actions_active(struct DotLottiePlayer *ptr,
+                                                            bool active);
+
+int32_t dotlottie_state_machine_set_propagate_events(struct DotLottiePlayer *ptr, bool propagate);
+
 int32_t dotlottie_state_machine_set_string_trigger(struct DotLottiePlayer *ptr,
                                                    const char *key,
                                                    const char *value);

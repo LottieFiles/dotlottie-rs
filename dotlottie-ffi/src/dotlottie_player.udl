@@ -157,6 +157,8 @@ interface DotLottiePlayer {
     i32 state_machine_post_pointer_enter_event(f32 x, f32 y);
     i32 state_machine_post_pointer_exit_event(f32 x, f32 y);
     void state_machine_fire_event([ByRef] string event);
+    boolean state_machine_set_propagate_events(boolean propagate);
+    boolean state_machine_set_playback_actions_active(boolean active);
     boolean state_machine_set_boolean_trigger([ByRef] string key, boolean value);
     boolean state_machine_set_string_trigger([ByRef] string key, [ByRef] string value);
     boolean state_machine_set_numeric_trigger([ByRef] string key, f32 value);

@@ -1,16 +1,10 @@
-mod dotlottie_player;
-mod fms;
-mod layout;
-mod lottie_renderer;
-mod markers;
-mod state_machine;
-mod theming;
-
-pub use dotlottie_player::*;
-pub use fms::*;
-pub use layout::*;
-pub use lottie_renderer::*;
-pub use markers::*;
-pub use state_machine::events::*;
-pub use state_machine::*;
-pub use theming::*;
+pub mod dotlottie_player;
+pub mod fms;
+pub mod layout;
+pub mod lottie_renderer;
+pub mod markers;
+#[cfg(feature = "uniffi")]
+pub mod state_machine;
+pub mod theming;
+#[cfg(feature = "uniffi")]
+pub mod uniffi;

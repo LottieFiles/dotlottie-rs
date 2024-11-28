@@ -189,7 +189,7 @@ impl DotLottieManager {
 
             Ok(cloned_animation)
         } else {
-            let animation = crate::get_animation(&self.zip_data, animation_id, self.version);
+            let animation = super::get_animation(&self.zip_data, animation_id, self.version);
 
             if let Ok(animation) = animation {
                 self.animation_data_cache
@@ -222,7 +222,7 @@ impl DotLottieManager {
     /// For the moment this isn't caching the state machines. This is so that the function can stay non-mutable.
     ///
     pub fn get_state_machine(&self, state_machine_id: &str) -> Result<String, DotLottieError> {
-        crate::get_state_machine(&self.zip_data, state_machine_id)
+        super::get_state_machine(&self.zip_data, state_machine_id)
     }
 
     pub fn manifest(&self) -> &Manifest {
@@ -238,7 +238,7 @@ impl DotLottieManager {
             return Ok(theme.clone());
         }
 
-        let theme = crate::get_theme(&self.zip_data, theme_id)?;
+        let theme = super::get_theme(&self.zip_data, theme_id)?;
 
         self.theme_cache.insert(theme_id.to_string(), theme.clone());
 

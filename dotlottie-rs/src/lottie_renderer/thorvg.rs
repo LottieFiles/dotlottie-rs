@@ -1,6 +1,5 @@
 #[allow(unused_imports)]
 #[cfg(not(target_arch = "wasm32"))]
-#[allow(unused_imports)]
 use std::sync::Mutex;
 
 #[cfg(target_arch = "wasm32")]

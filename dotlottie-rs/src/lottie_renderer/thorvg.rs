@@ -1,4 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
+#[allow(unused_imports)]
 use std::sync::Mutex;
 
 #[cfg(target_arch = "wasm32")]
@@ -172,7 +173,7 @@ impl Drop for TvgRenderer {
             tvg::tvg_canvas_destroy(self.raw_canvas);
         }
 
-        if *count <= 0 {
+        if *count == 0 {
             unreachable!();
         }
 

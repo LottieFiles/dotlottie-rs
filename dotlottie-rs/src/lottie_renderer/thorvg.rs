@@ -1,4 +1,10 @@
-use std::{ffi::CString, ptr, result::Result, sync::atomic::AtomicUsize};
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::Mutex;
+
+#[cfg(target_arch = "wasm32")]
+use spin::Mutex;
+
+use std::{ffi::CString, ptr, result::Result};
 use thiserror::Error;
 
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
@@ -73,7 +79,7 @@ impl From<TvgEngine> for tvg::Tvg_Engine {
     }
 }
 
-static RENDERERS_COUNT: AtomicUsize = AtomicUsize::new(0);
+static RENDERERS_COUNT: spin::Mutex<usize> = spin::Mutex::new(0);
 
 pub struct TvgRenderer {
     raw_canvas: *mut tvg::Tvg_Canvas,
@@ -84,12 +90,14 @@ impl TvgRenderer {
     pub fn new(engine_method: TvgEngine, threads: u32) -> Self {
         let engine = engine_method.into();
 
-        if RENDERERS_COUNT.load(std::sync::atomic::Ordering::SeqCst) == 0 {
+        let mut count = RENDERERS_COUNT.lock();
+
+        if *count == 0 {
             unsafe { tvg::tvg_engine_init(engine, threads).into_result() }
                 .expect("Failed to initialize ThorVG engine");
         }
 
-        RENDERERS_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        *count += 1;
 
         TvgRenderer {
             raw_canvas: unsafe { tvg::tvg_swcanvas_create() },
@@ -158,13 +166,21 @@ impl Renderer for TvgRenderer {
 
 impl Drop for TvgRenderer {
     fn drop(&mut self) {
+        let mut count = RENDERERS_COUNT.lock();
+
         unsafe {
             tvg::tvg_canvas_destroy(self.raw_canvas);
+        }
 
-            if RENDERERS_COUNT.fetch_sub(1, std::sync::atomic::Ordering::SeqCst) == 1 {
-                tvg::tvg_engine_term(self.engine_method);
-            }
-        };
+        if *count <= 0 {
+            unreachable!();
+        }
+
+        *count -= 1;
+
+        if *count == 0 {
+            unsafe { tvg::tvg_engine_term(self.engine_method) };
+        }
     }
 }
 
@@ -389,5 +405,34 @@ impl Shape for TvgShape {
 
     fn reset(&mut self) -> Result<(), TvgError> {
         unsafe { tvg::tvg_shape_reset(self.raw_shape).into_result() }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Arc, Barrier};
+    use std::thread;
+
+    #[test]
+    fn test_tvg_renderer_no_deadlock() {
+        const THREAD_COUNT: usize = 10;
+        let barrier = Arc::new(Barrier::new(THREAD_COUNT));
+        let mut handles = vec![];
+
+        for _ in 0..THREAD_COUNT {
+            let barrier_clone = Arc::clone(&barrier);
+            let handle = thread::spawn(move || {
+                barrier_clone.wait();
+
+                let renderer = TvgRenderer::new(TvgEngine::TvgEngineSw, 0);
+                drop(renderer);
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles {
+            handle.join().expect("Thread panicked");
+        }
     }
 }

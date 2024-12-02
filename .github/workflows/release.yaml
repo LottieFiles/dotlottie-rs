@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   build-apple:
-    runs-on: macOS-15-arm64
+    runs-on: macos-14-xlarge
     steps:
       - uses: actions/checkout@v4
       - uses: Homebrew/actions/setup-homebrew@master

@@ -1,3 +1,6 @@
+// hint: this is a workaround as the generated code from uniffi has empty lines after doc comments
+#![allow(clippy::empty_line_after_doc_comments)]
+
 pub use dotlottie_rs::*;
 
 mod ffi;

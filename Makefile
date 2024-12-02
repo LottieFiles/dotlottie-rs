@@ -329,6 +329,7 @@ define SETUP_MESON
 		-Dthreads=false \
 		-Dstatic=$(STATIC) \
 		-Dextra=$(EXTRA) \
+		-Dfile=$(FILE) \
 		$(CROSS_FILE) "$(THORVG_DEP_SOURCE_DIR)" "$(THORVG_DEP_BUILD_DIR)"
 endef
 
@@ -615,13 +616,14 @@ endef
 
 define NEW_THORVG_BUILD
 # Setup meson for thorvg
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): export PKG_CONFIG_PATH := $(PWD)/$$($1_DEPS_LIB_DIR)/pkgconfig:$(PWD)/$$($1_DEPS_LIB64_DIR)/pkgconfig
+$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): export PKG_CONFIG_PATH := $(PWD)/$$($1_DEPS_LIB_DIR)/pkgconfig:$(PWD)/$$($1_DEPS_LIB64_DIR)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$(THORVG)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_BUILD_DIR := $$($1_THORVG_DEP_BUILD_DIR)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): CROSS_FILE := --cross-file $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): LOG := false
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): STATIC := $3
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): EXTRA := $4
+$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): FILE := $5
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE)
 $(if $(filter $3,false),
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(LIBJPEG_TURBO_LIB)
@@ -643,7 +645,7 @@ $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,LIBPNG_LIB,$(LIBPNG),$$($1_LIBPNG_DEP_B
 $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,ZLIB,$(ZLIB),$$($1_ZLIB_DEP_BUILD_DIR),$(ZLIB_LIB)))
 $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,WEBP,$(WEBP),$$($1_WEBP_DEP_BUILD_DIR),$(WEBP_LIB)))
 $(eval $(call NEW_ANDROID_CROSS_FILE,$1))
-$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions"))
+$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions",true))
 endef
 
 define NEW_APPLE_DEPS_BUILD
@@ -652,12 +654,12 @@ $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,LIBPNG_LIB,$(LIBPNG),$$($1_LIBPNG_DEP_BUI
 $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,ZLIB,$(ZLIB),$$($1_ZLIB_DEP_BUILD_DIR),$(ZLIB_LIB)))
 $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,WEBP,$(WEBP),$$($1_WEBP_DEP_BUILD_DIR),$(WEBP_LIB)))
 $(eval $(call NEW_APPLE_CROSS_FILE,$1))
-$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions"))
+$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions",true))
 endef
 
 define NEW_WASM_DEPS_BUILD
 $(eval $(call NEW_WASM_CROSS_FILE,$1,$$($1_THORVG_DEP_BUILD_DIR)/..,windows))
-$(eval $(call NEW_THORVG_BUILD,$1,false,true,"lottie_expressions"))
+$(eval $(call NEW_THORVG_BUILD,$1,false,true,"lottie_expressions",false))
 endef
 
 define NEW_ANDROID_BUILD

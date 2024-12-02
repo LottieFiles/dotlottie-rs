@@ -26,7 +26,7 @@ use std::{
 
 const WIDTH: usize = 400;
 const HEIGHT: usize = 300;
-const LOADED_STATE_MACHINE: &str = "new-actions";
+const LOADED_STATE_MACHINE: &str = "experi_global_entry";
 const LOADED_ANIMATION: &str = "smileys";
 
 // const ANIMATION_FILES: [(&str, &str, &str); 8] = [
@@ -437,16 +437,16 @@ fn load_state_machine(
 
     let s = player.state_machine_start();
 
-    let rs = player.state_machine_set_playback_actions_active(true);
+    // let rs = player.state_machine_set_playback_actions_active(true);
 
-    if !rs {
-        log_sender
-            .send(LogMessage {
-                content: format!("Failed to reset config."),
-                level: LogLevel::Info,
-            })
-            .unwrap();
-    }
+    // if !rs {
+    //     log_sender
+    //         .send(LogMessage {
+    //             content: format!("Failed to reset config."),
+    //             level: LogLevel::Info,
+    //         })
+    //         .unwrap();
+    // }
 
     if !s {
         log_sender
@@ -533,7 +533,7 @@ fn main() -> Result<(), io::Error> {
 
     let s = lottie_player.state_machine_start();
 
-    let rs = lottie_player.state_machine_set_playback_actions_active(true);
+    // let rs = lottie_player.state_machine_set_playback_actions_active(true);
 
     lottie_player.render();
 
@@ -556,12 +556,12 @@ fn main() -> Result<(), io::Error> {
             level: LogLevel::Info,
         })
         .unwrap();
-    log_sender
-        .send(LogMessage {
-            content: format!("Reset config returned: {}", rs),
-            level: LogLevel::Info,
-        })
-        .unwrap();
+    // log_sender
+    //     .send(LogMessage {
+    //         content: format!("Reset config returned: {}", rs),
+    //         level: LogLevel::Info,
+    //     })
+    //     .unwrap();
 
     run_app(
         &mut terminal,

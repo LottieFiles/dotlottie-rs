@@ -59,6 +59,7 @@ pub enum State {
     GlobalState {
         name: String,
         transitions: Vec<Transition>,
+        animation_id: Option<String>,
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
     },
@@ -148,7 +149,20 @@ impl StateTrait for State {
                 }
             }
 
-            State::GlobalState { .. } => {}
+            State::GlobalState { animation_id, .. } => {
+                if engine.playback_actions_active {
+                    return 0;
+                }
+
+                if let Ok(player_read) = player.try_read() {
+                    let size = player_read.size();
+
+                    // Todo compare against currently loaded animation
+                    if let Some(id) = animation_id {
+                        player_read.load_animation(id, size.0, size.1);
+                    }
+                }
+            }
         }
 
         0

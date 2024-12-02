@@ -30,7 +30,7 @@ pub enum Action {
     OpenUrl {
         url: String,
     },
-    ThemeAction {
+    Theme {
         theme_id: String,
     },
     Increment {

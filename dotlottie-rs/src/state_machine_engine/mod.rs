@@ -87,14 +87,12 @@ pub struct StateMachineEngine {
 
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineEngineStatus,
-    pub playback_actions_active: bool,
 
     numeric_trigger: HashMap<String, f32>,
     string_trigger: HashMap<String, String>,
     boolean_trigger: HashMap<String, bool>,
     event_trigger: HashMap<String, String>,
     curr_event: Option<String>,
-    propagate_events: bool,
 
     observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
 
@@ -104,7 +102,10 @@ pub struct StateMachineEngine {
     max_cycle_count: usize,
     current_cycle_count: usize,
     action_mutated_triggers: bool,
-    action_fired_event: Option<String>,
+
+    /* State machine behaviour options */
+    pub playback_actions_active: bool,
+    propagate_events: bool,
 }
 
 impl Default for StateMachineEngine {
@@ -118,7 +119,7 @@ impl Default for StateMachineEngine {
             string_trigger: HashMap::new(),
             boolean_trigger: HashMap::new(),
             event_trigger: HashMap::new(),
-            propagate_events: true,
+            propagate_events: false,
             playback_actions_active: false,
             curr_event: None,
             status: StateMachineEngineStatus::Stopped,
@@ -127,7 +128,6 @@ impl Default for StateMachineEngine {
             max_cycle_count: 20,
             current_cycle_count: 0,
             action_mutated_triggers: false,
-            action_fired_event: None,
         }
     }
 }
@@ -164,7 +164,7 @@ impl StateMachineEngine {
             boolean_trigger: HashMap::new(),
             event_trigger: HashMap::new(),
             curr_event: None,
-            propagate_events: true,
+            propagate_events: false,
             playback_actions_active: false,
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
@@ -172,7 +172,6 @@ impl StateMachineEngine {
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
             action_mutated_triggers: false,
-            action_fired_event: None,
         };
 
         state_machine.create_state_machine(state_machine_definition, &player)
@@ -280,8 +279,6 @@ impl StateMachineEngine {
             // Run pipeline is always false if called from an action
             if run_pipeline {
                 let _ = self.run_current_state_pipeline();
-            } else {
-                self.action_fired_event = Some(event.to_string());
             }
 
             return Ok(());
@@ -360,7 +357,7 @@ impl StateMachineEngine {
                     }
                 }
 
-                let err = new_state_machine.set_current_state(&initial_state_index);
+                let err = new_state_machine.set_current_state(&initial_state_index, false);
                 match err {
                     Ok(_) => {}
                     Err(error) => {
@@ -458,7 +455,11 @@ impl StateMachineEngine {
     // Set the current state to the target state
     // Manage performing entry and exit actions
     // As well as executing the state's type (Currently on PlaybackState has an effect on playback)
-    fn set_current_state(&mut self, state_name: &str) -> Result<(), StateMachineEngineError> {
+    fn set_current_state(
+        &mut self,
+        state_name: &str,
+        called_from_global: bool,
+    ) -> Result<(), StateMachineEngineError> {
         let new_state = self.get_state(&state_name);
 
         // We have a new state
@@ -470,7 +471,9 @@ impl StateMachineEngine {
 
                 // Now use the extracted information
                 if let (Some(state), Some(player)) = (state, player) {
-                    let _ = state.exit(self, &player);
+                    if !called_from_global {
+                        let _ = state.exit(self, &player);
+                    }
 
                     // Don't forget to put things back
                     // new_state becomes the current state
@@ -489,9 +492,15 @@ impl StateMachineEngine {
 
             // Now use the extracted information
             if let (Some(state), Some(player)) = (state, player) {
+                // if self.playback_actions_active {
+                // println!(">> Active");
                 state.execute(self, &player);
-
                 let _ = state.enter(self, &player);
+                // } else {
+                // println!(">> Not active");
+                // let _ = state.enter(self, &player);
+                // state.execute(self, &player);
+                // }
 
                 // Don't forget to put things back
                 // new_state becomes the current state
@@ -585,171 +594,39 @@ impl StateMachineEngine {
         return Some(target_state.to_string());
     }
 
-    // Return codes
-    // 0: Success
-    // 1: Failure
-    // 2: Play animation
-    // 3: Pause animation
-    // 4: Request and draw a new single frame of the animation (needed for sync state)
-    // pub fn run_current_state_pipeline(
-    //     &mut self,
-    //     event: Option<&String>,
-    // ) -> Result<(), StateMachineEngineError> {
-    //     // println!("🚨 Running pipeline with event {:?}", event);
+    fn evaluate_global_state(&mut self) -> bool {
+        if let Some(state_to_evaluate) = &self.global_state {
+            let target_state =
+                self.evaluate_transitions(state_to_evaluate, self.curr_event.as_ref());
 
-    //     // Reset cycle count for each pipeline run
-    //     self.current_cycle_count = 0;
-    //     let mut ignore_global = false;
+            if !self.propagate_events {
+                self.curr_event = None;
+            }
 
-    //     // If the state machine is not running, or there is no current state, return an error
-    //     // Otherwise this will block the pipeline in a loop
-    //     if self.status != StateMachineEngineStatus::Running
-    //         || (self.current_state.is_none() && self.global_state.is_none())
-    //     {
-    //         return Err(StateMachineEngineError::NotRunningError);
-    //     }
+            if let Some(state) = target_state {
+                let success = self.set_current_state(&state, true);
 
-    //     // Start drilling down on the current state and it's transitions
-    //     // As long as there are transitions evaluating to true, we continue the loop
-    //     let mut tick = true;
+                match success {
+                    Ok(()) => {
+                        return true;
+                    }
+                    Err(_) => {
+                        println!("Error setting current state.");
 
-    //     while tick {
-    //         // Safety fallback to prevent infinite loops
-    //         tick = false;
+                        return false;
+                    }
+                }
+            }
+        }
 
-    //         // Infinite loop detection
-    //         if let Some(_cycle) = self.detect_cycle() {
-    //             self.current_cycle_count += 1;
-
-    //             if self.current_cycle_count >= self.max_cycle_count {
-    //                 println!("🚨 Infinite loop detected, ending state machine.");
-    //                 self.end();
-    //                 return Err(StateMachineEngineError::InfiniteLoopError);
-    //             }
-
-    //             // Clear the history to allow for detecting new cycles
-    //             self.state_history.clear();
-    //         }
-
-    //         // Record the current state
-    //         if let Some(state) = &self.current_state {
-    //             self.state_history.push(state.name().to_string());
-    //         }
-
-    //         // Check if there is a global state
-    //         // If there is, evaluate the transitions of the global state first
-    //         if !ignore_global {
-    //             if let Some(state_to_evaluate) = &self.global_state {
-    //                 let target_state = if self.action_fired_event.is_some() {
-    //                     self.evaluate_transitions(
-    //                         state_to_evaluate,
-    //                         self.action_fired_event.as_ref(),
-    //                     )
-    //                 } else {
-    //                     self.evaluate_transitions(
-    //                         state_to_evaluate,
-    //                         if self.action_mutated_triggers {
-    //                             None
-    //                         } else {
-    //                             event
-    //                         },
-    //                     )
-    //                 };
-
-    //                 // We've consumed the event, set it to None
-    //                 self.action_fired_event = None;
-    //                 self.action_mutated_triggers = false;
-
-    //                 if let Some(state) = target_state {
-    //                     println!("Global Target State: {}", state);
-    //                     let success = self.set_current_state(&state);
-    //                     match success {
-    //                         Ok(_) => {
-    //                             if self.action_mutated_triggers {
-    //                                 println!("🚨 Ticking");
-    //                                 tick = true;
-    //                             }
-    //                         }
-    //                         Err(_) => {
-    //                             println!("🚨 Error setting current state");
-    //                             break;
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-
-    //         // Now we evaluate the transitions of the current state
-    //         if let Some(current_state_to_evaluate) = &self.current_state {
-    //             // If there was an action fired event, we need to call evaluate_transitions with it
-    //             // Othwerwise we call it with the event that was passed in if there was one
-    //             let target_state: Option<String> = if self.action_fired_event.is_some() {
-    //                 self.evaluate_transitions(
-    //                     current_state_to_evaluate,
-    //                     self.action_fired_event.as_ref(),
-    //                 )
-    //             } else {
-    //                 // If we're not propagating events, set to else { None }
-    //                 self.evaluate_transitions(
-    //                     current_state_to_evaluate,
-    //                     if self.action_mutated_triggers {
-    //                         // event
-    //                         None
-    //                     } else {
-    //                         event
-    //                     },
-    //                 )
-    //             };
-
-    //             // We've consumed the event, but the event might be valid for the global state
-    //             // If there is a global state, it will consume and clear it for us
-    //             // If there isn't, we need to clear it here
-    //             if self.global_state.is_none() {
-    //                 self.action_fired_event = None;
-    //             }
-    //             if let Some(state) = target_state {
-    //                 println!("Target State: {}", state);
-
-    //                 // Rest this boolean so that it reflects correctly if the actions mutated triggers
-    //                 self.action_mutated_triggers = false;
-
-    //                 let success = self.set_current_state(&state);
-
-    //                 match success {
-    //                     Ok(_) => {
-    //                         // Since setting the current state modified triggers, we need to
-    //                         // Complete another loop with the Global state included
-    //                         //
-    //                         // If we didn't mutate triggers, we re-evalaute the current state's transitions
-    //                         if self.action_mutated_triggers {
-    //                             tick = true;
-    //                             ignore_global = false;
-    //                         } else {
-    //                             tick = true;
-    //                             ignore_global = true;
-    //                         }
-    //                     }
-    //                     Err(_) => {
-    //                         println!("🚨 Error setting current state");
-    //                         break;
-    //                     }
-    //                 }
-    //             }
-    //         }
-
-    //         // One of the states fired an event, we need to re-evaluate the pipeline
-    //         if self.action_fired_event.is_some() {
-    //             tick = true;
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
+        return false;
+    }
 
     pub fn run_current_state_pipeline(&mut self) -> Result<(), StateMachineEngineError> {
         // Reset cycle count for each pipeline run
         self.current_cycle_count = 0;
         let mut ignore_global = false;
+        let mut ignore_child = false;
 
         // If the state machine is not running, or there is no current state, return an error
         // Otherwise this will block the pipeline in a loop
@@ -764,6 +641,7 @@ impl StateMachineEngine {
         while tick {
             // Safety fallback to prevent infinite loops
             tick = false;
+            ignore_child = false;
 
             // --------------- Start infinite loop detection
             if let Some(_cycle) = self.detect_cycle() {
@@ -789,71 +667,64 @@ impl StateMachineEngine {
             // Check if there is a global state
             // If there is, evaluate the transitions of the global state first
             if !ignore_global {
-                if let Some(state_to_evaluate) = &self.global_state {
-                    let target_state =
-                        self.evaluate_transitions(state_to_evaluate, self.curr_event.as_ref());
+                // Global state returned true meaning it changed the current state
+                if self.evaluate_global_state() {
+                    println!(
+                        "Global state changed, re-evaluating current state. -> {:?}",
+                        self.curr_event
+                    );
+                    // Therfor we need to re-evaluate the global state.
+                    // When we entered the state from global, it made on_entry changes.
+                    if self.action_mutated_triggers {
+                        tick = true;
+                        ignore_global = false;
+                        ignore_child = true;
+                        self.action_mutated_triggers = false;
+                    }
+                    if self.curr_event.is_some() {
+                        tick = true;
+                        ignore_global = false;
+                        ignore_child = true;
+                    }
+                }
+            }
 
-                    // 🚨 Needed for toggle unit test to work
+            if !ignore_child {
+                if let Some(current_state_to_evaluate) = &self.current_state {
+                    let target_state = self
+                        .evaluate_transitions(current_state_to_evaluate, self.curr_event.as_ref());
+
                     if !self.propagate_events {
                         self.curr_event = None;
                     }
 
                     if let Some(state) = target_state {
-                        let success = self.set_current_state(&state);
+                        let success = self.set_current_state(&state, false);
 
                         match success {
                             Ok(()) => {
+                                // Re-evaluate global state, a trigger was changed
                                 if self.action_mutated_triggers {
                                     tick = true;
                                     ignore_global = false;
                                     self.action_mutated_triggers = false;
                                 }
+                                if self.curr_event.is_some() {
+                                    tick = true;
+                                    ignore_global = false;
+                                } else {
+                                    // Re-evaluate current state, ignore global since no triggers were changed
+                                    tick = true;
+                                    ignore_global = true;
+                                }
                             }
                             Err(_) => {
-                                println!("Error setting current state.")
+                                println!("Error setting current state.");
+                                break;
                             }
                         }
                     }
                 }
-            }
-
-            if let Some(current_state_to_evaluate) = &self.current_state {
-                let target_state =
-                    self.evaluate_transitions(current_state_to_evaluate, self.curr_event.as_ref());
-
-                // 🚨 Needed for toggle unit test to work
-                if !self.propagate_events {
-                    self.curr_event = None;
-                }
-
-                if let Some(state) = target_state {
-                    let success = self.set_current_state(&state);
-
-                    match success {
-                        Ok(()) => {
-                            // Re-evaluate global state, a trigger was changed
-                            if self.action_mutated_triggers {
-                                tick = true;
-                                ignore_global = false;
-                                self.action_mutated_triggers = false;
-                            } else {
-                                // Re-evaluate current state, ignore global since no triggers were changed
-                                tick = true;
-                                ignore_global = true;
-                            }
-                        }
-                        Err(_) => {
-                            println!("Error setting current state.");
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // One of the states fired an event, we need to re-evaluate the pipeline
-            if self.action_fired_event.is_some() {
-                tick = true;
-                ignore_global = false;
             }
         }
 

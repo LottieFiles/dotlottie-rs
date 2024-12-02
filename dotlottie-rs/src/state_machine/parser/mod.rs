@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::errors::StateMachineError;
+use crate::state_machine::errors::StateMachineError;
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub enum StateActionType {

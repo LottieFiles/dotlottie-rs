@@ -1,6 +1,7 @@
 use std::{ffi::c_char, slice};
 
-use dotlottie_rs::{Config, DotLottiePlayer, LayerBoundingBox};
+use dotlottie_rs::dotlottie_player::{Config, LayerBoundingBox};
+use dotlottie_rs::uniffi::DotLottiePlayer;
 use types::*;
 
 pub mod types;

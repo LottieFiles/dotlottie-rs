@@ -2,13 +2,14 @@ use std::error::Error;
 
 use thiserror::Error;
 
-use crate::Layout;
+use crate::layout::Layout;
 
 mod renderer;
 #[cfg(feature = "thorvg")]
 mod thorvg;
 
 pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
+
 #[cfg(feature = "thorvg")]
 pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
 

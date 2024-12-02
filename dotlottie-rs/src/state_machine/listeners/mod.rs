@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use crate::parser::StringNumberBool;
+use crate::state_machine::parser::StringNumberBool;
 
 pub trait ListenerTrait {
     fn set_type(&mut self, r#type: ListenerType);

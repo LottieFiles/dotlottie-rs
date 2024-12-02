@@ -9,12 +9,16 @@ pub mod parser;
 pub mod states;
 pub mod transitions;
 
-use crate::parser::StringNumberBool;
+use crate::dotlottie_player::Config;
+use crate::dotlottie_player::Mode;
+use crate::layout::Layout;
+use crate::state_machine::events::{InternalEvent, PointerEvent};
 use crate::state_machine::listeners::Listener;
+use crate::state_machine::parser::StringNumberBool;
 use crate::state_machine::states::StateTrait;
 use crate::state_machine::transitions::guard::Guard;
 use crate::state_machine::transitions::TransitionTrait;
-use crate::{Config, DotLottiePlayerContainer, InternalEvent, Layout, Mode, PointerEvent};
+use crate::uniffi::DotLottiePlayerContainer;
 
 use self::parser::{state_machine_parse, ContextJsonType};
 use self::{errors::StateMachineError, events::Event, states::State, transitions::Transition};

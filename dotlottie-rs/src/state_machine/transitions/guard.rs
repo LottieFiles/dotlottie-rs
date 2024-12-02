@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::parser::{StringNumberBool, TransitionGuardConditionType};
+use crate::state_machine::parser::{StringNumberBool, TransitionGuardConditionType};
 
 #[derive(Debug)]
 pub struct Guard {

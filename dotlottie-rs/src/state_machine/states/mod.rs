@@ -4,7 +4,8 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::{Config, DotLottiePlayerContainer};
+use crate::dotlottie_player::Config;
+use crate::uniffi::DotLottiePlayerContainer;
 
 use super::transitions::Transition;
 

@@ -5,10 +5,11 @@ use std::ffi::{c_char, CStr, CString};
 use std::io;
 use std::sync::Arc;
 
-use dotlottie_rs::{
-    Config, Event, Fit, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme,
-    Marker, Mode,
-};
+use dotlottie_rs::dotlottie_player::{Config, Mode};
+use dotlottie_rs::fms::*;
+use dotlottie_rs::layout::*;
+use dotlottie_rs::markers::*;
+use dotlottie_rs::state_machine::events::Event;
 
 // Function return codes
 pub const DOTLOTTIE_SUCCESS: i32 = 0;
@@ -514,7 +515,7 @@ pub struct Observer {
     pub on_complete_op: OnOp,
 }
 
-impl dotlottie_rs::Observer for Observer {
+impl dotlottie_rs::dotlottie_player::Observer for Observer {
     fn on_load(&self) {
         unsafe { (self.on_load_op)() }
     }
@@ -545,8 +546,10 @@ impl dotlottie_rs::Observer for Observer {
 }
 
 impl Observer {
-    pub unsafe fn as_observer(&mut self) -> Arc<dyn dotlottie_rs::Observer> {
-        Arc::from(Box::from_raw(self as *mut dyn dotlottie_rs::Observer))
+    pub unsafe fn as_observer(&mut self) -> Arc<dyn dotlottie_rs::dotlottie_player::Observer> {
+        Arc::from(Box::from_raw(
+            self as *mut dyn dotlottie_rs::dotlottie_player::Observer,
+        ))
     }
 }
 
@@ -562,7 +565,7 @@ pub struct StateMachineObserver {
     pub on_state_exit_op: OnStateExitOp,
 }
 
-impl dotlottie_rs::StateMachineObserver for StateMachineObserver {
+impl dotlottie_rs::state_machine::StateMachineObserver for StateMachineObserver {
     fn on_transition(&self, previous_state: String, new_state: String) {
         if let (Ok(previous_state), Ok(new_state)) =
             (CString::new(previous_state), CString::new(new_state))
@@ -596,9 +599,11 @@ impl dotlottie_rs::StateMachineObserver for StateMachineObserver {
 }
 
 impl StateMachineObserver {
-    pub unsafe fn as_observer(&mut self) -> Arc<dyn dotlottie_rs::StateMachineObserver> {
+    pub unsafe fn as_observer(
+        &mut self,
+    ) -> Arc<dyn dotlottie_rs::state_machine::StateMachineObserver> {
         Arc::from(Box::from_raw(
-            self as *mut dyn dotlottie_rs::StateMachineObserver,
+            self as *mut dyn dotlottie_rs::state_machine::StateMachineObserver,
         ))
     }
 }

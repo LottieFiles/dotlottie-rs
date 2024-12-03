@@ -571,11 +571,12 @@ $4/$(CMAKE_CACHE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
 $4/$(CMAKE_CACHE): DEP_BUILD_DIR := $4
 
 # Conditionally set CFLAGS if $2 equals LIBJPEG_TURBO and BUILD_PLATFORM_ARCH equals arm64
-ifeq ($2, LIBJPEG_TURBO)
-ifeq ($(BUILD_PLATFORM_ARCH), arm64)
 $4/$(CMAKE_CACHE): CFLAGS := -arch arm64
-endif
-endif
+# ifeq ($2, LIBJPEG_TURBO)
+# ifeq ($(BUILD_PLATFORM_ARCH), arm64)
+# $4/$(CMAKE_CACHE): CFLAGS := -arch arm64
+# endif
+# endif
 
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
 $4/$(CMAKE_CACHE): CMAKE_BUILD_SETTINGS := -GXcode -DCMAKE_MACOSX_BUNDLE=NO

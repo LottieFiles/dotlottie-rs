@@ -365,6 +365,11 @@ define CLEAN_LIBGJPEG
 	rm -f /usr/local/lib/libjpeg*
 endef
 
+define CLEAN_ZLIB
+	echo "Renaming Zlib header file so cmake doesn't fail.."
+	mv deps/modules/zlib/zconf.h deps/modules/zlib/zconf.h.backup
+endef
+
 define SIMPLE_CARGO_BUILD
 	cargo build \
 	--manifest-path $(PROJECT_DIR)/Cargo.toml \
@@ -581,7 +586,8 @@ $4/$(CMAKE_CACHE):
 	$$(SETUP_CMAKE)
 
 # Build
-# $(call CLEAN_LIBGJPEG)
+$(call CLEAN_LIBGJPEG)
+$(call CLEAN_ZLIB)
 $$($1_DEPS_LIB_DIR)/$5: CMAKE_BUILD_DIR := $4
 $$($1_DEPS_LIB_DIR)/$5: CMAKE_BUILD_OPTIONS := $(if $(filter $($1_SUBSYSTEM),$(APPLE_IOS)),CODE_SIGNING_ALLOWED=NO,)
 $$($1_DEPS_LIB_DIR)/$5: $4/$(CMAKE_CACHE)

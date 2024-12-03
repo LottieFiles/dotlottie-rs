@@ -571,7 +571,9 @@ $4/$(CMAKE_CACHE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
 $4/$(CMAKE_CACHE): DEP_BUILD_DIR := $4
 
 # Conditionally set CFLAGS if $2 equals LIBJPEG_TURBO and BUILD_PLATFORM_ARCH equals arm64
-$4/$(CMAKE_CACHE): CFLAGS := -arch arm64
+ifeq ($2, LIBJPEG_TURBO)
+$4/$(CMAKE_CACHE): CFLAGS := -Wall -arch arm64  -funwind-tables
+endif
 # ifeq ($2, LIBJPEG_TURBO)
 # ifeq ($(BUILD_PLATFORM_ARCH), arm64)
 # $4/$(CMAKE_CACHE): CFLAGS := -arch arm64

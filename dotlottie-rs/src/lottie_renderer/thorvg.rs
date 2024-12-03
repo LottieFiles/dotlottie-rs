@@ -1,4 +1,7 @@
-use std::{ffi::CString, ptr};
+use std::{
+    ffi::CString,
+    ptr::{self},
+};
 use thiserror::Error;
 
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
@@ -30,6 +33,70 @@ pub enum TvgError {
 
     #[error("Unknown error occurred in {function_name}")]
     Unknown { function_name: String },
+}
+
+pub enum TvgBlendMethod {
+    Normal,
+    Add,
+    Difference,
+    Exclusion,
+    Multiply,
+    Screen,
+    Overlay,
+    Darken,
+    Lighten,
+    ColorDodge,
+    ColorBurn,
+    HardLight,
+    SoftLight,
+}
+
+impl From<TvgBlendMethod> for tvg::Tvg_Blend_Method {
+    fn from(blend_method: TvgBlendMethod) -> Self {
+        match blend_method {
+            TvgBlendMethod::Normal => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_NORMAL,
+            TvgBlendMethod::Add => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_ADD,
+            TvgBlendMethod::Difference => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_DIFFERENCE,
+            TvgBlendMethod::Exclusion => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_EXCLUSION,
+            TvgBlendMethod::Multiply => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_MULTIPLY,
+            TvgBlendMethod::Screen => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_SCREEN,
+            TvgBlendMethod::Overlay => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_OVERLAY,
+            TvgBlendMethod::Darken => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_DARKEN,
+            TvgBlendMethod::Lighten => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_LIGHTEN,
+            TvgBlendMethod::ColorDodge => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_COLORDODGE,
+            TvgBlendMethod::ColorBurn => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_COLORBURN,
+            TvgBlendMethod::HardLight => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_HARDLIGHT,
+            TvgBlendMethod::SoftLight => tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_SOFTLIGHT,
+        }
+    }
+}
+
+pub struct TvgMatrix {
+    inner: tvg::Tvg_Matrix,
+}
+
+impl TvgMatrix {
+    pub fn new(transform: [f32; 9]) -> Self {
+        Self {
+            inner: tvg::Tvg_Matrix {
+                e11: transform[0],
+                e12: transform[1],
+                e13: transform[2],
+                e21: transform[3],
+                e22: transform[4],
+                e23: transform[5],
+                e31: transform[6],
+                e32: transform[7],
+                e33: transform[8],
+            },
+        }
+    }
+}
+
+impl From<TvgMatrix> for tvg::Tvg_Matrix {
+    fn from(matrix: TvgMatrix) -> Self {
+        matrix.inner
+    }
 }
 
 pub enum TvgEngine {
@@ -71,6 +138,12 @@ pub struct TvgRenderer {
     engine_method: tvg::Tvg_Engine,
 }
 
+impl Default for TvgRenderer {
+    fn default() -> Self {
+        Self::new(TvgEngine::TvgEngineSw, 0)
+    }
+}
+
 impl TvgRenderer {
     pub fn new(engine_method: TvgEngine, threads: u32) -> Self {
         let engine = match engine_method {
@@ -88,6 +161,18 @@ impl TvgRenderer {
             raw_canvas: unsafe { tvg::tvg_swcanvas_create() },
             engine_method: engine,
         }
+    }
+
+    pub fn push_animation(&mut self, animation: &TvgAnimation) -> Result<(), TvgError> {
+        let result = unsafe { tvg::tvg_canvas_push(self.raw_canvas, animation.raw_paint) };
+
+        convert_tvg_result(result, "tvg_canvas_push")
+    }
+
+    pub fn render(&mut self) -> Result<(), TvgError> {
+        self.update()?;
+        self.draw()?;
+        self.sync()
     }
 }
 
@@ -190,6 +275,78 @@ impl Default for TvgAnimation {
             raw_animation,
             raw_paint,
         }
+    }
+}
+
+impl TvgAnimation {
+    pub fn rotate(&mut self, angle: f32) -> Result<(), TvgError> {
+        let result = unsafe { tvg::tvg_paint_rotate(self.raw_paint, angle) };
+
+        convert_tvg_result(result, "tvg_paint_rotate")
+    }
+
+    pub fn set_transform(&mut self, matrix: TvgMatrix) -> Result<(), TvgError> {
+        let result = unsafe { tvg::tvg_paint_set_transform(self.raw_paint, &matrix.into()) };
+
+        convert_tvg_result(result, "tvg_paint_transform")
+    }
+
+    pub fn get_transform(&self) -> Result<TvgMatrix, TvgError> {
+        let mut matrix = TvgMatrix::new([0.0; 9]);
+
+        let result = unsafe { tvg::tvg_paint_get_transform(self.raw_paint, &mut matrix.inner) };
+
+        convert_tvg_result(result, "tvg_paint_get_transform")?;
+
+        Ok(matrix)
+    }
+
+    pub fn set_translate(&mut self, tx: f32, ty: f32) -> Result<(), TvgError> {
+        let result = unsafe { tvg::tvg_paint_translate(self.raw_paint, tx, ty) };
+
+        convert_tvg_result(result, "tvg_paint_translate")
+    }
+
+    pub fn set_blend_method(&mut self, blend_method: TvgBlendMethod) -> Result<(), TvgError> {
+        let result =
+            unsafe { tvg::tvg_paint_set_blend_method(self.raw_paint, blend_method.into()) };
+
+        convert_tvg_result(result, "tvg_paint_set_blend_method")
+    }
+
+    pub fn get_translate(&self) -> Result<(f32, f32), TvgError> {
+        let mut matrix = TvgMatrix::new([0.0; 9]);
+
+        let result = unsafe { tvg::tvg_paint_get_transform(self.raw_paint, &mut matrix.inner) };
+
+        convert_tvg_result(result, "tvg_paint_get_transform")?;
+
+        Ok((matrix.inner.e13, matrix.inner.e23))
+    }
+
+    pub fn set_marker(&mut self, marker: &str) -> Result<(), TvgError> {
+        let marker_cstr = CString::new(marker).expect("Failed to create CString");
+
+        let result = unsafe {
+            tvg::tvg_lottie_animation_set_marker(self.raw_animation, marker_cstr.as_ptr())
+        };
+
+        convert_tvg_result(result, "tvg_lottie_animation_set_marker")
+    }
+
+    pub fn get_bounds(&self) -> Result<(f32, f32, f32, f32), TvgError> {
+        let mut px: f32 = 0.0;
+        let mut py: f32 = 0.0;
+        let mut pw: f32 = 0.0;
+        let mut ph: f32 = 0.0;
+
+        let result = unsafe {
+            tvg::tvg_paint_get_bounds(self.raw_paint, &mut px, &mut py, &mut pw, &mut ph, true)
+        };
+
+        convert_tvg_result(result, "tvg_paint_get_bounds")?;
+
+        Ok((px, py, pw, ph))
     }
 }
 

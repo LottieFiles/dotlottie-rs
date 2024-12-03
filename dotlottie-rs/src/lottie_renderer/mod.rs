@@ -10,7 +10,9 @@ mod thorvg;
 
 pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
 #[cfg(feature = "thorvg")]
-pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
+pub use thorvg::{
+    TvgAnimation, TvgBlendMethod, TvgEngine, TvgError, TvgMatrix, TvgRenderer, TvgShape,
+};
 
 #[derive(Error, Debug)]
 pub enum LottieRendererError {

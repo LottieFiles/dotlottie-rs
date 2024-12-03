@@ -8,6 +8,7 @@ links = "thorvg"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
+default = ["thorvg"]
 thorvg = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,6 +21,7 @@ zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
 base64 = "0.22.1"
 json = "0.12.4"
 jzon = "0.12.5"
+minifb = "0.27"
 
 [build-dependencies]
 bindgen = "0.70.1"

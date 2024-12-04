@@ -554,17 +554,15 @@ $4/../$(CMAKE_TOOLCHAIN_FILE):
 $4/$(CMAKE_MAKEFILE): export LDFLAGS := $$($2_LDFLAGS)
 $4/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
 
-echo "ANDROID_CMAKE_BUILD Value of \$2: $2"
-echo "ANDROID_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
-# Conditionally set or reset CMAKE_C_FLAGS
+# If LIBJPEG_TURBO and x86, set CMAKE_C_FLAGS to empty
 ifeq ($2, LIBJPEG_TURBO)
-ifeq ($(BUILD_PLATFORM_ARCH), arm64)
-$4/$(CMAKE_MAKEFILE): C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
+ifneq ($(findstring x86,$$($1_DEPS_ARTIFACTS_DIR)),)
+    C_FLAGS := -DCMAKE_C_FLAGS=""
 else
-$4/$(CMAKE_MAKEFILE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
+    C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
 endif
 else
-$4/$(CMAKE_MAKEFILE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
+    C_FLAGS := -DCMAKE_C_FLAGS=""
 endif
 
 $4/$(CMAKE_MAKEFILE): DEP_BUILD_DIR := $4
@@ -585,17 +583,20 @@ define NEW_APPLE_CMAKE_BUILD
 $4/$(CMAKE_CACHE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
 $4/$(CMAKE_CACHE): DEP_BUILD_DIR := $4
 
-echo "APPLE_CMAKE_BUILD Value of \$2: $2"
-echo "APPLE_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
 # Conditionally set or reset CMAKE_C_FLAGS
+ifdef C_FLAGS
+undefine C_FLAGS
+endif
+
+# If LIBJPEG_TURBO and x86, set CMAKE_C_FLAGS to empty
 ifeq ($2, LIBJPEG_TURBO)
-ifeq ($(BUILD_PLATFORM_ARCH), arm64)
-$4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
+ifneq ($(findstring x86,$$($1_DEPS_ARTIFACTS_DIR)),)
+    C_FLAGS := -DCMAKE_C_FLAGS=""
 else
-$4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
+    C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
 endif
 else
-$4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
+    C_FLAGS := -DCMAKE_C_FLAGS=""
 endif
 
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
@@ -832,9 +833,9 @@ endef
 
 # Local architecture dependencies builds
 define NEW_LOCAL_ARCH_CMAKE_BUILD
+
 # Setup cmake for local arch buildw
-echo "ARCH_CMAKE_BUILD Value of \$1: $1"
-echo "ARCH_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
+
 # Conditionally set or reset CMAKE_C_FLAGS
 ifeq ($1, LIBJPEG_TURBO)
 ifeq ($(BUILD_PLATFORM_ARCH), arm64)
@@ -845,6 +846,8 @@ endif
 else
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
+
+
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$2
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_BUILD_DIR := $$($1_LOCAL_ARCH_BUILD_DIR)
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_ARTIFACTS_DIR := $(LOCAL_ARCH_ARTIFACTS_DIR)

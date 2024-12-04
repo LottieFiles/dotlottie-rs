@@ -596,7 +596,7 @@ ifeq ($2, LIBJPEG_TURBO)
 ifeq ($(findstring x86_64,$($1_DEPS_ARTIFACTS_DIR)),)
 $4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
 else
-$4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
+$4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch x86_64 -funwind-tables"
 endif
 else
 $4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO

@@ -346,6 +346,7 @@ endef
 define SETUP_CMAKE
 	cmake -DCMAKE_INSTALL_PREFIX=$(DEP_ARTIFACTS_DIR) \
 		-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+		-DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables" \
 		-DBUILD_SHARED_LIBS=OFF $(CMAKE_BUILD_SETTINGS) $(PLATFORM) $(TOOLCHAIN_FILE) \
 		-B $(DEP_BUILD_DIR) \
 		$(DEP_SOURCE_DIR)
@@ -572,7 +573,7 @@ $4/$(CMAKE_CACHE): DEP_BUILD_DIR := $4
 
 # Conditionally set CFLAGS if $2 equals LIBJPEG_TURBO and BUILD_PLATFORM_ARCH equals arm64
 ifeq ($2, LIBJPEG_TURBO)
-$4/$(CMAKE_CACHE): CFLAGS := -Wall -arch arm64  -funwind-tables
+$4/$(CMAKE_CACHE): CFLAGS := -Wall -arch arm64 -funwind-tables
 endif
 # ifeq ($2, LIBJPEG_TURBO)
 # ifeq ($(BUILD_PLATFORM_ARCH), arm64)

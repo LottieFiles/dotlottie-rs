@@ -607,6 +607,7 @@ $4/$(CMAKE_CACHE): TOOLCHAIN_FILE := -DCMAKE_TOOLCHAIN_FILE=$(PWD)/$(DEPS_MODULE
 $4/$(CMAKE_CACHE): 
 	@echo "APPLE_CMAKE_BUILD Value of \$2: $2"
 	@echo "APPLE_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
+	@echo "Look here: $$($1_DEPS_ARTIFACTS_DIR)"
 	@echo "Renaming zconf.h to avoid CMake conflicts..."
 	mv $(DEPS_MODULES_DIR)/zlib/zconf.h $(DEPS_MODULES_DIR)/zlib/zconf.h.included || true
 	$$(SETUP_CMAKE)

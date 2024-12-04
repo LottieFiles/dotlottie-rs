@@ -347,8 +347,7 @@ endef
 define SETUP_CMAKE
 	cmake -DCMAKE_INSTALL_PREFIX=$(DEP_ARTIFACTS_DIR) \
 		-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-		-DCMAKE_C_FLAGS=$(CMAKE_C_FLAGS) \
-		-DBUILD_SHARED_LIBS=OFF $(CMAKE_BUILD_SETTINGS) $(PLATFORM) $(TOOLCHAIN_FILE) \
+		-DBUILD_SHARED_LIBS=OFF $(CMAKE_BUILD_SETTINGS) $(PLATFORM) $(TOOLCHAIN_FILE) $(C_FLAGS) \
 		-B $(DEP_BUILD_DIR) \
 		$(DEP_SOURCE_DIR)
 endef
@@ -572,17 +571,17 @@ define NEW_APPLE_CMAKE_BUILD
 $4/$(CMAKE_CACHE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
 $4/$(CMAKE_CACHE): DEP_BUILD_DIR := $4
 
-@echo "Value of \$2: $2"
-@echo "Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
+echo "APPLE_CMAKE_BUILD Value of \$2: $2"
+echo "APPLE_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
 # Conditionally set or reset CMAKE_C_FLAGS
 ifeq ($2, LIBJPEG_TURBO)
 ifeq ($(BUILD_PLATFORM_ARCH), arm64)
-CMAKE_C_FLAGS := "-Wall -arch arm64 -funwind-tables"
+C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
 else
-CMAKE_C_FLAGS := "" # Reset to empty if not arm64
+C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
 endif
 else
-CMAKE_C_FLAGS := "" # Reset to empty if not LIBJPEG_TURBO
+C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
@@ -819,18 +818,18 @@ endef
 
 # Local architecture dependencies builds
 define NEW_LOCAL_ARCH_CMAKE_BUILD
-# Setup cmake for local arch build
-@echo "Value of \$1: $1"
-@echo "Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
+# Setup cmake for local arch buildw
+echo "ARCH_CMAKE_BUILD Value of \$1: $1"
+echo "ARCH_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
 # Conditionally set or reset CMAKE_C_FLAGS
 ifeq ($1, LIBJPEG_TURBO)
 ifeq ($(BUILD_PLATFORM_ARCH), arm64)
-CMAKE_C_FLAGS := "-Wall -arch arm64 -funwind-tables"
+CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
 else
-CMAKE_C_FLAGS := "" # Reset to empty if not arm64
+CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
 endif
 else
-CMAKE_C_FLAGS := "" # Reset to empty if not LIBJPEG_TURBO
+CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$2
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_BUILD_DIR := $$($1_LOCAL_ARCH_BUILD_DIR)

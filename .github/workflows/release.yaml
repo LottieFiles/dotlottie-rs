@@ -11,6 +11,7 @@ concurrency:
 jobs:
   build-apple:
     runs-on: macos-14-xlarge
+    if: github.head_ref == 'release' && github.event.pull_request.merged == true
     steps:
       - uses: actions/checkout@v4
       - uses: Homebrew/actions/setup-homebrew@master
@@ -68,7 +69,6 @@ jobs:
 
   build-wasm:
     runs-on: macos-latest
-    if: github.head_ref == 'release' && github.event.pull_request.merged == true
     steps:
       - uses: actions/checkout@v4
       - uses: Homebrew/actions/setup-homebrew@master

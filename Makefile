@@ -554,15 +554,16 @@ $4/../$(CMAKE_TOOLCHAIN_FILE):
 $4/$(CMAKE_MAKEFILE): export LDFLAGS := $$($2_LDFLAGS)
 $4/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
 
-# If LIBJPEG_TURBO and x86, set CMAKE_C_FLAGS to empty
+# Conditionally set or reset CMAKE_C_FLAGS
 ifeq ($2, LIBJPEG_TURBO)
-ifneq ($(findstring x86,$$($1_DEPS_ARTIFACTS_DIR)),)
-    C_FLAGS := -DCMAKE_C_FLAGS=""
+# If the build_platform_arch is NOT empty after filtering for arm64, then set the C_FLAGS
+ifneq ($(filter $(BUILD_PLATFORM_ARCH),$(AARCH64_ARCH) $(ARM_ARCH)),)
+$4/$(CMAKE_MAKEFILE): C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
 else
-    C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
+$4/$(CMAKE_MAKEFILE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
 endif
 else
-    C_FLAGS := -DCMAKE_C_FLAGS=""
+$4/$(CMAKE_MAKEFILE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 
 $4/$(CMAKE_MAKEFILE): DEP_BUILD_DIR := $4
@@ -570,6 +571,8 @@ $4/$(CMAKE_MAKEFILE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
 $4/$(CMAKE_MAKEFILE): CMAKE_BUILD_SETTINGS := -DANDROID_NDK=$(ANDROID_NDK_HOME) -DANDROID_ABI=$$($1_ABI)
 $4/$(CMAKE_MAKEFILE): TOOLCHAIN_FILE := -DCMAKE_TOOLCHAIN_FILE=../$(CMAKE_TOOLCHAIN_FILE)
 $4/$(CMAKE_MAKEFILE): $4/../$(CMAKE_TOOLCHAIN_FILE)
+	@echo "ANDROID_CMAKE_BUILD Value of \$2: $2"
+	@echo "ANDROID_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
 	$$(SETUP_CMAKE)
 
 # Build
@@ -583,15 +586,18 @@ define NEW_APPLE_CMAKE_BUILD
 $4/$(CMAKE_CACHE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
 $4/$(CMAKE_CACHE): DEP_BUILD_DIR := $4
 
-# If LIBJPEG_TURBO and x86, set CMAKE_C_FLAGS to empty
+# Conditionally set or reset CMAKE_C_FLAGS
+# ifeq ($(BUILD_PLATFORM_ARCH), arm64)
+
+# If the build_platform_arch is NOT empty after filtering for arm64, then set the C_FLAGS
 ifeq ($2, LIBJPEG_TURBO)
-ifneq ($(findstring x86,$$($1_DEPS_ARTIFACTS_DIR)),)
-    C_FLAGS := -DCMAKE_C_FLAGS=""
+ifneq ($(filter $(BUILD_PLATFORM_ARCH),$(AARCH64_ARCH) $(ARM_ARCH)),)
+$4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
 else
-    C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
+$4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
 endif
 else
-    C_FLAGS := -DCMAKE_C_FLAGS=""
+$4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
@@ -599,6 +605,8 @@ $4/$(CMAKE_CACHE): CMAKE_BUILD_SETTINGS := -GXcode -DCMAKE_MACOSX_BUNDLE=NO
 $4/$(CMAKE_CACHE): PLATFORM := -DPLATFORM=$$($1_ARCH)
 $4/$(CMAKE_CACHE): TOOLCHAIN_FILE := -DCMAKE_TOOLCHAIN_FILE=$(PWD)/$(DEPS_MODULES_DIR)/ios-cmake/ios.toolchain.cmake
 $4/$(CMAKE_CACHE): 
+	@echo "APPLE_CMAKE_BUILD Value of \$2: $2"
+	@echo "APPLE_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
 	@echo "Renaming zconf.h to avoid CMake conflicts..."
 	mv $(DEPS_MODULES_DIR)/zlib/zconf.h $(DEPS_MODULES_DIR)/zlib/zconf.h.included || true
 	$$(SETUP_CMAKE)
@@ -828,12 +836,12 @@ endef
 
 # Local architecture dependencies builds
 define NEW_LOCAL_ARCH_CMAKE_BUILD
-
-# Setup cmake for local arch buildw
+# Setup cmake for local arch build
 
 # Conditionally set or reset CMAKE_C_FLAGS
 ifeq ($1, LIBJPEG_TURBO)
-ifeq ($(BUILD_PLATFORM_ARCH), arm64)
+# If the build_platform_arch is NOT empty after filtering for arm64, then set the C_FLAGS
+ifneq ($(filter $(BUILD_PLATFORM_ARCH),$(AARCH64_ARCH) $(ARM_ARCH)),)
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
 else
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
@@ -842,11 +850,12 @@ else
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 
-
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$2
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_BUILD_DIR := $$($1_LOCAL_ARCH_BUILD_DIR)
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_ARTIFACTS_DIR := $(LOCAL_ARCH_ARTIFACTS_DIR)
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE):
+	@echo "ARCH_CMAKE_BUILD Value of \$1: $1"
+	@echo "ARCH_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
 	$$(SETUP_CMAKE)
 
 # Build local arch

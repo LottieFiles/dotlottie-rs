@@ -553,6 +553,20 @@ $4/../$(CMAKE_TOOLCHAIN_FILE):
 # Setup cmake
 $4/$(CMAKE_MAKEFILE): export LDFLAGS := $$($2_LDFLAGS)
 $4/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
+
+echo "ANDROID_CMAKE_BUILD Value of \$2: $2"
+echo "ANDROID_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
+# Conditionally set or reset CMAKE_C_FLAGS
+ifeq ($2, LIBJPEG_TURBO)
+ifeq ($(BUILD_PLATFORM_ARCH), arm64)
+$4/$(CMAKE_MAKEFILE): C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
+else
+$4/$(CMAKE_MAKEFILE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
+endif
+else
+$4/$(CMAKE_MAKEFILE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
+endif
+
 $4/$(CMAKE_MAKEFILE): DEP_BUILD_DIR := $4
 $4/$(CMAKE_MAKEFILE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
 $4/$(CMAKE_MAKEFILE): CMAKE_BUILD_SETTINGS := -DANDROID_NDK=$(ANDROID_NDK_HOME) -DANDROID_ABI=$$($1_ABI)
@@ -576,12 +590,12 @@ echo "APPLE_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
 # Conditionally set or reset CMAKE_C_FLAGS
 ifeq ($2, LIBJPEG_TURBO)
 ifeq ($(BUILD_PLATFORM_ARCH), arm64)
-C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
+$4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
 else
-C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
+$4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
 endif
 else
-C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
+$4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
@@ -824,12 +838,12 @@ echo "ARCH_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
 # Conditionally set or reset CMAKE_C_FLAGS
 ifeq ($1, LIBJPEG_TURBO)
 ifeq ($(BUILD_PLATFORM_ARCH), arm64)
-CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
+$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="-Wall -arch arm64 -funwind-tables"
 else
-CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
+$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not arm64
 endif
 else
-CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
+$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$2
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_BUILD_DIR := $$($1_LOCAL_ARCH_BUILD_DIR)

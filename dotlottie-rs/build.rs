@@ -50,7 +50,7 @@ lazy_static! {
             link_args: vec![String::from("--no-entry")],
         },
         true => BuildSettings{
-            static_libs: vec![String::from("thorvg"), String::from("turbojpeg"), String::from("png"), String::from("z"), String::from("webp")],
+            static_libs: vec![String::from("thorvg"), String::from("turbojpeg"), String::from("png"), String::from("z")],
             dynamic_libs: platform_libs(),
             link_args: vec![],
         },

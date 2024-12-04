@@ -583,11 +583,6 @@ define NEW_APPLE_CMAKE_BUILD
 $4/$(CMAKE_CACHE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
 $4/$(CMAKE_CACHE): DEP_BUILD_DIR := $4
 
-# Conditionally set or reset CMAKE_C_FLAGS
-ifdef C_FLAGS
-undefine C_FLAGS
-endif
-
 # If LIBJPEG_TURBO and x86, set CMAKE_C_FLAGS to empty
 ifeq ($2, LIBJPEG_TURBO)
 ifneq ($(findstring x86,$$($1_DEPS_ARTIFACTS_DIR)),)

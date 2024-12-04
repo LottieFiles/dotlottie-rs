@@ -820,6 +820,18 @@ endef
 # Local architecture dependencies builds
 define NEW_LOCAL_ARCH_CMAKE_BUILD
 # Setup cmake for local arch build
+@echo "Value of \$1: $1"
+@echo "Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
+# Conditionally set or reset CMAKE_C_FLAGS
+ifeq ($1, LIBJPEG_TURBO)
+ifeq ($(BUILD_PLATFORM_ARCH), arm64)
+CMAKE_C_FLAGS := "-Wall -arch arm64 -funwind-tables"
+else
+CMAKE_C_FLAGS := "" # Reset to empty if not arm64
+endif
+else
+CMAKE_C_FLAGS := "" # Reset to empty if not LIBJPEG_TURBO
+endif
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$2
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_BUILD_DIR := $$($1_LOCAL_ARCH_BUILD_DIR)
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_ARTIFACTS_DIR := $(LOCAL_ARCH_ARTIFACTS_DIR)

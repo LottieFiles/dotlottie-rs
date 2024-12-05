@@ -607,12 +607,12 @@ $4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG
 endif
 
 ifeq ($$($1_SUBSYSTEM), macos)
-$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk
+$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$$($1_PLATFORM).platform/Developer/SDKs/$$($1_SDK)
 $4/$(CMAKE_CACHE): OSX_DEPLOYMENT_TARGET := -DCMAKE_DEPLOYMENT_TARGET=11.0
 endif
 
 ifeq ($$($1_SUBSYSTEM), ios)
-$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk
+$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$$($1_PLATFORM).platform/Developer/SDKs/$$($1_SDK)
 $4/$(CMAKE_CACHE): OSX_DEPLOYMENT_TARGET := -DCMAKE_DEPLOYMENT_TARGET=12.0
 endif
 

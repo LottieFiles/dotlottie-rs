@@ -122,7 +122,7 @@ THORVG_LIB := libthorvg.a
 
 CMAKE_TOOLCHAIN_FILE := toolchain.cmake
 CMAKE_C_FLAGS := ""
-CMAKE_OSX_SYSROOTs := ""
+CMAKE_OSX_SYSROOT := ""
 CMAKE_MAKEFILE := Makefile
 CMAKE_CACHE := CMakeCache.txt
 
@@ -879,6 +879,18 @@ $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): CMAKE_C_FLAGS := -DCMAKE_C_FLAGS=
 endif
 else
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
+endif
+
+ifneq ($(filter $$($1_PLATFORM), MacOSX),)
+$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=macosx
+endif
+
+ifneq ($(filter $$($1_PLATFORM), iPhoneOS),)
+$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphoneos
+endif
+
+ifneq ($(filter $$($1_PLATFORM), iPhoneSimulator),)
+$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphonesimulator
 endif
 
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$2

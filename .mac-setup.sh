@@ -28,6 +28,16 @@ check_for() {
   fi
 
   echo "Checking for ${GREEN}${app}${NC} ..."
+  echo "${RED}=>${NC} Printing direectory contents.."
+  echo "${RED}=>${NC} Xcode.app"
+  ls /Applications/Xcode.app/*
+  ls /Applications/Xcode.app/Contents/Developer/Platforms 
+  echo "${RED}=>${NC} MacOSX.platform"
+  ls /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
+  echo "${RED}=>${NC} iPhoneOS.platform"
+  ls /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs
+  echo "${RED}=>${NC} IponeSimulator.platform"
+  ls /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs
   if ! which "${app}" &>/dev/null; then
     echo "${RED}=>${NC} Could not find ${app}${install_url}"
 

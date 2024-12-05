@@ -603,7 +603,18 @@ else
 $4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 
-$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=$$(shell xcrun --sdk $$($1_SDK) --show-sdk-path)
+ifneq ($(filter $$($1_PLATFORM), MacOSX),)
+$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=macosx
+endif
+
+ifneq ($(filter $$($1_PLATFORM), iPhoneOS),)
+$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphoneos
+endif
+
+ifneq ($(filter $$($1_PLATFORM), iPhoneSimulator),)
+$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphonesimulator
+endif
+
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
 $4/$(CMAKE_CACHE): CMAKE_BUILD_SETTINGS := -GXcode -DCMAKE_MACOSX_BUNDLE=NO
 $4/$(CMAKE_CACHE): PLATFORM := -DPLATFORM=$$($1_ARCH)

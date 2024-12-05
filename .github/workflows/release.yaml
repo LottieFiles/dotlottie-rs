@@ -11,7 +11,6 @@ concurrency:
 jobs:
   build-apple:
     runs-on: macos-latest
-    if: github.head_ref == 'release' && github.event.pull_request.merged == true
     steps:
       - uses: actions/checkout@v4
       - uses: Homebrew/actions/setup-homebrew@master
@@ -43,6 +42,7 @@ jobs:
 
   build-android:
     runs-on: macos-latest
+    if: github.head_ref == 'release' && github.event.pull_request.merged == true
     steps:
       - uses: actions/checkout@v4
       - uses: Homebrew/actions/setup-homebrew@master

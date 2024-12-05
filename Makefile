@@ -122,6 +122,7 @@ THORVG_LIB := libthorvg.a
 
 CMAKE_TOOLCHAIN_FILE := toolchain.cmake
 CMAKE_C_FLAGS := ""
+CMAKE_OSX_SYSROOTs := ""
 CMAKE_MAKEFILE := Makefile
 CMAKE_CACHE := CMakeCache.txt
 
@@ -347,7 +348,7 @@ endef
 define SETUP_CMAKE
 	cmake -DCMAKE_INSTALL_PREFIX=$(DEP_ARTIFACTS_DIR) \
 		-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-		-DBUILD_SHARED_LIBS=OFF $(CMAKE_BUILD_SETTINGS) $(PLATFORM) $(TOOLCHAIN_FILE) $(C_FLAGS) \
+		-DBUILD_SHARED_LIBS=OFF $(CMAKE_BUILD_SETTINGS) $(PLATFORM) $(TOOLCHAIN_FILE) $(C_FLAGS) $(OSX_SYSROOT) \
 		-B $(DEP_BUILD_DIR) \
 		$(DEP_SOURCE_DIR)
 endef
@@ -602,11 +603,16 @@ else
 $4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 
+$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=$$(shell xcrun --sdk $$($1_SDK) --show-sdk-path)
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
 $4/$(CMAKE_CACHE): CMAKE_BUILD_SETTINGS := -GXcode -DCMAKE_MACOSX_BUNDLE=NO
 $4/$(CMAKE_CACHE): PLATFORM := -DPLATFORM=$$($1_ARCH)
 $4/$(CMAKE_CACHE): TOOLCHAIN_FILE := -DCMAKE_TOOLCHAIN_FILE=$(PWD)/$(DEPS_MODULES_DIR)/ios-cmake/ios.toolchain.cmake
 $4/$(CMAKE_CACHE): 
+	@echo "Omega call: $(shell xcrun --sdk $$($1_SDK) --show-sdk-path)"
+	@echo "$$($1_SDK)"
+	@echo ""
+	@echo "-------------"
 	@echo "APPLE_CMAKE_BUILD Value of \$2: $2"
 	@echo "APPLE_CMAKE_BUILD Value of BUILD_PLATFORM_ARCH: $(BUILD_PLATFORM_ARCH)"
 	@echo "Look here: $$($1_DEPS_ARTIFACTS_DIR)"

@@ -606,12 +606,12 @@ $4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG
 endif
 
 ifeq ($$($1_SUBSYSTEM), macos)
-	$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=macOS
+$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=macOS
 	@echo "Setting OSX_SYSROOT for MacOSX"
 endif
 
 ifeq ($$($1_SUBSYSTEM), ios)
-	$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iOS
+$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iOS
 	@echo "Setting OSX_SYSROOT for iPhoneOS"
 endif
 

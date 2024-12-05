@@ -605,20 +605,20 @@ else
 $4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 
-ifneq ($(filter $$($1_PLATFORM), MacOSX),)
-$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=macosx
+ifneq ($(filter $$($1_SUBSYSTEM), macos),)
+$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=macOS
 @echo "Setting OSX_SYSROOT for MacOSX"
 endif
 
-ifneq ($(filter $$($1_PLATFORM), iPhoneOS),)
-$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphoneos
+ifneq ($(filter $$($1_SUBSYSTEM), ios),)
+$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iOS
 @echo "Setting OSX_SYSROOT for iPhoneOS"
 endif
 
-ifneq ($(filter $$($1_PLATFORM), iPhoneSimulator),)
-$4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphonesimulator
-@echo "Setting OSX_SYSROOT for iPhoneSimulator"
-endif
+# ifneq ($(filter $$($1_PLATFORM), iPhoneSimulator),)
+# $4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphonesimulator
+# @echo "Setting OSX_SYSROOT for iPhoneSimulator"
+# endif
 
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
 $4/$(CMAKE_CACHE): CMAKE_BUILD_SETTINGS := -GXcode -DCMAKE_MACOSX_BUNDLE=NO
@@ -887,23 +887,17 @@ else
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): CMAKE_C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 
-ifneq ($(filter $$($1_PLATFORM), MacOSX),)
-$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=macosx
-else
-$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=""
-endif
+# ifneq ($(filter $$($1_SUBSYSTEM), macosx),)
+# $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=macOS
+# else
+# $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=""
+# endif
 
-ifneq ($(filter $$($1_PLATFORM), iPhoneOS),)
-$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphoneos
-else
-$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=""
-endif
-
-ifneq ($(filter $$($1_PLATFORM), iPhoneSimulator),)
-$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphonesimulator
-else
-$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=""
-endif
+# ifneq ($(filter $$($1_SUBSYSTEM), ios),)
+# $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iOS
+# else
+# $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=""
+# endif
 
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$2
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_BUILD_DIR := $$($1_LOCAL_ARCH_BUILD_DIR)

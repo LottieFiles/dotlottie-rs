@@ -346,6 +346,8 @@ define NINJA_BUILD
 endef
 
 define SETUP_CMAKE
+	@echo "Running cmake with: -DCMAKE_INSTALL_PREFIX=$(DEP_ARTIFACTS_DIR) $(CMAKE_BUILD_SETTINGS) $(PLATFORM) $(TOOLCHAIN_FILE) $(C_FLAGS) $(OSX_SYSROOT)"
+
 	cmake -DCMAKE_INSTALL_PREFIX=$(DEP_ARTIFACTS_DIR) \
 		-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 		-DBUILD_SHARED_LIBS=OFF $(CMAKE_BUILD_SETTINGS) $(PLATFORM) $(TOOLCHAIN_FILE) $(C_FLAGS) $(OSX_SYSROOT) \
@@ -605,14 +607,17 @@ endif
 
 ifneq ($(filter $$($1_PLATFORM), MacOSX),)
 $4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=macosx
+@echo "Setting OSX_SYSROOT for MacOSX"
 endif
 
 ifneq ($(filter $$($1_PLATFORM), iPhoneOS),)
 $4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphoneos
+@echo "Setting OSX_SYSROOT for iPhoneOS"
 endif
 
 ifneq ($(filter $$($1_PLATFORM), iPhoneSimulator),)
 $4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphonesimulator
+@echo "Setting OSX_SYSROOT for iPhoneSimulator"
 endif
 
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
@@ -623,6 +628,7 @@ $4/$(CMAKE_CACHE):
 	@echo ""
 	@echo "-------------"
 	@echo "Start logging..."
+	@echo "OSX_SYSROOT: $(OSX_SYSROOT)"
 	@echo "SUBSYSTEM: $$($1_SUBSYSTEM)"
 	@echo "PLATFORM: $$($1_PLATFORM)"
 	@echo "Framek work type: $$($1_FRAMEWORK_TYPE)"
@@ -883,14 +889,20 @@ endif
 
 ifneq ($(filter $$($1_PLATFORM), MacOSX),)
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=macosx
+else
+$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=""
 endif
 
 ifneq ($(filter $$($1_PLATFORM), iPhoneOS),)
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphoneos
+else
+$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=""
 endif
 
 ifneq ($(filter $$($1_PLATFORM), iPhoneSimulator),)
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iphonesimulator
+else
+$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=""
 endif
 
 $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$2

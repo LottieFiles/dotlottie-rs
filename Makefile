@@ -605,14 +605,14 @@ else
 $4/$(CMAKE_CACHE): C_FLAGS := -DCMAKE_C_FLAGS="" # Reset to empty if not LIBJPEG_TURBO
 endif
 
-ifneq ($(filter $$($1_SUBSYSTEM), macos),)
+ifneq ($(filter $($1_SUBSYSTEM), macos),)
 $4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=macOS
-@echo "Setting OSX_SYSROOT for MacOSX"
+	@echo "Setting OSX_SYSROOT for MacOSX"
 endif
 
-ifneq ($(filter $$($1_SUBSYSTEM), ios),)
+ifneq ($(filter $($1_SUBSYSTEM), ios),)
 $4/$(CMAKE_CACHE): OSX_SYSROOT := -DCMAKE_OSX_SYSROOT=iOS
-@echo "Setting OSX_SYSROOT for iPhoneOS"
+    @echo "Setting OSX_SYSROOT for iPhoneOS"
 endif
 
 # ifneq ($(filter $$($1_PLATFORM), iPhoneSimulator),)

@@ -610,7 +610,10 @@ $4/$(CMAKE_CACHE): PLATFORM := -DPLATFORM=$$($1_ARCH)
 $4/$(CMAKE_CACHE): TOOLCHAIN_FILE := -DCMAKE_TOOLCHAIN_FILE=$(PWD)/$(DEPS_MODULES_DIR)/ios-cmake/ios.toolchain.cmake
 $4/$(CMAKE_CACHE): 
 	@echo "Omega call: $(shell xcrun --sdk $$($1_SDK) --show-sdk-path)"
-	@echo "$$($1_SDK)"
+	@echo "sdk: $(SDK)"
+	@echo "platform: $(PLATFORM)"
+	@echo "dollar 1 sdk: $$($1_SDK)"
+	@echo "Build platform arch: $(BUILD_PLATFORM_ARCH)"
 	@echo ""
 	@echo "-------------"
 	@echo "APPLE_CMAKE_BUILD Value of \$2: $2"

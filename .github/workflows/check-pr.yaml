@@ -11,35 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # TODO:For Testing, Remove Before Merge
-  build-apple:
-    runs-on: macos-latest-large
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - uses: Homebrew/actions/setup-homebrew@master
-      - uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Install Make
-        run: brew install make
-
-      - name: Build Setup
-        run: make mac-setup
-        env:
-          TARGET: apple
-
-      - name: Build Apple
-        run: |
-          rm -f /usr/local/lib/libjpeg*
-          make apple
-
-      - name: Upload Apple Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotlottie-player.darwin.tar.gz
-          path: release/apple/dotlottie-player.darwin.tar.gz
-          if-no-files-found: error
   check-pr:
     if: github.head_ref != 'release'
     runs-on: ubuntu-latest

@@ -67,8 +67,8 @@ APPLE_BUILD := $(BUILD)/$(APPLE)
 APPLE_IOS := ios
 APPLE_IOS_PLATFORM := iPhoneOS
 APPLE_IOS_SDK ?= iPhoneOS
-APPLE_IOS_VERSION_MIN ?= 15.4
-THORVG_APPLE_IOS_VERSION_MIN ?= 11.0 # Minimum iOS version supported by ThorVG, needs to be the same for cpp_args and cpp_link_args
+APPLE_MACOS_VERSION_MIN ?= 11.0
+APPLE_IOS_VERSION_MIN ?= 13.0
 APPLE_XCODE_APP_NAME ?= Xcode.app
 
 APPLE_IOS_SIMULATOR := ios-simulator
@@ -226,8 +226,14 @@ has_function_printf = true
 
 $(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),\
 [built-in options]\n\
-cpp_args = ['-miphoneos-version-min=$(THORVG_APPLE_IOS_VERSION_MIN)']\n\
-cpp_link_args = ['-miphoneos-version-min=$(THORVG_APPLE_IOS_VERSION_MIN)']\n\
+cpp_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
+cpp_link_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
+,)
+
+$(if $(filter $(PLATFORM),$(APPLE_MACOSX_PLATFORM)),\
+[built-in options]\n\
+cpp_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)']\n\
+cpp_link_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)']\n\
 ,)
 
 [host_machine]
@@ -366,6 +372,8 @@ define CLEAN_LIBGJPEG
 endef
 
 define SIMPLE_CARGO_BUILD
+	IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
+	MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
 	cargo build \
 	--manifest-path $(PROJECT_DIR)/Cargo.toml \
 	--release;
@@ -381,6 +389,8 @@ define CARGO_BUILD
 		--target $(CARGO_TARGET) \
 		--release; \
 	else \
+		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
+		MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
 		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
@@ -453,7 +463,7 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :MinimumOSVersion string $(APPLE_IOS_VERSION_MIN)" \
+                     -c "Add :MinimumOSVersion string $(if $(findstring macosx,$(BASE_DIR)),$(APPLE_MACOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN))" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \
@@ -566,7 +576,7 @@ define NEW_APPLE_CMAKE_BUILD
 $4/$(CMAKE_CACHE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
 $4/$(CMAKE_CACHE): DEP_BUILD_DIR := $4
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
-$4/$(CMAKE_CACHE): CMAKE_BUILD_SETTINGS := -GXcode -DCMAKE_MACOSX_BUNDLE=NO
+$4/$(CMAKE_CACHE): CMAKE_BUILD_SETTINGS := -GXcode -DCMAKE_MACOSX_BUNDLE=NO -DDEPLOYMENT_TARGET=$(if $(findstring DARWIN,$1),$(APPLE_MACOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN))
 $4/$(CMAKE_CACHE): PLATFORM := -DPLATFORM=$$($1_ARCH)
 $4/$(CMAKE_CACHE): TOOLCHAIN_FILE := -DCMAKE_TOOLCHAIN_FILE=$(PWD)/$(DEPS_MODULES_DIR)/ios-cmake/ios.toolchain.cmake
 $4/$(CMAKE_CACHE):

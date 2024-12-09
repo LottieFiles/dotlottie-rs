@@ -20,6 +20,7 @@ zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
 base64 = "0.22.1"
 json = "0.12.4"
 jzon = "0.12.5"
+spin = "0.9"
 
 [build-dependencies]
 bindgen = "0.70.1"

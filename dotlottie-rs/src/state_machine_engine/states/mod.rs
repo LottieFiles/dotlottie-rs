@@ -114,6 +114,7 @@ impl StateTrait for State {
                     background_color: background_color.unwrap_or(default_config.background_color),
                     layout: Layout::default(),
                     segment: [].to_vec(),
+                    theme_id: "".to_string(),
                 };
 
                 if let Ok(player_read) = player.try_read() {

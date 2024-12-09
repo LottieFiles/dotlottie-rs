@@ -1692,7 +1692,6 @@ impl DotLottiePlayer {
         self.player.read().unwrap().is_complete()
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn unsubscribe(&self, observer: &Arc<dyn Observer>) {
         self.player.write().unwrap().unsubscribe(observer);
     }
@@ -1701,8 +1700,12 @@ impl DotLottiePlayer {
         self.player.write().unwrap().set_theme(theme_id)
     }
 
-    pub fn load_state_machine_data(&self, state_machine: &str) -> bool {
-        let state_machine = StateMachine::new(state_machine, self.player.clone());
+    pub fn reset_theme(&self) -> bool {
+        self.player.write().unwrap().reset_theme()
+    }
+
+    pub fn state_machine_load_data(&self, state_machine: &str) -> bool {
+        let state_machine = StateMachineEngine::new(state_machine, self.player.clone(), None);
 
         if state_machine.is_ok() {
             match self.state_machine.try_write() {

@@ -96,7 +96,7 @@ WASM_BUILD := $(BUILD)/$(WASM)
 
 EMSDK := emsdk
 EMSDK_DIR := $(PROJECT_DIR)/$(DEPS_MODULES_DIR)/$(EMSDK)
-EMSDK_VERSION := 3.1.57
+EMSDK_VERSION := 3.1.73
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
@@ -370,6 +370,14 @@ endef
 define CLEAN_LIBGJPEG
 	echo "Removing libjpeg from rm /usr/local/lib/libjpeg*"
 	rm -f /usr/local/lib/libjpeg*
+endef
+
+define SIMPLE_CARGO_BUILD
+	IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
+	MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
+	cargo build \
+	--manifest-path $(PROJECT_DIR)/Cargo.toml \
+	--release;
 endef
 
 define CARGO_BUILD

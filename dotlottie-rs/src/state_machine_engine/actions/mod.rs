@@ -244,7 +244,7 @@ impl ActionTrait for Action {
 
                 match read_lock {
                     Ok(player) => {
-                        if !player.load_theme(theme_id) {
+                        if !player.set_theme(theme_id) {
                             return Err(StateMachineActionError::ExecuteError(format!(
                                 "Error loading theme: {}",
                                 theme_id
@@ -264,7 +264,7 @@ impl ActionTrait for Action {
 
                 match read_lock {
                     Ok(player) => {
-                        if !player.load_theme_data(value) {
+                        if !player.set_theme_data(value) {
                             return Err(StateMachineActionError::ExecuteError(format!(
                                 "Error loading theme data: {}",
                                 value
@@ -363,7 +363,7 @@ impl ActionTrait for Action {
 
                 match read_lock {
                     Ok(player) => {
-                        if !player.load_theme(theme_id) {
+                        if !player.set_theme(theme_id) {
                             return Err(StateMachineActionError::ExecuteError(
                                 "Error loading theme".to_string(),
                             ));

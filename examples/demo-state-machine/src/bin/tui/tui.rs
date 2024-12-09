@@ -26,8 +26,8 @@ use std::{
 
 const WIDTH: usize = 400;
 const HEIGHT: usize = 300;
-const LOADED_STATE_MACHINE: &str = "experi_global_entry";
-const LOADED_ANIMATION: &str = "smileys";
+const LOADED_STATE_MACHINE: &str = "rating";
+const LOADED_ANIMATION: &str = "star_marked";
 
 // const ANIMATION_FILES: [(&str, &str, &str); 8] = [
 //     ("[Exploding Pigeon]", "pigeon", "pigeon_with_events"),

@@ -160,6 +160,7 @@ interface DotLottiePlayer {
     boolean state_machine_set_boolean_trigger([ByRef] string key, boolean value);
     boolean state_machine_set_string_trigger([ByRef] string key, [ByRef] string value);
     boolean state_machine_set_numeric_trigger([ByRef] string key, f32 value);
+    string state_machine_current_state();
     boolean state_machine_subscribe(StateMachineObserver observer);
     boolean state_machine_unsubscribe([ByRef] StateMachineObserver observer);
 };

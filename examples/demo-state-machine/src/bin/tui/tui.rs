@@ -26,8 +26,8 @@ use std::{
 
 const WIDTH: usize = 400;
 const HEIGHT: usize = 300;
-const LOADED_STATE_MACHINE: &str = "rating";
-const LOADED_ANIMATION: &str = "star_marked";
+const LOADED_STATE_MACHINE: &str = "experi_global_entry";
+const LOADED_ANIMATION: &str = "smileys";
 
 // const ANIMATION_FILES: [(&str, &str, &str); 8] = [
 //     ("[Exploding Pigeon]", "pigeon", "pigeon_with_events"),
@@ -437,6 +437,17 @@ fn load_state_machine(
 
     let s = player.state_machine_start();
 
+    // let rs = player.state_machine_set_playback_actions_active(true);
+
+    // if !rs {
+    //     log_sender
+    //         .send(LogMessage {
+    //             content: format!("Failed to reset config."),
+    //             level: LogLevel::Info,
+    //         })
+    //         .unwrap();
+    // }
+
     if !s {
         log_sender
             .send(LogMessage {
@@ -470,41 +481,6 @@ fn load_animation(player: &DotLottiePlayer, animation_name: &str, log_sender: &S
     player.load_dotlottie_data(&markers_buffer, WIDTH as u32, HEIGHT as u32);
     player.pause();
     player.render();
-}
-
-fn load_animation_and_state_machine(
-    player: &DotLottiePlayer,
-    animation_name: &str,
-    state_machine_name: &str,
-) -> (bool, bool) {
-    let mut markers = File::open(format!(
-        "./src/bin/shared/animations/{}.lottie",
-        animation_name
-    ))
-    .expect("no file found");
-    let metadatamarkers = fs::metadata(format!(
-        "./src/bin/shared/animations/{}.lottie",
-        animation_name
-    ))
-    .expect("unable to read metadata");
-    let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
-    markers.read(&mut markers_buffer).expect("buffer overflow");
-
-    player.load_dotlottie_data(&markers_buffer, WIDTH as u32, HEIGHT as u32);
-    player.pause();
-    player.render();
-
-    let message: String = fs::read_to_string(format!(
-        "./src/bin/shared/statemachines/{}.json",
-        state_machine_name
-    ))
-    .unwrap();
-
-    let r = player.state_machine_load_data(&message);
-
-    let s = player.state_machine_start();
-
-    (r, s)
 }
 
 fn main() -> Result<(), io::Error> {
@@ -557,6 +533,8 @@ fn main() -> Result<(), io::Error> {
 
     let s = lottie_player.state_machine_start();
 
+    // let rs = lottie_player.state_machine_set_playback_actions_active(true);
+
     lottie_player.render();
 
     /* Dotlottie stuff ---------------------------------------------------------------------------------------- */
@@ -578,6 +556,12 @@ fn main() -> Result<(), io::Error> {
             level: LogLevel::Info,
         })
         .unwrap();
+    // log_sender
+    //     .send(LogMessage {
+    //         content: format!("Reset config returned: {}", rs),
+    //         level: LogLevel::Info,
+    //     })
+    //     .unwrap();
 
     run_app(
         &mut terminal,

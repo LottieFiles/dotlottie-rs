@@ -498,6 +498,19 @@ pub unsafe extern "C" fn dotlottie_active_animation_id(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_current_state(
+    ptr: *mut DotLottiePlayer,
+    result: *mut c_char,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        let current_state_name = dotlottie_player.state_machine_current_state();
+        to_exit_status(
+            DotLottieString::copy(&current_state_name, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
+        )
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn dotlottie_active_theme_id(
     ptr: *mut DotLottiePlayer,
     result: *mut c_char,

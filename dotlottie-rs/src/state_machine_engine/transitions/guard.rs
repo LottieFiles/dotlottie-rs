@@ -161,56 +161,46 @@ impl GuardTrait for Guard {
                                 if let Some(numeric_value) = opt_numeric_value {
                                     match condition_type {
                                         TransitionGuardConditionType::GreaterThan => {
-                                            return trigger_value > numeric_value;
+                                            trigger_value > numeric_value
                                         }
                                         TransitionGuardConditionType::GreaterThanOrEqual => {
-                                            return trigger_value >= numeric_value;
+                                            trigger_value >= numeric_value
                                         }
                                         TransitionGuardConditionType::LessThan => {
-                                            return trigger_value < numeric_value;
+                                            trigger_value < numeric_value
                                         }
                                         TransitionGuardConditionType::LessThanOrEqual => {
-                                            return trigger_value <= numeric_value;
+                                            trigger_value <= numeric_value
                                         }
                                         TransitionGuardConditionType::Equal => {
-                                            return trigger_value == numeric_value;
+                                            trigger_value == numeric_value
                                         }
                                         TransitionGuardConditionType::NotEqual => {
-                                            return trigger_value != numeric_value;
+                                            trigger_value != numeric_value
                                         }
                                     }
                                 } else {
                                     // Failed to get value from triggers
-                                    return false;
+                                    false
                                 }
                             } else {
-                                return false;
+                                false
                             }
                         }
                         StringNumberBool::F32(value) => match condition_type {
-                            TransitionGuardConditionType::GreaterThan => {
-                                return trigger_value > value;
-                            }
+                            TransitionGuardConditionType::GreaterThan => trigger_value > value,
                             TransitionGuardConditionType::GreaterThanOrEqual => {
-                                return trigger_value >= value;
+                                trigger_value >= value
                             }
-                            TransitionGuardConditionType::LessThan => {
-                                return trigger_value < value;
-                            }
-                            TransitionGuardConditionType::LessThanOrEqual => {
-                                return trigger_value <= value;
-                            }
-                            TransitionGuardConditionType::Equal => {
-                                return trigger_value == value;
-                            }
-                            TransitionGuardConditionType::NotEqual => {
-                                return trigger_value != value;
-                            }
+                            TransitionGuardConditionType::LessThan => trigger_value < value,
+                            TransitionGuardConditionType::LessThanOrEqual => trigger_value <= value,
+                            TransitionGuardConditionType::Equal => trigger_value == value,
+                            TransitionGuardConditionType::NotEqual => trigger_value != value,
                         },
-                        StringNumberBool::Bool(_) => return false,
+                        StringNumberBool::Bool(_) => false,
                     }
                 } else {
-                    return false;
+                    false
                 }
             }
             _ => false,

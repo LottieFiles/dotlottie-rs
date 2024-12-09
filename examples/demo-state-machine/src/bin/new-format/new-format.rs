@@ -6,8 +6,8 @@ use std::io::Read;
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
-pub const WIDTH: usize = 500;
-pub const HEIGHT: usize = 500;
+pub const WIDTH: usize = 125;
+pub const HEIGHT: usize = 125;
 
 pub const STATE_MACHINE_NAME: &str = "rating";
 pub const ANIMATION_NAME: &str = "star_marked";
@@ -140,7 +140,10 @@ fn main() {
 
         if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
             let p = &mut *locked_player.write().unwrap();
-            p.state_machine_fire_event("Step");
+
+            rating += 1.0;
+            println!("current state: {}", p.state_machine_current_state());
+            p.state_machine_set_numeric_trigger("rating", rating);
         }
         let p = &mut *locked_player.write().unwrap();
 

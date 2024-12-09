@@ -15,22 +15,15 @@ on:
       commitSHA:
         description: "Commit SHA (leave blank for default branch)"
         required: false
-      machine:
-        description: "Machine to run on, e.g. macos-12, ubuntu-20.04"
-        required: false
-        default: "macos-12"
-      appleXcodeVersion:
-        description: "Apple Xcode version, e.g. Xcode_13.3.1.app"
-        required: false
-        default: "Xcode_13.3.1.app"
-      appleMacosxSdk:
-        description: "Apple MacOSX SDK, e.g. MacOSX12.3"
-        required: false
-        default: "MacOSX12.3"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.inputs.target }}-${{ github.event.inputs.commitSHA || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ${{ github.event.inputs.machine }}
+  build-apple:
+    runs-on: macos-latest-large
+    if: github.event.inputs.target == 'apple' || github.event.inputs.target == 'all'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -38,9 +31,6 @@ jobs:
           ref: ${{ github.event.inputs.commitSHA || github.ref }}
 
       - uses: Homebrew/actions/setup-homebrew@master
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: "13.3.1"
       - uses: ningenMe/setup-rustup@v1.1.0
 
       - name: Install Make
@@ -48,42 +38,77 @@ jobs:
 
       - name: Build Setup
         run: make mac-setup
+        env:
+          TARGET: apple
+
+      - name: Build Apple
+        run: |
+          rm -f /usr/local/lib/libjpeg*
+          make apple
+
+      - name: Upload Apple Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.darwin.tar.gz
+          path: release/apple/dotlottie-player.darwin.tar.gz
+          if-no-files-found: error
+
+  build-android:
+    runs-on: macos-latest
+    if: github.event.inputs.target == 'android' || github.event.inputs.target == 'all'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+
+      - uses: Homebrew/actions/setup-homebrew@master
+      - uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Install Make
+        run: brew install make
+
+      - name: Build Setup
+        run: make mac-setup
+        env:
+          TARGET: android
 
       - name: Build Android
-        if: github.event.inputs.target == 'android' || github.event.inputs.target == 'all'
-        env:
-          APPLE_XCODE_APP_NAME: ${{ github.event.inputs.appleXcodeVersion }}
-          APPLE_MACOSX_SDK: ${{ github.event.inputs.appleMacosxSdk }}
         run: make android
 
       - name: Upload Android Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: android
-          path: ./release/android/*.tar.gz
+          name: dotlottie-player.android.tar.gz
+          path: release/android/dotlottie-player.android.tar.gz
+          if-no-files-found: error
 
-      - name: Build Apple
-        if: github.event.inputs.target == 'apple' || github.event.inputs.target == 'all'
+  build-wasm:
+    runs-on: macos-latest
+    if: github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+
+      - uses: Homebrew/actions/setup-homebrew@master
+      - uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Install Make
+        run: brew install make
+
+      - name: Build Setup
+        run: make mac-setup
         env:
-          APPLE_XCODE_APP_NAME: ${{ github.event.inputs.appleXcodeVersion }}
-          APPLE_MACOSX_SDK: ${{ github.event.inputs.appleMacosxSdk }}
-        run: rm -f /usr/local/lib/libjpeg* ; make apple
-
-      - name: Upload Apple Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: apple
-          path: ./release/apple/*.tar.gz
+          TARGET: wasm
 
       - name: Build WASM
-        if: github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all'
-        env:
-          APPLE_XCODE_APP_NAME: ${{ github.event.inputs.appleXcodeVersion }}
-          APPLE_MACOSX_SDK: ${{ github.event.inputs.appleMacosxSdk }}
         run: make wasm
 
       - name: Upload WASM Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wasm
-          path: ./release/wasm/*.tar.gz
+          name: dotlottie-player.wasm.tar.gz
+          path: release/wasm/dotlottie-player.wasm.tar.gz
+          if-no-files-found: error

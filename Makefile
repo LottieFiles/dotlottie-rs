@@ -67,8 +67,8 @@ APPLE_BUILD := $(BUILD)/$(APPLE)
 APPLE_IOS := ios
 APPLE_IOS_PLATFORM := iPhoneOS
 APPLE_IOS_SDK ?= iPhoneOS
-APPLE_IOS_VERSION_MIN ?= 15.4
-THORVG_APPLE_IOS_VERSION_MIN ?= 11.0 # Minimum iOS version supported by ThorVG, needs to be the same for cpp_args and cpp_link_args
+APPLE_MACOS_VERSION_MIN ?= 11.0
+APPLE_IOS_VERSION_MIN ?= 13.0
 APPLE_XCODE_APP_NAME ?= Xcode.app
 
 APPLE_IOS_SIMULATOR := ios-simulator
@@ -96,7 +96,7 @@ WASM_BUILD := $(BUILD)/$(WASM)
 
 EMSDK := emsdk
 EMSDK_DIR := $(PROJECT_DIR)/$(DEPS_MODULES_DIR)/$(EMSDK)
-EMSDK_VERSION := 3.1.68
+EMSDK_VERSION := 3.1.57
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
@@ -226,8 +226,14 @@ has_function_printf = true
 
 $(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),\
 [built-in options]\n\
-cpp_args = ['-miphoneos-version-min=$(THORVG_APPLE_IOS_VERSION_MIN)']\n\
-cpp_link_args = ['-miphoneos-version-min=$(THORVG_APPLE_IOS_VERSION_MIN)']\n\
+cpp_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
+cpp_link_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
+,)
+
+$(if $(filter $(PLATFORM),$(APPLE_MACOSX_PLATFORM)),\
+[built-in options]\n\
+cpp_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)']\n\
+cpp_link_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)']\n\
 ,)
 
 [host_machine]
@@ -330,6 +336,7 @@ define SETUP_MESON
 		-Dthreads=false \
 		-Dstatic=$(STATIC) \
 		-Dextra=$(EXTRA) \
+		-Dfile=$(FILE) \
 		$(CROSS_FILE) "$(THORVG_DEP_SOURCE_DIR)" "$(THORVG_DEP_BUILD_DIR)"
 endef
 
@@ -365,12 +372,6 @@ define CLEAN_LIBGJPEG
 	rm -f /usr/local/lib/libjpeg*
 endef
 
-define SIMPLE_CARGO_BUILD
-	cargo build \
-	--manifest-path $(PROJECT_DIR)/Cargo.toml \
-	--release;
-endef
-
 define CARGO_BUILD
 	if [ "$(CARGO_TARGET)" = "wasm32-unknown-emscripten" ]; then \
 		source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
@@ -381,6 +382,8 @@ define CARGO_BUILD
 		--target $(CARGO_TARGET) \
 		--release; \
 	else \
+		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
+		MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
 		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
@@ -453,7 +456,7 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :MinimumOSVersion string $(APPLE_IOS_VERSION_MIN)" \
+                     -c "Add :MinimumOSVersion string $(if $(findstring macosx,$(BASE_DIR)),$(APPLE_MACOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN))" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \
@@ -566,7 +569,7 @@ define NEW_APPLE_CMAKE_BUILD
 $4/$(CMAKE_CACHE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
 $4/$(CMAKE_CACHE): DEP_BUILD_DIR := $4
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
-$4/$(CMAKE_CACHE): CMAKE_BUILD_SETTINGS := -GXcode -DCMAKE_MACOSX_BUNDLE=NO
+$4/$(CMAKE_CACHE): CMAKE_BUILD_SETTINGS := -GXcode -DCMAKE_MACOSX_BUNDLE=NO -DDEPLOYMENT_TARGET=$(if $(findstring DARWIN,$1),$(APPLE_MACOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN))
 $4/$(CMAKE_CACHE): PLATFORM := -DPLATFORM=$$($1_ARCH)
 $4/$(CMAKE_CACHE): TOOLCHAIN_FILE := -DCMAKE_TOOLCHAIN_FILE=$(PWD)/$(DEPS_MODULES_DIR)/ios-cmake/ios.toolchain.cmake
 $4/$(CMAKE_CACHE):
@@ -616,13 +619,14 @@ endef
 
 define NEW_THORVG_BUILD
 # Setup meson for thorvg
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): export PKG_CONFIG_PATH := $(PWD)/$$($1_DEPS_LIB_DIR)/pkgconfig:$(PWD)/$$($1_DEPS_LIB64_DIR)/pkgconfig
+$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): export PKG_CONFIG_PATH := $(PWD)/$$($1_DEPS_LIB_DIR)/pkgconfig:$(PWD)/$$($1_DEPS_LIB64_DIR)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$(THORVG)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_BUILD_DIR := $$($1_THORVG_DEP_BUILD_DIR)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): CROSS_FILE := --cross-file $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): LOG := false
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): STATIC := $3
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): EXTRA := $4
+$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): FILE := $5
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE)
 $(if $(filter $3,false),
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(LIBJPEG_TURBO_LIB)
@@ -644,7 +648,7 @@ $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,LIBPNG_LIB,$(LIBPNG),$$($1_LIBPNG_DEP_B
 $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,ZLIB,$(ZLIB),$$($1_ZLIB_DEP_BUILD_DIR),$(ZLIB_LIB)))
 $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,WEBP,$(WEBP),$$($1_WEBP_DEP_BUILD_DIR),$(WEBP_LIB)))
 $(eval $(call NEW_ANDROID_CROSS_FILE,$1))
-$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions"))
+$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions",true))
 endef
 
 define NEW_APPLE_DEPS_BUILD
@@ -653,12 +657,12 @@ $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,LIBPNG_LIB,$(LIBPNG),$$($1_LIBPNG_DEP_BUI
 $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,ZLIB,$(ZLIB),$$($1_ZLIB_DEP_BUILD_DIR),$(ZLIB_LIB)))
 $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,WEBP,$(WEBP),$$($1_WEBP_DEP_BUILD_DIR),$(WEBP_LIB)))
 $(eval $(call NEW_APPLE_CROSS_FILE,$1))
-$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions"))
+$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions",true))
 endef
 
 define NEW_WASM_DEPS_BUILD
 $(eval $(call NEW_WASM_CROSS_FILE,$1,$$($1_THORVG_DEP_BUILD_DIR)/..,windows))
-$(eval $(call NEW_THORVG_BUILD,$1,false,true,"lottie_expressions"))
+$(eval $(call NEW_THORVG_BUILD,$1,false,true,"lottie_expressions",false))
 endef
 
 define NEW_ANDROID_BUILD
@@ -824,6 +828,7 @@ $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_BUILD_DIR := $(TH
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): LOG := false
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): STATIC := false
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): EXTRA := lottie_expressions
+$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): FILE := true
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(LIBJPEG_TURBO_LIB)
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(LIBPNG_LIB)
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(ZLIB_LIB)

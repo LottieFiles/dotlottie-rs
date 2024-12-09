@@ -24,69 +24,36 @@ pub enum LottieRendererError {
     InvalidArgument(String),
 }
 
-fn into_lottie<R: Renderer>(err: R::Error) -> LottieRendererError {
-    LottieRendererError::RendererError(Box::new(err))
+pub struct LottieRenderer {
+    thorvg_animation: Animation,
+    thorvg_canvas: Canvas,
+    thorvg_background_shape: Shape,
+    pub picture_width: f32,
+    pub picture_height: f32,
+    pub width: u32,
+    pub height: u32,
+    pub buffer: Vec<u32>,
+    pub background_color: u32,
+    pub current_frame: f32,
+    layout: Layout,
 }
 
-pub trait LottieRenderer {
-    fn load_data(
-        &mut self,
-        data: &str,
-        width: u32,
-        height: u32,
-        copy: bool,
-    ) -> Result<(), LottieRendererError>;
-
-    fn picture_width(&self) -> f32;
-
-    fn picture_height(&self) -> f32;
-
-    fn width(&self) -> u32;
-
-    fn height(&self) -> u32;
-
-    fn total_frames(&self) -> Result<f32, LottieRendererError>;
-
-    fn duration(&self) -> Result<f32, LottieRendererError>;
-
-    fn current_frame(&self) -> f32;
-
-    fn buffer(&self) -> &[u32];
-
-    fn clear(&mut self);
-
-    fn render(&mut self) -> Result<(), LottieRendererError>;
-
-    fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), LottieRendererError>;
-
-    fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError>;
-
-    fn resize(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError>;
-
-    fn buffer_ptr(&self) -> *const u32;
-
-    fn buffer_len(&self) -> usize;
-
-    fn set_background_color(&mut self, hex_color: u32) -> Result<(), LottieRendererError>;
-
-    fn load_theme_data(&mut self, slots: &str) -> Result<(), LottieRendererError>;
-
-    fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError>;
-
-    fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> Result<bool, LottieRendererError>;
-
-    fn get_layer_bounds(
-        &self,
-        layer_name: &str,
-    ) -> Result<(f32, f32, f32, f32), LottieRendererError>;
+impl Default for LottieRenderer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
-impl dyn LottieRenderer {
-    pub fn new<R: Renderer>(renderer: R) -> Box<Self> {
-        Box::new(LottieRendererImpl {
-            animation: R::Animation::default(),
-            background_shape: R::Shape::default(),
-            renderer,
+impl LottieRenderer {
+    pub fn new() -> Self {
+        let thorvg_canvas = Canvas::new(TvgEngine::TvgEngineSw, 0);
+        let thorvg_animation = Animation::new();
+        let thorvg_background_shape = Shape::new();
+
+        Self {
+            thorvg_animation,
+            thorvg_canvas,
+            thorvg_background_shape,
             buffer: vec![],
             width: 0,
             height: 0,
@@ -322,8 +289,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)
     }
 
-    fn load_theme_data(&mut self, slots: &str) -> Result<(), LottieRendererError> {
-        self.animation.set_slots(slots).map_err(into_lottie::<R>)
+    pub fn load_theme_data(&mut self, slots: &str) -> Result<(), LottieRendererError> {
+        self.thorvg_animation
+            .set_slots(slots)
+            .map_err(LottieRendererError::ThorvgError)
     }
 
     fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError> {

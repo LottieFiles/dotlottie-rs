@@ -1,3 +1,31 @@
+## 0.1.34 (2024-12-09)
+
+### Features
+
+#### 🎸 upgrade to thorvg v0.15.6
+
+### Fixes
+
+#### add -Dfile=false flag for thorvg wasm builds to resolve runtime errors related to missing filesystem operations (#267)
+
+#### minimum deployment version of the iOS and MacOSX targets (#269)
+
+## 0.1.33 (2024-11-20)
+
+### Features
+
+#### made thorvg an optional dependency (#248)
+
+#### update thorvg to version 0.15.2 (#255)
+
+#### Update thorvg to v0.15.4 (#262)
+
+#### handling of dotLottie v2 specs  (#254)
+
+### Fixes
+
+#### removed unused lib.rs file (#247)
+
 ## 0.1.32 (2024-10-07)
 
 ### Features

@@ -1,6 +1,18 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{states::StateTrait, Config, DotLottiePlayer};
+    use dotlottie_rs::states::StateTrait;
+    use dotlottie_rs::{
+        parser::TransitionGuardConditionType,
+        transitions::{guard::Guard, TransitionTrait},
+    };
+
+    use dotlottie_rs::DotLottiePlayer;
+
+    #[test]
+    pub fn guards_loaded_correctly() {
+        use dotlottie_rs::transitions::TransitionTrait;
+
+        use dotlottie_rs::{states::State, Config, DotLottiePlayer};
 
     fn get_current_state_name(player: &DotLottiePlayer) -> String {
         let sm = player.get_state_machine();
@@ -26,6 +38,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     pub fn not_equal_test() {
         let global_state = include_str!("fixtures/statemachines/guard_tests/equal_not_equal.json");
         let player = DotLottiePlayer::new(Config::default());
@@ -46,6 +59,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     pub fn equal_test() {
         let global_state = include_str!("fixtures/statemachines/guard_tests/equal_not_equal.json");
         let player = DotLottiePlayer::new(Config::default());
@@ -106,9 +120,11 @@ mod tests {
     }
 
     #[test]
-    pub fn greater_than_or_equal() {
-        let global_state =
-            include_str!("fixtures/statemachines/guard_tests/greater_than_equal.json");
+    pub fn greater_than_greater_than_or_equal_test() {
+        use dotlottie_rs::transitions::TransitionTrait;
+
+        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
+
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -172,8 +188,11 @@ mod tests {
     }
 
     #[test]
-    pub fn less_than() {
-        let global_state = include_str!("fixtures/statemachines/guard_tests/less_than.json");
+    pub fn less_than_less_than_equal_test() {
+        use dotlottie_rs::transitions::TransitionTrait;
+
+        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
+
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);

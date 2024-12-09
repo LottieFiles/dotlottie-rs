@@ -4,14 +4,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-
 #define DOTLOTTIE_ERROR 1
 
 #define DOTLOTTIE_INVALID_PARAMETER 2
 
 #define DOTLOTTIE_MANIFEST_NOT_AVAILABLE 3
-
-#define DOTLOTTIE_MANIFEST_THEMES_NOT_AVAILABLE 4
 
 #define DOTLOTTIE_MAX_STR_LENGTH 512
 
@@ -29,7 +26,8 @@
 
 #define LISTENER_TYPE_UNSET 0
 
-typedef enum DotLottieFit {
+typedef enum DotLottieFit
+{
   Contain,
   Fill,
   Cover,
@@ -38,7 +36,8 @@ typedef enum DotLottieFit {
   Void,
 } DotLottieFit;
 
-typedef enum Mode {
+typedef enum Mode
+{
   Forward,
   Reverse,
   Bounce,
@@ -47,17 +46,20 @@ typedef enum Mode {
 
 typedef struct DotLottiePlayer DotLottiePlayer;
 
-typedef struct DotLottieLayout {
+typedef struct DotLottieLayout
+{
   enum DotLottieFit fit;
   float align_x;
   float align_y;
 } DotLottieLayout;
 
-typedef struct DotLottieString {
+typedef struct DotLottieString
+{
   char value[DOTLOTTIE_MAX_STR_LENGTH];
 } DotLottieString;
 
-typedef struct DotLottieConfig {
+typedef struct DotLottieConfig
+{
   enum Mode mode;
   bool loop_animation;
   float speed;
@@ -68,134 +70,146 @@ typedef struct DotLottieConfig {
   uint32_t background_color;
   struct DotLottieLayout layout;
   struct DotLottieString marker;
+  struct DotLottieString theme_id;
 } DotLottieConfig;
 
-typedef struct LayerBoundingBox {
+typedef struct LayerBoundingBox
+{
   float x;
   float y;
   float w;
   float h;
 } LayerBoundingBox;
 
-typedef struct DotLottieOption_DotLottieString {
+typedef struct DotLottieOption_DotLottieString
+{
   struct DotLottieString value;
   bool defined;
 } DotLottieOption_DotLottieString;
 
-typedef struct DotLottieOption_u32 {
-  uint32_t value;
-  bool defined;
-} DotLottieOption_u32;
-
-typedef struct DotLottieManifest {
-  struct DotLottieOption_DotLottieString active_animation_id;
-  struct DotLottieOption_DotLottieString author;
-  struct DotLottieOption_DotLottieString description;
+typedef struct DotLottieManifest
+{
   struct DotLottieOption_DotLottieString generator;
-  struct DotLottieOption_DotLottieString keywords;
-  struct DotLottieOption_u32 revision;
   struct DotLottieOption_DotLottieString version;
 } DotLottieManifest;
 
-typedef struct DotLottieOption_bool {
-  bool value;
-  bool defined;
-} DotLottieOption_bool;
-
-typedef struct DotLottieOption_i8 {
-  int8_t value;
-  bool defined;
-} DotLottieOption_i8;
-
-typedef struct DotLottieOption_f32 {
-  float value;
-  bool defined;
-} DotLottieOption_f32;
-
-typedef struct DotLottieManifestAnimation {
-  struct DotLottieOption_bool autoplay;
-  struct DotLottieOption_DotLottieString default_theme;
-  struct DotLottieOption_i8 direction;
-  struct DotLottieOption_bool hover;
+typedef struct DotLottieManifestAnimation
+{
   struct DotLottieOption_DotLottieString id;
-  struct DotLottieOption_u32 intermission;
-  struct DotLottieOption_bool loop;
-  struct DotLottieOption_u32 loop_count;
-  struct DotLottieOption_DotLottieString play_mode;
-  struct DotLottieOption_f32 speed;
-  struct DotLottieOption_DotLottieString theme_color;
+  struct DotLottieOption_DotLottieString name;
+  struct DotLottieOption_DotLottieString initial_theme;
+  struct DotLottieOption_DotLottieString background;
 } DotLottieManifestAnimation;
 
-typedef struct DotLottieManifestState {
-  struct DotLottieString state;
-} DotLottieManifestState;
-
-typedef struct DotLottieManifestTheme {
+typedef struct DotLottieManifestStateMachine
+{
   struct DotLottieString id;
+  struct DotLottieOption_DotLottieString name;
+} DotLottieManifestStateMachine;
+
+typedef struct DotLottieManifestTheme
+{
+  struct DotLottieString id;
+  struct DotLottieOption_DotLottieString name;
 } DotLottieManifestTheme;
 
-typedef struct DotLottieManifestThemeAnimation {
-  struct DotLottieString id;
-} DotLottieManifestThemeAnimation;
-
-typedef struct DotLottieMarker {
+typedef struct DotLottieMarker
+{
   struct DotLottieString name;
   float duration;
   float time;
 } DotLottieMarker;
 
-typedef enum DotLottieEvent_Tag {
-  PointerDown,
-  PointerUp,
-  PointerMove,
-  PointerEnter,
-  PointerExit,
+typedef enum DotLottieEvent_Tag
+{
+  Boolean,
+  String,
+  Numeric,
+  OnPointerDown,
+  OnPointerUp,
+  OnPointerMove,
+  OnPointerEnter,
+  OnPointerExit,
   OnComplete,
+  SetNumericContext,
 } DotLottieEvent_Tag;
 
-typedef struct PointerDown_Body {
+typedef struct Boolean_Body
+{
+  bool value;
+} Boolean_Body;
+
+typedef struct String_Body
+{
+  struct DotLottieString value;
+} String_Body;
+
+typedef struct Numeric_Body
+{
+  float value;
+} Numeric_Body;
+
+typedef struct OnPointerDown_Body
+{
   float x;
   float y;
-} PointerDown_Body;
+} OnPointerDown_Body;
 
-typedef struct PointerUp_Body {
+typedef struct OnPointerUp_Body
+{
   float x;
   float y;
-} PointerUp_Body;
+} OnPointerUp_Body;
 
-typedef struct PointerMove_Body {
+typedef struct OnPointerMove_Body
+{
   float x;
   float y;
-} PointerMove_Body;
+} OnPointerMove_Body;
 
-typedef struct PointerEnter_Body {
+typedef struct OnPointerEnter_Body
+{
   float x;
   float y;
-} PointerEnter_Body;
+} OnPointerEnter_Body;
 
-typedef struct PointerExit_Body {
+typedef struct OnPointerExit_Body
+{
   float x;
   float y;
-} PointerExit_Body;
+} OnPointerExit_Body;
 
-typedef struct DotLottieEvent {
+typedef struct SetNumericContext_Body
+{
+  struct DotLottieString key;
+  float value;
+} SetNumericContext_Body;
+
+typedef struct DotLottieEvent
+{
   DotLottieEvent_Tag tag;
-  union {
-    PointerDown_Body pointer_down;
-    PointerUp_Body pointer_up;
-    PointerMove_Body pointer_move;
-    PointerEnter_Body pointer_enter;
-    PointerExit_Body pointer_exit;
+  union
+  {
+    Boolean_Body boolean;
+    String_Body string;
+    Numeric_Body numeric;
+    OnPointerDown_Body on_pointer_down;
+    OnPointerUp_Body on_pointer_up;
+    OnPointerMove_Body on_pointer_move;
+    OnPointerEnter_Body on_pointer_enter;
+    OnPointerExit_Body on_pointer_exit;
+    SetNumericContext_Body set_numeric_context;
   };
 } DotLottieEvent;
 
-typedef void (*OnTransitionOp)(const char*, const char*);
+typedef void (*OnTransitionOp)(const char *, const char *);
 
-typedef void (*OnStateEnteredOp)(const char*);
+typedef void (*OnStateEnteredOp)(const char *);
 
-typedef void (*OnStateExitOp)(const char*);
+typedef void (*OnStateExitOp)(const char *);
 
-typedef struct StateMachineObserver {
+typedef struct StateMachineObserver
+{
   OnTransitionOp on_transition_op;
   OnStateEnteredOp on_state_entered_op;
   OnStateExitOp on_state_exit_op;
@@ -209,7 +223,8 @@ typedef void (*OnRenderOp)(float);
 
 typedef void (*OnLoopOp)(uint32_t);
 
-typedef struct Observer {
+typedef struct Observer
+{
   OnOp on_load_op;
   OnOp on_load_error_op;
   OnOp on_play_op;
@@ -278,10 +293,6 @@ int32_t dotlottie_load_dotlottie_data(struct DotLottiePlayer *ptr,
                                       uint32_t width,
                                       uint32_t height);
 
-int32_t dotlottie_load_theme(struct DotLottiePlayer *ptr, const char *theme_id);
-
-int32_t dotlottie_load_theme_data(struct DotLottiePlayer *ptr, const char *theme_data);
-
 int32_t dotlottie_loop_count(struct DotLottiePlayer *ptr, uint32_t *result);
 
 int32_t dotlottie_manifest(struct DotLottiePlayer *ptr, struct DotLottieManifest *result);
@@ -290,14 +301,9 @@ int32_t dotlottie_manifest_animations(struct DotLottiePlayer *ptr,
                                       struct DotLottieManifestAnimation *result,
                                       size_t *size);
 
-int32_t dotlottie_manifest_states(struct DotLottiePlayer *ptr,
-                                  struct DotLottieManifestState *result,
-                                  size_t *size);
-
-int32_t dotlottie_manifest_theme_animations(struct DotLottiePlayer *ptr,
-                                            const struct DotLottieManifestTheme *theme,
-                                            struct DotLottieManifestThemeAnimation *result,
-                                            size_t *size);
+int32_t dotlottie_manifest_state_machines(struct DotLottiePlayer *ptr,
+                                          struct DotLottieManifestStateMachine *result,
+                                          size_t *size);
 
 int32_t dotlottie_manifest_themes(struct DotLottiePlayer *ptr,
                                   struct DotLottieManifestTheme *result,
@@ -313,9 +319,13 @@ int32_t dotlottie_pause(struct DotLottiePlayer *ptr);
 
 int32_t dotlottie_play(struct DotLottiePlayer *ptr);
 
+int32_t dotlottie_post_event(struct DotLottiePlayer *ptr, const struct DotLottieEvent *event);
+
 int32_t dotlottie_render(struct DotLottiePlayer *ptr);
 
 int32_t dotlottie_request_frame(struct DotLottiePlayer *ptr, float *result);
+
+int32_t dotlottie_reset_theme(struct DotLottiePlayer *ptr);
 
 int32_t dotlottie_resize(struct DotLottiePlayer *ptr, uint32_t width, uint32_t height);
 
@@ -325,11 +335,23 @@ int32_t dotlottie_segment_duration(struct DotLottiePlayer *ptr, float *result);
 
 int32_t dotlottie_set_frame(struct DotLottiePlayer *ptr, float no);
 
+int32_t dotlottie_set_theme(struct DotLottiePlayer *ptr, const char *theme_id);
+
+int32_t dotlottie_set_theme_data(struct DotLottiePlayer *ptr, const char *theme_data);
+
 int32_t dotlottie_set_viewport(struct DotLottiePlayer *ptr,
                                int32_t x,
                                int32_t y,
                                int32_t w,
                                int32_t h);
+
+int32_t dotlottie_stop(struct DotLottiePlayer *ptr);
+
+int32_t dotlottie_subscribe(struct DotLottiePlayer *ptr, struct Observer *observer);
+
+int32_t dotlottie_total_frames(struct DotLottiePlayer *ptr, float *result);
+
+int32_t dotlottie_unsubscribe(struct DotLottiePlayer *ptr, struct Observer *observer);
 
 int32_t dotlottie_state_machine_current_state(struct DotLottiePlayer *ptr, char *result);
 
@@ -364,11 +386,3 @@ int32_t dotlottie_state_machine_subscribe(struct DotLottiePlayer *ptr,
 
 int32_t dotlottie_state_machine_unsubscribe(struct DotLottiePlayer *ptr,
                                             struct StateMachineObserver *observer);
-
-int32_t dotlottie_stop(struct DotLottiePlayer *ptr);
-
-int32_t dotlottie_subscribe(struct DotLottiePlayer *ptr, struct Observer *observer);
-
-int32_t dotlottie_total_frames(struct DotLottiePlayer *ptr, float *result);
-
-int32_t dotlottie_unsubscribe(struct DotLottiePlayer *ptr, struct Observer *observer);

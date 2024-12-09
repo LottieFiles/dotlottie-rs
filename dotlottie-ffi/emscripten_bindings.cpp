@@ -75,9 +75,11 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("segment", &Config::segment)
         .field("backgroundColor", &Config::background_color)
         .field("layout", &Config::layout)
-        .field("marker", &Config::marker);
+        .field("marker", &Config::marker)
+        .field("themeId", &Config::theme_id);
 
     function("createDefaultConfig", &create_default_config);
+    function("transformThemeToLottieSlots", &transform_theme_to_lottie_slots);
 
     // value_object<ManifestTheme>("ManifestTheme")
     //     .field("id", &ManifestTheme::id)
@@ -157,8 +159,10 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         // .function("subscribe", &DotLottiePlayer::subscribe)
         // .function("unsubscribe", &DotLottiePlayer::unsubscribe)
         .function("isComplete", &DotLottiePlayer::is_complete)
-        .function("loadTheme", &DotLottiePlayer::load_theme)
-        .function("loadThemeData", &DotLottiePlayer::load_theme_data)
+        .function("setTheme", &DotLottiePlayer::set_theme)
+        .function("setThemeData", &DotLottiePlayer::set_theme_data)
+        .function("resetTheme", &DotLottiePlayer::reset_theme)
+        .function("setSlots", &DotLottiePlayer::set_slots)
         .function("markers", &DotLottiePlayer::markers)
         .function("activeAnimationId", &DotLottiePlayer::active_animation_id)
         .function("activeThemeId", &DotLottiePlayer::active_theme_id)

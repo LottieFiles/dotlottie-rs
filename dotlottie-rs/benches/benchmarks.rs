@@ -88,15 +88,15 @@ fn animation_loop_benchmark(c: &mut Criterion) {
     });
 }
 
-fn load_theme_benchmark(c: &mut Criterion) {
+fn set_theme_benchmark(c: &mut Criterion) {
     let player = DotLottiePlayer::new(Config::default());
 
     let data = include_bytes!("../tests/fixtures/test.lottie");
     assert!(player.load_dotlottie_data(data, WIDTH, HEIGHT));
 
-    c.bench_function("load_theme", |b| {
+    c.bench_function("set_theme", |b| {
         b.iter(|| {
-            player.load_theme("test_theme");
+            player.set_theme("test_theme");
         });
     });
 }
@@ -107,6 +107,6 @@ criterion_group!(
     load_animation_path_benchmark,
     load_dotlottie_data_benchmark,
     animation_loop_benchmark,
-    load_theme_benchmark,
+    set_theme_benchmark,
 );
 criterion_main!(benches);

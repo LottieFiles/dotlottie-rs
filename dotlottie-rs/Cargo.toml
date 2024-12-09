@@ -7,10 +7,6 @@ links = "thorvg"
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[features]
-thorvg = []
-entry_exit_actions = []
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 thiserror = "1.0.48"
@@ -29,8 +25,6 @@ conan2 = "0.1"
 
 [dev-dependencies]
 criterion = "0.5.1"
-# This is a workaround to enable this feature only on dev.
-dotlottie-rs = { path = ".", features = ["thorvg"] }
 
 [[bench]]
 name = "benchmarks"

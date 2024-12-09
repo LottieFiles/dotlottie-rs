@@ -611,13 +611,11 @@ impl StateMachineEngine {
         let mut tick = true;
 
         let mut ignore_global = false;
-        #[allow(unused_assignments)]
-        let mut ignore_child = false;
 
         while tick {
             // Safety fallback to prevent infinite loops
             tick = false;
-            ignore_child = false;
+            let mut ignore_child = false;
 
             // --------------- Start infinite loop detection
             if let Some(_cycle) = self.detect_cycle() {
@@ -648,7 +646,6 @@ impl StateMachineEngine {
                     // Therfor we need to re-evaluate the global state.
                     // When we entered the state from global, it made on_entry changes.
                     if self.action_mutated_triggers {
-                        #[allow(unused_assignments)]
                         ignore_global = false;
                         ignore_child = true;
 
@@ -656,7 +653,6 @@ impl StateMachineEngine {
                         self.action_mutated_triggers = false;
                     }
                     if self.curr_event.is_some() {
-                        #[allow(unused_assignments)]
                         ignore_global = false;
                         ignore_child = true;
 
@@ -681,7 +677,6 @@ impl StateMachineEngine {
                                 if self.action_mutated_triggers {
                                     tick = true;
 
-                                    #[allow(unused_assignments)]
                                     ignore_global = false;
                                     self.action_mutated_triggers = false;
                                 }
@@ -689,14 +684,12 @@ impl StateMachineEngine {
                                 else if self.curr_event.is_some() {
                                     tick = true;
 
-                                    #[allow(unused_assignments)]
                                     ignore_global = false;
                                 }
                                 // Re-evaluate current state, ignore global since no triggers were changed or events fired
                                 else {
                                     tick = true;
 
-                                    #[allow(unused_assignments)]
                                     ignore_global = true;
                                 }
                             }

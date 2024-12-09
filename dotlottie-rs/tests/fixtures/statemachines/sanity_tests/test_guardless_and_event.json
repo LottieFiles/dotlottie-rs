@@ -1,0 +1,101 @@
+{
+    "descriptor": {
+        "id": "guardless_and_event",
+        "initial": "global"
+    },
+    "states": [
+        {
+            "type": "GlobalState",
+            "name": "global",
+            "loop": true,
+            "autoplay": true,
+            "animationId": "smirk",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "a",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "triggerName": "Rating",
+                            "conditionType": "Equal",
+                            "compareTo": 1
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "b",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "triggerName": "Rating",
+                            "conditionType": "Equal",
+                            "compareTo": 2
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "a",
+            "loop": true,
+            "autoplay": true,
+            "animationId": "astonished",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "d",
+                    "guards": [
+                        {
+                            "type": "Event",
+                            "triggerName": "Step"
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "c",
+                    "guards": []
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "b",
+            "autoplay": true,
+            "loop": true,
+            "animationId": "blush",
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "c",
+            "autoplay": true,
+            "loop": true,
+            "animationId": "crying",
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "d",
+            "autoplay": true,
+            "loop": true,
+            "animationId": "devil",
+            "transitions": []
+        }
+    ],
+    "listeners": [],
+    "triggers": [
+        {
+            "type": "Numeric",
+            "name": "Rating",
+            "value": 0.0
+        },
+        {
+            "type": "Event",
+            "name": "Step"
+        }
+    ]
+}

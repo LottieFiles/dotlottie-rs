@@ -1,0 +1,85 @@
+{
+    "descriptor": {
+        "id": "star-rating",
+        "initial": "global"
+    },
+    "states": [
+        {
+            "name": "global",
+            "type": "GlobalState",
+            "animationId": "",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "c",
+                    "guards": [
+                        {
+                            "type": "Event",
+                            "triggerName": "Step"
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "a",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "conditionType": "Equal",
+                            "triggerName": "OnOffSwitch",
+                            "compareTo": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "b",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "conditionType": "Equal",
+                            "triggerName": "OnOffSwitch",
+                            "compareTo": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "a",
+            "type": "PlaybackState",
+            "animationId": "",
+            "transitions": [],
+            "entryActions": [
+                {
+                    "type": "Fire",
+                    "triggerName": "Step"
+                }
+            ]
+        },
+        {
+            "name": "b",
+            "type": "PlaybackState",
+            "animationId": "",
+            "transitions": []
+        },
+        {
+            "name": "c",
+            "type": "PlaybackState",
+            "animationId": "",
+            "transitions": []
+        }
+    ],
+    "listeners": [],
+    "triggers": [
+        {
+            "type": "Boolean",
+            "name": "OnOffSwitch",
+            "value": false
+        },
+        {
+            "type": "Event",
+            "name": "Step"
+        }
+    ]
+}

@@ -2,7 +2,6 @@
   "rust-analyzer.linkedProjects": [
     "./dotlottie-rs/Cargo.toml",
     "./dotlottie-ffi/Cargo.toml",
-    "./dotlottie-fms/Cargo.toml",
     "./examples/demo-player/Cargo.toml",
     "./examples/demo-state-machine/Cargo.toml"
   ],

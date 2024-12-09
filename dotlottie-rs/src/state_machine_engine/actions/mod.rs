@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use std::{process::Command, rc::Rc, sync::RwLock};
 
-use crate::{DotLottiePlayerContainer, Mode};
+use crate::DotLottiePlayerContainer;
 
 use super::{state_machine::StringNumber, StateMachineEngine};
 
@@ -55,21 +55,6 @@ pub enum Action {
     SetNumeric {
         trigger_name: String,
         value: f32,
-    },
-    Loop {
-        value: bool,
-    },
-    Play {
-        value: bool,
-    },
-    Mode {
-        value: String,
-    },
-    Speed {
-        value: f32,
-    },
-    Segment {
-        value: String,
     },
     Fire {
         trigger_name: String,
@@ -212,7 +197,12 @@ impl ActionTrait for Action {
                 trigger_name,
                 value,
             } => {
-                engine.set_boolean_trigger(trigger_name, *value, run_pipeline, true);
+                let val = engine.get_boolean_trigger(trigger_name);
+
+                if let Some(_val) = val {
+                    engine.set_boolean_trigger(trigger_name, *value, run_pipeline, true);
+                }
+
                 Ok(())
             }
             // Todo: Add support for setting a trigger to a trigger value
@@ -234,7 +224,7 @@ impl ActionTrait for Action {
             }
             // Todo: Add support for setting a trigger to a trigger value
             Action::Fire { trigger_name } => {
-                let _ = engine.fire(&trigger_name, run_pipeline);
+                let _ = engine.fire(trigger_name, run_pipeline);
                 Ok(())
             }
             Action::Reset { trigger_name } => {
@@ -298,17 +288,14 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::OpenUrl { url } => {
-                Command::new("open")
+                let _ = Command::new("open")
                     .arg(url)
                     .spawn()
-                    .expect("Failed to open URL");
+                    .expect("Failed to open URL")
+                    .wait();
                 Ok(())
             }
-            Action::FireCustomEvent { value } => {
-                println!("Firing custom event {}", value);
-
-                Ok(())
-            }
+            Action::FireCustomEvent { .. } => Ok(()),
             Action::SetFrame { value } => {
                 let read_lock = player.read();
 
@@ -356,7 +343,7 @@ impl ActionTrait for Action {
                                 let percentage = engine.get_numeric_trigger(value);
                                 if let Some(percentage) = percentage {
                                     let new_perc = percentage / 100.0;
-                                    let frame = player.total_frames() as f32 * new_perc;
+                                    let frame = player.total_frames() * new_perc;
                                     player.set_frame(frame);
                                 }
 
@@ -364,7 +351,7 @@ impl ActionTrait for Action {
                             }
                             StringNumber::F32(value) => {
                                 let new_perc = value / 100.0;
-                                let frame = player.total_frames() as f32 * new_perc;
+                                let frame = player.total_frames() * new_perc;
                                 player.set_frame(frame);
                             }
                         }
@@ -378,7 +365,7 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::ThemeAction { theme_id } => {
+            Action::Theme { theme_id } => {
                 let read_lock = player.read();
 
                 match read_lock {
@@ -388,124 +375,11 @@ impl ActionTrait for Action {
                                 "Error loading theme".to_string(),
                             ));
                         }
-                        return Ok(());
+                        Ok(())
                     }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ))
-                    }
-                }
-            }
-            Action::Loop { value } => {
-                let read_lock = player.read();
-
-                match read_lock {
-                    Ok(player) => {
-                        let mut config = player.config();
-
-                        config.loop_animation = *value;
-                        player.set_config(config);
-                        return Ok(());
-                    }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ))
-                    }
-                }
-            }
-            Action::Play { value } => {
-                let read_lock = player.read();
-
-                match read_lock {
-                    Ok(player) => {
-                        if *value {
-                            println!("EXECUTING PLAY FROM ACTION");
-
-                            if !player.play() {
-                                return Err(StateMachineActionError::ExecuteError(
-                                    "Error playing animation".to_string(),
-                                ));
-                            }
-
-                            let mut config = player.config();
-
-                            config.autoplay = *value;
-                            player.set_config(config);
-                        } else {
-                            // player.pause();
-                        }
-                        return Ok(());
-                    }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ))
-                    }
-                }
-            }
-            Action::Mode { value } => {
-                let read_lock = player.read();
-
-                match read_lock {
-                    Ok(player) => {
-                        let defined_mode;
-                        let mut config = player.config();
-
-                        match value.as_str() {
-                            "Forward" => defined_mode = Mode::Forward,
-                            "Reverse" => defined_mode = Mode::Reverse,
-                            "Bounce" => defined_mode = Mode::Bounce,
-                            "ReverseBounce" => defined_mode = Mode::ReverseBounce,
-                            _ => defined_mode = Mode::ReverseBounce,
-                        }
-
-                        config.mode = defined_mode;
-                        player.set_config(config);
-                        return Ok(());
-                    }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ))
-                    }
-                }
-            }
-            Action::Speed { value } => {
-                let read_lock = player.read();
-
-                match read_lock {
-                    Ok(player) => {
-                        let mut config = player.config();
-
-                        config.speed = *value;
-                        player.set_config(config);
-                        return Ok(());
-                    }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ))
-                    }
-                }
-            }
-            Action::Segment { value } => {
-                let read_lock = player.read();
-
-                match read_lock {
-                    Ok(player) => {
-                        let mut config = player.config();
-
-                        config.marker = value.to_string();
-                        player.set_config(config);
-                        return Ok(());
-                    }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ))
-                    }
+                    Err(_) => Err(StateMachineActionError::ExecuteError(
+                        "Error getting read lock on player".to_string(),
+                    )),
                 }
             }
             Action::FrameInterpolation { value } => {
@@ -517,13 +391,11 @@ impl ActionTrait for Action {
 
                         config.use_frame_interpolation = *value;
                         player.set_config(config);
-                        return Ok(());
+                        Ok(())
                     }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ))
-                    }
+                    Err(_) => Err(StateMachineActionError::ExecuteError(
+                        "Error getting read lock on player".to_string(),
+                    )),
                 }
             }
         }

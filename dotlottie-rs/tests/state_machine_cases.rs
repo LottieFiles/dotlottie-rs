@@ -82,29 +82,6 @@ mod tests {
     }
 
     #[test]
-    pub fn guardless_and_event_propagation() {
-        let global_state = include_str!(
-            "fixtures/statemachines/sanity_tests/test_guardless_and_event_propagation.json"
-        );
-        let player = DotLottiePlayer::new(Config::default());
-        player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100);
-        let l = player.state_machine_load_data(global_state);
-
-        let s = player.state_machine_start();
-
-        assert_eq!(l, true);
-        assert_eq!(s, true);
-
-        let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "global");
-
-        player.state_machine_set_numeric_trigger("Rating", 1.0);
-        player.state_machine_fire_event("Step");
-        let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "e");
-    }
-
-    #[test]
     pub fn guardless_and_event() {
         let global_state =
             include_str!("fixtures/statemachines/sanity_tests/test_guardless_and_event.json");

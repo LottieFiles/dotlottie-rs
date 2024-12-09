@@ -13,7 +13,11 @@ use crate::{
     DotLottieError, DotLottieManager, Manifest, ManifestAnimation, Renderer,
     StateMachineEngineError,
 };
-use crate::{StateMachineEngineStatus, StateMachineObserver};
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::StateMachineObserver;
+
+use crate::StateMachineEngineStatus;
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
@@ -1454,59 +1458,34 @@ impl DotLottiePlayer {
         1
     }
 
+    #[cfg(target_arch = "wasm32")]
     pub fn state_machine_post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerDown { x, y };
         self.state_machine_post_event(&event)
     }
 
+    #[cfg(target_arch = "wasm32")]
     pub fn state_machine_post_pointer_up_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerUp { x, y };
         self.state_machine_post_event(&event)
     }
 
+    #[cfg(target_arch = "wasm32")]
     pub fn state_machine_post_pointer_move_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerMove { x, y };
         self.state_machine_post_event(&event)
     }
 
+    #[cfg(target_arch = "wasm32")]
     pub fn state_machine_post_pointer_enter_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerEnter { x, y };
         self.state_machine_post_event(&event)
     }
 
+    #[cfg(target_arch = "wasm32")]
     pub fn state_machine_post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
         let event: Event = Event::PointerExit { x, y };
         self.state_machine_post_event(&event)
-    }
-
-    pub fn state_machine_set_propagate_events(&self, propagate: bool) -> bool {
-        match self.state_machine.try_write() {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.set_propagate_events(propagate);
-
-                    return true;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        false
-    }
-
-    pub fn state_machine_set_playback_actions_active(&self, active: bool) -> bool {
-        match self.state_machine.try_write() {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.set_playback_actions_active(active);
-
-                    return true;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        false
     }
 
     // Todo: Rather than methods for each trigger, return the SM object
@@ -1538,7 +1517,7 @@ impl DotLottiePlayer {
                 }
                 false
             }
-            Err(_) => return false,
+            Err(_) => false,
         }
     }
     // Todo: Rather than methods for each trigger, return the SM object
@@ -1559,15 +1538,10 @@ impl DotLottiePlayer {
     }
 
     pub fn state_machine_fire_event(&self, event: &str) {
-        match self.state_machine.try_write() {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    let _ = sm.fire(event, true);
-
-                    return;
-                }
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                let _ = sm.fire(event, true);
             }
-            Err(_) => return,
         }
     }
 
@@ -1717,7 +1691,7 @@ impl DotLottiePlayer {
             return false;
         }
 
-        sm.as_mut().unwrap().unsubscribe(&observer);
+        sm.as_mut().unwrap().unsubscribe(observer);
 
         true
     }
@@ -1833,6 +1807,21 @@ impl DotLottiePlayer {
 
     pub fn animation_size(&self) -> Vec<f32> {
         self.player.read().unwrap().animation_size()
+    }
+
+    pub fn state_machine_current_state(&self) -> String {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if let Some(sm) = state_machine.as_ref() {
+                    return sm.get_current_state_name();
+                }
+            }
+
+            Err(_) => {
+                return "".to_string();
+            }
+        }
+        "".to_string()
     }
 }
 

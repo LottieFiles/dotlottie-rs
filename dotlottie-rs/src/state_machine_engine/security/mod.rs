@@ -65,10 +65,7 @@ pub fn state_machine_state_check_pipeline(
 
             if guards.is_none() {
                 count += 1;
-            } else if guards.is_some() && guards.as_ref().unwrap().is_empty() {
-                count += 1;
             }
-
             // Check for existing triggers and events
             match check_guards_for_existing_triggers(state_machine, transition)
                 .and_then(|_| check_guards_for_existing_events(state_machine, transition))
@@ -114,13 +111,10 @@ pub fn check_guards_for_existing_triggers(
 
                         if let Some(triggers) = triggers {
                             for trigger in triggers {
-                                match trigger {
-                                    Trigger::Boolean { name, .. } => {
-                                        if name == value {
-                                            found = true
-                                        }
+                                if let Trigger::Boolean { name, .. } = trigger {
+                                    if name == value {
+                                        found = true
                                     }
-                                    _ => {}
                                 }
                             }
                         }

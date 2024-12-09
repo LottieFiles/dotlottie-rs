@@ -233,7 +233,6 @@ impl StateTrait for State {
                 /* Perform exit actions */
                 if let Some(actions) = exit_actions {
                     for action in actions {
-                        println!("Executing exit action: {:?}", action);
                         let _ = action.execute(_engine, _player.clone(), false);
                     }
                 }

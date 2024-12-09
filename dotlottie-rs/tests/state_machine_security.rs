@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{states::StateTrait, Config, DotLottiePlayer};
+    use dotlottie_rs::{Config, DotLottiePlayer};
 
     #[test]
     fn check_guards_for_existing_triggers() {

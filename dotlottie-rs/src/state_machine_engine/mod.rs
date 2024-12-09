@@ -105,7 +105,6 @@ pub struct StateMachineEngine {
 
     /* State machine behaviour options */
     pub playback_actions_active: bool,
-    propagate_events: bool,
 }
 
 impl Default for StateMachineEngine {
@@ -119,7 +118,6 @@ impl Default for StateMachineEngine {
             string_trigger: HashMap::new(),
             boolean_trigger: HashMap::new(),
             event_trigger: HashMap::new(),
-            propagate_events: false,
             playback_actions_active: false,
             curr_event: None,
             status: StateMachineEngineStatus::Stopped,
@@ -164,7 +162,6 @@ impl StateMachineEngine {
             boolean_trigger: HashMap::new(),
             event_trigger: HashMap::new(),
             curr_event: None,
-            propagate_events: false,
             playback_actions_active: false,
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
@@ -199,14 +196,6 @@ impl StateMachineEngine {
 
     pub fn get_boolean_trigger(&self, key: &str) -> Option<bool> {
         self.boolean_trigger.get(key).cloned()
-    }
-
-    pub fn set_propagate_events(&mut self, propagate: bool) {
-        self.propagate_events = propagate;
-    }
-
-    pub fn set_playback_actions_active(&mut self, active: bool) {
-        self.playback_actions_active = active
     }
 
     // key: The key of the trigger
@@ -315,13 +304,13 @@ impl StateMachineEngine {
                     for trigger in triggers {
                         match trigger {
                             Trigger::Numeric { name, value } => {
-                                new_state_machine.set_numeric_trigger(&name, *value, false, false);
+                                new_state_machine.set_numeric_trigger(name, *value, false, false);
                             }
                             Trigger::String { name, value } => {
-                                new_state_machine.set_string_trigger(&name, &value, false, false);
+                                new_state_machine.set_string_trigger(name, value, false, false);
                             }
                             Trigger::Boolean { name, value } => {
-                                new_state_machine.set_boolean_trigger(&name, *value, false, false);
+                                new_state_machine.set_boolean_trigger(name, *value, false, false);
                             }
                             Trigger::Event { name } => {
                                 new_state_machine
@@ -460,7 +449,7 @@ impl StateMachineEngine {
         state_name: &str,
         called_from_global: bool,
     ) -> Result<(), StateMachineEngineError> {
-        let new_state = self.get_state(&state_name);
+        let new_state = self.get_state(state_name);
 
         // We have a new state
         if new_state.is_some() {
@@ -492,15 +481,8 @@ impl StateMachineEngine {
 
             // Now use the extracted information
             if let (Some(state), Some(player)) = (state, player) {
-                // if self.playback_actions_active {
-                // println!(">> Active");
-                state.execute(self, &player);
                 let _ = state.enter(self, &player);
-                // } else {
-                // println!(">> Not active");
-                // let _ = state.enter(self, &player);
-                // state.execute(self, &player);
-                // }
+                state.execute(self, &player);
 
                 // Don't forget to put things back
                 // new_state becomes the current state
@@ -535,9 +517,10 @@ impl StateMachineEngine {
             }
             // If in the transitions we need an event, and there wasn't one fired, don't run the checks.
             // If there wasn't an event needed, but we are sending an event, still do the checks.
-            // Events might be passed even if not needed because they are passed down to child states.
+
+            // Guards on a transition are evaluated in order of priority, all of them have to be valid to transition (&& not ||).
             else if (transition.transitions_contain_event() && event.is_some())
-                || (!transition.transitions_contain_event())
+                || (!transition.transitions_contain_event() && event.is_none())
             {
                 if let Some(guards) = transition.guards() {
                     let mut all_guards_satisfied = true;
@@ -591,7 +574,7 @@ impl StateMachineEngine {
 
         // Enforces the rule that a guardless transition should be taken in to account last
         let target_state = guardless_transition?.target_state();
-        return Some(target_state.to_string());
+        Some(target_state.to_string())
     }
 
     fn evaluate_global_state(&mut self) -> bool {
@@ -599,9 +582,7 @@ impl StateMachineEngine {
             let target_state =
                 self.evaluate_transitions(state_to_evaluate, self.curr_event.as_ref());
 
-            if !self.propagate_events {
-                self.curr_event = None;
-            }
+            self.curr_event = None;
 
             if let Some(state) = target_state {
                 let success = self.set_current_state(&state, true);
@@ -611,22 +592,18 @@ impl StateMachineEngine {
                         return true;
                     }
                     Err(_) => {
-                        println!("Error setting current state.");
-
                         return false;
                     }
                 }
             }
         }
 
-        return false;
+        false
     }
 
     pub fn run_current_state_pipeline(&mut self) -> Result<(), StateMachineEngineError> {
         // Reset cycle count for each pipeline run
         self.current_cycle_count = 0;
-        let mut ignore_global = false;
-        let mut ignore_child = false;
 
         // If the state machine is not running, or there is no current state, return an error
         // Otherwise this will block the pipeline in a loop
@@ -637,6 +614,10 @@ impl StateMachineEngine {
         }
 
         let mut tick = true;
+
+        let mut ignore_global = false;
+        #[allow(unused_assignments)]
+        let mut ignore_child = false;
 
         while tick {
             // Safety fallback to prevent infinite loops
@@ -669,22 +650,22 @@ impl StateMachineEngine {
             if !ignore_global {
                 // Global state returned true meaning it changed the current state
                 if self.evaluate_global_state() {
-                    println!(
-                        "Global state changed, re-evaluating current state. -> {:?}",
-                        self.curr_event
-                    );
                     // Therfor we need to re-evaluate the global state.
                     // When we entered the state from global, it made on_entry changes.
                     if self.action_mutated_triggers {
-                        tick = true;
+                        #[allow(unused_assignments)]
                         ignore_global = false;
                         ignore_child = true;
+
+                        tick = true;
                         self.action_mutated_triggers = false;
                     }
                     if self.curr_event.is_some() {
-                        tick = true;
+                        #[allow(unused_assignments)]
                         ignore_global = false;
                         ignore_child = true;
+
+                        tick = true;
                     }
                 }
             }
@@ -694,9 +675,7 @@ impl StateMachineEngine {
                     let target_state = self
                         .evaluate_transitions(current_state_to_evaluate, self.curr_event.as_ref());
 
-                    if !self.propagate_events {
-                        self.curr_event = None;
-                    }
+                    self.curr_event = None;
 
                     if let Some(state) = target_state {
                         let success = self.set_current_state(&state, false);
@@ -706,20 +685,27 @@ impl StateMachineEngine {
                                 // Re-evaluate global state, a trigger was changed
                                 if self.action_mutated_triggers {
                                     tick = true;
+
+                                    #[allow(unused_assignments)]
                                     ignore_global = false;
                                     self.action_mutated_triggers = false;
                                 }
-                                if self.curr_event.is_some() {
+                                // Re-evaluate global state, an event was fired
+                                else if self.curr_event.is_some() {
                                     tick = true;
+
+                                    #[allow(unused_assignments)]
                                     ignore_global = false;
-                                } else {
-                                    // Re-evaluate current state, ignore global since no triggers were changed
+                                }
+                                // Re-evaluate current state, ignore global since no triggers were changed or events fired
+                                else {
                                     tick = true;
+
+                                    #[allow(unused_assignments)]
                                     ignore_global = true;
                                 }
                             }
                             Err(_) => {
-                                println!("Error setting current state.");
                                 break;
                             }
                         }
@@ -774,25 +760,22 @@ impl StateMachineEngine {
             if let Some(rc_player) = &self.player {
                 let try_read_lock = rc_player.try_read();
 
-                match try_read_lock {
-                    Ok(player_container) => {
-                        // If we have a pointer down event, we need to check if the pointer is outside of the layer
-                        if let Event::PointerExit { x, y } = event {
-                            if !player_container.hit_check(&layer, *x, *y) {
-                                for action in actions {
-                                    actions_to_execute.push(action.clone());
-                                }
+                if let Ok(player_container) = try_read_lock {
+                    // If we have a pointer down event, we need to check if the pointer is outside of the layer
+                    if let Event::PointerExit { x, y } = event {
+                        if !player_container.hit_check(&layer, *x, *y) {
+                            for action in actions {
+                                actions_to_execute.push(action.clone());
                             }
-                        } else {
-                            // Hit check will return true if the layer was hit
-                            if player_container.hit_check(&layer, x, y) {
-                                for action in actions {
-                                    actions_to_execute.push(action.clone());
-                                }
+                        }
+                    } else {
+                        // Hit check will return true if the layer was hit
+                        if player_container.hit_check(&layer, x, y) {
+                            for action in actions {
+                                actions_to_execute.push(action.clone());
                             }
                         }
                     }
-                    Err(_) => {}
                 }
             }
         } else {

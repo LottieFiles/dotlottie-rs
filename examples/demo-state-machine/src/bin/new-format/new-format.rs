@@ -9,8 +9,8 @@ use std::time::Instant;
 pub const WIDTH: usize = 125;
 pub const HEIGHT: usize = 125;
 
-pub const STATE_MACHINE_NAME: &str = "experi_global_entry";
-pub const ANIMATION_NAME: &str = "smileys";
+pub const STATE_MACHINE_NAME: &str = "rating";
+pub const ANIMATION_NAME: &str = "star_marked";
 
 struct Timer {
     last_update: Instant,
@@ -81,12 +81,9 @@ fn main() {
     ))
     .unwrap();
 
-    let rr = lottie_player.state_machine_set_playback_actions_active(true);
-
     let r = lottie_player.state_machine_load_data(&state_machine);
 
     println!("Load state machine data -> {}", r);
-    println!("Load state machine data -> {}", rr);
 
     let s = lottie_player.state_machine_start();
 
@@ -144,14 +141,9 @@ fn main() {
         if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
             let p = &mut *locked_player.write().unwrap();
 
-            // let r = p.state_machine_set_numeric_trigger("Progress", rating);
-            p.state_machine_set_propagate_events(false);
-            p.state_machine_set_playback_actions_active(true);
-            p.state_machine_fire_event("Step");
-            // println!("{}", r);
-            // println!("{}", m);
-            // rating += 1.0;
-            // p.state_machine_fire_event("Step");
+            rating += 1.0;
+            println!("current state: {}", p.state_machine_current_state());
+            p.state_machine_set_numeric_trigger("rating", rating);
         }
         let p = &mut *locked_player.write().unwrap();
 

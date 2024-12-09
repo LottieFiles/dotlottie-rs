@@ -45,18 +45,6 @@ pub struct StateMachine {
 }
 
 impl StateMachine {
-    pub fn default() -> Self {
-        StateMachine {
-            descriptor: Descriptor {
-                id: "".to_string(),
-                initial: "".to_string(),
-            },
-            states: Vec::new(),
-            listeners: None,
-            triggers: None,
-        }
-    }
-
     pub fn new(
         descriptor: Descriptor,
         states: Vec<State>,
@@ -85,6 +73,20 @@ impl StateMachine {
 
     pub fn get_state_by_name(&self, name: &str) -> Option<&State> {
         self.states.iter().find(|state| state.name() == name)
+    }
+}
+
+impl Default for StateMachine {
+    fn default() -> Self {
+        StateMachine {
+            descriptor: Descriptor {
+                id: "".to_string(),
+                initial: "".to_string(),
+            },
+            states: Vec::new(),
+            listeners: None,
+            triggers: None,
+        }
     }
 }
 

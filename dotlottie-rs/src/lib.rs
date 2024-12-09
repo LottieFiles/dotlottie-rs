@@ -1,3 +1,5 @@
+#![feature(stmt_expr_attributes)]
+
 mod dotlottie_player;
 mod fms;
 mod layout;

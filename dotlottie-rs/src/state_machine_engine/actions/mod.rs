@@ -59,9 +59,6 @@ pub enum Action {
     Fire {
         trigger_name: String,
     },
-    FrameInterpolation {
-        value: bool,
-    },
     Reset {
         trigger_name: String,
     },
@@ -197,11 +194,7 @@ impl ActionTrait for Action {
                 trigger_name,
                 value,
             } => {
-                let val = engine.get_boolean_trigger(trigger_name);
-
-                if let Some(_val) = val {
-                    engine.set_boolean_trigger(trigger_name, *value, run_pipeline, true);
-                }
+                engine.set_boolean_trigger(trigger_name, *value, run_pipeline, true);
 
                 Ok(())
             }
@@ -375,22 +368,6 @@ impl ActionTrait for Action {
                                 "Error loading theme".to_string(),
                             ));
                         }
-                        Ok(())
-                    }
-                    Err(_) => Err(StateMachineActionError::ExecuteError(
-                        "Error getting read lock on player".to_string(),
-                    )),
-                }
-            }
-            Action::FrameInterpolation { value } => {
-                let read_lock = player.read();
-
-                match read_lock {
-                    Ok(player) => {
-                        let mut config = player.config();
-
-                        config.use_frame_interpolation = *value;
-                        player.set_config(config);
                         Ok(())
                     }
                     Err(_) => Err(StateMachineActionError::ExecuteError(

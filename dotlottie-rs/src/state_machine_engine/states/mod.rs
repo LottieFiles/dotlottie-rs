@@ -15,16 +15,11 @@ pub enum StatesError {
 }
 
 pub trait StateTrait {
-    fn execute(
-        &self,
-        engine: &mut StateMachineEngine,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
-    ) -> i32;
     fn enter(
         &self,
         engine: &mut StateMachineEngine,
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
-    ) -> Result<(), StateMachineActionError>;
+    ) -> i32;
     fn exit(
         &self,
         engine: &mut StateMachineEngine,
@@ -72,7 +67,7 @@ impl StateTrait for State {
     // 2: Play animation
     // 3: Pause animation
     // 4: Request and draw a new single frame of the animation (needed for sync state)
-    fn execute(
+    fn enter(
         &self,
         engine: &mut StateMachineEngine,
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
@@ -87,6 +82,7 @@ impl StateTrait for State {
                 segment,
                 background_color,
                 use_frame_interpolation,
+                entry_actions,
                 ..
             } => {
                 let default_config = Config::default();
@@ -128,12 +124,14 @@ impl StateTrait for State {
                         player_read.load_animation(animation_id, size.0, size.1);
                     }
 
-                    // Allows states to inherit the playback exit actions from the previous state
-                    if engine.playback_actions_active {
-                        return 0;
-                    }
-
                     player_read.set_config(playback_config);
+
+                    /* Perform entry actions */
+                    if let Some(actions) = entry_actions {
+                        for action in actions {
+                            let _ = action.execute(engine, player.clone(), false);
+                        }
+                    }
 
                     if let Some(autoplay) = autoplay {
                         if *autoplay {
@@ -149,17 +147,24 @@ impl StateTrait for State {
                 }
             }
 
-            State::GlobalState { animation_id, .. } => {
-                if engine.playback_actions_active {
-                    return 0;
-                }
-
+            State::GlobalState {
+                animation_id,
+                entry_actions,
+                ..
+            } => {
                 if let Ok(player_read) = player.try_read() {
                     let size = player_read.size();
 
                     // Todo compare against currently loaded animation
                     if let Some(id) = animation_id {
                         player_read.load_animation(id, size.0, size.1);
+
+                        // Perform entry actions
+                        if let Some(actions) = entry_actions {
+                            for action in actions {
+                                let _ = action.execute(engine, player.clone(), false);
+                            }
+                        }
                     }
                 }
             }
@@ -196,44 +201,17 @@ impl StateTrait for State {
         }
     }
 
-    fn enter(
-        &self,
-        _engine: &mut StateMachineEngine,
-        _player: &Rc<RwLock<DotLottiePlayerContainer>>,
-    ) -> Result<(), StateMachineActionError> {
-        match self {
-            State::PlaybackState { entry_actions, .. } => {
-                /* Perform entry actions */
-                if let Some(actions) = entry_actions {
-                    for action in actions {
-                        let _ = action.execute(_engine, _player.clone(), false);
-                    }
-                }
-            }
-
-            State::GlobalState { entry_actions, .. } => {
-                if let Some(actions) = entry_actions {
-                    for action in actions {
-                        let _ = action.execute(_engine, _player.clone(), false);
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
     fn exit(
         &self,
-        _engine: &mut StateMachineEngine,
-        _player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        engine: &mut StateMachineEngine,
+        player: &Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState { exit_actions, .. } => {
                 /* Perform exit actions */
                 if let Some(actions) = exit_actions {
                     for action in actions {
-                        let _ = action.execute(_engine, _player.clone(), false);
+                        let _ = action.execute(engine, player.clone(), false);
                     }
                 }
             }
@@ -241,7 +219,7 @@ impl StateTrait for State {
             State::GlobalState { exit_actions, .. } => {
                 if let Some(actions) = exit_actions {
                     for action in actions {
-                        let _ = action.execute(_engine, _player.clone(), false);
+                        let _ = action.execute(engine, player.clone(), false);
                     }
                 }
             }

@@ -102,9 +102,6 @@ pub struct StateMachineEngine {
     max_cycle_count: usize,
     current_cycle_count: usize,
     action_mutated_triggers: bool,
-
-    /* State machine behaviour options */
-    pub playback_actions_active: bool,
 }
 
 impl Default for StateMachineEngine {
@@ -118,7 +115,6 @@ impl Default for StateMachineEngine {
             string_trigger: HashMap::new(),
             boolean_trigger: HashMap::new(),
             event_trigger: HashMap::new(),
-            playback_actions_active: false,
             curr_event: None,
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
@@ -162,7 +158,6 @@ impl StateMachineEngine {
             boolean_trigger: HashMap::new(),
             event_trigger: HashMap::new(),
             curr_event: None,
-            playback_actions_active: false,
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
             state_history: Vec::new(),
@@ -481,8 +476,8 @@ impl StateMachineEngine {
 
             // Now use the extracted information
             if let (Some(state), Some(player)) = (state, player) {
-                let _ = state.enter(self, &player);
-                state.execute(self, &player);
+                // Enter the state
+                state.enter(self, &player);
 
                 // Don't forget to put things back
                 // new_state becomes the current state

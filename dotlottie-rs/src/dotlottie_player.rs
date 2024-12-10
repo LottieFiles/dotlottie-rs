@@ -1444,31 +1444,26 @@ impl DotLottiePlayer {
         1
     }
 
-    #[cfg(target_arch = "wasm32")]
     pub fn state_machine_post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerDown { x, y };
         self.state_machine_post_event(&event)
     }
 
-    #[cfg(target_arch = "wasm32")]
     pub fn state_machine_post_pointer_up_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerUp { x, y };
         self.state_machine_post_event(&event)
     }
 
-    #[cfg(target_arch = "wasm32")]
     pub fn state_machine_post_pointer_move_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerMove { x, y };
         self.state_machine_post_event(&event)
     }
 
-    #[cfg(target_arch = "wasm32")]
     pub fn state_machine_post_pointer_enter_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerEnter { x, y };
         self.state_machine_post_event(&event)
     }
 
-    #[cfg(target_arch = "wasm32")]
     pub fn state_machine_post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
         let event: Event = Event::PointerExit { x, y };
         self.state_machine_post_event(&event)

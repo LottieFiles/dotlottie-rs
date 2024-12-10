@@ -330,6 +330,7 @@ define SETUP_MESON
 		--backend=ninja \
 		-Dloaders="lottie, png, jpg, webp" \
 		-Ddefault_library=static \
+		-Dengines=sw \
 		-Dbindings=capi \
 		-Dlog=false \
 		-Dthreads=false \
@@ -372,8 +373,6 @@ define CLEAN_LIBGJPEG
 endef
 
 define SIMPLE_CARGO_BUILD
-	IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
-	MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
 	cargo build \
 	--manifest-path $(PROJECT_DIR)/Cargo.toml \
 	--release;
@@ -387,6 +386,8 @@ define CARGO_BUILD
 		-Z build-std-features="panic_immediate_abort,optimize_for_size" \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
+		--no-default-features \
+		--features thorvg-v1 \
 		--release; \
 	else \
 		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
@@ -394,6 +395,8 @@ define CARGO_BUILD
 		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
+		--no-default-features \
+		--features thorvg-v1 \
 		--release; \
 	fi
 endef

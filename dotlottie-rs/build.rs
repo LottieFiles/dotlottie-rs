@@ -97,7 +97,7 @@ fn apply_build_settings(build_settings: &BuildSettings) {
 }
 
 fn main() {
-    if !cfg!(feature = "thorvg") {
+    if !cfg!(feature = "thorvg-v0") && !cfg!(feature = "thorvg-v1") {
         return;
     }
 

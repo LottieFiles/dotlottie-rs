@@ -302,7 +302,9 @@ impl ActionTrait for Action {
                             if let Some(frame) = frame {
                                 player.set_frame(frame);
                             } else {
-                                println!("Couldn't get frame from trigger");
+                                return Err(StateMachineActionError::ExecuteError(
+                                    "Error getting value from trigger.".to_string(),
+                                ));
                             }
                             return Ok(());
                         } else {

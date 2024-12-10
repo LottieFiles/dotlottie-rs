@@ -281,10 +281,10 @@ impl StateMachineEngine {
         let mut new_state_machine = StateMachineEngine::default();
 
         if parsed_state_machine.is_err() {
-            println!(
-                "Error parsing state machine definition: {:?}",
-                parsed_state_machine.err()
-            );
+            // println!(
+            //     "Error parsing state machine definition: {:?}",
+            //     parsed_state_machine.err()
+            // );
             return Err(StateMachineEngineError::ParsingError {
                 reason: "Failed to parse state machine definition".to_string(),
             });
@@ -622,7 +622,7 @@ impl StateMachineEngine {
                 self.current_cycle_count += 1;
 
                 if self.current_cycle_count >= self.max_cycle_count {
-                    println!("🚨 Infinite loop detected, ending state machine.");
+                    // println!("🚨 Infinite loop detected, ending state machine.");
                     self.end();
                     return Err(StateMachineEngineError::InfiniteLoopError);
                 }

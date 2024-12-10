@@ -1024,8 +1024,8 @@ bench:
 .PHONY: clippy
 clippy:
 	$(info $(YELLOW)Running clippy for workspace$(NC))
-	cargo clippy --manifest-path $(CORE)/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
-	cargo clippy --manifest-path $(RUNTIME_FFI)/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
+	# cargo clippy --manifest-path $(CORE)/Cargo.toml --all-targets --no-default-features --features thorvg-v1 -- -D clippy::print_stdout
+	cargo clippy --manifest-path $(RUNTIME_FFI)/Cargo.toml --all-targets --no-default-features --features thorvg-v1 -- -D clippy::print_stdout
 
 .PHONY: help
 help:

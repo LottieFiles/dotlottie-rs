@@ -131,8 +131,18 @@ impl Renderer for TvgRenderer {
         convert_tvg_result(result, "tvg_swcanvas_set_target")
     }
 
-    fn clear(&self, free: bool) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_canvas_clear(self.raw_canvas, free) };
+    fn clear(&self, paints: bool, _buffer: bool) -> Result<(), TvgError> {
+        let result = unsafe {
+            #[cfg(feature = "thorvg-v1")]
+            {
+                tvg::tvg_canvas_clear(self.raw_canvas, paints, _buffer)
+            }
+
+            #[cfg(feature = "thorvg-v0")]
+            {
+                tvg::tvg_canvas_clear(self.raw_canvas, paints)
+            }
+        };
 
         convert_tvg_result(result, "tvg_canvas_clear")
     }
@@ -201,13 +211,28 @@ impl Animation for TvgAnimation {
         let data = CString::new(data).expect("Failed to create CString");
 
         let result = unsafe {
-            tvg::tvg_picture_load_data(
-                self.raw_paint,
-                data.as_ptr(),
-                data.as_bytes().len() as u32,
-                mimetype.as_ptr(),
-                copy,
-            )
+            #[cfg(feature = "thorvg-v1")]
+            {
+                tvg::tvg_picture_load_data(
+                    self.raw_paint,
+                    data.as_ptr(),
+                    data.as_bytes().len() as u32,
+                    mimetype.as_ptr(),
+                    ptr::null(),
+                    copy,
+                )
+            }
+
+            #[cfg(feature = "thorvg-v0")]
+            {
+                tvg::tvg_picture_load_data(
+                    self.raw_paint,
+                    data.as_ptr(),
+                    data.as_bytes().len() as u32,
+                    mimetype.as_ptr(),
+                    copy,
+                )
+            }
         };
 
         convert_tvg_result(result, "tvg_picture_load_data")?;

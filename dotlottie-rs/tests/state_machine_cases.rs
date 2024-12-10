@@ -35,8 +35,8 @@ mod tests {
 
         let s = player.state_machine_start();
 
-        assert_eq!(l, true);
-        assert_eq!(s, true);
+        assert!(l);
+        assert!(s);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "global");
@@ -61,8 +61,8 @@ mod tests {
 
         let s = player.state_machine_start();
 
-        assert_eq!(l, true);
-        assert_eq!(s, true);
+        assert!(l);
+        assert!(s);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "a");
@@ -91,8 +91,8 @@ mod tests {
 
         let s = player.state_machine_start();
 
-        assert_eq!(l, true);
-        assert_eq!(s, true);
+        assert!(l);
+        assert!(s);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "global");

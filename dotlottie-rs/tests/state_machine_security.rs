@@ -11,8 +11,8 @@ mod tests {
         let l = player.state_machine_load(global_state);
         let s = player.state_machine_start();
 
-        assert_eq!(l, false);
-        assert_eq!(s, false);
+        assert!(!l);
+        assert!(!s);
     }
 
     #[test]
@@ -25,8 +25,8 @@ mod tests {
         let l = player.state_machine_load(global_state);
         let s = player.state_machine_start();
 
-        assert_eq!(l, false);
-        assert_eq!(s, false);
+        assert!(!l);
+        assert!(!s);
     }
 
     #[test]
@@ -38,7 +38,7 @@ mod tests {
         let l = player.state_machine_load(global_state);
         let s = player.state_machine_start();
 
-        assert_eq!(l, false);
-        assert_eq!(s, false);
+        assert!(!l);
+        assert!(!s);
     }
 }

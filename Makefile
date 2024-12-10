@@ -405,7 +405,8 @@ define UNIFFI_BINDINGS_BUILD
 	rm -rf $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(BINDINGS_LANGUAGE)
 	cargo run \
 		--manifest-path $(RUNTIME_FFI)/Cargo.toml \
-		--features=uniffi/cli \
+		--no-default-features \
+		--features=uniffi/cli,thorvg-v1 \
 		--bin uniffi-bindgen \
 		generate $(RUNTIME_FFI)/src/dotlottie_player.udl \
 		--language $(BINDINGS_LANGUAGE) \

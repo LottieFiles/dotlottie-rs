@@ -137,8 +137,19 @@ impl Renderer for TvgRenderer {
         }
     }
 
-    fn clear(&self, free: bool) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_canvas_clear(self.raw_canvas, free).into_result() }
+    fn clear(&self, paints: bool, _buffer: bool) -> Result<(), TvgError> {
+        unsafe {
+            #[cfg(feature = "thorvg-v1")]
+            {
+                tvg::tvg_canvas_clear(self.raw_canvas, paints, _buffer)
+            }
+
+            #[cfg(feature = "thorvg-v0")]
+            {
+                tvg::tvg_canvas_clear(self.raw_canvas, paints)
+            }
+        }
+        .into_result()
     }
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), TvgError> {
@@ -206,15 +217,30 @@ impl Animation for TvgAnimation {
         let data_cstr = CString::new(data).expect("Failed to create CString");
 
         unsafe {
-            tvg::tvg_picture_load_data(
-                self.raw_paint,
-                data_cstr.as_ptr(),
-                data.len() as u32,
-                mimetype_cstr.as_ptr(),
-                copy,
-            )
-            .into_result()
+            #[cfg(feature = "thorvg-v1")]
+            {
+                tvg::tvg_picture_load_data(
+                    self.raw_paint,
+                    data.as_ptr(),
+                    data.as_bytes().len() as u32,
+                    mimetype.as_ptr(),
+                    ptr::null(),
+                    copy,
+                )
+            }
+
+            #[cfg(feature = "thorvg-v0")]
+            {
+                tvg::tvg_picture_load_data(
+                    self.raw_paint,
+                    data.as_ptr(),
+                    data.as_bytes().len() as u32,
+                    mimetype.as_ptr(),
+                    copy,
+                )
+            }
         }
+        .into_result()?;
     }
 
     fn get_layer_bounds(&self, layer_name: &str) -> Result<(f32, f32, f32, f32), TvgError> {

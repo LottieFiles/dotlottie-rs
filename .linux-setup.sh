@@ -63,7 +63,15 @@ $INSTALL_CMD \
     nasm \
     git \
     curl \
-    wget
+    wget \
+    clang \
+    llvm \
+    lld \
+    libc6-dev \
+    gcc-multilib \
+    g++-multilib \
+    nodejs \
+    npm
 
 echo "Installing Meson 1.6.0..."
 pip3 install 'meson==1.6.0'

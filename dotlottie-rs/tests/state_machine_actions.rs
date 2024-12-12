@@ -272,10 +272,6 @@ mod tests {
 
     // TODO
     #[test]
-    fn theme_action() { // todo!()
-    }
-
-    #[test]
     fn fire_custom_event() {
         // todo!()
     }

@@ -121,7 +121,8 @@ impl StateTrait for State {
                     let size = player_read.size();
 
                     // Todo compare against currently loaded animation
-                    if !animation_id.is_empty() {
+                    if !animation_id.is_empty() && player_read.active_animation_id() != *animation_id
+                    {
                         player_read.load_animation(animation_id, size.0, size.1);
                     }
 

@@ -381,8 +381,10 @@ endef
 
 define CARGO_BUILD
     if [ "$(CARGO_TARGET)" = "wasm32-unknown-emscripten" ]; then \
-		. $(EMSDK_DIR)/$(EMSDK)_env.sh && \
-        RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
+		cd $(EMSDK_DIR) && \
+		. ./emsdk_env.sh && \
+		cd $(PROJECT_DIR) && \
+		RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
         -Z build-std=std,panic_abort \
         -Z build-std-features="panic_immediate_abort,optimize_for_size" \
         --manifest-path $(PROJECT_DIR)/Cargo.toml \

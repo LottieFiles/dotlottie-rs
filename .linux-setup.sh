@@ -2,11 +2,20 @@
 
 SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
-RED=$(tput setaf 1)
-YELLOW=$(tput setaf 3)
-GREEN=$(tput setaf 2)
-WHITE=$(tput setaf 15)
-NC=$(tput sgr0)
+# Check if we're in a terminal that supports colors
+if [ -t 1 ]; then
+    RED=$(tput setaf 1 2>/dev/null || echo '')
+    YELLOW=$(tput setaf 3 2>/dev/null || echo '')
+    GREEN=$(tput setaf 2 2>/dev/null || echo '')
+    WHITE=$(tput setaf 15 2>/dev/null || echo '')
+    NC=$(tput sgr0 2>/dev/null || echo '')
+else
+    RED=''
+    YELLOW=''
+    GREEN=''
+    WHITE=''
+    NC=''
+fi
 
 EMSDK_VERSION=${EMSDK_VERSION:-latest}
 UNIFFI_BINDGEN_CPP_VERSION=${UNIFFI_BINDGEN_CPP_VERSION:-"v0.6.3+v0.25.0"}

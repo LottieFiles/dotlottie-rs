@@ -1,4 +1,11 @@
-use std::{ffi::CString, ptr};
+#[allow(unused_imports)]
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::Mutex;
+
+#[cfg(target_arch = "wasm32")]
+use spin::Mutex;
+
+use std::{ffi::CString, ptr, result::Result};
 use thiserror::Error;
 
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
@@ -13,23 +20,50 @@ mod tvg {
 
 #[derive(Error, Debug)]
 pub enum TvgError {
-    #[error("Invalid argument provided in {function_name}")]
-    InvalidArgument { function_name: String },
+    #[error("Invalid argument")]
+    InvalidArgument,
+    #[error("Insufficient condition")]
+    InsufficientCondition,
+    #[error("Failed allocation")]
+    FailedAllocation,
+    #[error("Memory corruption")]
+    MemoryCorruption,
+    #[error("Not supported")]
+    NotSupported,
+    #[error("Unknown error")]
+    Unknown,
+}
 
-    #[error("Insufficient condition in {function_name}")]
-    InsufficientCondition { function_name: String },
+pub trait IntoResult {
+    fn into_result(self) -> Result<(), TvgError>;
+}
 
-    #[error("Failed memory allocation in {function_name}")]
-    FailedAllocation { function_name: String },
+impl IntoResult for tvg::Tvg_Result {
+    fn into_result(self) -> Result<(), TvgError> {
+        match self {
+            tvg::Tvg_Result_TVG_RESULT_SUCCESS => Ok(()),
+            tvg::Tvg_Result_TVG_RESULT_INVALID_ARGUMENT => Err(TvgError::InvalidArgument),
+            tvg::Tvg_Result_TVG_RESULT_INSUFFICIENT_CONDITION => {
+                Err(TvgError::InsufficientCondition)
+            }
+            tvg::Tvg_Result_TVG_RESULT_FAILED_ALLOCATION => Err(TvgError::FailedAllocation),
+            tvg::Tvg_Result_TVG_RESULT_MEMORY_CORRUPTION => Err(TvgError::MemoryCorruption),
+            tvg::Tvg_Result_TVG_RESULT_NOT_SUPPORTED => Err(TvgError::NotSupported),
+            tvg::Tvg_Result_TVG_RESULT_UNKNOWN => Err(TvgError::Unknown),
+            _ => unreachable!(),
+        }
+    }
+}
 
-    #[error("Memory corruption detected in {function_name}")]
-    MemoryCorruption { function_name: String },
-
-    #[error("Operation not supported in {function_name}")]
-    NotSupported { function_name: String },
-
-    #[error("Unknown error occurred in {function_name}")]
-    Unknown { function_name: String },
+impl From<ColorSpace> for tvg::Tvg_Colorspace {
+    fn from(color_space: ColorSpace) -> Self {
+        match color_space {
+            ColorSpace::ABGR8888 => tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
+            ColorSpace::ABGR8888S => tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
+            ColorSpace::ARGB8888 => tvg::Tvg_Colorspace_TVG_COLORSPACE_ARGB8888,
+            ColorSpace::ARGB8888S => tvg::Tvg_Colorspace_TVG_COLORSPACE_ARGB8888S,
+        }
+    }
 }
 
 pub enum TvgEngine {
@@ -37,34 +71,16 @@ pub enum TvgEngine {
     TvgEngineGl,
 }
 
-fn convert_tvg_result(result: tvg::Tvg_Result, function_name: &str) -> Result<(), TvgError> {
-    let func_name = function_name.to_string();
-
-    match result {
-        tvg::Tvg_Result_TVG_RESULT_SUCCESS => Ok(()),
-        tvg::Tvg_Result_TVG_RESULT_INVALID_ARGUMENT => Err(TvgError::InvalidArgument {
-            function_name: func_name,
-        }),
-        tvg::Tvg_Result_TVG_RESULT_INSUFFICIENT_CONDITION => Err(TvgError::InsufficientCondition {
-            function_name: func_name,
-        }),
-        tvg::Tvg_Result_TVG_RESULT_FAILED_ALLOCATION => Err(TvgError::FailedAllocation {
-            function_name: func_name,
-        }),
-        tvg::Tvg_Result_TVG_RESULT_MEMORY_CORRUPTION => Err(TvgError::MemoryCorruption {
-            function_name: func_name,
-        }),
-        tvg::Tvg_Result_TVG_RESULT_NOT_SUPPORTED => Err(TvgError::NotSupported {
-            function_name: func_name,
-        }),
-        tvg::Tvg_Result_TVG_RESULT_UNKNOWN => Err(TvgError::Unknown {
-            function_name: func_name,
-        }),
-        _ => Err(TvgError::Unknown {
-            function_name: func_name,
-        }),
+impl From<TvgEngine> for tvg::Tvg_Engine {
+    fn from(engine_method: TvgEngine) -> Self {
+        match engine_method {
+            TvgEngine::TvgEngineSw => tvg::Tvg_Engine_TVG_ENGINE_SW,
+            TvgEngine::TvgEngineGl => tvg::Tvg_Engine_TVG_ENGINE_GL,
+        }
     }
 }
+
+static RENDERERS_COUNT: spin::Mutex<usize> = spin::Mutex::new(0);
 
 pub struct TvgRenderer {
     raw_canvas: *mut tvg::Tvg_Canvas,
@@ -73,16 +89,16 @@ pub struct TvgRenderer {
 
 impl TvgRenderer {
     pub fn new(engine_method: TvgEngine, threads: u32) -> Self {
-        let engine = match engine_method {
-            TvgEngine::TvgEngineSw => tvg::Tvg_Engine_TVG_ENGINE_SW,
-            TvgEngine::TvgEngineGl => tvg::Tvg_Engine_TVG_ENGINE_GL,
-        };
+        let engine = engine_method.into();
 
-        let init_result = unsafe { tvg::tvg_engine_init(engine, threads) };
+        let mut count = RENDERERS_COUNT.lock();
 
-        if init_result != tvg::Tvg_Result_TVG_RESULT_SUCCESS {
-            panic!("Failed to initialize ThorVG engine");
+        if *count == 0 {
+            unsafe { tvg::tvg_engine_init(engine, threads).into_result() }
+                .expect("Failed to initialize ThorVG engine");
         }
+
+        *count += 1;
 
         TvgRenderer {
             raw_canvas: unsafe { tvg::tvg_swcanvas_create() },
@@ -97,9 +113,7 @@ impl Renderer for TvgRenderer {
     type Error = TvgError;
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_canvas_set_viewport(self.raw_canvas, x, y, w, h) };
-
-        convert_tvg_result(result, "tvg_canvas_set_viewport")
+        unsafe { tvg::tvg_canvas_set_viewport(self.raw_canvas, x, y, w, h).into_result() }
     }
 
     fn set_target(
@@ -110,31 +124,21 @@ impl Renderer for TvgRenderer {
         height: u32,
         color_space: ColorSpace,
     ) -> Result<(), TvgError> {
-        let color_space = match color_space {
-            ColorSpace::ABGR8888 => tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
-            ColorSpace::ABGR8888S => tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
-            ColorSpace::ARGB8888 => tvg::Tvg_Colorspace_TVG_COLORSPACE_ARGB8888,
-            ColorSpace::ARGB8888S => tvg::Tvg_Colorspace_TVG_COLORSPACE_ARGB8888S,
-        };
-
-        let result = unsafe {
+        unsafe {
             tvg::tvg_swcanvas_set_target(
                 self.raw_canvas,
                 buffer.as_mut_ptr(),
                 stride,
                 width,
                 height,
-                color_space,
+                color_space.into(),
             )
-        };
-
-        convert_tvg_result(result, "tvg_swcanvas_set_target")
+            .into_result()
+        }
     }
 
     fn clear(&self, free: bool) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_canvas_clear(self.raw_canvas, free) };
-
-        convert_tvg_result(result, "tvg_canvas_clear")
+        unsafe { tvg::tvg_canvas_clear(self.raw_canvas, free).into_result() }
     }
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), TvgError> {
@@ -143,36 +147,37 @@ impl Renderer for TvgRenderer {
             Drawable::Shape(shape) => shape.raw_shape,
         };
 
-        let result = unsafe { tvg::tvg_canvas_push(self.raw_canvas, raw_paint) };
-
-        convert_tvg_result(result, "tvg_canvas_push")
+        unsafe { tvg::tvg_canvas_push(self.raw_canvas, raw_paint).into_result() }
     }
 
     fn draw(&mut self) -> Result<(), TvgError> {
         let result = unsafe { tvg::tvg_canvas_draw(self.raw_canvas) };
 
-        convert_tvg_result(result, "tvg_canvas_draw")
+        result.into_result()
     }
 
     fn sync(&mut self) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_canvas_sync(self.raw_canvas) };
-
-        convert_tvg_result(result, "tvg_canvas_sync")
+        unsafe { tvg::tvg_canvas_sync(self.raw_canvas).into_result() }
     }
 
     fn update(&mut self) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_canvas_update(self.raw_canvas) };
-
-        convert_tvg_result(result, "tvg_canvas_update")
+        unsafe { tvg::tvg_canvas_update(self.raw_canvas).into_result() }
     }
 }
 
 impl Drop for TvgRenderer {
     fn drop(&mut self) {
+        let mut count = RENDERERS_COUNT.lock();
+
         unsafe {
             tvg::tvg_canvas_destroy(self.raw_canvas);
-            tvg::tvg_engine_term(self.engine_method);
-        };
+        }
+
+        *count = count.checked_sub(1).unwrap();
+
+        if *count == 0 {
+            unsafe { tvg::tvg_engine_term(self.engine_method) };
+        }
     }
 }
 
@@ -197,22 +202,19 @@ impl Animation for TvgAnimation {
     type Error = TvgError;
 
     fn load_data(&mut self, data: &str, mimetype: &str, copy: bool) -> Result<(), TvgError> {
-        let mimetype = CString::new(mimetype).expect("Failed to create CString");
-        let data = CString::new(data).expect("Failed to create CString");
+        let mimetype_cstr = CString::new(mimetype).expect("Failed to create CString");
+        let data_cstr = CString::new(data).expect("Failed to create CString");
 
-        let result = unsafe {
+        unsafe {
             tvg::tvg_picture_load_data(
                 self.raw_paint,
-                data.as_ptr(),
-                data.as_bytes().len() as u32,
-                mimetype.as_ptr(),
+                data_cstr.as_ptr(),
+                data.len() as u32,
+                mimetype_cstr.as_ptr(),
                 copy,
             )
-        };
-
-        convert_tvg_result(result, "tvg_picture_load_data")?;
-
-        Ok(())
+            .into_result()
+        }
     }
 
     fn get_layer_bounds(&self, layer_name: &str) -> Result<(f32, f32, f32, f32), TvgError> {
@@ -238,13 +240,11 @@ impl Animation for TvgAnimation {
                 )
             };
 
-            convert_tvg_result(bounds, "tvg_paint_get_bounds")?;
+            bounds.into_result()?;
 
             Ok((px, py, pw, ph))
         } else {
-            Err(TvgError::Unknown {
-                function_name: "tvg_picture_get_paint".to_string(),
-            })
+            Err(TvgError::Unknown)
         }
     }
 
@@ -271,7 +271,7 @@ impl Animation for TvgAnimation {
                 )
             };
 
-            convert_tvg_result(bounds, "tvg_paint_get_bounds")?;
+            bounds.into_result()?;
 
             if x >= px && x <= px + pw && y >= py && y <= py + ph {
                 return Ok(true);
@@ -285,45 +285,37 @@ impl Animation for TvgAnimation {
         let mut width = 0.0;
         let mut height = 0.0;
 
-        let result = unsafe {
+        unsafe {
             tvg::tvg_picture_get_size(
                 self.raw_paint,
                 &mut width as *mut f32,
                 &mut height as *mut f32,
             )
-        };
-
-        convert_tvg_result(result, "tvg_picture_get_size")?;
+            .into_result()
+        }?;
 
         Ok((width, height))
     }
 
     fn set_size(&mut self, width: f32, height: f32) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_picture_set_size(self.raw_paint, width, height) };
-
-        convert_tvg_result(result, "tvg_picture_set_size")
+        unsafe { tvg::tvg_picture_set_size(self.raw_paint, width, height).into_result() }
     }
 
     fn scale(&mut self, factor: f32) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_paint_scale(self.raw_paint, factor) };
-
-        convert_tvg_result(result, "tvg_paint_scale")
+        unsafe { tvg::tvg_paint_scale(self.raw_paint, factor).into_result() }
     }
 
     fn translate(&mut self, tx: f32, ty: f32) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_paint_translate(self.raw_paint, tx, ty) };
-
-        convert_tvg_result(result, "tvg_paint_translate")
+        unsafe { tvg::tvg_paint_translate(self.raw_paint, tx, ty).into_result() }
     }
 
     fn get_total_frame(&self) -> Result<f32, TvgError> {
         let mut total_frame: f32 = 0.0;
 
-        let result = unsafe {
+        unsafe {
             tvg::tvg_animation_get_total_frame(self.raw_animation, &mut total_frame as *mut f32)
-        };
-
-        convert_tvg_result(result, "tvg_animation_get_total_frame")?;
+                .into_result()
+        }?;
 
         Ok(total_frame)
     }
@@ -331,28 +323,25 @@ impl Animation for TvgAnimation {
     fn get_duration(&self) -> Result<f32, TvgError> {
         let mut duration: f32 = 0.0;
 
-        let result = unsafe {
+        unsafe {
             tvg::tvg_animation_get_duration(self.raw_animation, &mut duration as *mut f32)
-        };
-
-        convert_tvg_result(result, "tvg_animation_get_duration")?;
+                .into_result()
+        }?;
 
         Ok(duration)
     }
 
     fn set_frame(&mut self, frame_no: f32) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_animation_set_frame(self.raw_animation, frame_no) };
-
-        convert_tvg_result(result, "tvg_animation_set_frame")
+        unsafe { tvg::tvg_animation_set_frame(self.raw_animation, frame_no).into_result() }
     }
 
     fn get_frame(&self) -> Result<f32, TvgError> {
         let mut curr_frame: f32 = 0.0;
-        let result = unsafe {
-            tvg::tvg_animation_get_frame(self.raw_animation, &mut curr_frame as *mut f32)
-        };
 
-        convert_tvg_result(result, "tvg_animation_get_frame")?;
+        unsafe {
+            tvg::tvg_animation_get_frame(self.raw_animation, &mut curr_frame as *mut f32)
+                .into_result()
+        }?;
 
         Ok(curr_frame)
     }
@@ -365,7 +354,7 @@ impl Animation for TvgAnimation {
             unsafe { tvg::tvg_lottie_animation_override(self.raw_animation, slots_cstr.as_ptr()) }
         };
 
-        convert_tvg_result(result, "tvg_lottie_animation_override")
+        result.into_result()
     }
 }
 
@@ -393,11 +382,10 @@ impl Shape for TvgShape {
     type Error = TvgError;
 
     fn fill(&mut self, color: (u8, u8, u8, u8)) -> Result<(), TvgError> {
-        let result = unsafe {
+        unsafe {
             tvg::tvg_shape_set_fill_color(self.raw_shape, color.0, color.1, color.2, color.3)
-        };
-
-        convert_tvg_result(result, "tvg_shape_set_fill_color")
+                .into_result()
+        }
     }
 
     fn append_rect(
@@ -409,14 +397,39 @@ impl Shape for TvgShape {
         rx: f32,
         ry: f32,
     ) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry) };
-
-        convert_tvg_result(result, "tvg_shape_append_rect")
+        unsafe { tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry).into_result() }
     }
 
     fn reset(&mut self) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_shape_reset(self.raw_shape) };
+        unsafe { tvg::tvg_shape_reset(self.raw_shape).into_result() }
+    }
+}
 
-        convert_tvg_result(result, "tvg_shape_reset")
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Arc, Barrier};
+    use std::thread;
+
+    #[test]
+    fn test_tvg_renderer_no_deadlock() {
+        const THREAD_COUNT: usize = 10;
+        let barrier = Arc::new(Barrier::new(THREAD_COUNT));
+        let mut handles = vec![];
+
+        for _ in 0..THREAD_COUNT {
+            let barrier_clone = Arc::clone(&barrier);
+            let handle = thread::spawn(move || {
+                barrier_clone.wait();
+
+                let renderer = TvgRenderer::new(TvgEngine::TvgEngineSw, 0);
+                drop(renderer);
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles {
+            handle.join().expect("Thread panicked");
+        }
     }
 }

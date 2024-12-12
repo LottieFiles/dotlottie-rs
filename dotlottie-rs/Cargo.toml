@@ -30,7 +30,7 @@ conan2 = "0.1"
 [dev-dependencies]
 criterion = "0.5.1"
 # This is a workaround to enable this feature only on dev.
-dotlottie-rs= { path = ".", features = ["thorvg"] }
+dotlottie-rs = { path = ".", features = ["thorvg"] }
 
 [[bench]]
 name = "benchmarks"

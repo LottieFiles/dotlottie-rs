@@ -1,11 +1,15 @@
 [package]
 name = "dotlottie-ffi"
-version = "0.1.34"
+version = "0.1.31"
 edition = "2021"
 build = "build.rs"
 
 [profile.release]
 lto = true
+opt-level = "z"
+strip = true 
+codegen-units = 1
+panic = "abort" 
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]

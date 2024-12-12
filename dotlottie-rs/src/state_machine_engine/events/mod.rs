@@ -51,3 +51,25 @@ impl EventName for Event {
         }
     }
 }
+
+#[macro_export]
+macro_rules! event_type_name {
+    (PointerDown) => {
+        "PointerDown"
+    };
+    (PointerUp) => {
+        "PointerUp"
+    };
+    (PointerMove) => {
+        "PointerMove"
+    };
+    (PointerEnter) => {
+        "PointerEnter"
+    };
+    (PointerExit) => {
+        "PointerExit"
+    };
+    (OnComplete) => {
+        "OnComplete"
+    };
+}

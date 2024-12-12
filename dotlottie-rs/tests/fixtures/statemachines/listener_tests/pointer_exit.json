@@ -137,7 +137,7 @@
     ],
     "listeners": [
         {
-            "type": "PointerEnter",
+            "type": "PointerExit",
             "layerName": "star1",
             "actions": [
                 {
@@ -148,7 +148,7 @@
             ]
         },
         {
-            "type": "PointerEnter",
+            "type": "PointerExit",
             "layerName": "star2",
             "actions": [
                 {
@@ -159,7 +159,7 @@
             ]
         },
         {
-            "type": "PointerEnter",
+            "type": "PointerExit",
             "layerName": "star3",
             "actions": [
                 {
@@ -170,7 +170,7 @@
             ]
         },
         {
-            "type": "PointerEnter",
+            "type": "PointerExit",
             "layerName": "star4",
             "actions": [
                 {
@@ -181,24 +181,13 @@
             ]
         },
         {
-            "type": "PointerEnter",
-            "layerName": "star5",
-            "actions": [
-                {
-                    "type": "SetNumeric",
-                    "triggerName": "rating",
-                    "value": 5
-                }
-            ]
-        },
-        {
             "type": "PointerExit",
             "layerName": "star5",
             "actions": [
                 {
                     "type": "SetNumeric",
                     "triggerName": "rating",
-                    "value": 0
+                    "value": 5
                 }
             ]
         }

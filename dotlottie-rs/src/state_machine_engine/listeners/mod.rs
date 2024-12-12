@@ -35,7 +35,6 @@ pub enum Listener {
         actions: Vec<Action>,
     },
     PointerMove {
-        layer_name: Option<String>,
         actions: Vec<Action>,
     },
     PointerExit {
@@ -75,12 +74,8 @@ impl Display for Listener {
                 .field("layer_name", layer_name)
                 .field("action", actions)
                 .finish(),
-            Self::PointerMove {
-                layer_name,
-                actions,
-            } => f
+            Self::PointerMove { actions } => f
                 .debug_struct("PointerUp")
-                .field("layer_name", layer_name)
                 .field("action", actions)
                 .finish(),
             Self::PointerExit {
@@ -109,7 +104,7 @@ impl ListenerTrait for Listener {
             Listener::PointerUp { layer_name, .. } => layer_name.clone(),
             Listener::PointerDown { layer_name, .. } => layer_name.clone(),
             Listener::PointerEnter { layer_name, .. } => layer_name.clone(),
-            Listener::PointerMove { layer_name, .. } => layer_name.clone(),
+            Listener::PointerMove { .. } => None,
             Listener::PointerExit { layer_name, .. } => layer_name.clone(),
             Listener::OnComplete { .. } => None,
         }

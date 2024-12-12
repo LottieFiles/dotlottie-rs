@@ -380,22 +380,22 @@ define SIMPLE_CARGO_BUILD
 endef
 
 define CARGO_BUILD
-	if [ "$(CARGO_TARGET)" = "wasm32-unknown-emscripten" ]; then \
-		source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
-		RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
-		-Z build-std=std,panic_abort \
-		-Z build-std-features="panic_immediate_abort,optimize_for_size" \
-		--manifest-path $(PROJECT_DIR)/Cargo.toml \
-		--target $(CARGO_TARGET) \
-		--release; \
-	else \
-		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
-		MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
-		cargo build \
-		--manifest-path $(PROJECT_DIR)/Cargo.toml \
-		--target $(CARGO_TARGET) \
-		--release; \
-	fi
+    if [ "$(CARGO_TARGET)" = "wasm32-unknown-emscripten" ]; then \
+		. $(EMSDK_DIR)/$(EMSDK)_env.sh && \
+        RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
+        -Z build-std=std,panic_abort \
+        -Z build-std-features="panic_immediate_abort,optimize_for_size" \
+        --manifest-path $(PROJECT_DIR)/Cargo.toml \
+        --target $(CARGO_TARGET) \
+        --release; \
+    else \
+        IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
+        MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
+        cargo build \
+        --manifest-path $(PROJECT_DIR)/Cargo.toml \
+        --target $(CARGO_TARGET) \
+        --release; \
+    fi
 endef
 
 define UNIFFI_BINDINGS_BUILD
@@ -415,7 +415,11 @@ define UNIFFI_BINDINGS_CPP_BUILD
 		--config $(RUNTIME_FFI)/uniffi.toml \
 		--out-dir $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS) \
 		$(RUNTIME_FFI)/src/dotlottie_player_cpp.udl
-	sed -i .bak 's/uint8_t/char/g' $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/*
+	if [ "$(BUILD_PLATFORM)" = "$(DARWIN)" ]; then \
+		sed -i .bak 's/uint8_t/char/g' $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/*; \
+	else \
+		sed -i 's/uint8_t/char/g' $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/*; \
+	fi
 	cp $(RUNTIME_FFI)/emscripten_bindings.cpp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/.
 endef
 
@@ -1001,6 +1005,12 @@ distclean: clean clean-deps
 mac-setup: export EMSDK_VERSION := $(EMSDK_VERSION)
 mac-setup: export UNIFFI_BINDGEN_CPP_VERSION:= $(UNIFFI_BINDGEN_CPP_VERSION)
 mac-setup:
+	@./.$@.sh
+
+.PHONY: linux-setup
+linux-setup: export EMSDK_VERSION := $(EMSDK_VERSION)
+linux-setup: export UNIFFI_BINDGEN_CPP_VERSION:= $(UNIFFI_BINDGEN_CPP_VERSION)
+linux-setup:
 	@./.$@.sh
 
 .PHONY: test

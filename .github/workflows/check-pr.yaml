@@ -4,13 +4,27 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, chore/ci-wasm-build]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Setup
+        run: make linux-setup
+      - name: Build WASM
+        run: make wasm
+      - name: Upload WASM Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.wasm.tar.gz
+          path: release/wasm/dotlottie-player.wasm.tar.gz
+          if-no-files-found: error
   check-pr:
     if: github.head_ref != 'release'
     runs-on: ubuntu-latest

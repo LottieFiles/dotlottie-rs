@@ -74,11 +74,11 @@ pub trait Renderer: Sized + 'static {
         color_space: ColorSpace,
     ) -> Result<(), Self::Error>;
 
-    fn clear(&self, paints: bool, buffer: bool) -> Result<(), Self::Error>;
+    fn clear(&self, free: bool) -> Result<(), Self::Error>;
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), Self::Error>;
 
-    fn draw(&mut self) -> Result<(), Self::Error>;
+    fn draw(&mut self, clear_buffer: bool) -> Result<(), Self::Error>;
 
     fn sync(&mut self) -> Result<(), Self::Error>;
 

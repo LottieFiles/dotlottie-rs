@@ -225,9 +225,9 @@ impl Animation for TvgAnimation {
         let mimetype_cstr = CString::new(mimetype).unwrap();
         let data_cstr = CString::new(data).unwrap();
 
-        let data_ptr: *const i8 = data_cstr.as_ptr() as *const i8;
-        let data_len: u32 = data.as_bytes().len() as u32;
-        let mimetype_ptr: *const i8 = mimetype_cstr.as_ptr() as *const i8;
+        let data_ptr: *const i8 = data_cstr.as_ptr();
+        let data_len = data.as_bytes().len() as u32;
+        let mimetype_ptr: *const i8 = mimetype_cstr.as_ptr();
 
         unsafe {
             #[cfg(feature = "thorvg-v1")]

@@ -6,8 +6,8 @@ use std::io::Read;
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
-pub const WIDTH: usize = 125;
-pub const HEIGHT: usize = 125;
+pub const WIDTH: usize = 500;
+pub const HEIGHT: usize = 500;
 
 pub const STATE_MACHINE_NAME: &str = "rating";
 pub const ANIMATION_NAME: &str = "star_marked";
@@ -101,32 +101,64 @@ fn main() {
     let mut mx = 0.0;
     let mut my = 0.0;
 
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        let left_down = window.get_mouse_down(MouseButton::Left);
-        if left_down {
-            // if left_down {
-            window.get_mouse_pos(minifb::MouseMode::Pass).map(|mouse| {
-                if mouse.0 != mx || mouse.1 != my {
-                    mx = mouse.0;
-                    my = mouse.1;
+    let mut oo = false;
 
-                    let event = Event::PointerDown { x: mx, y: my };
+    let mut left_down = false;
+
+    let mut entered = false;
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        let tmp = window.get_mouse_down(MouseButton::Left);
+        let mouse_pos = window.get_mouse_pos(minifb::MouseMode::Pass);
+        mouse_pos.map(|mouse| {
+            if mouse.0 != mx || mouse.1 != my {
+                mx = mouse.0;
+                my = mouse.1;
+            }
+
+            if mx >= 0.0 && mx <= WIDTH as f32 && my >= 0.0 && my <= HEIGHT as f32 {
+                println!("Sending pointer enter");
+                if !entered {
+                    let event = Event::PointerEnter { x: mx, y: my };
 
                     let p = &mut *locked_player.write().unwrap();
                     let _m = p.state_machine_post_event(&event);
                 }
-            });
+                entered = true;
+            } else {
+                println!("Sending pointer Exit");
+                if entered {
+                    let event = Event::PointerExit { x: mx, y: my };
 
-            // Get the coordinates
-            // let (x, y) = window.get_mouse_pos(minifb::MouseMode::Pass).unwrap();
+                    let p = &mut *locked_player.write().unwrap();
+                    let _m = p.state_machine_post_event(&event);
+                }
 
-            // let pointer_event = Event::PointerDown { x, y };
+                entered = false;
+            }
+        });
 
-            // let p = &mut *locked_player.write().unwrap();
+        if !tmp && left_down {
+            let event = Event::PointerUp { x: mx, y: my };
 
-            // println!("PointerDown -> x: {}, y: {}", x, y);
+            println!("Sending pointer up");
+            let p = &mut *locked_player.write().unwrap();
+            let _m = p.state_machine_post_event(&event);
+        }
 
-            // p.post_event(&pointer_event);
+        left_down = tmp;
+
+        // left_down = window.get_mouse_down(MouseButton::Left);
+        if left_down {
+            let event = Event::PointerDown { x: mx, y: my };
+
+            println!("Sending pointer down");
+            let p = &mut *locked_player.write().unwrap();
+            let _m = p.state_machine_post_event(&event);
+        } else {
+            println!("Sending pointer move {} {}", mx, my);
+            let event = Event::PointerMove { x: mx, y: my };
+            let p = &mut *locked_player.write().unwrap();
+            let _m = p.state_machine_post_event(&event);
         }
 
         timer.tick(&*locked_player.read().unwrap());
@@ -141,9 +173,12 @@ fn main() {
         if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
             let p = &mut *locked_player.write().unwrap();
 
-            rating += 1.0;
-            println!("current state: {}", p.state_machine_current_state());
-            p.state_machine_set_numeric_trigger("rating", rating);
+            oo = !oo;
+            p.state_machine_set_boolean_trigger("OnOffSwitch", oo);
+
+            // rating += 1.0;
+            // println!("current state: {}", p.state_machine_current_state());
+            // p.state_machine_set_numeric_trigger("rating", rating);
         }
         let p = &mut *locked_player.write().unwrap();
 

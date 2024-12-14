@@ -821,19 +821,15 @@ impl StateMachineEngine {
     }
 
     fn manage_pointer_down_up_enter_exit(&mut self, event: &Event, x: f32, y: f32) {
-        let listeners = self.listeners(Some(event.type_name()));
-
-        if listeners.is_empty() {
-            return;
-        }
-
         let mut actions_to_execute = Vec::new();
 
-        for listener in listeners {
-            let action_vec = self.is_listener_active(event, &listener, x, y);
-
-            // Action vec was moved in to action_to_execute, it can't be used again
-            actions_to_execute.extend(action_vec);
+        if let Some(listeners) = &self.state_machine.listeners {
+            for listener in listeners {
+                if listener.type_name() == event.type_name() {
+                    let action_vec = self.is_listener_active(event, &listener, x, y);
+                    actions_to_execute.extend(action_vec);
+                }
+            }
         }
 
         for action in actions_to_execute {
@@ -844,40 +840,52 @@ impl StateMachineEngine {
         }
     }
 
-    fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32) {
-        // This will handle PointerDown, PointerUp, PointerEnter, PointerExit
-        if event.type_name() != "PointerMove" {
-            self.manage_pointer_down_up_enter_exit(event, x, y);
+    fn manage_pointer_move(&mut self, event: &Event, x: f32, y: f32) {
+        let mut actions_to_execute = Vec::new();
+
+        // Manage pointerMove listeners
+        if event.type_name() == event_type_name!(PointerMove).to_string() {
+            let pointer_move_listeners =
+                self.listeners(Some(event_type_name!(PointerMove).to_string()));
+
+            for listener in pointer_move_listeners {
+                if let Listener::PointerMove { actions } = listener {
+                    actions_to_execute.extend(actions.clone());
+                }
+            }
         }
 
-        // We're left with PointerMove
-        if event.type_name() == "PointerMove" {
-            let mut actions_to_execute = Vec::new();
+        // Check if we've moved the pointer over any of the pointerEnter/Exit listeners
+        // If we've changed layers, perform exit actions
+        // If we don't hit any layers, perform exit actions
+        if let Some(rc_player) = &self.player {
+            let try_read_lock = rc_player.try_read();
 
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
+            if let Ok(player_container) = try_read_lock {
+                let mut hit = false;
+                let old_layer = self.curr_entered_layer.clone();
 
-                if let Ok(player_container) = try_read_lock {
-                    // Check if we've moved the mouse over any of the pointerEnter/Exit listeners
-                    // If we've changed layers, perform exit actions
-                    // If we don't hit any layers, perform exit actions
-
-                    let mut hit = false;
-                    let old_layer = self.curr_entered_layer.clone();
-
-                    for (layer, _) in &self.listened_layers {
+                // Loop through all layers we're listening to
+                for (layer, event_name) in &self.listened_layers {
+                    // We're only interested in the listened layers that need enter / exit event
+                    if event_name == event_type_name!(PointerEnter)
+                        || event_name == event_type_name!(PointerExit)
+                    {
                         if player_container.hit_check(&layer, x, y) {
                             hit = true;
 
+                            // If it's that same current layer, do nothing
                             if self.curr_entered_layer == *layer {
                                 break;
                             }
 
                             self.curr_entered_layer = layer.to_string();
 
+                            // Get all pointer_enter listeners
                             let pointer_enter_listeners =
                                 self.listeners(Some(event_type_name!(PointerEnter).to_string()));
 
+                            // Add their actions if their layer name matches the current layer name in loop
                             for listener in pointer_enter_listeners {
                                 if let Some(listener_layer_name) = listener.get_layer_name() {
                                     if *listener_layer_name == self.curr_entered_layer {
@@ -887,39 +895,61 @@ impl StateMachineEngine {
                             }
                         }
                     }
+                }
 
-                    if !hit {
-                        self.curr_entered_layer = "".to_string();
+                // We didn't hit any listened layers
+                if !hit {
+                    self.curr_entered_layer = "".to_string();
 
-                        let pointer_enter_listeners =
-                            self.listeners(Some(event_type_name!(PointerExit).to_string()));
+                    let pointer_exit_listeners =
+                        self.listeners(Some(event_type_name!(PointerExit).to_string()));
 
-                        for listener in pointer_enter_listeners {
-                            if let Some(listener_layer_name) = listener.get_layer_name() {
-                                if *listener_layer_name == old_layer {
-                                    actions_to_execute.extend(listener.get_actions().clone());
-                                }
+                    // Add the actions of every PointerExit listener that depended on the layer we've just exited
+                    for listener in pointer_exit_listeners {
+                        if let Some(listener_layer_name) = listener.get_layer_name() {
+                            // We've exited the desired layer, add its actions to execute
+                            if *listener_layer_name == old_layer {
+                                actions_to_execute.extend(listener.get_actions().clone());
                             }
                         }
                     }
-
-                    let pointer_move_listener =
-                        self.listeners(Some(event_type_name!(PointerMove).to_string()));
-
-                    // Manage actual pointerMove listeners
-                    for listener in pointer_move_listener {
-                        if let Listener::PointerMove { actions } = listener {
-                            actions_to_execute.extend(actions.clone());
-                        }
-                    }
                 }
             }
-            for action in actions_to_execute {
-                // Run the pipeline because listeners are outside of the evaluation pipeline loop
-                if let Some(player_ref) = &self.player {
-                    let _ = action.execute(self, player_ref.clone(), true);
-                }
+        }
+
+        for action in actions_to_execute {
+            // Run the pipeline because listeners are outside of the evaluation pipeline loop
+            if let Some(player_ref) = &self.player {
+                let _ = action.execute(self, player_ref.clone(), true);
             }
+        }
+    }
+
+    // How pointer event are managed depending on the listener's event and the sent event.
+    // Since we can't detect PointerMove on mobile, we can still check PointerDown/Up and see if it's entered or exited a layer.
+    //
+    // | --------------------- | ----------------------------- | ----------- |
+    // | Listener Event type   | Web                           | Mobile      |
+    // | --------------------- | ----------------------------- | ----------- |
+    // | PointerDown           | PointerDown                   | PointerDown |
+    // | PointerUp             | PointerUp                     | PointerUp   |
+    // | PointerMove           | PointerMove                   | PointerDown |
+    // | PointerEnter          | PointerMove + PointerEnter    | PointerDown |
+    // | PointerExit           | PointerMove + PointerExit     | PointerUp   |
+    // | --------------------- | ----------------------------- | ----------- |
+    fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32) {
+        // This will handle PointerDown, PointerUp, PointerEnter, PointerExit
+        if event.type_name() != "PointerMove" {
+            self.manage_pointer_down_up_enter_exit(event, x, y);
+        }
+
+        // We're left with PointerMove
+        // Also performe checks for PointerDown and PointerUp, a mobile framework could of sent them and validate PointerEnter/Exit listeners.
+        if event.type_name() == "PointerMove"
+            || event.type_name() == "PointerDown"
+            || event.type_name() == "PointerUp"
+        {
+            self.manage_pointer_move(event, x, y);
         }
     }
 
@@ -940,10 +970,7 @@ impl StateMachineEngine {
             {
                 if let Some(current_state) = &self.current_state {
                     if current_state.name() == *state_name {
-                        for action in actions {
-                            // Clones the reference to action
-                            actions_to_execute.push(action.clone());
-                        }
+                        actions_to_execute.extend(actions.clone());
                     }
                 }
             }

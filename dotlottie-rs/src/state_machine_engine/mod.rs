@@ -498,7 +498,14 @@ impl StateMachineEngine {
         let new_state = self.get_state(state_name);
 
         // We have a new state
-        if new_state.is_some() {
+        if let Some(new_state) = new_state {
+            // Emit transtion occured event
+            if let Ok(observers) = self.observers.try_read() {
+                for observer in observers.iter() {
+                    observer.on_transition(self.get_current_state_name(), new_state.name());
+                }
+            }
+
             // Perform exit actions on the current state if there is one.
             if self.current_state.is_some() {
                 let state = self.current_state.take();
@@ -517,8 +524,22 @@ impl StateMachineEngine {
                 }
             }
 
+            // Emit transtion occured event
+            if let Ok(observers) = self.observers.try_read() {
+                for observer in observers.iter() {
+                    observer.on_state_exit(self.get_current_state_name());
+                }
+            }
+
             // Assign the new state to the current_state
-            self.current_state = new_state;
+            self.current_state = Some(new_state);
+
+            // Emit transtion occured event
+            if let Ok(observers) = self.observers.try_read() {
+                for observer in observers.iter() {
+                    observer.on_state_entered(self.get_current_state_name());
+                }
+            }
 
             // Perform entry actions
             // Execute its type of state

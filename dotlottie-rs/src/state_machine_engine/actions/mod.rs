@@ -69,7 +69,7 @@ pub enum Action {
         value: f32,
     },
     SetTheme {
-        theme_id: String,
+        value: String,
     },
     SetFrame {
         value: StringNumber,
@@ -77,7 +77,7 @@ pub enum Action {
     SetProgress {
         value: StringNumber,
     },
-    SetSlot {
+    SetThemeData {
         value: String,
     },
     FireCustomEvent {
@@ -239,15 +239,15 @@ impl ActionTrait for Action {
                 );
                 // Ok(())
             }
-            Action::SetTheme { theme_id } => {
+            Action::SetTheme { value } => {
                 let read_lock = player.try_read();
 
                 match read_lock {
                     Ok(player) => {
-                        if !player.set_theme(theme_id) {
+                        if !player.set_theme(value) {
                             return Err(StateMachineActionError::ExecuteError(format!(
                                 "Error loading theme: {}",
-                                theme_id
+                                value
                             )));
                         }
                     }
@@ -259,7 +259,7 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::SetSlot { value } => {
+            Action::SetThemeData { value } => {
                 let read_lock = player.read();
 
                 match read_lock {

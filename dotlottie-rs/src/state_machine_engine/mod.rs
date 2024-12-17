@@ -467,8 +467,6 @@ impl StateMachineEngine {
         }
 
         self.listened_layers = all_listened_layers;
-
-        println!("Configured listened_layers : {:?}", self.listened_layers);
     }
 
     fn get_state(&self, state_name: &str) -> Option<Rc<State>> {

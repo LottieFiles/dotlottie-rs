@@ -279,7 +279,7 @@ cpp_link_args = [
 	'--no-entry',
 	'--strip-all',
 	'--emit-tsd=${WASM_MODULE}.d.ts',
-	'--closure=1']
+	'--js-library=$(PROJECT_DIR)/$(RUNTIME_FFI)/emscripten_library.js']
 
 [host_machine]
 system = '$(SYSTEM)'

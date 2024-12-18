@@ -148,6 +148,17 @@
             ]
         },
         {
+            "type": "PointerExit",
+            "layerName": "star1",
+            "actions": [
+                {
+                    "type": "SetNumeric",
+                    "triggerName": "rating",
+                    "value": 0
+                }
+            ]
+        },
+        {
             "type": "PointerEnter",
             "layerName": "star2",
             "actions": [
@@ -155,6 +166,17 @@
                     "type": "SetNumeric",
                     "triggerName": "rating",
                     "value": 2
+                }
+            ]
+        },
+        {
+            "type": "PointerExit",
+            "layerName": "star2",
+            "actions": [
+                {
+                    "type": "SetNumeric",
+                    "triggerName": "rating",
+                    "value": 0
                 }
             ]
         },
@@ -170,6 +192,17 @@
             ]
         },
         {
+            "type": "PointerExit",
+            "layerName": "star3",
+            "actions": [
+                {
+                    "type": "SetNumeric",
+                    "triggerName": "rating",
+                    "value": 0
+                }
+            ]
+        },
+        {
             "type": "PointerEnter",
             "layerName": "star4",
             "actions": [
@@ -177,6 +210,17 @@
                     "type": "SetNumeric",
                     "triggerName": "rating",
                     "value": 4
+                }
+            ]
+        },
+        {
+            "type": "PointerExit",
+            "layerName": "star4",
+            "actions": [
+                {
+                    "type": "SetNumeric",
+                    "triggerName": "rating",
+                    "value": 0
                 }
             ]
         },

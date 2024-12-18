@@ -1392,21 +1392,28 @@ impl DotLottiePlayer {
                                 listener_types.push("PointerDown".to_string())
                             }
                             crate::listeners::Listener::PointerEnter { .. } => {
-                                // Push PointerMove so that can determine if the pointer entered the layer
-                                listener_types.push("PointerMove".to_string())
+                                // In case framework self detects pointer entering layers, push pointerExit
+                                listener_types.push("PointerEnter".to_string());
+                                // We push PointerMove too so that we can do hit detection instead of the framework
+                                listener_types.push("PointerMove".to_string());
                             }
                             crate::listeners::Listener::PointerMove { .. } => {
                                 listener_types.push("PointerMove".to_string())
                             }
                             crate::listeners::Listener::PointerExit { .. } => {
-                                // Push PointerMove so that can determine if the pointer exited the layer
-                                listener_types.push("PointerMove".to_string())
+                                // In case framework self detects pointer exiting layers, push pointerExit
+                                listener_types.push("PointerExit".to_string());
+                                // We push PointerMove too so that we can do hit detection instead of the framework
+                                listener_types.push("PointerMove".to_string());
                             }
                             crate::listeners::Listener::OnComplete { .. } => {
                                 listener_types.push("OnComplete".to_string())
                             }
                         }
                     }
+
+                    listener_types.sort();
+                    listener_types.dedup();
                     listener_types
                 } else {
                     vec![]
@@ -1516,6 +1523,53 @@ impl DotLottiePlayer {
             }
             Err(_) => false,
         }
+    }
+
+    pub fn state_machine_get_numeric_trigger(&self, key: &str) -> f32 {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if let Some(sm) = &*state_machine {
+                    if let Some(value) = sm.get_numeric_trigger(key) {
+                        return value;
+                    }
+                }
+            }
+            Err(_) => {
+                return f32::MIN;
+            }
+        }
+
+        f32::MIN
+    }
+
+    pub fn state_machine_get_string_trigger(&self, key: &str) -> String {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    if let Some(value) = sm.get_string_trigger(key) {
+                        return value;
+                    }
+                }
+            }
+            Err(_) => return "".to_string(),
+        }
+
+        "".to_string()
+    }
+
+    pub fn state_machine_get_boolean_trigger(&self, key: &str) -> bool {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    if let Some(value) = sm.get_boolean_trigger(key) {
+                        return value;
+                    }
+                }
+            }
+            Err(_) => return false,
+        }
+
+        false
     }
 
     pub fn state_machine_fire_event(&self, event: &str) {
@@ -1810,6 +1864,7 @@ impl DotLottiePlayer {
                 return "".to_string();
             }
         }
+
         "".to_string()
     }
 }

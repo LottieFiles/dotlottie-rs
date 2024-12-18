@@ -23,15 +23,15 @@ pub trait ActionTrait {
     ) -> Result<(), StateMachineActionError>;
 }
 
+// Todo:
+// - FireCustomEvent
+// - Reset
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
 pub enum Action {
     OpenUrl {
         url: String,
-    },
-    Theme {
-        theme_id: String,
     },
     Increment {
         trigger_name: String,
@@ -69,7 +69,7 @@ pub enum Action {
         value: f32,
     },
     SetTheme {
-        theme_id: String,
+        value: String,
     },
     SetFrame {
         value: StringNumber,
@@ -77,7 +77,7 @@ pub enum Action {
     SetProgress {
         value: StringNumber,
     },
-    SetSlot {
+    SetThemeData {
         value: String,
     },
     FireCustomEvent {
@@ -215,14 +215,14 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            // Todo: Add support for setting a trigger to a trigger value
             Action::Fire { trigger_name } => {
                 let _ = engine.fire(trigger_name, run_pipeline);
                 Ok(())
             }
-            Action::Reset { trigger_name } => {
-                todo!("Reset trigger {}", trigger_name);
-                // Ok(())
+            Action::Reset { trigger_name: _ } => {
+                // todo!("Reset trigger {}", trigger_name);
+
+                Ok(())
             }
             Action::SetExpression {
                 layer_name,
@@ -239,15 +239,15 @@ impl ActionTrait for Action {
                 );
                 // Ok(())
             }
-            Action::SetTheme { theme_id } => {
+            Action::SetTheme { value } => {
                 let read_lock = player.try_read();
 
                 match read_lock {
                     Ok(player) => {
-                        if !player.set_theme(theme_id) {
+                        if !player.set_theme(value) {
                             return Err(StateMachineActionError::ExecuteError(format!(
                                 "Error loading theme: {}",
-                                theme_id
+                                value
                             )));
                         }
                     }
@@ -259,7 +259,7 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::SetSlot { value } => {
+            Action::SetThemeData { value } => {
                 let read_lock = player.read();
 
                 match read_lock {
@@ -359,23 +359,6 @@ impl ActionTrait for Action {
                 }
 
                 Ok(())
-            }
-            Action::Theme { theme_id } => {
-                let read_lock = player.read();
-
-                match read_lock {
-                    Ok(player) => {
-                        if !player.set_theme(theme_id) {
-                            return Err(StateMachineActionError::ExecuteError(
-                                "Error loading theme".to_string(),
-                            ));
-                        }
-                        Ok(())
-                    }
-                    Err(_) => Err(StateMachineActionError::ExecuteError(
-                        "Error getting read lock on player".to_string(),
-                    )),
-                }
             }
         }
     }

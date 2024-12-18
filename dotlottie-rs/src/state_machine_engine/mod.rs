@@ -24,8 +24,8 @@ use triggers::Trigger;
 
 use crate::state_machine_engine::listeners::Listener;
 use crate::{
-    state_machine_state_check_pipeline, DotLottiePlayerContainer, EventName, PointerEvent,
-    StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, DotLottiePlayerContainer, EventName,
+    PointerEvent, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -78,8 +78,6 @@ pub enum StateMachineEngineError {
 }
 
 pub struct StateMachineEngine {
-    // pub listeners: Vec<Listener>,
-
     /* We keep references to the StateMachine's States. */
     /* This prevents duplicating the data inside the engine. */
     pub global_state: Option<Rc<State>>,
@@ -93,6 +91,10 @@ pub struct StateMachineEngine {
     boolean_trigger: HashMap<String, bool>,
     event_trigger: HashMap<String, String>,
     curr_event: Option<String>,
+
+    // PointerEnter/PointerExit management
+    curr_entered_layer: String,
+    listened_layers: Vec<(String, String)>,
 
     observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
 
@@ -116,6 +118,8 @@ impl Default for StateMachineEngine {
             boolean_trigger: HashMap::new(),
             event_trigger: HashMap::new(),
             curr_event: None,
+            curr_entered_layer: "".to_string(),
+            listened_layers: Vec::new(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
             state_history: Vec::new(),
@@ -158,6 +162,8 @@ impl StateMachineEngine {
             boolean_trigger: HashMap::new(),
             event_trigger: HashMap::new(),
             curr_event: None,
+            curr_entered_layer: "".to_string(),
+            listened_layers: Vec::new(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
             state_history: Vec::new(),
@@ -281,10 +287,10 @@ impl StateMachineEngine {
         let mut new_state_machine = StateMachineEngine::default();
 
         if parsed_state_machine.is_err() {
-            // println!(
-            //     "Error parsing state machine definition: {:?}",
-            //     parsed_state_machine.err()
-            // );
+            println!(
+                "Error parsing state machine definition: {:?}",
+                parsed_state_machine.err()
+            );
             return Err(StateMachineEngineError::ParsingError {
                 reason: "Failed to parse state machine definition".to_string(),
             });
@@ -328,6 +334,8 @@ impl StateMachineEngine {
 
                 new_state_machine.player = Some(player.clone());
                 new_state_machine.state_machine = parsed_state_machine;
+
+                new_state_machine.init_listened_layers();
 
                 // Run the security check pipeline
                 let check_report = self.security_check_pipeline(&new_state_machine);
@@ -398,9 +406,9 @@ impl StateMachineEngine {
         self.current_state.clone()
     }
 
-    pub fn listeners(&self, filter: Option<String>) -> Vec<&Listener> {
+    pub fn listeners(&self, event_type_filter: Option<String>) -> Vec<&Listener> {
         let mut listeners_clone = Vec::new();
-        let filter = filter.unwrap_or("".to_string());
+        let filter = event_type_filter.unwrap_or("".to_string());
 
         if let Some(listeners) = &self.state_machine.listeners {
             for listener in listeners {
@@ -418,6 +426,47 @@ impl StateMachineEngine {
         }
 
         listeners_clone
+    }
+
+    fn init_listened_layers(&mut self) {
+        let mut listeners = vec![];
+
+        listeners.extend(self.listeners(None));
+
+        let mut all_listened_layers: Vec<(String, String)> = vec![];
+
+        // Get every layer we listen to
+        for listener in listeners {
+            match listener {
+                Listener::PointerEnter { layer_name, .. } => {
+                    if let Some(layer) = layer_name {
+                        all_listened_layers
+                            .push((layer.clone(), event_type_name!(PointerEnter).to_string()));
+                    }
+                }
+                Listener::PointerExit { layer_name, .. } => {
+                    if let Some(layer) = layer_name {
+                        all_listened_layers
+                            .push((layer.clone(), event_type_name!(PointerExit).to_string()))
+                    }
+                }
+                Listener::PointerUp { layer_name, .. } => {
+                    if let Some(layer) = layer_name {
+                        all_listened_layers
+                            .push((layer.clone(), event_type_name!(PointerUp).to_string()))
+                    }
+                }
+                Listener::PointerDown { layer_name, .. } => {
+                    if let Some(layer) = layer_name {
+                        all_listened_layers
+                            .push((layer.clone(), event_type_name!(PointerDown).to_string()))
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        self.listened_layers = all_listened_layers;
     }
 
     fn get_state(&self, state_name: &str) -> Option<Rc<State>> {
@@ -447,7 +496,14 @@ impl StateMachineEngine {
         let new_state = self.get_state(state_name);
 
         // We have a new state
-        if new_state.is_some() {
+        if let Some(new_state) = new_state {
+            // Emit transtion occured event
+            if let Ok(observers) = self.observers.try_read() {
+                for observer in observers.iter() {
+                    observer.on_transition(self.get_current_state_name(), new_state.name());
+                }
+            }
+
             // Perform exit actions on the current state if there is one.
             if self.current_state.is_some() {
                 let state = self.current_state.take();
@@ -466,8 +522,22 @@ impl StateMachineEngine {
                 }
             }
 
+            // Emit transtion occured event
+            if let Ok(observers) = self.observers.try_read() {
+                for observer in observers.iter() {
+                    observer.on_state_exit(self.get_current_state_name());
+                }
+            }
+
             // Assign the new state to the current_state
-            self.current_state = new_state;
+            self.current_state = Some(new_state);
+
+            // Emit transtion occured event
+            if let Ok(observers) = self.observers.try_read() {
+                for observer in observers.iter() {
+                    observer.on_state_entered(self.get_current_state_name());
+                }
+            }
 
             // Perform entry actions
             // Execute its type of state
@@ -622,7 +692,7 @@ impl StateMachineEngine {
                 self.current_cycle_count += 1;
 
                 if self.current_cycle_count >= self.max_cycle_count {
-                    // println!("🚨 Infinite loop detected, ending state machine.");
+                    println!("🚨 Infinite loop detected, ending state machine.");
                     self.end();
                     return Err(StateMachineEngineError::InfiniteLoopError);
                 }
@@ -732,70 +802,129 @@ impl StateMachineEngine {
         None
     }
 
-    fn get_correct_pointer_actions_from_listener(
-        &self,
-        event: &Event,
-        layer_name: Option<String>,
-        actions: &Vec<Action>,
-        x: f32,
-        y: f32,
-    ) -> Vec<Action> {
-        let mut actions_to_execute = Vec::new();
+    fn manage_explicit_events(&mut self, event: &Event, x: f32, y: f32) {
+        let mut actions_to_execute: Vec<Action> = Vec::new();
+        let listeners = self.listeners(None);
+        let mut entered_layer = self.curr_entered_layer.clone();
 
-        // User defined a specific layer to check if hit
-        if let Some(layer) = layer_name {
-            // Check if the layer was hit, otherwise we ignore this listener
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
+        for listener in listeners {
+            if listener.type_name() == event.type_name() {
+                // User defined a specific layer to check if hit
+                if let Some(layer) = listener.get_layer_name() {
+                    // Check if the layer was hit, otherwise we ignore this listener
+                    if let Some(rc_player) = &self.player {
+                        let try_read_lock = rc_player.try_read();
 
-                if let Ok(player_container) = try_read_lock {
-                    // If we have a pointer down event, we need to check if the pointer is outside of the layer
-                    if let Event::PointerExit { x, y } = event {
-                        if !player_container.hit_check(&layer, *x, *y) {
-                            for action in actions {
-                                actions_to_execute.push(action.clone());
+                        if let Ok(player_container) = try_read_lock {
+                            // If we have a pointer down event, we need to check if the pointer is outside of the layer
+                            if let Event::PointerExit { x, y } = event {
+                                if self.curr_entered_layer == *layer
+                                    && !player_container.hit_check(&layer, *x, *y)
+                                {
+                                    entered_layer = "".to_string();
+                                    actions_to_execute.extend(listener.get_actions().clone());
+                                }
+                            } else {
+                                // Hit check will return true if the layer was hit
+                                if player_container.hit_check(&layer, x, y) {
+                                    entered_layer = layer.clone();
+                                    actions_to_execute.extend(listener.get_actions().clone());
+                                }
                             }
                         }
-                    } else {
-                        // Hit check will return true if the layer was hit
+                    }
+                } else {
+                    // No layer was specified, add all actions
+                    actions_to_execute.extend(listener.get_actions().clone());
+                }
+            }
+        }
+
+        self.curr_entered_layer = entered_layer;
+
+        for action in actions_to_execute {
+            // Run the pipeline because listeners are outside of the evaluation pipeline loop
+            if let Some(player_ref) = &self.player {
+                let _ = action.execute(self, player_ref.clone(), true);
+            }
+        }
+    }
+
+    fn manage_cross_platform_events(&mut self, event: &Event, x: f32, y: f32) {
+        let mut actions_to_execute = Vec::new();
+
+        // Manage pointerMove listeners
+        if event.type_name() == event_type_name!(PointerMove).to_string() {
+            let pointer_move_listeners =
+                self.listeners(Some(event_type_name!(PointerMove).to_string()));
+
+            for listener in pointer_move_listeners {
+                if let Listener::PointerMove { actions } = listener {
+                    actions_to_execute.extend(actions.clone());
+                }
+            }
+        }
+
+        // Check if we've moved the pointer over any of the pointerEnter/Exit listeners
+        // If we've changed layers, perform exit actions
+        // If we don't hit any layers, perform exit actions
+        if let Some(rc_player) = &self.player {
+            let try_read_lock = rc_player.try_read();
+
+            if let Ok(player_container) = try_read_lock {
+                let mut hit = false;
+                let old_layer = self.curr_entered_layer.clone();
+
+                // Loop through all layers we're listening to
+                for (layer, event_name) in &self.listened_layers {
+                    // We're only interested in the listened layers that need enter / exit event
+                    if event_name == event_type_name!(PointerEnter)
+                        || event_name == event_type_name!(PointerExit)
+                    {
                         if player_container.hit_check(&layer, x, y) {
-                            for action in actions {
-                                actions_to_execute.push(action.clone());
+                            hit = true;
+
+                            // If it's that same current layer, do nothing
+                            if self.curr_entered_layer == *layer {
+                                break;
+                            }
+
+                            self.curr_entered_layer = layer.to_string();
+
+                            // Get all pointer_enter listeners
+                            let pointer_enter_listeners =
+                                self.listeners(Some(event_type_name!(PointerEnter).to_string()));
+
+                            // Add their actions if their layer name matches the current layer name in loop
+                            for listener in pointer_enter_listeners {
+                                if let Some(listener_layer_name) = listener.get_layer_name() {
+                                    if *listener_layer_name == self.curr_entered_layer {
+                                        actions_to_execute.extend(listener.get_actions().clone());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // We didn't hit any listened layers
+                if !hit {
+                    self.curr_entered_layer = "".to_string();
+
+                    let pointer_exit_listeners =
+                        self.listeners(Some(event_type_name!(PointerExit).to_string()));
+
+                    // Add the actions of every PointerExit listener that depended on the layer we've just exited
+                    for listener in pointer_exit_listeners {
+                        if let Some(listener_layer_name) = listener.get_layer_name() {
+                            // We've exited the desired layer, add its actions to execute
+                            if *listener_layer_name == old_layer {
+                                actions_to_execute.extend(listener.get_actions().clone());
                             }
                         }
                     }
                 }
             }
-        } else {
-            // No layer was specified, add all actions
-            for action in actions {
-                actions_to_execute.push(action.clone());
-            }
-        }
-
-        actions_to_execute
-    }
-
-    fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32) {
-        let listeners = self.listeners(Some(event.type_name()));
-
-        if listeners.is_empty() {
-            return;
-        }
-
-        let mut actions_to_execute = Vec::new();
-
-        for listener in listeners {
-            let action_vec = self.get_correct_pointer_actions_from_listener(
-                event,
-                listener.get_layer_name(),
-                listener.get_actions(),
-                x,
-                y,
-            );
-
-            // Action vec was moved in to action_to_execute, it can't be used again
-            actions_to_execute.extend(action_vec);
         }
 
         for action in actions_to_execute {
@@ -803,6 +932,45 @@ impl StateMachineEngine {
             if let Some(player_ref) = &self.player {
                 let _ = action.execute(self, player_ref.clone(), true);
             }
+        }
+    }
+
+    // How pointer event are managed depending on the listener's event and the sent event.
+    // Since we can't detect PointerMove on mobile, we can still check PointerDown/Up and see if it's entered or exited a layer.
+    //
+    // | -------------------------------- | ----------------------------- | ----------- |
+    // | Listener Event type              | Web                           | Mobile      |
+    // | -------------------------------- | ----------------------------- | ----------- |
+    // | PointerDown (No Layer)           | PointerDown                   | PointerDown |
+    // | PointerDown (With Layer)         | PointerDown                   | PointerDown |
+    // | PointerUp (No Layer)             | PointerUp                     | PointerUp   |
+    // | PointerUp (With Layer)           | PointerUp                     | PointerUp   |
+    // | PointerMove (No Layer)           | PointerMove                   | PointerDown |
+    // | PointerEnter (No Layer)          | PointerEnter                  |             |
+    // | PointerEnter (With Layer)        | PointerMove + PointerEnter    | PointerDown |
+    // | PointerExit (No Layer)           | PointerExit                   | PointerUp   |
+    // | PointerExit (With Layer)         | PointerMove + PointerExit     |             |
+    // | ---------------------------------|-------------------------------| ----------- |
+
+    // Notes:
+    // Atm, PointerEnter/Exit without layers is not supported on mobile.
+    // This is because if we allow pointerDown to activate PointerEnter/Exit,
+    // It would override PointerDown with layers, which is not a great experience.
+    // With the current setup we can have an action that happens when the cursor is over the canvas
+    // and another action that happens when the cursor is over a specific layer.
+    fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32) {
+        // This will handle PointerDown, PointerUp, PointerEnter, PointerExit
+        if event.type_name() != "PointerMove" {
+            self.manage_explicit_events(event, x, y);
+        }
+
+        // We're left with PointerMove
+        // Also performe checks for PointerDown and PointerUp, a mobile framework could of sent them and validate PointerEnter/Exit listeners.
+        if event.type_name() == "PointerMove"
+            || event.type_name() == "PointerDown"
+            || event.type_name() == "PointerUp"
+        {
+            self.manage_cross_platform_events(event, x, y);
         }
     }
 
@@ -823,10 +991,7 @@ impl StateMachineEngine {
             {
                 if let Some(current_state) = &self.current_state {
                     if current_state.name() == *state_name {
-                        for action in actions {
-                            // Clones the reference to action
-                            actions_to_execute.push(action.clone());
-                        }
+                        actions_to_execute.extend(actions.clone());
                     }
                 }
             }

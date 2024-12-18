@@ -172,10 +172,10 @@ mod tests {
 
         player.state_machine_post_event(&Event::PointerEnter { x: 15.0, y: 45.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_0");
+        assert_eq!(curr_state_name, "star_1");
         player.state_machine_post_event(&Event::PointerExit { x: 0.0, y: 0.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_5");
+        assert_eq!(curr_state_name, "star_0");
     }
 
     #[test]
@@ -194,38 +194,38 @@ mod tests {
 
         player.state_machine_post_event(&Event::PointerMove { x: 15.0, y: 45.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_0");
+        assert_eq!(curr_state_name, "star_1");
         player.state_machine_post_event(&Event::PointerMove { x: 0.0, y: 0.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_1");
+        assert_eq!(curr_state_name, "star_0");
 
         player.state_machine_post_event(&Event::PointerMove { x: 30.0, y: 45.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_1");
+        assert_eq!(curr_state_name, "star_2");
         player.state_machine_post_event(&Event::PointerMove { x: 0.0, y: 0.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_2");
+        assert_eq!(curr_state_name, "star_0");
 
         player.state_machine_post_event(&Event::PointerMove { x: 45.0, y: 45.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_2");
+        assert_eq!(curr_state_name, "star_3");
         player.state_machine_post_event(&Event::PointerMove { x: 0.0, y: 0.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_3");
+        assert_eq!(curr_state_name, "star_0");
 
         player.state_machine_post_event(&Event::PointerMove { x: 60.0, y: 45.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_3");
+        assert_eq!(curr_state_name, "star_4");
         player.state_machine_post_event(&Event::PointerMove { x: 0.0, y: 0.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_4");
+        assert_eq!(curr_state_name, "star_0");
 
         player.state_machine_post_event(&Event::PointerMove { x: 75.0, y: 45.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_4");
+        assert_eq!(curr_state_name, "star_5");
         player.state_machine_post_event(&Event::PointerMove { x: 0.0, y: 0.0 });
         let curr_state_name = get_current_state_name(&player);
-        assert_eq!(curr_state_name, "star_5");
+        assert_eq!(curr_state_name, "star_0");
     }
 
     #[test]

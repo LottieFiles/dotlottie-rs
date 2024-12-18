@@ -1,0 +1,60 @@
+{
+    "descriptor": {
+        "id": "compareTo",
+        "initial": "global"
+    },
+    "states": [
+        {
+            "name": "global",
+            "type": "GlobalState",
+            "animationId": "",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "a",
+                    "guards": []
+                },
+                {
+                    "type": "Transition",
+                    "toState": "b",
+                    "guards": []
+                },
+                {
+                    "type": "Transition",
+                    "toState": "c",
+                    "guards": []
+                }
+            ]
+        },
+        {
+            "name": "a",
+            "type": "PlaybackState",
+            "animationId": "",
+            "transitions": []
+        },
+        {
+            "name": "b",
+            "type": "PlaybackState",
+            "animationId": "",
+            "transitions": []
+        },
+        {
+            "name": "c",
+            "type": "PlaybackState",
+            "animationId": "",
+            "transitions": []
+        }
+    ],
+    "listeners": [],
+    "triggers": [
+        {
+            "type": "Boolean",
+            "name": "OnOffSwitch",
+            "value": false
+        },
+        {
+            "type": "Event",
+            "name": "Step"
+        }
+    ]
+}

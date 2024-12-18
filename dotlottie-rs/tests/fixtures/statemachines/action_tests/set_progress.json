@@ -1,0 +1,76 @@
+{
+    "descriptor": {
+        "id": "starRating",
+        "initial": "global"
+    },
+    "states": [
+        {
+            "name": "global",
+            "type": "GlobalState",
+            "animationId": "",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "a",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "conditionType": "Equal",
+                            "triggerName": "OnOffSwitch",
+                            "compareTo": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "b",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "conditionType": "Equal",
+                            "triggerName": "OnOffSwitch",
+                            "compareTo": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "a",
+            "type": "PlaybackState",
+            "animationId": "",
+            "transitions": [],
+            "entryActions": [
+                {
+                    "type": "SetProgress",
+                    "value": 10
+                }
+            ]
+        },
+        {
+            "name": "b",
+            "type": "PlaybackState",
+            "animationId": "",
+            "transitions": [],
+            "entryActions": [
+                {
+                    "type": "SetProgress",
+                    "value": "$frameHolder"
+                }
+            ]
+        }
+    ],
+    "listeners": [],
+    "triggers": [
+        {
+            "type": "Boolean",
+            "name": "OnOffSwitch",
+            "value": false
+        },
+        {
+            "type": "Numeric",
+            "name": "frameHolder",
+            "value": 75
+        }
+    ]
+}

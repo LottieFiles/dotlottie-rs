@@ -1,0 +1,119 @@
+{
+    "descriptor": {
+        "id": "no-guards",
+        "initial": "a"
+    },
+    "states": [
+        {
+            "type": "PlaybackState",
+            "name": "a",
+            "loop": true,
+            "autoplay": true,
+            "animationId": "anger",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "b",
+                    "guards": [
+                        {
+                            "type": "Event",
+                            "triggerName": "Step"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "b",
+            "loop": true,
+            "autoplay": true,
+            "animationId": "astonished",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "c"
+                },
+                {
+                    "type": "Transition",
+                    "toState": "f",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "triggerName": "r",
+                            "conditionType": "Equal",
+                            "compareTo": 1
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "c",
+            "autoplay": true,
+            "loop": true,
+            "animationId": "blush",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "d"
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "d",
+            "autoplay": true,
+            "loop": true,
+            "animationId": "clowns",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "a",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "triggerName": "r",
+                            "conditionType": "Equal",
+                            "compareTo": 1.0
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "f",
+            "autoplay": true,
+            "loop": true,
+            "animationId": "cool",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "g"
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "g",
+            "autoplay": true,
+            "loop": true,
+            "animationId": "confused",
+            "transitions": []
+        }
+    ],
+    "listeners": [],
+    "triggers": [
+        {
+            "type": "Numeric",
+            "name": "r",
+            "value": 2.0
+        },
+        {
+            "type": "Event",
+            "name": "Step"
+        }
+    ]
+}

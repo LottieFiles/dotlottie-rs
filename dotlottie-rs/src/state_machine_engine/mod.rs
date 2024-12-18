@@ -802,54 +802,45 @@ impl StateMachineEngine {
         None
     }
 
-    fn is_listener_active(
-        &self,
-        event: &Event,
-        listener: &Listener,
-        x: f32,
-        y: f32,
-    ) -> Vec<Action> {
-        let mut actions_to_execute = Vec::new();
+    fn manage_explicit_events(&mut self, event: &Event, x: f32, y: f32) {
+        let mut actions_to_execute: Vec<Action> = Vec::new();
+        let listeners = self.listeners(None);
+        let mut entered_layer = self.curr_entered_layer.clone();
 
-        // User defined a specific layer to check if hit
-        if let Some(layer) = listener.get_layer_name() {
-            // Check if the layer was hit, otherwise we ignore this listener
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
+        for listener in listeners {
+            if listener.type_name() == event.type_name() {
+                // User defined a specific layer to check if hit
+                if let Some(layer) = listener.get_layer_name() {
+                    // Check if the layer was hit, otherwise we ignore this listener
+                    if let Some(rc_player) = &self.player {
+                        let try_read_lock = rc_player.try_read();
 
-                if let Ok(player_container) = try_read_lock {
-                    // If we have a pointer down event, we need to check if the pointer is outside of the layer
-                    if let Event::PointerExit { x, y } = event {
-                        if !player_container.hit_check(&layer, *x, *y) {
-                            actions_to_execute.extend(listener.get_actions().clone());
-                        }
-                    } else {
-                        // Hit check will return true if the layer was hit
-                        if player_container.hit_check(&layer, x, y) {
-                            actions_to_execute.extend(listener.get_actions().clone());
+                        if let Ok(player_container) = try_read_lock {
+                            // If we have a pointer down event, we need to check if the pointer is outside of the layer
+                            if let Event::PointerExit { x, y } = event {
+                                if self.curr_entered_layer == *layer
+                                    && !player_container.hit_check(&layer, *x, *y)
+                                {
+                                    entered_layer = "".to_string();
+                                    actions_to_execute.extend(listener.get_actions().clone());
+                                }
+                            } else {
+                                // Hit check will return true if the layer was hit
+                                if player_container.hit_check(&layer, x, y) {
+                                    entered_layer = layer.clone();
+                                    actions_to_execute.extend(listener.get_actions().clone());
+                                }
+                            }
                         }
                     }
-                }
-            }
-        } else {
-            // No layer was specified, add all actions
-            actions_to_execute.extend(listener.get_actions().clone());
-        }
-
-        actions_to_execute
-    }
-
-    fn manage_pointer_down_up_enter_exit(&mut self, event: &Event, x: f32, y: f32) {
-        let mut actions_to_execute = Vec::new();
-
-        if let Some(listeners) = &self.state_machine.listeners {
-            for listener in listeners {
-                if listener.type_name() == event.type_name() {
-                    let action_vec = self.is_listener_active(event, &listener, x, y);
-                    actions_to_execute.extend(action_vec);
+                } else {
+                    // No layer was specified, add all actions
+                    actions_to_execute.extend(listener.get_actions().clone());
                 }
             }
         }
+
+        self.curr_entered_layer = entered_layer;
 
         for action in actions_to_execute {
             // Run the pipeline because listeners are outside of the evaluation pipeline loop
@@ -859,7 +850,7 @@ impl StateMachineEngine {
         }
     }
 
-    fn manage_pointer_move(&mut self, event: &Event, x: f32, y: f32) {
+    fn manage_cross_platform_events(&mut self, event: &Event, x: f32, y: f32) {
         let mut actions_to_execute = Vec::new();
 
         // Manage pointerMove listeners
@@ -947,19 +938,30 @@ impl StateMachineEngine {
     // How pointer event are managed depending on the listener's event and the sent event.
     // Since we can't detect PointerMove on mobile, we can still check PointerDown/Up and see if it's entered or exited a layer.
     //
-    // | --------------------- | ----------------------------- | ----------- |
-    // | Listener Event type   | Web                           | Mobile      |
-    // | --------------------- | ----------------------------- | ----------- |
-    // | PointerDown           | PointerDown                   | PointerDown |
-    // | PointerUp             | PointerUp                     | PointerUp   |
-    // | PointerMove           | PointerMove                   | PointerDown |
-    // | PointerEnter          | PointerMove + PointerEnter    | PointerDown |
-    // | PointerExit           | PointerMove + PointerExit     | PointerUp   |
-    // | --------------------- | ----------------------------- | ----------- |
+    // | -------------------------------- | ----------------------------- | ----------- |
+    // | Listener Event type              | Web                           | Mobile      |
+    // | -------------------------------- | ----------------------------- | ----------- |
+    // | PointerDown (No Layer)           | PointerDown                   | PointerDown |
+    // | PointerDown (With Layer)         | PointerDown                   | PointerDown |
+    // | PointerUp (No Layer)             | PointerUp                     | PointerUp   |
+    // | PointerUp (With Layer)           | PointerUp                     | PointerUp   |
+    // | PointerMove (No Layer)           | PointerMove                   | PointerDown |
+    // | PointerEnter (No Layer)          | PointerEnter                  |             |
+    // | PointerEnter (With Layer)        | PointerMove + PointerEnter    | PointerDown |
+    // | PointerExit (No Layer)           | PointerExit                   | PointerUp   |
+    // | PointerExit (With Layer)         | PointerMove + PointerExit     |             |
+    // | ---------------------------------|-------------------------------| ----------- |
+
+    // Notes:
+    // Atm, PointerEnter/Exit without layers is not supported on mobile.
+    // This is because if we allow pointerDown to activate PointerEnter/Exit,
+    // It would override PointerDown with layers, which is not a great experience.
+    // With the current setup we can have an action that happens when the cursor is over the canvas
+    // and another action that happens when the cursor is over a specific layer.
     fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32) {
         // This will handle PointerDown, PointerUp, PointerEnter, PointerExit
         if event.type_name() != "PointerMove" {
-            self.manage_pointer_down_up_enter_exit(event, x, y);
+            self.manage_explicit_events(event, x, y);
         }
 
         // We're left with PointerMove
@@ -968,7 +970,7 @@ impl StateMachineEngine {
             || event.type_name() == "PointerDown"
             || event.type_name() == "PointerUp"
         {
-            self.manage_pointer_move(event, x, y);
+            self.manage_cross_platform_events(event, x, y);
         }
     }
 

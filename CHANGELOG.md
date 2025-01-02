@@ -1,3 +1,15 @@
+## 0.1.35 (2025-01-02)
+
+### Features
+
+#### optimize android/ios release binaries for size (#274)
+
+#### update thorvg to v0.15.7 (#276)
+
+### Fixes
+
+#### thorvg engine init and termination (#265)
+
 ## 0.1.34 (2024-12-09)
 
 ### Features

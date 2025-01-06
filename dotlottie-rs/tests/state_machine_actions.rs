@@ -31,7 +31,7 @@ impl StateMachineObserver for MockObserver {
         events.push(format!("on_state_exit: {}", leaving_state));
     }
 
-    fn custom_event(&self, message: String) {
+    fn on_custom_event(&self, message: String) {
         let mut events = self.events.lock().unwrap();
         events.push(format!("custom_event: {}", message));
     }

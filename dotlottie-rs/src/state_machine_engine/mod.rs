@@ -35,7 +35,7 @@ pub trait StateMachineObserver: Send + Sync {
     fn on_transition(&self, previous_state: String, new_state: String);
     fn on_state_entered(&self, entering_state: String);
     fn on_state_exit(&self, leaving_state: String);
-    fn custom_event(&self, message: String);
+    fn on_custom_event(&self, message: String);
 }
 
 #[derive(PartialEq, Debug)]
@@ -1040,7 +1040,7 @@ impl StateMachineEngine {
     pub fn observe_custom_event(&self, message: String) {
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
-                observer.custom_event(message.clone());
+                observer.on_custom_event(message.clone());
             }
         }
     }

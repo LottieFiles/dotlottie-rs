@@ -1,6 +1,46 @@
+use std::sync::{Arc, Mutex};
+
+use dotlottie_rs::StateMachineObserver;
+
+struct MockObserver {
+    events: Arc<Mutex<Vec<String>>>,
+}
+
+impl MockObserver {
+    fn new(events: Arc<Mutex<Vec<String>>>) -> Self {
+        MockObserver { events }
+    }
+}
+
+impl StateMachineObserver for MockObserver {
+    fn on_transition(&self, previous_state: String, new_state: String) {
+        let mut events = self.events.lock().unwrap();
+        events.push(format!(
+            "on_transition: {} -> {}",
+            previous_state, new_state
+        ));
+    }
+
+    fn on_state_entered(&self, entering_state: String) {
+        let mut events = self.events.lock().unwrap();
+        events.push(format!("on_state_entered: {}", entering_state));
+    }
+
+    fn on_state_exit(&self, leaving_state: String) {
+        let mut events = self.events.lock().unwrap();
+        events.push(format!("on_state_exit: {}", leaving_state));
+    }
+
+    fn custom_event(&self, message: String) {
+        let mut events = self.events.lock().unwrap();
+        events.push(format!("custom_event: {}", message));
+    }
+}
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{states::StateTrait, Config, DotLottiePlayer};
+    use super::*;
+
+    use dotlottie_rs::{states::StateTrait, Config, DotLottiePlayer, StateMachineObserver};
 
     fn get_current_state_name(player: &DotLottiePlayer) -> String {
         let sm = player.get_state_machine();
@@ -295,10 +335,47 @@ mod tests {
         assert_eq!(curr_state_name, "star_0");
     }
 
-    // TODO
     #[test]
     fn fire_custom_event() {
-        // todo!()
+        let reset_sm = include_str!("fixtures/statemachines/action_tests/fire_custom_event.json");
+        let player = DotLottiePlayer::new(Config::default());
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+
+        assert_eq!(player.current_frame(), 0.0);
+
+        let l = player.state_machine_load_data(reset_sm);
+        let s = player.state_machine_start();
+
+        let events = Arc::new(Mutex::new(vec![]));
+        let observer_events = Arc::clone(&events);
+        let observer = MockObserver::new(observer_events);
+        let observer_arc: Arc<dyn StateMachineObserver> = Arc::new(observer);
+        player.state_machine_subscribe(Arc::clone(&observer_arc));
+
+        assert!(l);
+        assert!(s);
+
+        player.state_machine_set_numeric_trigger("rating", 3.0);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_3");
+
+        let expected_events = vec![
+            "on_transition: star_0 -> star_3".to_string(),
+            "on_state_exit: star_0".to_string(),
+            "on_state_entered: star_3".to_string(),
+            "custom_event: WOOHOO STAR 3".to_string(),
+        ];
+
+        let recorded_events = events.lock().unwrap();
+
+        for (i, event) in recorded_events.iter().enumerate() {
+            assert_eq!(
+                event, &expected_events[i],
+                "Mismatch at event index {}: expected '{}', found '{}'",
+                i, expected_events[i], event
+            );
+        }
     }
 
     #[test]

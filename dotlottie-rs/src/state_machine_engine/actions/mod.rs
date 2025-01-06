@@ -219,8 +219,8 @@ impl ActionTrait for Action {
                 let _ = engine.fire(trigger_name, run_pipeline);
                 Ok(())
             }
-            Action::Reset { trigger_name: _ } => {
-                // todo!("Reset trigger {}", trigger_name);
+            Action::Reset { trigger_name } => {
+                engine.reset_trigger(trigger_name, run_pipeline, true);
 
                 Ok(())
             }

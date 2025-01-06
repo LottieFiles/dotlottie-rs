@@ -1,6 +1,6 @@
 use core::result::Result::Ok;
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
@@ -20,7 +20,7 @@ use state_machine::StateMachine;
 use states::StateTrait;
 use transitions::guard::GuardTrait;
 use transitions::{Transition, TransitionTrait};
-use triggers::Trigger;
+use triggers::{Trigger, TriggerManager, TriggerTrait, TriggerValue};
 
 use crate::state_machine_engine::listeners::Listener;
 use crate::{
@@ -86,9 +86,7 @@ pub struct StateMachineEngine {
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineEngineStatus,
 
-    numeric_trigger: HashMap<String, f32>,
-    string_trigger: HashMap<String, String>,
-    boolean_trigger: HashMap<String, bool>,
+    triggers: TriggerManager,
     event_trigger: HashMap<String, String>,
     curr_event: Option<String>,
 
@@ -113,9 +111,7 @@ impl Default for StateMachineEngine {
             state_machine: StateMachine::default(),
             current_state: None,
             player: None,
-            numeric_trigger: HashMap::new(),
-            string_trigger: HashMap::new(),
-            boolean_trigger: HashMap::new(),
+            triggers: TriggerManager::new(),
             event_trigger: HashMap::new(),
             curr_event: None,
             curr_entered_layer: "".to_string(),
@@ -130,22 +126,6 @@ impl Default for StateMachineEngine {
     }
 }
 
-impl Display for StateMachineEngine {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("StateMachine")
-            .field("global_state", &self.global_state)
-            // .field("states", &self.states)
-            .field("listeners", &self.state_machine.listeners)
-            .field("current_state", &self.current_state)
-            .field("numeric_trigger", &self.numeric_trigger)
-            .field("string_trigger", &self.string_trigger)
-            .field("boolean_trigger", &self.boolean_trigger)
-            .field("event_trigger", &self.event_trigger)
-            .field("status", &self.status)
-            .finish()
-    }
-}
-
 impl StateMachineEngine {
     pub fn new(
         state_machine_definition: &str,
@@ -157,9 +137,7 @@ impl StateMachineEngine {
             state_machine: StateMachine::default(),
             current_state: None,
             player: Some(player.clone()),
-            numeric_trigger: HashMap::new(),
-            string_trigger: HashMap::new(),
-            boolean_trigger: HashMap::new(),
+            triggers: TriggerManager::new(),
             event_trigger: HashMap::new(),
             curr_event: None,
             curr_entered_layer: "".to_string(),
@@ -187,18 +165,6 @@ impl StateMachineEngine {
             .retain(|o| !Arc::ptr_eq(o, observer));
     }
 
-    pub fn get_numeric_trigger(&self, key: &str) -> Option<f32> {
-        self.numeric_trigger.get(key).cloned()
-    }
-
-    pub fn get_string_trigger(&self, key: &str) -> Option<String> {
-        self.string_trigger.get(key).cloned()
-    }
-
-    pub fn get_boolean_trigger(&self, key: &str) -> Option<bool> {
-        self.boolean_trigger.get(key).cloned()
-    }
-
     // key: The key of the trigger
     // value: The value to set the trigger to
     // run_pipeline: If true, the pipeline will be run after setting the trigger. This is most likely false if called from an action or during initialization.
@@ -209,8 +175,8 @@ impl StateMachineEngine {
         value: f32,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<f32> {
-        let ret = self.numeric_trigger.insert(key.to_string(), value);
+    ) -> Option<TriggerValue> {
+        let ret = self.triggers.set_numeric(key, value);
 
         if called_from_action {
             self.action_mutated_triggers = true;
@@ -219,7 +185,12 @@ impl StateMachineEngine {
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
         }
+
         ret
+    }
+
+    pub fn get_numeric_trigger(&self, key: &str) -> Option<f32> {
+        self.triggers.get_numeric(key)
     }
 
     pub fn set_string_trigger(
@@ -228,10 +199,8 @@ impl StateMachineEngine {
         value: &str,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<String> {
-        let ret = self
-            .string_trigger
-            .insert(key.to_string(), value.to_string());
+    ) -> Option<TriggerValue> {
+        let ret = self.triggers.set_string(key, value.to_string());
 
         if called_from_action {
             self.action_mutated_triggers = true;
@@ -243,14 +212,18 @@ impl StateMachineEngine {
         ret
     }
 
+    pub fn get_string_trigger(&self, key: &str) -> Option<String> {
+        self.triggers.get_string(key)
+    }
+
     pub fn set_boolean_trigger(
         &mut self,
         key: &str,
         value: bool,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<bool> {
-        let ret = self.boolean_trigger.insert(key.to_string(), value);
+    ) -> Option<TriggerValue> {
+        let ret = self.triggers.set_boolean(key, value);
 
         if called_from_action {
             self.action_mutated_triggers = true;
@@ -258,7 +231,23 @@ impl StateMachineEngine {
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
         }
+
         ret
+    }
+
+    pub fn get_boolean_trigger(&self, key: &str) -> Option<bool> {
+        self.triggers.get_boolean(key)
+    }
+
+    pub fn reset_trigger(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
+        self.triggers.reset(key);
+
+        if called_from_action {
+            self.action_mutated_triggers = true;
+        }
+        if run_pipeline {
+            let _ = self.run_current_state_pipeline();
+        }
     }
 
     pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), StateMachineEngineError> {
@@ -305,13 +294,15 @@ impl StateMachineEngine {
                     for trigger in triggers {
                         match trigger {
                             Trigger::Numeric { name, value } => {
-                                new_state_machine.set_numeric_trigger(name, *value, false, false);
+                                new_state_machine.triggers.set_initial_numeric(name, *value);
                             }
                             Trigger::String { name, value } => {
-                                new_state_machine.set_string_trigger(name, value, false, false);
+                                new_state_machine
+                                    .triggers
+                                    .set_initial_string(name, value.to_string());
                             }
                             Trigger::Boolean { name, value } => {
-                                new_state_machine.set_boolean_trigger(name, *value, false, false);
+                                new_state_machine.triggers.set_initial_boolean(name, *value);
                             }
                             Trigger::Event { name } => {
                                 new_state_machine
@@ -593,19 +584,19 @@ impl StateMachineEngine {
                     for guard in guards {
                         match guard {
                             transitions::guard::Guard::Numeric { .. } => {
-                                if !guard.numeric_trigger_is_satisfied(&self.numeric_trigger) {
+                                if !guard.numeric_trigger_is_satisfied(&self.triggers) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
                             transitions::guard::Guard::String { .. } => {
-                                if !guard.string_trigger_is_satisfied(&self.string_trigger) {
+                                if !guard.string_trigger_is_satisfied(&self.triggers) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
                             transitions::guard::Guard::Boolean { .. } => {
-                                if !guard.boolean_trigger_is_satisfied(&self.boolean_trigger) {
+                                if !guard.boolean_trigger_is_satisfied(&self.triggers) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
@@ -965,7 +956,7 @@ impl StateMachineEngine {
         }
 
         // We're left with PointerMove
-        // Also performe checks for PointerDown and PointerUp, a mobile framework could of sent them and validate PointerEnter/Exit listeners.
+        // Also perform checks for PointerDown and PointerUp, a mobile framework could of sent them and validate PointerEnter/Exit listeners.
         if event.type_name() == "PointerMove"
             || event.type_name() == "PointerDown"
             || event.type_name() == "PointerUp"

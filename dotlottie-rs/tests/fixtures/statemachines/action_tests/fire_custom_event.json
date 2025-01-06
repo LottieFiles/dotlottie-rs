@@ -1,0 +1,244 @@
+{
+    "descriptor": {
+        "id": "star-rating",
+        "initial": "global"
+    },
+    "states": [
+        {
+            "name": "global",
+            "type": "GlobalState",
+            "animationId": "",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "star_0",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 0
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "star_1",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 1
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "star_2",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 2
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "star_3",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 3
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "star_4",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 4
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "star_5",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "conditionType": "Equal",
+                            "triggerName": "rating",
+                            "compareTo": 5
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_0",
+            "animationId": "",
+            "autoplay": true,
+            "segment": "star_0",
+            "transitions": [],
+            "entryActions": [
+                {
+                    "type": "FireCustomEvent",
+                    "value": "WOOHOO STAR 0"
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_1",
+            "animationId": "",
+            "autoplay": true,
+            "segment": "star_1",
+            "transitions": [],
+            "entryActions": [
+                {
+                    "type": "FireCustomEvent",
+                    "value": "WOOHOO STAR 1"
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_2",
+            "animationId": "",
+            "autoplay": true,
+            "segment": "star_2",
+            "transitions": [],
+            "entryActions": [
+                {
+                    "type": "FireCustomEvent",
+                    "value": "WOOHOO STAR 2"
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_3",
+            "animationId": "",
+            "autoplay": true,
+            "segment": "star_3",
+            "transitions": [],
+            "entryActions": [
+                {
+                    "type": "FireCustomEvent",
+                    "value": "WOOHOO STAR 3"
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_4",
+            "animationId": "",
+            "autoplay": true,
+            "segment": "star_4",
+            "transitions": [],
+            "entryActions": [
+                {
+                    "type": "FireCustomEvent",
+                    "value": "WOOHOO STAR 4"
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_5",
+            "animationId": "",
+            "autoplay": true,
+            "segment": "star_5",
+            "transitions": [],
+            "entryActions": [
+                {
+                    "type": "FireCustomEvent",
+                    "value": "WOOHOO STAR 5"
+                }
+            ]
+        }
+    ],
+    "listeners": [
+        {
+            "type": "PointerDown",
+            "layerName": "star1",
+            "actions": [
+                {
+                    "type": "SetNumeric",
+                    "triggerName": "rating",
+                    "value": 1
+                }
+            ]
+        },
+        {
+            "type": "PointerDown",
+            "layerName": "star2",
+            "actions": [
+                {
+                    "type": "SetNumeric",
+                    "triggerName": "rating",
+                    "value": 2
+                }
+            ]
+        },
+        {
+            "type": "PointerDown",
+            "layerName": "star3",
+            "actions": [
+                {
+                    "type": "SetNumeric",
+                    "triggerName": "rating",
+                    "value": 3
+                }
+            ]
+        },
+        {
+            "type": "PointerDown",
+            "layerName": "star4",
+            "actions": [
+                {
+                    "type": "SetNumeric",
+                    "triggerName": "rating",
+                    "value": 4
+                }
+            ]
+        },
+        {
+            "type": "PointerDown",
+            "layerName": "star5",
+            "actions": [
+                {
+                    "type": "SetNumeric",
+                    "triggerName": "rating",
+                    "value": 5
+                }
+            ]
+        },
+        {
+            "type": "PointerExit",
+            "actions": [
+                {
+                    "type": "Reset",
+                    "triggerName": "rating"
+                }
+            ]
+        }
+    ],
+    "triggers": [
+        {
+            "type": "Numeric",
+            "name": "rating",
+            "value": 0
+        }
+    ]
+}

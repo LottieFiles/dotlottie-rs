@@ -35,6 +35,7 @@ pub trait StateMachineObserver: Send + Sync {
     fn on_transition(&self, previous_state: String, new_state: String);
     fn on_state_entered(&self, entering_state: String);
     fn on_state_exit(&self, leaving_state: String);
+    fn on_custom_event(&self, message: String);
 }
 
 #[derive(PartialEq, Debug)]
@@ -489,11 +490,7 @@ impl StateMachineEngine {
         // We have a new state
         if let Some(new_state) = new_state {
             // Emit transtion occured event
-            if let Ok(observers) = self.observers.try_read() {
-                for observer in observers.iter() {
-                    observer.on_transition(self.get_current_state_name(), new_state.name());
-                }
-            }
+            self.observe_on_transition(&self.get_current_state_name(), &new_state.name());
 
             // Perform exit actions on the current state if there is one.
             if self.current_state.is_some() {
@@ -514,21 +511,13 @@ impl StateMachineEngine {
             }
 
             // Emit transtion occured event
-            if let Ok(observers) = self.observers.try_read() {
-                for observer in observers.iter() {
-                    observer.on_state_exit(self.get_current_state_name());
-                }
-            }
+            self.observe_on_state_exit(&self.get_current_state_name());
 
             // Assign the new state to the current_state
             self.current_state = Some(new_state);
 
             // Emit transtion occured event
-            if let Ok(observers) = self.observers.try_read() {
-                for observer in observers.iter() {
-                    observer.on_state_entered(self.get_current_state_name());
-                }
-            }
+            self.observe_on_state_entered(&self.get_current_state_name());
 
             // Perform entry actions
             // Execute its type of state
@@ -1022,6 +1011,38 @@ impl StateMachineEngine {
         }
 
         "".to_string()
+    }
+
+    fn observe_on_state_entered(&self, entering_state: &str) {
+        if let Ok(observers) = self.observers.try_read() {
+            for observer in observers.iter() {
+                observer.on_state_entered(entering_state.to_string());
+            }
+        }
+    }
+
+    fn observe_on_state_exit(&self, leaving_state: &str) {
+        if let Ok(observers) = self.observers.try_read() {
+            for observer in observers.iter() {
+                observer.on_state_exit(leaving_state.to_string());
+            }
+        }
+    }
+
+    fn observe_on_transition(&self, previous_state: &str, new_state: &str) {
+        if let Ok(observers) = self.observers.try_read() {
+            for observer in observers.iter() {
+                observer.on_transition(previous_state.to_string(), new_state.to_string());
+            }
+        }
+    }
+
+    pub fn observe_custom_event(&self, message: String) {
+        if let Ok(observers) = self.observers.try_read() {
+            for observer in observers.iter() {
+                observer.on_custom_event(message.clone());
+            }
+        }
     }
 }
 

@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use serde::Deserialize;
 
-use std::{process::Command, rc::Rc, sync::RwLock};
+use std::{rc::Rc, sync::RwLock};
 
 use crate::DotLottiePlayerContainer;
 
@@ -23,9 +23,6 @@ pub trait ActionTrait {
     ) -> Result<(), StateMachineActionError>;
 }
 
-// Todo:
-// - FireCustomEvent
-// - Reset
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
@@ -280,15 +277,19 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::OpenUrl { url } => {
-                let _ = Command::new("open")
-                    .arg(url)
-                    .spawn()
-                    .expect("Failed to open URL")
-                    .wait();
+            Action::OpenUrl { .. } => {
+                // let _ = Command::new("open")
+                //     .arg(url)
+                //     .spawn()
+                //     .expect("Failed to open URL")
+                //     .wait();
                 Ok(())
             }
-            Action::FireCustomEvent { .. } => Ok(()),
+            Action::FireCustomEvent { value } => {
+                engine.observe_custom_event(value.to_string());
+
+                Ok(())
+            }
             Action::SetFrame { value } => {
                 let read_lock = player.read();
 

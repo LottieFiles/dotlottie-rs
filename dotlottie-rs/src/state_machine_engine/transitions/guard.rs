@@ -1,8 +1,9 @@
-use std::collections::HashMap;
-
 use serde::Deserialize;
 
-use crate::state_machine::{StringBool, StringNumberBool};
+use crate::{
+    state_machine::{StringBool, StringNumberBool},
+    triggers::{TriggerManager, TriggerTrait},
+};
 
 #[derive(Deserialize, PartialEq, Debug, Clone)]
 pub enum TransitionGuardConditionType {
@@ -15,9 +16,9 @@ pub enum TransitionGuardConditionType {
 }
 
 pub trait GuardTrait {
-    fn string_trigger_is_satisfied(&self, triggers: &HashMap<String, String>) -> bool;
-    fn boolean_trigger_is_satisfied(&self, triggers: &HashMap<String, bool>) -> bool;
-    fn numeric_trigger_is_satisfied(&self, triggers: &HashMap<String, f32>) -> bool;
+    fn string_trigger_is_satisfied(&self, triggers: &TriggerManager) -> bool;
+    fn boolean_trigger_is_satisfied(&self, triggers: &TriggerManager) -> bool;
+    fn numeric_trigger_is_satisfied(&self, triggers: &TriggerManager) -> bool;
     fn event_trigger_is_satisfied(&self, event: &str) -> bool;
 }
 
@@ -49,21 +50,21 @@ impl GuardTrait for Guard {
     // Check if the trigger is satisfied
     // If the user uses compare_to as a string and pass "$" as a prefix, we use the trigger value
     // If the trigger_value is not found, we return false
-    fn boolean_trigger_is_satisfied(&self, trigger: &HashMap<String, bool>) -> bool {
+    fn boolean_trigger_is_satisfied(&self, trigger: &TriggerManager) -> bool {
         match self {
             Guard::Boolean {
                 trigger_name,
                 condition_type,
                 compare_to,
             } => {
-                if let Some(trigger_value) = trigger.get(trigger_name) {
+                if let Some(trigger_value) = trigger.get_boolean(trigger_name) {
                     match compare_to {
                         StringBool::Bool(compare_to) => match condition_type {
                             TransitionGuardConditionType::Equal => {
-                                return trigger_value == compare_to;
+                                return trigger_value == *compare_to;
                             }
                             TransitionGuardConditionType::NotEqual => {
-                                return trigger_value != compare_to;
+                                return trigger_value != *compare_to;
                             }
                             _ => return false,
                         },
@@ -71,7 +72,7 @@ impl GuardTrait for Guard {
                             // Get the number from the trigger
                             // Remove the "$" prefix from the value
                             let value = compare_to.trim_start_matches('$');
-                            let opt_bool_value = trigger.get(value);
+                            let opt_bool_value = trigger.get_boolean(value);
                             if let Some(bool_value) = opt_bool_value {
                                 match condition_type {
                                     TransitionGuardConditionType::Equal => {
@@ -97,25 +98,25 @@ impl GuardTrait for Guard {
         }
     }
 
-    fn string_trigger_is_satisfied(&self, trigger: &HashMap<String, String>) -> bool {
+    fn string_trigger_is_satisfied(&self, trigger: &TriggerManager) -> bool {
         match self {
             Guard::String {
                 trigger_name,
                 condition_type,
                 compare_to,
             } => {
-                if let Some(trigger_value) = trigger.get(trigger_name) {
+                if let Some(trigger_value) = trigger.get_string(trigger_name) {
                     match compare_to {
                         StringNumberBool::String(compare_to) => {
-                            let mut mut_compare_to = compare_to;
+                            let mut mut_compare_to = compare_to.clone();
 
                             if mut_compare_to.starts_with("$") {
                                 // Get the string from the trigger
                                 // Remove the "$" prefix from the value
                                 let value = mut_compare_to.trim_start_matches('$');
-                                let opt_string_value = trigger.get(value);
+                                let opt_string_value = trigger.get_string(value);
                                 if let Some(string_value) = opt_string_value {
-                                    mut_compare_to = string_value;
+                                    mut_compare_to = string_value.clone();
                                 } else {
                                     // Failed to get value from triggers
                                     return false;
@@ -124,10 +125,10 @@ impl GuardTrait for Guard {
 
                             match condition_type {
                                 TransitionGuardConditionType::Equal => {
-                                    return trigger_value == mut_compare_to;
+                                    return trigger_value == *mut_compare_to;
                                 }
                                 TransitionGuardConditionType::NotEqual => {
-                                    return trigger_value != mut_compare_to;
+                                    return trigger_value != *mut_compare_to;
                                 }
                                 _ => return false,
                             }
@@ -144,20 +145,20 @@ impl GuardTrait for Guard {
         }
     }
 
-    fn numeric_trigger_is_satisfied(&self, trigger: &HashMap<String, f32>) -> bool {
+    fn numeric_trigger_is_satisfied(&self, trigger: &TriggerManager) -> bool {
         match self {
             Guard::Numeric {
                 trigger_name,
                 condition_type,
                 compare_to,
             } => {
-                if let Some(trigger_value) = trigger.get(trigger_name) {
+                if let Some(trigger_value) = trigger.get_numeric(trigger_name) {
                     match compare_to {
                         StringNumberBool::String(compare_to) => {
                             if compare_to.starts_with("$") {
                                 // Remove the "$" prefix from the value
                                 let value = compare_to.trim_start_matches('$');
-                                let opt_numeric_value = trigger.get(value);
+                                let opt_numeric_value = trigger.get_numeric(value);
                                 if let Some(numeric_value) = opt_numeric_value {
                                     match condition_type {
                                         TransitionGuardConditionType::GreaterThan => {
@@ -188,14 +189,16 @@ impl GuardTrait for Guard {
                             }
                         }
                         StringNumberBool::F32(value) => match condition_type {
-                            TransitionGuardConditionType::GreaterThan => trigger_value > value,
+                            TransitionGuardConditionType::GreaterThan => trigger_value > *value,
                             TransitionGuardConditionType::GreaterThanOrEqual => {
-                                trigger_value >= value
+                                trigger_value >= *value
                             }
-                            TransitionGuardConditionType::LessThan => trigger_value < value,
-                            TransitionGuardConditionType::LessThanOrEqual => trigger_value <= value,
-                            TransitionGuardConditionType::Equal => trigger_value == value,
-                            TransitionGuardConditionType::NotEqual => trigger_value != value,
+                            TransitionGuardConditionType::LessThan => trigger_value < *value,
+                            TransitionGuardConditionType::LessThanOrEqual => {
+                                trigger_value <= *value
+                            }
+                            TransitionGuardConditionType::Equal => trigger_value == *value,
+                            TransitionGuardConditionType::NotEqual => trigger_value != *value,
                         },
                         StringNumberBool::Bool(_) => false,
                     }

@@ -270,6 +270,31 @@ mod tests {
         assert_eq!(player.current_frame(), 8.900001);
     }
 
+    #[test]
+    fn reset() {
+        let reset_sm = include_str!("fixtures/statemachines/action_tests/reset.json");
+        let player = DotLottiePlayer::new(Config::default());
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+
+        assert_eq!(player.current_frame(), 0.0);
+
+        let l = player.state_machine_load_data(reset_sm);
+        let s = player.state_machine_start();
+
+        assert!(l);
+        assert!(s);
+
+        player.state_machine_set_numeric_trigger("rating", 3.0);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_3");
+
+        player.state_machine_set_numeric_trigger("rating", 6.0);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_0");
+    }
+
     // TODO
     #[test]
     fn fire_custom_event() {
@@ -293,11 +318,6 @@ mod tests {
 
     #[test]
     fn set_expression() {
-        // todo!()
-    }
-
-    #[test]
-    fn reset() {
         // todo!()
     }
 }

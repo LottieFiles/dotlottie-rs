@@ -25,7 +25,7 @@ pub trait StateTrait {
         engine: &mut StateMachineEngine,
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<(), StateMachineActionError>;
-    fn animation_id(&self) -> &str;
+    fn animation(&self) -> &str;
     fn transitions(&self) -> &Vec<Transition>;
     fn entry_actions(&self) -> Option<&Vec<Action>>;
     fn exit_actions(&self) -> Option<&Vec<Action>>;
@@ -40,7 +40,7 @@ pub enum State {
     PlaybackState {
         name: String,
         transitions: Vec<Transition>,
-        animation_id: String,
+        animation: String,
         r#loop: Option<bool>,
         autoplay: Option<bool>,
         mode: Option<String>,
@@ -54,7 +54,7 @@ pub enum State {
     GlobalState {
         name: String,
         transitions: Vec<Transition>,
-        animation_id: Option<String>,
+        animation: Option<String>,
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
     },
@@ -74,7 +74,7 @@ impl StateTrait for State {
     ) -> i32 {
         match self {
             State::PlaybackState {
-                animation_id,
+                animation,
                 r#loop,
                 autoplay,
                 mode,
@@ -121,9 +121,8 @@ impl StateTrait for State {
                     let size = player_read.size();
 
                     // Todo compare against currently loaded animation
-                    if !animation_id.is_empty() && player_read.active_animation_id() != *animation_id
-                    {
-                        player_read.load_animation(animation_id, size.0, size.1);
+                    if !animation.is_empty() && player_read.active_animation_id() != *animation {
+                        player_read.load_animation(animation, size.0, size.1);
                     }
 
                     player_read.set_config(playback_config);
@@ -150,7 +149,7 @@ impl StateTrait for State {
             }
 
             State::GlobalState {
-                animation_id,
+                animation,
                 entry_actions,
                 ..
             } => {
@@ -158,7 +157,7 @@ impl StateTrait for State {
                     let size = player_read.size();
 
                     // Todo compare against currently loaded animation
-                    if let Some(id) = animation_id {
+                    if let Some(id) = animation {
                         player_read.load_animation(id, size.0, size.1);
 
                         // Perform entry actions
@@ -175,9 +174,9 @@ impl StateTrait for State {
         0
     }
 
-    fn animation_id(&self) -> &str {
+    fn animation(&self) -> &str {
         match self {
-            State::PlaybackState { animation_id, .. } => animation_id,
+            State::PlaybackState { animation, .. } => animation,
             State::GlobalState { .. } => "",
         }
     }

@@ -1,5 +1,5 @@
 use dotlottie_rs::events::Event;
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer, StateMachineObserver};
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
@@ -9,13 +9,33 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const STATE_MACHINE_NAME: &str = "rating";
-pub const ANIMATION_NAME: &str = "star_marked";
+pub const STATE_MACHINE_NAME: &str = "pigeon_with_listeners";
+pub const ANIMATION_NAME: &str = "pigeon";
 
 struct Timer {
     last_update: Instant,
     prev_frame: f32,
     first: bool,
+}
+
+struct DummyObserver;
+
+impl StateMachineObserver for DummyObserver {
+    fn on_transition(&self, previous_state: String, new_state: String) {
+        println!("on_transition2: {} -> {}", previous_state, new_state);
+    }
+
+    fn on_state_entered(&self, entering_state: String) {
+        println!("on_state_entered2: {}", entering_state);
+    }
+
+    fn on_state_exit(&self, leaving_state: String) {
+        println!("on_state_exit2: {}", leaving_state);
+    }
+
+    fn on_custom_event(&self, message: String) {
+        println!("custom_event2: {}", message);
+    }
 }
 
 impl Timer {
@@ -53,11 +73,12 @@ fn main() {
         panic!("{}", e);
     });
 
+    let observer: Arc<dyn StateMachineObserver + 'static> = Arc::new(DummyObserver {});
+
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         background_color: 0xffffffff,
         ..Config::default()
     });
-
     let mut markers = File::open(format!(
         "./src/bin/shared/animations/{}.lottie",
         ANIMATION_NAME
@@ -86,6 +107,8 @@ fn main() {
     println!("Load state machine data -> {}", r);
 
     let s = lottie_player.state_machine_start();
+
+    lottie_player.state_machine_subscribe(observer.clone());
 
     println!("Start state machine -> {}", s);
 
@@ -116,7 +139,7 @@ fn main() {
             }
 
             if mx >= 0.0 && mx <= WIDTH as f32 && my >= 0.0 && my <= HEIGHT as f32 {
-                println!("Sending pointer enter");
+                // println!("Sending pointer enter");
                 if !entered {
                     let event = Event::PointerEnter { x: mx, y: my };
 
@@ -125,7 +148,7 @@ fn main() {
                 }
                 entered = true;
             } else {
-                println!("Sending pointer Exit");
+                // println!("Sending pointer Exit");
                 if entered {
                     let event = Event::PointerExit { x: mx, y: my };
 
@@ -155,7 +178,7 @@ fn main() {
             let p = &mut *locked_player.write().unwrap();
             let _m = p.state_machine_post_event(&event);
         } else {
-            println!("Sending pointer move {} {}", mx, my);
+            // println!("Sending pointer move {} {}", mx, my);
             let event = Event::PointerMove { x: mx, y: my };
             let p = &mut *locked_player.write().unwrap();
             let _m = p.state_machine_post_event(&event);

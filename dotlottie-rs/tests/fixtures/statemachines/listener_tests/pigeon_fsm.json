@@ -1,112 +1,109 @@
 {
-    "descriptor": {
-        "id": "explodingPigeon",
-        "initial": "pigeonRunning"
+  "initial": "pigeonRunning",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "pigeonRunning",
+      "animation": "",
+      "loop": true,
+      "autoplay": true,
+      "segment": "bird",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "explosion",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "explode"
+            }
+          ]
+        }
+      ]
     },
-    "states": [
+    {
+      "type": "PlaybackState",
+      "name": "explosion",
+      "animation": "",
+      "loop": false,
+      "autoplay": true,
+      "segment": "explosion",
+      "transitions": [
         {
-            "type": "PlaybackState",
-            "name": "pigeonRunning",
-            "animationId": "",
-            "loop": true,
-            "autoplay": true,
-            "segment": "bird",
-            "transitions": [
-                {
-                    "type": "Transition",
-                    "toState": "explosion",
-                    "guards": [
-                        {
-                            "type": "Event",
-                            "triggerName": "explode"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "PlaybackState",
-            "name": "explosion",
-            "animationId": "",
-            "loop": false,
-            "autoplay": true,
-            "segment": "explosion",
-            "transitions": [
-                {
-                    "type": "Transition",
-                    "toState": "feathersFalling",
-                    "guards": [
-                        {
-                            "type": "Event",
-                            "triggerName": "rainFeathers"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "PlaybackState",
-            "name": "feathersFalling",
-            "animationId": "",
-            "loop": false,
-            "autoplay": true,
-            "segment": "feathers",
-            "transitions": [
-                {
-                    "type": "Transition",
-                    "toState": "pigeonRunning",
-                    "guards": [
-                        {
-                            "type": "Event",
-                            "triggerName": "restart"
-                        }
-                    ]
-                }
-            ]
+          "type": "Transition",
+          "toState": "feathersFalling",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "rainFeathers"
+            }
+          ]
         }
-    ],
-    "listeners": [
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "feathersFalling",
+      "animation": "",
+      "loop": false,
+      "autoplay": true,
+      "segment": "feathers",
+      "transitions": [
         {
-            "type": "PointerDown",
-            "actions": [
-                {
-                    "type": "Fire",
-                    "triggerName": "explode"
-                }
-            ]
-        },
-        {
-            "type": "OnComplete",
-            "stateName": "explosion",
-            "actions": [
-                {
-                    "type": "Fire",
-                    "triggerName": "rainFeathers"
-                }
-            ]
-        },
-        {
-            "type": "PointerDown",
-            "actions": [
-                {
-                    "type": "Fire",
-                    "triggerName": "restart"
-                }
-            ]
+          "type": "Transition",
+          "toState": "pigeonRunning",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "restart"
+            }
+          ]
         }
-    ],
-    "triggers": [
+      ]
+    }
+  ],
+  "listeners": [
+    {
+      "type": "PointerDown",
+      "actions": [
         {
-            "type": "Event",
-            "name": "explode"
-        },
-        {
-            "type": "Event",
-            "name": "rainFeathers"
-        },
-        {
-            "type": "Event",
-            "name": "restart"
+          "type": "Fire",
+          "triggerName": "explode"
         }
-    ]
+      ]
+    },
+    {
+      "type": "OnComplete",
+      "stateName": "explosion",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "rainFeathers"
+        }
+      ]
+    },
+    {
+      "type": "PointerDown",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "restart"
+        }
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "type": "Event",
+      "name": "explode"
+    },
+    {
+      "type": "Event",
+      "name": "rainFeathers"
+    },
+    {
+      "type": "Event",
+      "name": "restart"
+    }
+  ]
 }

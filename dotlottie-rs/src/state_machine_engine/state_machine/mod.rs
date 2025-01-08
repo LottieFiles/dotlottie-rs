@@ -31,14 +31,8 @@ pub enum StringNumber {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Descriptor {
-    pub id: String,
-    pub initial: String,
-}
-
-#[derive(Deserialize, Debug)]
 pub struct StateMachine {
-    pub descriptor: Descriptor,
+    pub initial: String,
     pub states: Vec<State>,
     pub listeners: Option<Vec<Listener>>,
     pub triggers: Option<Vec<Trigger>>,
@@ -46,13 +40,13 @@ pub struct StateMachine {
 
 impl StateMachine {
     pub fn new(
-        descriptor: Descriptor,
+        initial: String,
         states: Vec<State>,
         listeners: Option<Vec<Listener>>,
         triggers: Option<Vec<Trigger>>,
     ) -> Self {
         StateMachine {
-            descriptor,
+            initial,
             states,
             listeners,
             triggers,
@@ -79,10 +73,7 @@ impl StateMachine {
 impl Default for StateMachine {
     fn default() -> Self {
         StateMachine {
-            descriptor: Descriptor {
-                id: "".to_string(),
-                initial: "".to_string(),
-            },
+            initial: "".to_string(),
             states: Vec::new(),
             listeners: None,
             triggers: None,

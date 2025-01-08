@@ -1,85 +1,82 @@
 {
-    "descriptor": {
-        "id": "compareTo",
-        "initial": "global"
+  "initial": "global",
+  "states": [
+    {
+      "name": "global",
+      "type": "GlobalState",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "a",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "triggerName": "OnOffSwitch",
+              "compareTo": "$ATriggerName"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "triggerName": "OnOffSwitch",
+              "compareTo": "$ATriggerName"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "c",
+          "guards": [
+            {
+              "type": "String",
+              "triggerName": "$ATriggerName"
+            }
+          ]
+        }
+      ]
     },
-    "states": [
+    {
+      "name": "a",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
         {
-            "name": "global",
-            "type": "GlobalState",
-            "animationId": "",
-            "transitions": [
-                {
-                    "type": "Transition",
-                    "toState": "a",
-                    "guards": [
-                        {
-                            "type": "Boolean",
-                            "conditionType": "Equal",
-                            "triggerName": "OnOffSwitch",
-                            "compareTo": "$ATriggerName"
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "b",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "Equal",
-                            "triggerName": "OnOffSwitch",
-                            "compareTo": "$ATriggerName"
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "c",
-                    "guards": [
-                        {
-                            "type": "String",
-                            "triggerName": "$ATriggerName"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "a",
-            "type": "PlaybackState",
-            "animationId": "",
-            "transitions": [],
-            "entryActions": [
-                {
-                    "type": "Fire",
-                    "triggerName": "Step"
-                }
-            ]
-        },
-        {
-            "name": "b",
-            "type": "PlaybackState",
-            "animationId": "",
-            "transitions": []
-        },
-        {
-            "name": "c",
-            "type": "PlaybackState",
-            "animationId": "",
-            "transitions": []
+          "type": "Fire",
+          "triggerName": "Step"
         }
-    ],
-    "listeners": [],
-    "triggers": [
-        {
-            "type": "Boolean",
-            "name": "OnOffSwitch",
-            "value": false
-        },
-        {
-            "type": "Event",
-            "name": "Step"
-        }
-    ]
+      ]
+    },
+    {
+      "name": "b",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    },
+    {
+      "name": "c",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    }
+  ],
+  "listeners": [],
+  "triggers": [
+    {
+      "type": "Boolean",
+      "name": "OnOffSwitch",
+      "value": false
+    },
+    {
+      "type": "Event",
+      "name": "Step"
+    }
+  ]
 }

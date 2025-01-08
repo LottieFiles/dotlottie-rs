@@ -1,128 +1,125 @@
 {
-    "descriptor": {
-        "id": "not-equal",
-        "initial": "global"
+  "initial": "global",
+  "states": [
+    {
+      "animation": "",
+      "name": "global",
+      "type": "GlobalState",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "star_1",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "triggerName": "rating",
+              "compareTo": 1.0
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_2",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "GreaterThan",
+              "triggerName": "rating",
+              "compareTo": 2.0
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_3",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "triggerName": "rating",
+              "compareTo": 3.0
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_4",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "triggerName": "rating",
+              "compareTo": 5.0
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_5",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "triggerName": "rating",
+              "compareTo": 5.0
+            }
+          ]
+        }
+      ]
     },
-    "states": [
-        {
-            "animationId": "",
-            "name": "global",
-            "type": "GlobalState",
-            "transitions": [
-                {
-                    "type": "Transition",
-                    "toState": "star_1",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "Equal",
-                            "triggerName": "rating",
-                            "compareTo": 1.0
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "star_2",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "GreaterThan",
-                            "triggerName": "rating",
-                            "compareTo": 2.0
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "star_3",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "Equal",
-                            "triggerName": "rating",
-                            "compareTo": 3.0
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "star_4",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "Equal",
-                            "triggerName": "rating",
-                            "compareTo": 5.0
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "star_5",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "Equal",
-                            "triggerName": "rating",
-                            "compareTo": 5.0
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "animationId": "",
-            "type": "PlaybackState",
-            "name": "star_1",
-            "autoplay": true,
-            "segment": "star_1",
-            "transitions": [],
-            "entry_actions": []
-        },
-        {
-            "animationId": "",
-            "type": "PlaybackState",
-            "name": "star_2",
-            "autoplay": true,
-            "segment": "star_2",
-            "transitions": [],
-            "entry_actions": []
-        },
-        {
-            "animationId": "",
-            "type": "PlaybackState",
-            "name": "star_3",
-            "autoplay": true,
-            "segment": "star_3",
-            "transitions": [],
-            "entry_actions": []
-        },
-        {
-            "animationId": "",
-            "type": "PlaybackState",
-            "name": "star_4",
-            "autoplay": true,
-            "segment": "star_4",
-            "transitions": [],
-            "entry_actions": []
-        },
-        {
-            "animationId": "",
-            "type": "PlaybackState",
-            "name": "star_5",
-            "autoplay": true,
-            "segment": "star_5",
-            "transitions": [],
-            "entry_actions": []
-        }
-    ],
-    "listeners": [],
-    "triggers": [
-        {
-            "type": "Numeric",
-            "name": "rating",
-            "value": 0.0
-        }
-    ]
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_1",
+      "autoplay": true,
+      "segment": "star_1",
+      "transitions": [],
+      "entry_actions": []
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_2",
+      "autoplay": true,
+      "segment": "star_2",
+      "transitions": [],
+      "entry_actions": []
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_3",
+      "autoplay": true,
+      "segment": "star_3",
+      "transitions": [],
+      "entry_actions": []
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_4",
+      "autoplay": true,
+      "segment": "star_4",
+      "transitions": [],
+      "entry_actions": []
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_5",
+      "autoplay": true,
+      "segment": "star_5",
+      "transitions": [],
+      "entry_actions": []
+    }
+  ],
+  "listeners": [],
+  "triggers": [
+    {
+      "type": "Numeric",
+      "name": "rating",
+      "value": 0.0
+    }
+  ]
 }

@@ -21,6 +21,7 @@ interface StateMachineObserver {
     void on_transition(string previous_state, string new_state);
     void on_state_entered(string entering_state);
     void on_state_exit(string leaving_state);
+    void on_custom_event(string message);
 };
 
 enum Mode {

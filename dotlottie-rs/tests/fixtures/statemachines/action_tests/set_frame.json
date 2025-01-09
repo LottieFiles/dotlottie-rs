@@ -1,76 +1,73 @@
 {
-    "descriptor": {
-        "id": "starRating",
-        "initial": "global"
+  "initial": "global",
+  "states": [
+    {
+      "name": "global",
+      "type": "GlobalState",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "a",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "triggerName": "OnOffSwitch",
+              "compareTo": true
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "triggerName": "OnOffSwitch",
+              "compareTo": false
+            }
+          ]
+        }
+      ]
     },
-    "states": [
+    {
+      "name": "a",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
         {
-            "name": "global",
-            "type": "GlobalState",
-            "animationId": "",
-            "transitions": [
-                {
-                    "type": "Transition",
-                    "toState": "a",
-                    "guards": [
-                        {
-                            "type": "Boolean",
-                            "conditionType": "Equal",
-                            "triggerName": "OnOffSwitch",
-                            "compareTo": true
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "b",
-                    "guards": [
-                        {
-                            "type": "Boolean",
-                            "conditionType": "Equal",
-                            "triggerName": "OnOffSwitch",
-                            "compareTo": false
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "a",
-            "type": "PlaybackState",
-            "animationId": "",
-            "transitions": [],
-            "entryActions": [
-                {
-                    "type": "SetFrame",
-                    "value": 10
-                }
-            ]
-        },
-        {
-            "name": "b",
-            "type": "PlaybackState",
-            "animationId": "",
-            "transitions": [],
-            "entryActions": [
-                {
-                    "type": "SetFrame",
-                    "value": "$frameHolder"
-                }
-            ]
+          "type": "SetFrame",
+          "value": 10
         }
-    ],
-    "listeners": [],
-    "triggers": [
+      ]
+    },
+    {
+      "name": "b",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
         {
-            "type": "Boolean",
-            "name": "OnOffSwitch",
-            "value": false
-        },
-        {
-            "type": "Numeric",
-            "name": "frameHolder",
-            "value": 35
+          "type": "SetFrame",
+          "value": "$frameHolder"
         }
-    ]
+      ]
+    }
+  ],
+  "listeners": [],
+  "triggers": [
+    {
+      "type": "Boolean",
+      "name": "OnOffSwitch",
+      "value": false
+    },
+    {
+      "type": "Numeric",
+      "name": "frameHolder",
+      "value": 35
+    }
+  ]
 }

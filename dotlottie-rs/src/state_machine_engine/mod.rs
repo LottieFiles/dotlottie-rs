@@ -288,7 +288,7 @@ impl StateMachineEngine {
 
         match parsed_state_machine {
             Ok(parsed_state_machine) => {
-                let initial_state_index = parsed_state_machine.descriptor.initial.clone();
+                let initial_state_index = parsed_state_machine.initial.clone();
 
                 /* Build all trigger variables into hashmaps for easier use */
                 if let Some(triggers) = &parsed_state_machine.triggers {
@@ -926,10 +926,10 @@ impl StateMachineEngine {
     // | PointerUp (No Layer)             | PointerUp                     | PointerUp   |
     // | PointerUp (With Layer)           | PointerUp                     | PointerUp   |
     // | PointerMove (No Layer)           | PointerMove                   | PointerDown |
-    // | PointerEnter (No Layer)          | PointerEnter                  |             |
+    // | PointerEnter (No Layer)          | PointerEnter                  | Not avail.  |
     // | PointerEnter (With Layer)        | PointerMove + PointerEnter    | PointerDown |
-    // | PointerExit (No Layer)           | PointerExit                   | PointerUp   |
-    // | PointerExit (With Layer)         | PointerMove + PointerExit     |             |
+    // | PointerExit (No Layer)           | PointerExit                   | Not avail.  |
+    // | PointerExit (With Layer)         | PointerMove + PointerExit     | PointerUp   |
     // | ---------------------------------|-------------------------------| ----------- |
 
     // Notes:

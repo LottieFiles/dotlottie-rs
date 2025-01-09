@@ -580,6 +580,14 @@ impl dotlottie_rs::StateMachineObserver for StateMachineObserver {
             }
         }
     }
+
+    fn on_custom_event(&self, message: String) {
+        if let Ok(message) = CString::new(message) {
+            unsafe {
+                (self.on_state_exit_op)(message.as_bytes_with_nul().as_ptr() as *const c_char)
+            }
+        }
+    }
 }
 
 impl StateMachineObserver {

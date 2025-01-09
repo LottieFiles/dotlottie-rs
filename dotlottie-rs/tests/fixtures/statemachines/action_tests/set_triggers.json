@@ -1,167 +1,164 @@
 {
-    "descriptor": {
-        "id": "star-rating",
-        "initial": "global"
+  "initial": "global",
+  "states": [
+    {
+      "name": "global",
+      "type": "GlobalState",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "e",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "triggerName": "NumericTrigger",
+              "compareTo": 10.0
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "d",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "triggerName": "NumericTrigger",
+              "compareTo": 20.0
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "f",
+          "guards": [
+            {
+              "type": "String",
+              "conditionType": "Equal",
+              "triggerName": "StringTrigger",
+              "compareTo": "second"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "a",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "triggerName": "OnOffSwitch",
+              "compareTo": true
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "triggerName": "OnOffSwitch",
+              "compareTo": false
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "c",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "Step"
+            }
+          ]
+        }
+      ]
     },
-    "states": [
+    {
+      "name": "a",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    },
+    {
+      "name": "b",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    },
+    {
+      "name": "c",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
         {
-            "name": "global",
-            "type": "GlobalState",
-            "animationId": "",
-            "transitions": [
-                {
-                    "type": "Transition",
-                    "toState": "e",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "Equal",
-                            "triggerName": "NumericTrigger",
-                            "compareTo": 10.0
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "d",
-                    "guards": [
-                        {
-                            "type": "Numeric",
-                            "conditionType": "Equal",
-                            "triggerName": "NumericTrigger",
-                            "compareTo": 20.0
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "f",
-                    "guards": [
-                        {
-                            "type": "String",
-                            "conditionType": "Equal",
-                            "triggerName": "StringTrigger",
-                            "compareTo": "second"
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "a",
-                    "guards": [
-                        {
-                            "type": "Boolean",
-                            "conditionType": "Equal",
-                            "triggerName": "OnOffSwitch",
-                            "compareTo": true
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "b",
-                    "guards": [
-                        {
-                            "type": "Boolean",
-                            "conditionType": "Equal",
-                            "triggerName": "OnOffSwitch",
-                            "compareTo": false
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "c",
-                    "guards": [
-                        {
-                            "type": "Event",
-                            "triggerName": "Step"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "a",
-            "type": "PlaybackState",
-            "animationId": "",
-            "transitions": []
-        },
-        {
-            "name": "b",
-            "type": "PlaybackState",
-            "animationId": "",
-            "transitions": []
-        },
-        {
-            "name": "c",
-            "type": "PlaybackState",
-            "animationId": "",
-            "transitions": [],
-            "entryActions": [
-                {
-                    "type": "SetBoolean",
-                    "triggerName": "OnOffSwitch",
-                    "value": true
-                }
-            ]
-        },
-        {
-            "name": "d",
-            "type": "PlaybackState",
-            "animationId": "",
-            "transitions": []
-        },
-        {
-            "name": "e",
-            "type": "PlaybackState",
-            "animationId": "",
-            "transitions": [],
-            "entryActions": [
-                {
-                    "type": "SetNumeric",
-                    "triggerName": "NumericTrigger",
-                    "value": 20
-                },
-                {
-                    "type": "SetString",
-                    "triggerName": "StringTrigger",
-                    "value": "second"
-                }
-            ]
-        },
-        {
-            "name": "f",
-            "type": "PlaybackState",
-            "animationId": "",
-            "transitions": []
+          "type": "SetBoolean",
+          "triggerName": "OnOffSwitch",
+          "value": true
         }
-    ],
-    "listeners": [],
-    "triggers": [
+      ]
+    },
+    {
+      "name": "d",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    },
+    {
+      "name": "e",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
         {
-            "type": "Boolean",
-            "name": "OnOffSwitch",
-            "value": false
+          "type": "SetNumeric",
+          "triggerName": "NumericTrigger",
+          "value": 20
         },
         {
-            "type": "Event",
-            "name": "Step"
-        },
-        {
-            "type": "Numeric",
-            "name": "NumericTrigger",
-            "value": 0
-        },
-        {
-            "type": "Numeric",
-            "name": "NumericTrigger",
-            "value": 0
-        },
-        {
-            "type": "String",
-            "name": "StringTrigger",
-            "value": "first"
+          "type": "SetString",
+          "triggerName": "StringTrigger",
+          "value": "second"
         }
-    ]
+      ]
+    },
+    {
+      "name": "f",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    }
+  ],
+  "listeners": [],
+  "triggers": [
+    {
+      "type": "Boolean",
+      "name": "OnOffSwitch",
+      "value": false
+    },
+    {
+      "type": "Event",
+      "name": "Step"
+    },
+    {
+      "type": "Numeric",
+      "name": "NumericTrigger",
+      "value": 0
+    },
+    {
+      "type": "Numeric",
+      "name": "NumericTrigger",
+      "value": 0
+    },
+    {
+      "type": "String",
+      "name": "StringTrigger",
+      "value": "first"
+    }
+  ]
 }

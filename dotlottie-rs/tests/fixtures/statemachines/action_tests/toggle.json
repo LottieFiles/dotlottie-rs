@@ -1,85 +1,82 @@
 {
-    "descriptor": {
-        "id": "star-rating",
-        "initial": "global"
+  "initial": "global",
+  "states": [
+    {
+      "animation": "",
+      "name": "global",
+      "type": "GlobalState",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "a",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "triggerName": "OnOffSwitch",
+              "compareTo": true
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "triggerName": "OnOffSwitch",
+              "compareTo": false
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "c",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "Step"
+            }
+          ]
+        }
+      ]
     },
-    "states": [
+    {
+      "name": "a",
+      "animation": "",
+      "type": "PlaybackState",
+      "transitions": []
+    },
+    {
+      "name": "b",
+      "animation": "",
+      "type": "PlaybackState",
+      "transitions": []
+    },
+    {
+      "name": "c",
+      "animation": "",
+      "type": "PlaybackState",
+      "transitions": [],
+      "entryActions": [
         {
-            "animationId": "",
-            "name": "global",
-            "type": "GlobalState",
-            "transitions": [
-                {
-                    "type": "Transition",
-                    "toState": "a",
-                    "guards": [
-                        {
-                            "type": "Boolean",
-                            "conditionType": "Equal",
-                            "triggerName": "OnOffSwitch",
-                            "compareTo": true
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "b",
-                    "guards": [
-                        {
-                            "type": "Boolean",
-                            "conditionType": "Equal",
-                            "triggerName": "OnOffSwitch",
-                            "compareTo": false
-                        }
-                    ]
-                },
-                {
-                    "type": "Transition",
-                    "toState": "c",
-                    "guards": [
-                        {
-                            "type": "Event",
-                            "triggerName": "Step"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "a",
-            "animationId": "",
-            "type": "PlaybackState",
-            "transitions": []
-        },
-        {
-            "name": "b",
-            "animationId": "",
-            "type": "PlaybackState",
-            "transitions": []
-        },
-        {
-            "name": "c",
-            "animationId": "",
-            "type": "PlaybackState",
-            "transitions": [],
-            "entryActions": [
-                {
-                    "type": "Toggle",
-                    "triggerName": "OnOffSwitch"
-                }
-            ]
+          "type": "Toggle",
+          "triggerName": "OnOffSwitch"
         }
-    ],
-    "listeners": [],
-    "triggers": [
-        {
-            "type": "Boolean",
-            "name": "OnOffSwitch",
-            "value": false
-        },
-        {
-            "type": "Event",
-            "name": "Step"
-        }
-    ]
+      ]
+    }
+  ],
+  "listeners": [],
+  "triggers": [
+    {
+      "type": "Boolean",
+      "name": "OnOffSwitch",
+      "value": false
+    },
+    {
+      "type": "Event",
+      "name": "Step"
+    }
+  ]
 }

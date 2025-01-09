@@ -276,7 +276,6 @@ cpp_link_args = [
 	'-sENVIRONMENT=web',
 	'-sFILESYSTEM=0',
 	'-sDYNAMIC_EXECUTION=0',
-	'-sERROR_ON_UNDEFINED_SYMBOLS=0',
 	'--no-entry',
 	'--strip-all',
 	'--emit-tsd=${WASM_MODULE}.d.ts',

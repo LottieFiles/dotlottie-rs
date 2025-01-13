@@ -83,9 +83,14 @@ pub trait LottieRenderer {
 
 impl dyn LottieRenderer {
     pub fn new<R: Renderer>(renderer: R) -> Box<Self> {
+        let mut renderer = renderer;
+        let background_shape = R::Shape::default();
+
+        renderer.push(Drawable::Shape(&background_shape)).unwrap();
+
         Box::new(LottieRendererImpl {
             animation: R::Animation::default(),
-            background_shape: R::Shape::default(),
+            background_shape,
             renderer,
             buffer: vec![],
             width: 0,

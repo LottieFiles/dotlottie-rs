@@ -97,8 +97,12 @@ fn apply_build_settings(build_settings: &BuildSettings) {
 }
 
 fn main() {
-    if !cfg!(feature = "thorvg") {
+    if !cfg!(feature = "thorvg-v0") && !cfg!(feature = "thorvg-v1") {
         return;
+    }
+
+    if !is_artifacts_provided() && cfg!(feature = "thorvg-v1") {
+        panic!("ARTIFACTS_INCLUDE_DIR and ARTIFACTS_LIB_DIR environment variables are required for thorvg-v1");
     }
 
     let mut builder = bindgen::Builder::default().header("wrapper.h");

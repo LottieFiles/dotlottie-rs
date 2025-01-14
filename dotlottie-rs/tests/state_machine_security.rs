@@ -41,4 +41,17 @@ mod tests {
         assert!(!l);
         assert!(!s);
     }
+
+    #[test]
+    fn check_state_for_multiple_global() {
+        let global_state = include_str!("fixtures/statemachines/security_tests/multi_global.json");
+        let player = DotLottiePlayer::new(Config::default());
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start();
+
+        assert!(!l);
+        assert!(!s);
+    }
 }

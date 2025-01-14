@@ -12,6 +12,7 @@ use super::{
 };
 
 use crate::state_machine::StringNumberBool;
+use crate::state_machine_engine::State::GlobalState;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StateMachineEngineSecurityError {
@@ -32,6 +33,11 @@ pub enum StateMachineEngineSecurityError {
         trigger_name
     )]
     SecurityCheckErrorTriggerCompareToIsWrong { trigger_name: String },
+
+    #[error(
+        "Multiple GlobalState state types have been used. Only a single GlobalState is allowed."
+    )]
+    MultipleGlobalStates,
 }
 
 // Rules checked:
@@ -44,9 +50,17 @@ pub fn state_machine_state_check_pipeline(
 ) -> Result<(), StateMachineEngineSecurityError> {
     let states = state_machine.state_machine.states();
     let mut name_set: HashSet<String> = HashSet::new();
+    let mut has_global = false;
 
     for state in states {
         let state_name = state.name();
+
+        if let GlobalState { .. } = state {
+            if has_global {
+                return Err(StateMachineEngineSecurityError::MultipleGlobalStates);
+            }
+            has_global = true;
+        }
 
         // Check if the state names are unique
         if !name_set.insert(state_name.to_string()) {

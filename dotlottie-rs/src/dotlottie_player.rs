@@ -1426,9 +1426,6 @@ impl DotLottiePlayer {
     // Return codes
     // 0: Success
     // 1: Failure
-    // 2: Play animation
-    // 3: Pause animation
-    // 4: Request and draw a new single frame of the animation (needed for sync state)
     pub fn state_machine_post_event(&self, event: &Event) -> i32 {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
@@ -1476,7 +1473,6 @@ impl DotLottiePlayer {
         self.state_machine_post_event(&event)
     }
 
-    // Todo: Rather than methods for each trigger, return the SM object
     pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
@@ -1492,7 +1488,7 @@ impl DotLottiePlayer {
             Err(_) => false,
         }
     }
-    // Todo: Rather than methods for each trigger, return the SM object
+    
     pub fn state_machine_set_string_trigger(&self, key: &str, value: &str) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
@@ -1508,7 +1504,7 @@ impl DotLottiePlayer {
             Err(_) => false,
         }
     }
-    // Todo: Rather than methods for each trigger, return the SM object
+
     pub fn state_machine_set_boolean_trigger(&self, key: &str, value: bool) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {

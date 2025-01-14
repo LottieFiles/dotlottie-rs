@@ -20,51 +20,47 @@
           ]
         }
       ]
-    },
-    {
-      "type": "PlaybackState",
-      "name": "explosion",
-      "animation": "",
-      "loop": false,
-      "autoplay": true,
-      "segment": "explosion",
-      "transitions": [
-        {
-          "type": "Transition",
-          "toState": "feathersFalling",
-          "guards": [
-            {
-              "type": "Event",
-              "triggerName": "rainFeathers"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "PlaybackState",
-      "name": "feathersFalling",
-      "animation": "",
-      "loop": false,
-      "autoplay": true,
-      "segment": "feathers",
-      "transitions": [
-        {
-          "type": "Transition",
-          "toState": "pigeonRunning",
-          "guards": [
-            {
-              "type": "Event",
-              "triggerName": "restart"
-            }
-          ]
-        }
-      ]
     }
   ],
   "listeners": [
     {
       "type": "PointerDown",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "explode"
+        }
+      ]
+    },
+    {
+      "type": "PointerUp",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "explode"
+        }
+      ]
+    },
+    {
+      "type": "PointerMove",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "explode"
+        }
+      ]
+    },
+    {
+      "type": "PointerEnter",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "explode"
+        }
+      ]
+    },
+    {
+      "type": "PointerExit",
       "actions": [
         {
           "type": "Fire",
@@ -79,15 +75,6 @@
         {
           "type": "Fire",
           "triggerName": "rainFeathers"
-        }
-      ]
-    },
-    {
-      "type": "PointerDown",
-      "actions": [
-        {
-          "type": "Fire",
-          "triggerName": "restart"
         }
       ]
     }

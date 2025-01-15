@@ -34,7 +34,7 @@ jobs:
 
       - name: Lint
         run: |
-          cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
-          cargo clippy --manifest-path=./dotlottie-ffi/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
+          cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --all-targets -- -D clippy::print_stdout
+          cargo clippy --manifest-path=./dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
         env:
           RUSTFLAGS: "-Dwarnings"

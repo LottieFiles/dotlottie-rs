@@ -5,11 +5,11 @@ use thiserror::Error;
 use crate::Layout;
 
 mod renderer;
-#[cfg(feature = "thorvg")]
+#[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
 mod thorvg;
 
 pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
-#[cfg(feature = "thorvg")]
+#[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
 pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
 
 #[derive(Error, Debug)]
@@ -83,9 +83,15 @@ pub trait LottieRenderer {
 
 impl dyn LottieRenderer {
     pub fn new<R: Renderer>(renderer: R) -> Box<Self> {
+        let mut renderer = renderer;
+        let background_shape = R::Shape::default();
+
+        renderer.push(Drawable::Shape(&background_shape)).unwrap();
+        renderer.sync().unwrap();
+
         Box::new(LottieRendererImpl {
             animation: R::Animation::default(),
-            background_shape: R::Shape::default(),
+            background_shape,
             renderer,
             buffer: vec![],
             width: 0,
@@ -224,7 +230,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn render(&mut self) -> Result<(), LottieRendererError> {
         self.renderer.update().map_err(into_lottie::<R>)?;
-        self.renderer.draw().map_err(into_lottie::<R>)?;
+        self.renderer.draw(true).map_err(into_lottie::<R>)?;
         self.renderer.sync().map_err(into_lottie::<R>)?;
 
         Ok(())

@@ -138,7 +138,15 @@ impl Renderer for TvgRenderer {
     }
 
     fn clear(&self, free: bool) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_canvas_clear(self.raw_canvas, free).into_result() }
+        #[cfg(feature = "thorvg-v1")]
+        unsafe {
+            tvg::tvg_canvas_remove(self.raw_canvas, ptr::null_mut::<tvg::Tvg_Paint>()).into_result()
+        }
+
+        #[cfg(feature = "thorvg-v0")]
+        unsafe {
+            tvg::tvg_canvas_clear(self.raw_canvas, free).into_result()
+        }
     }
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), TvgError> {
@@ -150,10 +158,16 @@ impl Renderer for TvgRenderer {
         unsafe { tvg::tvg_canvas_push(self.raw_canvas, raw_paint).into_result() }
     }
 
-    fn draw(&mut self) -> Result<(), TvgError> {
-        let result = unsafe { tvg::tvg_canvas_draw(self.raw_canvas) };
+    fn draw(&mut self, _clear_buffer: bool) -> Result<(), TvgError> {
+        #[cfg(feature = "thorvg-v1")]
+        unsafe {
+            tvg::tvg_canvas_draw(self.raw_canvas, _clear_buffer).into_result()
+        }
 
-        result.into_result()
+        #[cfg(feature = "thorvg-v0")]
+        unsafe {
+            tvg::tvg_canvas_draw(self.raw_canvas).into_result()
+        }
     }
 
     fn sync(&mut self) -> Result<(), TvgError> {
@@ -202,18 +216,31 @@ impl Animation for TvgAnimation {
     type Error = TvgError;
 
     fn load_data(&mut self, data: &str, mimetype: &str, copy: bool) -> Result<(), TvgError> {
-        let mimetype_cstr = CString::new(mimetype).expect("Failed to create CString");
-        let data_cstr = CString::new(data).expect("Failed to create CString");
+        let mimetype_cstr = CString::new(mimetype).unwrap();
+        let data_cstr = CString::new(data).unwrap();
+        let data_len = data_cstr.as_bytes().len() as u32;
 
+        #[cfg(feature = "thorvg-v1")]
         unsafe {
+            let data_ptr = data_cstr.as_ptr();
+            let mimetype_ptr = mimetype_cstr.as_ptr();
             tvg::tvg_picture_load_data(
                 self.raw_paint,
-                data_cstr.as_ptr(),
-                data.len() as u32,
-                mimetype_cstr.as_ptr(),
+                data_ptr,
+                data_len,
+                mimetype_ptr,
+                ptr::null(),
                 copy,
             )
             .into_result()
+        }
+
+        #[cfg(feature = "thorvg-v0")]
+        unsafe {
+            let data_ptr = data_cstr.as_ptr();
+            let mimetype_ptr = mimetype_cstr.as_ptr();
+            tvg::tvg_picture_load_data(self.raw_paint, data_ptr, data_len, mimetype_ptr, copy)
+                .into_result()
         }
     }
 

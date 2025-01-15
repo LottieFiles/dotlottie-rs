@@ -18,9 +18,14 @@ name = "dotlottie_player"
 name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
+[features]
+default = ["thorvg-v0"]
+thorvg-v0 = ["dotlottie-rs/thorvg-v0"]
+thorvg-v1 = ["dotlottie-rs/thorvg-v1"]
+
 [dependencies]
 uniffi = { version = "0.28", features = ["cli"] }
-dotlottie-rs = { path = "../dotlottie-rs", features = ["thorvg"] }
+dotlottie-rs = { path = "../dotlottie-rs", default-features = false }
 cfg-if = "1.0"
 bitflags = "2.6.0"
 

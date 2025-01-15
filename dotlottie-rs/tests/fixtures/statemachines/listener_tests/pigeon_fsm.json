@@ -1,0 +1,111 @@
+{
+  "initial": "PigeonRunning",
+  "states": [
+    {
+      "animation": "pigeon",
+      "type": "PlaybackState",
+      "name": "PigeonRunning",
+      "loop": true,
+      "autoplay": true,
+      "segment": "bird",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "Explosion",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "Explode"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "Explosion",
+      "loop": false,
+      "autoplay": true,
+      "segment": "explosion",
+      "speed": 0.1,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "Feathers falling",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "Rain feathers"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "Feathers falling",
+      "loop": false,
+      "autoplay": true,
+      "segment": "feather",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "PigeonRunning",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "Restart"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "listeners": [
+    {
+      "type": "PointerDown",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "Explode"
+        }
+      ]
+    },
+    {
+      "type": "OnComplete",
+      "stateName": "Explosion",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "Rain feathers"
+        }
+      ]
+    },
+    {
+      "type": "OnComplete",
+      "stateName": "Feathers falling",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "Restart"
+        }
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "type": "Event",
+      "name": "Explode"
+    },
+    {
+      "type": "Event",
+      "name": "Rain feathers"
+    },
+    {
+      "type": "Event",
+      "name": "Restart"
+    }
+  ]
+}

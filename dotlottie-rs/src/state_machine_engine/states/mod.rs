@@ -115,6 +115,7 @@ impl StateTrait for State {
                     layout: Layout::default(),
                     segment: [].to_vec(),
                     theme_id: "".to_string(),
+                    state_machine_id: "".to_string(),
                 };
 
                 if let Ok(player_read) = player.try_read() {

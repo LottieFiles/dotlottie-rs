@@ -73,6 +73,7 @@ pub struct Config {
     pub layout: Layout,
     pub marker: String,
     pub theme_id: String,
+    pub state_machine_id: String,
 }
 
 impl Default for Config {
@@ -88,6 +89,7 @@ impl Default for Config {
             layout: Layout::default(),
             marker: String::new(),
             theme_id: String::new(),
+            state_machine_id: String::new(),
         }
     }
 }
@@ -129,6 +131,7 @@ struct DotLottieRuntime {
     markers: MarkersMap,
     active_animation_id: String,
     active_theme_id: String,
+    active_state_machine_id: String,
 }
 
 impl DotLottieRuntime {
@@ -160,6 +163,7 @@ impl DotLottieRuntime {
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
             active_theme_id: String::new(),
+            active_state_machine_id: String::new(),
         }
     }
 
@@ -881,6 +885,14 @@ impl DotLottieRuntime {
     pub fn active_theme_id(&self) -> &str {
         &self.active_theme_id
     }
+
+    pub fn active_state_machine_id(&self) -> &str {
+        &self.active_state_machine_id
+    }
+
+    pub fn set_active_state_machine_id(&mut self, state_machine_id: &str) {
+        self.active_state_machine_id = state_machine_id.to_string();
+    }
 }
 
 pub struct DotLottiePlayerContainer {
@@ -1260,6 +1272,21 @@ impl DotLottiePlayerContainer {
             .to_string()
     }
 
+    pub fn active_state_machine_id(&self) -> String {
+        self.runtime
+            .read()
+            .unwrap()
+            .active_state_machine_id()
+            .to_string()
+    }
+
+    pub fn set_active_state_machine_id(&self, active_state_machine_id: &str) {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_active_state_machine_id(active_state_machine_id);
+    }
+
     pub fn active_theme_id(&self) -> String {
         self.runtime.read().unwrap().active_theme_id().to_string()
     }
@@ -1301,10 +1328,6 @@ impl DotLottiePlayer {
             .is_ok_and(|runtime| runtime.load_animation_data(animation_data, width, height))
     }
 
-    pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachineEngine>>> {
-        self.state_machine.clone()
-    }
-
     pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> bool {
         self.player.read().unwrap().hit_check(layer_name, x, y)
     }
@@ -1313,8 +1336,6 @@ impl DotLottiePlayer {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 
-    // If you are in an environment that does not support events
-    // Call isPlaying() to know if the state machine started playback within the first state
     pub fn state_machine_start(&self) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
@@ -1486,7 +1507,7 @@ impl DotLottiePlayer {
             Err(_) => false,
         }
     }
-    
+
     pub fn state_machine_set_string_trigger(&self, key: &str, value: &str) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
@@ -1575,21 +1596,72 @@ impl DotLottiePlayer {
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
-        self.player
-            .write()
-            .is_ok_and(|runtime| runtime.load_animation_path(animation_path, width, height))
+        match self.player.try_write() {
+            Ok(player) => {
+                let load_status = player.load_animation_path(animation_path, width, height);
+
+                let sm_id = player.config().state_machine_id;
+
+                if !sm_id.is_empty() {
+                    drop(player); // Explicitly drop to release the lock before state_machine_load
+
+                    let load = self.state_machine_load(&sm_id);
+
+                    let start = self.state_machine_start();
+
+                    return load && start;
+                }
+
+                load_status
+            }
+            Err(_) => false,
+        }
     }
 
     pub fn load_dotlottie_data(&self, file_data: &[u8], width: u32, height: u32) -> bool {
-        self.player
-            .write()
-            .is_ok_and(|runtime| runtime.load_dotlottie_data(file_data, width, height))
+        match self.player.try_write() {
+            Ok(player) => {
+                let load_status = player.load_dotlottie_data(file_data, width, height);
+
+                let sm_id = player.config().state_machine_id;
+
+                if !sm_id.is_empty() {
+                    drop(player); // Explicitly drop to release the lock before state_machine_load
+
+                    let load = self.state_machine_load(&sm_id);
+
+                    let start = self.state_machine_start();
+
+                    return load && start;
+                }
+
+                load_status
+            }
+            Err(_) => false,
+        }
     }
 
     pub fn load_animation(&self, animation_id: &str, width: u32, height: u32) -> bool {
-        self.player
-            .write()
-            .is_ok_and(|runtime| runtime.load_animation(animation_id, width, height))
+        match self.player.try_write() {
+            Ok(player) => {
+                let load_status = player.load_animation(animation_id, width, height);
+
+                let sm_id = player.config().state_machine_id;
+
+                if !sm_id.is_empty() {
+                    drop(player); // Explicitly drop to release the lock before state_machine_load
+
+                    let load = self.state_machine_load(&sm_id);
+
+                    let start = self.state_machine_start();
+
+                    return load && start;
+                }
+
+                load_status
+            }
+            Err(_) => false,
+        }
     }
 
     pub fn manifest(&self) -> Option<Manifest> {
@@ -1765,7 +1837,7 @@ impl DotLottiePlayer {
             match player {
                 Ok(mut player) => {
                     player.state_machine = self.state_machine.clone();
-
+                    player.set_active_state_machine_id("");
                     return true;
                 }
                 Err(_) => {
@@ -1800,6 +1872,7 @@ impl DotLottiePlayer {
                         match player {
                             Ok(mut player) => {
                                 player.state_machine = self.state_machine.clone();
+                                player.set_active_state_machine_id(state_machine_id);
                             }
                             Err(_) => {
                                 return false;
@@ -1840,6 +1913,14 @@ impl DotLottiePlayer {
 
     pub fn active_theme_id(&self) -> String {
         self.player.read().unwrap().active_theme_id().to_string()
+    }
+
+    pub fn active_state_machine_id(&self) -> String {
+        self.player
+            .read()
+            .unwrap()
+            .active_state_machine_id()
+            .to_string()
     }
 
     pub fn animation_size(&self) -> Vec<f32> {

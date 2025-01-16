@@ -598,6 +598,8 @@ impl DotLottieRuntime {
         self.renderer.clear()
     }
 
+    // Notes: Runtime doesn't have the state machine
+    // Therefor the state machine can't be loaded here, user must use the load methods.
     pub fn set_config(&mut self, new_config: Config) {
         self.update_mode(&new_config);
         self.update_background_color(&new_config);
@@ -1326,6 +1328,10 @@ impl DotLottiePlayer {
         self.player
             .write()
             .is_ok_and(|runtime| runtime.load_animation_data(animation_data, width, height))
+    }
+
+    pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachineEngine>>> {
+        self.state_machine.clone()
     }
 
     pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> bool {

@@ -76,7 +76,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("backgroundColor", &Config::background_color)
         .field("layout", &Config::layout)
         .field("marker", &Config::marker)
-        .field("themeId", &Config::theme_id);
+        .field("themeId", &Config::theme_id)
+        .field("stateMachineId", &Config::state_machine_id);
 
     function("createDefaultConfig", &create_default_config);
     function("transformThemeToLottieSlots", &transform_theme_to_lottie_slots);
@@ -183,6 +184,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("stateMachineGetStringTrigger", &DotLottiePlayer::state_machine_get_string_trigger)
         .function("stateMachineGetBooleanTrigger", &DotLottiePlayer::state_machine_get_boolean_trigger)
         .function("getLayerBounds", &DotLottiePlayer::get_layer_bounds)
+        .function("activeStateMachineId", &DotLottiePlayer::active_state_machine_id)
         .function("stateMachineCurrentState", &DotLottiePlayer::state_machine_current_state)
         .function("stateMachinePostPointerDownEvent", &DotLottiePlayer::state_machine_post_pointer_down_event)
         .function("stateMachinePostPointerUpEvent", &DotLottiePlayer::state_machine_post_pointer_up_event)

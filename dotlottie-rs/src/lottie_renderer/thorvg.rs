@@ -49,7 +49,7 @@ mod em {
         pub renderViaOffscreenBackBuffer: bool,
     }
 
-    extern "C" {
+    unsafe extern "C" {
         pub fn emscripten_webgl_init_context_attributes(
             attributes: *mut EmscriptenWebGLContextAttributes,
         );
@@ -66,7 +66,22 @@ mod em {
         ) -> EmscriptenResult;
 
         pub fn emscripten_is_webgl_context_lost(context: EmscriptenWebglContextHandle) -> bool;
+
+        pub fn emscripten_webgl_get_current_context() -> EmscriptenWebglContextHandle;
+
+        pub fn emscripten_webgl_get_drawing_buffer_size(
+            context: EmscriptenWebglContextHandle,
+            width: *mut ::std::os::raw::c_int,
+            height: *mut ::std::os::raw::c_int,
+        ) -> EmscriptenResult;
+
+        pub fn emscripten_webgl_enable_WEBGL_draw_buffers(
+            context: EmscriptenWebglContextHandle,
+        ) -> bool;
     }
+
+    pub const EM_WEBGL_CONTEXT_VERSION_MAJOR: i32 = 2;
+    pub const EM_WEBGL_CONTEXT_VERSION_MINOR: i32 = 0;
 }
 
 #[derive(Error, Debug)]
@@ -135,58 +150,7 @@ impl From<TvgEngine> for tvg::Tvg_Engine {
 static RENDERERS_COUNT: spin::Mutex<usize> = spin::Mutex::new(0);
 
 #[cfg(target_arch = "wasm32")]
-static WEBGL_CONTEXT: spin::Mutex<Option<Box<WebGLContext>>> = spin::Mutex::new(None);
-
-#[cfg(target_arch = "wasm32")]
-struct WebGLContext {
-    handle: em::EmscriptenWebglContextHandle,
-}
-
-#[cfg(target_arch = "wasm32")]
-impl WebGLContext {
-    fn new(selector: &str) -> Box<Self> {
-        let mut attributes = em::EmscriptenWebGLContextAttributes {
-            alpha: true,
-            depth: false,
-            stencil: false,
-            antialias: false,
-            premultipliedAlpha: true,
-            preserveDrawingBuffer: false,
-            powerPreference: em::EM_WEBGL_POWER_PREFERENCE_DEFAULT,
-            failIfMajorPerformanceCaveat: false,
-            majorVersion: 2,
-            minorVersion: 0,
-            enableExtensionsByDefault: true,
-            explicitSwapControl: false,
-            proxyContextToMainThread: em::EMSCRIPTEN_WEBGL_CONTEXT_PROXY_MODE_OFF,
-            renderViaOffscreenBackBuffer: false,
-        };
-
-        unsafe {
-            em::emscripten_webgl_init_context_attributes(&mut attributes);
-        }
-
-        let handle = unsafe {
-            em::emscripten_webgl_create_context(
-                CString::new(selector).unwrap().as_ptr(),
-                &attributes,
-            )
-        };
-
-        if handle == 0 {
-            panic!("Failed to create WebGL context");
-        }
-
-        unsafe {
-            let result = em::emscripten_webgl_make_context_current(handle);
-            if result != em::EMSCRIPTEN_RESULT_SUCCESS {
-                panic!("Failed to make WebGL context current");
-            }
-        }
-
-        Box::new(WebGLContext { handle })
-    }
-}
+static mut WEBGL_CONTEXT: Option<em::EmscriptenWebglContextHandle> = None;
 
 pub struct TvgRenderer {
     raw_canvas: *mut tvg::Tvg_Canvas,
@@ -199,9 +163,58 @@ impl TvgRenderer {
 
         #[cfg(target_arch = "wasm32")]
         if matches!(engine, TvgEngine::TvgEngineGl) {
-            let mut webgl_ctx = WEBGL_CONTEXT.lock();
-            if webgl_ctx.is_none() {
-                *webgl_ctx = Some(WebGLContext::new(selector));
+            unsafe {
+                if WEBGL_CONTEXT.is_none() {
+                    let mut attributes = em::EmscriptenWebGLContextAttributes {
+                        alpha: true,
+                        depth: false,
+                        stencil: false,
+                        antialias: false,
+                        premultipliedAlpha: true,
+                        preserveDrawingBuffer: false,
+                        powerPreference: em::EM_WEBGL_POWER_PREFERENCE_DEFAULT,
+                        failIfMajorPerformanceCaveat: false,
+                        majorVersion: em::EM_WEBGL_CONTEXT_VERSION_MAJOR,
+                        minorVersion: em::EM_WEBGL_CONTEXT_VERSION_MINOR,
+                        enableExtensionsByDefault: true,
+                        explicitSwapControl: false,
+                        proxyContextToMainThread: em::EMSCRIPTEN_WEBGL_CONTEXT_PROXY_MODE_OFF,
+                        renderViaOffscreenBackBuffer: false,
+                    };
+
+                    em::emscripten_webgl_init_context_attributes(&mut attributes);
+
+                
+                    attributes.alpha = true;
+                    attributes.depth = false;
+                    attributes.stencil = false;
+                    attributes.premultipliedAlpha = true;
+                    attributes.failIfMajorPerformanceCaveat = false;
+                    attributes.majorVersion = 2;
+                    attributes.minorVersion = 0;
+                    attributes.enableExtensionsByDefault = true;
+
+
+                    let selector_cstr = CString::new(selector).unwrap();
+                    let handle = em::emscripten_webgl_create_context(
+                        selector_cstr.as_ptr(),
+                        &attributes,
+                    );
+
+                    if handle == 0 {
+                        panic!("Failed to create WebGL context");
+                    }
+
+                    println!("Created WebGL context: {}", handle);
+
+                    let result = em::emscripten_webgl_make_context_current(handle);
+                    if result != em::EMSCRIPTEN_RESULT_SUCCESS {
+                        em::emscripten_webgl_destroy_context(handle);
+                        panic!("Failed to make WebGL context current: {}", result);
+                    }
+
+                    WEBGL_CONTEXT = Some(handle);
+                }
             }
         }
 
@@ -229,16 +242,6 @@ impl TvgRenderer {
 
         if raw_canvas.is_null() {
             panic!("Failed to create canvas");
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        if matches!(engine, TvgEngine::TvgEngineGl) {
-            let webgl_ctx = WEBGL_CONTEXT.lock();
-            if let Some(ctx) = &*webgl_ctx {
-                println!("Is WebGL context lost: {}", unsafe {
-                    em::emscripten_is_webgl_context_lost(ctx.handle)
-                });
-            }
         }
 
         println!("Created GL canvas");
@@ -278,22 +281,38 @@ impl Renderer for TvgRenderer {
             },
             TvgEngine::TvgEngineGl => {
                 #[cfg(target_arch = "wasm32")]
-                {
-                    println!("Setting GL canvas target");
-
-                    let webgl_ctx = WEBGL_CONTEXT.lock();
-                    if let Some(ctx) = &*webgl_ctx {
-                        unsafe {
-                            tvg::tvg_glcanvas_set_target(
-                                self.raw_canvas,
-                                ctx.handle as *mut ::std::os::raw::c_void,
-                                0,
-                                width,
-                                height,
-                                color_space.into(),
-                            )
-                            .into_result()
+                unsafe {
+                    if let Some(ctx) = WEBGL_CONTEXT {
+                        let result = em::emscripten_webgl_make_context_current(ctx);
+                        if result != em::EMSCRIPTEN_RESULT_SUCCESS {
+                            return Err(TvgError::InsufficientCondition);
                         }
+
+                        if em::emscripten_is_webgl_context_lost(ctx) {
+                            return Err(TvgError::InsufficientCondition);
+                        }
+
+                        let mut buffer_width = 0;
+                        let mut buffer_height = 0;
+                        if em::emscripten_webgl_get_drawing_buffer_size(
+                            ctx,
+                            &mut buffer_width,
+                            &mut buffer_height,
+                        ) != em::EMSCRIPTEN_RESULT_SUCCESS {
+                            return Err(TvgError::InsufficientCondition);
+                        }
+
+                        println!("Setting GL target - Context: {}, Buffer size: {}x{}", 
+                            ctx, buffer_width, buffer_height);
+
+                        tvg::tvg_glcanvas_set_target(
+                            self.raw_canvas,
+                            ctx as *mut ::std::os::raw::c_void,
+                            0,
+                            buffer_width as u32,
+                            buffer_height as u32,
+                            color_space.into(),
+                        ).into_result()
                     } else {
                         Err(TvgError::InsufficientCondition)
                     }
@@ -355,8 +374,12 @@ impl Drop for TvgRenderer {
 
         #[cfg(target_arch = "wasm32")]
         if matches!(self.engine, TvgEngine::TvgEngineGl) {
-            let mut webgl_ctx = WEBGL_CONTEXT.lock();
-            *webgl_ctx = None;
+            unsafe {
+                if let Some(ctx) = WEBGL_CONTEXT {
+                    em::emscripten_webgl_destroy_context(ctx);
+                    WEBGL_CONTEXT = None;
+                }
+            }
         }
 
         unsafe {

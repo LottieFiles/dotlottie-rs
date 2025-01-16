@@ -262,9 +262,6 @@ exe_suffix = 'js'
 cpp_args = ['-Wshift-negative-value', '-flto', '-Oz', '-ffunction-sections', '-fdata-sections']
 cpp_link_args = [
 	'-g',
-	'-sTRACE_WEBGL_CALLS=1',
-	'-sGL_DEBUG=1',
-	'-sGL_ASSERTIONS=1',
 	'-sMAX_WEBGL_VERSION=2',
 	'-sFULL_ES3',
 	'-Wl,-u,htons',

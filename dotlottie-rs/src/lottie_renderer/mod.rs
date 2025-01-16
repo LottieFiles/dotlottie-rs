@@ -128,16 +128,22 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         height: u32,
         copy: bool,
     ) -> Result<(), LottieRendererError> {
+        println!("Clearing renderer");
         self.renderer.clear(true).map_err(into_lottie::<R>)?;
 
+        println!("Cleared renderer");
         self.picture_width = 0.0;
         self.picture_height = 0.0;
 
         self.width = width;
         self.height = height;
 
+        println!("Resizing buffer");
         self.buffer
             .resize((self.width * self.height * 4) as usize, 0);
+        println!("Resized buffer");
+
+        println!("Setting target");
         self.renderer
             .set_target(
                 &mut self.buffer,
@@ -147,6 +153,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
                 get_color_space_for_target(),
             )
             .map_err(into_lottie::<R>)?;
+
+        println!("Set target");
 
         self.animation = R::Animation::default();
         self.background_shape = R::Shape::default();

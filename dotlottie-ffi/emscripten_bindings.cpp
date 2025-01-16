@@ -1,6 +1,7 @@
 #include "dotlottie_player.hpp"
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
+#include <emscripten/html5_webgl.h>
 
 using namespace emscripten;
 using namespace dotlottie_player;
@@ -40,6 +41,10 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     register_vector<std::string>("VectorString");
     // register_vector<ManifestTheme>("VectorManifestTheme");
     // register_vector<ManifestAnimation>("VectorManifestAnimation");
+
+    enum_<TvgEngine>("TvgEngine")
+        .value("TvgEngineSw", TvgEngine::kTvgEngineSw)
+        .value("TvgEngineGl", TvgEngine::kTvgEngineGl);
 
     enum_<Mode>("Mode")
         .value("Forward", Mode::kForward)

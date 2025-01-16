@@ -47,7 +47,7 @@ lazy_static! {
         true if is_wasm_build() => BuildSettings{
             static_libs: vec![String::from("thorvg")],
             dynamic_libs: vec![],
-            link_args: vec![String::from("--no-entry")],
+            link_args: vec![String::from("--no-entry"), String::from("-sMAX_WEBGL_VERSION=2"), String::from("-sFULL_ES3")],
         },
         true => BuildSettings{
             static_libs: vec![String::from("thorvg"), String::from("turbojpeg"), String::from("png"), String::from("z"), String::from("webp")],
@@ -99,6 +99,10 @@ fn apply_build_settings(build_settings: &BuildSettings) {
 fn main() {
     if !cfg!(feature = "thorvg-v0") && !cfg!(feature = "thorvg-v1") {
         return;
+    }
+
+    if cfg!(feature = "thorvg-v0") && is_wasm_build() {
+        panic!("thorvg-v0 is not supported for wasm");
     }
 
     if !is_artifacts_provided() && cfg!(feature = "thorvg-v1") {

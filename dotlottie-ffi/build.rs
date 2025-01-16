@@ -20,7 +20,12 @@ lazy_static! {
     // Native library dependencies
     static ref TARGET_BUILD_SETTINGS: BuildSettings = match is_wasm_build() {
         true => BuildSettings{
-            link_args: vec![String::from("--no-entry"), String::from("-sERROR_ON_UNDEFINED_SYMBOLS=0")],
+            link_args: vec![
+                String::from("-sMAX_WEBGL_VERSION=2"),
+                String::from("-sFULL_ES3"),
+                String::from("--no-entry"),
+                String::from("-sERROR_ON_UNDEFINED_SYMBOLS=0"),
+            ],
         },
         _ => BuildSettings{
             link_args: vec![],

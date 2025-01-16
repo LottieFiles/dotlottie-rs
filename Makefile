@@ -261,12 +261,17 @@ exe_suffix = 'js'
 [built-in options]
 cpp_args = ['-Wshift-negative-value', '-flto', '-Oz', '-ffunction-sections', '-fdata-sections']
 cpp_link_args = [
-	'-sMALLOC=emmalloc',
+	'-g',
+	'-sTRACE_WEBGL_CALLS=1',
+	'-sGL_DEBUG=1',
+	'-sGL_ASSERTIONS=1',
+	'-sMAX_WEBGL_VERSION=2',
+	'-sFULL_ES3',
 	'-Wl,-u,htons',
 	'-Wl,-u,ntohs',
 	'-Wl,-u,htonl',
 	'-Wshift-negative-value',
-	'-flto', '-Oz', '--bind', '-sWASM=1',
+	'-flto', '-Os', '--bind', '-sWASM=1',
 	'-sALLOW_MEMORY_GROWTH=1',
 	'-sFORCE_FILESYSTEM=0',
 	'-sMODULARIZE=1',
@@ -277,9 +282,7 @@ cpp_link_args = [
 	'-sFILESYSTEM=0',
 	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
-	'--strip-all',
-	'--emit-tsd=${WASM_MODULE}.d.ts',
-	'--closure=1']
+	'--emit-tsd=${WASM_MODULE}.d.ts']
 
 [host_machine]
 system = '$(SYSTEM)'
@@ -330,9 +333,9 @@ define SETUP_MESON
 		--backend=ninja \
 		-Dloaders="lottie, png, jpg, webp" \
 		-Ddefault_library=static \
-		-Dengines=sw \
+		-Dengines=sw,gl \
 		-Dbindings=capi \
-		-Dlog=false \
+		-Dlog=true \
 		-Dthreads=false \
 		-Dstatic=$(STATIC) \
 		-Dextra=$(EXTRA) \

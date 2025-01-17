@@ -1,3 +1,13 @@
+## 0.1.37 (2025-01-17)
+
+### Features
+
+#### upgrade thorvg v1.0-pre10 (#244)
+
+### Fixes
+
+#### 🐛 memory leak when LottieRenderer is created (#282)
+
 ## 0.1.36 (2025-01-03)
 
 ### Features

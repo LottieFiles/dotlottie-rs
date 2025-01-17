@@ -56,6 +56,7 @@ dictionary Config {
     Layout layout;
     string marker;
     string theme_id;
+    string state_machine_id;
 };
 
 dictionary ManifestInitial {
@@ -154,6 +155,7 @@ interface DotLottiePlayer {
     boolean state_machine_load_data([ByRef] string state_machine);
     boolean state_machine_start();
     boolean state_machine_stop();
+    string active_state_machine_id();
     sequence<string> state_machine_framework_setup();
     i32 state_machine_post_event([ByRef] Event event);
     i32 state_machine_post_pointer_down_event(f32 x, f32 y);

@@ -9,8 +9,8 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const STATE_MACHINE_NAME: &str = "pigeon_with_listeners";
-pub const ANIMATION_NAME: &str = "pigeon";
+pub const STATE_MACHINE_NAME: &str = "explodingPigeon";
+pub const ANIMATION_NAME: &str = "exploding_pigeon_v2";
 
 struct Timer {
     last_update: Instant,
@@ -77,6 +77,7 @@ fn main() {
 
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         background_color: 0xffffffff,
+        state_machine_id: STATE_MACHINE_NAME.to_string(),
         ..Config::default()
     });
     let mut markers = File::open(format!(
@@ -96,23 +97,28 @@ fn main() {
 
     let mut timer = Timer::new();
 
-    let state_machine: String = fs::read_to_string(format!(
-        "./src/bin/shared/statemachines/{}.json",
-        STATE_MACHINE_NAME
-    ))
-    .unwrap();
+    // let state_machine: String = fs::read_to_string(format!(
+    //     "./src/bin/shared/statemachines/{}.json",
+    //     STATE_MACHINE_NAME
+    // ))
+    // .unwrap();
 
-    let r = lottie_player.state_machine_load_data(&state_machine);
+    // let r = lottie_player.state_machine_load_data(&state_machine);
 
-    println!("Load state machine data -> {}", r);
+    println!(
+        "🚨 Activate state machine -> {}",
+        lottie_player.active_state_machine_id()
+    );
 
-    let s = lottie_player.state_machine_start();
+    // println!("Load state machine data -> {}", r);
+
+    // let s = lottie_player.state_machine_start();
 
     lottie_player.state_machine_subscribe(observer.clone());
 
-    println!("Start state machine -> {}", s);
+    // println!("Start state machine -> {}", s);
 
-    println!("is_playing: {}", lottie_player.is_playing());
+    // println!("is_playing: {}", lottie_player.is_playing());
 
     lottie_player.render();
 

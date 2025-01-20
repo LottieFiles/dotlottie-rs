@@ -248,6 +248,28 @@ mod tests {
     }
 
     #[test]
+    fn final_state() {
+        let player = DotLottiePlayer::new(Config::default());
+        let sm = include_str!("fixtures/statemachines/normal_usecases/final_state.json");
+
+        player.state_machine_load_data(sm);
+
+        let r = player.state_machine_start();
+        assert!(r);
+
+        assert_eq!(player.state_machine_current_state(), "star_0".to_string());
+
+        player.state_machine_set_numeric_trigger("rating", 3.0);
+        assert_eq!(player.state_machine_current_state(), "star_3".to_string());
+
+        player.state_machine_set_numeric_trigger("rating", 5.0);
+        assert_eq!(player.state_machine_current_state(), "star_1".to_string());
+
+        player.state_machine_set_numeric_trigger("rating", 3.0);
+        assert_eq!(player.state_machine_current_state(), "star_1".to_string());
+    }
+
+    #[test]
     fn state_machine_current_state() {
         let player = DotLottiePlayer::new(Config::default());
         let pointer_down =

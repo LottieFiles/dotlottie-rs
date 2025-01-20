@@ -42,6 +42,7 @@ pub enum State {
         transitions: Vec<Transition>,
         animation: String,
         r#loop: Option<bool>,
+        r#final: Option<bool>,
         autoplay: Option<bool>,
         mode: Option<String>,
         speed: Option<f32>,
@@ -76,6 +77,7 @@ impl StateTrait for State {
             State::PlaybackState {
                 animation,
                 r#loop,
+                r#final,
                 autoplay,
                 mode,
                 speed,
@@ -132,6 +134,12 @@ impl StateTrait for State {
                     if let Some(actions) = entry_actions {
                         for action in actions {
                             let _ = action.execute(engine, player.clone(), false);
+                        }
+                    }
+
+                    if let Some(is_final) = r#final {
+                        if *is_final {
+                            engine.stop();
                         }
                     }
 

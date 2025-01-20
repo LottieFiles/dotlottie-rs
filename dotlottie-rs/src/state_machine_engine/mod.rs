@@ -390,7 +390,7 @@ impl StateMachineEngine {
         self.status = StateMachineEngineStatus::Paused;
     }
 
-    pub fn end(&mut self) {
+    pub fn stop(&mut self) {
         self.status = StateMachineEngineStatus::Stopped;
     }
 
@@ -673,7 +673,7 @@ impl StateMachineEngine {
 
                 if self.current_cycle_count >= self.max_cycle_count {
                     println!("🚨 Infinite loop detected, ending state machine.");
-                    self.end();
+                    self.stop();
                     return Err(StateMachineEngineError::InfiniteLoopError);
                 }
 

@@ -15,6 +15,9 @@ crossterm = "0.25"
 name = "new-format"
 path = "src/bin/new-format/new-format.rs"
 
+[[bin]]
+name = "state_machine_showcase"
+path = "src/bin/state_machine_showcase/state_machine_showcase.rs"
 
 [[bin]]
 name = "tui"

@@ -1,0 +1,109 @@
+{
+  "initial": "pigeonRunning",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "pigeonRunning",
+      "animation": "",
+      "loop": true,
+      "autoplay": true,
+      "segment": "bird",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "explosion",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "explode"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "explosion",
+      "animation": "",
+      "loop": false,
+      "autoplay": true,
+      "segment": "explosion",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "feathersFalling",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "rainFeathers"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "feathersFalling",
+      "animation": "",
+      "loop": false,
+      "autoplay": true,
+      "segment": "feather",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "pigeonRunning",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "restart"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "type": "Event",
+      "name": "explode"
+    },
+    {
+      "type": "Event",
+      "name": "rainFeathers"
+    },
+    {
+      "type": "Event",
+      "name": "restart"
+    }
+  ],
+  "listeners": [
+    {
+      "type": "PointerDown",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "explode"
+        }
+      ]
+    },
+    {
+      "type": "OnComplete",
+      "stateName": "explosion",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "rainFeathers"
+        }
+      ]
+    },
+    {
+      "type": "PointerDown",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "restart"
+        }
+      ]
+    }
+  ]
+}

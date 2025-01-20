@@ -1383,6 +1383,9 @@ impl DotLottiePlayer {
                 if let Some(sm) = state_machine.as_mut() {
                     if sm.status == StateMachineEngineStatus::Running {
                         sm.end();
+
+                        // nullify the current state machine
+                        *state_machine = None;
                     } else {
                         return false;
                     }

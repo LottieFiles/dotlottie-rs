@@ -1,0 +1,161 @@
+{
+  "initial": "Initial",
+  "states": [
+    {
+      "name": "Initial",
+      "type": "GlobalState",
+      "animationId": "face-in-clouds",
+      "autoplay": true,
+      "loop": true,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "a",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "triggerName": "rating",
+              "compareTo": 1
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "triggerName": "rating",
+              "compareTo": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a",
+      "animationId": "anger",
+      "type": "PlaybackState",
+      "autoplay": true,
+      "loop": true,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "c",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "Step"
+            }
+          ]
+        }
+      ],
+      "exitActions": [
+        {
+          "type": "Toggle",
+          "triggerName": "a_exited",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "b",
+      "animationId": "blush",
+      "type": "PlaybackState",
+      "autoplay": true,
+      "loop": true,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "c",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "Step"
+            }
+          ]
+        }
+      ],
+      "exitActions": [
+        {
+          "type": "Toggle",
+          "triggerName": "b_exited",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "c",
+      "animationId": "cowboy",
+      "type": "PlaybackState",
+      "autoplay": true,
+      "loop": true,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "d",
+          "guards": [
+            {
+              "type": "Boolean",
+              "triggerName": "a_exited",
+              "compareTo": true,
+              "conditionType": "Equal"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "e",
+          "guards": [
+            {
+              "type": "Boolean",
+              "triggerName": "b_exited",
+              "compareTo": true,
+              "conditionType": "Equal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d",
+      "animationId": "disguised",
+      "type": "PlaybackState",
+      "autoplay": true,
+      "loop": true,
+      "transitions": []
+    },
+    {
+      "name": "e",
+      "animationId": "exploding",
+      "type": "PlaybackState",
+      "autoplay": true,
+      "loop": true,
+      "transitions": []
+    }
+  ],
+  "listeners": [],
+  "triggers": [
+    {
+      "type": "Boolean",
+      "name": "a_exited",
+      "value": false
+    },
+    {
+      "type": "Boolean",
+      "name": "b_exited",
+      "value": false
+    },
+    {
+      "type": "Numeric",
+      "name": "rating",
+      "value": 0
+    },
+    {
+      "type": "Event",
+      "name": "Step"
+    }
+  ]
+}

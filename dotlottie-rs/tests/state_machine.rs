@@ -1,47 +1,45 @@
 #[cfg(test)]
 mod tests {
-    use core::{assert_eq, option::Option::Some};
+    use core::assert_eq;
+    use std::fs::{self, File};
 
     use dotlottie_rs::{Config, DotLottiePlayer, Event};
+    use std::io::Read;
 
     #[test]
     fn get_state_machine() {
-        // Tests with no state machine loaded
-        let player = DotLottiePlayer::new(Config::default());
-        let l = player.get_state_machine();
-        let m = &*l;
-        let r = m.try_read();
+        let config = Config {
+            autoplay: true,
+            ..Config::default()
+        };
+        let player = DotLottiePlayer::new(config);
 
-        match r {
-            Ok(read_lock) => {
-                let state_machine = read_lock;
-                assert!(state_machine.is_none());
-            }
-            Err(_) => {
-                assert!(false);
-            }
-        }
+        let mut markers =
+            File::open("tests/fixtures/statemachines/normal_usecases/sm_exploding_pigeon.lottie")
+                .expect("no file found");
+        let metadatamarkers =
+            fs::metadata("tests/fixtures/statemachines/normal_usecases/sm_exploding_pigeon.lottie")
+                .expect("unable to read metadata");
+        let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
+        markers.read(&mut markers_buffer).expect("buffer overflow");
+
+        player.load_dotlottie_data(&markers_buffer, 500, 500);
+
+        assert!(player.is_playing());
+
+        let load = player.state_machine_load("explodingPigeon");
+        let start = player.state_machine_start();
+
+        assert!(load);
+        assert!(start);
 
         // Tests with a state machine loaded
-        let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
-        player.state_machine_load_data(global_state);
+        let global_state =
+            include_str!("fixtures/statemachines/normal_usecases/exploding_pigeon.json");
 
-        let l = player.get_state_machine();
-        let m = &*l;
-        let r = m.try_read();
+        let l = player.get_state_machine("explodingPigeon");
 
-        match r {
-            Ok(read_lock) => {
-                let state_machine = read_lock;
-                assert!(state_machine.is_some());
-                if let Some(sm) = &*state_machine {
-                    assert_eq!(sm.get_current_state_name(), "global");
-                }
-            }
-            Err(_) => {
-                assert!(false);
-            }
-        }
+        assert_eq!(l, global_state);
     }
 
     #[test]

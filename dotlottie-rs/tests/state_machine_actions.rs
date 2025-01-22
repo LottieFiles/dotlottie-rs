@@ -40,29 +40,10 @@ impl StateMachineObserver for MockObserver {
 mod tests {
     use super::*;
 
-    use dotlottie_rs::{states::StateTrait, Config, DotLottiePlayer, StateMachineObserver};
+    use dotlottie_rs::{Config, DotLottiePlayer, StateMachineObserver};
 
     fn get_current_state_name(player: &DotLottiePlayer) -> String {
-        let sm = player.get_state_machine();
-        let read_lock = sm.try_read();
-
-        match read_lock {
-            Ok(sm) => {
-                let engine = &*sm;
-
-                if let Some(engine) = engine {
-                    let curr_state = &engine.current_state;
-
-                    if let Some(curr_state) = curr_state {
-                        let name = curr_state.name();
-                        return name;
-                    }
-                }
-            }
-            Err(_) => return "".to_string(),
-        }
-
-        "".to_string()
+        player.state_machine_current_state()
     }
 
     #[test]

@@ -1330,8 +1330,17 @@ impl DotLottiePlayer {
             .is_ok_and(|runtime| runtime.load_animation_data(animation_data, width, height))
     }
 
-    pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachineEngine>>> {
-        self.state_machine.clone()
+    pub fn get_state_machine(&self, state_machine_id: &str) -> String {
+        if let Some(sm) = self
+            .player
+            .read()
+            .unwrap()
+            .get_state_machine(state_machine_id)
+        {
+            return sm;
+        }
+
+        return "".to_string();
     }
 
     pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> bool {

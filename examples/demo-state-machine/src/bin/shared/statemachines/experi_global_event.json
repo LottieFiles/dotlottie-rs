@@ -1,0 +1,147 @@
+{
+  "initial": "global",
+  "states": [
+    {
+      "name": "global",
+      "type": "GlobalState",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "anger",
+          "guards": [
+            {
+              "type": "String",
+              "conditionType": "Equal",
+              "triggerName": "CurrentAnimation",
+              "compareTo": "anger"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "blush",
+          "guards": [
+            {
+              "type": "String",
+              "conditionType": "Equal",
+              "triggerName": "CurrentAnimation",
+              "compareTo": "blush"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "clowns",
+          "guards": [
+            {
+              "type": "String",
+              "conditionType": "Equal",
+              "triggerName": "CurrentAnimation",
+              "compareTo": "clowns"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "anger",
+      "animationId": "anger",
+      "autoplay": true,
+      "loop": true,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "devil",
+          "guards": [
+            {
+              "type": "String",
+              "conditionType": "Equal",
+              "triggerName": "CurrentAnimation",
+              "compareTo": "devil"
+            }
+          ]
+        }
+      ],
+      "entryActions": [
+        {
+          "type": "SetString",
+          "triggerName": "CurrentAnimation",
+          "value": "devil"
+        },
+        {
+          "type": "Toggle",
+          "triggerName": "tt"
+        }
+      ],
+      "exitActions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "blush",
+      "autoplay": true,
+      "loop": true,
+      "animationId": "blush",
+      "transitions": [],
+      "entryActions": [],
+      "exitActions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "clowns",
+      "autoplay": true,
+      "loop": true,
+      "animationId": "clowns",
+      "transitions": [],
+      "entryActions": [],
+      "exitActions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "devil",
+      "animationId": "devil",
+      "autoplay": true,
+      "loop": true,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "exhaling",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "triggerName": "tt",
+              "compareTo": true
+            }
+          ]
+        }
+      ],
+      "entryActions": [],
+      "exitActions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "exhaling",
+      "animationId": "exhaling",
+      "autoplay": true,
+      "loop": true,
+      "transitions": [],
+      "entryActions": [],
+      "exitActions": []
+    }
+  ],
+  "listeners": [],
+  "triggers": [
+    {
+      "type": "String",
+      "name": "CurrentAnimation",
+      "value": "global"
+    },
+    {
+      "type": "Boolean",
+      "name": "tt",
+      "value": false
+    }
+  ]
+}

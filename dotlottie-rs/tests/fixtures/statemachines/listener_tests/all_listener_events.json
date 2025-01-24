@@ -1,0 +1,208 @@
+{
+  "initial": "global",
+  "states": [
+    {
+      "type": "GlobalState",
+      "name": "global",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "a",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "a"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "b"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "c",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "c"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "d",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "d"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "e",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "e"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "f",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "f"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "a",
+      "animation": "",
+      "loop": true,
+      "autoplay": true,
+      "segment": "explosion",
+      "transitions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "b",
+      "animation": "",
+      "loop": true,
+      "autoplay": true,
+      "segment": "feather",
+      "transitions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "c",
+      "animation": "",
+      "loop": true,
+      "autoplay": true,
+      "segment": "bird",
+      "transitions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "d",
+      "animation": "",
+      "loop": true,
+      "autoplay": true,
+      "segment": "bird",
+      "transitions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "e",
+      "animation": "",
+      "loop": true,
+      "autoplay": true,
+      "segment": "bird",
+      "transitions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "f",
+      "animation": "",
+      "loop": true,
+      "autoplay": true,
+      "segment": "bird",
+      "transitions": []
+    }
+  ],
+  "listeners": [
+    {
+      "type": "PointerDown",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "a"
+        }
+      ]
+    },
+    {
+      "type": "PointerUp",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "b"
+        }
+      ]
+    },
+    {
+      "type": "PointerMove",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "c"
+        }
+      ]
+    },
+    {
+      "type": "PointerEnter",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "d"
+        }
+      ]
+    },
+    {
+      "type": "PointerExit",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "e"
+        }
+      ]
+    },
+    {
+      "type": "OnComplete",
+      "stateName": "e",
+      "actions": [
+        {
+          "type": "Fire",
+          "triggerName": "f"
+        }
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "type": "Event",
+      "name": "a"
+    },
+    {
+      "type": "Event",
+      "name": "b"
+    },
+    {
+      "type": "Event",
+      "name": "c"
+    },
+    {
+      "type": "Event",
+      "name": "d"
+    },
+    {
+      "type": "Event",
+      "name": "e"
+    },
+    {
+      "type": "Event",
+      "name": "f"
+    }
+  ]
+}

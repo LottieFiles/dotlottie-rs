@@ -286,7 +286,7 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::FireCustomEvent { value } => {
-                engine.observe_custom_event(value.to_string());
+                engine.observe_custom_event(value);
 
                 Ok(())
             }

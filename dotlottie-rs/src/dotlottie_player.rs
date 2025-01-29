@@ -30,8 +30,7 @@ pub trait Observer: Send + Sync {
     fn on_complete(&self);
 }
 
-#[cfg(target_arch = "wasm32")]
-mod wasm_observer_callbacks_ffi {
+pub mod wasm_observer_callbacks_ffi {
     extern "C" {
         pub fn observer_on_load(dotlottie_instance_id: u32);
         pub fn observer_on_load_error(dotlottie_instance_id: u32);
@@ -985,7 +984,6 @@ impl DotLottiePlayerContainer {
             unsafe {
                 wasm_observer_callbacks_ffi::observer_on_load(self.instance_id);
             }
-
         }
     }
 
@@ -1113,6 +1111,64 @@ impl DotLottiePlayerContainer {
         {
             unsafe {
                 wasm_observer_callbacks_ffi::observer_on_complete(self.instance_id);
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_transition(
+        &self,
+        previous_state: String,
+        next_state: String,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_transition(
+                    self.instance_id,
+                    previous_state.as_ptr(),
+                    previous_state.len(),
+                    next_state.as_ptr(),
+                    next_state.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_state_entered(&self, entered_state: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_state_entered(
+                    self.instance_id,
+                    entered_state.as_ptr(),
+                    entered_state.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_state_exit(&self, leaving_state: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_state_exit(
+                    self.instance_id,
+                    leaving_state.as_ptr(),
+                    leaving_state.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_custom_message(&self, message: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_state_exit(
+                    self.instance_id,
+                    message.as_ptr(),
+                    message.len(),
+                );
             }
         }
     }

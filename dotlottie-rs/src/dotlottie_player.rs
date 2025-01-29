@@ -42,6 +42,32 @@ mod wasm_observer_callbacks_ffi {
         pub fn observer_on_render(dotlottie_instance_id: u32, frame_no: f32);
         pub fn observer_on_loop(dotlottie_instance_id: u32, loop_count: u32);
         pub fn observer_on_complete(dotlottie_instance_id: u32);
+
+        pub fn state_machine_observer_on_transition(
+            dotlottie_instance_id: u32,
+            previous_state_ptr: *const u8,
+            previous_state_len: usize,
+            new_state_ptr: *const u8,
+            new_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_state_entered(
+            dotlottie_instance_id: u32,
+            entering_state_ptr: *const u8,
+            entering_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_state_exit(
+            dotlottie_instance_id: u32,
+            leaving_state_ptr: *const u8,
+            leaving_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_custom_event(
+            dotlottie_instance_id: u32,
+            message_ptr: *const u8,
+            message_len: usize,
+        );
     }
 }
 
@@ -959,6 +985,7 @@ impl DotLottiePlayerContainer {
             unsafe {
                 wasm_observer_callbacks_ffi::observer_on_load(self.instance_id);
             }
+
         }
     }
 

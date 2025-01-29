@@ -1001,6 +1001,23 @@ impl StateMachineEngine {
         0
     }
 
+    /**
+     * Force a state change to the target state. Will not trigger an evaluation
+     * after entering the target state.
+     *
+     * @params state_name: The name of the state to change to.
+     * @params do_tick: If true, the state machine will run the transition evaluation pipeline after changing the state.
+     */
+    pub fn override_current_state(&mut self, state_name: &str, do_tick: bool) -> bool {
+        let r = self.set_current_state(state_name, false).is_ok();
+
+        if do_tick {
+            return self.run_current_state_pipeline().is_ok();
+        }
+
+        r
+    }
+
     pub fn get_state_machine(&self) -> &StateMachine {
         &self.state_machine
     }

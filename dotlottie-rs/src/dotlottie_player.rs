@@ -1710,6 +1710,28 @@ impl DotLottiePlayer {
         1
     }
 
+    pub fn state_machine_override_current_state(&self, state_name: &str, do_tick: bool) -> bool {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if state_machine.is_none() {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.override_current_state(state_name, do_tick);
+                }
+            }
+            Err(_) => return false,
+        }
+
+        false
+    }
+
     pub fn state_machine_post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerDown { x, y };
         self.state_machine_post_event(&event)

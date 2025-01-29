@@ -106,4 +106,5 @@ interface DotLottiePlayer {
     f32 state_machine_get_numeric_trigger([ByRef] string key);
     string state_machine_get_string_trigger([ByRef] string key);
     boolean state_machine_get_boolean_trigger([ByRef] string key);
+    u32 instance_id();
 };

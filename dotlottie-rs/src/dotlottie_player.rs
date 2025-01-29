@@ -30,6 +30,47 @@ pub trait Observer: Send + Sync {
     fn on_complete(&self);
 }
 
+#[cfg(target_arch = "wasm32")]
+mod wasm_observer_callbacks_ffi {
+    extern "C" {
+        pub fn observer_on_load(dotlottie_instance_id: u32);
+        pub fn observer_on_load_error(dotlottie_instance_id: u32);
+        pub fn observer_on_play(dotlottie_instance_id: u32);
+        pub fn observer_on_pause(dotlottie_instance_id: u32);
+        pub fn observer_on_stop(dotlottie_instance_id: u32);
+        pub fn observer_on_frame(dotlottie_instance_id: u32, frame_no: f32);
+        pub fn observer_on_render(dotlottie_instance_id: u32, frame_no: f32);
+        pub fn observer_on_loop(dotlottie_instance_id: u32, loop_count: u32);
+        pub fn observer_on_complete(dotlottie_instance_id: u32);
+
+        pub fn state_machine_observer_on_transition(
+            dotlottie_instance_id: u32,
+            previous_state_ptr: *const u8,
+            previous_state_len: usize,
+            new_state_ptr: *const u8,
+            new_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_state_entered(
+            dotlottie_instance_id: u32,
+            entering_state_ptr: *const u8,
+            entering_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_state_exit(
+            dotlottie_instance_id: u32,
+            leaving_state_ptr: *const u8,
+            leaving_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_custom_event(
+            dotlottie_instance_id: u32,
+            message_ptr: *const u8,
+            message_len: usize,
+        );
+    }
+}
+
 pub enum PlaybackState {
     Playing,
     Paused,
@@ -901,15 +942,23 @@ pub struct DotLottiePlayerContainer {
     runtime: RwLock<DotLottieRuntime>,
     observers: RwLock<Vec<Arc<dyn Observer>>>,
     state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
+    #[cfg(target_arch = "wasm32")]
+    instance_id: u32,
 }
 
 impl DotLottiePlayerContainer {
     #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
     pub fn new(config: Config) -> Self {
+        #[cfg(target_arch = "wasm32")]
+        static NEXT_INSTANCE_ID: std::sync::atomic::AtomicU32 =
+            std::sync::atomic::AtomicU32::new(1);
+
         DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
+            #[cfg(target_arch = "wasm32")]
+            instance_id: NEXT_INSTANCE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
         }
     }
 
@@ -918,6 +967,153 @@ impl DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::with_renderer(config, renderer)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
+            #[cfg(target_arch = "wasm32")]
+            instance_id: 0,
+        }
+    }
+
+    pub fn emit_on_load(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_load(self.instance_id);
+            }
+
+        }
+    }
+
+    pub fn emit_on_load_error(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load_error();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_load_error(self.instance_id);
+            }
+        }
+    }
+
+    pub fn emit_on_play(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_play();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_play(self.instance_id);
+            }
+        }
+    }
+
+    pub fn emit_on_pause(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_pause();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_pause(self.instance_id);
+            }
+        }
+    }
+
+    pub fn emit_on_stop(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_stop();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_stop(self.instance_id);
+            }
+        }
+    }
+
+    pub fn emit_on_frame(&self, frame_no: f32) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_frame(frame_no);
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_frame(self.instance_id, frame_no);
+            }
+        }
+    }
+
+    pub fn emit_on_render(&self, frame_no: f32) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_render(frame_no);
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_render(self.instance_id, frame_no);
+            }
+        }
+    }
+
+    pub fn emit_on_loop(&self, loop_count: u32) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_loop(loop_count);
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_loop(self.instance_id, loop_count);
+            }
+        }
+    }
+
+    pub fn emit_on_complete(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_complete();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_complete(self.instance_id);
+            }
         }
     }
 
@@ -928,17 +1124,13 @@ impl DotLottiePlayerContainer {
             .is_ok_and(|mut runtime| runtime.load_animation_data(animation_data, width, height));
 
         if is_ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load();
-            });
+            self.emit_on_load();
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load_error();
-            });
+            self.emit_on_load_error();
 
             return false;
         }
@@ -953,17 +1145,13 @@ impl DotLottiePlayerContainer {
             .is_ok_and(|mut runtime| runtime.load_animation_path(animation_path, width, height));
 
         if is_ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load();
-            });
+            self.emit_on_load();
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load_error();
-            });
+            self.emit_on_load_error();
 
             return false;
         }
@@ -978,17 +1166,13 @@ impl DotLottiePlayerContainer {
             .is_ok_and(|mut runtime| runtime.load_dotlottie_data(file_data, width, height));
 
         if is_ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load();
-            });
+            self.emit_on_load();
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load_error();
-            });
+            self.emit_on_load_error();
 
             return false;
         }
@@ -1003,17 +1187,13 @@ impl DotLottiePlayerContainer {
             .is_ok_and(|mut runtime| runtime.load_animation(animation_id, width, height));
 
         if is_ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load();
-            });
+            self.emit_on_load();
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load_error();
-            });
+            self.emit_on_load_error();
 
             return false;
         }
@@ -1096,9 +1276,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.write().unwrap().play();
 
         if ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_play();
-            });
+            self.emit_on_play();
         }
 
         ok
@@ -1108,9 +1286,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.write().unwrap().pause();
 
         if ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_pause();
-            });
+            self.emit_on_pause();
         }
 
         ok
@@ -1120,9 +1296,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.write().unwrap().stop();
 
         if ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_stop();
-            });
+            self.emit_on_stop();
         }
 
         ok
@@ -1136,9 +1310,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.write().unwrap().set_frame(no);
 
         if ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_frame(no);
-            });
+            self.emit_on_frame(no);
         }
 
         ok
@@ -1148,9 +1320,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.write().unwrap().seek(no);
 
         if ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_frame(no);
-            });
+            self.emit_on_frame(no);
         }
 
         ok
@@ -1162,19 +1332,13 @@ impl DotLottiePlayerContainer {
         if ok {
             let frame_no = self.current_frame();
 
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_render(frame_no);
-            });
+            self.emit_on_render(frame_no);
 
             if self.is_complete() {
                 if self.config().loop_animation {
-                    self.observers.read().unwrap().iter().for_each(|observer| {
-                        observer.on_loop(self.loop_count());
-                    });
+                    self.emit_on_loop(self.loop_count());
                 } else {
-                    self.observers.read().unwrap().iter().for_each(|observer| {
-                        observer.on_complete();
-                    });
+                    self.emit_on_complete();
 
                     if let Ok(mut state_machine) = self.state_machine.try_write() {
                         if let Some(sm) = state_machine.as_mut() {
@@ -1298,6 +1462,11 @@ impl DotLottiePlayerContainer {
             Ok(runtime) => runtime.get_state_machine(state_machine_id),
             Err(_) => None,
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn instance_id(&self) -> u32 {
+        self.instance_id
     }
 }
 
@@ -1943,6 +2112,11 @@ impl DotLottiePlayer {
 
     pub fn animation_size(&self) -> Vec<f32> {
         self.player.read().unwrap().animation_size()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn instance_id(&self) -> u32 {
+        self.player.read().unwrap().instance_id()
     }
 
     pub fn state_machine_current_state(&self) -> String {

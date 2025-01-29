@@ -129,6 +129,40 @@
         marker: "feather",
       });
 
+      const instances = {};
+
+      instances[dotLottiePlayer.instanceId()] = dotLottiePlayer;
+
+      globalThis._DOTLOTTIE_BRIDGE_JS = {
+        observer_on_load: (dotlottie_instance_id) => {
+          console.log("Loaded", instances[dotlottie_instance_id]);
+        },
+        observer_on_load_error: (dotlottie_instance_id) => {
+          console.log("Error", instances[dotlottie_instance_id]);
+        },
+        observer_on_play: (dotlottie_instance_id) => {
+          console.log("Play", instances[dotlottie_instance_id]);
+        },
+        observer_on_pause: (dotlottie_instance_id) => {
+          console.log("Pause", instances[dotlottie_instance_id]);
+        },
+        observer_on_stop: (dotlottie_instance_id) => {
+          console.log("Stop", instances[dotlottie_instance_id]);
+        },
+        observer_on_frame: (dotlottie_instance_id, frame_no) => {
+          console.log("Frame", instances[dotlottie_instance_id], frame_no);
+        },
+        observer_on_render: (dotlottie_instance_id, frame_no) => {
+          console.log("Render", instances[dotlottie_instance_id], frame_no);
+        },
+        observer_on_loop: (dotlottie_instance_id, loop_count) => {
+          console.log("Loop", instances[dotlottie_instance_id], loop_count);
+        },
+        observer_on_complete: (dotlottie_instance_id) => {
+          console.log("Complete", instances[instance_id]);
+        },
+      };
+
       const data = await fetch(
         // "https://lottie.host/5c89381e-0d1a-4422-8247-f5b7e4b3c4e2/mqs5juC4PW.lottie"
         "./examples/demo-player/src/v2/gradient.json"
@@ -169,8 +203,6 @@
 
       console.log(dotLottiePlayer.markers());
 
-      console.log("Loaded: ", loaded);
-
       const ctx = canvas.getContext("2d");
 
       let animationFrameId = null;
@@ -178,22 +210,16 @@
       function animationLoop() {
         const nextFrameNumber = dotLottiePlayer.requestFrame();
 
-        const updated = dotLottiePlayer.setFrame(nextFrameNumber);
+        const updated = dotLottiePlayer.setFrame(parseInt(nextFrameNumber));
 
         if (updated) {
-          progressBar.value =
-            (dotLottiePlayer.currentFrame() / dotLottiePlayer.totalFrames()) *
-            100;
+          setTimeout(() => {
+            progressBar.value =
+              (dotLottiePlayer.currentFrame() / dotLottiePlayer.totalFrames()) *
+              100;
+          }, 0);
 
           render();
-
-          if (dotLottiePlayer.isComplete()) {
-            if (dotLottiePlayer.config().loopAnimation) {
-              console.log("Loop Completed", dotLottiePlayer.loopCount());
-            } else {
-              console.log("Completed");
-            }
-          }
         }
 
         animationFrameId = requestAnimationFrame(animationLoop);

@@ -8,7 +8,8 @@ links = "thorvg"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
-thorvg = []
+thorvg-v0 = []
+thorvg-v1 = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
@@ -30,7 +31,7 @@ conan2 = "0.1"
 [dev-dependencies]
 criterion = "0.5.1"
 # This is a workaround to enable this feature only on dev.
-dotlottie-rs= { path = ".", features = ["thorvg"] }
+dotlottie-rs= { path = ".", features = ["thorvg-v0"] }
 
 [[bench]]
 name = "benchmarks"

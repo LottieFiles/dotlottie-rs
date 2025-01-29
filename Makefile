@@ -330,6 +330,7 @@ define SETUP_MESON
 		--backend=ninja \
 		-Dloaders="lottie, png, jpg, webp" \
 		-Ddefault_library=static \
+		-Dengines=sw \
 		-Dbindings=capi \
 		-Dlog=false \
 		-Dthreads=false \
@@ -387,6 +388,8 @@ define CARGO_BUILD
 		-Z build-std-features="panic_immediate_abort,optimize_for_size" \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
+		--no-default-features \
+		--features thorvg-v1 \
 		--release; \
 	else \
 		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
@@ -394,6 +397,8 @@ define CARGO_BUILD
 		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
+		--no-default-features \
+		--features thorvg-v1 \
 		--release; \
 	fi
 endef
@@ -402,7 +407,8 @@ define UNIFFI_BINDINGS_BUILD
 	rm -rf $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(BINDINGS_LANGUAGE)
 	cargo run \
 		--manifest-path $(RUNTIME_FFI)/Cargo.toml \
-		--features=uniffi/cli \
+		--no-default-features \
+		--features=uniffi/cli,thorvg-v1 \
 		--bin uniffi-bindgen \
 		generate $(RUNTIME_FFI)/src/dotlottie_player.udl \
 		--language $(BINDINGS_LANGUAGE) \
@@ -1021,8 +1027,8 @@ bench:
 .PHONY: clippy
 clippy:
 	$(info $(YELLOW)Running clippy for workspace$(NC))
-	cargo clippy --manifest-path $(CORE)/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
-	cargo clippy --manifest-path $(RUNTIME_FFI)/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
+	cargo clippy --manifest-path $(CORE)/Cargo.toml --all-targets -- -D clippy::print_stdout
+	cargo clippy --manifest-path $(RUNTIME_FFI)/Cargo.toml --all-targets -- -D clippy::print_stdout
 
 .PHONY: help
 help:

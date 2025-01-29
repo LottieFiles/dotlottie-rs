@@ -143,7 +143,7 @@ struct DotLottieRuntime {
 }
 
 impl DotLottieRuntime {
-    #[cfg(feature = "thorvg")]
+    #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
     pub fn new(config: Config) -> Self {
         Self::with_renderer(
             config,
@@ -830,15 +830,13 @@ impl DotLottieRuntime {
         let theme_exists = self
             .manifest()
             .and_then(|manifest| manifest.themes.as_ref())
-            .map_or(false, |themes| {
-                themes.iter().any(|theme| theme.id == theme_id)
-            });
+            .is_some_and(|themes| themes.iter().any(|theme| theme.id == theme_id));
 
         if !theme_exists {
             return false;
         }
 
-        let can_set_theme = self.manifest().map_or(false, |manifest| {
+        let can_set_theme = self.manifest().is_some_and(|manifest| {
             manifest.animations.iter().any(|animation| {
                 animation.themes.is_none()
                     || animation
@@ -905,7 +903,7 @@ pub struct DotLottiePlayerContainer {
 }
 
 impl DotLottiePlayerContainer {
-    #[cfg(feature = "thorvg")]
+    #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
     pub fn new(config: Config) -> Self {
         #[cfg(target_arch = "wasm32")]
         static NEXT_INSTANCE_ID: std::sync::atomic::AtomicU32 =
@@ -1418,7 +1416,7 @@ pub struct DotLottiePlayer {
 }
 
 impl DotLottiePlayer {
-    #[cfg(feature = "thorvg")]
+    #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
     pub fn new(config: Config) -> Self {
         DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config))),
@@ -1726,11 +1724,11 @@ impl DotLottiePlayer {
     }
 
     pub fn clear(&self) {
-        self.player.write().unwrap().clear();
+        self.player.write().unwrap().clear()
     }
 
     pub fn set_config(&self, config: Config) {
-        self.player.write().unwrap().set_config(config);
+        self.player.write().unwrap().set_config(config)
     }
 
     pub fn speed(&self) -> f32 {
@@ -1814,7 +1812,7 @@ impl DotLottiePlayer {
     }
 
     pub fn subscribe(&self, observer: Arc<dyn Observer>) {
-        self.player.write().unwrap().subscribe(observer);
+        self.player.write().unwrap().subscribe(observer)
     }
 
     pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
@@ -1851,7 +1849,7 @@ impl DotLottiePlayer {
     }
 
     pub fn unsubscribe(&self, observer: &Arc<dyn Observer>) {
-        self.player.write().unwrap().unsubscribe(observer);
+        self.player.write().unwrap().unsubscribe(observer)
     }
 
     pub fn set_theme(&self, theme_id: &str) -> bool {

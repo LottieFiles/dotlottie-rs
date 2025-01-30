@@ -488,6 +488,65 @@ define APPLE_RELEASE
 	cd $(RELEASE)/$(APPLE) && \
 		rm -f $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz && \
 		tar zcf $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz *
+
+	cd $(RELEASE)/$(APPLE) && \
+		cd $(DOTLOTTIE_PLAYER_XCFRAMEWORK) && \
+		cd ios-arm64 && \
+		cd DotLottiePlayer.framework && \
+		mkdir A && \
+		mkdir Resources && \
+		mv Info.plist Resources && \
+		mkdir Versions && \
+		mv Resources/A && \
+		mv Modules/A && \
+		mv DotLottiePlayer/A && \
+		mv Headers/A && \
+		mv A Versions && \
+		cd Versions && \
+		ln -s A	Current && \
+		cd .. && \
+		ln -s Versions/Current/DotLottiePlayer DotLottiePlayer && \
+		ln -s Versions/Current/Headers/ Headers && \
+		ln -s Versions/Current/Modules/	Modules && \
+		ln -s Versions/Current/Resources/ Resources && \
+		cd ../.. && \
+		cd ios-arm64_x86_64-simulator && \
+		cd DotLottiePlayer.framework && \
+		mkdir A && \
+		mkdir Resources && \
+		mv Info.plist Resources && \
+		mkdir Versions && \
+		mv Resources/A && \
+		mv Modules/A && \
+		mv DotLottiePlayer/A && \
+		mv Headers/A && \
+		mv A Versions && \
+		cd Versions && \
+		ln -s A	Current && \
+		cd .. && \
+		ln -s Versions/Current/DotLottiePlayer DotLottiePlayer && \
+		ln -s Versions/Current/Headers/ Headers && \
+		ln -s Versions/Current/Modules/	Modules && \
+		ln -s Versions/Current/Resources/ Resources && \
+		cd ../.. && \
+		cd macos-arm64_x86_64 && \
+		cd DotLottiePlayer.framework && \
+		mkdir A && \
+		mkdir Resources && \
+		mv Info.plist Resources && \
+		mkdir Versions && \
+		mv Resources/A && \
+		mv Modules/A && \
+		mv DotLottiePlayer/A && \
+		mv Headers/A && \
+		mv A Versions && \
+		cd Versions && \
+		ln -s A	Current && \
+		cd .. && \
+		ln -s Versions/Current/DotLottiePlayer DotLottiePlayer && \
+		ln -s Versions/Current/Headers/ Headers && \
+		ln -s Versions/Current/Modules/	Modules && \
+		ln -s Versions/Current/Resources/ Resources
 endef
 
 define WASM_RELEASE
@@ -952,8 +1011,14 @@ demo-state-machine:
 .PHONY: $(ANDROID)
 $(ANDROID): $(ANDROID_BUILD_TARGETS)
 
+.PHONY: post-make-apple
+post-make-apple:
+	@$(RELEASE)
+
 .PHONY: $(APPLE)
-$(APPLE): $(APPLE_BUILD_TARGETS)
+$(APPLE):
+	@$(MAKE) $(APPLE_BUILD_TARGETS)
+	@$(MAKE) post-make-apple
 
 .PHONY: pre-make-wasm
 pre-make-wasm:
@@ -985,8 +1050,8 @@ deps:
 # Cleanup extraneous files from the zlib dependency build...
 .PHONY: clean-build
 clean-build:
-	@git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git clean -fd &>/dev/null
-	@git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git checkout . &>/dev/null
+	# @git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git clean -fd &>/dev/null
+	# @git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git checkout . &>/dev/null
 
 .PHONY: clean-deps
 clean-deps: clean-build

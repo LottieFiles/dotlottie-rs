@@ -486,8 +486,67 @@ define APPLE_RELEASE
                 -output $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
 	cp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(SWIFT)/$(DOTLOTTIE_PLAYER_SWIFT) $(RELEASE)/$(APPLE)/.
 	cd $(RELEASE)/$(APPLE) && \
+		cd $(DOTLOTTIE_PLAYER_XCFRAMEWORK) && \
+		cd ios-arm64 && \
+		cd DotLottiePlayer.framework && \
+		mkdir A && \
+		mkdir Resources && \
+		mv Info.plist Resources && \
+		mkdir Versions && \
+		mv Resources/A && \
+		mv Modules/A && \
+		mv DotLottiePlayer/A && \
+		mv Headers/A && \
+		mv A Versions && \
+		cd Versions && \
+		ln -s A	Current && \
+		cd .. && \
+		ln -s Versions/Current/DotLottiePlayer DotLottiePlayer && \
+		ln -s Versions/Current/Headers/ Headers && \
+		ln -s Versions/Current/Modules/	Modules && \
+		ln -s Versions/Current/Resources/ Resources && \
+		cd ../.. && \
+		cd ios-arm64_x86_64-simulator && \
+		cd DotLottiePlayer.framework && \
+		mkdir A && \
+		mkdir Resources && \
+		mv Info.plist Resources && \
+		mkdir Versions && \
+		mv Resources/A && \
+		mv Modules/A && \
+		mv DotLottiePlayer/A && \
+		mv Headers/A && \
+		mv A Versions && \
+		cd Versions && \
+		ln -s A	Current && \
+		cd .. && \
+		ln -s Versions/Current/DotLottiePlayer DotLottiePlayer && \
+		ln -s Versions/Current/Headers/ Headers && \
+		ln -s Versions/Current/Modules/	Modules && \
+		ln -s Versions/Current/Resources/ Resources && \
+		cd ../.. && \
+		cd macos-arm64_x86_64 && \
+		cd DotLottiePlayer.framework && \
+		mkdir A && \
+		mkdir Resources && \
+		mv Info.plist Resources && \
+		mkdir Versions && \
+		mv Resources/A && \
+		mv Modules/A && \
+		mv DotLottiePlayer/A && \
+		mv Headers/A && \
+		mv A Versions && \
+		cd Versions && \
+		ln -s A	Current && \
+		cd .. && \
+		ln -s Versions/Current/DotLottiePlayer DotLottiePlayer && \
+		ln -s Versions/Current/Headers/ Headers && \
+		ln -s Versions/Current/Modules/	Modules && \
+		ln -s Versions/Current/Resources/ Resources
+	cd $(RELEASE)/$(APPLE) && \
 		rm -f $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz && \
 		tar zcf $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz *
+
 endef
 
 define WASM_RELEASE
@@ -952,71 +1011,8 @@ demo-state-machine:
 .PHONY: $(ANDROID)
 $(ANDROID): $(ANDROID_BUILD_TARGETS)
 
-.PHONY: post-make-apple
-post-make-apple:
-	@cd $(RELEASE)/$(APPLE)
-	@cd $(DOTLOTTIE_PLAYER_XCFRAMEWORK)
-	@cd ios-arm64
-	@cd DotLottiePlayer.framework
-	@mkdir A
-	@mkdir Resources
-	@mv Info.plist Resources
-	@mkdir Versions
-	@mv Resources/A
-	@mv Modules/A
-	@mv DotLottiePlayer/A
-	@mv Headers/A
-	@mv A Versions
-	@cd Versions
-	@ln -s A Current
-	@cd ..
-	@ln -s Versions/Current/DotLottiePlayer DotLottiePlayer
-	@ln -s Versions/Current/Headers/ Headers
-	@ln -s Versions/Current/Modules/ Modules
-	@ln -s Versions/Current/Resources/ Resources
-	@cd ../..
-	@cd ios-arm64_x86_64-simulator
-	@cd DotLottiePlayer.framework
-	@mkdir A
-	@mkdir Resources
-	@mv Info.plist Resources
-	@mkdir Versions
-	@mv Resources/A
-	@mv Modules/A
-	@mv DotLottiePlayer/A
-	@mv Headers/A
-	@mv A Versions
-	@cd Versions
-	@ln -s A Current
-	@cd ..
-	@ln -s Versions/Current/DotLottiePlayer DotLottiePlayer
-	@ln -s Versions/Current/Headers/ Headers
-	@ln -s Versions/Current/Modules/ Modules
-	@ln -s Versions/Current/Resources/ Resources
-	@cd ../..
-	@cd macos-arm64_x86_64
-	@cd DotLottiePlayer.framework
-	@mkdir A
-	@mkdir Resources
-	@mv Info.plist Resources
-	@mkdir Versions
-	@mv Resources/A
-	@mv Modules/A
-	@mv DotLottiePlayer/A
-	@mv Headers/A
-	@mv A Versions
-	@cd Versions
-	@ln -s A Current
-	@cd ..
-	@ln -s Versions/Current/DotLottiePlayer DotLottiePlayer
-	@ln -s Versions/Current/Headers/ Headers
-	@ln -s Versions/Current/Modules/ Modules
-	@ln -s Versions/Current/Resources/ Resources
-
 .PHONY: $(APPLE)
-$(APPLE):
-	@$(MAKE) $(APPLE_BUILD_TARGETS)
-	@$(MAKE) post-make-apple
+$(APPLE): $(APPLE_BUILD_TARGETS)
 
 .PHONY: pre-make-wasm
 pre-make-wasm:

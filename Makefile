@@ -455,29 +455,6 @@ define LIPO_CREATE
 		-o $@
 endef
 
-define CREATE_FRAMEWORK
-	rm -rf $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
-	mkdir -p $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/{$(FRAMEWORK_HEADERS),$(FRAMEWORK_MODULES)}
-	cp $(BASE_DIR)/$(RUNTIME_FFI_DYLIB) $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
-	cp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(SWIFT)/$(DOTLOTTIE_PLAYER_MODULE).h $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_HEADERS)/$(DOTLOTTIE_PLAYER_HEADER)
-	cp $(RUNTIME_FFI)/$(APPLE_BUILD)/$(MODULE_MAP) $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_MODULES)
-
-	$(PLISTBUDDY_EXEC) -c "Add :CFBundleIdentifier string com.dotlottie.$(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :CFBundleName string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :CFBundleDisplayName string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :CFBundleVersion string 1.0.0" \
-                     -c "Add :CFBundleShortVersionString string 1.0.0" \
-                     -c "Add :CFBundlePackageType string FMWK" \
-                     -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :MinimumOSVersion string $(if $(findstring macosx,$(BASE_DIR)),$(APPLE_MACOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN))" \
-                     -c "Add :CFBundleSupportedPlatforms array" \
-										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
-										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \
-                     $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(INFO_PLIST)
-
-	$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(BASE_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
-endef
-
 define APPLE_RELEASE
 	rm -rf $(RELEASE)/$(APPLE)
 	mkdir -p $(RELEASE)/$(APPLE)
@@ -486,9 +463,17 @@ define APPLE_RELEASE
 		-output $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
 	cp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(SWIFT)/$(DOTLOTTIE_PLAYER_SWIFT) $(RELEASE)/$(APPLE)/.
 
+	# Add debug output
+	@echo "Contents of xcframework directory:"
+	@ls -la $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)/
+
 	# Add framework structure for each architecture
 	for arch in ios-arm64 ios-arm64_x86_64-simulator macos-arm64_x86_64; do \
+		echo "Processing architecture: $$arch"; \
 		if [ -d "$(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)/$$arch/DotLottiePlayer.framework" ]; then \
+			echo "Found framework directory for $$arch"; \
+			echo "Contents before modification:"; \
+			ls -la "$(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)/$$arch/DotLottiePlayer.framework/"; \
 			cd "$(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)/$$arch/DotLottiePlayer.framework" && \
 			mkdir A && \
 			mkdir Resources && \
@@ -505,7 +490,11 @@ define APPLE_RELEASE
 			ln -s Versions/Current/DotLottiePlayer DotLottiePlayer && \
 			ln -s Versions/Current/Headers Headers && \
 			ln -s Versions/Current/Modules Modules && \
-			ln -s Versions/Current/Resources Resources; \
+			ln -s Versions/Current/Resources Resources && \
+			echo "Contents after modification:"; \
+			ls -la .; \
+		else \
+			echo "Framework directory not found for $$arch"; \
 		fi \
 	done
 

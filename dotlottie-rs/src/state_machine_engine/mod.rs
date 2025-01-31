@@ -920,6 +920,8 @@ impl StateMachineEngine {
     // | PointerEnter (With Layer)        | PointerMove + PointerEnter    | PointerDown |
     // | PointerExit (No Layer)           | PointerExit                   | Not avail.  |
     // | PointerExit (With Layer)         | PointerMove + PointerExit     | PointerUp   |
+    // | Click (With Layer)               | Click                         | Tap         |
+    // | Click (No Layer)                 | Click                         | Tap         |
     // | ---------------------------------|-------------------------------| ----------- |
 
     // Notes:
@@ -929,7 +931,7 @@ impl StateMachineEngine {
     // With the current setup we can have an action that happens when the cursor is over the canvas
     // and another action that happens when the cursor is over a specific layer.
     fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32) {
-        // This will handle PointerDown, PointerUp, PointerEnter, PointerExit
+        // This will handle PointerDown, PointerUp, PointerEnter, PointerExit, Click
         if event.type_name() != "PointerMove" {
             self.manage_explicit_events(event, x, y);
         }
@@ -982,7 +984,7 @@ impl StateMachineEngine {
     // 3: Pause animation
     // 4: Request and draw a new single frame of the animation (needed for sync state)
     pub fn post_event(&mut self, event: &Event) -> i32 {
-        if event.type_name().contains("Pointer") {
+        if event.type_name().contains("Pointer") || event.type_name().contains("Click") {
             self.manage_pointer_event(event, event.x(), event.y());
         } else {
             self.manage_on_complete_event(event);

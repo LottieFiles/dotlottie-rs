@@ -41,6 +41,10 @@ pub enum Listener {
         layer_name: Option<String>,
         actions: Vec<Action>,
     },
+    Click {
+        layer_name: Option<String>,
+        actions: Vec<Action>,
+    },
     OnComplete {
         state_name: String,
         actions: Vec<Action>,
@@ -86,6 +90,14 @@ impl Display for Listener {
                 .field("layer_name", layer_name)
                 .field("action", actions)
                 .finish(),
+            Self::Click {
+                layer_name,
+                actions,
+            } => f
+                .debug_struct("Click")
+                .field("layer_name", layer_name)
+                .field("action", actions)
+                .finish(),
             Self::OnComplete {
                 state_name,
                 actions,
@@ -107,6 +119,7 @@ impl ListenerTrait for Listener {
             Listener::PointerMove { .. } => None,
             Listener::PointerExit { layer_name, .. } => layer_name.clone(),
             Listener::OnComplete { .. } => None,
+            Listener::Click { layer_name, .. } => layer_name.clone(),
         }
     }
 
@@ -118,6 +131,7 @@ impl ListenerTrait for Listener {
             Listener::PointerMove { actions, .. } => actions,
             Listener::PointerExit { actions, .. } => actions,
             Listener::OnComplete { actions, .. } => actions,
+            Listener::Click { actions, .. } => actions,
         }
     }
 
@@ -128,6 +142,7 @@ impl ListenerTrait for Listener {
             Listener::PointerEnter { .. } => None,
             Listener::PointerMove { .. } => None,
             Listener::PointerExit { .. } => None,
+            Listener::Click { .. } => None,
             Listener::OnComplete { state_name, .. } => Some(state_name.clone()),
         }
     }
@@ -140,6 +155,7 @@ impl ListenerTrait for Listener {
             Listener::PointerMove { .. } => "PointerMove".to_string(),
             Listener::PointerExit { .. } => "PointerExit".to_string(),
             Listener::OnComplete { .. } => "OnComplete".to_string(),
+            Listener::Click { .. } => "Click".to_string(),
         }
     }
 }

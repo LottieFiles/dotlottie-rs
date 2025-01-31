@@ -486,58 +486,31 @@ define APPLE_RELEASE
 		-output $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
 	cp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(SWIFT)/$(DOTLOTTIE_PLAYER_SWIFT) $(RELEASE)/$(APPLE)/.
 
-	# Add debug output
-	@echo "Contents of xcframework directory:"
-	@ls -la $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)/
-
-	# Add framework structure for each architecture
-	for arch in ios-arm64 ios-arm64_x86_64-simulator macos-arm64_x86_64; do \
-		echo "Processing architecture: $$arch"; \
-		if [ -d "$(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)/$$arch/DotLottiePlayer.framework" ]; then \
-			echo "Found framework directory for $$arch"; \
-			echo "Contents before modification:"; \
-			ls -la "$(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)/$$arch/DotLottiePlayer.framework/"; \
-			cd "$(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)/$$arch/DotLottiePlayer.framework" && \
-			mkdir A && \
-			mkdir Resources && \
-			mv Info.plist Resources/ && \
-			mkdir Versions && \
-			mv Resources A/ && \
-			mv Modules A/ && \
-			mv DotLottiePlayer A/ && \
-			mv Headers A/ && \
-			mv A Versions/ && \
-			cd Versions && \
-			ln -s A Current && \
-			cd .. && \
-			ln -s Versions/Current/DotLottiePlayer DotLottiePlayer && \
-			ln -s Versions/Current/Headers Headers && \
-			ln -s Versions/Current/Modules Modules && \
-			ln -s Versions/Current/Resources Resources && \
-			echo "Contents after modification:"; \
-			ls -la .; \
-		else \
-			echo "Framework directory not found for $$arch"; \
-		fi \
+	# Process each framework directory we find
+	for framework_dir in $$(find $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK) -name "DotLottiePlayer.framework"); do \
+		echo "Processing framework: $$framework_dir"; \
+		cd "$$framework_dir" && \
+		mkdir A && \
+		mkdir Resources && \
+		mv Info.plist Resources/ && \
+		mkdir Versions && \
+		mv Resources A/ && \
+		mv Modules A/ && \
+		mv DotLottiePlayer A/ && \
+		mv Headers A/ && \
+		mv A Versions/ && \
+		cd Versions && \
+		ln -s A Current && \
+		cd .. && \
+		ln -s Versions/Current/DotLottiePlayer DotLottiePlayer && \
+		ln -s Versions/Current/Headers Headers && \
+		ln -s Versions/Current/Modules Modules && \
+		ln -s Versions/Current/Resources Resources; \
 	done
 
 	cd $(RELEASE)/$(APPLE) && \
 		rm -f $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz && \
 		tar zcf $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz *
-endef
-
-define WASM_RELEASE
-	rm -rf $(RELEASE)/$(WASM)
-	mkdir -p $(RELEASE)/$(WASM)
-	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).wasm \
-		$(RELEASE)/$(WASM)
-	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).d.ts \
-		$(RELEASE)/$(WASM)
-	cp $(RUNTIME_FFI)/$(WASM_BUILD)/$(BUILD)/$(WASM_MODULE).js \
-		$(RELEASE)/$(WASM)/$(WASM_MODULE).mjs
-	cd $(RELEASE)/$(WASM) && \
-		rm -f $(DOTLOTTIE_PLAYER).$(WASM).tar.gz && \
-		tar zcf $(DOTLOTTIE_PLAYER).$(WASM).tar.gz *
 endef
 
 # $1: rust target triple, e.g. aarch64-linux-android

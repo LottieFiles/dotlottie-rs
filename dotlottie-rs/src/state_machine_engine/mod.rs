@@ -36,6 +36,7 @@ pub trait StateMachineObserver: Send + Sync {
     fn on_state_entered(&self, entering_state: String);
     fn on_state_exit(&self, leaving_state: String);
     fn on_custom_event(&self, message: String);
+    fn on_error(&self, error: String);
 }
 
 #[derive(PartialEq, Debug)]
@@ -357,17 +358,6 @@ impl StateMachineEngine {
                 reason: error.to_string(),
             }),
         }
-
-        // Todo: Report errors in proper way
-
-        // Todo: Run a checking pipeline
-        // - Check all state names are unique
-        // - Check for infinite loops
-        // - Check for unreachable states
-        // - Check for unreachable transitions
-        // self.runCheckingPipeline(state_machine);
-
-        // Todo: Implement the restore action. Save the original values of triggers.
     }
 
     fn security_check_pipeline(
@@ -672,8 +662,8 @@ impl StateMachineEngine {
                 self.current_cycle_count += 1;
 
                 if self.current_cycle_count >= self.max_cycle_count {
-                    println!("🚨 Infinite loop detected, ending state machine.");
                     self.stop();
+                    self.observe_on_error("Infinite loop detected! Stopping the state machine.");
                     return Err(StateMachineEngineError::InfiniteLoopError);
                 }
 
@@ -1106,6 +1096,24 @@ impl StateMachineEngine {
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_custom_event(message.to_string());
+            }
+        }
+    }
+
+    pub fn observe_on_error(&self, message: &str) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(rc_player) = &self.player {
+                let try_read_lock = rc_player.try_read();
+
+                if let Ok(player_container) = try_read_lock {
+                    player_container.emit_state_machine_observer_on_error(message.to_string());
+                }
+            }
+        }
+        if let Ok(observers) = self.observers.try_read() {
+            for observer in observers.iter() {
+                observer.on_error(message.to_string());
             }
         }
     }

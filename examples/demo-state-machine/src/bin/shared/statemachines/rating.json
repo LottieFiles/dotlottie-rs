@@ -1,5 +1,5 @@
 {
-  "initial": null,
+  "initial": "global",
   "states": [
     {
       "name": "global",
@@ -20,7 +20,7 @@
         },
         {
           "type": "Transition",
-          "toState": "star_1",
+          "toState": "global",
           "guards": [
             {
               "type": "Numeric",

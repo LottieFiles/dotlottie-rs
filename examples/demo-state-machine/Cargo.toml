@@ -10,6 +10,7 @@ sysinfo = "0.30"
 rand = "0.8"
 ratatui = "0.20.1"
 crossterm = "0.25"
+gilrs = "0.10.2"
 
 [[bin]]
 name = "new-format"
@@ -22,3 +23,7 @@ path = "src/bin/state_machine_showcase/state_machine_showcase.rs"
 [[bin]]
 name = "tui"
 path = "src/bin/tui/tui.rs"
+
+[[bin]]
+name = "xbox_controller"
+path = "src/bin/xbox_controller/main.rs"

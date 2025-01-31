@@ -67,6 +67,12 @@ pub mod wasm_observer_callbacks_ffi {
             message_ptr: *const u8,
             message_len: usize,
         );
+
+        pub fn state_machine_observer_on_error(
+            dotlottie_instance_id: u32,
+            message_ptr: *const u8,
+            message_len: usize,
+        );
     }
 }
 

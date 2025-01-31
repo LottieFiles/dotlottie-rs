@@ -1167,10 +1167,23 @@ impl DotLottiePlayerContainer {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn emit_state_machine_observer_on_custom_message(&self, message: String) {
+    pub fn emit_state_machine_observer_on_custom_event(&self, message: String) {
         {
             unsafe {
-                wasm_observer_callbacks_ffi::state_machine_observer_on_state_exit(
+                wasm_observer_callbacks_ffi::state_machine_observer_on_custom_event(
+                    self.instance_id,
+                    message.as_ptr(),
+                    message.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_error(&self, message: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_error(
                     self.instance_id,
                     message.as_ptr(),
                     message.len(),

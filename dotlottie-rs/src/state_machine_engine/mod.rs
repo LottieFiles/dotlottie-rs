@@ -1089,7 +1089,7 @@ impl StateMachineEngine {
 
                 if let Ok(player_container) = try_read_lock {
                     player_container
-                        .emit_state_machine_observer_on_custom_message(message.to_string());
+                        .emit_state_machine_observer_on_custom_event(message.to_string());
                 }
             }
         }

@@ -14,6 +14,7 @@ pub enum Event {
     PointerMove { x: f32, y: f32 },
     PointerEnter { x: f32, y: f32 },
     PointerExit { x: f32, y: f32 },
+    Click { x: f32, y: f32 },
     OnComplete,
 }
 
@@ -23,6 +24,7 @@ impl PointerEvent for Event {
             Event::PointerDown { x, .. }
             | Event::PointerUp { x, .. }
             | Event::PointerMove { x, .. }
+            | Event::Click { x, .. }
             | Event::PointerEnter { x, .. } => *x,
             _ => 0.0,
         }
@@ -33,6 +35,7 @@ impl PointerEvent for Event {
             Event::PointerDown { y, .. }
             | Event::PointerUp { y, .. }
             | Event::PointerMove { y, .. }
+            | Event::Click { y, .. }
             | Event::PointerEnter { y, .. } => *y,
             _ => 0.0,
         }
@@ -47,6 +50,7 @@ impl EventName for Event {
             Event::PointerMove { .. } => "PointerMove".to_string(),
             Event::PointerEnter { .. } => "PointerEnter".to_string(),
             Event::PointerExit { .. } => "PointerExit".to_string(),
+            Event::Click { .. } => "Click".to_string(),
             Event::OnComplete => "OnComplete".to_string(),
         }
     }
@@ -68,6 +72,9 @@ macro_rules! event_type_name {
     };
     (PointerExit) => {
         "PointerExit"
+    };
+    (Click) => {
+        "Click"
     };
     (OnComplete) => {
         "OnComplete"

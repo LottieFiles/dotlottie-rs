@@ -1677,6 +1677,9 @@ impl DotLottiePlayer {
                             crate::listeners::Listener::OnComplete { .. } => {
                                 listener_types.push("OnComplete".to_string())
                             }
+                            crate::listeners::Listener::Click { .. } => {
+                                listener_types.push("Click".to_string());
+                            }
                         }
                     }
 

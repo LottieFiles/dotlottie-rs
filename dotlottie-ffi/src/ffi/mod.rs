@@ -631,6 +631,23 @@ pub unsafe extern "C" fn dotlottie_state_machine_load(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_override_current_state1(
+    ptr: *mut DotLottiePlayer,
+    state_name: *const c_char,
+    do_tick: bool,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        if let Ok(state_name) = DotLottieString::read(state_name) {
+            to_exit_status(
+                dotlottie_player.state_machine_override_current_state(&state_name, do_tick),
+            )
+        } else {
+            DOTLOTTIE_INVALID_PARAMETER
+        }
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_start(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_exit_status(dotlottie_player.state_machine_start())

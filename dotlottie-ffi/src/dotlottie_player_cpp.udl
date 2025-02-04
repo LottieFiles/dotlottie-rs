@@ -93,6 +93,7 @@ interface DotLottiePlayer {
     string active_state_machine_id();
     string get_state_machine([ByRef] string state_machine_id);
     sequence<string> state_machine_framework_setup();
+    i32 state_machine_post_click_event(f32 x, f32 y);
     i32 state_machine_post_pointer_down_event(f32 x, f32 y);
     i32 state_machine_post_pointer_up_event(f32 x, f32 y);
     i32 state_machine_post_pointer_move_event(f32 x, f32 y);

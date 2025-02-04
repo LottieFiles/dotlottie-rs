@@ -1754,6 +1754,11 @@ impl DotLottiePlayer {
         false
     }
 
+    pub fn state_machine_post_click_event(&self, x: f32, y: f32) -> i32 {
+        let event = Event::Click { x, y };
+        self.state_machine_post_event(&event)
+    }
+
     pub fn state_machine_post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
         let event = Event::PointerDown { x, y };
         self.state_machine_post_event(&event)

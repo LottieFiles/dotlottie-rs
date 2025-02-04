@@ -125,11 +125,12 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("getStateMachine", &DotLottiePlayer::get_state_machine)
         .function("activeStateMachineId", &DotLottiePlayer::active_state_machine_id)
         .function("stateMachineCurrentState", &DotLottiePlayer::state_machine_current_state)
+        .function("stateMachinePostClickEvent", &DotLottiePlayer::state_machine_post_click_event)
         .function("stateMachinePostPointerDownEvent", &DotLottiePlayer::state_machine_post_pointer_down_event)
         .function("stateMachinePostPointerUpEvent", &DotLottiePlayer::state_machine_post_pointer_up_event)
         .function("stateMachinePostPointerMoveEvent", &DotLottiePlayer::state_machine_post_pointer_move_event)
         .function("stateMachinePostPointerEnterEvent", &DotLottiePlayer::state_machine_post_pointer_enter_event)
         .function("stateMachinePostPointerExitEvent", &DotLottiePlayer::state_machine_post_pointer_exit_event)
-        .function("state_machine_override_current_state", &DotLottiePlayer::state_machine_override_current_state)
+        .function("stateMachineOverrideCurrentState", &DotLottiePlayer::state_machine_override_current_state)
         .function("instanceId", &DotLottiePlayer::instance_id);
-    }
+}

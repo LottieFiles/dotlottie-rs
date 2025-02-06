@@ -128,6 +128,12 @@ impl Default for StateMachineEngine {
     }
 }
 
+impl std::fmt::Display for StateMachineEngineStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 impl StateMachineEngine {
     pub fn new(
         state_machine_definition: &str,
@@ -382,6 +388,10 @@ impl StateMachineEngine {
 
     pub fn stop(&mut self) {
         self.status = StateMachineEngineStatus::Stopped;
+    }
+
+    pub fn status(&self) -> String {
+        self.status.to_string()
     }
 
     pub fn get_current_state(&self) -> Option<Rc<State>> {

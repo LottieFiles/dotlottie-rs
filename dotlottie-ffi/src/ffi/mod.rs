@@ -617,6 +617,17 @@ pub unsafe extern "C" fn dotlottie_state_machine_current_state(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_status(
+    ptr: *mut DotLottiePlayer,
+    result: *mut c_char,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        let status = dotlottie_player.state_machine_status();
+        to_exit_status(DotLottieString::copy(&status, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok())
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_load(
     ptr: *mut DotLottiePlayer,
     state_machine_id: *const c_char,

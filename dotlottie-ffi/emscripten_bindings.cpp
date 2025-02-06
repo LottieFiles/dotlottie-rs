@@ -132,5 +132,6 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("stateMachinePostPointerEnterEvent", &DotLottiePlayer::state_machine_post_pointer_enter_event)
         .function("stateMachinePostPointerExitEvent", &DotLottiePlayer::state_machine_post_pointer_exit_event)
         .function("stateMachineOverrideCurrentState", &DotLottiePlayer::state_machine_override_current_state)
+        .function("stateMachineStatus", &DotLottiePlayer::state_machine_status)
         .function("instanceId", &DotLottiePlayer::instance_id);
 }

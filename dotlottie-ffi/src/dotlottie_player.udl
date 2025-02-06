@@ -177,4 +177,5 @@ interface DotLottiePlayer {
     boolean state_machine_subscribe(StateMachineObserver observer);
     boolean state_machine_unsubscribe([ByRef] StateMachineObserver observer);
     boolean state_machine_override_current_state([ByRef] string state_name, boolean do_tick);
+    string state_machine_status();
 };

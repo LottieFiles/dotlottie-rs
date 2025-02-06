@@ -1539,6 +1539,22 @@ impl DotLottiePlayerContainer {
         }
     }
 
+    pub fn state_machine_status(&self) -> String {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if let Some(sm) = state_machine.as_ref() {
+                    return sm.status();
+                }
+            }
+
+            Err(_) => {
+                return "".to_string();
+            }
+        }
+
+        "".to_string()
+    }
+
     #[cfg(target_arch = "wasm32")]
     pub fn instance_id(&self) -> u32 {
         self.instance_id
@@ -2229,6 +2245,22 @@ impl DotLottiePlayer {
             Ok(state_machine) => {
                 if let Some(sm) = state_machine.as_ref() {
                     return sm.get_current_state_name();
+                }
+            }
+
+            Err(_) => {
+                return "".to_string();
+            }
+        }
+
+        "".to_string()
+    }
+
+    pub fn state_machine_status(&self) -> String {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if let Some(sm) = state_machine.as_ref() {
+                    return sm.status();
                 }
             }
 

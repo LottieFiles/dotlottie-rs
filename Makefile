@@ -945,6 +945,11 @@ $(RUNTIME_FFI)/$(APPLE_BUILD)/$(MODULE_MAP): $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI
 demo-player:
 	cargo build --manifest-path examples/demo-player/Cargo.toml
 
+# Build local architecture dependencies
+.PHONY: local
+local: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
+	$(info $(GREEN)Local architecture dependencies built successfully!$(NC))
+
 .PHONY: demo-state-machine
 demo-state-machine:
 	cargo build --manifest-path examples/demo-state-machine/Cargo.toml
@@ -985,8 +990,8 @@ deps:
 # Cleanup extraneous files from the zlib dependency build...
 .PHONY: clean-build
 clean-build:
-	@git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git clean -fd &>/dev/null
-	@git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git checkout . &>/dev/null
+	# @git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git clean -fd &>/dev/null
+	# @git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git checkout . &>/dev/null
 
 .PHONY: clean-deps
 clean-deps: clean-build

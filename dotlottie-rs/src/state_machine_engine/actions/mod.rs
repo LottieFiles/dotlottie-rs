@@ -261,7 +261,13 @@ impl ActionTrait for Action {
 
                 match read_lock {
                     Ok(player) => {
-                        if !player.set_theme_data(value) {
+                        // If there is a $x inside value, replace with the value of x
+                        // If there is a $y inside value, replace with the value of x
+                        let value = value
+                            .replace("$x", &engine.pointer_x.to_string())
+                            .replace("$y", &engine.pointer_y.to_string());
+
+                        if !player.set_slots(&value) {
                             return Err(StateMachineActionError::ExecuteError(format!(
                                 "Error loading theme data: {}",
                                 value

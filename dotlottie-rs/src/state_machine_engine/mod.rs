@@ -104,6 +104,8 @@ pub struct StateMachineEngine {
     max_cycle_count: usize,
     current_cycle_count: usize,
     action_mutated_triggers: bool,
+    pointer_x: f32,
+    pointer_y: f32,
 }
 
 impl Default for StateMachineEngine {
@@ -124,6 +126,8 @@ impl Default for StateMachineEngine {
             max_cycle_count: 20,
             current_cycle_count: 0,
             action_mutated_triggers: false,
+            pointer_x: 0.0,
+            pointer_y: 0.0,
         }
     }
 }
@@ -156,6 +160,8 @@ impl StateMachineEngine {
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
             action_mutated_triggers: false,
+            pointer_x: 0.0,
+            pointer_y: 0.0,
         };
 
         state_machine.create_state_machine(state_machine_definition, &player)
@@ -941,6 +947,8 @@ impl StateMachineEngine {
     // With the current setup we can have an action that happens when the cursor is over the canvas
     // and another action that happens when the cursor is over a specific layer.
     fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32) {
+        self.pointer_x = x;
+        self.pointer_y = y;
         // This will handle PointerDown, PointerUp, PointerEnter, PointerExit, Click
         if event.type_name() != "PointerMove" {
             self.manage_explicit_events(event, x, y);

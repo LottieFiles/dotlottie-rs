@@ -35,6 +35,49 @@ impl StateMachineObserver for MockObserver {
         let mut events = self.events.lock().unwrap();
         events.push(format!("custom_event: {}", message));
     }
+
+    fn on_start(&self) {
+        // todo!()
+    }
+
+    fn on_stop(&self) {
+        // todo!()
+    }
+
+    fn on_string_trigger_value_change(
+        &self,
+        _trigger_name: String,
+        _old_value: String,
+        _new_value: String,
+    ) {
+        // todo!()
+    }
+
+    fn on_numeric_trigger_value_change(
+        &self,
+        _trigger_name: String,
+        _old_value: f32,
+        _new_value: f32,
+    ) {
+        // todo!()
+    }
+
+    fn on_boolean_trigger_value_change(
+        &self,
+        _trigger_name: String,
+        _old_value: bool,
+        _new_value: bool,
+    ) {
+        // todo!()
+    }
+
+    fn on_trigger_fired(&self, _trigger_name: String) {
+        // todo!()
+    }
+
+    fn on_error(&self, _error: String) {
+        // todo!()
+    }
 }
 #[cfg(test)]
 mod tests {

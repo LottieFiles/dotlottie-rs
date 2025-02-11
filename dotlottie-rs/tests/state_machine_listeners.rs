@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{states::StateTrait, Config, DotLottiePlayer, Event};
+    use dotlottie_rs::{Config, DotLottiePlayer, Event};
 
     fn get_current_state_name(player: &DotLottiePlayer) -> String {
         player.state_machine_current_state()

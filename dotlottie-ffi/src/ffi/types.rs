@@ -546,6 +546,13 @@ pub type OnStateEnteredOp = unsafe extern "C" fn(*const c_char);
 pub type OnStateExitOp = unsafe extern "C" fn(*const c_char);
 pub type OnStateCustomEventOp = unsafe extern "C" fn(*const c_char);
 pub type OnStateErrorOp = unsafe extern "C" fn(*const c_char);
+pub type OnStateMachineStartOp = unsafe extern "C" fn();
+pub type OnStateMachineStopOp = unsafe extern "C" fn();
+pub type OnStringTriggerValueChangeOp =
+    unsafe extern "C" fn(*const c_char, *const c_char, *const c_char);
+pub type OnNumericTriggerValueChangeOp = unsafe extern "C" fn(*const c_char, f32, f32);
+pub type OnBooleanTriggerValueChangeOp = unsafe extern "C" fn(*const c_char, bool, bool);
+pub type OnTriggerFiredOp = unsafe extern "C" fn(*const c_char);
 
 #[repr(C)]
 pub struct StateMachineObserver {
@@ -554,6 +561,12 @@ pub struct StateMachineObserver {
     pub on_state_exit_op: OnStateExitOp,
     pub on_state_custom_event_op: OnStateCustomEventOp,
     pub on_state_error_op: OnStateErrorOp,
+    pub on_state_machine_start_op: OnStateMachineStartOp,
+    pub on_state_machine_stop_op: OnStateMachineStopOp,
+    pub on_string_trigger_value_change_op: OnStringTriggerValueChangeOp,
+    pub on_numeric_trigger_value_change_op: OnNumericTriggerValueChangeOp,
+    pub on_boolean_trigger_value_change_op: OnBooleanTriggerValueChangeOp,
+    pub on_trigger_fired_op: OnTriggerFiredOp,
 }
 
 impl dotlottie_rs::StateMachineObserver for StateMachineObserver {
@@ -602,6 +615,79 @@ impl dotlottie_rs::StateMachineObserver for StateMachineObserver {
         if let Ok(message) = CString::new(message) {
             unsafe {
                 (self.on_state_error_op)(message.as_bytes_with_nul().as_ptr() as *const c_char)
+            }
+        }
+    }
+
+    fn on_start(&self) {
+        unsafe { (self.on_state_machine_start_op)() }
+    }
+
+    fn on_stop(&self) {
+        unsafe { (self.on_state_machine_stop_op)() }
+    }
+
+    fn on_string_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: String,
+        new_value: String,
+    ) {
+        if let (Ok(trigger_name), Ok(old_value), Ok(new_value)) = (
+            CString::new(trigger_name),
+            CString::new(old_value),
+            CString::new(new_value),
+        ) {
+            unsafe {
+                (self.on_string_trigger_value_change_op)(
+                    trigger_name.as_bytes_with_nul().as_ptr() as *const c_char,
+                    old_value.as_bytes_with_nul().as_ptr() as *const c_char,
+                    new_value.as_bytes_with_nul().as_ptr() as *const c_char,
+                )
+            }
+        }
+    }
+
+    fn on_numeric_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: f32,
+        new_value: f32,
+    ) {
+        if let Ok(trigger_name) = CString::new(trigger_name) {
+            unsafe {
+                (self.on_numeric_trigger_value_change_op)(
+                    trigger_name.as_bytes_with_nul().as_ptr() as *const c_char,
+                    old_value,
+                    new_value,
+                )
+            }
+        }
+    }
+
+    fn on_boolean_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: bool,
+        new_value: bool,
+    ) {
+        if let Ok(trigger_name) = CString::new(trigger_name) {
+            unsafe {
+                (self.on_boolean_trigger_value_change_op)(
+                    trigger_name.as_bytes_with_nul().as_ptr() as *const c_char,
+                    old_value,
+                    new_value,
+                )
+            }
+        }
+    }
+
+    fn on_trigger_fired(&self, trigger_name: String) {
+        if let Ok(trigger_name) = CString::new(trigger_name) {
+            unsafe {
+                (self.on_trigger_fired_op)(
+                    trigger_name.as_bytes_with_nul().as_ptr() as *const c_char
+                )
             }
         }
     }

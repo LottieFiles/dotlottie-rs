@@ -40,6 +40,58 @@ impl StateMachineObserver for DummyObserver {
     fn on_error(&self, error: String) {
         println!("error2: {}", error);
     }
+
+    fn on_start(&self) {
+        println!(">>>> start");
+    }
+
+    fn on_stop(&self) {
+        println!(">>>> stop");
+    }
+
+    fn on_pause(&self) {
+        println!(">>>> pause");
+    }
+
+    fn on_string_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: String,
+        new_value: String,
+    ) {
+        println!(
+            "string_trigger_value_change ==> {} : {} -> {}",
+            trigger_name, old_value, new_value
+        );
+    }
+
+    fn on_numeric_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: f32,
+        new_value: f32,
+    ) {
+        println!(
+            "numeric_trigger_value_change ==> {} : {} -> {}",
+            trigger_name, old_value, new_value
+        );
+    }
+
+    fn on_boolean_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: bool,
+        new_value: bool,
+    ) {
+        println!(
+            "boolean_trigger_value_change ==> {} : {} -> {}",
+            trigger_name, old_value, new_value
+        );
+    }
+
+    fn on_trigger_fired(&self, trigger_name: String) {
+        println!("trigger_fired ==> {}", trigger_name);
+    }
 }
 
 impl Timer {
@@ -115,10 +167,9 @@ fn main() {
     );
 
     println!("Load state machine data -> {}", r);
+    lottie_player.state_machine_subscribe(observer.clone());
 
     let s = lottie_player.state_machine_start();
-
-    lottie_player.state_machine_subscribe(observer.clone());
 
     println!("Start state machine -> {}", s);
 

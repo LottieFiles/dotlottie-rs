@@ -32,17 +32,33 @@ use self::state_machine::state_machine_parse;
 use self::{events::Event, states::State};
 
 pub trait StateMachineObserver: Send + Sync {
+    fn on_start(&self);
+    fn on_stop(&self);
+    fn on_pause(&self);
     fn on_transition(&self, previous_state: String, new_state: String);
     fn on_state_entered(&self, entering_state: String);
     fn on_state_exit(&self, leaving_state: String);
     fn on_custom_event(&self, message: String);
+    fn on_string_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: String,
+        new_value: String,
+    );
+    fn on_numeric_trigger_value_change(&self, trigger_name: String, old_value: f32, new_value: f32);
+    fn on_boolean_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: bool,
+        new_value: bool,
+    );
+    fn on_trigger_fired(&self, trigger_name: String);
     fn on_error(&self, error: String);
 }
 
 #[derive(PartialEq, Debug)]
 pub enum StateMachineEngineStatus {
     Running,
-    Paused,
     Stopped,
 }
 
@@ -200,6 +216,12 @@ impl StateMachineEngine {
             let _ = self.run_current_state_pipeline();
         }
 
+        if let Some(old_value) = &ret {
+            if let TriggerValue::Numeric(old_value) = *old_value {
+                self.observe_numeric_trigger_value_change(key, old_value, value);
+            }
+        }
+
         ret
     }
 
@@ -221,6 +243,12 @@ impl StateMachineEngine {
         }
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
+        }
+
+        if let Some(old_value) = ret.clone() {
+            if let TriggerValue::String(old_value) = old_value {
+                self.observe_string_trigger_value_change(key, &old_value, value);
+            }
         }
 
         ret
@@ -246,6 +274,12 @@ impl StateMachineEngine {
             let _ = self.run_current_state_pipeline();
         }
 
+        if let Some(old_value) = ret.clone() {
+            if let TriggerValue::Boolean(old_value) = old_value {
+                self.observe_boolean_trigger_value_change(key, old_value, value);
+            }
+        }
+
         ret
     }
 
@@ -254,7 +288,31 @@ impl StateMachineEngine {
     }
 
     pub fn reset_trigger(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
-        self.triggers.reset(key);
+        let ret = self.triggers.reset(key);
+
+        match ret {
+            Some((old_value, new_value)) => match old_value {
+                TriggerValue::Numeric(old_value) => match new_value {
+                    TriggerValue::Numeric(new_value) => {
+                        self.observe_numeric_trigger_value_change(key, old_value, new_value);
+                    }
+                    _ => {}
+                },
+                TriggerValue::String(old_value) => match new_value {
+                    TriggerValue::String(new_value) => {
+                        self.observe_string_trigger_value_change(key, &old_value, &new_value);
+                    }
+                    _ => {}
+                },
+                TriggerValue::Boolean(old_value) => match new_value {
+                    TriggerValue::Boolean(new_value) => {
+                        self.observe_boolean_trigger_value_change(key, old_value, new_value);
+                    }
+                    _ => {}
+                },
+            },
+            None => {}
+        }
 
         if called_from_action {
             self.action_mutated_triggers = true;
@@ -267,6 +325,8 @@ impl StateMachineEngine {
     pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), StateMachineEngineError> {
         // If the event is a valid trigger
         if let Some(valid_event) = self.event_trigger.get(event) {
+            self.observe_on_trigger_fired(&valid_event);
+
             self.curr_event = Some(valid_event.to_string());
 
             // Run pipeline is always false if called from an action
@@ -383,17 +443,18 @@ impl StateMachineEngine {
         if self.status == StateMachineEngineStatus::Running {
             return;
         }
+
+        self.observe_on_start();
+
         self.status = StateMachineEngineStatus::Running;
 
         let _ = self.run_current_state_pipeline();
     }
 
-    pub fn pause(&mut self) {
-        self.status = StateMachineEngineStatus::Paused;
-    }
-
     pub fn stop(&mut self) {
         self.status = StateMachineEngineStatus::Stopped;
+
+        self.observe_on_stop();
     }
 
     pub fn status(&self) -> String {
@@ -1068,7 +1129,7 @@ impl StateMachineEngine {
 
                 if let Ok(player_container) = try_read_lock {
                     player_container
-                        .emit_state_machine_observer_on_state_entered(leaving_state.to_string());
+                        .emit_state_machine_observer_on_state_exit(leaving_state.to_string());
                 }
             }
         }
@@ -1134,6 +1195,154 @@ impl StateMachineEngine {
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_error(message.to_string());
+            }
+        }
+    }
+
+    pub fn observe_string_trigger_value_change(
+        &self,
+        trigger_name: &str,
+        old_value: &str,
+        new_value: &str,
+    ) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(rc_player) = &self.player {
+                let try_read_lock = rc_player.try_read();
+
+                if let Ok(player_container) = try_read_lock {
+                    player_container.emit_state_machine_observer_on_string_trigger_value_change(
+                        trigger_name.to_string(),
+                        old_value.to_string(),
+                        new_value.to_string(),
+                    );
+                }
+            }
+        }
+        if let Ok(observers) = self.observers.try_read() {
+            for observer in observers.iter() {
+                observer.on_string_trigger_value_change(
+                    trigger_name.to_string(),
+                    old_value.to_string(),
+                    new_value.to_string(),
+                );
+            }
+        }
+    }
+
+    pub fn observe_numeric_trigger_value_change(
+        &self,
+        trigger_name: &str,
+        old_value: f32,
+        new_value: f32,
+    ) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(rc_player) = &self.player {
+                let try_read_lock = rc_player.try_read();
+
+                if let Ok(player_container) = try_read_lock {
+                    player_container.emit_state_machine_observer_on_numeric_trigger_value_change(
+                        trigger_name.to_string(),
+                        old_value,
+                        new_value,
+                    );
+                }
+            }
+        }
+        if let Ok(observers) = self.observers.try_read() {
+            for observer in observers.iter() {
+                observer.on_numeric_trigger_value_change(
+                    trigger_name.to_string(),
+                    old_value,
+                    new_value,
+                );
+            }
+        }
+    }
+
+    pub fn observe_boolean_trigger_value_change(
+        &self,
+        trigger_name: &str,
+        old_value: bool,
+        new_value: bool,
+    ) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(rc_player) = &self.player {
+                let try_read_lock = rc_player.try_read();
+
+                if let Ok(player_container) = try_read_lock {
+                    player_container.emit_state_machine_observer_on_boolean_trigger_value_change(
+                        trigger_name.to_string(),
+                        old_value,
+                        new_value,
+                    );
+                }
+            }
+        }
+        if let Ok(observers) = self.observers.try_read() {
+            for observer in observers.iter() {
+                observer.on_boolean_trigger_value_change(
+                    trigger_name.to_string(),
+                    old_value,
+                    new_value,
+                );
+            }
+        }
+    }
+
+    pub fn observe_on_start(&self) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(rc_player) = &self.player {
+                let try_read_lock = rc_player.try_read();
+
+                if let Ok(player_container) = try_read_lock {
+                    player_container.emit_state_machine_observer_on_start();
+                }
+            }
+        }
+        if let Ok(observers) = self.observers.try_read() {
+            for observer in observers.iter() {
+                observer.on_start();
+            }
+        }
+    }
+
+    pub fn observe_on_stop(&self) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(rc_player) = &self.player {
+                let try_read_lock = rc_player.try_read();
+
+                if let Ok(player_container) = try_read_lock {
+                    player_container.emit_state_machine_observer_on_stop();
+                }
+            }
+        }
+        if let Ok(observers) = self.observers.try_read() {
+            for observer in observers.iter() {
+                observer.on_stop();
+            }
+        }
+    }
+
+    pub fn observe_on_trigger_fired(&self, trigger_name: &str) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(rc_player) = &self.player {
+                let try_read_lock = rc_player.try_read();
+
+                if let Ok(player_container) = try_read_lock {
+                    player_container
+                        .emit_state_machine_observer_on_trigger_fired(trigger_name.to_string());
+                }
+            }
+        }
+        if let Ok(observers) = self.observers.try_read() {
+            for observer in observers.iter() {
+                observer.on_trigger_fired(trigger_name.to_string());
             }
         }
     }

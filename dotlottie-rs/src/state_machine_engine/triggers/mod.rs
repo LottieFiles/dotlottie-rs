@@ -32,7 +32,7 @@ pub trait TriggerTrait {
     fn get_boolean(&self, key: &str) -> Option<bool>;
     fn get(&self, key: &str) -> Result<&TriggerValue, &'static str>;
     fn reset_all(&mut self);
-    fn reset(&mut self, key: &str);
+    fn reset(&mut self, key: &str) -> Option<(TriggerValue, TriggerValue)>;
 }
 
 pub struct TriggerManager {
@@ -53,10 +53,15 @@ impl TriggerTrait for TriggerManager {
         }
     }
 
-    fn reset(&mut self, key: &str) {
+    fn reset(&mut self, key: &str) -> Option<(TriggerValue, TriggerValue)> {
         if let Some(default_value) = self.default_values.get(key) {
-            self.triggers.insert(key.to_string(), default_value.clone());
+            return Some((
+                self.triggers.insert(key.to_string(), default_value.clone()).unwrap_or(default_value.clone()),
+                default_value.clone(),
+            ));
         }
+
+        None
     }
 
     fn reset_all(&mut self) {

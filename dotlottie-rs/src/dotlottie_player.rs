@@ -73,6 +73,42 @@ pub mod wasm_observer_callbacks_ffi {
             message_ptr: *const u8,
             message_len: usize,
         );
+
+        pub fn state_machine_observer_on_start(dotlottie_instance_id: u32);
+
+        pub fn state_machine_observer_on_stop(dotlottie_instance_id: u32);
+
+        pub fn state_machine_observer_on_string_trigger_value_change(
+            dotlottie_instance_id: u32,
+            trigger_name_ptr: *const u8,
+            trigger_name_len: usize,
+            old_value_ptr: *const u8,
+            old_value_len: usize,
+            new_value_ptr: *const u8,
+            new_value_len: usize,
+        );
+
+        pub fn state_machine_observer_on_numeric_trigger_value_change(
+            dotlottie_instance_id: u32,
+            trigger_name_ptr: *const u8,
+            trigger_name_len: usize,
+            old_value: f32,
+            new_value: f32,
+        );
+
+        pub fn state_machine_observer_on_boolean_trigger_value_change(
+            dotlottie_instance_id: u32,
+            trigger_name_ptr: *const u8,
+            trigger_name_len: usize,
+            old_value: bool,
+            new_value: bool,
+        );
+
+        pub fn state_machine_observer_on_trigger_fired(
+            dotlottie_instance_id: u32,
+            trigger_name_ptr: *const u8,
+            trigger_name_len: usize,
+        );
     }
 }
 
@@ -1187,6 +1223,100 @@ impl DotLottiePlayerContainer {
                     self.instance_id,
                     message.as_ptr(),
                     message.len(),
+                );
+            }
+        }
+    }
+
+    // add all wasm state machine observer callbacks
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_start(&self) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_start(self.instance_id);
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_stop(&self) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_stop(self.instance_id);
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_string_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: String,
+        new_value: String,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_string_trigger_value_change(
+                    self.instance_id,
+                    trigger_name.as_ptr(),
+                    trigger_name.len(),
+                    old_value.as_ptr(),
+                    old_value.len(),
+                    new_value.as_ptr(),
+                    new_value.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_numeric_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: f32,
+        new_value: f32,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_numeric_trigger_value_change(
+                    self.instance_id,
+                    trigger_name.as_ptr(),
+                    trigger_name.len(),
+                    old_value,
+                    new_value,
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_boolean_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: bool,
+        new_value: bool,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_boolean_trigger_value_change(
+                    self.instance_id,
+                    trigger_name.as_ptr(),
+                    trigger_name.len(),
+                    old_value,
+                    new_value,
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_trigger_fired(&self, trigger_name: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_trigger_fired(
+                    self.instance_id,
+                    trigger_name.as_ptr(),
+                    trigger_name.len(),
                 );
             }
         }

@@ -104,4 +104,68 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  state_machine_observer_on_start: function (dotlottie_instance_id) {
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_start) {
+      Module.dotlottieBridge.state_machine_observer_on_start(dotlottie_instance_id);
+    }
+  },
+
+  state_machine_observer_on_stop: function (dotlottie_instance_id) {
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_stop) {
+      Module.dotlottieBridge.state_machine_observer_on_stop(dotlottie_instance_id);
+    }
+  },
+
+  state_machine_observer_on_string_trigger_value_change: function (dotlottie_instance_id, trigger_name, trigger_name_len, old_value, old_value_len, new_value, new_value_len) {
+    const trigger_name_converted = UTF8ToString(trigger_name, trigger_name_len);
+    const old_value_converted = UTF8ToString(old_value, old_value_len);
+    const new_value_converted = UTF8ToString(new_value, new_value_len);
+
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_string_trigger_value_change) {
+      Module.dotlottieBridge.state_machine_observer_on_string_trigger_value_change(
+        dotlottie_instance_id,
+        trigger_name_converted,
+        old_value_converted,
+        new_value_converted
+      );
+    }
+  },
+
+  state_machine_observer_on_numeric_trigger_value_change: function (dotlottie_instance_id, trigger_name, trigger_name_len, old_value, new_value) {
+    const trigger_name_converted = UTF8ToString(trigger_name, trigger_name_len);
+
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_numeric_trigger_value_change) {
+      Module.dotlottieBridge.state_machine_observer_on_numeric_trigger_value_change(
+        dotlottie_instance_id,
+        trigger_name_converted,
+        old_value,
+        new_value
+      );
+    }
+  },
+
+  state_machine_observer_on_boolean_trigger_value_change: function (dotlottie_instance_id, trigger_name, trigger_name_len, old_value, new_value) {
+    const trigger_name_converted = UTF8ToString(trigger_name, trigger_name_len);
+
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_boolean_trigger_value_change) {
+      Module.dotlottieBridge.state_machine_observer_on_boolean_trigger_value_change(
+        dotlottie_instance_id,
+        trigger_name_converted,
+        old_value,
+        new_value
+      );
+    }
+  },
+
+  state_machine_observer_on_trigger_fired: function (dotlottie_instance_id, trigger_name, trigger_name_len) {
+    const trigger_name_converted = UTF8ToString(trigger_name, trigger_name_len);
+
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_string_trigger_value_change) {
+      Module.dotlottieBridge.state_machine_observer_on_trigger_fired(
+        dotlottie_instance_id,
+        trigger_name_converted,
+      );
+    }
+  },
+
 });

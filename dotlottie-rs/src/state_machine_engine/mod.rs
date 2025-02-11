@@ -34,7 +34,6 @@ use self::{events::Event, states::State};
 pub trait StateMachineObserver: Send + Sync {
     fn on_start(&self);
     fn on_stop(&self);
-    fn on_pause(&self);
     fn on_transition(&self, previous_state: String, new_state: String);
     fn on_state_entered(&self, entering_state: String);
     fn on_state_exit(&self, leaving_state: String);

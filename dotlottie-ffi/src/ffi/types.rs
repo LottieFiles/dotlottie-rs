@@ -547,7 +547,6 @@ pub type OnStateExitOp = unsafe extern "C" fn(*const c_char);
 pub type OnStateCustomEventOp = unsafe extern "C" fn(*const c_char);
 pub type OnStateErrorOp = unsafe extern "C" fn(*const c_char);
 pub type OnStateMachineStartOp = unsafe extern "C" fn();
-pub type OnStateMachinePauseOp = unsafe extern "C" fn();
 pub type OnStateMachineStopOp = unsafe extern "C" fn();
 pub type OnStringTriggerValueChangeOp =
     unsafe extern "C" fn(*const c_char, *const c_char, *const c_char);
@@ -563,7 +562,6 @@ pub struct StateMachineObserver {
     pub on_state_custom_event_op: OnStateCustomEventOp,
     pub on_state_error_op: OnStateErrorOp,
     pub on_state_machine_start_op: OnStateMachineStartOp,
-    pub on_state_machine_pause_op: OnStateMachinePauseOp,
     pub on_state_machine_stop_op: OnStateMachineStopOp,
     pub on_string_trigger_value_change_op: OnStringTriggerValueChangeOp,
     pub on_numeric_trigger_value_change_op: OnNumericTriggerValueChangeOp,
@@ -627,10 +625,6 @@ impl dotlottie_rs::StateMachineObserver for StateMachineObserver {
 
     fn on_stop(&self) {
         unsafe { (self.on_state_machine_stop_op)() }
-    }
-
-    fn on_pause(&self) {
-        unsafe { (self.on_state_machine_pause_op)() }
     }
 
     fn on_string_trigger_value_change(

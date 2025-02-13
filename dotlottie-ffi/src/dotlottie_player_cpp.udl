@@ -110,4 +110,12 @@ interface DotLottiePlayer {
     boolean state_machine_override_current_state([ByRef] string state_name, boolean do_tick);
     u32 instance_id();
     string state_machine_status();
+
+
+    boolean tick();
+    boolean tween(f32 from, f32 to, f32 progress);
+    boolean tween_to(f32 to, f32 duration, sequence<f32> easing);
+    boolean tween_to_marker([ByRef] string marker, f32 duration, sequence<f32> easing);
+    boolean is_tweening();
+    boolean tween_update();
 };

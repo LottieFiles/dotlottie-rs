@@ -579,29 +579,78 @@ impl StateMachineEngine {
             // Emit transtion occured event
             self.observe_on_state_exit(&self.get_current_state_name());
 
-            // Assign the new state to the current_state
-            self.current_state = Some(new_state);
+            println!("🤖 Setting current state to: {}", state_name);
 
-            // Emit transtion occured event
-            self.observe_on_state_entered(&self.get_current_state_name());
+            // Todo: Check transition type to see if we have to tween
+            if true {
+                // Tween between states if necessary
+                // let player = self.player.take();
 
-            // Perform entry actions
-            // Execute its type of state
-            let state = self.current_state.take();
-            let player = self.player.take();
+                // Now use the extracted information
+                if let Some(unwrapped_player) = &self.player {
+                    let read_lock = &unwrapped_player.try_read();
 
-            // Now use the extracted information
-            if let (Some(state), Some(player)) = (state, player) {
-                // Enter the state
-                state.enter(self, &player);
+                    match read_lock {
+                        Ok(player) => {
+                            // todo: this assumes that its the same animation for the moment
+                            match &*new_state {
+                                State::PlaybackState {
+                                    animation, segment, ..
+                                } => {
+                                    println!("Tweening to segment: {:?}", segment);
+                                    if let Some(target_segment) = segment {
+                                        player.tween_to_marker(
+                                            target_segment,
+                                            0.5,
+                                            [0.76, 0.1, 0.24, 1.1],
+                                        );
 
-                // Don't forget to put things back
-                // new_state becomes the current state
-                self.current_state = Some(state);
-                self.player = Some(player);
-            } else {
-                return Err(StateMachineEngineError::SetStateError {});
+                                        let mut config = player.config();
+                                        config.marker = target_segment.clone();
+                                        player.set_config(config);
+                                    }
+                                }
+                                State::GlobalState { .. } => {}
+                            }
+                        }
+                        Err(_) => {
+                            println!("Failed to get read lock on player inside set_current_state");
+                        }
+                    }
+                    // If the target state uses a segment
+
+                    // match &*new_state {
+                    //     State::PlaybackState { animation, .. } => {}
+                    //     State::GlobalState { .. } => {}
+                    // }
+                    // Don't forget to put things back
+                    // self.player = Some(unwrapped_player);
+                }
             }
+
+            // Assign the new state to the current_state
+            // self.current_state = Some(new_state);
+
+            // // Emit transtion occured event
+            // self.observe_on_state_entered(&self.get_current_state_name());
+
+            // // Perform entry actions
+            // // Execute its type of state
+            // let state = self.current_state.take();
+            // let player = self.player.take();
+
+            // // Now use the extracted information
+            // if let (Some(state), Some(player)) = (state, player) {
+            //     // Enter the state
+            //     state.enter(self, &player);
+
+            //     // Don't forget to put things back
+            //     // new_state becomes the current state
+            //     self.current_state = Some(state);
+            //     self.player = Some(player);
+            // } else {
+            //     return Err(StateMachineEngineError::SetStateError {});
+            // }
 
             return Ok(());
         }

@@ -8,18 +8,6 @@
       "transitions": [
         {
           "type": "Transition",
-          "toState": "star_0",
-          "guards": [
-            {
-              "type": "Numeric",
-              "conditionType": "Equal",
-              "triggerName": "rating",
-              "compareTo": 0
-            }
-          ]
-        },
-        {
-          "type": "Transition",
           "toState": "star_1",
           "guards": [
             {
@@ -82,24 +70,10 @@
     },
     {
       "type": "PlaybackState",
-      "name": "star_0",
-      "animation": "",
-      "autoplay": true,
-      "segment": "star_0",
-      "transitions": [],
-      "entryActions": [
-        {
-          "type": "FireCustomEvent",
-          "value": "WOOHOO STAR 0"
-        }
-      ]
-    },
-    {
-      "type": "PlaybackState",
       "name": "star_1",
       "animation": "",
       "autoplay": true,
-      "segment": "star_1",
+      "segment": "angry",
       "transitions": [],
       "entryActions": [
         {
@@ -113,7 +87,7 @@
       "name": "star_2",
       "animation": "",
       "autoplay": true,
-      "segment": "star_2",
+      "segment": "sad",
       "transitions": [],
       "entryActions": [
         {
@@ -127,7 +101,7 @@
       "name": "star_3",
       "animation": "",
       "autoplay": true,
-      "segment": "star_3",
+      "segment": "mourn",
       "transitions": [],
       "entryActions": [
         {
@@ -141,7 +115,7 @@
       "name": "star_4",
       "animation": "",
       "autoplay": true,
-      "segment": "star_4",
+      "segment": "wink",
       "transitions": [],
       "entryActions": [
         {
@@ -155,7 +129,7 @@
       "name": "star_5",
       "animation": "",
       "autoplay": true,
-      "segment": "star_5",
+      "segment": "laughing",
       "transitions": [],
       "entryActions": [
         {
@@ -168,7 +142,7 @@
   "listeners": [
     {
       "type": "PointerDown",
-      "layerName": "star1",
+      "layerName": "angry",
       "actions": [
         {
           "type": "SetNumeric",
@@ -179,7 +153,7 @@
     },
     {
       "type": "PointerDown",
-      "layerName": "star2",
+      "layerName": "sad",
       "actions": [
         {
           "type": "SetNumeric",
@@ -190,7 +164,7 @@
     },
     {
       "type": "PointerDown",
-      "layerName": "star3",
+      "layerName": "mourn",
       "actions": [
         {
           "type": "SetNumeric",
@@ -201,7 +175,7 @@
     },
     {
       "type": "PointerDown",
-      "layerName": "star4",
+      "layerName": "wink",
       "actions": [
         {
           "type": "SetNumeric",
@@ -212,21 +186,12 @@
     },
     {
       "type": "PointerDown",
-      "layerName": "star5",
+      "layerName": "laughing",
       "actions": [
         {
           "type": "SetNumeric",
           "triggerName": "rating",
           "value": 5
-        }
-      ]
-    },
-    {
-      "type": "PointerExit",
-      "actions": [
-        {
-          "type": "Reset",
-          "triggerName": "rating"
         }
       ]
     }

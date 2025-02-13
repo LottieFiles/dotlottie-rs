@@ -9,8 +9,8 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const STATE_MACHINE_NAME: &str = "rating";
-pub const ANIMATION_NAME: &str = "star_marked";
+pub const STATE_MACHINE_NAME: &str = "smiley-slider";
+pub const ANIMATION_NAME: &str = "smiley-slider";
 
 struct Timer {
     last_update: Instant,
@@ -22,35 +22,31 @@ struct DummyObserver;
 
 impl StateMachineObserver for DummyObserver {
     fn on_transition(&self, previous_state: String, new_state: String) {
-        println!("on_transition2: {} -> {}", previous_state, new_state);
+        // println!("on_transition2: {} -> {}", previous_state, new_state);
     }
 
     fn on_state_entered(&self, entering_state: String) {
-        println!("on_state_entered2: {}", entering_state);
+        // println!("on_state_entered2: {}", entering_state);
     }
 
     fn on_state_exit(&self, leaving_state: String) {
-        println!("on_state_exit2: {}", leaving_state);
+        // println!("on_state_exit2: {}", leaving_state);
     }
 
     fn on_custom_event(&self, message: String) {
-        println!("custom_event2: {}", message);
+        // println!("custom_event2: {}", message);
     }
 
     fn on_error(&self, error: String) {
-        println!("error2: {}", error);
+        // println!("error2: {}", error);
     }
 
     fn on_start(&self) {
-        println!(">>>> start");
+        // println!(">>>> start");
     }
 
     fn on_stop(&self) {
-        println!(">>>> stop");
-    }
-
-    fn on_pause(&self) {
-        println!(">>>> pause");
+        // println!(">>>> stop");
     }
 
     fn on_string_trigger_value_change(
@@ -59,10 +55,10 @@ impl StateMachineObserver for DummyObserver {
         old_value: String,
         new_value: String,
     ) {
-        println!(
-            "string_trigger_value_change ==> {} : {} -> {}",
-            trigger_name, old_value, new_value
-        );
+        // println!(
+        //     "string_trigger_value_change ==> {} : {} -> {}",
+        //     trigger_name, old_value, new_value
+        // );
     }
 
     fn on_numeric_trigger_value_change(
@@ -71,10 +67,10 @@ impl StateMachineObserver for DummyObserver {
         old_value: f32,
         new_value: f32,
     ) {
-        println!(
-            "numeric_trigger_value_change ==> {} : {} -> {}",
-            trigger_name, old_value, new_value
-        );
+        // println!(
+        //     "numeric_trigger_value_change ==> {} : {} -> {}",
+        //     trigger_name, old_value, new_value
+        // );
     }
 
     fn on_boolean_trigger_value_change(
@@ -83,14 +79,14 @@ impl StateMachineObserver for DummyObserver {
         old_value: bool,
         new_value: bool,
     ) {
-        println!(
-            "boolean_trigger_value_change ==> {} : {} -> {}",
-            trigger_name, old_value, new_value
-        );
+        // println!(
+        //     "boolean_trigger_value_change ==> {} : {} -> {}",
+        //     trigger_name, old_value, new_value
+        // );
     }
 
     fn on_trigger_fired(&self, trigger_name: String) {
-        println!("trigger_fired ==> {}", trigger_name);
+        // println!("trigger_fired ==> {}", trigger_name);
     }
 }
 
@@ -103,18 +99,24 @@ impl Timer {
         }
     }
 
-    fn tick(&mut self, animation: &DotLottiePlayer) {
-        let next_frame = animation.request_frame();
+    fn tick(&mut self, animation: &DotLottiePlayer) -> bool {
+        let updated = animation.tick();
 
-        animation.set_frame(next_frame);
+        // let next_frame = animation.request_frame();
+        // animation.set_frame(next_frame);
 
-        if next_frame != self.prev_frame || !self.first {
+        if updated || !self.first {
             animation.render();
             self.first = true;
+
+            return updated;
         }
 
         self.last_update = Instant::now(); // Reset the timer
-        self.prev_frame = next_frame;
+                                           // self.prev_frame = next_frame;
+
+        // updated
+        true
     }
 }
 
@@ -245,8 +247,6 @@ fn main() {
             let _m = p.state_machine_post_event(&event);
         }
 
-        timer.tick(&*locked_player.read().unwrap());
-
         // Send event on key press
         if window.is_key_pressed(Key::Space, minifb::KeyRepeat::Yes) {
             let p = &mut *locked_player.write().unwrap();
@@ -264,13 +264,19 @@ fn main() {
             // println!("current state: {}", p.state_machine_current_state());
             // p.state_machine_set_numeric_trigger("rating", rating);
         }
-        let p = &mut *locked_player.write().unwrap();
 
-        let (buffer_ptr, buffer_len) = (p.buffer_ptr(), p.buffer_len());
+        let updated = timer.tick(&*locked_player.read().unwrap());
 
-        let buffer =
-            unsafe { std::slice::from_raw_parts(buffer_ptr as *const u32, buffer_len as usize) };
+        if updated {
+            let p = &mut *locked_player.write().unwrap();
 
-        window.update_with_buffer(buffer, WIDTH, HEIGHT).unwrap();
+            let (buffer_ptr, buffer_len) = (p.buffer_ptr(), p.buffer_len());
+
+            let buffer = unsafe {
+                std::slice::from_raw_parts(buffer_ptr as *const u32, buffer_len as usize)
+            };
+
+            window.update_with_buffer(buffer, WIDTH, HEIGHT).unwrap();
+        }
     }
 }

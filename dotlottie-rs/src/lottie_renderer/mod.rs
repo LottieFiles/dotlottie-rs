@@ -79,6 +79,19 @@ pub trait LottieRenderer {
         &self,
         layer_name: &str,
     ) -> Result<(f32, f32, f32, f32), LottieRendererError>;
+
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), LottieRendererError>;
+
+    fn tween_to(
+        &mut self,
+        to: f32,
+        duration: f32,
+        easing: [f32; 4],
+    ) -> Result<(), LottieRendererError>;
+
+    fn is_tweening(&self) -> bool;
+
+    fn tween_update(&mut self) -> Result<bool, LottieRendererError>;
 }
 
 impl dyn LottieRenderer {
@@ -330,6 +343,31 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn set_slots(&mut self, slots: &str) -> Result<(), LottieRendererError> {
         self.animation.set_slots(slots).map_err(into_lottie::<R>)
+    }
+
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), LottieRendererError> {
+        self.animation
+            .tween(from, to, progress)
+            .map_err(into_lottie::<R>)
+    }
+
+    fn tween_to(
+        &mut self,
+        to: f32,
+        duration: f32,
+        easing: [f32; 4],
+    ) -> Result<(), LottieRendererError> {
+        self.animation
+            .tween_to(to, duration, easing)
+            .map_err(into_lottie::<R>)
+    }
+
+    fn is_tweening(&self) -> bool {
+        self.animation.is_tweening()
+    }
+
+    fn tween_update(&mut self) -> Result<bool, LottieRendererError> {
+        self.animation.tween_update().map_err(into_lottie::<R>)
     }
 
     fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError> {

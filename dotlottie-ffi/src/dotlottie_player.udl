@@ -174,4 +174,11 @@ interface DotLottiePlayer {
     i32 post_pointer_enter_event(f32 x, f32 y);
     i32 post_pointer_exit_event(f32 x, f32 y);
     i32 post_set_numeric_context([ByRef] string key, f32 value);
+
+    boolean tick();
+    boolean tween(f32 from, f32 to, f32 progress);
+    boolean tween_to(f32 to, f32 duration, sequence<f32> easing);
+    boolean tween_to_marker([ByRef] string marker, f32 duration, sequence<f32> easing);
+    boolean is_tweening();
+    boolean tween_update();
 };

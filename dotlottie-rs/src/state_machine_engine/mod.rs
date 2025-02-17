@@ -1024,7 +1024,7 @@ impl StateMachineEngine {
         }
     }
 
-    fn manage_on_complete_event(&mut self, event: &Event) {
+    fn manage_player_events(&mut self, event: &Event) {
         let listeners = self.listeners(Some(event.type_name()));
 
         if listeners.is_empty() {
@@ -1035,6 +1035,17 @@ impl StateMachineEngine {
 
         for listener in listeners {
             if let Listener::OnComplete {
+                state_name,
+                actions,
+            } = listener
+            {
+                if let Some(current_state) = &self.current_state {
+                    if current_state.name() == *state_name {
+                        actions_to_execute.extend(actions.clone());
+                    }
+                }
+            }
+            if let Listener::OnLoopComplete {
                 state_name,
                 actions,
             } = listener
@@ -1065,7 +1076,7 @@ impl StateMachineEngine {
         if event.type_name().contains("Pointer") || event.type_name().contains("Click") {
             self.manage_pointer_event(event, event.x(), event.y());
         } else {
-            self.manage_on_complete_event(event);
+            self.manage_player_events(event);
         }
 
         0

@@ -16,6 +16,7 @@ pub enum Event {
     PointerExit { x: f32, y: f32 },
     Click { x: f32, y: f32 },
     OnComplete,
+    OnLoopComplete,
 }
 
 impl PointerEvent for Event {
@@ -52,6 +53,7 @@ impl EventName for Event {
             Event::PointerExit { .. } => "PointerExit".to_string(),
             Event::Click { .. } => "Click".to_string(),
             Event::OnComplete => "OnComplete".to_string(),
+            Event::OnLoopComplete => "OnLoopComplete".to_string(),
         }
     }
 }
@@ -78,5 +80,8 @@ macro_rules! event_type_name {
     };
     (OnComplete) => {
         "OnComplete"
+    };
+    (OnLoopComplete) => {
+        "OnLoopComplete"
     };
 }

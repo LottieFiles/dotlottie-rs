@@ -1,9 +1,44 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{Config, DotLottiePlayer, Event};
+    use dotlottie_rs::{Config, DotLottiePlayer, Event, Observer};
+    use std::sync::{Arc, Mutex};
 
     fn get_current_state_name(player: &DotLottiePlayer) -> String {
         player.state_machine_current_state()
+    }
+
+    struct MockObserver {
+        events: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl MockObserver {
+        fn new(events: Arc<Mutex<Vec<String>>>) -> Self {
+            MockObserver { events }
+        }
+    }
+
+    impl Observer for MockObserver {
+        fn on_load(&self) {}
+
+        fn on_load_error(&self) {}
+
+        fn on_play(&self) {}
+
+        fn on_pause(&self) {}
+
+        fn on_stop(&self) {}
+
+        fn on_frame(&self, _frame_no: f32) {}
+
+        fn on_render(&self, _frame_no: f32) {}
+
+        fn on_loop(&self, loop_count: u32) {
+            let mut events = self.events.lock().unwrap();
+
+            events.push(format!("on_loop {}", loop_count));
+        }
+
+        fn on_complete(&self) {}
     }
 
     #[test]
@@ -294,5 +329,41 @@ mod tests {
 
         // let curr_state_name = get_current_state_name(&player);
         // assert_eq!(curr_state_name, "Feathers falling");
+    }
+
+    #[test]
+    pub fn on_loop_complete_player_test() {
+        let global_state =
+            include_str!("fixtures/statemachines/listener_tests/on_loop_complete.json");
+        let player = DotLottiePlayer::new(Config::default());
+
+        player.load_dotlottie_data(include_bytes!("fixtures/pigeon.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start();
+
+        let events = Arc::new(Mutex::new(vec![]));
+        let observer_events = Arc::clone(&events);
+        let observer = MockObserver::new(observer_events);
+        let observer_arc: Arc<dyn Observer> = Arc::new(observer);
+        player.subscribe(Arc::clone(&observer_arc));
+
+        assert!(l);
+        assert!(s);
+
+        let mut count = 0;
+        while count < 4 {
+            let next_frame = player.request_frame();
+
+            if player.set_frame(next_frame) {
+                player.render();
+            }
+
+            if player.is_complete() {
+                count += 1;
+            }
+        }
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "explosion");
     }
 }

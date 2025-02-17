@@ -10,7 +10,8 @@ use crate::{
     Marker, MarkersMap, StateMachineEngine,
 };
 use crate::{
-    transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer, StateMachineEngineError,
+    transform_theme_to_lottie_slots, DotLottieManager, Manifest, OpenURL, Renderer,
+    StateMachineEngineError,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -153,6 +154,7 @@ pub struct Config {
     pub segment: Vec<f32>,
     pub background_color: u32,
     pub layout: Layout,
+    pub open_url: OpenURL,
     pub marker: String,
     pub theme_id: String,
     pub state_machine_id: String,
@@ -172,6 +174,7 @@ impl Default for Config {
             marker: String::new(),
             theme_id: String::new(),
             state_machine_id: String::new(),
+            open_url: OpenURL::default(),
         }
     }
 }
@@ -1139,6 +1142,12 @@ impl DotLottiePlayerContainer {
                 wasm_observer_callbacks_ffi::observer_on_loop(self.instance_id, loop_count);
             }
         }
+
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                sm.post_event(&Event::OnComplete);
+            }
+        }
     }
 
     pub fn emit_on_complete(&self) {
@@ -1153,6 +1162,12 @@ impl DotLottiePlayerContainer {
         {
             unsafe {
                 wasm_observer_callbacks_ffi::observer_on_complete(self.instance_id);
+            }
+        }
+
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                sm.post_event(&Event::OnComplete);
             }
         }
     }
@@ -1544,12 +1559,6 @@ impl DotLottiePlayerContainer {
                     self.emit_on_loop(self.loop_count());
                 } else {
                     self.emit_on_complete();
-
-                    if let Ok(mut state_machine) = self.state_machine.try_write() {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&Event::OnComplete);
-                        }
-                    }
                 }
             }
         }
@@ -1835,6 +1844,9 @@ impl DotLottiePlayer {
                             }
                             crate::listeners::Listener::OnComplete { .. } => {
                                 listener_types.push("OnComplete".to_string())
+                            }
+                            crate::listeners::Listener::OnLoopComplete { .. } => {
+                                listener_types.push("OnLoopComplete".to_string())
                             }
                             crate::listeners::Listener::Click { .. } => {
                                 listener_types.push("Click".to_string());
@@ -2258,7 +2270,12 @@ impl DotLottiePlayer {
     }
 
     pub fn state_machine_load_data(&self, state_machine: &str) -> bool {
-        let state_machine = StateMachineEngine::new(state_machine, self.player.clone(), None);
+        let state_machine = StateMachineEngine::new(
+            state_machine,
+            self.player.clone(),
+            None,
+            self.config().open_url,
+        );
 
         if state_machine.is_ok() {
             match self.state_machine.try_write() {
@@ -2297,7 +2314,12 @@ impl DotLottiePlayer {
         match state_machine_string {
             Some(machine) => {
                 let state_machine: Result<StateMachineEngine, StateMachineEngineError> =
-                    StateMachineEngine::new(&machine, self.player.clone(), None);
+                    StateMachineEngine::new(
+                        &machine,
+                        self.player.clone(),
+                        None,
+                        self.config().open_url,
+                    );
 
                 match state_machine {
                     Ok(sm) => {

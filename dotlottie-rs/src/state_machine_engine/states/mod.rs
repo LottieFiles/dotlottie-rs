@@ -2,7 +2,7 @@ use std::{rc::Rc, sync::RwLock};
 
 use serde::Deserialize;
 
-use crate::{Config, DotLottiePlayerContainer, Layout, Mode};
+use crate::{dotlottie_player::Mode, Config, DotLottiePlayerContainer, Layout};
 
 use super::{actions::StateMachineActionError, transitions::Transition, StateMachineEngine};
 

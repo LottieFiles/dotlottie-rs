@@ -25,7 +25,7 @@ use triggers::{Trigger, TriggerManager, TriggerTrait, TriggerValue};
 use crate::state_machine_engine::listeners::Listener;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, DotLottiePlayerContainer, EventName,
-    PointerEvent, StateMachineEngineSecurityError,
+    OpenURL, PointerEvent, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -115,6 +115,8 @@ pub struct StateMachineEngine {
 
     state_machine: StateMachine,
 
+    open_url_config: OpenURL,
+
     state_history: Vec<String>,
     max_cycle_count: usize,
     current_cycle_count: usize,
@@ -143,6 +145,7 @@ impl Default for StateMachineEngine {
             action_mutated_triggers: false,
             pointer_x: 0.0,
             pointer_y: 0.0,
+            open_url_config: OpenURL::default(),
         }
     }
 }
@@ -158,6 +161,7 @@ impl StateMachineEngine {
         state_machine_definition: &str,
         player: Rc<RwLock<DotLottiePlayerContainer>>,
         max_cycle_count: Option<usize>,
+        open_url: OpenURL,
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
         let mut state_machine = StateMachineEngine {
             global_state: None,
@@ -177,6 +181,7 @@ impl StateMachineEngine {
             action_mutated_triggers: false,
             pointer_x: 0.0,
             pointer_y: 0.0,
+            open_url_config: open_url,
         };
 
         state_machine.create_state_machine(state_machine_definition, &player)
@@ -1024,7 +1029,7 @@ impl StateMachineEngine {
         }
     }
 
-    fn manage_on_complete_event(&mut self, event: &Event) {
+    fn manage_player_events(&mut self, event: &Event) {
         let listeners = self.listeners(Some(event.type_name()));
 
         if listeners.is_empty() {
@@ -1035,6 +1040,17 @@ impl StateMachineEngine {
 
         for listener in listeners {
             if let Listener::OnComplete {
+                state_name,
+                actions,
+            } = listener
+            {
+                if let Some(current_state) = &self.current_state {
+                    if current_state.name() == *state_name {
+                        actions_to_execute.extend(actions.clone());
+                    }
+                }
+            }
+            if let Listener::OnLoopComplete {
                 state_name,
                 actions,
             } = listener
@@ -1065,7 +1081,7 @@ impl StateMachineEngine {
         if event.type_name().contains("Pointer") || event.type_name().contains("Click") {
             self.manage_pointer_event(event, event.x(), event.y());
         } else {
-            self.manage_on_complete_event(event);
+            self.manage_player_events(event);
         }
 
         0

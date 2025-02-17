@@ -5,6 +5,8 @@ use serde::Deserialize;
 pub trait TransitionTrait {
     fn target_state(&self) -> &str;
     fn guards(&self) -> &Option<Vec<Guard>>;
+    fn easing(&self) -> [f32; 4];
+    fn duration(&self) -> f32;
     fn transitions_contain_event(&self) -> bool;
 }
 
@@ -16,21 +18,42 @@ pub enum Transition {
         to_state: String,
         guards: Option<Vec<Guard>>,
     },
+    Blended {
+        to_state: String,
+        guards: Option<Vec<Guard>>,
+        duration: f32,
+        easing: [f32; 4],
+    },
 }
 
 impl TransitionTrait for Transition {
     fn target_state(&self) -> &str {
         match self {
             Transition::Transition { to_state, .. } => to_state,
+            Transition::Blended { to_state, .. } => to_state,
         }
     }
 
     fn guards(&self) -> &Option<Vec<Guard>> {
         match self {
             Transition::Transition { guards, .. } => guards,
+            Transition::Blended { guards, .. } => guards,
         }
     }
 
+    fn easing(&self) -> [f32; 4] {
+        match self {
+            Transition::Transition { .. } => [0.0, 0.0, 0.0, 0.0],
+            Transition::Blended { easing, .. } => *easing,
+        }
+    }
+
+    fn duration(&self) -> f32 {
+        match self {
+            Transition::Transition { .. } => 0.0,
+            Transition::Blended { duration, .. } => *duration,
+        }
+    }
     fn transitions_contain_event(&self) -> bool {
         if let Some(guards) = self.guards() {
             for guard in guards {

@@ -56,6 +56,14 @@ pub trait Animation: Default {
     fn get_frame(&self) -> Result<f32, Self::Error>;
 
     fn set_slots(&mut self, slots: &str) -> Result<(), Self::Error>;
+
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), Self::Error>;
+
+    fn tween_to(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> Result<(), Self::Error>;
+
+    fn tween_update(&mut self) -> Result<bool, Self::Error>;
+
+    fn is_tweening(&self) -> bool;
 }
 
 pub trait Renderer: Sized + 'static {

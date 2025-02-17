@@ -111,7 +111,9 @@ interface Event {
     PointerMove(f32 x, f32 y);
     PointerEnter(f32 x, f32 y);
     PointerExit(f32 x, f32 y);
+    Click(f32 x, f32 y);
     OnComplete();
+    OnLoopComplete();
 };
 
 interface DotLottiePlayer {

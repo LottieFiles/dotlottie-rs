@@ -49,6 +49,10 @@ pub enum Listener {
         state_name: String,
         actions: Vec<Action>,
     },
+    OnLoopComplete {
+        state_name: String,
+        actions: Vec<Action>,
+    },
 }
 
 impl Display for Listener {
@@ -66,7 +70,7 @@ impl Display for Listener {
                 layer_name,
                 actions,
             } => f
-                .debug_struct("PointerUp")
+                .debug_struct("PointerDown")
                 .field("layer_name", layer_name)
                 .field("action", actions)
                 .finish(),
@@ -74,19 +78,19 @@ impl Display for Listener {
                 layer_name,
                 actions,
             } => f
-                .debug_struct("PointerUp")
+                .debug_struct("PointerEnter")
                 .field("layer_name", layer_name)
                 .field("action", actions)
                 .finish(),
             Self::PointerMove { actions } => f
-                .debug_struct("PointerUp")
+                .debug_struct("PointerMove")
                 .field("action", actions)
                 .finish(),
             Self::PointerExit {
                 layer_name,
                 actions,
             } => f
-                .debug_struct("PointerUp")
+                .debug_struct("PointerExit")
                 .field("layer_name", layer_name)
                 .field("action", actions)
                 .finish(),
@@ -102,7 +106,15 @@ impl Display for Listener {
                 state_name,
                 actions,
             } => f
-                .debug_struct("PointerUp")
+                .debug_struct("OnComplete")
+                .field("state_name", state_name)
+                .field("action", actions)
+                .finish(),
+            Self::OnLoopComplete {
+                state_name,
+                actions,
+            } => f
+                .debug_struct("OnLoopComplete")
                 .field("state_name", state_name)
                 .field("action", actions)
                 .finish(),
@@ -119,6 +131,7 @@ impl ListenerTrait for Listener {
             Listener::PointerMove { .. } => None,
             Listener::PointerExit { layer_name, .. } => layer_name.clone(),
             Listener::OnComplete { .. } => None,
+            Listener::OnLoopComplete { .. } => None,
             Listener::Click { layer_name, .. } => layer_name.clone(),
         }
     }
@@ -131,6 +144,7 @@ impl ListenerTrait for Listener {
             Listener::PointerMove { actions, .. } => actions,
             Listener::PointerExit { actions, .. } => actions,
             Listener::OnComplete { actions, .. } => actions,
+            Listener::OnLoopComplete { actions, .. } => actions,
             Listener::Click { actions, .. } => actions,
         }
     }
@@ -144,6 +158,7 @@ impl ListenerTrait for Listener {
             Listener::PointerExit { .. } => None,
             Listener::Click { .. } => None,
             Listener::OnComplete { state_name, .. } => Some(state_name.clone()),
+            Listener::OnLoopComplete { state_name, .. } => Some(state_name.clone()),
         }
     }
 
@@ -155,6 +170,7 @@ impl ListenerTrait for Listener {
             Listener::PointerMove { .. } => "PointerMove".to_string(),
             Listener::PointerExit { .. } => "PointerExit".to_string(),
             Listener::OnComplete { .. } => "OnComplete".to_string(),
+            Listener::OnLoopComplete { .. } => "OnComplete".to_string(),
             Listener::Click { .. } => "Click".to_string(),
         }
     }

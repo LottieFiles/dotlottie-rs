@@ -1139,6 +1139,12 @@ impl DotLottiePlayerContainer {
                 wasm_observer_callbacks_ffi::observer_on_loop(self.instance_id, loop_count);
             }
         }
+
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                sm.post_event(&Event::OnComplete);
+            }
+        }
     }
 
     pub fn emit_on_complete(&self) {
@@ -1153,6 +1159,12 @@ impl DotLottiePlayerContainer {
         {
             unsafe {
                 wasm_observer_callbacks_ffi::observer_on_complete(self.instance_id);
+            }
+        }
+
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                sm.post_event(&Event::OnComplete);
             }
         }
     }
@@ -1544,12 +1556,6 @@ impl DotLottiePlayerContainer {
                     self.emit_on_loop(self.loop_count());
                 } else {
                     self.emit_on_complete();
-
-                    if let Ok(mut state_machine) = self.state_machine.try_write() {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&Event::OnComplete);
-                        }
-                    }
                 }
             }
         }
@@ -1835,6 +1841,9 @@ impl DotLottiePlayer {
                             }
                             crate::listeners::Listener::OnComplete { .. } => {
                                 listener_types.push("OnComplete".to_string())
+                            }
+                            crate::listeners::Listener::OnLoopComplete { .. } => {
+                                listener_types.push("OnLoopComplete".to_string())
                             }
                             crate::listeners::Listener::Click { .. } => {
                                 listener_types.push("Click".to_string());

@@ -11,6 +11,10 @@ pub const HEIGHT: usize = 500;
 
 pub const STATE_MACHINE_NAME: &str = "smiley-slider";
 pub const ANIMATION_NAME: &str = "smiley-slider";
+// pub const STATE_MACHINE_NAME: &str = "rating";
+// pub const ANIMATION_NAME: &str = "star_marked";
+// pub const STATE_MACHINE_NAME: &str = "StateMachine1";
+// pub const ANIMATION_NAME: &str = "pig";
 
 struct Timer {
     last_update: Instant,
@@ -22,7 +26,7 @@ struct DummyObserver;
 
 impl StateMachineObserver for DummyObserver {
     fn on_transition(&self, previous_state: String, new_state: String) {
-        // println!("on_transition2: {} -> {}", previous_state, new_state);
+        println!("on_transition2: {} -> {}", previous_state, new_state);
     }
 
     fn on_state_entered(&self, entering_state: String) {
@@ -55,10 +59,10 @@ impl StateMachineObserver for DummyObserver {
         old_value: String,
         new_value: String,
     ) {
-        // println!(
-        //     "string_trigger_value_change ==> {} : {} -> {}",
-        //     trigger_name, old_value, new_value
-        // );
+        println!(
+            "string_trigger_value_change ==> {} : {} -> {}",
+            trigger_name, old_value, new_value
+        );
     }
 
     fn on_numeric_trigger_value_change(
@@ -237,7 +241,7 @@ fn main() {
         if left_down {
             let event = Event::PointerDown { x: mx, y: my };
 
-            println!("Sending pointer down");
+            // println!("Sending pointer down");
             let p = &mut *locked_player.write().unwrap();
             let _m = p.state_machine_post_event(&event);
         } else {

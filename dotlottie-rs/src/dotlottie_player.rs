@@ -1720,6 +1720,28 @@ impl DotLottiePlayerContainer {
         if self.is_tweening() {
             self.tween_update() && self.render()
         } else {
+            // Todo: This is disgusting to lock on every tick
+            match self.state_machine.try_read() {
+                Ok(state_machine) => {
+                    if state_machine.is_none() {
+                        // return false;
+                    }
+                }
+                Err(_) => {
+                    // return false;
+                }
+            }
+
+            match self.state_machine.try_write() {
+                Ok(mut state_machine) => {
+                    if let Some(sm) = state_machine.as_mut() {
+                        sm.resume_from_blending();
+                    }
+                }
+                Err(_) => {
+                    // return false;
+                }
+            }
             self.set_frame(next_frame) && self.render()
         }
     }

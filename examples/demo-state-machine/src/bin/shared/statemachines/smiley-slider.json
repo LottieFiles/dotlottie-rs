@@ -7,8 +7,15 @@
       "animation": "",
       "transitions": [
         {
-          "type": "Transition",
+          "type": "Blended",
           "toState": "star_1",
+          "duration": 0.5,
+          "easing": [
+            0.76,
+            0.0,
+            0.24,
+            1.0
+          ],
           "guards": [
             {
               "type": "Numeric",
@@ -19,8 +26,15 @@
           ]
         },
         {
-          "type": "Transition",
+          "type": "Blended",
           "toState": "star_2",
+          "duration": 0.5,
+          "easing": [
+            0.76,
+            0.0,
+            0.24,
+            1.0
+          ],
           "guards": [
             {
               "type": "Numeric",
@@ -31,8 +45,15 @@
           ]
         },
         {
-          "type": "Transition",
+          "type": "Blended",
           "toState": "star_3",
+          "duration": 0.5,
+          "easing": [
+            0.76,
+            0.0,
+            0.24,
+            1.0
+          ],
           "guards": [
             {
               "type": "Numeric",
@@ -45,6 +66,13 @@
         {
           "type": "Transition",
           "toState": "star_4",
+          "duration": 0.5,
+          "easing": [
+            0.76,
+            0.0,
+            0.24,
+            1.0
+          ],
           "guards": [
             {
               "type": "Numeric",
@@ -57,6 +85,13 @@
         {
           "type": "Transition",
           "toState": "star_5",
+          "duration": 0.5,
+          "easing": [
+            0.76,
+            0.0,
+            0.24,
+            1.0
+          ],
           "guards": [
             {
               "type": "Numeric",
@@ -73,6 +108,7 @@
       "name": "star_1",
       "animation": "",
       "autoplay": true,
+      "loop": true,
       "segment": "angry",
       "transitions": [],
       "entryActions": [
@@ -87,6 +123,7 @@
       "name": "star_2",
       "animation": "",
       "autoplay": true,
+      "loop": true,
       "segment": "sad",
       "transitions": [],
       "entryActions": [
@@ -101,6 +138,7 @@
       "name": "star_3",
       "animation": "",
       "autoplay": true,
+      "loop": true,
       "segment": "mourn",
       "transitions": [],
       "entryActions": [
@@ -115,6 +153,7 @@
       "name": "star_4",
       "animation": "",
       "autoplay": true,
+      "loop": true,
       "segment": "wink",
       "transitions": [],
       "entryActions": [
@@ -129,10 +168,11 @@
       "name": "star_5",
       "animation": "",
       "autoplay": true,
+      "loop": true,
       "segment": "laughing",
       "transitions": [],
       "entryActions": [
-        {
+        { 
           "type": "FireCustomEvent",
           "value": "WOOHOO STAR 5"
         }

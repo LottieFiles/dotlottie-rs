@@ -94,6 +94,26 @@ pub enum StateMachineEngineError {
     SecurityCheckErrorDuplicateStateName { state_name: String },
 }
 
+struct PointerData {
+    curr_entered_layer: String,
+    listened_layers: Vec<(String, String)>,
+    most_recent_event: Option<Event>,
+    pointer_x: f32,
+    pointer_y: f32,
+}
+
+impl Default for PointerData {
+    fn default() -> PointerData {
+        PointerData {
+            curr_entered_layer: "".to_string(),
+            listened_layers: Vec::new(),
+            most_recent_event: None,
+            pointer_x: 0.0,
+            pointer_y: 0.0,
+        }
+    }
+}
+
 pub struct StateMachineEngine {
     /* We keep references to the StateMachine's States. */
     /* This prevents duplicating the data inside the engine. */
@@ -102,27 +122,23 @@ pub struct StateMachineEngine {
 
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineEngineStatus,
+    pub open_url_config: OpenURL,
 
     triggers: TriggerManager,
     event_trigger: HashMap<String, String>,
     curr_event: Option<String>,
 
     // PointerEnter/PointerExit management
-    curr_entered_layer: String,
-    listened_layers: Vec<(String, String)>,
+    pointer_management: PointerData,
 
     observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
 
     state_machine: StateMachine,
 
-    open_url_config: OpenURL,
-
     state_history: Vec<String>,
     max_cycle_count: usize,
     current_cycle_count: usize,
     action_mutated_triggers: bool,
-    pointer_x: f32,
-    pointer_y: f32,
 }
 
 impl Default for StateMachineEngine {
@@ -131,21 +147,18 @@ impl Default for StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
+            open_url_config: OpenURL::default(),
             player: None,
             triggers: TriggerManager::new(),
             event_trigger: HashMap::new(),
             curr_event: None,
-            curr_entered_layer: "".to_string(),
-            listened_layers: Vec::new(),
+            pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
             state_history: Vec::new(),
             max_cycle_count: 20,
             current_cycle_count: 0,
             action_mutated_triggers: false,
-            pointer_x: 0.0,
-            pointer_y: 0.0,
-            open_url_config: OpenURL::default(),
         }
     }
 }
@@ -161,27 +174,23 @@ impl StateMachineEngine {
         state_machine_definition: &str,
         player: Rc<RwLock<DotLottiePlayerContainer>>,
         max_cycle_count: Option<usize>,
-        open_url: OpenURL,
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
         let mut state_machine = StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
+            open_url_config: OpenURL::default(),
             player: Some(player.clone()),
             triggers: TriggerManager::new(),
             event_trigger: HashMap::new(),
             curr_event: None,
-            curr_entered_layer: "".to_string(),
-            listened_layers: Vec::new(),
+            pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
             state_history: Vec::new(),
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
             action_mutated_triggers: false,
-            pointer_x: 0.0,
-            pointer_y: 0.0,
-            open_url_config: open_url,
         };
 
         state_machine.create_state_machine(state_machine_definition, &player)
@@ -443,10 +452,12 @@ impl StateMachineEngine {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&mut self, open_url: &OpenURL) {
         if self.status == StateMachineEngineStatus::Running {
             return;
         }
+
+        self.open_url_config = open_url.clone();
 
         self.observe_on_start();
 
@@ -529,7 +540,7 @@ impl StateMachineEngine {
             }
         }
 
-        self.listened_layers = all_listened_layers;
+        self.pointer_management.listened_layers = all_listened_layers;
     }
 
     fn get_state(&self, state_name: &str) -> Option<Rc<State>> {
@@ -856,7 +867,7 @@ impl StateMachineEngine {
     fn manage_explicit_events(&mut self, event: &Event, x: f32, y: f32) {
         let mut actions_to_execute: Vec<Action> = Vec::new();
         let listeners = self.listeners(None);
-        let mut entered_layer = self.curr_entered_layer.clone();
+        let mut entered_layer = self.pointer_management.curr_entered_layer.clone();
 
         for listener in listeners {
             if listener.type_name() == event.type_name() {
@@ -869,7 +880,7 @@ impl StateMachineEngine {
                         if let Ok(player_container) = try_read_lock {
                             // If we have a pointer down event, we need to check if the pointer is outside of the layer
                             if let Event::PointerExit { x, y } = event {
-                                if self.curr_entered_layer == *layer
+                                if self.pointer_management.curr_entered_layer == *layer
                                     && !player_container.hit_check(&layer, *x, *y)
                                 {
                                     entered_layer = "".to_string();
@@ -891,7 +902,7 @@ impl StateMachineEngine {
             }
         }
 
-        self.curr_entered_layer = entered_layer;
+        self.pointer_management.curr_entered_layer = entered_layer;
 
         for action in actions_to_execute {
             // Run the pipeline because listeners are outside of the evaluation pipeline loop
@@ -924,10 +935,10 @@ impl StateMachineEngine {
 
             if let Ok(player_container) = try_read_lock {
                 let mut hit = false;
-                let old_layer = self.curr_entered_layer.clone();
+                let old_layer = self.pointer_management.curr_entered_layer.clone();
 
                 // Loop through all layers we're listening to
-                for (layer, event_name) in &self.listened_layers {
+                for (layer, event_name) in &self.pointer_management.listened_layers {
                     // We're only interested in the listened layers that need enter / exit event
                     if event_name == event_type_name!(PointerEnter)
                         || event_name == event_type_name!(PointerExit)
@@ -936,11 +947,11 @@ impl StateMachineEngine {
                             hit = true;
 
                             // If it's that same current layer, do nothing
-                            if self.curr_entered_layer == *layer {
+                            if self.pointer_management.curr_entered_layer == *layer {
                                 break;
                             }
 
-                            self.curr_entered_layer = layer.to_string();
+                            self.pointer_management.curr_entered_layer = layer.to_string();
 
                             // Get all pointer_enter listeners
                             let pointer_enter_listeners =
@@ -949,7 +960,9 @@ impl StateMachineEngine {
                             // Add their actions if their layer name matches the current layer name in loop
                             for listener in pointer_enter_listeners {
                                 if let Some(listener_layer_name) = listener.get_layer_name() {
-                                    if *listener_layer_name == self.curr_entered_layer {
+                                    if *listener_layer_name
+                                        == self.pointer_management.curr_entered_layer
+                                    {
                                         actions_to_execute.extend(listener.get_actions().clone());
                                     }
                                 }
@@ -960,7 +973,7 @@ impl StateMachineEngine {
 
                 // We didn't hit any listened layers
                 if !hit {
-                    self.curr_entered_layer = "".to_string();
+                    self.pointer_management.curr_entered_layer = "".to_string();
 
                     let pointer_exit_listeners =
                         self.listeners(Some(event_type_name!(PointerExit).to_string()));
@@ -1012,8 +1025,9 @@ impl StateMachineEngine {
     // With the current setup we can have an action that happens when the cursor is over the canvas
     // and another action that happens when the cursor is over a specific layer.
     fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32) {
-        self.pointer_x = x;
-        self.pointer_y = y;
+        self.pointer_management.pointer_x = x;
+        self.pointer_management.pointer_y = y;
+
         // This will handle PointerDown, PointerUp, PointerEnter, PointerExit, Click
         if event.type_name() != "PointerMove" {
             self.manage_explicit_events(event, x, y);
@@ -1078,6 +1092,8 @@ impl StateMachineEngine {
     // 3: Pause animation
     // 4: Request and draw a new single frame of the animation (needed for sync state)
     pub fn post_event(&mut self, event: &Event) -> i32 {
+        self.pointer_management.most_recent_event = Some(event.clone());
+
         if event.type_name().contains("Pointer") || event.type_name().contains("Click") {
             self.manage_pointer_event(event, event.x(), event.y());
         } else {

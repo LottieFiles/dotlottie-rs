@@ -1,12 +1,17 @@
 use thiserror::Error;
 
 use serde::Deserialize;
+use utils::NativeOpenURL;
+use whitelist::Whitelist;
 
 use std::{rc::Rc, sync::RwLock};
 
-use crate::DotLottiePlayerContainer;
+use crate::{DotLottiePlayerContainer, Event, OpenURLMode};
 
 use super::{state_machine::StringNumber, StateMachineEngine};
+
+mod utils;
+mod whitelist;
 
 #[derive(Error, Debug)]
 pub enum StateMachineActionError {
@@ -29,6 +34,7 @@ pub trait ActionTrait {
 pub enum Action {
     OpenUrl {
         url: String,
+        target: String,
     },
     Increment {
         trigger_name: String,
@@ -264,8 +270,8 @@ impl ActionTrait for Action {
                         // If there is a $x inside value, replace with the value of x
                         // If there is a $y inside value, replace with the value of x
                         let value = value
-                            .replace("$x", &engine.pointer_x.to_string())
-                            .replace("$y", &engine.pointer_y.to_string());
+                            .replace("$x", &engine.pointer_management.pointer_x.to_string())
+                            .replace("$y", &engine.pointer_management.pointer_y.to_string());
 
                         if !player.set_slots(&value) {
                             return Err(StateMachineActionError::ExecuteError(format!(
@@ -283,12 +289,50 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::OpenUrl { .. } => {
-                // let _ = Command::new("open")
-                //     .arg(url)
-                //     .spawn()
-                //     .expect("Failed to open URL")
-                //     .wait();
+            Action::OpenUrl { url, target } => {
+                let interaction = &engine.pointer_management.most_recent_event;
+
+                let open_url_config = &engine.open_url_config;
+
+                // If theres a whitelist and the url isn't present, do nothing
+                if open_url_config.whitelist.len() != 0 {
+                    let mut whitelist = Whitelist::new();
+
+                    // Add patterns to whitelist
+                    for entry in &open_url_config.whitelist {
+                        let _ = whitelist.add(&entry);
+                    }
+
+                    if let Ok(false) | Err(_) = whitelist.is_allowed(&url) {
+                        return Err(StateMachineActionError::ExecuteError(
+                            "URL contained inside the Action has not been whitelisted.".to_string(),
+                        ));
+                    }
+                }
+
+                match open_url_config.mode {
+                    OpenURLMode::Deny => {
+                        return Err(StateMachineActionError::ExecuteError(
+                            "Opening URLs has been denied by the player's configuration."
+                                .to_string(),
+                        ));
+                    }
+                    OpenURLMode::Interaction => {
+                        if let Some(event) = interaction {
+                            if let Event::PointerDown { .. } = event {
+                                let _ = NativeOpenURL::open_url(url, target);
+                                return Ok(());
+                            }
+                        }
+                    }
+                    OpenURLMode::Allow => {
+                        let _ = NativeOpenURL::open_url(url, target);
+                        return Ok(());
+                    }
+                }
+
+                println!("🙇‍♂️ done");
+
                 Ok(())
             }
             Action::FireCustomEvent { value } => {

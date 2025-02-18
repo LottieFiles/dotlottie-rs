@@ -154,7 +154,6 @@ pub struct Config {
     pub segment: Vec<f32>,
     pub background_color: u32,
     pub layout: Layout,
-    pub open_url: OpenURL,
     pub marker: String,
     pub theme_id: String,
     pub state_machine_id: String,
@@ -174,7 +173,6 @@ impl Default for Config {
             marker: String::new(),
             theme_id: String::new(),
             state_machine_id: String::new(),
-            open_url: OpenURL::default(),
         }
     }
 }
@@ -1750,7 +1748,7 @@ impl DotLottiePlayer {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 
-    pub fn state_machine_start(&self) -> bool {
+    pub fn state_machine_start(&self, open_url: &OpenURL) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1765,7 +1763,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    sm.start();
+                    sm.start(open_url);
                 }
             }
             Err(_) => {
@@ -2057,7 +2055,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start();
+                    let start = self.state_machine_start(&OpenURL::default());
 
                     return load && start;
                 }
@@ -2080,7 +2078,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start();
+                    let start = self.state_machine_start(&OpenURL::default());
 
                     return load && start;
                 }
@@ -2103,7 +2101,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start();
+                    let start = self.state_machine_start(&OpenURL::default());
 
                     return load && start;
                 }
@@ -2270,12 +2268,7 @@ impl DotLottiePlayer {
     }
 
     pub fn state_machine_load_data(&self, state_machine: &str) -> bool {
-        let state_machine = StateMachineEngine::new(
-            state_machine,
-            self.player.clone(),
-            None,
-            self.config().open_url,
-        );
+        let state_machine = StateMachineEngine::new(state_machine, self.player.clone(), None);
 
         if state_machine.is_ok() {
             match self.state_machine.try_write() {
@@ -2314,12 +2307,7 @@ impl DotLottiePlayer {
         match state_machine_string {
             Some(machine) => {
                 let state_machine: Result<StateMachineEngine, StateMachineEngineError> =
-                    StateMachineEngine::new(
-                        &machine,
-                        self.player.clone(),
-                        None,
-                        self.config().open_url,
-                    );
+                    StateMachineEngine::new(&machine, self.player.clone(), None);
 
                 match state_machine {
                     Ok(sm) => {

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{Config, DotLottiePlayer};
+    use dotlottie_rs::{Config, DotLottiePlayer, OpenURL};
 
     fn get_current_state_name(player: &DotLottiePlayer) -> String {
         player.state_machine_current_state()
@@ -14,7 +14,7 @@ mod tests {
         player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
 
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(&OpenURL::default());
 
         assert!(l);
         assert!(s);
@@ -40,7 +40,7 @@ mod tests {
         player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
 
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(&OpenURL::default());
 
         assert!(l);
         assert!(s);
@@ -70,7 +70,7 @@ mod tests {
         player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
 
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(&OpenURL::default());
 
         assert!(l);
         assert!(s);

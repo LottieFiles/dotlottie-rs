@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{Config, DotLottiePlayer};
+    use dotlottie_rs::{Config, DotLottiePlayer, OpenURL};
 
     #[test]
     fn check_guards_for_existing_triggers() {
@@ -9,7 +9,7 @@ mod tests {
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
 
         let l = player.state_machine_load(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(&OpenURL::default());
 
         assert!(!l);
         assert!(!s);
@@ -23,7 +23,7 @@ mod tests {
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
 
         let l = player.state_machine_load(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(&OpenURL::default());
 
         assert!(!l);
         assert!(!s);
@@ -36,7 +36,7 @@ mod tests {
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
 
         let l = player.state_machine_load(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(&OpenURL::default());
 
         assert!(!l);
         assert!(!s);
@@ -49,7 +49,7 @@ mod tests {
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
 
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(&OpenURL::default());
 
         assert!(!l);
         assert!(!s);

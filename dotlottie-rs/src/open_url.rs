@@ -1,31 +1,27 @@
 #[derive(Debug, Clone, PartialEq, Copy)]
-pub enum Mode {
+pub enum OpenURLMode {
     Deny,
     Interaction,
-    Whitelist,
     Allow,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OpenURL {
-    pub mode: Mode,
+    pub mode: OpenURLMode,
     pub whitelist: Vec<String>,
 }
 
 impl Default for OpenURL {
     fn default() -> Self {
         Self {
-            mode: Mode::Interaction,
+            mode: OpenURLMode::Interaction,
             whitelist: vec![],
         }
     }
 }
 
 impl OpenURL {
-    pub fn new(mode: Mode, whitelist: Vec<String>) -> Self {
-        Self {
-            mode,
-            whitelist,
-        }
+    pub fn new(mode: OpenURLMode, whitelist: Vec<String>) -> Self {
+        Self { mode, whitelist }
     }
 }

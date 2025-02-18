@@ -642,7 +642,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_load(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_override_current_state1(
+pub unsafe extern "C" fn dotlottie_state_machine_override_current_state(
     ptr: *mut DotLottiePlayer,
     state_name: *const c_char,
     do_tick: bool,
@@ -666,7 +666,9 @@ pub unsafe extern "C" fn dotlottie_state_machine_start(
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         let config_ref = &*open_url_config;
         to_exit_status(dotlottie_player.state_machine_start(config_ref))
-    })
+    });
+
+    DOTLOTTIE_ERROR
 }
 
 #[no_mangle]

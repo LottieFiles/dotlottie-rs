@@ -1,6 +1,7 @@
 namespace dotlottie_player {
     Layout create_default_layout();
     Config create_default_config();
+    OpenURL create_default_open_url();
     string transform_theme_to_lottie_slots([ByRef] string theme_data, [ByRef] string animation_id);
 };
 

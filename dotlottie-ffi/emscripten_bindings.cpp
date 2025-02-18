@@ -47,6 +47,17 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 
     function("createDefaultLayout", &create_default_layout);
 
+    enum_<OpenURLMode>("OpenURLMode")
+        .value("Deny", OpenURLMode::kDeny)
+        .value("Interaction", OpenURLMode::kInteraction)
+        .value("Allow", OpenURLMode::kAllow);
+
+    value_object<OpenURL>("OpenURL")
+        .field("mode", &OpenURL::OpenURLMode)
+        .field("whitelist", &OpenURL::whitelist);
+
+    function("createDefaultOpenURL", &create_default_open_url);
+
     value_object<Marker>("Marker")
         .field("name", &Marker::name)
         .field("time", &Marker::time)

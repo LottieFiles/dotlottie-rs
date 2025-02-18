@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use dotlottie_rs::{
     Config, Event, Fit, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme,
-    Marker, Mode,
+    Marker, Mode, OpenURL, OpenURLMode,
 };
 
 // Function return codes
@@ -427,6 +427,30 @@ impl DotLottieFit {
     }
 }
 
+// #[derive(Clone, PartialEq)]
+// #[repr(C)]
+// pub enum OpenURLMode {
+//     Deny,
+//     Interaction,
+//     Allow,
+// }
+
+// #[derive(Clone, PartialEq)]
+// #[repr(C)]
+// pub struct OpenURL {
+//     pub mode: OpenURLMode,
+//     pub whitelist: Vec<String>,
+// }
+
+// impl DotLottieOpenURL {
+//         pub fn new() -> Self {
+//             Self {
+//                 mode: OpenURLMode::Interaction,
+//                 whitelist: vec![],
+//             }
+//         }
+// }
+
 #[derive(Clone, PartialEq)]
 #[repr(C)]
 pub struct DotLottieLayout {
@@ -468,7 +492,9 @@ pub enum DotLottieEvent {
     PointerMove { x: f32, y: f32 },
     PointerEnter { x: f32, y: f32 },
     PointerExit { x: f32, y: f32 },
+    Click { x: f32, y: f32 },
     OnComplete,
+    OnLoopComplete,
 }
 
 impl DotLottieEvent {
@@ -479,7 +505,9 @@ impl DotLottieEvent {
             DotLottieEvent::PointerMove { x, y } => Event::PointerMove { x: *x, y: *y },
             DotLottieEvent::PointerEnter { x, y } => Event::PointerEnter { x: *x, y: *y },
             DotLottieEvent::PointerExit { x, y } => Event::PointerExit { x: *x, y: *y },
+            DotLottieEvent::Click { x, y } => Event::Click { x: *x, y: *y },
             DotLottieEvent::OnComplete => Event::OnComplete,
+            DotLottieEvent::OnLoopComplete => Event::OnLoopComplete,
         }
     }
 }

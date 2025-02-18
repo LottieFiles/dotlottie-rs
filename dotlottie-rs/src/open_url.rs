@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, PartialEq, Copy)]
+#[repr(C)]
 pub enum OpenURLMode {
     Deny,
     Interaction,
@@ -6,6 +7,7 @@ pub enum OpenURLMode {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[repr(C)]
 pub struct OpenURL {
     pub mode: OpenURLMode,
     pub whitelist: Vec<String>,

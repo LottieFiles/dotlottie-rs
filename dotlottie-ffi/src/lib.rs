@@ -3,6 +3,9 @@
 
 pub use dotlottie_rs::*;
 
+use crate::actions::open_url::OpenURLMode;
+use dotlottie_rs::actions::open_url::OpenURL;
+
 mod ffi;
 
 pub fn create_default_layout() -> Layout {

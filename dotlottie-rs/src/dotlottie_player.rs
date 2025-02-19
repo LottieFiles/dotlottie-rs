@@ -2,6 +2,7 @@ use instant::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
+use crate::actions::open_url::OpenURL;
 use crate::state_machine_engine::events::Event;
 use crate::{
     extract_markers,
@@ -10,8 +11,7 @@ use crate::{
     Marker, MarkersMap, StateMachineEngine,
 };
 use crate::{
-    transform_theme_to_lottie_slots, DotLottieManager, Manifest, OpenURL, Renderer,
-    StateMachineEngineError,
+    transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer, StateMachineEngineError,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1748,7 +1748,7 @@ impl DotLottiePlayer {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 
-    pub fn state_machine_start(&self, open_url: &OpenURL) -> bool {
+    pub fn state_machine_start(&self, open_url: OpenURL) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1763,7 +1763,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    sm.start(open_url);
+                    sm.start(&open_url);
                 }
             }
             Err(_) => {
@@ -2055,7 +2055,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start(&OpenURL::default());
+                    let start = self.state_machine_start(OpenURL::default());
 
                     return load && start;
                 }
@@ -2078,7 +2078,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start(&OpenURL::default());
+                    let start = self.state_machine_start(OpenURL::default());
 
                     return load && start;
                 }
@@ -2101,7 +2101,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start(&OpenURL::default());
+                    let start = self.state_machine_start(OpenURL::default());
 
                     return load && start;
                 }

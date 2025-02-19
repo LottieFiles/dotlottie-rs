@@ -100,7 +100,7 @@ interface DotLottiePlayer {
     
     boolean state_machine_load([ByRef] string state_machine_id);
     boolean state_machine_load_data([ByRef] string state_machine);
-    boolean state_machine_start([ByRef] OpenURL open_url);
+    boolean state_machine_start(OpenURL open_url);
     boolean state_machine_stop();
     string active_state_machine_id();
     string get_state_machine([ByRef] string state_machine_id);

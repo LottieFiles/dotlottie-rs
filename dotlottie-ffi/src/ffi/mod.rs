@@ -1,6 +1,9 @@
 use std::{ffi::c_char, slice};
 
-use dotlottie_rs::{Config, DotLottiePlayer, LayerBoundingBox, OpenURL};
+use dotlottie_rs::{Config, DotLottiePlayer, LayerBoundingBox};
+
+use dotlottie_rs::actions::open_url::OpenURL;
+
 use types::*;
 
 pub mod types;
@@ -658,18 +661,18 @@ pub unsafe extern "C" fn dotlottie_state_machine_override_current_state(
     })
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_start(
-    ptr: *mut DotLottiePlayer,
-    open_url_config: *const OpenURL,
-) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        let config_ref = &*open_url_config;
-        to_exit_status(dotlottie_player.state_machine_start(config_ref))
-    });
+// #[no_mangle]
+// pub unsafe extern "C" fn dotlottie_state_machine_start(
+//     ptr: *mut DotLottiePlayer,
+//     open_url_config: OpenURL,
+// ) -> i32 {
+//     exec_dotlottie_player_op(ptr, |dotlottie_player| {
+//         // let config_ref = &*open_url_config;
+//         to_exit_status(dotlottie_player.state_machine_start(open_url_config))
+//     });
 
-    DOTLOTTIE_ERROR
-}
+//     DOTLOTTIE_ERROR
+// }
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_stop(ptr: *mut DotLottiePlayer) -> i32 {

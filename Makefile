@@ -275,7 +275,6 @@ cpp_link_args = [
 	'-sUSE_ES6_IMPORT_META=0',
 	'-sENVIRONMENT=web',
 	'-sFILESYSTEM=0',
-	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
 	'--emit-tsd=${WASM_MODULE}.d.ts',

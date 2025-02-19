@@ -1,3 +1,4 @@
+use open_url::OpenURLMode;
 use thiserror::Error;
 
 use serde::Deserialize;
@@ -6,10 +7,11 @@ use whitelist::Whitelist;
 
 use std::{rc::Rc, sync::RwLock};
 
-use crate::{DotLottiePlayerContainer, Event, OpenURLMode};
+use crate::{DotLottiePlayerContainer, Event};
 
 use super::{state_machine::StringNumber, StateMachineEngine};
 
+pub mod open_url;
 mod utils;
 mod whitelist;
 
@@ -330,8 +332,6 @@ impl ActionTrait for Action {
                         return Ok(());
                     }
                 }
-
-                println!("🙇‍♂️ done");
 
                 Ok(())
             }

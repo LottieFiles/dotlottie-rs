@@ -14,6 +14,7 @@ pub mod states;
 pub mod transitions;
 pub mod triggers;
 
+use actions::open_url::OpenURL;
 use actions::{Action, ActionTrait};
 use listeners::ListenerTrait;
 use state_machine::StateMachine;
@@ -25,7 +26,7 @@ use triggers::{Trigger, TriggerManager, TriggerTrait, TriggerValue};
 use crate::state_machine_engine::listeners::Listener;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, DotLottiePlayerContainer, EventName,
-    OpenURL, PointerEvent, StateMachineEngineSecurityError,
+    PointerEvent, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;

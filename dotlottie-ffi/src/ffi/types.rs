@@ -7,8 +7,10 @@ use std::sync::Arc;
 
 use dotlottie_rs::{
     Config, Event, Fit, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme,
-    Marker, Mode, OpenURL, OpenURLMode,
+    Marker, Mode,
 };
+
+use dotlottie_rs::actions::open_url::OpenURL;
 
 // Function return codes
 pub const DOTLOTTIE_SUCCESS: i32 = 0;
@@ -439,16 +441,16 @@ impl DotLottieFit {
 // #[repr(C)]
 // pub struct OpenURL {
 //     pub mode: OpenURLMode,
-//     pub whitelist: Vec<String>,
+//     pub whitelist: Vec<DotLottieString>,
 // }
 
 // impl DotLottieOpenURL {
-//         pub fn new() -> Self {
-//             Self {
-//                 mode: OpenURLMode::Interaction,
-//                 whitelist: vec![],
-//             }
+//     pub fn new() -> Self {
+//         Self {
+//             mode: OpenURLMode::Interaction,
+//             whitelist: vec![],
 //         }
+//     }
 // }
 
 #[derive(Clone, PartialEq)]

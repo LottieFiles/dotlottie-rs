@@ -3,7 +3,6 @@ mod fms;
 mod layout;
 mod lottie_renderer;
 mod markers;
-mod open_url;
 mod state_machine_engine;
 mod theming;
 
@@ -12,7 +11,6 @@ pub use fms::*;
 pub use layout::*;
 pub use lottie_renderer::*;
 pub use markers::*;
-pub use open_url::*;
 pub use state_machine_engine::events::*;
 pub use state_machine_engine::security::*;
 pub use state_machine_engine::*;

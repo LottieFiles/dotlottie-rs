@@ -28,7 +28,7 @@ interface StateMachineObserver {
     void on_stop();
     void on_string_trigger_value_change(string trigger_name, string old_value, string new_value);
     void on_numeric_trigger_value_change(string trigger_name, f32 old_value, f32 new_value);
-    void on_boolean_trigger_value_change(string trigger_name, bool old_value, bool new_value);
+    void on_boolean_trigger_value_change(string trigger_name, boolean old_value, boolean new_value);
     void on_trigger_fired(string trigger_name);
 };
 

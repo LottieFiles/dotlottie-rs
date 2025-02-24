@@ -2,7 +2,7 @@ use instant::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
-use crate::actions::open_url::OpenURL;
+use crate::actions::open_url::OpenUrl;
 use crate::state_machine_engine::events::Event;
 use crate::{
     extract_markers,
@@ -1748,7 +1748,7 @@ impl DotLottiePlayer {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 
-    pub fn state_machine_start(&self, open_url: OpenURL) -> bool {
+    pub fn state_machine_start(&self, open_url: OpenUrl) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -2055,7 +2055,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start(OpenURL::default());
+                    let start = self.state_machine_start(OpenUrl::default());
 
                     return load && start;
                 }
@@ -2078,7 +2078,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start(OpenURL::default());
+                    let start = self.state_machine_start(OpenUrl::default());
 
                     return load && start;
                 }
@@ -2101,7 +2101,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start(OpenURL::default());
+                    let start = self.state_machine_start(OpenUrl::default());
 
                     return load && start;
                 }

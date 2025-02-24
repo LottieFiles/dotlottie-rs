@@ -14,7 +14,7 @@ pub mod states;
 pub mod transitions;
 pub mod triggers;
 
-use actions::open_url::OpenURL;
+use actions::open_url::OpenUrl;
 use actions::{Action, ActionTrait};
 use listeners::ListenerTrait;
 use state_machine::StateMachine;
@@ -123,7 +123,7 @@ pub struct StateMachineEngine {
 
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineEngineStatus,
-    pub open_url_config: OpenURL,
+    pub open_url_config: OpenUrl,
 
     triggers: TriggerManager,
     event_trigger: HashMap<String, String>,
@@ -148,7 +148,7 @@ impl Default for StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
-            open_url_config: OpenURL::default(),
+            open_url_config: OpenUrl::default(),
             player: None,
             triggers: TriggerManager::new(),
             event_trigger: HashMap::new(),
@@ -180,7 +180,7 @@ impl StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
-            open_url_config: OpenURL::default(),
+            open_url_config: OpenUrl::default(),
             player: Some(player.clone()),
             triggers: TriggerManager::new(),
             event_trigger: HashMap::new(),
@@ -453,7 +453,7 @@ impl StateMachineEngine {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self, open_url: &OpenURL) {
+    pub fn start(&mut self, open_url: &OpenUrl) {
         if self.status == StateMachineEngineStatus::Running {
             return;
         }

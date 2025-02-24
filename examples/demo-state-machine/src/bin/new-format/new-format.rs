@@ -1,3 +1,4 @@
+use dotlottie_rs::actions::open_url::OpenUrl;
 use dotlottie_rs::events::Event;
 use dotlottie_rs::{Config, DotLottiePlayer, StateMachineObserver};
 use minifb::{Key, MouseButton, Window, WindowOptions};
@@ -47,10 +48,6 @@ impl StateMachineObserver for DummyObserver {
 
     fn on_stop(&self) {
         println!(">>>> stop");
-    }
-
-    fn on_pause(&self) {
-        println!(">>>> pause");
     }
 
     fn on_string_trigger_value_change(
@@ -168,8 +165,9 @@ fn main() {
 
     println!("Load state machine data -> {}", r);
     lottie_player.state_machine_subscribe(observer.clone());
+    let config = OpenUrl::default();
 
-    let s = lottie_player.state_machine_start();
+    let s = lottie_player.state_machine_start(config);
 
     println!("Start state machine -> {}", s);
 

@@ -1,4 +1,4 @@
-use open_url::OpenURLMode;
+use open_url::OpenUrlMode;
 use thiserror::Error;
 
 use serde::Deserialize;
@@ -313,13 +313,13 @@ impl ActionTrait for Action {
                 }
 
                 match open_url_config.mode {
-                    OpenURLMode::Deny => {
+                    OpenUrlMode::Deny => {
                         return Err(StateMachineActionError::ExecuteError(
                             "Opening URLs has been denied by the player's configuration."
                                 .to_string(),
                         ));
                     }
-                    OpenURLMode::Interaction => {
+                    OpenUrlMode::Interaction => {
                         if let Some(event) = interaction {
                             if let Event::PointerDown { .. } = event {
                                 let _ = NativeOpenURL::open_url(url, target);
@@ -327,7 +327,7 @@ impl ActionTrait for Action {
                             }
                         }
                     }
-                    OpenURLMode::Allow => {
+                    OpenUrlMode::Allow => {
                         let _ = NativeOpenURL::open_url(url, target);
                         return Ok(());
                     }

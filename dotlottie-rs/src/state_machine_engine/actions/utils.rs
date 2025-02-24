@@ -27,13 +27,8 @@ impl NativeOpenURL {
 
         #[cfg(not(target_os = "emscripten"))]
         {
-            use webbrowser::Browser;
-            use webbrowser::BrowserOptions;
-
-            let mut option: BrowserOptions = Default::default();
-            option.with_target_hint(target);
-
-            let result = webbrowser::open_browser_with_options(Browser::Default, url, &option);
+            let result = webbrowser::open(url);
+            let _ = target.to_lowercase();
 
             if result.is_err() {
                 return Err("Failed to open browser".to_string());

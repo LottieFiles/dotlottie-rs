@@ -3,8 +3,8 @@
 
 pub use dotlottie_rs::*;
 
-use crate::actions::open_url::OpenURLMode;
-use dotlottie_rs::actions::open_url::OpenURL;
+use crate::actions::open_url::OpenUrlMode;
+use dotlottie_rs::actions::open_url::OpenUrl;
 
 mod ffi;
 
@@ -12,8 +12,8 @@ pub fn create_default_layout() -> Layout {
     Layout::default()
 }
 
-pub fn create_default_open_url() -> OpenURL {
-    OpenURL::default()
+pub fn create_default_open_url() -> OpenUrl {
+    OpenUrl::default()
 }
 
 pub fn create_default_config() -> Config {

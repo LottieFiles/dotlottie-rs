@@ -10,7 +10,7 @@ use dotlottie_rs::{
     Marker, Mode,
 };
 
-use dotlottie_rs::actions::open_url::OpenURL;
+use dotlottie_rs::actions::open_url::OpenUrl;
 
 // Function return codes
 pub const DOTLOTTIE_SUCCESS: i32 = 0;
@@ -431,7 +431,7 @@ impl DotLottieFit {
 
 // #[derive(Clone, PartialEq)]
 // #[repr(C)]
-// pub enum OpenURLMode {
+// pub enum OpenUrlMode {
 //     Deny,
 //     Interaction,
 //     Allow,
@@ -439,15 +439,15 @@ impl DotLottieFit {
 
 // #[derive(Clone, PartialEq)]
 // #[repr(C)]
-// pub struct OpenURL {
-//     pub mode: OpenURLMode,
+// pub struct OpenUrl {
+//     pub mode: OpenUrlMode,
 //     pub whitelist: Vec<DotLottieString>,
 // }
 
-// impl DotLottieOpenURL {
+// impl DotLottieOpenUrl {
 //     pub fn new() -> Self {
 //         Self {
-//             mode: OpenURLMode::Interaction,
+//             mode: OpenUrlMode::Interaction,
 //             whitelist: vec![],
 //         }
 //     }

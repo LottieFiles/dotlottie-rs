@@ -1,7 +1,7 @@
 namespace dotlottie_player {
     Layout create_default_layout();
     Config create_default_config();
-    OpenURL create_default_open_url();
+    OpenUrl create_default_open_url();
     string transform_theme_to_lottie_slots([ByRef] string theme_data, [ByRef] string animation_id);
 };
 
@@ -26,14 +26,14 @@ dictionary Layout {
     sequence<f32> align;
 };
 
-enum OpenURLMode {
+enum OpenUrlMode {
     "Deny",
     "Interaction",
     "Allow",
 };
 
-dictionary OpenURL {
-    OpenURLMode mode;
+dictionary OpenUrl {
+    OpenUrlMode mode;
     sequence<string> whitelist;
 };
 
@@ -100,7 +100,7 @@ interface DotLottiePlayer {
     
     boolean state_machine_load([ByRef] string state_machine_id);
     boolean state_machine_load_data([ByRef] string state_machine);
-    boolean state_machine_start(OpenURL open_url);
+    boolean state_machine_start(OpenUrl open_url);
     boolean state_machine_stop();
     string active_state_machine_id();
     string get_state_machine([ByRef] string state_machine_id);

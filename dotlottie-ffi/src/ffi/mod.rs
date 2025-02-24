@@ -2,7 +2,7 @@ use std::{ffi::c_char, slice};
 
 use dotlottie_rs::{Config, DotLottiePlayer, LayerBoundingBox};
 
-use dotlottie_rs::actions::open_url::OpenURL;
+use dotlottie_rs::actions::open_url::OpenUrl;
 
 use types::*;
 

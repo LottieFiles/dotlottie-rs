@@ -126,7 +126,6 @@ interface Event {
     Click(f32 x, f32 y);
     OnComplete();
     OnLoopComplete();
-
 };
 
 interface DotLottiePlayer {

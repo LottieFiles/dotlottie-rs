@@ -2,6 +2,7 @@ use instant::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
+use crate::actions::open_url::OpenUrl;
 use crate::state_machine_engine::events::Event;
 use crate::{
     extract_markers,
@@ -1747,7 +1748,7 @@ impl DotLottiePlayer {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 
-    pub fn state_machine_start(&self) -> bool {
+    pub fn state_machine_start(&self, open_url: OpenUrl) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1762,7 +1763,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    sm.start();
+                    sm.start(&open_url);
                 }
             }
             Err(_) => {
@@ -2054,7 +2055,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start();
+                    let start = self.state_machine_start(OpenUrl::default());
 
                     return load && start;
                 }
@@ -2077,7 +2078,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start();
+                    let start = self.state_machine_start(OpenUrl::default());
 
                     return load && start;
                 }
@@ -2100,7 +2101,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start();
+                    let start = self.state_machine_start(OpenUrl::default());
 
                     return load && start;
                 }
@@ -2240,6 +2241,40 @@ impl DotLottiePlayer {
         }
 
         sm.as_mut().unwrap().unsubscribe(observer);
+
+        true
+    }
+
+    // For the moment the framework dedicated state machine listener is not needed for wasm.
+    // The only use case at the moment for opening urls on iOS and Android.
+    // Wasm manages this without the need for a dedicated listener.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn state_machine_framework_subscribe(
+        &self,
+        observer: Arc<dyn StateMachineObserver>,
+    ) -> bool {
+        let mut sm = self.state_machine.write().unwrap();
+
+        if sm.is_none() {
+            return false;
+        }
+        sm.as_mut().unwrap().framework_subscribe(observer);
+
+        true
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn state_machine_framework_unsubscribe(
+        &self,
+        observer: &Arc<dyn StateMachineObserver>,
+    ) -> bool {
+        let mut sm = self.state_machine.write().unwrap();
+
+        if sm.is_none() {
+            return false;
+        }
+
+        sm.as_mut().unwrap().framework_unsubscribe(observer);
 
         true
     }

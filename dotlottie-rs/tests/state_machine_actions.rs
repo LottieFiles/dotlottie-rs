@@ -83,7 +83,7 @@ impl StateMachineObserver for MockObserver {
 mod tests {
     use super::*;
 
-    use dotlottie_rs::{Config, DotLottiePlayer, StateMachineObserver};
+    use dotlottie_rs::{actions::open_url::OpenUrl, Config, DotLottiePlayer, StateMachineObserver};
 
     fn get_current_state_name(player: &DotLottiePlayer) -> String {
         player.state_machine_current_state()
@@ -95,7 +95,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(OpenUrl::default());
 
         assert!(l);
         assert!(s);
@@ -130,7 +130,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(OpenUrl::default());
 
         assert!(l);
         assert!(s);
@@ -165,7 +165,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(OpenUrl::default());
 
         assert!(l);
         assert!(s);
@@ -193,7 +193,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(OpenUrl::default());
 
         assert!(l);
         assert!(s);
@@ -215,7 +215,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(OpenUrl::default());
 
         assert!(l);
         assert!(s);
@@ -237,7 +237,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(OpenUrl::default());
 
         assert!(l);
         assert!(s);
@@ -259,7 +259,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(OpenUrl::default());
 
         assert!(l);
         assert!(s);
@@ -283,7 +283,7 @@ mod tests {
         assert_eq!(player.current_frame(), 0.0);
 
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(OpenUrl::default());
 
         assert!(l);
         assert!(s);
@@ -313,7 +313,7 @@ mod tests {
         assert_eq!(player.current_frame(), 0.0);
 
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(OpenUrl::default());
 
         assert!(l);
         assert!(s);
@@ -343,7 +343,7 @@ mod tests {
         assert_eq!(player.current_frame(), 0.0);
 
         let l = player.state_machine_load_data(reset_sm);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(OpenUrl::default());
 
         assert!(l);
         assert!(s);
@@ -368,7 +368,7 @@ mod tests {
         assert_eq!(player.current_frame(), 0.0);
 
         let l = player.state_machine_load_data(reset_sm);
-        let s = player.state_machine_start();
+        let s = player.state_machine_start(OpenUrl::default());
 
         let events = Arc::new(Mutex::new(vec![]));
         let observer_events = Arc::clone(&events);

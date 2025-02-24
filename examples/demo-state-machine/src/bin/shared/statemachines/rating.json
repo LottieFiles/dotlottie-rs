@@ -20,7 +20,7 @@
         },
         {
           "type": "Transition",
-          "toState": "global",
+          "toState": "star_1",
           "guards": [
             {
               "type": "Numeric",
@@ -105,6 +105,11 @@
         {
           "type": "FireCustomEvent",
           "value": "WOOHOO STAR 1"
+        },
+        {
+          "type": "OpenUrl",
+          "url": "https://www.google.com/",
+          "target": "_self"
         }
       ]
     },

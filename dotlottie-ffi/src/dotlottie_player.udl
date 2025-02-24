@@ -1,6 +1,7 @@
 namespace dotlottie_player {
     Layout create_default_layout();
     Config create_default_config();
+    OpenUrl create_default_open_url();
 };
 
 [Trait, WithForeign]
@@ -50,6 +51,17 @@ enum Fit {
 dictionary Layout {
     Fit fit;
     sequence<f32> align;
+};
+
+enum OpenUrlMode {
+    "Deny",
+    "Interaction",
+    "Allow",
+};
+
+dictionary OpenUrl {
+    OpenUrlMode mode;
+    sequence<string> whitelist;
 };
 
 dictionary Config {
@@ -162,7 +174,7 @@ interface DotLottiePlayer {
 
     boolean state_machine_load([ByRef] string state_machine_id);
     boolean state_machine_load_data([ByRef] string state_machine);
-    boolean state_machine_start();
+    boolean state_machine_start(OpenUrl open_url);
     boolean state_machine_stop();
     string active_state_machine_id();
     sequence<string> state_machine_framework_setup();
@@ -184,6 +196,8 @@ interface DotLottiePlayer {
     string state_machine_current_state();
     boolean state_machine_subscribe(StateMachineObserver observer);
     boolean state_machine_unsubscribe([ByRef] StateMachineObserver observer);
+    boolean state_machine_framework_subscribe(StateMachineObserver observer);
+    boolean state_machine_framework_unsubscribe([ByRef] StateMachineObserver observer);
     boolean state_machine_override_current_state([ByRef] string state_name, boolean do_tick);
     string state_machine_status();
 };

@@ -133,6 +133,7 @@ pub struct StateMachineEngine {
     pointer_management: PointerData,
 
     observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
+    framework_url_observer: RwLock<Option<Arc<dyn StateMachineObserver>>>,
 
     state_machine: StateMachine,
 
@@ -156,6 +157,7 @@ impl Default for StateMachineEngine {
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
+            framework_url_observer: RwLock::new(None),
             state_history: Vec::new(),
             max_cycle_count: 20,
             current_cycle_count: 0,
@@ -188,6 +190,7 @@ impl StateMachineEngine {
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
+            framework_url_observer: RwLock::new(None),
             state_history: Vec::new(),
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
@@ -207,6 +210,20 @@ impl StateMachineEngine {
             .write()
             .unwrap()
             .retain(|o| !Arc::ptr_eq(o, observer));
+    }
+
+    pub fn framework_subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
+        let mut framework_observer = self.framework_url_observer.write().unwrap();
+        *framework_observer = Some(observer);
+    }
+
+    pub fn framework_unsubscribe(&self, observer: &Arc<dyn StateMachineObserver>) {
+        let mut framework_observer_write_lock = self.framework_url_observer.write().unwrap();
+        if let Some(framework_observer) = &*framework_observer_write_lock {
+            if Arc::ptr_eq(framework_observer, observer) {
+                *framework_observer_write_lock = None;
+            }
+        }
     }
 
     // key: The key of the trigger
@@ -1190,6 +1207,14 @@ impl StateMachineEngine {
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_transition(previous_state.to_string(), new_state.to_string());
+            }
+        }
+    }
+
+    pub fn observe_framework_open_url_event(&self, message: &str) {
+        if let Ok(observer) = self.framework_url_observer.try_read() {
+            if let Some(ob) = &*observer {
+                ob.on_custom_event(message.to_string());
             }
         }
     }

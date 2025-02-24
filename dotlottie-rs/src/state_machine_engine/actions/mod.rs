@@ -2,7 +2,7 @@ use open_url::OpenUrlMode;
 use thiserror::Error;
 
 use serde::Deserialize;
-use utils::NativeOpenURL;
+use utils::NativeOpenUrl;
 use whitelist::Whitelist;
 
 use std::{rc::Rc, sync::RwLock};
@@ -322,13 +322,13 @@ impl ActionTrait for Action {
                     OpenUrlMode::Interaction => {
                         if let Some(event) = interaction {
                             if let Event::PointerDown { .. } = event {
-                                let _ = NativeOpenURL::open_url(url, target);
+                                let _ = NativeOpenUrl::open_url(url, target, &engine);
                                 return Ok(());
                             }
                         }
                     }
                     OpenUrlMode::Allow => {
-                        let _ = NativeOpenURL::open_url(url, target);
+                        let _ = NativeOpenUrl::open_url(url, target, &engine);
                         return Ok(());
                     }
                 }

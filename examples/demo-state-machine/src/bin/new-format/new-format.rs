@@ -164,7 +164,7 @@ fn main() {
     );
 
     println!("Load state machine data -> {}", r);
-    lottie_player.state_machine_subscribe(observer.clone());
+    lottie_player.state_machine_framework_subscribe(observer.clone());
     let config = OpenUrl::default();
 
     let s = lottie_player.state_machine_start(config);

@@ -2245,6 +2245,40 @@ impl DotLottiePlayer {
         true
     }
 
+    // For the moment the framework dedicated state machine listener is not needed for wasm.
+    // The only use case at the moment for opening urls on iOS and Android.
+    // Wasm manages this without the need for a dedicated listener.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn state_machine_framework_subscribe(
+        &self,
+        observer: Arc<dyn StateMachineObserver>,
+    ) -> bool {
+        let mut sm = self.state_machine.write().unwrap();
+
+        if sm.is_none() {
+            return false;
+        }
+        sm.as_mut().unwrap().framework_subscribe(observer);
+
+        true
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn state_machine_framework_unsubscribe(
+        &self,
+        observer: &Arc<dyn StateMachineObserver>,
+    ) -> bool {
+        let mut sm = self.state_machine.write().unwrap();
+
+        if sm.is_none() {
+            return false;
+        }
+
+        sm.as_mut().unwrap().framework_unsubscribe(observer);
+
+        true
+    }
+
     pub fn manifest_string(&self) -> String {
         self.player
             .try_read()

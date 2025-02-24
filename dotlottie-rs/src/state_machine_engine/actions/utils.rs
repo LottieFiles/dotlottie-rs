@@ -1,3 +1,5 @@
+use crate::StateMachineEngine;
+
 #[cfg(target_os = "emscripten")]
 mod em {
     extern "C" {
@@ -5,10 +7,10 @@ mod em {
     }
 }
 
-pub struct NativeOpenURL;
+pub struct NativeOpenUrl;
 
-impl NativeOpenURL {
-    pub fn open_url(url: &str, target: &str) -> Result<(), String> {
+impl NativeOpenUrl {
+    pub fn open_url(url: &str, target: &str, engine: &StateMachineEngine) -> Result<(), String> {
         #[cfg(target_os = "emscripten")]
         unsafe {
             use std::ffi::CString;
@@ -27,13 +29,9 @@ impl NativeOpenURL {
 
         #[cfg(not(target_os = "emscripten"))]
         {
-            let result = webbrowser::open(url);
             let _ = target.to_lowercase();
-
-            if result.is_err() {
-                return Err("Failed to open browser".to_string());
-            }
-
+            let command = format!("OpenUrl: {}", url);
+            engine.observe_framework_open_url_event(&command);
             return Ok(());
         }
     }

@@ -44,34 +44,29 @@ impl StateMachineObserver for MockObserver {
         // todo!()
     }
 
-    fn on_string_trigger_value_change(
+    fn on_string_input_value_change(
         &self,
-        _trigger_name: String,
+        _input_name: String,
         _old_value: String,
         _new_value: String,
     ) {
         // todo!()
     }
 
-    fn on_numeric_trigger_value_change(
-        &self,
-        _trigger_name: String,
-        _old_value: f32,
-        _new_value: f32,
-    ) {
+    fn on_numeric_input_value_change(&self, _input_name: String, _old_value: f32, _new_value: f32) {
         // todo!()
     }
 
-    fn on_boolean_trigger_value_change(
+    fn on_boolean_input_value_change(
         &self,
-        _trigger_name: String,
+        _input_name: String,
         _old_value: bool,
         _new_value: bool,
     ) {
         // todo!()
     }
 
-    fn on_trigger_fired(&self, _trigger_name: String) {
+    fn on_input_fired(&self, _input_name: String) {
         // todo!()
     }
 
@@ -104,22 +99,22 @@ mod tests {
         assert_eq!(curr_state_name, "global");
 
         // Tests default increment without a value
-        player.state_machine_set_numeric_trigger("rating", 1.0);
+        player.state_machine_set_numeric_input("rating", 1.0);
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_2");
 
         // Tests adding with value
-        player.state_machine_set_numeric_trigger("rating", 3.0);
+        player.state_machine_set_numeric_input("rating", 3.0);
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_5");
 
-        // Tests add from a trigger
-        player.state_machine_set_numeric_trigger("rating", 6.0);
+        // Tests add from a input
+        player.state_machine_set_numeric_input("rating", 6.0);
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_12");
 
-        // Tests add from a inexistant trigger, increments by 1.0 instead
-        player.state_machine_set_numeric_trigger("rating", 13.0);
+        // Tests add from a inexistant input, increments by 1.0 instead
+        player.state_machine_set_numeric_input("rating", 13.0);
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_14");
     }
@@ -138,23 +133,23 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "global");
 
-        // Tests decrement from an inexistant trigger, decrements by 1.0 instead
-        player.state_machine_set_numeric_trigger("rating", 13.0);
+        // Tests decrement from an inexistant input, decrements by 1.0 instead
+        player.state_machine_set_numeric_input("rating", 13.0);
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_12");
 
-        // Tests decrement from a trigger
-        player.state_machine_set_numeric_trigger("rating", 6.0);
+        // Tests decrement from a input
+        player.state_machine_set_numeric_input("rating", 6.0);
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_6");
 
         // Tests decrementing with value
-        player.state_machine_set_numeric_trigger("rating", 3.0);
+        player.state_machine_set_numeric_input("rating", 3.0);
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_1");
 
         // Tests default increment without a value
-        player.state_machine_set_numeric_trigger("rating", 5.0);
+        player.state_machine_set_numeric_input("rating", 5.0);
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_4");
     }
@@ -189,7 +184,7 @@ mod tests {
 
     #[test]
     fn set_boolean() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/set_triggers.json");
+        let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -211,7 +206,7 @@ mod tests {
 
     #[test]
     fn set_numeric() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/set_triggers.json");
+        let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -224,7 +219,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "b");
 
-        player.state_machine_set_numeric_trigger("NumericTrigger", 10.0);
+        player.state_machine_set_numeric_input("NumericInput", 10.0);
 
         // C state should of set the switch to true, landing us in state a
         let curr_state_name = get_current_state_name(&player);
@@ -233,7 +228,7 @@ mod tests {
 
     #[test]
     fn set_string() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/set_triggers.json");
+        let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -246,7 +241,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "b");
 
-        player.state_machine_set_string_trigger("StringTrigger", "second");
+        player.state_machine_set_string_input("StringInput", "second");
 
         // C state should of set the switch to true, landing us in state a
         let curr_state_name = get_current_state_name(&player);
@@ -268,7 +263,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "b");
 
-        player.state_machine_set_boolean_trigger("OnOffSwitch", true);
+        player.state_machine_set_boolean_input("OnOffSwitch", true);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "c");
@@ -292,10 +287,10 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "b");
 
-        // B Should of set the frame to trigger value "frame_holder", meaning 35
+        // B Should of set the frame to input value "frame_holder", meaning 35
         assert_eq!(player.current_frame(), 35.0);
 
-        player.state_machine_set_boolean_trigger("OnOffSwitch", true);
+        player.state_machine_set_boolean_input("OnOffSwitch", true);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "a");
@@ -322,10 +317,10 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "b");
 
-        // B Should of set the frame to trigger value "frame_holder", 75% of the animation
+        // B Should of set the frame to input value "frame_holder", 75% of the animation
         assert_eq!(player.current_frame(), 66.75);
 
-        player.state_machine_set_boolean_trigger("OnOffSwitch", true);
+        player.state_machine_set_boolean_input("OnOffSwitch", true);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "a");
@@ -348,12 +343,12 @@ mod tests {
         assert!(l);
         assert!(s);
 
-        player.state_machine_set_numeric_trigger("rating", 3.0);
+        player.state_machine_set_numeric_input("rating", 3.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_3");
 
-        player.state_machine_set_numeric_trigger("rating", 6.0);
+        player.state_machine_set_numeric_input("rating", 6.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_0");
@@ -379,7 +374,7 @@ mod tests {
         assert!(l);
         assert!(s);
 
-        player.state_machine_set_numeric_trigger("rating", 3.0);
+        player.state_machine_set_numeric_input("rating", 3.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_3");

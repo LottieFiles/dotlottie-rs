@@ -42,8 +42,8 @@
       "transitions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Boolean",
       "name": "OnOffSwitch",

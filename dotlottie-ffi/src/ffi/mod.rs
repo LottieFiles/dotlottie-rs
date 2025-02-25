@@ -682,14 +682,14 @@ pub unsafe extern "C" fn dotlottie_state_machine_stop(ptr: *mut DotLottiePlayer)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_trigger(
+pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_input(
     ptr: *mut DotLottiePlayer,
     key: *const c_char,
     value: f32,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Ok(key) = DotLottieString::read(key) {
-            to_exit_status(dotlottie_player.state_machine_set_numeric_trigger(&key, value))
+            to_exit_status(dotlottie_player.state_machine_set_numeric_input(&key, value))
         } else {
             DOTLOTTIE_INVALID_PARAMETER
         }
@@ -697,7 +697,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_trigger(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_set_string_trigger(
+pub unsafe extern "C" fn dotlottie_state_machine_set_string_input(
     ptr: *mut DotLottiePlayer,
     key: *const c_char,
     value: *const c_char,
@@ -705,7 +705,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_string_trigger(
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         match (DotLottieString::read(key), DotLottieString::read(value)) {
             (Ok(key), Ok(value)) => {
-                to_exit_status(dotlottie_player.state_machine_set_string_trigger(&key, &value))
+                to_exit_status(dotlottie_player.state_machine_set_string_input(&key, &value))
             }
             _ => DOTLOTTIE_INVALID_PARAMETER,
         }
@@ -713,14 +713,14 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_string_trigger(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_trigger(
+pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_input(
     ptr: *mut DotLottiePlayer,
     key: *const c_char,
     value: bool,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Ok(key) = DotLottieString::read(key) {
-            to_exit_status(dotlottie_player.state_machine_set_boolean_trigger(&key, value))
+            to_exit_status(dotlottie_player.state_machine_set_boolean_input(&key, value))
         } else {
             DOTLOTTIE_INVALID_PARAMETER
         }
@@ -728,13 +728,13 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_trigger(
 }
 
 // #[no_mangle]
-// pub unsafe extern "C" fn dotlottie_state_machine_get_boolean_trigger(
+// pub unsafe extern "C" fn dotlottie_state_machine_get_boolean_input(
 //     ptr: *mut DotLottiePlayer,
 //     key: *const c_char,
 // ) -> bool {
 //     exec_dotlottie_player_op(ptr, |dotlottie_player| {
 //         if let Ok(key) = DotLottieString::read(key) {
-//             dotlottie_player.state_machine_get_boolean_trigger(&key)
+//             dotlottie_player.state_machine_get_boolean_input(&key)
 //         } else {
 //             false
 //         }
@@ -742,7 +742,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_trigger(
 // }
 
 // #[no_mangle]
-// pub unsafe extern "C" fn dotlottie_state_machine_get_string_trigger(
+// pub unsafe extern "C" fn dotlottie_state_machine_get_string_input(
 //     ptr: *mut DotLottiePlayer,
 //     key: *const c_char,
 //     result: *mut types::DotLottieString,
@@ -750,7 +750,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_trigger(
 //     exec_dotlottie_player_op(ptr, |dotlottie_player| {
 //         if let Ok(key) = DotLottieString::read(key) {
 //             dotlottie_player
-//                 .state_machine_get_string_trigger(&key)
+//                 .state_machine_get_string_input(&key)
 //                 .copy(result);
 //         } else {
 //             DOTLOTTIE_INVALID_PARAMETER
@@ -759,13 +759,13 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_trigger(
 // }
 
 // #[no_mangle]
-// pub unsafe extern "C" fn dotlottie_state_machine_get_numeric_trigger(
+// pub unsafe extern "C" fn dotlottie_state_machine_get_numeric_input(
 //     ptr: *mut DotLottiePlayer,
 //     key: *const c_char,
 // ) -> f32 {
 //     exec_dotlottie_player_op(ptr, |dotlottie_player| {
 //         if let Ok(key) = DotLottieString::read(key) {
-//             dotlottie_player.state_machine_get_numeric_trigger(&key)
+//             dotlottie_player.state_machine_get_numeric_input(&key)
 //         } else {
 //             f32::MIN
 //         }
@@ -781,9 +781,9 @@ pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
         if result.is_null() {
             return DOTLOTTIE_INVALID_PARAMETER;
         }
-        let listener_types = dotlottie_player.state_machine_framework_setup();
-        if let Ok(listener_type) = ListenerType::new(&listener_types) {
-            *result = listener_type.bits();
+        let interaction_types = dotlottie_player.state_machine_framework_setup();
+        if let Ok(interaction_type) = InteractionType::new(&interaction_types) {
+            *result = interaction_type.bits();
             DOTLOTTIE_SUCCESS
         } else {
             DOTLOTTIE_ERROR

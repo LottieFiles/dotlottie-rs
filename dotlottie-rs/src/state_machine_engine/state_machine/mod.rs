@@ -3,9 +3,9 @@ use serde::Deserialize;
 use crate::errors::StateMachineError;
 
 use super::{
-    listeners::Listener,
+    inputs::Input,
+    interactions::Interaction,
     states::{State, StateTrait},
-    triggers::Trigger,
 };
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -34,22 +34,22 @@ pub enum StringNumber {
 pub struct StateMachine {
     pub initial: String,
     pub states: Vec<State>,
-    pub listeners: Option<Vec<Listener>>,
-    pub triggers: Option<Vec<Trigger>>,
+    pub interactions: Option<Vec<Interaction>>,
+    pub inputs: Option<Vec<Input>>,
 }
 
 impl StateMachine {
     pub fn new(
         initial: String,
         states: Vec<State>,
-        listeners: Option<Vec<Listener>>,
-        triggers: Option<Vec<Trigger>>,
+        interactions: Option<Vec<Interaction>>,
+        inputs: Option<Vec<Input>>,
     ) -> Self {
         StateMachine {
             initial,
             states,
-            listeners,
-            triggers,
+            interactions,
+            inputs,
         }
     }
 
@@ -57,12 +57,12 @@ impl StateMachine {
         &self.states
     }
 
-    pub fn listeners(&self) -> Option<&Vec<Listener>> {
-        self.listeners.as_ref()
+    pub fn interactions(&self) -> Option<&Vec<Interaction>> {
+        self.interactions.as_ref()
     }
 
-    pub fn triggers(&self) -> Option<&Vec<Trigger>> {
-        self.triggers.as_ref()
+    pub fn inputs(&self) -> Option<&Vec<Input>> {
+        self.inputs.as_ref()
     }
 
     pub fn get_state_by_name(&self, name: &str) -> Option<&State> {
@@ -75,8 +75,8 @@ impl Default for StateMachine {
         StateMachine {
             initial: "".to_string(),
             states: Vec::new(),
-            listeners: None,
-            triggers: None,
+            interactions: None,
+            inputs: None,
         }
     }
 }

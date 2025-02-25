@@ -11,7 +11,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "a"
+              "inputName": "a"
             }
           ]
         },
@@ -21,7 +21,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "b"
+              "inputName": "b"
             }
           ]
         },
@@ -31,7 +31,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "c"
+              "inputName": "c"
             }
           ]
         },
@@ -41,7 +41,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "d"
+              "inputName": "d"
             }
           ]
         },
@@ -51,7 +51,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "e"
+              "inputName": "e"
             }
           ]
         },
@@ -61,7 +61,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "f"
+              "inputName": "f"
             }
           ]
         }
@@ -122,13 +122,13 @@
       "transitions": []
     }
   ],
-  "listeners": [
+  "interactions": [
     {
       "type": "PointerDown",
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "a"
+          "inputName": "a"
         }
       ]
     },
@@ -137,7 +137,7 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "b"
+          "inputName": "b"
         }
       ]
     },
@@ -146,7 +146,7 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "c"
+          "inputName": "c"
         }
       ]
     },
@@ -155,7 +155,7 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "d"
+          "inputName": "d"
         }
       ]
     },
@@ -164,7 +164,7 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "e"
+          "inputName": "e"
         }
       ]
     },
@@ -174,12 +174,12 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "f"
+          "inputName": "f"
         }
       ]
     }
   ],
-  "triggers": [
+  "inputs": [
     {
       "type": "Event",
       "name": "a"

@@ -79,36 +79,36 @@ pub mod wasm_observer_callbacks_ffi {
 
         pub fn state_machine_observer_on_stop(dotlottie_instance_id: u32);
 
-        pub fn state_machine_observer_on_string_trigger_value_change(
+        pub fn state_machine_observer_on_string_input_value_change(
             dotlottie_instance_id: u32,
-            trigger_name_ptr: *const u8,
-            trigger_name_len: usize,
+            input_name_ptr: *const u8,
+            input_name_len: usize,
             old_value_ptr: *const u8,
             old_value_len: usize,
             new_value_ptr: *const u8,
             new_value_len: usize,
         );
 
-        pub fn state_machine_observer_on_numeric_trigger_value_change(
+        pub fn state_machine_observer_on_numeric_input_value_change(
             dotlottie_instance_id: u32,
-            trigger_name_ptr: *const u8,
-            trigger_name_len: usize,
+            input_name_ptr: *const u8,
+            input_name_len: usize,
             old_value: f32,
             new_value: f32,
         );
 
-        pub fn state_machine_observer_on_boolean_trigger_value_change(
+        pub fn state_machine_observer_on_boolean_input_value_change(
             dotlottie_instance_id: u32,
-            trigger_name_ptr: *const u8,
-            trigger_name_len: usize,
+            input_name_ptr: *const u8,
+            input_name_len: usize,
             old_value: bool,
             new_value: bool,
         );
 
-        pub fn state_machine_observer_on_trigger_fired(
+        pub fn state_machine_observer_on_input_fired(
             dotlottie_instance_id: u32,
-            trigger_name_ptr: *const u8,
-            trigger_name_len: usize,
+            input_name_ptr: *const u8,
+            input_name_len: usize,
         );
     }
 }
@@ -1261,18 +1261,18 @@ impl DotLottiePlayerContainer {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn emit_state_machine_observer_on_string_trigger_value_change(
+    pub fn emit_state_machine_observer_on_string_input_value_change(
         &self,
-        trigger_name: String,
+        input_name: String,
         old_value: String,
         new_value: String,
     ) {
         {
             unsafe {
-                wasm_observer_callbacks_ffi::state_machine_observer_on_string_trigger_value_change(
+                wasm_observer_callbacks_ffi::state_machine_observer_on_string_input_value_change(
                     self.instance_id,
-                    trigger_name.as_ptr(),
-                    trigger_name.len(),
+                    input_name.as_ptr(),
+                    input_name.len(),
                     old_value.as_ptr(),
                     old_value.len(),
                     new_value.as_ptr(),
@@ -1283,18 +1283,18 @@ impl DotLottiePlayerContainer {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn emit_state_machine_observer_on_numeric_trigger_value_change(
+    pub fn emit_state_machine_observer_on_numeric_input_value_change(
         &self,
-        trigger_name: String,
+        input_name: String,
         old_value: f32,
         new_value: f32,
     ) {
         {
             unsafe {
-                wasm_observer_callbacks_ffi::state_machine_observer_on_numeric_trigger_value_change(
+                wasm_observer_callbacks_ffi::state_machine_observer_on_numeric_input_value_change(
                     self.instance_id,
-                    trigger_name.as_ptr(),
-                    trigger_name.len(),
+                    input_name.as_ptr(),
+                    input_name.len(),
                     old_value,
                     new_value,
                 );
@@ -1303,18 +1303,18 @@ impl DotLottiePlayerContainer {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn emit_state_machine_observer_on_boolean_trigger_value_change(
+    pub fn emit_state_machine_observer_on_boolean_input_value_change(
         &self,
-        trigger_name: String,
+        input_name: String,
         old_value: bool,
         new_value: bool,
     ) {
         {
             unsafe {
-                wasm_observer_callbacks_ffi::state_machine_observer_on_boolean_trigger_value_change(
+                wasm_observer_callbacks_ffi::state_machine_observer_on_boolean_input_value_change(
                     self.instance_id,
-                    trigger_name.as_ptr(),
-                    trigger_name.len(),
+                    input_name.as_ptr(),
+                    input_name.len(),
                     old_value,
                     new_value,
                 );
@@ -1323,13 +1323,13 @@ impl DotLottiePlayerContainer {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn emit_state_machine_observer_on_trigger_fired(&self, trigger_name: String) {
+    pub fn emit_state_machine_observer_on_input_fired(&self, input_name: String) {
         {
             unsafe {
-                wasm_observer_callbacks_ffi::state_machine_observer_on_trigger_fired(
+                wasm_observer_callbacks_ffi::state_machine_observer_on_input_fired(
                     self.instance_id,
-                    trigger_name.as_ptr(),
-                    trigger_name.len(),
+                    input_name.as_ptr(),
+                    input_name.len(),
                 );
             }
         }
@@ -1789,12 +1789,10 @@ impl DotLottiePlayer {
                 if let Some(sm) = state_machine.as_mut() {
                     if sm.status == StateMachineEngineStatus::Running {
                         sm.stop();
-
-                        // nullify the current state machine
-                        *state_machine = None;
-                    } else {
-                        return false;
                     }
+
+                    *state_machine = None;
+                    println!("State machine stopped {:?}", state_machine.is_some());
                 }
             }
             Err(_) => return false,
@@ -1803,7 +1801,7 @@ impl DotLottiePlayer {
         true
     }
 
-    /// Returns which types of listeners need to be setup.
+    /// Returns which types of interactions need to be setup.
     /// The frameworks should call the function after calling start_state_machine.
     pub fn state_machine_framework_setup(&self) -> Vec<String> {
         match self.state_machine.try_read() {
@@ -1812,49 +1810,49 @@ impl DotLottiePlayer {
                     return vec![];
                 }
 
-                let mut listener_types = vec![];
+                let mut interaction_types = vec![];
 
                 if let Some(sm) = state_machine.as_ref() {
-                    let listeners = sm.listeners(None);
+                    let interactions = sm.interactions(None);
 
-                    for listener in listeners {
-                        match listener {
-                            crate::listeners::Listener::PointerUp { .. } => {
-                                listener_types.push("PointerUp".to_string())
+                    for interaction in interactions {
+                        match interaction {
+                            crate::interactions::Interaction::PointerUp { .. } => {
+                                interaction_types.push("PointerUp".to_string())
                             }
-                            crate::listeners::Listener::PointerDown { .. } => {
-                                listener_types.push("PointerDown".to_string())
+                            crate::interactions::Interaction::PointerDown { .. } => {
+                                interaction_types.push("PointerDown".to_string())
                             }
-                            crate::listeners::Listener::PointerEnter { .. } => {
+                            crate::interactions::Interaction::PointerEnter { .. } => {
                                 // In case framework self detects pointer entering layers, push pointerExit
-                                listener_types.push("PointerEnter".to_string());
+                                interaction_types.push("PointerEnter".to_string());
                                 // We push PointerMove too so that we can do hit detection instead of the framework
-                                listener_types.push("PointerMove".to_string());
+                                interaction_types.push("PointerMove".to_string());
                             }
-                            crate::listeners::Listener::PointerMove { .. } => {
-                                listener_types.push("PointerMove".to_string())
+                            crate::interactions::Interaction::PointerMove { .. } => {
+                                interaction_types.push("PointerMove".to_string())
                             }
-                            crate::listeners::Listener::PointerExit { .. } => {
+                            crate::interactions::Interaction::PointerExit { .. } => {
                                 // In case framework self detects pointer exiting layers, push pointerExit
-                                listener_types.push("PointerExit".to_string());
+                                interaction_types.push("PointerExit".to_string());
                                 // We push PointerMove too so that we can do hit detection instead of the framework
-                                listener_types.push("PointerMove".to_string());
+                                interaction_types.push("PointerMove".to_string());
                             }
-                            crate::listeners::Listener::OnComplete { .. } => {
-                                listener_types.push("OnComplete".to_string())
+                            crate::interactions::Interaction::OnComplete { .. } => {
+                                interaction_types.push("OnComplete".to_string())
                             }
-                            crate::listeners::Listener::OnLoopComplete { .. } => {
-                                listener_types.push("OnLoopComplete".to_string())
+                            crate::interactions::Interaction::OnLoopComplete { .. } => {
+                                interaction_types.push("OnLoopComplete".to_string())
                             }
-                            crate::listeners::Listener::Click { .. } => {
-                                listener_types.push("Click".to_string());
+                            crate::interactions::Interaction::Click { .. } => {
+                                interaction_types.push("Click".to_string());
                             }
                         }
                     }
 
-                    listener_types.sort();
-                    listener_types.dedup();
-                    listener_types
+                    interaction_types.sort();
+                    interaction_types.dedup();
+                    interaction_types
                 } else {
                     vec![]
                 }
@@ -1940,11 +1938,11 @@ impl DotLottiePlayer {
         self.state_machine_post_event(&event)
     }
 
-    pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> bool {
+    pub fn state_machine_set_numeric_input(&self, key: &str, value: f32) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    let ret = sm.set_numeric_trigger(key, value, true, false);
+                    let ret = sm.set_numeric_input(key, value, true, false);
 
                     if ret.is_some() {
                         return true;
@@ -1956,11 +1954,11 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn state_machine_set_string_trigger(&self, key: &str, value: &str) -> bool {
+    pub fn state_machine_set_string_input(&self, key: &str, value: &str) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    let ret = sm.set_string_trigger(key, value, true, false);
+                    let ret = sm.set_string_input(key, value, true, false);
 
                     if ret.is_some() {
                         return true;
@@ -1972,11 +1970,11 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn state_machine_set_boolean_trigger(&self, key: &str, value: bool) -> bool {
+    pub fn state_machine_set_boolean_input(&self, key: &str, value: bool) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    let ret = sm.set_boolean_trigger(key, value, true, false);
+                    let ret = sm.set_boolean_input(key, value, true, false);
 
                     if ret.is_some() {
                         return true;
@@ -1988,11 +1986,11 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn state_machine_get_numeric_trigger(&self, key: &str) -> f32 {
+    pub fn state_machine_get_numeric_input(&self, key: &str) -> f32 {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if let Some(sm) = &*state_machine {
-                    if let Some(value) = sm.get_numeric_trigger(key) {
+                    if let Some(value) = sm.get_numeric_input(key) {
                         return value;
                     }
                 }
@@ -2005,11 +2003,11 @@ impl DotLottiePlayer {
         f32::MIN
     }
 
-    pub fn state_machine_get_string_trigger(&self, key: &str) -> String {
+    pub fn state_machine_get_string_input(&self, key: &str) -> String {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    if let Some(value) = sm.get_string_trigger(key) {
+                    if let Some(value) = sm.get_string_input(key) {
                         return value;
                     }
                 }
@@ -2020,11 +2018,11 @@ impl DotLottiePlayer {
         "".to_string()
     }
 
-    pub fn state_machine_get_boolean_trigger(&self, key: &str) -> bool {
+    pub fn state_machine_get_boolean_input(&self, key: &str) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    if let Some(value) = sm.get_boolean_trigger(key) {
+                    if let Some(value) = sm.get_boolean_input(key) {
                         return value;
                     }
                 }
@@ -2245,9 +2243,9 @@ impl DotLottiePlayer {
         true
     }
 
-    // For the moment the framework dedicated state machine listener is not needed for wasm.
+    // For the moment the framework dedicated state machine interaction is not needed for wasm.
     // The only use case at the moment for opening urls on iOS and Android.
-    // Wasm manages this without the need for a dedicated listener.
+    // Wasm manages this without the need for a dedicated interaction.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn state_machine_framework_subscribe(
         &self,

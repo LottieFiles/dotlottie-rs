@@ -27,7 +27,7 @@ mod tests {
 
         assert!(player.is_playing());
 
-        let load = player.state_machine_load("explodingPigeon");
+        let load = player.state_machine_load("Exploding Pigeon");
         let start = player.state_machine_start(OpenUrl::default());
 
         assert!(load);
@@ -37,7 +37,7 @@ mod tests {
         let global_state =
             include_str!("fixtures/statemachines/normal_usecases/exploding_pigeon.json");
 
-        let l = player.get_state_machine("explodingPigeon");
+        let l = player.get_state_machine("Exploding Pigeon");
 
         assert_eq!(l, global_state);
     }
@@ -85,7 +85,7 @@ mod tests {
     fn state_machine_framework_setup() {
         let player = DotLottiePlayer::new(Config::default());
         let pointer_down =
-            include_str!("fixtures/statemachines/listener_tests/listener_array.json");
+            include_str!("fixtures/statemachines/interaction_tests/interaction_array.json");
 
         player.state_machine_load_data(pointer_down);
 
@@ -106,7 +106,7 @@ mod tests {
     fn state_machine_post_event() {
         let player = DotLottiePlayer::new(Config::default());
         let pointer_down =
-            include_str!("fixtures/statemachines/listener_tests/all_listener_events.json");
+            include_str!("fixtures/statemachines/interaction_tests/all_interaction_events.json");
 
         player.state_machine_load_data(pointer_down);
 
@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn state_machine_set_get_numeric_trigger() {
+    fn state_machine_set_get_numeric_input() {
         let player = DotLottiePlayer::new(Config::default());
         let rating = include_str!("fixtures/statemachines/normal_usecases/rating.json");
 
@@ -154,20 +154,20 @@ mod tests {
         let r = player.state_machine_start(OpenUrl::default());
         assert!(r);
 
-        // Setting the triggers
-        player.state_machine_set_numeric_trigger("rating", 1.0);
+        // Setting the inputs
+        player.state_machine_set_numeric_input("rating", 1.0);
         assert_eq!(player.state_machine_current_state(), "star_1".to_string());
 
-        assert_eq!(player.state_machine_get_numeric_trigger("rating"), 1.0);
+        assert_eq!(player.state_machine_get_numeric_input("rating"), 1.0);
 
-        player.state_machine_set_numeric_trigger("rating", 5.0);
+        player.state_machine_set_numeric_input("rating", 5.0);
         assert_eq!(player.state_machine_current_state(), "star_5".to_string());
 
-        assert_eq!(player.state_machine_get_numeric_trigger("rating"), 5.0);
+        assert_eq!(player.state_machine_get_numeric_input("rating"), 5.0);
     }
 
     #[test]
-    fn state_machine_set_get_boolean_trigger() {
+    fn state_machine_set_get_boolean_input() {
         let player = DotLottiePlayer::new(Config::default());
         let sm = include_str!("fixtures/statemachines/normal_usecases/toggle.json");
 
@@ -176,29 +176,20 @@ mod tests {
         let r = player.state_machine_start(OpenUrl::default());
         assert!(r);
 
-        assert_eq!(
-            player.state_machine_get_boolean_trigger("OnOffSwitch"),
-            false
-        );
+        assert_eq!(player.state_machine_get_boolean_input("OnOffSwitch"), false);
 
-        // Setting the triggers
-        player.state_machine_set_boolean_trigger("OnOffSwitch", true);
+        // Setting the inputs
+        player.state_machine_set_boolean_input("OnOffSwitch", true);
         assert_eq!(player.state_machine_current_state(), "a".to_string());
-        assert_eq!(
-            player.state_machine_get_boolean_trigger("OnOffSwitch"),
-            true
-        );
+        assert_eq!(player.state_machine_get_boolean_input("OnOffSwitch"), true);
 
-        player.state_machine_set_boolean_trigger("OnOffSwitch", false);
+        player.state_machine_set_boolean_input("OnOffSwitch", false);
         assert_eq!(player.state_machine_current_state(), "b".to_string());
-        assert_eq!(
-            player.state_machine_get_boolean_trigger("OnOffSwitch"),
-            false
-        );
+        assert_eq!(player.state_machine_get_boolean_input("OnOffSwitch"), false);
     }
 
     #[test]
-    fn state_machine_set_get_string_trigger() {
+    fn state_machine_set_get_string_input() {
         let player = DotLottiePlayer::new(Config::default());
         let sm = include_str!("fixtures/statemachines/normal_usecases/password.json");
 
@@ -208,22 +199,22 @@ mod tests {
         assert!(r);
 
         assert_eq!(
-            player.state_machine_get_string_trigger("password"),
+            player.state_machine_get_string_input("password"),
             "incorrect".to_string()
         );
 
-        // Setting the triggers
-        player.state_machine_set_string_trigger("password", "welcome");
+        // Setting the inputs
+        player.state_machine_set_string_input("password", "welcome");
         assert_eq!(player.state_machine_current_state(), "a".to_string());
         assert_eq!(
-            player.state_machine_get_string_trigger("password"),
+            player.state_machine_get_string_input("password"),
             "welcome".to_string()
         );
 
-        player.state_machine_set_string_trigger("password", "goodbye");
+        player.state_machine_set_string_input("password", "goodbye");
         assert_eq!(player.state_machine_current_state(), "b".to_string());
         assert_eq!(
-            player.state_machine_get_string_trigger("password"),
+            player.state_machine_get_string_input("password"),
             "goodbye".to_string()
         );
     }
@@ -257,13 +248,13 @@ mod tests {
 
         assert_eq!(player.state_machine_current_state(), "star_0".to_string());
 
-        player.state_machine_set_numeric_trigger("rating", 3.0);
+        player.state_machine_set_numeric_input("rating", 3.0);
         assert_eq!(player.state_machine_current_state(), "star_3".to_string());
 
-        player.state_machine_set_numeric_trigger("rating", 5.0);
+        player.state_machine_set_numeric_input("rating", 5.0);
         assert_eq!(player.state_machine_current_state(), "star_1".to_string());
 
-        player.state_machine_set_numeric_trigger("rating", 3.0);
+        player.state_machine_set_numeric_input("rating", 3.0);
         assert_eq!(player.state_machine_current_state(), "star_1".to_string());
     }
 
@@ -271,7 +262,7 @@ mod tests {
     fn state_machine_current_state() {
         let player = DotLottiePlayer::new(Config::default());
         let pointer_down =
-            include_str!("fixtures/statemachines/listener_tests/all_listener_events.json");
+            include_str!("fixtures/statemachines/interaction_tests/all_interaction_events.json");
 
         player.state_machine_load_data(pointer_down);
 

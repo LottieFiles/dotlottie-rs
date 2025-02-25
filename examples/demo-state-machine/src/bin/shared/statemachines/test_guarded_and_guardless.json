@@ -14,7 +14,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         }
@@ -37,7 +37,7 @@
           "guards": [
             {
               "type": "Numeric",
-              "triggerName": "r",
+              "inputName": "r",
               "conditionType": "Equal",
               "compareTo": 1
             }
@@ -71,7 +71,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         }
@@ -99,8 +99,8 @@
       "transitions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Numeric",
       "name": "r",

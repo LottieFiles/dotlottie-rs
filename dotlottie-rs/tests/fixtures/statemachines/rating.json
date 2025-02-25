@@ -15,7 +15,7 @@
                         {
                             "type": "Numeric",
                             "condition_type": "Equal",
-                            "trigger_name": "rating",
+                            "input_name": "rating",
                             "compare_to": 1
                         }
                     ]
@@ -27,7 +27,7 @@
                         {
                             "type": "Numeric",
                             "condition_type": "Equal",
-                            "trigger_name": "rating",
+                            "input_name": "rating",
                             "compare_to": 2
                         }
                     ]
@@ -39,7 +39,7 @@
                         {
                             "type": "Numeric",
                             "condition_type": "Equal",
-                            "trigger_name": "rating",
+                            "input_name": "rating",
                             "compare_to": 3
                         }
                     ]
@@ -51,7 +51,7 @@
                         {
                             "type": "Numeric",
                             "condition_type": "Equal",
-                            "trigger_name": "rating",
+                            "input_name": "rating",
                             "compare_to": 4
                         }
                     ]
@@ -63,7 +63,7 @@
                         {
                             "type": "Numeric",
                             "condition_type": "Equal",
-                            "trigger_name": "rating",
+                            "input_name": "rating",
                             "compare_to": 5
                         }
                     ]
@@ -108,8 +108,8 @@
             "transitions": []
         }
     ],
-    "listeners": [],
-    "triggers": [
+    "interactions": [],
+    "inputs": [
         {
             "type": "Numeric",
             "name": "rating",

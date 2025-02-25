@@ -4,7 +4,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use dotlottie_rs::{
-    listeners::Listener, states::StateTrait, transitions::TransitionTrait, triggers::Trigger,
+    inputs::Input, interactions::Interaction, states::StateTrait, transitions::TransitionTrait,
     Config, DotLottiePlayer,
 };
 use minifb::{Key, MouseButton, Window, WindowOptions};
@@ -32,9 +32,9 @@ const LOADED_ANIMATION: &str = "star_marked";
 // const ANIMATION_FILES: [(&str, &str, &str); 8] = [
 //     ("[Exploding Pigeon]", "pigeon", "pigeon_with_events"),
 //     (
-//         "[Exploding Pigeon with Listeners]",
+//         "[Exploding Pigeon with Interactions]",
 //         "pigeon",
-//         "pigeon_with_listeners",
+//         "pigeon_with_interactions",
 //     ),
 //     ("[Sync Frame]", "loader", "sync_loader"),
 //     ("[Star Rating]", "star_marked", "rating"),
@@ -588,9 +588,9 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
     let sm = player.get_state_machine();
     let read_lock = sm.try_read();
 
-    let mut triggers: Vec<Trigger> = Vec::new();
-    let mut trigger_buttons: Vec<MenuItemType> = Vec::new();
-    let mut listener_buttons: Vec<MenuItemType> = Vec::new();
+    let mut inputs: Vec<Input> = Vec::new();
+    let mut input_buttons: Vec<MenuItemType> = Vec::new();
+    let mut interaction_buttons: Vec<MenuItemType> = Vec::new();
 
     // Load the file names of animation from the shared folder in to the animation_files vec
     let animation_files = fs::read_dir("./src/bin/shared/animations")
@@ -612,46 +612,46 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
             if let Some(machine_engine) = optional_machine {
                 let machine = machine_engine.get_state_machine();
 
-                // Load the triggers in to the trigger menu vec
-                let triggers_opt = machine.triggers();
-                if let Some(triggers_opt) = triggers_opt {
-                    triggers = triggers_opt.to_vec();
+                // Load the inputs in to the input menu vec
+                let inputs_opt = machine.inputs();
+                if let Some(inputs_opt) = inputs_opt {
+                    inputs = inputs_opt.to_vec();
 
-                    for trigger in &triggers {
-                        match trigger {
-                            Trigger::String { name, value } => {
+                    for input in &inputs {
+                        match input {
+                            Input::String { name, value } => {
                                 let mut new_name = name.clone();
                                 new_name = format!("[String] {}", new_name);
 
-                                trigger_buttons.push(MenuItemType::StringInput {
+                                input_buttons.push(MenuItemType::StringInput {
                                     name: new_name.to_string(),
                                     value: value.to_string(),
                                 });
                             }
-                            Trigger::Boolean { name, value } => {
+                            Input::Boolean { name, value } => {
                                 let mut new_name = name.clone();
                                 new_name = format!("[Bool] {}", new_name);
 
-                                trigger_buttons.push(MenuItemType::BooleanToggle {
+                                input_buttons.push(MenuItemType::BooleanToggle {
                                     name: new_name.to_string(),
                                     value: *value,
                                 });
                             }
-                            Trigger::Numeric { name, value } => {
+                            Input::Numeric { name, value } => {
                                 let mut new_name = name.clone();
                                 new_name = format!("[Numeric] {}", new_name);
 
-                                trigger_buttons.push(MenuItemType::NumberInput {
+                                input_buttons.push(MenuItemType::NumberInput {
                                     name: new_name.to_string(),
                                     value: *value,
                                     buffer: value.to_string(),
                                 });
                             }
-                            Trigger::Event { name } => {
+                            Input::Event { name } => {
                                 let mut new_name = name.clone();
                                 new_name = format!("[Event] {}", new_name);
 
-                                trigger_buttons.push(MenuItemType::Button {
+                                input_buttons.push(MenuItemType::Button {
                                     name: new_name.to_string(),
                                     color: 0x00ff00,
                                 });
@@ -660,61 +660,61 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
                     }
                 }
 
-                // Load the listeners in to listener menu vec
-                let listeners_opt = machine.listeners();
-                if let Some(listeners) = listeners_opt {
-                    for listener in listeners {
-                        match listener {
-                            Listener::PointerUp { .. } => {
+                // Load the interactions in to interaction menu vec
+                let interactions_opt = machine.interactions();
+                if let Some(interactions) = interactions_opt {
+                    for interaction in interactions {
+                        match interaction {
+                            Interaction::PointerUp { .. } => {
                                 let mut new_name = "PointerUp".to_string();
-                                new_name = format!("[Listener] {}", new_name);
+                                new_name = format!("[Interaction] {}", new_name);
 
-                                listener_buttons.push(MenuItemType::Button {
+                                interaction_buttons.push(MenuItemType::Button {
                                     name: new_name.to_string(),
                                     color: 0x00ff00,
                                 });
                             }
-                            Listener::PointerDown { .. } => {
+                            Interaction::PointerDown { .. } => {
                                 let mut new_name = "PointerDown".to_string();
-                                new_name = format!("[Listener] {}", new_name);
+                                new_name = format!("[Interaction] {}", new_name);
 
-                                listener_buttons.push(MenuItemType::Button {
+                                interaction_buttons.push(MenuItemType::Button {
                                     name: new_name.to_string(),
                                     color: 0x00ff00,
                                 });
                             }
-                            Listener::PointerEnter { .. } => {
+                            Interaction::PointerEnter { .. } => {
                                 let mut new_name = "PointerEnter".to_string();
-                                new_name = format!("[Listener] {}", new_name);
+                                new_name = format!("[Interaction] {}", new_name);
 
-                                listener_buttons.push(MenuItemType::Button {
+                                interaction_buttons.push(MenuItemType::Button {
                                     name: new_name.to_string(),
                                     color: 0x00ff00,
                                 });
                             }
-                            Listener::PointerMove { .. } => {
+                            Interaction::PointerMove { .. } => {
                                 let mut new_name = "PointerMove".to_string();
-                                new_name = format!("[Listener] {}", new_name);
+                                new_name = format!("[Interaction] {}", new_name);
 
-                                listener_buttons.push(MenuItemType::Button {
+                                interaction_buttons.push(MenuItemType::Button {
                                     name: new_name.to_string(),
                                     color: 0x00ff00,
                                 });
                             }
-                            Listener::PointerExit { .. } => {
+                            Interaction::PointerExit { .. } => {
                                 let mut new_name = "PointerExit".to_string();
-                                new_name = format!("[Listener] {}", new_name);
+                                new_name = format!("[Interaction] {}", new_name);
 
-                                listener_buttons.push(MenuItemType::Button {
+                                interaction_buttons.push(MenuItemType::Button {
                                     name: new_name.to_string(),
                                     color: 0x00ff00,
                                 });
                             }
-                            Listener::OnComplete { .. } => {
+                            Interaction::OnComplete { .. } => {
                                 let mut new_name = "OnComplete".to_string();
-                                new_name = format!("[Listener] {}", new_name);
+                                new_name = format!("[Interaction] {}", new_name);
 
-                                listener_buttons.push(MenuItemType::Button {
+                                interaction_buttons.push(MenuItemType::Button {
                                     name: new_name.to_string(),
                                     color: 0x00ff00,
                                 });
@@ -751,8 +751,8 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
                 })
                 .collect(),
         ),
-        Menu::new("Triggers".to_string(), trigger_buttons),
-        Menu::new("Listeners".to_string(), listener_buttons),
+        Menu::new("Inputs".to_string(), input_buttons),
+        Menu::new("Interactions".to_string(), interaction_buttons),
     ];
 
     menus
@@ -979,7 +979,7 @@ fn run_app<B: ratatui::backend::Backend>(
 
                             match &mut menu.items[i] {
                                 MenuItemType::Button { name, color } => match name.as_str() {
-                                    "[Listener] PointerDown" => {
+                                    "[Interaction] PointerDown" => {
                                         log_sender
                                             .send(LogMessage {
                                                 content: "User selected [PointerDown]".to_string(),
@@ -990,7 +990,7 @@ fn run_app<B: ratatui::backend::Backend>(
                                             &dotlottie_rs::Event::PointerDown { x: 0.0, y: 0.0 },
                                         );
                                     }
-                                    "[Listener] PointerUp" => {
+                                    "[Interaction] PointerUp" => {
                                         log_sender
                                             .send(LogMessage {
                                                 content: "User selected [PointerUp]".to_string(),
@@ -1001,7 +1001,7 @@ fn run_app<B: ratatui::backend::Backend>(
                                             &dotlottie_rs::Event::PointerUp { x: 0.0, y: 0.0 },
                                         );
                                     }
-                                    "[Listener] PointerEnter" => {
+                                    "[Interaction] PointerEnter" => {
                                         log_sender
                                             .send(LogMessage {
                                                 content: "User selected [PointerEnter]".to_string(),
@@ -1012,7 +1012,7 @@ fn run_app<B: ratatui::backend::Backend>(
                                             &dotlottie_rs::Event::PointerEnter { x: 0.0, y: 0.0 },
                                         );
                                     }
-                                    "[Listener] PointerExit" => {
+                                    "[Interaction] PointerExit" => {
                                         log_sender
                                             .send(LogMessage {
                                                 content: "User selected [PointerExit]".to_string(),
@@ -1023,7 +1023,7 @@ fn run_app<B: ratatui::backend::Backend>(
                                             &dotlottie_rs::Event::PointerExit { x: 0.0, y: 0.0 },
                                         );
                                     }
-                                    "[Listener] PointerMove" => {
+                                    "[Interaction] PointerMove" => {
                                         log_sender
                                             .send(LogMessage {
                                                 content: "User selected [PointerMove]".to_string(),
@@ -1034,7 +1034,7 @@ fn run_app<B: ratatui::backend::Backend>(
                                             &dotlottie_rs::Event::PointerMove { x: 0.0, y: 0.0 },
                                         );
                                     }
-                                    "[Listener] OnComplete" => {
+                                    "[Interaction] OnComplete" => {
                                         log_sender
                                             .send(LogMessage {
                                                 content: "User selected [OnComplete]".to_string(),
@@ -1046,7 +1046,7 @@ fn run_app<B: ratatui::backend::Backend>(
                                         );
                                     }
                                     _ => {
-                                        if name.contains("[Listener]") {
+                                        if name.contains("[Interaction]") {
                                         } else if name.contains("[Event]") {
                                             // Fire event
                                             let new_name = name.replace("[Event] ", "");
@@ -1170,7 +1170,7 @@ fn send_input_to_state_machine(menu: &mut Menu, key: event::KeyEvent, player: &D
     match &mut menu.items[i] {
         MenuItemType::StringInput { value, name } => {
             let new_name = name.replace("[String] ", "");
-            player.state_machine_set_string_trigger(&new_name, value);
+            player.state_machine_set_string_input(&new_name, value);
         }
         MenuItemType::NumberInput {
             value,
@@ -1178,11 +1178,11 @@ fn send_input_to_state_machine(menu: &mut Menu, key: event::KeyEvent, player: &D
             buffer,
         } => {
             let new_name = name.replace("[Numeric] ", "");
-            player.state_machine_set_numeric_trigger(&new_name, *value);
+            player.state_machine_set_numeric_input(&new_name, *value);
         }
         MenuItemType::BooleanToggle { value, name } => {
             let new_name = name.replace("[Bool] ", "");
-            player.state_machine_set_boolean_trigger(&new_name, *value);
+            player.state_machine_set_boolean_input(&new_name, *value);
         }
         _ => {}
     }

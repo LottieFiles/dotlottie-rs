@@ -16,16 +16,16 @@ gilrs = "0.10.2"
 name = "new-format"
 path = "src/bin/new-format/new-format.rs"
 
-# [[bin]]
-# name = "state_machine_showcase"
-# path = "src/bin/state_machine_showcase/state_machine_showcase.rs"
+[[bin]]
+name = "state_machine_showcase"
+path = "src/bin/state_machine_showcase/state_machine_showcase.rs"
 
-# [[bin]]
-# name = "tui"
-# path = "src/bin/tui/tui.rs"
+[[bin]]
+name = "tui"
+path = "src/bin/tui/tui.rs"
 
-# [[bin]]
-# name = "xbox_controller"
-# path = "src/bin/xbox_controller/main.rs"
+[[bin]]
+name = "xbox_controller"
+path = "src/bin/xbox_controller/main.rs"
 
 # ARTIFACTS_INCLUDE_DIR=/Users/sam/Projects/LottieFiles/Github/@rust/dotlottie-rs/deps/artifacts/local-arch/usr/include  ARTIFACTS_LIB_DIR=/Users/sam/Projects/LottieFiles/Github/@rust/dotlottie-rs/deps/artifacts/local-arch/usr/lib ARTIFACTS_LIB64_DIR=/Users/sam/Projects/LottieFiles/Github/@rust/dotlottie-rs/deps/artifacts/local-arch/usr/lib cargo run --bin new-format --release

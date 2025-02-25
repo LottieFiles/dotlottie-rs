@@ -12,7 +12,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         },
@@ -23,7 +23,7 @@
             {
               "type": "Boolean",
               "conditionType": "Equal",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "compareTo": true
             }
           ]
@@ -35,7 +35,7 @@
             {
               "type": "Boolean",
               "conditionType": "Equal",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "compareTo": false
             }
           ]
@@ -50,7 +50,7 @@
       "entryActions": [
         {
           "type": "Fire",
-          "triggerName": "Step"
+          "inputName": "Step"
         }
       ]
     },
@@ -67,8 +67,8 @@
       "transitions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Boolean",
       "name": "OnOffSwitch",

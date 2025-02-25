@@ -14,7 +14,7 @@
           "guards": [
             {
               "type": "Numeric",
-              "triggerName": "a",
+              "inputName": "a",
               "conditionType": "Equal",
               "compareTo": 1
             }
@@ -36,7 +36,7 @@
           "guards": [
             {
               "type": "Numeric",
-              "triggerName": "b",
+              "inputName": "b",
               "conditionType": "Equal",
               "compareTo": 2
             }
@@ -58,7 +58,7 @@
           "guards": [
             {
               "type": "Numeric",
-              "triggerName": "c",
+              "inputName": "c",
               "conditionType": "Equal",
               "compareTo": 3
             }
@@ -67,8 +67,8 @@
       ]
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Numeric",
       "name": "a",

@@ -3,7 +3,7 @@ mod tests {
     use dotlottie_rs::{actions::open_url::OpenUrl, Config, DotLottiePlayer};
 
     #[test]
-    fn check_guards_for_existing_triggers() {
+    fn check_guards_for_existing_inputs() {
         let global_state = include_str!("fixtures/statemachines/security_tests/compare_to.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);

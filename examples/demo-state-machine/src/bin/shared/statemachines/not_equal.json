@@ -12,7 +12,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "rating",
+              "inputName": "rating",
               "compareTo": 1.0
             }
           ]
@@ -24,7 +24,7 @@
             {
               "type": "Numeric",
               "conditionType": "NotEqual",
-              "triggerName": "rating",
+              "inputName": "rating",
               "compareTo": 2.0
             }
           ]
@@ -48,8 +48,8 @@
       "entryActions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Numeric",
       "name": "rating",

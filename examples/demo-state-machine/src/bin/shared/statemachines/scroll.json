@@ -12,7 +12,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         }
@@ -25,8 +25,8 @@
       ]
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Numeric",
       "name": "Progress",

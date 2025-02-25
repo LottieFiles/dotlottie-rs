@@ -15,7 +15,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Explode"
+              "inputName": "Explode"
             }
           ]
         }
@@ -36,7 +36,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Rain feathers"
+              "inputName": "Rain feathers"
             }
           ]
         }
@@ -56,20 +56,20 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Restart"
+              "inputName": "Restart"
             }
           ]
         }
       ]
     }
   ],
-  "listeners": [
+  "interactions": [
     {
       "type": "PointerDown",
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "Explode"
+          "inputName": "Explode"
         }
       ]
     },
@@ -79,7 +79,7 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "Rain feathers"
+          "inputName": "Rain feathers"
         }
       ]
     },
@@ -89,12 +89,12 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "Restart"
+          "inputName": "Restart"
         }
       ]
     }
   ],
-  "triggers": [
+  "inputs": [
     {
       "type": "Event",
       "name": "Explode"

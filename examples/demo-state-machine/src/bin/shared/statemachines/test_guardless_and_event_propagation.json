@@ -14,13 +14,13 @@
           "guards": [
             {
               "type": "Numeric",
-              "triggerName": "Rating",
+              "inputName": "Rating",
               "conditionType": "Equal",
               "compareTo": 1
             },
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         },
@@ -30,7 +30,7 @@
           "guards": [
             {
               "type": "Numeric",
-              "triggerName": "Rating",
+              "inputName": "Rating",
               "conditionType": "Equal",
               "compareTo": 2
             }
@@ -51,7 +51,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         },
@@ -91,7 +91,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         }
@@ -106,8 +106,8 @@
       "transitions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Numeric",
       "name": "Rating",

@@ -15,7 +15,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "rating",
+              "inputName": "rating",
               "compareTo": 1
             }
           ]
@@ -27,7 +27,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "rating",
+              "inputName": "rating",
               "compareTo": 2
             }
           ]
@@ -47,7 +47,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         }
@@ -55,7 +55,7 @@
       "exitActions": [
         {
           "type": "Toggle",
-          "triggerName": "a_exited",
+          "inputName": "a_exited",
           "value": true
         }
       ]
@@ -73,7 +73,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         }
@@ -81,7 +81,7 @@
       "exitActions": [
         {
           "type": "Toggle",
-          "triggerName": "b_exited",
+          "inputName": "b_exited",
           "value": true
         }
       ]
@@ -99,7 +99,7 @@
           "guards": [
             {
               "type": "Boolean",
-              "triggerName": "a_exited",
+              "inputName": "a_exited",
               "compareTo": true,
               "conditionType": "Equal"
             }
@@ -111,7 +111,7 @@
           "guards": [
             {
               "type": "Boolean",
-              "triggerName": "b_exited",
+              "inputName": "b_exited",
               "compareTo": true,
               "conditionType": "Equal"
             }
@@ -136,8 +136,8 @@
       "transitions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Boolean",
       "name": "a_exited",

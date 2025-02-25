@@ -113,12 +113,12 @@ interface DotLottiePlayer {
     i32 state_machine_post_pointer_exit_event(f32 x, f32 y);
     void state_machine_fire_event([ByRef] string event);
     string state_machine_current_state();
-    boolean state_machine_set_boolean_trigger([ByRef] string key, boolean value);
-    boolean state_machine_set_string_trigger([ByRef] string key, [ByRef] string value);
-    boolean state_machine_set_numeric_trigger([ByRef] string key, f32 value);
-    f32 state_machine_get_numeric_trigger([ByRef] string key);
-    string state_machine_get_string_trigger([ByRef] string key);
-    boolean state_machine_get_boolean_trigger([ByRef] string key);
+    boolean state_machine_set_boolean_input([ByRef] string key, boolean value);
+    boolean state_machine_set_string_input([ByRef] string key, [ByRef] string value);
+    boolean state_machine_set_numeric_input([ByRef] string key, f32 value);
+    f32 state_machine_get_numeric_input([ByRef] string key);
+    string state_machine_get_string_input([ByRef] string key);
+    boolean state_machine_get_boolean_input([ByRef] string key);
     boolean state_machine_override_current_state([ByRef] string state_name, boolean do_tick);
     u32 instance_id();
     string state_machine_status();

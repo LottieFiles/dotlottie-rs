@@ -12,7 +12,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "rating",
+              "inputName": "rating",
               "compareTo": 0
             }
           ]
@@ -24,7 +24,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "rating",
+              "inputName": "rating",
               "compareTo": 1
             }
           ]
@@ -36,7 +36,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "rating",
+              "inputName": "rating",
               "compareTo": 2
             }
           ]
@@ -48,7 +48,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "rating",
+              "inputName": "rating",
               "compareTo": 3
             }
           ]
@@ -60,7 +60,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "rating",
+              "inputName": "rating",
               "compareTo": 4
             }
           ]
@@ -72,7 +72,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "rating",
+              "inputName": "rating",
               "compareTo": 5
             }
           ]
@@ -88,7 +88,7 @@
       "entryActions": [
         {
           "type": "Increment",
-          "triggerName": "rating"
+          "inputName": "rating"
         }
       ],
       "transitions": []
@@ -103,7 +103,7 @@
       "entryActions": [
         {
           "type": "Increment",
-          "triggerName": "rating"
+          "inputName": "rating"
         }
       ]
     },
@@ -117,7 +117,7 @@
       "entryActions": [
         {
           "type": "Increment",
-          "triggerName": "rating"
+          "inputName": "rating"
         }
       ]
     },
@@ -131,7 +131,7 @@
       "entryActions": [
         {
           "type": "Increment",
-          "triggerName": "rating"
+          "inputName": "rating"
         }
       ]
     },
@@ -145,11 +145,11 @@
       "entryActions": [
         {
           "type": "Decrement",
-          "triggerName": "rating"
+          "inputName": "rating"
         }
       ]
     }
   ],
-  "listeners": null,
-  "triggers": null
+  "interactions": null,
+  "inputs": null
 }

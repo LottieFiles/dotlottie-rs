@@ -20,7 +20,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "global");
 
-        player.state_machine_set_numeric_trigger("rating", 3.0);
+        player.state_machine_set_numeric_input("rating", 3.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_2");
@@ -40,7 +40,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "global");
 
-        player.state_machine_set_numeric_trigger("rating", 5.0);
+        player.state_machine_set_numeric_input("rating", 5.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_5");
@@ -60,27 +60,27 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "global");
 
-        player.state_machine_set_numeric_trigger("rating", 5.0);
+        player.state_machine_set_numeric_input("rating", 5.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_2");
 
-        player.state_machine_set_numeric_trigger("rating", 4.0);
+        player.state_machine_set_numeric_input("rating", 4.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_2");
 
-        player.state_machine_set_numeric_trigger("rating", 3.0);
+        player.state_machine_set_numeric_input("rating", 3.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_2");
 
-        player.state_machine_set_numeric_trigger("rating", 1.0);
+        player.state_machine_set_numeric_input("rating", 1.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_1");
 
-        player.state_machine_set_numeric_trigger("rating", 2.0);
+        player.state_machine_set_numeric_input("rating", 2.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_1");
@@ -101,17 +101,17 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "global");
 
-        player.state_machine_set_numeric_trigger("rating", 5.0);
+        player.state_machine_set_numeric_input("rating", 5.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_2");
 
-        player.state_machine_set_numeric_trigger("rating", 1.0);
+        player.state_machine_set_numeric_input("rating", 1.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_1");
 
-        player.state_machine_set_numeric_trigger("rating", 2.0);
+        player.state_machine_set_numeric_input("rating", 2.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_2");
@@ -131,22 +131,22 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_3");
 
-        player.state_machine_set_numeric_trigger("rating", 5.0);
+        player.state_machine_set_numeric_input("rating", 5.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_5");
 
-        player.state_machine_set_numeric_trigger("rating", 3.0);
+        player.state_machine_set_numeric_input("rating", 3.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_3");
 
-        player.state_machine_set_numeric_trigger("rating", 5.0);
+        player.state_machine_set_numeric_input("rating", 5.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_5");
 
-        player.state_machine_set_numeric_trigger("rating", 1.0);
+        player.state_machine_set_numeric_input("rating", 1.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_3");
@@ -166,17 +166,17 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_3");
 
-        player.state_machine_set_numeric_trigger("rating", 5.0);
+        player.state_machine_set_numeric_input("rating", 5.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_5");
 
-        player.state_machine_set_numeric_trigger("rating", 3.0);
+        player.state_machine_set_numeric_input("rating", 3.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_5");
 
-        player.state_machine_set_numeric_trigger("rating", 1.0);
+        player.state_machine_set_numeric_input("rating", 1.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_3");

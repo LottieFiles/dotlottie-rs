@@ -9,7 +9,7 @@
             "name": "first",
             "autoplay": true,
             "transitions": [],
-            "entry_actions":[]
+            "entry_actions": []
         },
         {
             "type": "PlaybackState",
@@ -17,8 +17,7 @@
             "autoplay": true,
             "segment": "star_2",
             "transitions": [],
-            "entry_actions":[
-            ]
+            "entry_actions": []
         },
         {
             "type": "PlaybackState",
@@ -41,11 +40,9 @@
             "segment": "star_5",
             "transitions": []
         }
-
     ],
-    "listeners": [
-    ],
-    "triggers": [
+    "interactions": [],
+    "inputs": [
         {
             "type": "Numeric",
             "name": "rating",

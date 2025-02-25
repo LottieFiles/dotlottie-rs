@@ -13,7 +13,7 @@
             {
               "type": "Boolean",
               "conditionType": "Equal",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "compareTo": true
             }
           ]
@@ -40,7 +40,7 @@
             {
               "type": "Boolean",
               "conditionType": "Equal",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "compareTo": false
             }
           ]
@@ -68,7 +68,7 @@
             {
               "type": "Boolean",
               "conditionType": "Equal",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "compareTo": true
             }
           ]
@@ -82,18 +82,18 @@
       ]
     }
   ],
-  "listeners": [
+  "interactions": [
     {
       "type": "PointerDown",
       "actions": [
         {
           "type": "Toggle",
-          "triggerName": "OnOffSwitch"
+          "inputName": "OnOffSwitch"
         }
       ]
     }
   ],
-  "triggers": [
+  "inputs": [
     {
       "type": "Boolean",
       "name": "OnOffSwitch",

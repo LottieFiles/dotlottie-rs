@@ -4,14 +4,14 @@ use serde::Deserialize;
 
 use super::actions::Action;
 
-pub trait ListenerTrait {
+pub trait InteractionTrait {
     fn get_layer_name(&self) -> Option<String>;
     fn get_state_name(&self) -> Option<String>;
     fn get_actions(&self) -> &Vec<Action>;
     fn type_name(&self) -> String;
 }
 
-pub enum ListenerAction {
+pub enum InteractionAction {
     Increment,
     Decrement,
     Set,
@@ -21,7 +21,7 @@ pub enum ListenerAction {
 #[derive(Deserialize, Debug)]
 #[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
-pub enum Listener {
+pub enum Interaction {
     PointerUp {
         layer_name: Option<String>,
         actions: Vec<Action>,
@@ -55,7 +55,7 @@ pub enum Listener {
     },
 }
 
-impl Display for Listener {
+impl Display for Interaction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::PointerUp {
@@ -122,56 +122,56 @@ impl Display for Listener {
     }
 }
 
-impl ListenerTrait for Listener {
+impl InteractionTrait for Interaction {
     fn get_layer_name(&self) -> Option<String> {
         match self {
-            Listener::PointerUp { layer_name, .. } => layer_name.clone(),
-            Listener::PointerDown { layer_name, .. } => layer_name.clone(),
-            Listener::PointerEnter { layer_name, .. } => layer_name.clone(),
-            Listener::PointerMove { .. } => None,
-            Listener::PointerExit { layer_name, .. } => layer_name.clone(),
-            Listener::OnComplete { .. } => None,
-            Listener::OnLoopComplete { .. } => None,
-            Listener::Click { layer_name, .. } => layer_name.clone(),
+            Interaction::PointerUp { layer_name, .. } => layer_name.clone(),
+            Interaction::PointerDown { layer_name, .. } => layer_name.clone(),
+            Interaction::PointerEnter { layer_name, .. } => layer_name.clone(),
+            Interaction::PointerMove { .. } => None,
+            Interaction::PointerExit { layer_name, .. } => layer_name.clone(),
+            Interaction::OnComplete { .. } => None,
+            Interaction::OnLoopComplete { .. } => None,
+            Interaction::Click { layer_name, .. } => layer_name.clone(),
         }
     }
 
     fn get_actions(&self) -> &Vec<Action> {
         match self {
-            Listener::PointerUp { actions, .. } => actions,
-            Listener::PointerDown { actions, .. } => actions,
-            Listener::PointerEnter { actions, .. } => actions,
-            Listener::PointerMove { actions, .. } => actions,
-            Listener::PointerExit { actions, .. } => actions,
-            Listener::OnComplete { actions, .. } => actions,
-            Listener::OnLoopComplete { actions, .. } => actions,
-            Listener::Click { actions, .. } => actions,
+            Interaction::PointerUp { actions, .. } => actions,
+            Interaction::PointerDown { actions, .. } => actions,
+            Interaction::PointerEnter { actions, .. } => actions,
+            Interaction::PointerMove { actions, .. } => actions,
+            Interaction::PointerExit { actions, .. } => actions,
+            Interaction::OnComplete { actions, .. } => actions,
+            Interaction::OnLoopComplete { actions, .. } => actions,
+            Interaction::Click { actions, .. } => actions,
         }
     }
 
     fn get_state_name(&self) -> Option<String> {
         match self {
-            Listener::PointerUp { .. } => None,
-            Listener::PointerDown { .. } => None,
-            Listener::PointerEnter { .. } => None,
-            Listener::PointerMove { .. } => None,
-            Listener::PointerExit { .. } => None,
-            Listener::Click { .. } => None,
-            Listener::OnComplete { state_name, .. } => Some(state_name.clone()),
-            Listener::OnLoopComplete { state_name, .. } => Some(state_name.clone()),
+            Interaction::PointerUp { .. } => None,
+            Interaction::PointerDown { .. } => None,
+            Interaction::PointerEnter { .. } => None,
+            Interaction::PointerMove { .. } => None,
+            Interaction::PointerExit { .. } => None,
+            Interaction::Click { .. } => None,
+            Interaction::OnComplete { state_name, .. } => Some(state_name.clone()),
+            Interaction::OnLoopComplete { state_name, .. } => Some(state_name.clone()),
         }
     }
 
     fn type_name(&self) -> String {
         match self {
-            Listener::PointerUp { .. } => "PointerUp".to_string(),
-            Listener::PointerDown { .. } => "PointerDown".to_string(),
-            Listener::PointerEnter { .. } => "PointerEnter".to_string(),
-            Listener::PointerMove { .. } => "PointerMove".to_string(),
-            Listener::PointerExit { .. } => "PointerExit".to_string(),
-            Listener::OnComplete { .. } => "OnComplete".to_string(),
-            Listener::OnLoopComplete { .. } => "OnComplete".to_string(),
-            Listener::Click { .. } => "Click".to_string(),
+            Interaction::PointerUp { .. } => "PointerUp".to_string(),
+            Interaction::PointerDown { .. } => "PointerDown".to_string(),
+            Interaction::PointerEnter { .. } => "PointerEnter".to_string(),
+            Interaction::PointerMove { .. } => "PointerMove".to_string(),
+            Interaction::PointerExit { .. } => "PointerExit".to_string(),
+            Interaction::OnComplete { .. } => "OnComplete".to_string(),
+            Interaction::OnLoopComplete { .. } => "OnComplete".to_string(),
+            Interaction::Click { .. } => "Click".to_string(),
         }
     }
 }

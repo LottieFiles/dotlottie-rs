@@ -7,7 +7,7 @@ use super::{
         guard::{self, Guard},
         Transition, TransitionTrait,
     },
-    triggers::Trigger,
+    inputs::Input,
     StateMachineEngine,
 };
 
@@ -29,10 +29,10 @@ pub enum StateMachineEngineSecurityError {
     SecurityCheckErrorDuplicateStateName { state_name: String },
 
     #[error(
-        "A guard is using a trigger: {} for its compareTo that does not exist or is of the wrong type. This is not allowed.",
-        trigger_name
+        "A guard is using a input: {} for its compareTo that does not exist or is of the wrong type. This is not allowed.",
+        input_name
     )]
-    SecurityCheckErrorTriggerCompareToIsWrong { trigger_name: String },
+    SecurityCheckErrorInputCompareToIsWrong { input_name: String },
 
     #[error(
         "Multiple GlobalState state types have been used. Only a single GlobalState is allowed."
@@ -43,7 +43,7 @@ pub enum StateMachineEngineSecurityError {
 // Rules checked:
 // - All State names are unique
 // - Checks every state has no more than one transitions without guards
-// - Checks every guard's compareTo is a valid trigger
+// - Checks every guard's compareTo is a valid input
 // - Checks guards using events are valid
 pub fn state_machine_state_check_pipeline(
     state_machine: &StateMachineEngine,
@@ -80,8 +80,8 @@ pub fn state_machine_state_check_pipeline(
             if guards.is_none() {
                 count += 1;
             }
-            // Check for existing triggers and events
-            match check_guards_for_existing_triggers(state_machine, transition)
+            // Check for existing inputs and events
+            match check_guards_for_existing_inputs(state_machine, transition)
                 .and_then(|_| check_guards_for_existing_events(state_machine, transition))
             {
                 Ok(_) => continue,
@@ -106,26 +106,26 @@ pub fn state_machine_state_check_pipeline(
 
 // Loop over every state and all their transitions
 // If a guard is found and of type string
-// Extract the trigger name and check if it exists in the triggers
+// Extract the input name and check if it exists in the inputs
 // We can also check for correct type whilst we're at it.
-pub fn check_guards_for_existing_triggers(
+pub fn check_guards_for_existing_inputs(
     state_machine: &StateMachineEngine,
     transition: &Transition,
 ) -> Result<(), StateMachineEngineSecurityError> {
     let guards = transition.guards();
-    let triggers = state_machine.state_machine.triggers();
+    let inputs = state_machine.state_machine.inputs();
 
     if let Some(guards) = guards {
         for guard in guards {
             match guard {
                 guard::Guard::Boolean { compare_to, .. } => {
-                    if let StringBool::String(trigger_name) = compare_to {
-                        let value = trigger_name.trim_start_matches('$');
+                    if let StringBool::String(input_name) = compare_to {
+                        let value = input_name.trim_start_matches('$');
                         let mut found = false;
 
-                        if let Some(triggers) = triggers {
-                            for trigger in triggers {
-                                if let Trigger::Boolean { name, .. } = trigger {
+                        if let Some(inputs) = inputs {
+                            for input in inputs {
+                                if let Input::Boolean { name, .. } = input {
                                     if name == value {
                                         found = true
                                     }
@@ -134,20 +134,20 @@ pub fn check_guards_for_existing_triggers(
                         }
 
                         if !found {
-                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorTriggerCompareToIsWrong {
-                                            trigger_name: trigger_name.to_string(),
+                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong {
+                                            input_name: input_name.to_string(),
                                         });
                         }
                     }
                 }
                 guard::Guard::Numeric { compare_to, .. } => {
-                    if let StringNumberBool::String(trigger_name) = compare_to {
-                        let value = trigger_name.trim_start_matches('$');
+                    if let StringNumberBool::String(input_name) = compare_to {
+                        let value = input_name.trim_start_matches('$');
                         let mut found = false;
 
-                        if let Some(triggers) = triggers {
-                            for trigger in triggers {
-                                if let Trigger::Numeric { name, .. } = trigger {
+                        if let Some(inputs) = inputs {
+                            for input in inputs {
+                                if let Input::Numeric { name, .. } = input {
                                     if name == value {
                                         found = true
                                     }
@@ -156,21 +156,21 @@ pub fn check_guards_for_existing_triggers(
                         }
 
                         if !found {
-                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorTriggerCompareToIsWrong {
-                                            trigger_name: trigger_name.to_string(),
+                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong {
+                                            input_name: input_name.to_string(),
                                         });
                         }
                     }
                 }
                 guard::Guard::String { compare_to, .. } => {
-                    if let StringNumberBool::String(trigger_name) = compare_to {
-                        if trigger_name.starts_with("$") {
-                            let value = trigger_name.trim_start_matches('$');
+                    if let StringNumberBool::String(input_name) = compare_to {
+                        if input_name.starts_with("$") {
+                            let value = input_name.trim_start_matches('$');
                             let mut found = false;
 
-                            if let Some(triggers) = triggers {
-                                for trigger in triggers {
-                                    if let Trigger::String { name, .. } = trigger {
+                            if let Some(inputs) = inputs {
+                                for input in inputs {
+                                    if let Input::String { name, .. } = input {
                                         if name == value {
                                             found = true
                                         }
@@ -179,8 +179,8 @@ pub fn check_guards_for_existing_triggers(
                             }
 
                             if !found {
-                                return Err(StateMachineEngineSecurityError::SecurityCheckErrorTriggerCompareToIsWrong {
-                                                trigger_name: trigger_name.to_string(),
+                                return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong {
+                                                input_name: input_name.to_string(),
                                             });
                             }
                         }
@@ -200,19 +200,19 @@ pub fn check_guards_for_existing_events(
     state_machine: &StateMachineEngine,
     transition: &Transition,
 ) -> Result<(), StateMachineEngineSecurityError> {
-    let triggers = state_machine.state_machine.triggers();
+    let inputs = state_machine.state_machine.inputs();
 
     let guards = transition.guards();
 
     if let Some(guards) = guards {
         for guard in guards {
-            if let Guard::Event { trigger_name } = guard {
+            if let Guard::Event { input_name } = guard {
                 let mut found = false;
 
-                if let Some(triggers) = triggers {
-                    for trigger in triggers {
-                        if let Trigger::Event { name } = trigger {
-                            if name == trigger_name {
+                if let Some(inputs) = inputs {
+                    for input in inputs {
+                        if let Input::Event { name } = input {
+                            if name == input_name {
                                 found = true;
                             }
                         }
@@ -221,8 +221,8 @@ pub fn check_guards_for_existing_events(
 
                 if !found {
                     return Err(
-                        StateMachineEngineSecurityError::SecurityCheckErrorTriggerCompareToIsWrong {
-                            trigger_name: trigger_name.to_string(),
+                        StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong {
+                            input_name: input_name.to_string(),
                         },
                     );
                 }

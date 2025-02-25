@@ -187,7 +187,14 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("postPointerMoveEvent", &DotLottiePlayer::post_pointer_move_event)
         .function("postPointerEnterEvent", &DotLottiePlayer::post_pointer_enter_event)
         .function("postPointerExitEvent", &DotLottiePlayer::post_pointer_exit_event)
-        .function("postSetNumericContext", &DotLottiePlayer::post_set_numeric_context);
+        .function("postSetNumericContext", &DotLottiePlayer::post_set_numeric_context)
+
+        .function("tick", &DotLottiePlayer::tick)
+        .function("isTweening", &DotLottiePlayer::is_tweening)
+        .function("tweenUpdate", &DotLottiePlayer::tween_update)
+        .function("tween", &DotLottiePlayer::tween)
+        .function("tweenTo", &DotLottiePlayer::tween_to)
+        .function("tweenToMarker", &DotLottiePlayer::tween_to_marker);
     // .function("state_machine_subscribe", &DotLottiePlayer::state_machine_subscribe)
     // .function("state_machine_unsubscribe", &DotLottiePlayer::state_machine_unsubscribe)
 }

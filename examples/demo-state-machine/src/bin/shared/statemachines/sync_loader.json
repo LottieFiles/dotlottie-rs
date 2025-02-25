@@ -12,7 +12,7 @@
             {
               "type": "Numeric",
               "conditionType": "LessThanOrEqual",
-              "triggerName": "progress",
+              "inputName": "progress",
               "compareTo": 100.0
             }
           ]
@@ -26,8 +26,8 @@
       ]
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Numeric",
       "name": "progress",

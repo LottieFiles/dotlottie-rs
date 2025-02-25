@@ -15,20 +15,20 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "explode"
+              "inputName": "explode"
             }
           ]
         }
       ]
     }
   ],
-  "listeners": [
+  "interactions": [
     {
       "type": "PointerDown",
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "explode"
+          "inputName": "explode"
         }
       ]
     },
@@ -37,7 +37,7 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "explode"
+          "inputName": "explode"
         }
       ]
     },
@@ -46,7 +46,7 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "explode"
+          "inputName": "explode"
         }
       ]
     },
@@ -55,7 +55,7 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "explode"
+          "inputName": "explode"
         }
       ]
     },
@@ -64,7 +64,7 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "explode"
+          "inputName": "explode"
         }
       ]
     },
@@ -74,12 +74,12 @@
       "actions": [
         {
           "type": "Fire",
-          "triggerName": "rainFeathers"
+          "inputName": "rainFeathers"
         }
       ]
     }
   ],
-  "triggers": [
+  "inputs": [
     {
       "type": "Event",
       "name": "explode"

@@ -15,7 +15,7 @@
                     "guards": [
                         {
                             "type": "Numeric",
-                            "triggerName": "loopCount",
+                            "inputName": "loopCount",
                             "conditionType": "GreaterThanOrEqual",
                             "compareTo": 4
                         }
@@ -34,7 +34,7 @@
             "transitions": []
         }
     ],
-    "triggers": [
+    "inputs": [
         {
             "type": "Event",
             "name": "explode"
@@ -53,14 +53,14 @@
             "value": 0
         }
     ],
-    "listeners": [
+    "interactions": [
         {
             "type": "OnLoopComplete",
             "stateName": "pigeonRunning",
             "actions": [
                 {
                     "type": "Increment",
-                    "triggerName": "loopCount"
+                    "inputName": "loopCount"
                 }
             ]
         }

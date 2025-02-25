@@ -1,8 +1,8 @@
 use serde::Deserialize;
 
 use crate::{
+    inputs::{InputManager, InputTrait},
     state_machine::{StringBool, StringNumberBool},
-    triggers::{TriggerManager, TriggerTrait},
 };
 
 #[derive(Deserialize, PartialEq, Debug, Clone)]
@@ -16,10 +16,10 @@ pub enum TransitionGuardConditionType {
 }
 
 pub trait GuardTrait {
-    fn string_trigger_is_satisfied(&self, triggers: &TriggerManager) -> bool;
-    fn boolean_trigger_is_satisfied(&self, triggers: &TriggerManager) -> bool;
-    fn numeric_trigger_is_satisfied(&self, triggers: &TriggerManager) -> bool;
-    fn event_trigger_is_satisfied(&self, event: &str) -> bool;
+    fn string_input_is_satisfied(&self, inputs: &InputManager) -> bool;
+    fn boolean_input_is_satisfied(&self, inputs: &InputManager) -> bool;
+    fn numeric_input_is_satisfied(&self, inputs: &InputManager) -> bool;
+    fn event_input_is_satisfied(&self, event: &str) -> bool;
 }
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
@@ -27,108 +27,108 @@ pub trait GuardTrait {
 #[serde(tag = "type")]
 pub enum Guard {
     Numeric {
-        trigger_name: String,
+        input_name: String,
         condition_type: TransitionGuardConditionType,
         compare_to: StringNumberBool,
     },
     String {
-        trigger_name: String,
+        input_name: String,
         condition_type: TransitionGuardConditionType,
         compare_to: StringNumberBool,
     },
     Boolean {
-        trigger_name: String,
+        input_name: String,
         condition_type: TransitionGuardConditionType,
         compare_to: StringBool,
     },
     Event {
-        trigger_name: String,
+        input_name: String,
     },
 }
 
 impl GuardTrait for Guard {
-    // Check if the trigger is satisfied
-    // If the user uses compare_to as a string and pass "$" as a prefix, we use the trigger value
-    // If the trigger_value is not found, we return false
-    fn boolean_trigger_is_satisfied(&self, trigger: &TriggerManager) -> bool {
+    // Check if the input is satisfied
+    // If the user uses compare_to as a string and pass "$" as a prefix, we use the input value
+    // If the input_value is not found, we return false
+    fn boolean_input_is_satisfied(&self, input: &InputManager) -> bool {
         match self {
             Guard::Boolean {
-                trigger_name,
+                input_name,
                 condition_type,
                 compare_to,
             } => {
-                if let Some(trigger_value) = trigger.get_boolean(trigger_name) {
+                if let Some(input_value) = input.get_boolean(input_name) {
                     match compare_to {
                         StringBool::Bool(compare_to) => match condition_type {
                             TransitionGuardConditionType::Equal => {
-                                return trigger_value == *compare_to;
+                                return input_value == *compare_to;
                             }
                             TransitionGuardConditionType::NotEqual => {
-                                return trigger_value != *compare_to;
+                                return input_value != *compare_to;
                             }
                             _ => return false,
                         },
                         StringBool::String(compare_to) => {
-                            // Get the number from the trigger
+                            // Get the number from the input
                             // Remove the "$" prefix from the value
                             let value = compare_to.trim_start_matches('$');
-                            let opt_bool_value = trigger.get_boolean(value);
+                            let opt_bool_value = input.get_boolean(value);
                             if let Some(bool_value) = opt_bool_value {
                                 match condition_type {
                                     TransitionGuardConditionType::Equal => {
-                                        return trigger_value == bool_value;
+                                        return input_value == bool_value;
                                     }
                                     TransitionGuardConditionType::NotEqual => {
-                                        return trigger_value != bool_value;
+                                        return input_value != bool_value;
                                     }
                                     _ => return false,
                                 }
                             }
 
-                            // Failed to get value from triggers
+                            // Failed to get value from inputs
                             false
                         }
                     };
                 }
 
-                // Failed to get value from triggers
+                // Failed to get value from inputs
                 false
             }
             _ => false,
         }
     }
 
-    fn string_trigger_is_satisfied(&self, trigger: &TriggerManager) -> bool {
+    fn string_input_is_satisfied(&self, input: &InputManager) -> bool {
         match self {
             Guard::String {
-                trigger_name,
+                input_name,
                 condition_type,
                 compare_to,
             } => {
-                if let Some(trigger_value) = trigger.get_string(trigger_name) {
+                if let Some(input_value) = input.get_string(input_name) {
                     match compare_to {
                         StringNumberBool::String(compare_to) => {
                             let mut mut_compare_to = compare_to.clone();
 
                             if mut_compare_to.starts_with("$") {
-                                // Get the string from the trigger
+                                // Get the string from the input
                                 // Remove the "$" prefix from the value
                                 let value = mut_compare_to.trim_start_matches('$');
-                                let opt_string_value = trigger.get_string(value);
+                                let opt_string_value = input.get_string(value);
                                 if let Some(string_value) = opt_string_value {
                                     mut_compare_to = string_value.clone();
                                 } else {
-                                    // Failed to get value from triggers
+                                    // Failed to get value from inputs
                                     return false;
                                 }
                             }
 
                             match condition_type {
                                 TransitionGuardConditionType::Equal => {
-                                    return trigger_value == *mut_compare_to;
+                                    return input_value == *mut_compare_to;
                                 }
                                 TransitionGuardConditionType::NotEqual => {
-                                    return trigger_value != *mut_compare_to;
+                                    return input_value != *mut_compare_to;
                                 }
                                 _ => return false,
                             }
@@ -138,50 +138,50 @@ impl GuardTrait for Guard {
                     };
                 }
 
-                // Failed to get value from triggers
+                // Failed to get value from inputs
                 false
             }
             _ => false,
         }
     }
 
-    fn numeric_trigger_is_satisfied(&self, trigger: &TriggerManager) -> bool {
+    fn numeric_input_is_satisfied(&self, input: &InputManager) -> bool {
         match self {
             Guard::Numeric {
-                trigger_name,
+                input_name,
                 condition_type,
                 compare_to,
             } => {
-                if let Some(trigger_value) = trigger.get_numeric(trigger_name) {
+                if let Some(input_value) = input.get_numeric(input_name) {
                     match compare_to {
                         StringNumberBool::String(compare_to) => {
                             if compare_to.starts_with("$") {
                                 // Remove the "$" prefix from the value
                                 let value = compare_to.trim_start_matches('$');
-                                let opt_numeric_value = trigger.get_numeric(value);
+                                let opt_numeric_value = input.get_numeric(value);
                                 if let Some(numeric_value) = opt_numeric_value {
                                     match condition_type {
                                         TransitionGuardConditionType::GreaterThan => {
-                                            trigger_value > numeric_value
+                                            input_value > numeric_value
                                         }
                                         TransitionGuardConditionType::GreaterThanOrEqual => {
-                                            trigger_value >= numeric_value
+                                            input_value >= numeric_value
                                         }
                                         TransitionGuardConditionType::LessThan => {
-                                            trigger_value < numeric_value
+                                            input_value < numeric_value
                                         }
                                         TransitionGuardConditionType::LessThanOrEqual => {
-                                            trigger_value <= numeric_value
+                                            input_value <= numeric_value
                                         }
                                         TransitionGuardConditionType::Equal => {
-                                            trigger_value == numeric_value
+                                            input_value == numeric_value
                                         }
                                         TransitionGuardConditionType::NotEqual => {
-                                            trigger_value != numeric_value
+                                            input_value != numeric_value
                                         }
                                     }
                                 } else {
-                                    // Failed to get value from triggers
+                                    // Failed to get value from inputs
                                     false
                                 }
                             } else {
@@ -189,16 +189,14 @@ impl GuardTrait for Guard {
                             }
                         }
                         StringNumberBool::F32(value) => match condition_type {
-                            TransitionGuardConditionType::GreaterThan => trigger_value > *value,
+                            TransitionGuardConditionType::GreaterThan => input_value > *value,
                             TransitionGuardConditionType::GreaterThanOrEqual => {
-                                trigger_value >= *value
+                                input_value >= *value
                             }
-                            TransitionGuardConditionType::LessThan => trigger_value < *value,
-                            TransitionGuardConditionType::LessThanOrEqual => {
-                                trigger_value <= *value
-                            }
-                            TransitionGuardConditionType::Equal => trigger_value == *value,
-                            TransitionGuardConditionType::NotEqual => trigger_value != *value,
+                            TransitionGuardConditionType::LessThan => input_value < *value,
+                            TransitionGuardConditionType::LessThanOrEqual => input_value <= *value,
+                            TransitionGuardConditionType::Equal => input_value == *value,
+                            TransitionGuardConditionType::NotEqual => input_value != *value,
                         },
                         StringNumberBool::Bool(_) => false,
                     }
@@ -210,9 +208,9 @@ impl GuardTrait for Guard {
         }
     }
 
-    fn event_trigger_is_satisfied(&self, event: &str) -> bool {
+    fn event_input_is_satisfied(&self, event: &str) -> bool {
         match self {
-            Guard::Event { trigger_name } => trigger_name == event,
+            Guard::Event { input_name } => input_name == event,
             _ => false,
         }
     }

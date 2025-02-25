@@ -13,7 +13,7 @@
             {
               "type": "String",
               "conditionType": "Equal",
-              "triggerName": "currentAnimation",
+              "inputName": "currentAnimation",
               "compareTo": "anger"
             }
           ]
@@ -25,7 +25,7 @@
             {
               "type": "String",
               "conditionType": "Equal",
-              "triggerName": "currentAnimation",
+              "inputName": "currentAnimation",
               "compareTo": "devil"
             }
           ]
@@ -37,7 +37,7 @@
             {
               "type": "String",
               "conditionType": "Equal",
-              "triggerName": "currentAnimation",
+              "inputName": "currentAnimation",
               "compareTo": "glasses"
             }
           ]
@@ -102,8 +102,8 @@
       "exitActions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "String",
       "name": "currentAnimation",

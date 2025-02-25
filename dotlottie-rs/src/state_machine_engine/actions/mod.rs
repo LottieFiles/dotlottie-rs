@@ -39,33 +39,33 @@ pub enum Action {
         target: String,
     },
     Increment {
-        trigger_name: String,
+        input_name: String,
         value: Option<StringNumber>,
     },
     Decrement {
-        trigger_name: String,
+        input_name: String,
         value: Option<StringNumber>,
     },
     Toggle {
-        trigger_name: String,
+        input_name: String,
     },
     SetBoolean {
-        trigger_name: String,
+        input_name: String,
         value: bool,
     },
     SetString {
-        trigger_name: String,
+        input_name: String,
         value: String,
     },
     SetNumeric {
-        trigger_name: String,
+        input_name: String,
         value: f32,
     },
     Fire {
-        trigger_name: String,
+        input_name: String,
     },
     Reset {
-        trigger_name: String,
+        input_name: String,
     },
     SetExpression {
         layer_name: String,
@@ -99,27 +99,27 @@ impl ActionTrait for Action {
     ) -> Result<(), StateMachineActionError> {
         match self {
             Action::Increment {
-                trigger_name,
+                input_name,
                 value,
             } => {
-                let val = engine.get_numeric_trigger(trigger_name);
+                let val = engine.get_numeric_input(input_name);
 
                 if let Some(val) = val {
                     if let Some(value) = value {
                         match value {
                             StringNumber::String(value) => {
                                 let trimmed_value = value.trim_start_matches('$');
-                                let opt_trigger_value = engine.get_numeric_trigger(trimmed_value);
-                                if let Some(trigger_value) = opt_trigger_value {
-                                    engine.set_numeric_trigger(
-                                        trigger_name,
-                                        val + trigger_value,
+                                let opt_input_value = engine.get_numeric_input(trimmed_value);
+                                if let Some(input_value) = opt_input_value {
+                                    engine.set_numeric_input(
+                                        input_name,
+                                        val + input_value,
                                         run_pipeline,
                                         true,
                                     );
                                 } else {
-                                    engine.set_numeric_trigger(
-                                        trigger_name,
+                                    engine.set_numeric_input(
+                                        input_name,
                                         val + 1.0,
                                         run_pipeline,
                                         true,
@@ -127,8 +127,8 @@ impl ActionTrait for Action {
                                 }
                             }
                             StringNumber::F32(value) => {
-                                engine.set_numeric_trigger(
-                                    trigger_name,
+                                engine.set_numeric_input(
+                                    input_name,
                                     val + value,
                                     run_pipeline,
                                     true,
@@ -136,34 +136,34 @@ impl ActionTrait for Action {
                             }
                         }
                     } else {
-                        engine.set_numeric_trigger(trigger_name, val + 1.0, run_pipeline, true);
+                        engine.set_numeric_input(input_name, val + 1.0, run_pipeline, true);
                     }
                 }
 
                 Ok(())
             }
             Action::Decrement {
-                trigger_name,
+                input_name,
                 value,
             } => {
-                let val = engine.get_numeric_trigger(trigger_name);
+                let val = engine.get_numeric_input(input_name);
 
                 if let Some(val) = val {
                     if let Some(value) = value {
                         match value {
                             StringNumber::String(value) => {
                                 let trimmed_value = value.trim_start_matches('$');
-                                let opt_trigger_value = engine.get_numeric_trigger(trimmed_value);
-                                if let Some(trigger_value) = opt_trigger_value {
-                                    engine.set_numeric_trigger(
-                                        trigger_name,
-                                        val - trigger_value,
+                                let opt_input_value = engine.get_numeric_input(trimmed_value);
+                                if let Some(input_value) = opt_input_value {
+                                    engine.set_numeric_input(
+                                        input_name,
+                                        val - input_value,
                                         run_pipeline,
                                         true,
                                     );
                                 } else {
-                                    engine.set_numeric_trigger(
-                                        trigger_name,
+                                    engine.set_numeric_input(
+                                        input_name,
                                         val - 1.0,
                                         run_pipeline,
                                         true,
@@ -171,8 +171,8 @@ impl ActionTrait for Action {
                                 }
                             }
                             StringNumber::F32(value) => {
-                                engine.set_numeric_trigger(
-                                    trigger_name,
+                                engine.set_numeric_input(
+                                    input_name,
                                     val - value,
                                     run_pipeline,
                                     true,
@@ -180,52 +180,52 @@ impl ActionTrait for Action {
                             }
                         }
                     } else {
-                        engine.set_numeric_trigger(trigger_name, val - 1.0, run_pipeline, true);
+                        engine.set_numeric_input(input_name, val - 1.0, run_pipeline, true);
                     }
                 }
                 Ok(())
             }
-            Action::Toggle { trigger_name } => {
-                let val = engine.get_boolean_trigger(trigger_name);
+            Action::Toggle { input_name } => {
+                let val = engine.get_boolean_input(input_name);
 
                 if let Some(val) = val {
-                    engine.set_boolean_trigger(trigger_name, !val, run_pipeline, true);
+                    engine.set_boolean_input(input_name, !val, run_pipeline, true);
                 }
 
                 Ok(())
             }
-            // Todo: Add support for setting a trigger to a trigger value
+            // Todo: Add support for setting a input to a input value
             Action::SetBoolean {
-                trigger_name,
+                input_name,
                 value,
             } => {
-                engine.set_boolean_trigger(trigger_name, *value, run_pipeline, true);
+                engine.set_boolean_input(input_name, *value, run_pipeline, true);
 
                 Ok(())
             }
-            // Todo: Add support for setting a trigger to a trigger value
+            // Todo: Add support for setting a input to a input value
             Action::SetNumeric {
-                trigger_name,
+                input_name,
                 value,
             } => {
-                engine.set_numeric_trigger(trigger_name, *value, run_pipeline, true);
+                engine.set_numeric_input(input_name, *value, run_pipeline, true);
                 Ok(())
             }
-            // Todo: Add support for setting a trigger to a trigger value
+            // Todo: Add support for setting a input to a input value
             Action::SetString {
-                trigger_name,
+                input_name,
                 value,
             } => {
-                engine.set_string_trigger(trigger_name, value, run_pipeline, true);
+                engine.set_string_input(input_name, value, run_pipeline, true);
 
                 Ok(())
             }
-            Action::Fire { trigger_name } => {
-                let _ = engine.fire(trigger_name, run_pipeline);
+            Action::Fire { input_name } => {
+                let _ = engine.fire(input_name, run_pipeline);
                 Ok(())
             }
-            Action::Reset { trigger_name } => {
-                engine.reset_trigger(trigger_name, run_pipeline, true);
+            Action::Reset { input_name } => {
+                engine.reset_input(input_name, run_pipeline, true);
 
                 Ok(())
             }
@@ -346,15 +346,15 @@ impl ActionTrait for Action {
                 match value {
                     StringNumber::String(value) => {
                         if let Ok(player) = read_lock {
-                            // Get the frame number from the trigger
+                            // Get the frame number from the input
                             // Remove the "$" prefix from the value
                             let value = value.trim_start_matches('$');
-                            let frame = engine.get_numeric_trigger(value);
+                            let frame = engine.get_numeric_input(value);
                             if let Some(frame) = frame {
                                 player.set_frame(frame);
                             } else {
                                 return Err(StateMachineActionError::ExecuteError(
-                                    "Error getting value from trigger.".to_string(),
+                                    "Error getting value from input.".to_string(),
                                 ));
                             }
                             return Ok(());
@@ -383,10 +383,10 @@ impl ActionTrait for Action {
                     Ok(player) => {
                         match value {
                             StringNumber::String(value) => {
-                                // Get the frame number from the trigger
+                                // Get the frame number from the input
                                 // Remove the "$" prefix from the value
                                 let value = value.trim_start_matches('$');
-                                let percentage = engine.get_numeric_trigger(value);
+                                let percentage = engine.get_numeric_input(value);
                                 if let Some(percentage) = percentage {
                                     let new_perc = percentage / 100.0;
                                     let frame = player.total_frames() * new_perc;

@@ -7,23 +7,23 @@ use std::sync::{Arc, RwLock};
 pub mod actions;
 pub mod errors;
 pub mod events;
-pub mod listeners;
+pub mod inputs;
+pub mod interactions;
 pub mod security;
 pub mod state_machine;
 pub mod states;
 pub mod transitions;
-pub mod triggers;
 
 use actions::open_url::OpenUrl;
 use actions::{Action, ActionTrait};
-use listeners::ListenerTrait;
+use inputs::{Input, InputManager, InputTrait, InputValue};
+use interactions::InteractionTrait;
 use state_machine::StateMachine;
 use states::StateTrait;
 use transitions::guard::GuardTrait;
 use transitions::{Transition, TransitionTrait};
-use triggers::{Trigger, TriggerManager, TriggerTrait, TriggerValue};
 
-use crate::state_machine_engine::listeners::Listener;
+use crate::state_machine_engine::interactions::Interaction;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, DotLottiePlayerContainer, EventName,
     PointerEvent, StateMachineEngineSecurityError,
@@ -39,20 +39,15 @@ pub trait StateMachineObserver: Send + Sync {
     fn on_state_entered(&self, entering_state: String);
     fn on_state_exit(&self, leaving_state: String);
     fn on_custom_event(&self, message: String);
-    fn on_string_trigger_value_change(
+    fn on_string_input_value_change(
         &self,
-        trigger_name: String,
+        input_name: String,
         old_value: String,
         new_value: String,
     );
-    fn on_numeric_trigger_value_change(&self, trigger_name: String, old_value: f32, new_value: f32);
-    fn on_boolean_trigger_value_change(
-        &self,
-        trigger_name: String,
-        old_value: bool,
-        new_value: bool,
-    );
-    fn on_trigger_fired(&self, trigger_name: String);
+    fn on_numeric_input_value_change(&self, input_name: String, old_value: f32, new_value: f32);
+    fn on_boolean_input_value_change(&self, input_name: String, old_value: bool, new_value: bool);
+    fn on_input_fired(&self, input_name: String);
     fn on_error(&self, error: String);
 }
 
@@ -125,8 +120,8 @@ pub struct StateMachineEngine {
     pub status: StateMachineEngineStatus,
     pub open_url_config: OpenUrl,
 
-    triggers: TriggerManager,
-    event_trigger: HashMap<String, String>,
+    inputs: InputManager,
+    event_input: HashMap<String, String>,
     curr_event: Option<String>,
 
     // PointerEnter/PointerExit management
@@ -140,7 +135,7 @@ pub struct StateMachineEngine {
     state_history: Vec<String>,
     max_cycle_count: usize,
     current_cycle_count: usize,
-    action_mutated_triggers: bool,
+    action_mutated_inputs: bool,
 }
 
 impl Default for StateMachineEngine {
@@ -151,8 +146,8 @@ impl Default for StateMachineEngine {
             current_state: None,
             open_url_config: OpenUrl::default(),
             player: None,
-            triggers: TriggerManager::new(),
-            event_trigger: HashMap::new(),
+            inputs: InputManager::new(),
+            event_input: HashMap::new(),
             curr_event: None,
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
@@ -161,7 +156,7 @@ impl Default for StateMachineEngine {
             state_history: Vec::new(),
             max_cycle_count: 20,
             current_cycle_count: 0,
-            action_mutated_triggers: false,
+            action_mutated_inputs: false,
         }
     }
 }
@@ -184,8 +179,8 @@ impl StateMachineEngine {
             current_state: None,
             open_url_config: OpenUrl::default(),
             player: Some(player.clone()),
-            triggers: TriggerManager::new(),
-            event_trigger: HashMap::new(),
+            inputs: InputManager::new(),
+            event_input: HashMap::new(),
             curr_event: None,
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
@@ -194,7 +189,7 @@ impl StateMachineEngine {
             state_history: Vec::new(),
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
-            action_mutated_triggers: false,
+            action_mutated_inputs: false,
         };
 
         state_machine.create_state_machine(state_machine_definition, &player)
@@ -226,21 +221,21 @@ impl StateMachineEngine {
         }
     }
 
-    // key: The key of the trigger
-    // value: The value to set the trigger to
-    // run_pipeline: If true, the pipeline will be run after setting the trigger. This is most likely false if called from an action or during initialization.
-    // called_from_action: If true, the trigger was set from an action. We need this so that action_mutated_triggers is correctly set.
-    pub fn set_numeric_trigger(
+    // key: The key of the input
+    // value: The value to set the input to
+    // run_pipeline: If true, the pipeline will be run after setting the input. This is most likely false if called from an action or during initialization.
+    // called_from_action: If true, the input was set from an action. We need this so that action_mutated_inputs is correctly set.
+    pub fn set_numeric_input(
         &mut self,
         key: &str,
         value: f32,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<TriggerValue> {
-        let ret = self.triggers.set_numeric(key, value);
+    ) -> Option<InputValue> {
+        let ret = self.inputs.set_numeric(key, value);
 
         if called_from_action {
-            self.action_mutated_triggers = true;
+            self.action_mutated_inputs = true;
         }
 
         if run_pipeline {
@@ -248,96 +243,96 @@ impl StateMachineEngine {
         }
 
         if let Some(old_value) = &ret {
-            if let TriggerValue::Numeric(old_value) = *old_value {
-                self.observe_numeric_trigger_value_change(key, old_value, value);
+            if let InputValue::Numeric(old_value) = *old_value {
+                self.observe_numeric_input_value_change(key, old_value, value);
             }
         }
 
         ret
     }
 
-    pub fn get_numeric_trigger(&self, key: &str) -> Option<f32> {
-        self.triggers.get_numeric(key)
+    pub fn get_numeric_input(&self, key: &str) -> Option<f32> {
+        self.inputs.get_numeric(key)
     }
 
-    pub fn set_string_trigger(
+    pub fn set_string_input(
         &mut self,
         key: &str,
         value: &str,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<TriggerValue> {
-        let ret = self.triggers.set_string(key, value.to_string());
+    ) -> Option<InputValue> {
+        let ret = self.inputs.set_string(key, value.to_string());
 
         if called_from_action {
-            self.action_mutated_triggers = true;
+            self.action_mutated_inputs = true;
         }
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
         }
 
         if let Some(old_value) = ret.clone() {
-            if let TriggerValue::String(old_value) = old_value {
-                self.observe_string_trigger_value_change(key, &old_value, value);
+            if let InputValue::String(old_value) = old_value {
+                self.observe_string_input_value_change(key, &old_value, value);
             }
         }
 
         ret
     }
 
-    pub fn get_string_trigger(&self, key: &str) -> Option<String> {
-        self.triggers.get_string(key)
+    pub fn get_string_input(&self, key: &str) -> Option<String> {
+        self.inputs.get_string(key)
     }
 
-    pub fn set_boolean_trigger(
+    pub fn set_boolean_input(
         &mut self,
         key: &str,
         value: bool,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<TriggerValue> {
-        let ret = self.triggers.set_boolean(key, value);
+    ) -> Option<InputValue> {
+        let ret = self.inputs.set_boolean(key, value);
 
         if called_from_action {
-            self.action_mutated_triggers = true;
+            self.action_mutated_inputs = true;
         }
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
         }
 
         if let Some(old_value) = ret.clone() {
-            if let TriggerValue::Boolean(old_value) = old_value {
-                self.observe_boolean_trigger_value_change(key, old_value, value);
+            if let InputValue::Boolean(old_value) = old_value {
+                self.observe_boolean_input_value_change(key, old_value, value);
             }
         }
 
         ret
     }
 
-    pub fn get_boolean_trigger(&self, key: &str) -> Option<bool> {
-        self.triggers.get_boolean(key)
+    pub fn get_boolean_input(&self, key: &str) -> Option<bool> {
+        self.inputs.get_boolean(key)
     }
 
-    pub fn reset_trigger(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
-        let ret = self.triggers.reset(key);
+    pub fn reset_input(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
+        let ret = self.inputs.reset(key);
 
         match ret {
             Some((old_value, new_value)) => match old_value {
-                TriggerValue::Numeric(old_value) => match new_value {
-                    TriggerValue::Numeric(new_value) => {
-                        self.observe_numeric_trigger_value_change(key, old_value, new_value);
+                InputValue::Numeric(old_value) => match new_value {
+                    InputValue::Numeric(new_value) => {
+                        self.observe_numeric_input_value_change(key, old_value, new_value);
                     }
                     _ => {}
                 },
-                TriggerValue::String(old_value) => match new_value {
-                    TriggerValue::String(new_value) => {
-                        self.observe_string_trigger_value_change(key, &old_value, &new_value);
+                InputValue::String(old_value) => match new_value {
+                    InputValue::String(new_value) => {
+                        self.observe_string_input_value_change(key, &old_value, &new_value);
                     }
                     _ => {}
                 },
-                TriggerValue::Boolean(old_value) => match new_value {
-                    TriggerValue::Boolean(new_value) => {
-                        self.observe_boolean_trigger_value_change(key, old_value, new_value);
+                InputValue::Boolean(old_value) => match new_value {
+                    InputValue::Boolean(new_value) => {
+                        self.observe_boolean_input_value_change(key, old_value, new_value);
                     }
                     _ => {}
                 },
@@ -346,7 +341,7 @@ impl StateMachineEngine {
         }
 
         if called_from_action {
-            self.action_mutated_triggers = true;
+            self.action_mutated_inputs = true;
         }
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
@@ -354,9 +349,9 @@ impl StateMachineEngine {
     }
 
     pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), StateMachineEngineError> {
-        // If the event is a valid trigger
-        if let Some(valid_event) = self.event_trigger.get(event) {
-            self.observe_on_trigger_fired(&valid_event);
+        // If the event is a valid input
+        if let Some(valid_event) = self.event_input.get(event) {
+            self.observe_on_input_fired(&valid_event);
 
             self.curr_event = Some(valid_event.to_string());
 
@@ -394,24 +389,24 @@ impl StateMachineEngine {
             Ok(parsed_state_machine) => {
                 let initial_state_index = parsed_state_machine.initial.clone();
 
-                /* Build all trigger variables into hashmaps for easier use */
-                if let Some(triggers) = &parsed_state_machine.triggers {
-                    for trigger in triggers {
-                        match trigger {
-                            Trigger::Numeric { name, value } => {
-                                new_state_machine.triggers.set_initial_numeric(name, *value);
+                /* Build all input variables into hashmaps for easier use */
+                if let Some(inputs) = &parsed_state_machine.inputs {
+                    for input in inputs {
+                        match input {
+                            Input::Numeric { name, value } => {
+                                new_state_machine.inputs.set_initial_numeric(name, *value);
                             }
-                            Trigger::String { name, value } => {
+                            Input::String { name, value } => {
                                 new_state_machine
-                                    .triggers
+                                    .inputs
                                     .set_initial_string(name, value.to_string());
                             }
-                            Trigger::Boolean { name, value } => {
-                                new_state_machine.triggers.set_initial_boolean(name, *value);
+                            Input::Boolean { name, value } => {
+                                new_state_machine.inputs.set_initial_boolean(name, *value);
                             }
-                            Trigger::Event { name } => {
+                            Input::Event { name } => {
                                 new_state_machine
-                                    .event_trigger
+                                    .event_input
                                     .insert(name.to_string(), name.to_string());
                             }
                         }
@@ -498,57 +493,57 @@ impl StateMachineEngine {
         self.current_state.clone()
     }
 
-    pub fn listeners(&self, event_type_filter: Option<String>) -> Vec<&Listener> {
-        let mut listeners_clone = Vec::new();
+    pub fn interactions(&self, event_type_filter: Option<String>) -> Vec<&Interaction> {
+        let mut interactions_clone = Vec::new();
         let filter = event_type_filter.unwrap_or("".to_string());
 
-        if let Some(listeners) = &self.state_machine.listeners {
-            for listener in listeners {
+        if let Some(interactions) = &self.state_machine.interactions {
+            for interaction in interactions {
                 if !filter.is_empty() {
-                    // If the filter type and the listener type don't match, skip
-                    if filter == listener.type_name() {
+                    // If the filter type and the interaction type don't match, skip
+                    if filter == interaction.type_name() {
                         // Clones the references
-                        listeners_clone.push(listener);
+                        interactions_clone.push(interaction);
                     }
                 } else {
                     // No filter used, clone the reference
-                    listeners_clone.push(listener);
+                    interactions_clone.push(interaction);
                 }
             }
         }
 
-        listeners_clone
+        interactions_clone
     }
 
     fn init_listened_layers(&mut self) {
-        let mut listeners = vec![];
+        let mut interactions = vec![];
 
-        listeners.extend(self.listeners(None));
+        interactions.extend(self.interactions(None));
 
         let mut all_listened_layers: Vec<(String, String)> = vec![];
 
         // Get every layer we listen to
-        for listener in listeners {
-            match listener {
-                Listener::PointerEnter { layer_name, .. } => {
+        for interaction in interactions {
+            match interaction {
+                Interaction::PointerEnter { layer_name, .. } => {
                     if let Some(layer) = layer_name {
                         all_listened_layers
                             .push((layer.clone(), event_type_name!(PointerEnter).to_string()));
                     }
                 }
-                Listener::PointerExit { layer_name, .. } => {
+                Interaction::PointerExit { layer_name, .. } => {
                     if let Some(layer) = layer_name {
                         all_listened_layers
                             .push((layer.clone(), event_type_name!(PointerExit).to_string()))
                     }
                 }
-                Listener::PointerUp { layer_name, .. } => {
+                Interaction::PointerUp { layer_name, .. } => {
                     if let Some(layer) = layer_name {
                         all_listened_layers
                             .push((layer.clone(), event_type_name!(PointerUp).to_string()))
                     }
                 }
-                Listener::PointerDown { layer_name, .. } => {
+                Interaction::PointerDown { layer_name, .. } => {
                     if let Some(layer) = layer_name {
                         all_listened_layers
                             .push((layer.clone(), event_type_name!(PointerDown).to_string()))
@@ -673,19 +668,19 @@ impl StateMachineEngine {
                     for guard in guards {
                         match guard {
                             transitions::guard::Guard::Numeric { .. } => {
-                                if !guard.numeric_trigger_is_satisfied(&self.triggers) {
+                                if !guard.numeric_input_is_satisfied(&self.inputs) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
                             transitions::guard::Guard::String { .. } => {
-                                if !guard.string_trigger_is_satisfied(&self.triggers) {
+                                if !guard.string_input_is_satisfied(&self.inputs) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
                             transitions::guard::Guard::Boolean { .. } => {
-                                if !guard.boolean_trigger_is_satisfied(&self.triggers) {
+                                if !guard.boolean_input_is_satisfied(&self.inputs) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
@@ -698,7 +693,7 @@ impl StateMachineEngine {
                                 }
 
                                 if let Some(event) = event {
-                                    if !guard.event_trigger_is_satisfied(event) {
+                                    if !guard.event_input_is_satisfied(event) {
                                         all_guards_satisfied = false;
                                         break;
                                     }
@@ -795,12 +790,12 @@ impl StateMachineEngine {
                 if self.evaluate_global_state() {
                     // Therfor we need to re-evaluate the global state.
                     // When we entered the state from global, it made on_entry changes.
-                    if self.action_mutated_triggers {
+                    if self.action_mutated_inputs {
                         ignore_global = false;
                         ignore_child = true;
 
                         tick = true;
-                        self.action_mutated_triggers = false;
+                        self.action_mutated_inputs = false;
                     }
                     if self.curr_event.is_some() {
                         ignore_global = false;
@@ -823,12 +818,12 @@ impl StateMachineEngine {
 
                         match success {
                             Ok(()) => {
-                                // Re-evaluate global state, a trigger was changed
-                                if self.action_mutated_triggers {
+                                // Re-evaluate global state, a input was changed
+                                if self.action_mutated_inputs {
                                     tick = true;
 
                                     ignore_global = false;
-                                    self.action_mutated_triggers = false;
+                                    self.action_mutated_inputs = false;
                                 }
                                 // Re-evaluate global state, an event was fired
                                 else if self.curr_event.is_some() {
@@ -836,7 +831,7 @@ impl StateMachineEngine {
 
                                     ignore_global = false;
                                 }
-                                // Re-evaluate current state, ignore global since no triggers were changed or events fired
+                                // Re-evaluate current state, ignore global since no inputs were changed or events fired
                                 else {
                                     tick = true;
 
@@ -884,14 +879,14 @@ impl StateMachineEngine {
 
     fn manage_explicit_events(&mut self, event: &Event, x: f32, y: f32) {
         let mut actions_to_execute: Vec<Action> = Vec::new();
-        let listeners = self.listeners(None);
+        let interactions = self.interactions(None);
         let mut entered_layer = self.pointer_management.curr_entered_layer.clone();
 
-        for listener in listeners {
-            if listener.type_name() == event.type_name() {
+        for interaction in interactions {
+            if interaction.type_name() == event.type_name() {
                 // User defined a specific layer to check if hit
-                if let Some(layer) = listener.get_layer_name() {
-                    // Check if the layer was hit, otherwise we ignore this listener
+                if let Some(layer) = interaction.get_layer_name() {
+                    // Check if the layer was hit, otherwise we ignore this interaction
                     if let Some(rc_player) = &self.player {
                         let try_read_lock = rc_player.try_read();
 
@@ -902,20 +897,20 @@ impl StateMachineEngine {
                                     && !player_container.hit_check(&layer, *x, *y)
                                 {
                                     entered_layer = "".to_string();
-                                    actions_to_execute.extend(listener.get_actions().clone());
+                                    actions_to_execute.extend(interaction.get_actions().clone());
                                 }
                             } else {
                                 // Hit check will return true if the layer was hit
                                 if player_container.hit_check(&layer, x, y) {
                                     entered_layer = layer.clone();
-                                    actions_to_execute.extend(listener.get_actions().clone());
+                                    actions_to_execute.extend(interaction.get_actions().clone());
                                 }
                             }
                         }
                     }
                 } else {
                     // No layer was specified, add all actions
-                    actions_to_execute.extend(listener.get_actions().clone());
+                    actions_to_execute.extend(interaction.get_actions().clone());
                 }
             }
         }
@@ -923,7 +918,7 @@ impl StateMachineEngine {
         self.pointer_management.curr_entered_layer = entered_layer;
 
         for action in actions_to_execute {
-            // Run the pipeline because listeners are outside of the evaluation pipeline loop
+            // Run the pipeline because interactions are outside of the evaluation pipeline loop
             if let Some(player_ref) = &self.player {
                 let _ = action.execute(self, player_ref.clone(), true);
             }
@@ -933,19 +928,19 @@ impl StateMachineEngine {
     fn manage_cross_platform_events(&mut self, event: &Event, x: f32, y: f32) {
         let mut actions_to_execute = Vec::new();
 
-        // Manage pointerMove listeners
+        // Manage pointerMove interactions
         if event.type_name() == event_type_name!(PointerMove).to_string() {
-            let pointer_move_listeners =
-                self.listeners(Some(event_type_name!(PointerMove).to_string()));
+            let pointer_move_interactions =
+                self.interactions(Some(event_type_name!(PointerMove).to_string()));
 
-            for listener in pointer_move_listeners {
-                if let Listener::PointerMove { actions } = listener {
+            for interaction in pointer_move_interactions {
+                if let Interaction::PointerMove { actions } = interaction {
                     actions_to_execute.extend(actions.clone());
                 }
             }
         }
 
-        // Check if we've moved the pointer over any of the pointerEnter/Exit listeners
+        // Check if we've moved the pointer over any of the pointerEnter/Exit interactions
         // If we've changed layers, perform exit actions
         // If we don't hit any layers, perform exit actions
         if let Some(rc_player) = &self.player {
@@ -971,17 +966,18 @@ impl StateMachineEngine {
 
                             self.pointer_management.curr_entered_layer = layer.to_string();
 
-                            // Get all pointer_enter listeners
-                            let pointer_enter_listeners =
-                                self.listeners(Some(event_type_name!(PointerEnter).to_string()));
+                            // Get all pointer_enter interactions
+                            let pointer_enter_interactions =
+                                self.interactions(Some(event_type_name!(PointerEnter).to_string()));
 
                             // Add their actions if their layer name matches the current layer name in loop
-                            for listener in pointer_enter_listeners {
-                                if let Some(listener_layer_name) = listener.get_layer_name() {
-                                    if *listener_layer_name
+                            for interaction in pointer_enter_interactions {
+                                if let Some(interaction_layer_name) = interaction.get_layer_name() {
+                                    if *interaction_layer_name
                                         == self.pointer_management.curr_entered_layer
                                     {
-                                        actions_to_execute.extend(listener.get_actions().clone());
+                                        actions_to_execute
+                                            .extend(interaction.get_actions().clone());
                                     }
                                 }
                             }
@@ -993,15 +989,15 @@ impl StateMachineEngine {
                 if !hit {
                     self.pointer_management.curr_entered_layer = "".to_string();
 
-                    let pointer_exit_listeners =
-                        self.listeners(Some(event_type_name!(PointerExit).to_string()));
+                    let pointer_exit_interactions =
+                        self.interactions(Some(event_type_name!(PointerExit).to_string()));
 
-                    // Add the actions of every PointerExit listener that depended on the layer we've just exited
-                    for listener in pointer_exit_listeners {
-                        if let Some(listener_layer_name) = listener.get_layer_name() {
+                    // Add the actions of every PointerExit interaction that depended on the layer we've just exited
+                    for interaction in pointer_exit_interactions {
+                        if let Some(interaction_layer_name) = interaction.get_layer_name() {
                             // We've exited the desired layer, add its actions to execute
-                            if *listener_layer_name == old_layer {
-                                actions_to_execute.extend(listener.get_actions().clone());
+                            if *interaction_layer_name == old_layer {
+                                actions_to_execute.extend(interaction.get_actions().clone());
                             }
                         }
                     }
@@ -1010,18 +1006,18 @@ impl StateMachineEngine {
         }
 
         for action in actions_to_execute {
-            // Run the pipeline because listeners are outside of the evaluation pipeline loop
+            // Run the pipeline because interactions are outside of the evaluation pipeline loop
             if let Some(player_ref) = &self.player {
                 let _ = action.execute(self, player_ref.clone(), true);
             }
         }
     }
 
-    // How pointer event are managed depending on the listener's event and the sent event.
+    // How pointer event are managed depending on the interaction's event and the sent event.
     // Since we can't detect PointerMove on mobile, we can still check PointerDown/Up and see if it's entered or exited a layer.
     //
     // | -------------------------------- | ----------------------------- | ----------- |
-    // | Listener Event type              | Web                           | Mobile      |
+    // | Interaction Event type              | Web                           | Mobile      |
     // | -------------------------------- | ----------------------------- | ----------- |
     // | PointerDown (No Layer)           | PointerDown                   | PointerDown |
     // | PointerDown (With Layer)         | PointerDown                   | PointerDown |
@@ -1052,7 +1048,7 @@ impl StateMachineEngine {
         }
 
         // We're left with PointerMove
-        // Also perform checks for PointerDown and PointerUp, a mobile framework could of sent them and validate PointerEnter/Exit listeners.
+        // Also perform checks for PointerDown and PointerUp, a mobile framework could of sent them and validate PointerEnter/Exit interactions.
         if event.type_name() == "PointerMove"
             || event.type_name() == "PointerDown"
             || event.type_name() == "PointerUp"
@@ -1062,19 +1058,19 @@ impl StateMachineEngine {
     }
 
     fn manage_player_events(&mut self, event: &Event) {
-        let listeners = self.listeners(Some(event.type_name()));
+        let interactions = self.interactions(Some(event.type_name()));
 
-        if listeners.is_empty() {
+        if interactions.is_empty() {
             return;
         }
 
         let mut actions_to_execute = Vec::new();
 
-        for listener in listeners {
-            if let Listener::OnComplete {
+        for interaction in interactions {
+            if let Interaction::OnComplete {
                 state_name,
                 actions,
-            } = listener
+            } = interaction
             {
                 if let Some(current_state) = &self.current_state {
                     if current_state.name() == *state_name {
@@ -1082,10 +1078,10 @@ impl StateMachineEngine {
                     }
                 }
             }
-            if let Listener::OnLoopComplete {
+            if let Interaction::OnLoopComplete {
                 state_name,
                 actions,
-            } = listener
+            } = interaction
             {
                 if let Some(current_state) = &self.current_state {
                     if current_state.name() == *state_name {
@@ -1096,7 +1092,7 @@ impl StateMachineEngine {
         }
 
         for action in actions_to_execute {
-            // Run the pipeline because listeners are outside of the evaluation pipeline loop
+            // Run the pipeline because interactions are outside of the evaluation pipeline loop
             if let Some(player_ref) = &self.player {
                 let _ = action.execute(self, player_ref.clone(), true);
             }
@@ -1122,7 +1118,7 @@ impl StateMachineEngine {
     }
 
     /**
-     * Force a state change to the target state. Will not trigger an evaluation
+     * Force a state change to the target state. Will not input an evaluation
      * after entering the target state.
      *
      * @params state_name: The name of the state to change to.
@@ -1256,9 +1252,9 @@ impl StateMachineEngine {
         }
     }
 
-    pub fn observe_string_trigger_value_change(
+    pub fn observe_string_input_value_change(
         &self,
-        trigger_name: &str,
+        input_name: &str,
         old_value: &str,
         new_value: &str,
     ) {
@@ -1268,8 +1264,8 @@ impl StateMachineEngine {
                 let try_read_lock = rc_player.try_read();
 
                 if let Ok(player_container) = try_read_lock {
-                    player_container.emit_state_machine_observer_on_string_trigger_value_change(
-                        trigger_name.to_string(),
+                    player_container.emit_state_machine_observer_on_string_input_value_change(
+                        input_name.to_string(),
                         old_value.to_string(),
                         new_value.to_string(),
                     );
@@ -1278,8 +1274,8 @@ impl StateMachineEngine {
         }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
-                observer.on_string_trigger_value_change(
-                    trigger_name.to_string(),
+                observer.on_string_input_value_change(
+                    input_name.to_string(),
                     old_value.to_string(),
                     new_value.to_string(),
                 );
@@ -1287,9 +1283,9 @@ impl StateMachineEngine {
         }
     }
 
-    pub fn observe_numeric_trigger_value_change(
+    pub fn observe_numeric_input_value_change(
         &self,
-        trigger_name: &str,
+        input_name: &str,
         old_value: f32,
         new_value: f32,
     ) {
@@ -1299,8 +1295,8 @@ impl StateMachineEngine {
                 let try_read_lock = rc_player.try_read();
 
                 if let Ok(player_container) = try_read_lock {
-                    player_container.emit_state_machine_observer_on_numeric_trigger_value_change(
-                        trigger_name.to_string(),
+                    player_container.emit_state_machine_observer_on_numeric_input_value_change(
+                        input_name.to_string(),
                         old_value,
                         new_value,
                     );
@@ -1309,8 +1305,8 @@ impl StateMachineEngine {
         }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
-                observer.on_numeric_trigger_value_change(
-                    trigger_name.to_string(),
+                observer.on_numeric_input_value_change(
+                    input_name.to_string(),
                     old_value,
                     new_value,
                 );
@@ -1318,9 +1314,9 @@ impl StateMachineEngine {
         }
     }
 
-    pub fn observe_boolean_trigger_value_change(
+    pub fn observe_boolean_input_value_change(
         &self,
-        trigger_name: &str,
+        input_name: &str,
         old_value: bool,
         new_value: bool,
     ) {
@@ -1330,8 +1326,8 @@ impl StateMachineEngine {
                 let try_read_lock = rc_player.try_read();
 
                 if let Ok(player_container) = try_read_lock {
-                    player_container.emit_state_machine_observer_on_boolean_trigger_value_change(
-                        trigger_name.to_string(),
+                    player_container.emit_state_machine_observer_on_boolean_input_value_change(
+                        input_name.to_string(),
                         old_value,
                         new_value,
                     );
@@ -1340,8 +1336,8 @@ impl StateMachineEngine {
         }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
-                observer.on_boolean_trigger_value_change(
-                    trigger_name.to_string(),
+                observer.on_boolean_input_value_change(
+                    input_name.to_string(),
                     old_value,
                     new_value,
                 );
@@ -1385,7 +1381,7 @@ impl StateMachineEngine {
         }
     }
 
-    pub fn observe_on_trigger_fired(&self, trigger_name: &str) {
+    pub fn observe_on_input_fired(&self, input_name: &str) {
         #[cfg(target_arch = "wasm32")]
         {
             if let Some(rc_player) = &self.player {
@@ -1393,13 +1389,13 @@ impl StateMachineEngine {
 
                 if let Ok(player_container) = try_read_lock {
                     player_container
-                        .emit_state_machine_observer_on_trigger_fired(trigger_name.to_string());
+                        .emit_state_machine_observer_on_input_fired(input_name.to_string());
                 }
             }
         }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
-                observer.on_trigger_fired(trigger_name.to_string());
+                observer.on_input_fired(input_name.to_string());
             }
         }
     }

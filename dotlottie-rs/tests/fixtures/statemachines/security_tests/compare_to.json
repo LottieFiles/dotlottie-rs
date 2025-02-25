@@ -13,7 +13,7 @@
             {
               "type": "Boolean",
               "conditionType": "Equal",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "compareTo": "$ATriggerName"
             }
           ]
@@ -25,7 +25,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "compareTo": "$ATriggerName"
             }
           ]
@@ -36,7 +36,7 @@
           "guards": [
             {
               "type": "String",
-              "triggerName": "$ATriggerName"
+              "inputName": "$ATriggerName"
             }
           ]
         }
@@ -50,7 +50,7 @@
       "entryActions": [
         {
           "type": "Fire",
-          "triggerName": "Step"
+          "inputName": "Step"
         }
       ]
     },
@@ -67,8 +67,8 @@
       "transitions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Boolean",
       "name": "OnOffSwitch",

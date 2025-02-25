@@ -12,7 +12,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "DoesntExist"
+              "inputName": "DoesntExist"
             }
           ]
         },
@@ -22,7 +22,7 @@
           "guards": [
             {
               "type": "Boolean",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "conditionType": "Equal",
               "compareTo": true
             }
@@ -34,7 +34,7 @@
           "guards": [
             {
               "type": "Boolean",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "conditionType": "Equal",
               "compareTo": false
             }
@@ -61,8 +61,8 @@
       "transitions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Boolean",
       "name": "OnOffSwitch",

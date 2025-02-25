@@ -1,3 +1,4 @@
+use dotlottie_rs::actions::open_url::OpenUrl;
 use dotlottie_rs::events::Event;
 use dotlottie_rs::{Config, DotLottiePlayer, StateMachineObserver};
 use minifb::{Key, MouseButton, Window, WindowOptions};
@@ -132,6 +133,26 @@ impl StateMachineObserver for DummyObserver {
     fn on_custom_event(&self, message: String) {
         println!("\x1b[33m custom_event: {} \x1b[0m", message);
     }
+
+    fn on_start(&self) {}
+
+    fn on_stop(&self) {}
+
+    fn on_string_input_value_change(
+        &self,
+        input_name: String,
+        old_value: String,
+        new_value: String,
+    ) {
+    }
+
+    fn on_numeric_input_value_change(&self, input_name: String, old_value: f32, new_value: f32) {}
+
+    fn on_boolean_input_value_change(&self, input_name: String, old_value: bool, new_value: bool) {}
+
+    fn on_input_fired(&self, input_name: String) {}
+
+    fn on_error(&self, error: String) {}
 }
 
 impl Timer {
@@ -196,6 +217,7 @@ fn load_animation(
                                 state_machine_id
                             );
 
+                            player.stop();
                             let success = player.state_machine_load(&state_machine_id);
 
                             if success {
@@ -209,7 +231,7 @@ fn load_animation(
                                     state_machine_id
                                 );
 
-                                let success = player.state_machine_start();
+                                let success = player.state_machine_start(OpenUrl::default());
 
                                 if success {
                                     println!(
@@ -299,6 +321,7 @@ fn main() {
                     state_machine_id
                 );
 
+                lottie_player.stop();
                 let success = lottie_player.state_machine_load(&state_machine_id);
 
                 if success {
@@ -312,7 +335,7 @@ fn main() {
                         state_machine_id
                     );
 
-                    let success = lottie_player.state_machine_start();
+                    let success = lottie_player.state_machine_start(OpenUrl::default());
 
                     if success {
                         println!(
@@ -389,7 +412,6 @@ fn main() {
                 }
 
                 timer.first = false;
-
             }
         }
 
@@ -442,13 +464,13 @@ fn main() {
 
         if window.is_key_pressed(Key::Space, minifb::KeyRepeat::Yes) {
             let p = &mut *locked_player.write().unwrap();
-            p.state_machine_set_numeric_trigger("Rating", 1.0);
+            p.state_machine_set_numeric_input("Rating", 1.0);
         }
 
         if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
             let p = &mut *locked_player.write().unwrap();
             oo = !oo;
-            p.state_machine_set_boolean_trigger("OnOffSwitch", oo);
+            p.state_machine_set_boolean_input("OnOffSwitch", oo);
         }
 
         let p = &mut *locked_player.write().unwrap();

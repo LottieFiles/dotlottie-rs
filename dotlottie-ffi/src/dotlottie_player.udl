@@ -26,10 +26,10 @@ interface StateMachineObserver {
     void on_error(string message);
     void on_start();
     void on_stop();
-    void on_string_trigger_value_change(string trigger_name, string old_value, string new_value);
-    void on_numeric_trigger_value_change(string trigger_name, f32 old_value, f32 new_value);
-    void on_boolean_trigger_value_change(string trigger_name, boolean old_value, boolean new_value);
-    void on_trigger_fired(string trigger_name);
+    void on_string_input_value_change(string input_name, string old_value, string new_value);
+    void on_numeric_input_value_change(string input_name, f32 old_value, f32 new_value);
+    void on_boolean_input_value_change(string input_name, boolean old_value, boolean new_value);
+    void on_input_fired(string input_name);
 };
 
 enum Mode {
@@ -186,13 +186,13 @@ interface DotLottiePlayer {
     i32 state_machine_post_pointer_enter_event(f32 x, f32 y);
     i32 state_machine_post_pointer_exit_event(f32 x, f32 y);
     void state_machine_fire_event([ByRef] string event);
-    boolean state_machine_set_boolean_trigger([ByRef] string key, boolean value);
-    boolean state_machine_set_string_trigger([ByRef] string key, [ByRef] string value);
-    boolean state_machine_set_numeric_trigger([ByRef] string key, f32 value);
+    boolean state_machine_set_boolean_input([ByRef] string key, boolean value);
+    boolean state_machine_set_string_input([ByRef] string key, [ByRef] string value);
+    boolean state_machine_set_numeric_input([ByRef] string key, f32 value);
     string get_state_machine([ByRef] string state_machine_id);
-    f32 state_machine_get_numeric_trigger([ByRef] string key);
-    string state_machine_get_string_trigger([ByRef] string key);
-    boolean state_machine_get_boolean_trigger([ByRef] string key);
+    f32 state_machine_get_numeric_input([ByRef] string key);
+    string state_machine_get_string_input([ByRef] string key);
+    boolean state_machine_get_boolean_input([ByRef] string key);
     string state_machine_current_state();
     boolean state_machine_subscribe(StateMachineObserver observer);
     boolean state_machine_unsubscribe([ByRef] StateMachineObserver observer);

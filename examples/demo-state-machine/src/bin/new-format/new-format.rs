@@ -50,44 +50,44 @@ impl StateMachineObserver for DummyObserver {
         println!(">>>> stop");
     }
 
-    fn on_string_trigger_value_change(
+    fn on_string_input_value_change(
         &self,
-        trigger_name: String,
+        input_name: String,
         old_value: String,
         new_value: String,
     ) {
         println!(
-            "string_trigger_value_change ==> {} : {} -> {}",
-            trigger_name, old_value, new_value
+            "string_input_value_change ==> {} : {} -> {}",
+            input_name, old_value, new_value
         );
     }
 
-    fn on_numeric_trigger_value_change(
+    fn on_numeric_input_value_change(
         &self,
-        trigger_name: String,
+        input_name: String,
         old_value: f32,
         new_value: f32,
     ) {
         println!(
-            "numeric_trigger_value_change ==> {} : {} -> {}",
-            trigger_name, old_value, new_value
+            "numeric_input_value_change ==> {} : {} -> {}",
+            input_name, old_value, new_value
         );
     }
 
-    fn on_boolean_trigger_value_change(
+    fn on_boolean_input_value_change(
         &self,
-        trigger_name: String,
+        input_name: String,
         old_value: bool,
         new_value: bool,
     ) {
         println!(
-            "boolean_trigger_value_change ==> {} : {} -> {}",
-            trigger_name, old_value, new_value
+            "boolean_input_value_change ==> {} : {} -> {}",
+            input_name, old_value, new_value
         );
     }
 
-    fn on_trigger_fired(&self, trigger_name: String) {
-        println!("trigger_fired ==> {}", trigger_name);
+    fn on_input_fired(&self, input_name: String) {
+        println!("input_fired ==> {}", input_name);
     }
 }
 
@@ -249,18 +249,18 @@ fn main() {
         if window.is_key_pressed(Key::Space, minifb::KeyRepeat::Yes) {
             let p = &mut *locked_player.write().unwrap();
 
-            p.state_machine_set_numeric_trigger("Rating", 1.0);
+            p.state_machine_set_numeric_input("Rating", 1.0);
         }
 
         if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
             let p = &mut *locked_player.write().unwrap();
 
             oo = !oo;
-            p.state_machine_set_boolean_trigger("OnOffSwitch", oo);
+            p.state_machine_set_boolean_input("OnOffSwitch", oo);
 
             // rating += 1.0;
             // println!("current state: {}", p.state_machine_current_state());
-            // p.state_machine_set_numeric_trigger("rating", rating);
+            // p.state_machine_set_numeric_input("rating", rating);
         }
         let p = &mut *locked_player.write().unwrap();
 

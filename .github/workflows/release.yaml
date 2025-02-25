@@ -72,6 +72,9 @@ jobs:
       - uses: Homebrew/actions/setup-homebrew@master
       - uses: ningenMe/setup-rustup@v1.1.0
 
+      - name: Install Binaryen
+        run: brew install binaryen
+
       - name: Install Make
         run: brew install make
 
@@ -82,6 +85,9 @@ jobs:
 
       - name: Build WASM
         run: make wasm
+
+      - name: Optimize WASM
+        run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
 
       - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v4

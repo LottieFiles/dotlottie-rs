@@ -107,11 +107,6 @@ echo "Setting up project ..."
 make deps
 
 if [[ "${TARGET}" == "wasm" || "${TARGET}" == "all" ]]; then
-  echo "Installing nightly toolchain"
-  rustup install nightly
-  rustup component add rust-src --toolchain nightly
-  rustup target add wasm32-unknown-emscripten --toolchain nightly
-
   echo
   echo "Installing cargo dependencies"
   cargo install uniffi-bindgen-cpp \

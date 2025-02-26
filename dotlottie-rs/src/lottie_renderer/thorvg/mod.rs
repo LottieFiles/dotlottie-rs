@@ -70,7 +70,7 @@ impl Renderer for TvgRenderer {
     type Error = TvgError;
 
     fn needs_target(&self) -> bool {
-        return self.engine == TvgEngine::TvgEngineSw;
+        self.engine == TvgEngine::TvgEngineSw
     }
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), TvgError> {

@@ -131,3 +131,16 @@ jobs:
           name: dotlottie-player.webgpu.wasm.tar.gz
           path: release/wasm/dotlottie-player.wasm.tar.gz
           if-no-files-found: error
+
+      - name: Build WASM (webgl)
+        run: make wasm THORVG_ENGINE=gl
+
+      - name: Optimize WASM (webgl)
+        run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
+
+      - name: Upload WASM (webgl) Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.webgl.wasm.tar.gz
+          path: release/wasm/dotlottie-player.wasm.tar.gz
+          if-no-files-found: error

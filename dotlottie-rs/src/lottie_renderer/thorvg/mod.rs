@@ -1,109 +1,67 @@
-#[allow(unused_imports)]
-#[cfg(not(target_arch = "wasm32"))]
-use std::sync::Mutex;
+mod error;
+mod sw;
+mod types;
 
-#[cfg(target_arch = "wasm32")]
-use spin::Mutex;
+#[cfg(all(feature = "thorvg_v1_gl", target_arch = "wasm32"))]
+mod gl;
+#[cfg(all(feature = "thorvg_v1_wg", target_arch = "wasm32"))]
+mod wg;
 
-use std::{ffi::CString, ptr, result::Result};
-use thiserror::Error;
+mod common;
+
+pub use error::{IntoResult, TvgError};
+pub use sw::SwBackend;
+pub use types::{TvgBackend, TvgEngine};
+
+#[cfg(all(feature = "thorvg_v1_gl", target_arch = "wasm32"))]
+pub use gl::GlBackend;
+#[cfg(all(feature = "thorvg_v1_wg", target_arch = "wasm32"))]
+pub use wg::WgBackend;
 
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
+use std::{ffi::CString, ptr};
 
-#[expect(non_upper_case_globals)]
+pub struct TvgRenderer {
+    raw_canvas: *mut tvg::Tvg_Canvas,
+    backend: Box<dyn TvgBackend>,
+    engine: types::TvgEngine,
+}
+
 #[allow(non_snake_case)]
-#[expect(non_camel_case_types)]
-#[expect(dead_code)]
+#[allow(non_upper_case_globals)]
+#[allow(non_camel_case_types)]
+#[allow(dead_code)]
+#[allow(clippy::all)]
 mod tvg {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
-#[derive(Error, Debug)]
-pub enum TvgError {
-    #[error("Invalid argument")]
-    InvalidArgument,
-    #[error("Insufficient condition")]
-    InsufficientCondition,
-    #[error("Failed allocation")]
-    FailedAllocation,
-    #[error("Memory corruption")]
-    MemoryCorruption,
-    #[error("Not supported")]
-    NotSupported,
-    #[error("Unknown error")]
-    Unknown,
-}
-
-pub trait IntoResult {
-    fn into_result(self) -> Result<(), TvgError>;
-}
-
-impl IntoResult for tvg::Tvg_Result {
-    fn into_result(self) -> Result<(), TvgError> {
-        match self {
-            tvg::Tvg_Result_TVG_RESULT_SUCCESS => Ok(()),
-            tvg::Tvg_Result_TVG_RESULT_INVALID_ARGUMENT => Err(TvgError::InvalidArgument),
-            tvg::Tvg_Result_TVG_RESULT_INSUFFICIENT_CONDITION => {
-                Err(TvgError::InsufficientCondition)
-            }
-            tvg::Tvg_Result_TVG_RESULT_FAILED_ALLOCATION => Err(TvgError::FailedAllocation),
-            tvg::Tvg_Result_TVG_RESULT_MEMORY_CORRUPTION => Err(TvgError::MemoryCorruption),
-            tvg::Tvg_Result_TVG_RESULT_NOT_SUPPORTED => Err(TvgError::NotSupported),
-            tvg::Tvg_Result_TVG_RESULT_UNKNOWN => Err(TvgError::Unknown),
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<ColorSpace> for tvg::Tvg_Colorspace {
-    fn from(color_space: ColorSpace) -> Self {
-        match color_space {
-            ColorSpace::ABGR8888 => tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
-            ColorSpace::ABGR8888S => tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
-            ColorSpace::ARGB8888 => tvg::Tvg_Colorspace_TVG_COLORSPACE_ARGB8888,
-            ColorSpace::ARGB8888S => tvg::Tvg_Colorspace_TVG_COLORSPACE_ARGB8888S,
-        }
-    }
-}
-
-pub enum TvgEngine {
-    TvgEngineSw,
-    TvgEngineGl,
-}
-
-impl From<TvgEngine> for tvg::Tvg_Engine {
-    fn from(engine_method: TvgEngine) -> Self {
-        match engine_method {
-            TvgEngine::TvgEngineSw => tvg::Tvg_Engine_TVG_ENGINE_SW,
-            TvgEngine::TvgEngineGl => tvg::Tvg_Engine_TVG_ENGINE_GL,
-        }
-    }
-}
-
-static RENDERERS_COUNT: spin::Mutex<usize> = spin::Mutex::new(0);
-
-pub struct TvgRenderer {
-    raw_canvas: *mut tvg::Tvg_Canvas,
-    engine_method: tvg::Tvg_Engine,
-}
-
 impl TvgRenderer {
-    pub fn new(engine_method: TvgEngine, threads: u32) -> Self {
-        let engine = engine_method.into();
+    pub fn new(engine: types::TvgEngine, threads: u32, _html_canvas_selector: &str) -> Self {
+        let backend: Box<dyn TvgBackend> = match engine {
+            types::TvgEngine::TvgEngineSw => Box::new(sw::SwBackend::new(threads)),
+            #[cfg(feature = "thorvg_v1_gl")]
+            types::TvgEngine::TvgEngineGl => {
+                Box::new(gl::GlBackend::new(threads, _html_canvas_selector))
+            }
+            #[cfg(feature = "thorvg_v1_wg")]
+            types::TvgEngine::TvgEngineWg => {
+                Box::new(wg::WgBackend::new(threads, _html_canvas_selector))
+            }
+            _ => unreachable!(),
+        };
 
-        let mut count = RENDERERS_COUNT.lock();
+        let raw_canvas = backend.create_canvas();
 
-        if *count == 0 {
-            unsafe { tvg::tvg_engine_init(engine, threads).into_result() }
-                .expect("Failed to initialize ThorVG engine");
+        Self {
+            raw_canvas,
+            backend,
+            engine,
         }
+    }
 
-        *count += 1;
-
-        TvgRenderer {
-            raw_canvas: unsafe { tvg::tvg_swcanvas_create() },
-            engine_method: engine,
-        }
+    pub fn engine(&self) -> types::TvgEngine {
+        self.engine
     }
 }
 
@@ -111,6 +69,10 @@ impl Renderer for TvgRenderer {
     type Animation = TvgAnimation;
     type Shape = TvgShape;
     type Error = TvgError;
+
+    fn needs_target(&self) -> bool {
+        return self.engine == TvgEngine::TvgEngineSw;
+    }
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), TvgError> {
         unsafe { tvg::tvg_canvas_set_viewport(self.raw_canvas, x, y, w, h).into_result() }
@@ -124,28 +86,19 @@ impl Renderer for TvgRenderer {
         height: u32,
         color_space: ColorSpace,
     ) -> Result<(), TvgError> {
-        unsafe {
-            tvg::tvg_swcanvas_set_target(
-                self.raw_canvas,
-                buffer.as_mut_ptr(),
-                stride,
-                width,
-                height,
-                color_space.into(),
-            )
-            .into_result()
-        }
+        self.backend
+            .set_target(self.raw_canvas, buffer, stride, width, height, color_space)
     }
 
-    fn clear(&self, free: bool) -> Result<(), TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+    fn clear(&self, _free: bool) -> Result<(), TvgError> {
+        #[cfg(feature = "thorvg_v1")]
         unsafe {
             tvg::tvg_canvas_remove(self.raw_canvas, ptr::null_mut::<tvg::Tvg_Paint>()).into_result()
         }
 
-        #[cfg(feature = "thorvg-v0")]
+        #[cfg(feature = "thorvg_v0")]
         unsafe {
-            tvg::tvg_canvas_clear(self.raw_canvas, free).into_result()
+            tvg::tvg_canvas_clear(self.raw_canvas, _free).into_result()
         }
     }
 
@@ -159,12 +112,12 @@ impl Renderer for TvgRenderer {
     }
 
     fn draw(&mut self, _clear_buffer: bool) -> Result<(), TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "thorvg_v1")]
         unsafe {
             tvg::tvg_canvas_draw(self.raw_canvas, _clear_buffer).into_result()
         }
 
-        #[cfg(feature = "thorvg-v0")]
+        #[cfg(feature = "thorvg_v0")]
         unsafe {
             tvg::tvg_canvas_draw(self.raw_canvas).into_result()
         }
@@ -181,16 +134,8 @@ impl Renderer for TvgRenderer {
 
 impl Drop for TvgRenderer {
     fn drop(&mut self) {
-        let mut count = RENDERERS_COUNT.lock();
-
         unsafe {
             tvg::tvg_canvas_destroy(self.raw_canvas);
-        }
-
-        *count = count.checked_sub(1).unwrap();
-
-        if *count == 0 {
-            unsafe { tvg::tvg_engine_term(self.engine_method) };
         }
     }
 }
@@ -220,7 +165,7 @@ impl Animation for TvgAnimation {
         let data_cstr = CString::new(data).unwrap();
         let data_len = data_cstr.as_bytes().len() as u32;
 
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "thorvg_v1")]
         unsafe {
             let data_ptr = data_cstr.as_ptr();
             let mimetype_ptr = mimetype_cstr.as_ptr();
@@ -235,7 +180,7 @@ impl Animation for TvgAnimation {
             .into_result()
         }
 
-        #[cfg(feature = "thorvg-v0")]
+        #[cfg(feature = "thorvg_v0")]
         unsafe {
             let data_ptr = data_cstr.as_ptr();
             let mimetype_ptr = mimetype_cstr.as_ptr();
@@ -429,34 +374,5 @@ impl Shape for TvgShape {
 
     fn reset(&mut self) -> Result<(), TvgError> {
         unsafe { tvg::tvg_shape_reset(self.raw_shape).into_result() }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::{Arc, Barrier};
-    use std::thread;
-
-    #[test]
-    fn test_tvg_renderer_no_deadlock() {
-        const THREAD_COUNT: usize = 10;
-        let barrier = Arc::new(Barrier::new(THREAD_COUNT));
-        let mut handles = vec![];
-
-        for _ in 0..THREAD_COUNT {
-            let barrier_clone = Arc::clone(&barrier);
-            let handle = thread::spawn(move || {
-                barrier_clone.wait();
-
-                let renderer = TvgRenderer::new(TvgEngine::TvgEngineSw, 0);
-                drop(renderer);
-            });
-            handles.push(handle);
-        }
-
-        for handle in handles {
-            handle.join().expect("Thread panicked");
-        }
     }
 }

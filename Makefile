@@ -259,27 +259,30 @@ shared_module_suffix = 'js'
 exe_suffix = 'js'
 
 [built-in options]
-cpp_args = ['-Wshift-negative-value', '-flto', '-Oz', '-ffunction-sections', '-fdata-sections']
+cpp_args = ['-Wshift-negative-value', '-flto', '-Os', '-ffunction-sections', '-fdata-sections']
 cpp_link_args = [
+	'-sMAX_WEBGL_VERSION=2',
+	'-sFULL_ES3',
+	'-sUSE_WEBGPU=1',
+	'-sASYNCIFY=1',
 	'-sMALLOC=emmalloc',
 	'-Wl,-u,htons',
 	'-Wl,-u,ntohs',
 	'-Wl,-u,htonl',
 	'-Wshift-negative-value',
-	'-flto', '-Oz', '--bind', '-sWASM=1',
+	'-flto', '-Os', '--bind', '-sWASM=1',
 	'-sALLOW_MEMORY_GROWTH=1',
 	'-sFORCE_FILESYSTEM=0',
 	'-sMODULARIZE=1',
 	'-sEXPORT_NAME=create$(WASM_MODULE)Module',
 	'-sEXPORT_ES6=1',
 	'-sUSE_ES6_IMPORT_META=0',
-	'-sENVIRONMENT=web',
+	'-sENVIRONMENT=web,worker',
 	'-sFILESYSTEM=0',
 	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
-	'--emit-tsd=${WASM_MODULE}.d.ts',
-	'--closure=1']
+	'--emit-tsd=${WASM_MODULE}.d.ts']
 
 [host_machine]
 system = '$(SYSTEM)'
@@ -330,7 +333,7 @@ define SETUP_MESON
 		--backend=ninja \
 		-Dloaders="lottie, png, jpg, webp" \
 		-Ddefault_library=static \
-		-Dengines=sw \
+		-Dengines=sw,gl,wg \
 		-Dbindings=capi \
 		-Dlog=false \
 		-Dthreads=false \
@@ -387,7 +390,7 @@ define CARGO_BUILD
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--no-default-features \
-		--features thorvg-v1 \
+		--features thorvg_v1 \
 		--release; \
 	else \
 		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
@@ -396,7 +399,7 @@ define CARGO_BUILD
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--no-default-features \
-		--features thorvg-v1 \
+		--features thorvg_v1_sw \
 		--release; \
 	fi
 endef
@@ -406,7 +409,7 @@ define UNIFFI_BINDINGS_BUILD
 	cargo run \
 		--manifest-path $(RUNTIME_FFI)/Cargo.toml \
 		--no-default-features \
-		--features=uniffi/cli,thorvg-v1 \
+		--features=uniffi/cli,thorvg_v1_sw \
 		--bin uniffi-bindgen \
 		generate $(RUNTIME_FFI)/src/dotlottie_player.udl \
 		--language $(BINDINGS_LANGUAGE) \
@@ -672,7 +675,7 @@ $(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions",true))
 endef
 
 define NEW_WASM_DEPS_BUILD
-$(eval $(call NEW_WASM_CROSS_FILE,$1,$$($1_THORVG_DEP_BUILD_DIR)/..,windows))
+$(eval $(call NEW_WASM_CROSS_FILE,$1,$$($1_THORVG_DEP_BUILD_DIR)/..,emscripten))
 $(eval $(call NEW_THORVG_BUILD,$1,false,true,"lottie_expressions",false))
 endef
 

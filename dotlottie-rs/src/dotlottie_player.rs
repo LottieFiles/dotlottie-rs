@@ -2,17 +2,22 @@ use instant::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
-use crate::errors::StateMachineError::ParsingError;
-use crate::listeners::ListenerTrait;
-use crate::state_machine::events::Event;
+use crate::actions::open_url::OpenUrl;
+use crate::state_machine_engine::events::Event;
 use crate::{
     extract_markers,
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
-    Marker, MarkersMap, StateMachine,
+    Marker, MarkersMap, StateMachineEngine,
 };
-use crate::{transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer};
-use crate::{StateMachineObserver, StateMachineStatus};
+use crate::{
+    transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer, StateMachineEngineError,
+};
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::StateMachineObserver;
+
+use crate::StateMachineEngineStatus;
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
@@ -24,6 +29,88 @@ pub trait Observer: Send + Sync {
     fn on_render(&self, frame_no: f32);
     fn on_loop(&self, loop_count: u32);
     fn on_complete(&self);
+}
+
+pub mod wasm_observer_callbacks_ffi {
+    extern "C" {
+        pub fn observer_on_load(dotlottie_instance_id: u32);
+        pub fn observer_on_load_error(dotlottie_instance_id: u32);
+        pub fn observer_on_play(dotlottie_instance_id: u32);
+        pub fn observer_on_pause(dotlottie_instance_id: u32);
+        pub fn observer_on_stop(dotlottie_instance_id: u32);
+        pub fn observer_on_frame(dotlottie_instance_id: u32, frame_no: f32);
+        pub fn observer_on_render(dotlottie_instance_id: u32, frame_no: f32);
+        pub fn observer_on_loop(dotlottie_instance_id: u32, loop_count: u32);
+        pub fn observer_on_complete(dotlottie_instance_id: u32);
+
+        pub fn state_machine_observer_on_transition(
+            dotlottie_instance_id: u32,
+            previous_state_ptr: *const u8,
+            previous_state_len: usize,
+            new_state_ptr: *const u8,
+            new_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_state_entered(
+            dotlottie_instance_id: u32,
+            entering_state_ptr: *const u8,
+            entering_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_state_exit(
+            dotlottie_instance_id: u32,
+            leaving_state_ptr: *const u8,
+            leaving_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_custom_event(
+            dotlottie_instance_id: u32,
+            message_ptr: *const u8,
+            message_len: usize,
+        );
+
+        pub fn state_machine_observer_on_error(
+            dotlottie_instance_id: u32,
+            message_ptr: *const u8,
+            message_len: usize,
+        );
+
+        pub fn state_machine_observer_on_start(dotlottie_instance_id: u32);
+
+        pub fn state_machine_observer_on_stop(dotlottie_instance_id: u32);
+
+        pub fn state_machine_observer_on_string_trigger_value_change(
+            dotlottie_instance_id: u32,
+            trigger_name_ptr: *const u8,
+            trigger_name_len: usize,
+            old_value_ptr: *const u8,
+            old_value_len: usize,
+            new_value_ptr: *const u8,
+            new_value_len: usize,
+        );
+
+        pub fn state_machine_observer_on_numeric_trigger_value_change(
+            dotlottie_instance_id: u32,
+            trigger_name_ptr: *const u8,
+            trigger_name_len: usize,
+            old_value: f32,
+            new_value: f32,
+        );
+
+        pub fn state_machine_observer_on_boolean_trigger_value_change(
+            dotlottie_instance_id: u32,
+            trigger_name_ptr: *const u8,
+            trigger_name_len: usize,
+            old_value: bool,
+            new_value: bool,
+        );
+
+        pub fn state_machine_observer_on_trigger_fired(
+            dotlottie_instance_id: u32,
+            trigger_name_ptr: *const u8,
+            trigger_name_len: usize,
+        );
+    }
 }
 
 pub enum PlaybackState {
@@ -69,6 +156,7 @@ pub struct Config {
     pub layout: Layout,
     pub marker: String,
     pub theme_id: String,
+    pub state_machine_id: String,
 }
 
 impl Default for Config {
@@ -84,6 +172,7 @@ impl Default for Config {
             layout: Layout::default(),
             marker: String::new(),
             theme_id: String::new(),
+            state_machine_id: String::new(),
         }
     }
 }
@@ -125,6 +214,7 @@ struct DotLottieRuntime {
     markers: MarkersMap,
     active_animation_id: String,
     active_theme_id: String,
+    active_state_machine_id: String,
 }
 
 impl DotLottieRuntime {
@@ -156,6 +246,7 @@ impl DotLottieRuntime {
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
             active_theme_id: String::new(),
+            active_state_machine_id: String::new(),
         }
     }
 
@@ -590,6 +681,8 @@ impl DotLottieRuntime {
         self.renderer.clear()
     }
 
+    // Notes: Runtime doesn't have the state machine
+    // Therefor the state machine can't be loaded here, user must use the load methods.
     pub fn set_config(&mut self, new_config: Config) {
         self.update_mode(&new_config);
         self.update_background_color(&new_config);
@@ -877,21 +970,37 @@ impl DotLottieRuntime {
     pub fn active_theme_id(&self) -> &str {
         &self.active_theme_id
     }
+
+    pub fn active_state_machine_id(&self) -> &str {
+        &self.active_state_machine_id
+    }
+
+    pub fn set_active_state_machine_id(&mut self, state_machine_id: &str) {
+        self.active_state_machine_id = state_machine_id.to_string();
+    }
 }
 
 pub struct DotLottiePlayerContainer {
     runtime: RwLock<DotLottieRuntime>,
     observers: RwLock<Vec<Arc<dyn Observer>>>,
-    state_machine: Rc<RwLock<Option<StateMachine>>>,
+    state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
+    #[cfg(target_arch = "wasm32")]
+    instance_id: u32,
 }
 
 impl DotLottiePlayerContainer {
     #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
     pub fn new(config: Config) -> Self {
+        #[cfg(target_arch = "wasm32")]
+        static NEXT_INSTANCE_ID: std::sync::atomic::AtomicU32 =
+            std::sync::atomic::AtomicU32::new(1);
+
         DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
+            #[cfg(target_arch = "wasm32")]
+            instance_id: NEXT_INSTANCE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
         }
     }
 
@@ -900,6 +1009,329 @@ impl DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::with_renderer(config, renderer)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
+            #[cfg(target_arch = "wasm32")]
+            instance_id: 0,
+        }
+    }
+
+    pub fn emit_on_load(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_load(self.instance_id);
+            }
+        }
+    }
+
+    pub fn emit_on_load_error(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load_error();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_load_error(self.instance_id);
+            }
+        }
+    }
+
+    pub fn emit_on_play(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_play();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_play(self.instance_id);
+            }
+        }
+    }
+
+    pub fn emit_on_pause(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_pause();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_pause(self.instance_id);
+            }
+        }
+    }
+
+    pub fn emit_on_stop(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_stop();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_stop(self.instance_id);
+            }
+        }
+    }
+
+    pub fn emit_on_frame(&self, frame_no: f32) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_frame(frame_no);
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_frame(self.instance_id, frame_no);
+            }
+        }
+    }
+
+    pub fn emit_on_render(&self, frame_no: f32) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_render(frame_no);
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_render(self.instance_id, frame_no);
+            }
+        }
+    }
+
+    pub fn emit_on_loop(&self, loop_count: u32) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_loop(loop_count);
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_loop(self.instance_id, loop_count);
+            }
+        }
+
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                sm.post_event(&Event::OnComplete);
+            }
+        }
+    }
+
+    pub fn emit_on_complete(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_complete();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::observer_on_complete(self.instance_id);
+            }
+        }
+
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                sm.post_event(&Event::OnComplete);
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_transition(
+        &self,
+        previous_state: String,
+        next_state: String,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_transition(
+                    self.instance_id,
+                    previous_state.as_ptr(),
+                    previous_state.len(),
+                    next_state.as_ptr(),
+                    next_state.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_state_entered(&self, entered_state: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_state_entered(
+                    self.instance_id,
+                    entered_state.as_ptr(),
+                    entered_state.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_state_exit(&self, leaving_state: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_state_exit(
+                    self.instance_id,
+                    leaving_state.as_ptr(),
+                    leaving_state.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_custom_event(&self, message: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_custom_event(
+                    self.instance_id,
+                    message.as_ptr(),
+                    message.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_error(&self, message: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_error(
+                    self.instance_id,
+                    message.as_ptr(),
+                    message.len(),
+                );
+            }
+        }
+    }
+
+    // add all wasm state machine observer callbacks
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_start(&self) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_start(self.instance_id);
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_stop(&self) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_stop(self.instance_id);
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_string_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: String,
+        new_value: String,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_string_trigger_value_change(
+                    self.instance_id,
+                    trigger_name.as_ptr(),
+                    trigger_name.len(),
+                    old_value.as_ptr(),
+                    old_value.len(),
+                    new_value.as_ptr(),
+                    new_value.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_numeric_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: f32,
+        new_value: f32,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_numeric_trigger_value_change(
+                    self.instance_id,
+                    trigger_name.as_ptr(),
+                    trigger_name.len(),
+                    old_value,
+                    new_value,
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_boolean_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: bool,
+        new_value: bool,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_boolean_trigger_value_change(
+                    self.instance_id,
+                    trigger_name.as_ptr(),
+                    trigger_name.len(),
+                    old_value,
+                    new_value,
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_trigger_fired(&self, trigger_name: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_trigger_fired(
+                    self.instance_id,
+                    trigger_name.as_ptr(),
+                    trigger_name.len(),
+                );
+            }
         }
     }
 
@@ -910,17 +1342,13 @@ impl DotLottiePlayerContainer {
             .is_ok_and(|mut runtime| runtime.load_animation_data(animation_data, width, height));
 
         if is_ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load();
-            });
+            self.emit_on_load();
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load_error();
-            });
+            self.emit_on_load_error();
 
             return false;
         }
@@ -935,17 +1363,13 @@ impl DotLottiePlayerContainer {
             .is_ok_and(|mut runtime| runtime.load_animation_path(animation_path, width, height));
 
         if is_ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load();
-            });
+            self.emit_on_load();
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load_error();
-            });
+            self.emit_on_load_error();
 
             return false;
         }
@@ -960,17 +1384,13 @@ impl DotLottiePlayerContainer {
             .is_ok_and(|mut runtime| runtime.load_dotlottie_data(file_data, width, height));
 
         if is_ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load();
-            });
+            self.emit_on_load();
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load_error();
-            });
+            self.emit_on_load_error();
 
             return false;
         }
@@ -985,17 +1405,13 @@ impl DotLottiePlayerContainer {
             .is_ok_and(|mut runtime| runtime.load_animation(animation_id, width, height));
 
         if is_ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load();
-            });
+            self.emit_on_load();
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_load_error();
-            });
+            self.emit_on_load_error();
 
             return false;
         }
@@ -1078,9 +1494,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.write().unwrap().play();
 
         if ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_play();
-            });
+            self.emit_on_play();
         }
 
         ok
@@ -1090,9 +1504,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.write().unwrap().pause();
 
         if ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_pause();
-            });
+            self.emit_on_pause();
         }
 
         ok
@@ -1102,9 +1514,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.write().unwrap().stop();
 
         if ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_stop();
-            });
+            self.emit_on_stop();
         }
 
         ok
@@ -1118,9 +1528,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.write().unwrap().set_frame(no);
 
         if ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_frame(no);
-            });
+            self.emit_on_frame(no);
         }
 
         ok
@@ -1130,9 +1538,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.write().unwrap().seek(no);
 
         if ok {
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_frame(no);
-            });
+            self.emit_on_frame(no);
         }
 
         ok
@@ -1144,25 +1550,13 @@ impl DotLottiePlayerContainer {
         if ok {
             let frame_no = self.current_frame();
 
-            self.observers.read().unwrap().iter().for_each(|observer| {
-                observer.on_render(frame_no);
-            });
+            self.emit_on_render(frame_no);
 
             if self.is_complete() {
                 if self.config().loop_animation {
-                    self.observers.read().unwrap().iter().for_each(|observer| {
-                        observer.on_loop(self.loop_count());
-                    });
+                    self.emit_on_loop(self.loop_count());
                 } else {
-                    self.observers.read().unwrap().iter().for_each(|observer| {
-                        observer.on_complete();
-                    });
-
-                    if let Ok(mut state_machine) = self.state_machine.try_write() {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.post_event(&Event::OnComplete);
-                        }
-                    }
+                    self.emit_on_complete();
                 }
             }
         }
@@ -1256,6 +1650,21 @@ impl DotLottiePlayerContainer {
             .to_string()
     }
 
+    pub fn active_state_machine_id(&self) -> String {
+        self.runtime
+            .read()
+            .unwrap()
+            .active_state_machine_id()
+            .to_string()
+    }
+
+    pub fn set_active_state_machine_id(&self, active_state_machine_id: &str) {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_active_state_machine_id(active_state_machine_id);
+    }
+
     pub fn active_theme_id(&self) -> String {
         self.runtime.read().unwrap().active_theme_id().to_string()
     }
@@ -1266,11 +1675,32 @@ impl DotLottiePlayerContainer {
             Err(_) => None,
         }
     }
+
+    pub fn state_machine_status(&self) -> String {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if let Some(sm) = state_machine.as_ref() {
+                    return sm.status();
+                }
+            }
+
+            Err(_) => {
+                return "".to_string();
+            }
+        }
+
+        "".to_string()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn instance_id(&self) -> u32 {
+        self.instance_id
+    }
 }
 
 pub struct DotLottiePlayer {
     player: Rc<RwLock<DotLottiePlayerContainer>>,
-    state_machine: Rc<RwLock<Option<StateMachine>>>,
+    state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
 }
 
 impl DotLottiePlayer {
@@ -1297,8 +1727,17 @@ impl DotLottiePlayer {
             .is_ok_and(|runtime| runtime.load_animation_data(animation_data, width, height))
     }
 
-    pub fn get_state_machine(&self) -> Rc<RwLock<Option<StateMachine>>> {
-        self.state_machine.clone()
+    pub fn get_state_machine(&self, state_machine_id: &str) -> String {
+        if let Some(sm) = self
+            .player
+            .read()
+            .unwrap()
+            .get_state_machine(state_machine_id)
+        {
+            return sm;
+        }
+
+        return "".to_string();
     }
 
     pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> bool {
@@ -1309,9 +1748,7 @@ impl DotLottiePlayer {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 
-    // If you are in an environment that does not support events
-    // Call isPlaying() to know if the state machine started playback within the first state
-    pub fn start_state_machine(&self) -> bool {
+    pub fn state_machine_start(&self, open_url: OpenUrl) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1326,7 +1763,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    sm.start();
+                    sm.start(&open_url);
                 }
             }
             Err(_) => {
@@ -1337,7 +1774,7 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn stop_state_machine(&self) -> bool {
+    pub fn state_machine_stop(&self) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1350,8 +1787,11 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    if sm.status == StateMachineStatus::Running {
-                        sm.end();
+                    if sm.status == StateMachineEngineStatus::Running {
+                        sm.stop();
+
+                        // nullify the current state machine
+                        *state_machine = None;
                     } else {
                         return false;
                     }
@@ -1375,18 +1815,45 @@ impl DotLottiePlayer {
                 let mut listener_types = vec![];
 
                 if let Some(sm) = state_machine.as_ref() {
-                    let listeners = sm.get_listeners();
+                    let listeners = sm.listeners(None);
 
                     for listener in listeners {
-                        match listener.try_read() {
-                            Ok(listener) => {
-                                if !listener_types.contains(&listener.get_type().to_string()) {
-                                    listener_types.push(listener.get_type().to_string());
-                                }
+                        match listener {
+                            crate::listeners::Listener::PointerUp { .. } => {
+                                listener_types.push("PointerUp".to_string())
                             }
-                            Err(_) => return vec![],
+                            crate::listeners::Listener::PointerDown { .. } => {
+                                listener_types.push("PointerDown".to_string())
+                            }
+                            crate::listeners::Listener::PointerEnter { .. } => {
+                                // In case framework self detects pointer entering layers, push pointerExit
+                                listener_types.push("PointerEnter".to_string());
+                                // We push PointerMove too so that we can do hit detection instead of the framework
+                                listener_types.push("PointerMove".to_string());
+                            }
+                            crate::listeners::Listener::PointerMove { .. } => {
+                                listener_types.push("PointerMove".to_string())
+                            }
+                            crate::listeners::Listener::PointerExit { .. } => {
+                                // In case framework self detects pointer exiting layers, push pointerExit
+                                listener_types.push("PointerExit".to_string());
+                                // We push PointerMove too so that we can do hit detection instead of the framework
+                                listener_types.push("PointerMove".to_string());
+                            }
+                            crate::listeners::Listener::OnComplete { .. } => {
+                                listener_types.push("OnComplete".to_string())
+                            }
+                            crate::listeners::Listener::OnLoopComplete { .. } => {
+                                listener_types.push("OnLoopComplete".to_string())
+                            }
+                            crate::listeners::Listener::Click { .. } => {
+                                listener_types.push("Click".to_string());
+                            }
                         }
                     }
+
+                    listener_types.sort();
+                    listener_types.dedup();
                     listener_types
                 } else {
                     vec![]
@@ -1396,85 +1863,10 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn set_state_machine_numeric_context(&self, key: &str, value: f32) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        let sm_write = self.state_machine.try_write();
-
-        match sm_write {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.set_numeric_context(key, value);
-                }
-            }
-            Err(_) => return false,
-        }
-
-        true
-    }
-
-    pub fn set_state_machine_string_context(&self, key: &str, value: &str) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        let sm_write = self.state_machine.try_write();
-
-        match sm_write {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.set_string_context(key, value);
-                }
-            }
-            Err(_) => return false,
-        }
-
-        true
-    }
-
-    pub fn set_state_machine_boolean_context(&self, key: &str, value: bool) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        let sm_write = self.state_machine.try_write();
-
-        match sm_write {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.set_bool_context(key, value);
-                }
-            }
-            Err(_) => return false,
-        }
-
-        true
-    }
-
     // Return codes
     // 0: Success
     // 1: Failure
-    // 2: Play animation
-    // 3: Pause animation
-    // 4: Request and draw a new single frame of the animation (needed for sync state)
-    pub fn post_event(&self, event: &Event) -> i32 {
+    pub fn state_machine_post_event(&self, event: &Event) -> i32 {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1496,73 +1888,228 @@ impl DotLottiePlayer {
         1
     }
 
-    pub fn post_bool_event(&self, value: bool) -> i32 {
-        let event = Event::Bool { value };
-        self.post_event(&event)
+    pub fn state_machine_override_current_state(&self, state_name: &str, do_tick: bool) -> bool {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if state_machine.is_none() {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    sm.override_current_state(state_name, do_tick);
+                }
+            }
+            Err(_) => return false,
+        }
+
+        false
     }
 
-    pub fn post_string_event(&self, value: &str) -> i32 {
-        let event = Event::String {
-            value: value.to_string(),
-        };
-        self.post_event(&event)
+    pub fn state_machine_post_click_event(&self, x: f32, y: f32) -> i32 {
+        let event = Event::Click { x, y };
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_numeric_event(&self, value: f32) -> i32 {
-        let event = Event::Numeric { value };
-        self.post_event(&event)
+    pub fn state_machine_post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
+        let event = Event::PointerDown { x, y };
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
-        let event = Event::OnPointerDown { x, y };
-        self.post_event(&event)
+    pub fn state_machine_post_pointer_up_event(&self, x: f32, y: f32) -> i32 {
+        let event = Event::PointerUp { x, y };
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_up_event(&self, x: f32, y: f32) -> i32 {
-        let event = Event::OnPointerUp { x, y };
-        self.post_event(&event)
+    pub fn state_machine_post_pointer_move_event(&self, x: f32, y: f32) -> i32 {
+        let event = Event::PointerMove { x, y };
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_move_event(&self, x: f32, y: f32) -> i32 {
-        let event = Event::OnPointerMove { x, y };
-        self.post_event(&event)
+    pub fn state_machine_post_pointer_enter_event(&self, x: f32, y: f32) -> i32 {
+        let event = Event::PointerEnter { x, y };
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_enter_event(&self, x: f32, y: f32) -> i32 {
-        let event = Event::OnPointerEnter { x, y };
-        self.post_event(&event)
+    pub fn state_machine_post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
+        let event: Event = Event::PointerExit { x, y };
+        self.state_machine_post_event(&event)
     }
 
-    pub fn post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
-        let event = Event::OnPointerExit { x, y };
-        self.post_event(&event)
+    pub fn state_machine_set_numeric_trigger(&self, key: &str, value: f32) -> bool {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    let ret = sm.set_numeric_trigger(key, value, true, false);
+
+                    if ret.is_some() {
+                        return true;
+                    }
+                }
+                false
+            }
+            Err(_) => false,
+        }
     }
 
-    pub fn post_set_numeric_context(&self, key: &str, value: f32) -> i32 {
-        let event = Event::SetNumericContext {
-            key: key.to_string(),
-            value,
-        };
+    pub fn state_machine_set_string_trigger(&self, key: &str, value: &str) -> bool {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    let ret = sm.set_string_trigger(key, value, true, false);
 
-        self.post_event(&event)
+                    if ret.is_some() {
+                        return true;
+                    }
+                }
+                false
+            }
+            Err(_) => false,
+        }
+    }
+
+    pub fn state_machine_set_boolean_trigger(&self, key: &str, value: bool) -> bool {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    let ret = sm.set_boolean_trigger(key, value, true, false);
+
+                    if ret.is_some() {
+                        return true;
+                    }
+                }
+                false
+            }
+            Err(_) => false,
+        }
+    }
+
+    pub fn state_machine_get_numeric_trigger(&self, key: &str) -> f32 {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if let Some(sm) = &*state_machine {
+                    if let Some(value) = sm.get_numeric_trigger(key) {
+                        return value;
+                    }
+                }
+            }
+            Err(_) => {
+                return f32::MIN;
+            }
+        }
+
+        f32::MIN
+    }
+
+    pub fn state_machine_get_string_trigger(&self, key: &str) -> String {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    if let Some(value) = sm.get_string_trigger(key) {
+                        return value;
+                    }
+                }
+            }
+            Err(_) => return "".to_string(),
+        }
+
+        "".to_string()
+    }
+
+    pub fn state_machine_get_boolean_trigger(&self, key: &str) -> bool {
+        match self.state_machine.try_write() {
+            Ok(mut state_machine) => {
+                if let Some(sm) = state_machine.as_mut() {
+                    if let Some(value) = sm.get_boolean_trigger(key) {
+                        return value;
+                    }
+                }
+            }
+            Err(_) => return false,
+        }
+
+        false
+    }
+
+    pub fn state_machine_fire_event(&self, event: &str) {
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                let _ = sm.fire(event, true);
+            }
+        }
     }
 
     pub fn load_animation_path(&self, animation_path: &str, width: u32, height: u32) -> bool {
-        self.player
-            .write()
-            .is_ok_and(|runtime| runtime.load_animation_path(animation_path, width, height))
+        match self.player.try_write() {
+            Ok(player) => {
+                let load_status = player.load_animation_path(animation_path, width, height);
+
+                let sm_id = player.config().state_machine_id;
+
+                if !sm_id.is_empty() {
+                    drop(player); // Explicitly drop to release the lock before state_machine_load
+
+                    let load = self.state_machine_load(&sm_id);
+
+                    let start = self.state_machine_start(OpenUrl::default());
+
+                    return load && start;
+                }
+
+                load_status
+            }
+            Err(_) => false,
+        }
     }
 
     pub fn load_dotlottie_data(&self, file_data: &[u8], width: u32, height: u32) -> bool {
-        self.player
-            .write()
-            .is_ok_and(|runtime| runtime.load_dotlottie_data(file_data, width, height))
+        match self.player.try_write() {
+            Ok(player) => {
+                let load_status = player.load_dotlottie_data(file_data, width, height);
+
+                let sm_id = player.config().state_machine_id;
+
+                if !sm_id.is_empty() {
+                    drop(player); // Explicitly drop to release the lock before state_machine_load
+
+                    let load = self.state_machine_load(&sm_id);
+
+                    let start = self.state_machine_start(OpenUrl::default());
+
+                    return load && start;
+                }
+
+                load_status
+            }
+            Err(_) => false,
+        }
     }
 
     pub fn load_animation(&self, animation_id: &str, width: u32, height: u32) -> bool {
-        self.player
-            .write()
-            .is_ok_and(|runtime| runtime.load_animation(animation_id, width, height))
+        match self.player.try_write() {
+            Ok(player) => {
+                let load_status = player.load_animation(animation_id, width, height);
+
+                let sm_id = player.config().state_machine_id;
+
+                if !sm_id.is_empty() {
+                    drop(player); // Explicitly drop to release the lock before state_machine_load
+
+                    let load = self.state_machine_load(&sm_id);
+
+                    let start = self.state_machine_start(OpenUrl::default());
+
+                    return load && start;
+                }
+
+                load_status
+            }
+            Err(_) => false,
+        }
     }
 
     pub fn manifest(&self) -> Option<Manifest> {
@@ -1673,6 +2220,7 @@ impl DotLottiePlayer {
         self.player.write().unwrap().subscribe(observer)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
@@ -1684,14 +2232,49 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn state_machine_unsubscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn state_machine_unsubscribe(&self, observer: &Arc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
         if sm.is_none() {
             return false;
         }
 
-        sm.as_mut().unwrap().unsubscribe(&observer);
+        sm.as_mut().unwrap().unsubscribe(observer);
+
+        true
+    }
+
+    // For the moment the framework dedicated state machine listener is not needed for wasm.
+    // The only use case at the moment for opening urls on iOS and Android.
+    // Wasm manages this without the need for a dedicated listener.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn state_machine_framework_subscribe(
+        &self,
+        observer: Arc<dyn StateMachineObserver>,
+    ) -> bool {
+        let mut sm = self.state_machine.write().unwrap();
+
+        if sm.is_none() {
+            return false;
+        }
+        sm.as_mut().unwrap().framework_subscribe(observer);
+
+        true
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn state_machine_framework_unsubscribe(
+        &self,
+        observer: &Arc<dyn StateMachineObserver>,
+    ) -> bool {
+        let mut sm = self.state_machine.write().unwrap();
+
+        if sm.is_none() {
+            return false;
+        }
+
+        sm.as_mut().unwrap().framework_unsubscribe(observer);
 
         true
     }
@@ -1718,8 +2301,8 @@ impl DotLottiePlayer {
         self.player.write().unwrap().reset_theme()
     }
 
-    pub fn load_state_machine_data(&self, state_machine: &str) -> bool {
-        let state_machine = StateMachine::new(state_machine, self.player.clone());
+    pub fn state_machine_load_data(&self, state_machine: &str) -> bool {
+        let state_machine = StateMachineEngine::new(state_machine, self.player.clone(), None);
 
         if state_machine.is_ok() {
             match self.state_machine.try_write() {
@@ -1736,6 +2319,8 @@ impl DotLottiePlayer {
             match player {
                 Ok(mut player) => {
                     player.state_machine = self.state_machine.clone();
+                    player.set_active_state_machine_id("");
+                    return true;
                 }
                 Err(_) => {
                     return false;
@@ -1743,10 +2328,10 @@ impl DotLottiePlayer {
             }
         }
 
-        true
+        false
     }
 
-    pub fn load_state_machine(&self, state_machine_id: &str) -> bool {
+    pub fn state_machine_load(&self, state_machine_id: &str) -> bool {
         let state_machine_string = self
             .player
             .read()
@@ -1755,30 +2340,30 @@ impl DotLottiePlayer {
 
         match state_machine_string {
             Some(machine) => {
-                let state_machine = StateMachine::new(&machine, self.player.clone());
+                let state_machine: Result<StateMachineEngine, StateMachineEngineError> =
+                    StateMachineEngine::new(&machine, self.player.clone(), None);
 
-                if state_machine.is_ok() {
-                    match self.state_machine.try_write() {
-                        Ok(mut sm) => {
-                            sm.replace(state_machine.unwrap());
+                match state_machine {
+                    Ok(sm) => {
+                        if let Ok(mut state_machine) = self.state_machine.try_write() {
+                            state_machine.replace(sm);
                         }
-                        Err(_) => {
-                            return false;
+
+                        let player = self.player.try_write();
+
+                        match player {
+                            Ok(mut player) => {
+                                player.state_machine = self.state_machine.clone();
+                                player.set_active_state_machine_id(state_machine_id);
+                            }
+                            Err(_) => {
+                                return false;
+                            }
                         }
                     }
-
-                    let player = self.player.try_write();
-
-                    match player {
-                        Ok(mut player) => {
-                            player.state_machine = self.state_machine.clone();
-                        }
-                        Err(_) => {
-                            return false;
-                        }
+                    Err(_) => {
+                        return false;
                     }
-                } else if let Err(ParsingError { reason: _ }) = state_machine {
-                    return false;
                 }
             }
             None => {
@@ -1812,8 +2397,53 @@ impl DotLottiePlayer {
         self.player.read().unwrap().active_theme_id().to_string()
     }
 
+    pub fn active_state_machine_id(&self) -> String {
+        self.player
+            .read()
+            .unwrap()
+            .active_state_machine_id()
+            .to_string()
+    }
+
     pub fn animation_size(&self) -> Vec<f32> {
         self.player.read().unwrap().animation_size()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn instance_id(&self) -> u32 {
+        self.player.read().unwrap().instance_id()
+    }
+
+    pub fn state_machine_current_state(&self) -> String {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if let Some(sm) = state_machine.as_ref() {
+                    return sm.get_current_state_name();
+                }
+            }
+
+            Err(_) => {
+                return "".to_string();
+            }
+        }
+
+        "".to_string()
+    }
+
+    pub fn state_machine_status(&self) -> String {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if let Some(sm) = state_machine.as_ref() {
+                    return sm.status();
+                }
+            }
+
+            Err(_) => {
+                return "".to_string();
+            }
+        }
+
+        "".to_string()
     }
 }
 

@@ -1,0 +1,76 @@
+{
+  "initial": "global",
+  "states": [
+    {
+      "name": "global",
+      "type": "GlobalState",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "a",
+          "guards": [
+            {
+              "type": "Event",
+              "triggerName": "DoesntExist"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Boolean",
+              "triggerName": "OnOffSwitch",
+              "conditionType": "Equal",
+              "compareTo": true
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "c",
+          "guards": [
+            {
+              "type": "Boolean",
+              "triggerName": "OnOffSwitch",
+              "conditionType": "Equal",
+              "compareTo": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    },
+    {
+      "name": "b",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    },
+    {
+      "name": "c",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    }
+  ],
+  "listeners": [],
+  "triggers": [
+    {
+      "type": "Boolean",
+      "name": "OnOffSwitch",
+      "value": false
+    },
+    {
+      "type": "Event",
+      "name": "Step"
+    }
+  ]
+}

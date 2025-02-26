@@ -10,6 +10,8 @@ use dotlottie_rs::{
     Marker, Mode,
 };
 
+use dotlottie_rs::actions::open_url::OpenUrl;
+
 // Function return codes
 pub const DOTLOTTIE_SUCCESS: i32 = 0;
 pub const DOTLOTTIE_ERROR: i32 = 1;
@@ -256,6 +258,7 @@ pub struct DotLottieConfig {
     pub layout: DotLottieLayout,
     pub marker: DotLottieString,
     pub theme_id: DotLottieString,
+    pub state_machine_id: DotLottieString,
 }
 
 impl Transferable<Config> for DotLottieConfig {
@@ -276,6 +279,7 @@ impl Transferable<Config> for DotLottieConfig {
             layout: DotLottieLayout::new(&config.layout),
             marker: DotLottieString::new(&config.marker)?,
             theme_id: DotLottieString::new(&config.theme_id)?,
+            state_machine_id: DotLottieString::new(&config.state_machine_id)?,
         })
     }
 }
@@ -297,6 +301,7 @@ impl DotLottieConfig {
             layout: self.layout.to_layout(),
             marker: self.marker.to_string(),
             theme_id: self.theme_id.to_string(),
+            state_machine_id: self.state_machine_id.to_string(),
         })
     }
 }
@@ -424,6 +429,30 @@ impl DotLottieFit {
     }
 }
 
+// #[derive(Clone, PartialEq)]
+// #[repr(C)]
+// pub enum OpenUrlMode {
+//     Deny,
+//     Interaction,
+//     Allow,
+// }
+
+// #[derive(Clone, PartialEq)]
+// #[repr(C)]
+// pub struct OpenUrl {
+//     pub mode: OpenUrlMode,
+//     pub whitelist: Vec<DotLottieString>,
+// }
+
+// impl DotLottieOpenUrl {
+//     pub fn new() -> Self {
+//         Self {
+//             mode: OpenUrlMode::Interaction,
+//             whitelist: vec![],
+//         }
+//     }
+// }
+
 #[derive(Clone, PartialEq)]
 #[repr(C)]
 pub struct DotLottieLayout {
@@ -460,36 +489,27 @@ impl DotLottieLayout {
 #[allow(dead_code)]
 #[repr(C)]
 pub enum DotLottieEvent {
-    Boolean { value: bool },
-    String { value: DotLottieString },
-    Numeric { value: f32 },
-    OnPointerDown { x: f32, y: f32 },
-    OnPointerUp { x: f32, y: f32 },
-    OnPointerMove { x: f32, y: f32 },
-    OnPointerEnter { x: f32, y: f32 },
-    OnPointerExit { x: f32, y: f32 },
+    PointerDown { x: f32, y: f32 },
+    PointerUp { x: f32, y: f32 },
+    PointerMove { x: f32, y: f32 },
+    PointerEnter { x: f32, y: f32 },
+    PointerExit { x: f32, y: f32 },
+    Click { x: f32, y: f32 },
     OnComplete,
-    SetNumericContext { key: DotLottieString, value: f32 },
+    OnLoopComplete,
 }
 
 impl DotLottieEvent {
     pub unsafe fn to_event(&self) -> Event {
         match self {
-            DotLottieEvent::Boolean { value } => Event::Bool { value: *value },
-            DotLottieEvent::String { value } => Event::String {
-                value: value.to_string(),
-            },
-            DotLottieEvent::Numeric { value } => Event::Numeric { value: *value },
-            DotLottieEvent::OnPointerDown { x, y } => Event::OnPointerDown { x: *x, y: *y },
-            DotLottieEvent::OnPointerUp { x, y } => Event::OnPointerUp { x: *x, y: *y },
-            DotLottieEvent::OnPointerMove { x, y } => Event::OnPointerMove { x: *x, y: *y },
-            DotLottieEvent::OnPointerEnter { x, y } => Event::OnPointerEnter { x: *x, y: *y },
-            DotLottieEvent::OnPointerExit { x, y } => Event::OnPointerExit { x: *x, y: *y },
+            DotLottieEvent::PointerDown { x, y } => Event::PointerDown { x: *x, y: *y },
+            DotLottieEvent::PointerUp { x, y } => Event::PointerUp { x: *x, y: *y },
+            DotLottieEvent::PointerMove { x, y } => Event::PointerMove { x: *x, y: *y },
+            DotLottieEvent::PointerEnter { x, y } => Event::PointerEnter { x: *x, y: *y },
+            DotLottieEvent::PointerExit { x, y } => Event::PointerExit { x: *x, y: *y },
+            DotLottieEvent::Click { x, y } => Event::Click { x: *x, y: *y },
             DotLottieEvent::OnComplete => Event::OnComplete,
-            DotLottieEvent::SetNumericContext { key, value } => Event::SetNumericContext {
-                key: key.to_string(),
-                value: *value,
-            },
+            DotLottieEvent::OnLoopComplete => Event::OnLoopComplete,
         }
     }
 }
@@ -554,12 +574,29 @@ impl Observer {
 pub type OnTransitionOp = unsafe extern "C" fn(*const c_char, *const c_char);
 pub type OnStateEnteredOp = unsafe extern "C" fn(*const c_char);
 pub type OnStateExitOp = unsafe extern "C" fn(*const c_char);
+pub type OnStateCustomEventOp = unsafe extern "C" fn(*const c_char);
+pub type OnStateErrorOp = unsafe extern "C" fn(*const c_char);
+pub type OnStateMachineStartOp = unsafe extern "C" fn();
+pub type OnStateMachineStopOp = unsafe extern "C" fn();
+pub type OnStringTriggerValueChangeOp =
+    unsafe extern "C" fn(*const c_char, *const c_char, *const c_char);
+pub type OnNumericTriggerValueChangeOp = unsafe extern "C" fn(*const c_char, f32, f32);
+pub type OnBooleanTriggerValueChangeOp = unsafe extern "C" fn(*const c_char, bool, bool);
+pub type OnTriggerFiredOp = unsafe extern "C" fn(*const c_char);
 
 #[repr(C)]
 pub struct StateMachineObserver {
     pub on_transition_op: OnTransitionOp,
     pub on_state_entered_op: OnStateEnteredOp,
     pub on_state_exit_op: OnStateExitOp,
+    pub on_state_custom_event_op: OnStateCustomEventOp,
+    pub on_state_error_op: OnStateErrorOp,
+    pub on_state_machine_start_op: OnStateMachineStartOp,
+    pub on_state_machine_stop_op: OnStateMachineStopOp,
+    pub on_string_trigger_value_change_op: OnStringTriggerValueChangeOp,
+    pub on_numeric_trigger_value_change_op: OnNumericTriggerValueChangeOp,
+    pub on_boolean_trigger_value_change_op: OnBooleanTriggerValueChangeOp,
+    pub on_trigger_fired_op: OnTriggerFiredOp,
 }
 
 impl dotlottie_rs::StateMachineObserver for StateMachineObserver {
@@ -590,6 +627,97 @@ impl dotlottie_rs::StateMachineObserver for StateMachineObserver {
         if let Ok(leaving_state) = CString::new(leaving_state) {
             unsafe {
                 (self.on_state_exit_op)(leaving_state.as_bytes_with_nul().as_ptr() as *const c_char)
+            }
+        }
+    }
+
+    fn on_custom_event(&self, message: String) {
+        if let Ok(message) = CString::new(message) {
+            unsafe {
+                (self.on_state_custom_event_op)(
+                    message.as_bytes_with_nul().as_ptr() as *const c_char
+                )
+            }
+        }
+    }
+
+    fn on_error(&self, message: String) {
+        if let Ok(message) = CString::new(message) {
+            unsafe {
+                (self.on_state_error_op)(message.as_bytes_with_nul().as_ptr() as *const c_char)
+            }
+        }
+    }
+
+    fn on_start(&self) {
+        unsafe { (self.on_state_machine_start_op)() }
+    }
+
+    fn on_stop(&self) {
+        unsafe { (self.on_state_machine_stop_op)() }
+    }
+
+    fn on_string_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: String,
+        new_value: String,
+    ) {
+        if let (Ok(trigger_name), Ok(old_value), Ok(new_value)) = (
+            CString::new(trigger_name),
+            CString::new(old_value),
+            CString::new(new_value),
+        ) {
+            unsafe {
+                (self.on_string_trigger_value_change_op)(
+                    trigger_name.as_bytes_with_nul().as_ptr() as *const c_char,
+                    old_value.as_bytes_with_nul().as_ptr() as *const c_char,
+                    new_value.as_bytes_with_nul().as_ptr() as *const c_char,
+                )
+            }
+        }
+    }
+
+    fn on_numeric_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: f32,
+        new_value: f32,
+    ) {
+        if let Ok(trigger_name) = CString::new(trigger_name) {
+            unsafe {
+                (self.on_numeric_trigger_value_change_op)(
+                    trigger_name.as_bytes_with_nul().as_ptr() as *const c_char,
+                    old_value,
+                    new_value,
+                )
+            }
+        }
+    }
+
+    fn on_boolean_trigger_value_change(
+        &self,
+        trigger_name: String,
+        old_value: bool,
+        new_value: bool,
+    ) {
+        if let Ok(trigger_name) = CString::new(trigger_name) {
+            unsafe {
+                (self.on_boolean_trigger_value_change_op)(
+                    trigger_name.as_bytes_with_nul().as_ptr() as *const c_char,
+                    old_value,
+                    new_value,
+                )
+            }
+        }
+    }
+
+    fn on_trigger_fired(&self, trigger_name: String) {
+        if let Ok(trigger_name) = CString::new(trigger_name) {
+            unsafe {
+                (self.on_trigger_fired_op)(
+                    trigger_name.as_bytes_with_nul().as_ptr() as *const c_char
+                )
             }
         }
     }

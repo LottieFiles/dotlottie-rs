@@ -10,7 +10,6 @@ mod wg;
 mod common;
 
 pub use error::{IntoResult, TvgError};
-pub use sw::SwBackend;
 pub use types::{TvgBackend, TvgEngine};
 
 #[cfg(all(feature = "thorvg_v1_gl", target_arch = "wasm32"))]
@@ -40,11 +39,11 @@ impl TvgRenderer {
     pub fn new(engine: types::TvgEngine, threads: u32, _html_canvas_selector: &str) -> Self {
         let backend: Box<dyn TvgBackend> = match engine {
             types::TvgEngine::TvgEngineSw => Box::new(sw::SwBackend::new(threads)),
-            #[cfg(feature = "thorvg_v1_gl")]
+            #[cfg(all(feature = "thorvg_v1_gl", target_arch = "wasm32"))]
             types::TvgEngine::TvgEngineGl => {
                 Box::new(gl::GlBackend::new(threads, _html_canvas_selector))
             }
-            #[cfg(feature = "thorvg_v1_wg")]
+            #[cfg(all(feature = "thorvg_v1_wg", target_arch = "wasm32"))]
             types::TvgEngine::TvgEngineWg => {
                 Box::new(wg::WgBackend::new(threads, _html_canvas_selector))
             }

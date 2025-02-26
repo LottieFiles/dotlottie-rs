@@ -2,12 +2,18 @@ use super::common::{BackendInstances, TvgEngineInit};
 use super::types::*;
 use super::*;
 
+#[allow(non_snake_case)]
+#[allow(non_upper_case_globals)]
+#[allow(non_camel_case_types)]
+#[allow(dead_code)]
+#[allow(clippy::all)]
+#[cfg(target_arch = "wasm32")]
 mod em {
     use std::ffi::CString;
     use std::os::raw::{c_int, c_void};
 
-    #[allow(non_upper_case_globals)]
     #[allow(non_snake_case)]
+    #[allow(non_upper_case_globals)]
     #[allow(non_camel_case_types)]
     #[allow(dead_code)]
     #[allow(clippy::all)]
@@ -95,16 +101,20 @@ mod em {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 static INSTANCES: BackendInstances = BackendInstances::new();
 
+#[cfg(target_arch = "wasm32")]
 pub struct GlBackend {
     context: em::WebGLContext,
 }
 
+#[cfg(target_arch = "wasm32")]
 impl TvgEngineInit for GlBackend {
     const ENGINE: TvgEngine = TvgEngine::TvgEngineGl;
 }
 
+#[cfg(target_arch = "wasm32")]
 impl GlBackend {
     pub fn new(threads: u32, html_canvas_selector: &str) -> Self {
         let context = em::WebGLContext::new(html_canvas_selector);
@@ -115,12 +125,14 @@ impl GlBackend {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl Drop for GlBackend {
     fn drop(&mut self) {
         INSTANCES.terminate::<Self>();
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl TvgBackend for GlBackend {
     fn create_canvas(&self) -> *mut tvg::Tvg_Canvas {
         unsafe { tvg::tvg_glcanvas_create() }

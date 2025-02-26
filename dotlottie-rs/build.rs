@@ -47,7 +47,9 @@ lazy_static! {
         true if is_wasm_build() => BuildSettings{
             static_libs: vec![String::from("thorvg")],
             dynamic_libs: vec![],
-            link_args: vec![String::from("--no-entry"), String::from("-sMAX_WEBGL_VERSION=2"), String::from("-sFULL_ES3")],
+            link_args: vec![
+                String::from("--no-entry")
+            ],
         },
         true => BuildSettings{
             static_libs: vec![String::from("thorvg"), String::from("turbojpeg"), String::from("png"), String::from("z"), String::from("webp")],
@@ -161,11 +163,19 @@ fn main() {
 
     if is_wasm_build() {
         println!("cargo:rerun-if-changed=emscripten_wrapper.h");
-        let emscripten_builder = bindgen::Builder::default()
+        let mut emscripten_builder = bindgen::Builder::default()
             .header("emscripten_wrapper.h")
             .layout_tests(false)
             .clang_arg(format!("-I{}", get_emscripten_include_path()))
             .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
+
+        if cfg!(feature = "thorvg_v1_gl") {
+            emscripten_builder = emscripten_builder.clang_arg("-DTHORVG_V1_GL");
+        }
+
+        if cfg!(feature = "thorvg_v1_wg") {
+            emscripten_builder = emscripten_builder.clang_arg("-DTHORVG_V1_WG");
+        }
 
         let emscripten_bindings = emscripten_builder
             .generate()

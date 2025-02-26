@@ -4,9 +4,7 @@ use super::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TvgEngine {
     TvgEngineSw,
-    #[cfg(feature = "thorvg_v1")]
     TvgEngineGl,
-    #[cfg(feature = "thorvg_v1")]
     TvgEngineWg,
 }
 
@@ -14,12 +12,12 @@ impl From<TvgEngine> for tvg::Tvg_Engine {
     fn from(engine: TvgEngine) -> Self {
         match engine {
             TvgEngine::TvgEngineSw => tvg::Tvg_Engine_TVG_ENGINE_SW,
-            #[cfg(feature = "thorvg_v1")]
+            #[cfg(all(feature = "thorvg_v1_gl", target_arch = "wasm32"))]
             TvgEngine::TvgEngineGl => tvg::Tvg_Engine_TVG_ENGINE_GL,
-            #[cfg(feature = "thorvg_v1")]
+            #[cfg(all(feature = "thorvg_v1_wg", target_arch = "wasm32"))]
             TvgEngine::TvgEngineWg => tvg::Tvg_Engine_TVG_ENGINE_WG,
-            #[cfg(not(feature = "thorvg_v1"))]
-            _ => unreachable!(),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!("Unsupported engine type"),
         }
     }
 }

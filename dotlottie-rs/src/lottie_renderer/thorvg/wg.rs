@@ -2,13 +2,19 @@ use super::common::{BackendInstances, TvgEngineInit};
 use super::*;
 use std::os::raw::c_void;
 
+#[allow(non_snake_case)]
+#[allow(non_upper_case_globals)]
+#[allow(non_camel_case_types)]
+#[allow(dead_code)]
+#[allow(clippy::all)]
+#[cfg(target_arch = "wasm32")]
 mod em {
     use std::ffi::CString;
     use std::os::raw::c_void;
     use std::ptr;
 
-    #[allow(non_upper_case_globals)]
     #[allow(non_snake_case)]
+    #[allow(non_upper_case_globals)]
     #[allow(non_camel_case_types)]
     #[allow(dead_code)]
     #[allow(clippy::all)]
@@ -76,16 +82,20 @@ mod em {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 static INSTANCES: BackendInstances = BackendInstances::new();
 
+#[cfg(target_arch = "wasm32")]
 pub struct WgBackend {
     context: em::WebGPUContext,
 }
 
+#[cfg(target_arch = "wasm32")]
 impl TvgEngineInit for WgBackend {
     const ENGINE: TvgEngine = TvgEngine::TvgEngineWg;
 }
 
+#[cfg(target_arch = "wasm32")]
 impl WgBackend {
     pub fn new(threads: u32, html_canvas_selector: &str) -> Self {
         let context = em::WebGPUContext::new(html_canvas_selector);
@@ -96,12 +106,14 @@ impl WgBackend {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl Drop for WgBackend {
     fn drop(&mut self) {
         INSTANCES.terminate::<Self>();
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl TvgBackend for WgBackend {
     fn create_canvas(&self) -> *mut tvg::Tvg_Canvas {
         unsafe { tvg::tvg_wgcanvas_create() }

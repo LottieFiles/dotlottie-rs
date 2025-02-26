@@ -93,6 +93,7 @@ XCODEBUILD := xcodebuild
 # Wasm
 WASM := wasm
 WASM_BUILD := $(BUILD)/$(WASM)
+THORVG_ENGINE ?= sw  # Default to software renderer, can be 'sw', 'gl', or 'wg'
 
 EMSDK := emsdk
 EMSDK_DIR := $(PROJECT_DIR)/$(DEPS_MODULES_DIR)/$(EMSDK)
@@ -259,30 +260,31 @@ shared_module_suffix = 'js'
 exe_suffix = 'js'
 
 [built-in options]
-cpp_args = ['-Wshift-negative-value', '-flto', '-Os', '-ffunction-sections', '-fdata-sections']
+cpp_args = ['-Wshift-negative-value', '-flto', '-Oz', '-ffunction-sections', '-fdata-sections']
 cpp_link_args = [
-	'-sMAX_WEBGL_VERSION=2',
-	'-sFULL_ES3',
-	'-sUSE_WEBGPU=1',
 	'-sASYNCIFY=1',
 	'-sMALLOC=emmalloc',
 	'-Wl,-u,htons',
 	'-Wl,-u,ntohs',
 	'-Wl,-u,htonl',
 	'-Wshift-negative-value',
-	'-flto', '-Os', '--bind', '-sWASM=1',
+	'-flto', '-Oz', '--bind', '-sWASM=1',
+	'-sASYNCIFY=1',
 	'-sALLOW_MEMORY_GROWTH=1',
 	'-sFORCE_FILESYSTEM=0',
 	'-sMODULARIZE=1',
 	'-sEXPORT_NAME=create$(WASM_MODULE)Module',
 	'-sEXPORT_ES6=1',
 	'-sUSE_ES6_IMPORT_META=0',
-	'-sENVIRONMENT=web,worker',
+	'-sENVIRONMENT=web',
 	'-sFILESYSTEM=0',
 	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
-	'--emit-tsd=${WASM_MODULE}.d.ts']
+	'--emit-tsd=${WASM_MODULE}.d.ts',
+	'--closure=1',
+	$(if $(filter $(THORVG_ENGINE),gl),'-sMAX_WEBGL_VERSION=2', '-sFULL_ES3',)\
+	$(if $(filter $(THORVG_ENGINE),wg),'-sUSE_WEBGPU=1',)]
 
 [host_machine]
 system = '$(SYSTEM)'
@@ -333,7 +335,7 @@ define SETUP_MESON
 		--backend=ninja \
 		-Dloaders="lottie, png, jpg, webp" \
 		-Ddefault_library=static \
-		-Dengines=sw,gl,wg \
+		-Dengines=$(ENGINE) \
 		-Dbindings=capi \
 		-Dlog=false \
 		-Dthreads=false \
@@ -390,7 +392,7 @@ define CARGO_BUILD
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--no-default-features \
-		--features thorvg_v1 \
+		--features thorvg_v1,thorvg_v1_$(THORVG_ENGINE) \
 		--release; \
 	else \
 		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
@@ -399,7 +401,7 @@ define CARGO_BUILD
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--no-default-features \
-		--features thorvg_v1_sw \
+		--features thorvg_v1,thorvg_v1_$(THORVG_ENGINE) \
 		--release; \
 	fi
 endef
@@ -641,6 +643,7 @@ $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): LOG := false
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): STATIC := $3
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): EXTRA := $4
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): FILE := $5
+$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): ENGINE := $6
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE)
 $(if $(filter $3,false),
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(LIBJPEG_TURBO_LIB)
@@ -662,7 +665,7 @@ $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,LIBPNG_LIB,$(LIBPNG),$$($1_LIBPNG_DEP_B
 $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,ZLIB,$(ZLIB),$$($1_ZLIB_DEP_BUILD_DIR),$(ZLIB_LIB)))
 $(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,WEBP,$(WEBP),$$($1_WEBP_DEP_BUILD_DIR),$(WEBP_LIB)))
 $(eval $(call NEW_ANDROID_CROSS_FILE,$1))
-$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions",true))
+$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions",true,"sw"))
 endef
 
 define NEW_APPLE_DEPS_BUILD
@@ -671,12 +674,12 @@ $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,LIBPNG_LIB,$(LIBPNG),$$($1_LIBPNG_DEP_BUI
 $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,ZLIB,$(ZLIB),$$($1_ZLIB_DEP_BUILD_DIR),$(ZLIB_LIB)))
 $(eval $(call NEW_APPLE_CMAKE_BUILD,$1,WEBP,$(WEBP),$$($1_WEBP_DEP_BUILD_DIR),$(WEBP_LIB)))
 $(eval $(call NEW_APPLE_CROSS_FILE,$1))
-$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions",true))
+$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions",true,"sw"))
 endef
 
 define NEW_WASM_DEPS_BUILD
 $(eval $(call NEW_WASM_CROSS_FILE,$1,$$($1_THORVG_DEP_BUILD_DIR)/..,emscripten))
-$(eval $(call NEW_THORVG_BUILD,$1,false,true,"lottie_expressions",false))
+$(eval $(call NEW_THORVG_BUILD,$1,false,true,"lottie_expressions",false,$(THORVG_ENGINE)))
 endef
 
 define NEW_ANDROID_BUILD
@@ -1061,6 +1064,8 @@ help:
 	@printf "  - $(YELLOW)%s$(NC)\n" $(WASM_BUILD_TARGETS)
 	@echo
 	@echo "Use the $(YELLOW)wasm$(NC) target to build all wasm targets."
+	@echo "  - THORVG_ENGINE can be 'sw' (default), 'gl', or 'wg'"
+	@echo "  - Example: make wasm THORVG_ENGINE=gl"
 	@echo "$(GREEN)-------------------------------------------------------------------------------------------------$(NC)"
 	@echo
 	@echo "The following are make targets you might also find useful:"

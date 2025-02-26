@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::Config;
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -10,14 +10,14 @@ mod tests {
 
     #[test]
     fn test_default_use_frame_interpolation() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         assert!(player.config().use_frame_interpolation);
     }
 
     #[test]
     fn test_set_use_frame_interpolation() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         let mut config = player.config();
         config.use_frame_interpolation = false;
@@ -28,7 +28,7 @@ mod tests {
 
     #[test]
     fn test_disable_frame_interpolation() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             use_frame_interpolation: false,
             ..Config::default()

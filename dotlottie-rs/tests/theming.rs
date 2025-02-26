@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::Config;
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -11,7 +11,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_load_valid_theme() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             ..Config::default()
         });
@@ -35,7 +35,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_load_invalid_theme() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             ..Config::default()
         });
@@ -60,7 +60,7 @@ mod tests {
     #[test]
     #[ignore = "malloc: Double free detected when unloading theme"]
     fn test_unset_theme() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             ..Config::default()
         });
@@ -76,7 +76,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_unset_theme_before_load() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             ..Config::default()
         });
@@ -89,7 +89,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_clear_active_theme_id_after_new_animation_data_is_loaded() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             ..Config::default()
         });
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_clear_active_theme_id_after_new_animation_path_is_loaded() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             ..Config::default()
         });
@@ -143,7 +143,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_clear_active_theme_id_after_new_dotlottie_is_loaded() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             ..Config::default()
         });

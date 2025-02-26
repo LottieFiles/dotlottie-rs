@@ -269,7 +269,6 @@ cpp_link_args = [
 	'-Wl,-u,htonl',
 	'-Wshift-negative-value',
 	'-flto', '-Oz', '--bind', '-sWASM=1',
-	'-sASYNCIFY=1',
 	'-sALLOW_MEMORY_GROWTH=1',
 	'-sFORCE_FILESYSTEM=0',
 	'-sMODULARIZE=1',

@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer, Marker};
+use dotlottie_rs::{Config, Marker};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -10,7 +10,7 @@ mod tests {
 
     #[test]
     fn test_default_marker() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         assert!(
             player.config().marker.is_empty(),
@@ -20,7 +20,7 @@ mod tests {
 
     #[test]
     fn test_markers() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             ..Config::default()
         });
@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_set_marker() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             ..Config::default()
         });

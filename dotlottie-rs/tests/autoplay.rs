@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::Config;
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -10,14 +10,14 @@ mod tests {
 
     #[test]
     fn test_default_autoplay() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         assert!(!player.config().autoplay);
     }
 
     #[test]
     fn test_set_autoplay() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         let mut config = player.config();
         config.autoplay = true;
@@ -28,7 +28,7 @@ mod tests {
 
     #[test]
     fn test_autoplay() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             ..Config::default()
         });
@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn test_no_autoplay() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: false,
             ..Config::default()
         });

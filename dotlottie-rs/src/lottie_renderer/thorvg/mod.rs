@@ -368,7 +368,15 @@ impl Shape for TvgShape {
         rx: f32,
         ry: f32,
     ) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry).into_result() }
+        #[cfg(feature = "thorvg_v1")]
+        unsafe {
+            tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry, true).into_result()
+        }
+
+        #[cfg(feature = "thorvg_v0")]
+        unsafe {
+            tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry).into_result()
+        }
     }
 
     fn reset(&mut self) -> Result<(), TvgError> {

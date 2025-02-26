@@ -28,12 +28,12 @@ thorvg_v1_gl = ["dotlottie-rs/thorvg_v1_gl"]
 thorvg_v1_wg = ["dotlottie-rs/thorvg_v1_wg"]
 
 [dependencies]
-uniffi = { version = "0.25", features = ["cli"] }
+uniffi = { version = "0.28", features = ["cli"] }
 dotlottie-rs = { path = "../dotlottie-rs", default-features = false }
 cfg-if = "1.0"
 bitflags = "2.6.0"
 
 [build-dependencies]
-uniffi = { version = "0.25", features = ["build"] }
+uniffi = { version = "0.28", features = ["build"] }
 lazy_static = "1.4"
 cbindgen = "0.26.0"

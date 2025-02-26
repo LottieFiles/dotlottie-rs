@@ -106,11 +106,11 @@ jobs:
         env:
           TARGET: wasm
 
-      - name: Build WASM
-        run: make wasm
-
-      - name: Optimize WASM
-        run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
+      - name: Build WASM (webgl)
+        run: |
+          make wasm
+          wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
+          make distclean
 
       - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v4
@@ -120,10 +120,10 @@ jobs:
           if-no-files-found: error
 
       - name: Build WASM (webgpu)
-        run: make wasm THORVG_ENGINE=wg
-
-      - name: Optimize WASM (webgpu)
-        run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
+        run: |
+          make wasm THORVG_ENGINE=wg
+          wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
+          make distclean
 
       - name: Upload WASM (webgpu) Artifacts
         uses: actions/upload-artifact@v4
@@ -133,10 +133,10 @@ jobs:
           if-no-files-found: error
 
       - name: Build WASM (webgl)
-        run: make wasm THORVG_ENGINE=gl
-
-      - name: Optimize WASM (webgl)
-        run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
+        run: |
+          make wasm THORVG_ENGINE=gl
+          wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
+          make distclean
 
       - name: Upload WASM (webgl) Artifacts
         uses: actions/upload-artifact@v4

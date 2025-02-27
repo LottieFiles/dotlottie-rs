@@ -978,6 +978,38 @@ impl DotLottieRuntime {
     pub fn set_active_state_machine_id(&mut self, state_machine_id: &str) {
         self.active_state_machine_id = state_machine_id.to_string();
     }
+
+    pub fn tween(&mut self, from: f32, to: f32, progress: f32) -> bool {
+        self.renderer.tween(from, to, progress).is_ok()
+    }
+
+    pub fn tween_to(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> bool {
+        self.renderer.tween_to(to, duration, easing).is_ok()
+    }
+
+    pub fn tween_to_marker(&mut self, marker: &str, duration: f32, easing: [f32; 4]) -> bool {
+        let markers = self.markers();
+        if let Some(marker) = markers.iter().find(|m| m.name == marker) {
+            self.tween_to(marker.time, duration, easing);
+            self.config.marker = marker.name.clone();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_tweening(&self) -> bool {
+        self.renderer.is_tweening()
+    }
+
+    pub fn tween_update(&mut self) -> bool {
+        let ok = self.renderer.tween_update().is_ok();
+        if !ok {
+            // so after the tweening is completed, we can start calculating the next frame based on the start time
+            self.start_time = Instant::now();
+        }
+        ok
+    }
 }
 
 pub struct DotLottiePlayerContainer {
@@ -1695,6 +1727,38 @@ impl DotLottiePlayerContainer {
     #[cfg(target_arch = "wasm32")]
     pub fn instance_id(&self) -> u32 {
         self.instance_id
+    }
+
+    pub fn tick(&self) -> bool {
+        if self.is_tweening() {
+            self.tween_update() && self.render()
+        } else {
+            let next_frame = self.request_frame();
+            self.set_frame(next_frame) && self.render()
+        }
+    }
+
+    pub fn tween(&self, from: f32, to: f32, progress: f32) -> bool {
+        self.runtime.write().unwrap().tween(from, to, progress)
+    }
+
+    pub fn tween_to(&self, to: f32, duration: f32, easing: [f32; 4]) -> bool {
+        self.runtime.write().unwrap().tween_to(to, duration, easing)
+    }
+
+    pub fn tween_to_marker(&self, marker: &str, duration: f32, easing: [f32; 4]) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .tween_to_marker(marker, duration, easing)
+    }
+
+    pub fn is_tweening(&self) -> bool {
+        self.runtime.read().unwrap().is_tweening()
+    }
+
+    pub fn tween_update(&self) -> bool {
+        self.runtime.write().unwrap().tween_update()
     }
 }
 
@@ -2442,6 +2506,37 @@ impl DotLottiePlayer {
         }
 
         "".to_string()
+    }
+
+    pub fn tick(&self) -> bool {
+        self.player.read().unwrap().tick()
+    }
+
+    pub fn tween(&self, from: f32, to: f32, progress: f32) -> bool {
+        self.player.read().unwrap().tween(from, to, progress)
+    }
+
+    pub fn is_tweening(&self) -> bool {
+        self.player.read().unwrap().is_tweening()
+    }
+
+    pub fn tween_update(&self) -> bool {
+        self.player.read().unwrap().tween_update()
+    }
+
+    pub fn tween_to(&self, to: f32, duration: f32, easing: Vec<f32>) -> bool {
+        self.player
+            .read()
+            .unwrap()
+            .tween_to(to, duration, easing.try_into().unwrap())
+    }
+
+    pub fn tween_to_marker(&self, marker_name: &str, duration: f32, easing: Vec<f32>) -> bool {
+        self.player.read().unwrap().tween_to_marker(
+            marker_name,
+            duration,
+            easing.try_into().unwrap(),
+        )
     }
 }
 

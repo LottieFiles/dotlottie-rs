@@ -382,9 +382,7 @@ endef
 define CARGO_BUILD
 	if [ "$(CARGO_TARGET)" = "wasm32-unknown-emscripten" ]; then \
 		source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
-		RUSTFLAGS="-Zlocation-detail=none" cargo +nightly build \
-		-Z build-std=std,panic_abort \
-		-Z build-std-features="panic_immediate_abort,optimize_for_size" \
+		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--no-default-features \
@@ -981,6 +979,10 @@ $(NATIVE): $(RUNTIME_FFI)/target/$(RELEASE)/$(RUNTIME_FFI_LIB)
 
 .PHONY: all
 all: $(APPLE) $(ANDROID) $(WASM) $(NATIVE)
+
+.PHONY: local
+local: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
+	$(info $(GREEN)Local architecture dependencies built successfully!$(NC))
 
 .PHONY: deps
 deps:

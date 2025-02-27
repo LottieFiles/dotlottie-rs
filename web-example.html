@@ -208,21 +208,9 @@
       let animationFrameId = null;
 
       function animationLoop() {
-        const nextFrameNumber = dotLottiePlayer.requestFrame();
-
-        const updated = dotLottiePlayer.setFrame(parseInt(nextFrameNumber));
-
-        if (updated) {
-          setTimeout(() => {
-            progressBar.value =
-              (dotLottiePlayer.currentFrame() / dotLottiePlayer.totalFrames()) *
-              100;
-          }, 0);
-
-          render();
+        if (render()) {
+          animationFrameId = requestAnimationFrame(animationLoop);
         }
-
-        animationFrameId = requestAnimationFrame(animationLoop);
       }
 
       animationFrameId = requestAnimationFrame(animationLoop);
@@ -281,12 +269,14 @@
 
       function render() {
         setViewport();
-        const rendered = dotLottiePlayer.render();
-        if (rendered) {
+        if (dotLottiePlayer.tick()) {
           const frameBuffer = dotLottiePlayer.buffer();
           const imageData = ctx.createImageData(canvas.width, canvas.height);
           imageData.data.set(frameBuffer);
           ctx.putImageData(imageData, 0, 0);
+          return true;
+        } else {
+          return false;
         }
       }
 

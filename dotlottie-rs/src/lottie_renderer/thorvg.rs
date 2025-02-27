@@ -2,6 +2,9 @@
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::Mutex;
 
+#[allow(unused_imports)]
+use instant::Instant;
+
 #[cfg(target_arch = "wasm32")]
 use spin::Mutex;
 
@@ -137,7 +140,7 @@ impl Renderer for TvgRenderer {
         }
     }
 
-    fn clear(&self, free: bool) -> Result<(), TvgError> {
+    fn clear(&self, _free: bool) -> Result<(), TvgError> {
         #[cfg(feature = "thorvg-v1")]
         unsafe {
             tvg::tvg_canvas_remove(self.raw_canvas, ptr::null_mut::<tvg::Tvg_Paint>()).into_result()
@@ -145,7 +148,7 @@ impl Renderer for TvgRenderer {
 
         #[cfg(feature = "thorvg-v0")]
         unsafe {
-            tvg::tvg_canvas_clear(self.raw_canvas, free).into_result()
+            tvg::tvg_canvas_clear(self.raw_canvas, _free).into_result()
         }
     }
 
@@ -195,9 +198,20 @@ impl Drop for TvgRenderer {
     }
 }
 
+#[cfg(feature = "thorvg-v1")]
+struct TweenState {
+    start_time: Instant,
+    from: f32,
+    to: f32,
+    duration: f32,
+    easing: [f32; 4],
+}
+
 pub struct TvgAnimation {
     raw_animation: *mut tvg::Tvg_Animation,
     raw_paint: *mut tvg::Tvg_Paint,
+    #[cfg(feature = "thorvg-v1")]
+    tween_state: Option<TweenState>,
 }
 
 impl Default for TvgAnimation {
@@ -208,6 +222,8 @@ impl Default for TvgAnimation {
         Self {
             raw_animation,
             raw_paint,
+            #[cfg(feature = "thorvg-v1")]
+            tween_state: None,
         }
     }
 }
@@ -383,6 +399,92 @@ impl Animation for TvgAnimation {
 
         result.into_result()
     }
+
+    fn tween(&mut self, _from: f32, _to: f32, _progress: f32) -> Result<(), TvgError> {
+        #[cfg(feature = "thorvg-v1")]
+        {
+            if self.is_tweening() || _progress <= 0.0 {
+                return Err(TvgError::InvalidArgument);
+            }
+
+            unsafe {
+                tvg::tvg_lottie_animation_tween(self.raw_animation, _from, _to, _progress)
+                    .into_result()
+            }
+        }
+
+        #[cfg(not(feature = "thorvg-v1"))]
+        Err(TvgError::NotSupported)
+    }
+
+    fn tween_to(&mut self, _to: f32, _duration: f32, _easing: [f32; 4]) -> Result<(), TvgError> {
+        #[cfg(feature = "thorvg-v1")]
+        {
+            if self.is_tweening() || _duration <= 0.0 {
+                return Err(TvgError::InvalidArgument);
+            }
+
+            self.tween_state = Some(TweenState {
+                start_time: Instant::now(),
+                from: self.get_frame()?,
+                to: _to,
+                duration: _duration,
+                easing: _easing,
+            });
+
+            Ok(())
+        }
+
+        #[cfg(not(feature = "thorvg-v1"))]
+        Err(TvgError::NotSupported)
+    }
+
+    fn is_tweening(&self) -> bool {
+        #[cfg(feature = "thorvg-v1")]
+        return self.tween_state.is_some();
+
+        #[cfg(not(feature = "thorvg-v1"))]
+        false
+    }
+
+    fn tween_update(&mut self) -> Result<bool, TvgError> {
+        #[cfg(feature = "thorvg-v1")]
+        {
+            if let Some(tween_state) = self.tween_state.as_mut() {
+                let elapsed = Instant::now().duration_since(tween_state.start_time);
+                let t = elapsed.as_secs_f32() / tween_state.duration;
+                let progress = if t >= 1.0 {
+                    1.0
+                } else {
+                    let [x1, y1, x2, y2] = tween_state.easing;
+                    bezier::cubic_bezier(t, x1, y1, x2, y2)
+                };
+
+                unsafe {
+                    tvg::tvg_lottie_animation_tween(
+                        self.raw_animation,
+                        tween_state.from,
+                        tween_state.to,
+                        progress,
+                    );
+                };
+
+                if progress >= 1.0 {
+                    let target_frame = tween_state.to;
+                    self.tween_state = None;
+                    self.set_frame(target_frame)?;
+                    Ok(false)
+                } else {
+                    Ok(true)
+                }
+            } else {
+                Ok(false)
+            }
+        }
+
+        #[cfg(not(feature = "thorvg-v1"))]
+        Err(TvgError::NotSupported)
+    }
 }
 
 impl Drop for TvgAnimation {
@@ -424,11 +526,101 @@ impl Shape for TvgShape {
         rx: f32,
         ry: f32,
     ) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry).into_result() }
+        #[cfg(feature = "thorvg-v1")]
+        unsafe {
+            tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry, true).into_result()
+        }
+
+        #[cfg(feature = "thorvg-v0")]
+        unsafe {
+            tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry).into_result()
+        }
     }
 
     fn reset(&mut self) -> Result<(), TvgError> {
         unsafe { tvg::tvg_shape_reset(self.raw_shape).into_result() }
+    }
+}
+
+#[cfg(feature = "thorvg-v1")]
+mod bezier {
+    /// Computes the x-coordinate of the cubic Bézier for parameter `u`.
+    /// P0 = 0, P1 = (x1, _), P2 = (x2, _), P3 = 1.
+    pub(super) fn sample_curve_x(u: f32, x1: f32, x2: f32) -> f32 {
+        let inv_u = 1.0 - u;
+        3.0 * inv_u * inv_u * u * x1 + 3.0 * inv_u * u * u * x2 + u * u * u
+    }
+
+    /// Computes the y-coordinate of the cubic Bézier for parameter `u`.
+    /// P0 = 0, P1 = (_, y1), P2 = (_, y2), P3 = 1.
+    pub(super) fn sample_curve_y(u: f32, y1: f32, y2: f32) -> f32 {
+        let inv_u = 1.0 - u;
+        3.0 * inv_u * inv_u * u * y1 + 3.0 * inv_u * u * u * y2 + u * u * u
+    }
+
+    /// Computes the derivative dx/du for a given u.
+    fn sample_curve_derivative_x(u: f32, x1: f32, x2: f32) -> f32 {
+        let inv_u = 1.0 - u;
+        3.0 * inv_u * inv_u * x1 + 6.0 * inv_u * u * (x2 - x1) + 3.0 * u * u * (1.0 - x2)
+    }
+
+    /// Uses binary subdivision to find a parameter u such that sample_curve_x(u) ≈ t.
+    fn binary_subdivide(t: f32, x1: f32, x2: f32) -> f32 {
+        let mut a = 0.0;
+        let mut b = 1.0;
+        let mut u = t;
+        for _ in 0..10 {
+            let x = sample_curve_x(u, x1, x2);
+            if (x - t).abs() < 1e-6 {
+                return u;
+            }
+            if x > t {
+                b = u;
+            } else {
+                a = u;
+            }
+            u = (a + b) * 0.5;
+        }
+        u
+    }
+
+    /// Given a linear progress t in [0,1], uses a cubic Bézier easing function to compute
+    /// an eased progress value in [0,1].  
+    ///  
+    /// The cubic Bézier is defined by:
+    ///   P0 = (0, 0)
+    ///   P1 = (x1, y1)
+    ///   P2 = (x2, y2)
+    ///   P3 = (1, 1)
+    pub(super) fn cubic_bezier(t: f32, x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
+        if t <= 0.0 {
+            return 0.0;
+        }
+        if t >= 1.0 {
+            return 1.0;
+        }
+
+        // First try Newton–Raphson iteration.
+        let mut u = t;
+        for _ in 0..8 {
+            let x = sample_curve_x(u, x1, x2);
+            let dx = sample_curve_derivative_x(u, x1, x2);
+            if dx.abs() < 1e-6 {
+                break;
+            }
+            let delta = (x - t) / dx;
+            u -= delta;
+            if delta.abs() < 1e-6 {
+                break;
+            }
+        }
+
+        // Fallback to binary subdivision if necessary.
+        if !(0.0..=1.0).contains(&u) {
+            u = binary_subdivide(t, x1, x2);
+        }
+        u = u.clamp(0.0, 1.0);
+        sample_curve_y(u, y1, y2)
     }
 }
 

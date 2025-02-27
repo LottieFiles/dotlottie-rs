@@ -1,319 +1,108 @@
-use dotlottie_rs::{Config, DotLottiePlayer, Fit, Layout, Mode, Observer};
+use dotlottie_rs::{Config, DotLottiePlayer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
-use std::fs::{self, File};
-use std::io::Read;
-use std::sync::Arc;
-use std::thread;
-use std::{env, path, time::Instant};
-use sysinfo::System;
+use std::{path::Path, time::Instant};
 
-pub const WIDTH: usize = 1000;
-pub const HEIGHT: usize = 1000;
+const WIDTH: usize = 600;
+const HEIGHT: usize = 600;
+const EASE_LINEAR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
-struct DummyObserver2;
-
-impl Observer for DummyObserver2 {
-    fn on_play(&self) {
-        println!("on_play2");
-    }
-    fn on_pause(&self) {
-        println!("on_pause2");
-    }
-    fn on_stop(&self) {
-        println!("on_stop2");
-    }
-    fn on_frame(&self, frame_no: f32) {
-        println!("on_frame2: {}", frame_no);
-    }
-    fn on_render(&self, frame_no: f32) {
-        println!("on_render2: {}", frame_no);
-    }
-    fn on_load(&self) {
-        println!("on_load2");
-    }
-    fn on_load_error(&self) {
-        println!("on_load_error2");
-    }
-    fn on_loop(&self, loop_count: u32) {
-        println!("on_loop2: {}", loop_count);
-    }
-    fn on_complete(&self) {
-        println!("on_complete2");
-    }
-}
-
-struct DummyObserver {
-    id: u32,
-}
-
-impl Observer for DummyObserver {
-    fn on_play(&self) {
-        println!("on_play {} ", self.id);
-    }
-    fn on_pause(&self) {
-        println!("on_pause {} ", self.id);
-    }
-    fn on_stop(&self) {
-        println!("on_stop {} ", self.id);
-    }
-    fn on_frame(&self, frame_no: f32) {
-        println!("on_frame {}: {}", self.id, frame_no);
-    }
-    fn on_render(&self, frame_no: f32) {
-        println!("on_render {}: {}", self.id, frame_no);
-    }
-    fn on_load(&self) {
-        println!("on_load {} ", self.id);
-    }
-    fn on_load_error(&self) {
-        println!("on_load_error {} ", self.id);
-    }
-    fn on_loop(&self, loop_count: u32) {
-        println!("on_loop {}: {}", self.id, loop_count);
-    }
-    fn on_complete(&self) {
-        println!("on_complete {} ", self.id);
-    }
-}
-
-struct Timer {
+struct Player {
+    player: DotLottiePlayer,
+    current_marker: usize,
     last_update: Instant,
 }
 
-impl Timer {
-    fn new() -> Self {
+impl Player {
+    fn new(animation_path: &str) -> Self {
+        let mut player = DotLottiePlayer::new(Config {
+            autoplay: true,
+            loop_animation: true,
+            ..Default::default()
+        });
+
+        player.load_animation_path(animation_path, WIDTH as u32, HEIGHT as u32);
+
+        for marker in player.markers() {
+            println!("Marker '{}' at frame {}", marker.name, marker.time);
+        }
+
+        if let Some(marker) = player.markers().first() {
+            let mut config = player.config();
+            config.marker = marker.name.clone();
+            player.set_config(config);
+        }
+
         Self {
+            player,
+            current_marker: 0,
             last_update: Instant::now(),
         }
     }
 
-    fn tick(&mut self, animation: &mut DotLottiePlayer) {
-        let next_frame = animation.request_frame();
+    fn update(&mut self) -> bool {
+        let updated = self.player.tick();
+        self.last_update = Instant::now();
+        updated
+    }
 
-        // println!("next_frame: {}", next_frame);
-        let updated = animation.set_frame(next_frame);
-
-        if updated {
-            animation.render();
+    fn play_marker(&mut self, index: usize) {
+        let markers = self.player.markers();
+        if index >= markers.len() || index == self.current_marker {
+            return;
         }
 
-        self.last_update = Instant::now(); // Reset the timer
+        let marker = &markers[index];
+        // self.player.tween_to(marker.time, 1.0, EASE_LINEAR);
+        self.player
+            .tween_to_marker(&marker.name, 1.0, EASE_LINEAR.to_vec());
+        println!("Playing marker: '{}'", marker.name);
+        let mut config = self.player.config();
+        config.marker = marker.name.clone();
+        self.player.set_config(config);
+
+        self.current_marker = index;
+    }
+
+    fn next_marker(&mut self) {
+        if self.player.is_tweening() {
+            return;
+        }
+        let next = (self.current_marker + 1) % self.player.markers().len();
+        self.play_marker(next);
+    }
+
+    fn frame_buffer(&self) -> &[u32] {
+        let (ptr, len) = (self.player.buffer_ptr(), self.player.buffer_len());
+        unsafe { std::slice::from_raw_parts(ptr as *const u32, len as usize) }
     }
 }
 
 fn main() {
     let mut window = Window::new(
-        "dotLottie rust demo - ESC to exit",
+        "Lottie Player Demo (ESC to exit, ←/→ to change markers, P to play, S to stop)",
         WIDTH,
         HEIGHT,
         WindowOptions::default(),
     )
-    .unwrap_or_else(|e| {
-        panic!("{}", e);
-    });
+    .expect("Failed to create window");
 
-    let base_path = env::var("CARGO_MANIFEST_DIR").unwrap();
-
-    let mut path = path::PathBuf::from(base_path);
-    path.push("src/markers.json");
-
-    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        loop_animation: true,
-        background_color: 0xffffffff,
-        layout: Layout::new(Fit::None, vec![1.0, 0.5]),
-        marker: "feather".to_string(),
-        ..Config::default()
-    });
-
-    // read dotlottie in to vec<u8>
-    let mut f = File::open(
-        // "src/emoji.lottie"
-        "src/v2/bull.lottie",
-    )
-    .expect("no file found");
-    let metadata = fs::metadata(
-        // "src/emoji.lottie"
-        "src/v2/bull.lottie",
-    )
-    .expect("unable to read metadata");
-
-    let mut buffer = vec![0; metadata.len() as usize];
-    f.read(&mut buffer).expect("buffer overflow");
-
-    let mut markers = File::open("src/markers.json").expect("no file found");
-    let metadatamarkers = fs::metadata("src/markers.json").expect("unable to read metadata");
-    let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
-    markers.read(&mut markers_buffer).expect("buffer overflow");
-    let string = String::from_utf8(markers_buffer.clone()).unwrap();
-    // lottie_player.load_animation_data(string.as_str(), WIDTH as u32, HEIGHT as u32);
-    // println!("{:?}", Some(lottie_player.manifest()));
-
-    lottie_player.load_animation_path(
-        path.as_path().to_str().unwrap(),
-        WIDTH as u32,
-        HEIGHT as u32,
-    );
-
-    // lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
-    // lottie_player.load_animation("confused", WIDTH as u32, HEIGHT as u32);
-
-    let observer1: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 1 });
-    let observer2: Arc<dyn Observer + 'static> = Arc::new(DummyObserver { id: 2 });
-
-    lottie_player.subscribe(observer1.clone());
-    lottie_player.subscribe(observer2.clone());
-
-    let mut timer = Timer::new();
-
-    let mut i = 0;
-
-    let mut sys = System::new_all();
-
-    let cpu_memory_monitor_thread = thread::spawn(move || {
-        loop {
-            sys.refresh_all();
-
-            for (pid, process) in sys.processes() {
-                if pid.as_u32() == std::process::id() {
-                    println!(
-                        "CPU: {} % | Memory: {} MB",
-                        process.cpu_usage(),
-                        process.memory() / 1024 / 1024,
-                    );
-                }
-            }
-
-            thread::sleep(std::time::Duration::from_secs(1)); // Adjust sleep duration as needed
-        }
-    });
-
-    let mut cpu_memory_monitor_timer = Instant::now();
+    let mut player = Player::new("src/emoji.json");
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        timer.tick(&mut lottie_player);
-
-        if window.is_key_down(Key::S) {
-            lottie_player.stop();
+        if window.is_key_pressed(Key::S, KeyRepeat::No) {
+            player.player.stop();
         }
-        if window.is_key_down(Key::P) {
-            lottie_player.play();
+        if window.is_key_pressed(Key::P, KeyRepeat::No) {
+            player.player.play();
         }
-
-        if window.is_key_down(Key::J) {
-            let updated = lottie_player.set_frame(20.0);
-            if updated {
-                lottie_player.render();
-            }
-        }
-
-        if window.is_key_down(Key::Left) {
-            let mut config = lottie_player.config();
-
-            config.mode = Mode::Bounce;
-            lottie_player.set_config(config)
-        }
-
-        if window.is_key_pressed(Key::T, KeyRepeat::No) {
-            if let Some(manifest) = lottie_player.manifest() {
-                if let Some(themes) = manifest.themes {
-                    let theme = &themes[0];
-
-                    lottie_player.set_theme(&theme.id);
-                }
-            }
-        }
-
-        if window.is_key_pressed(Key::Y, KeyRepeat::No) {
-            lottie_player.reset_theme();
-        }
-
         if window.is_key_pressed(Key::Right, KeyRepeat::No) {
-            if let Some(manifest) = lottie_player.manifest() {
-                println!("{:?}", i);
-
-                if i >= manifest.animations.len() - 1 {
-                    i = 0;
-                } else {
-                    i += 1;
-                }
-
-                let animation_id = manifest.animations[i].id.clone();
-
-                lottie_player.load_animation(animation_id.as_str(), WIDTH as u32, HEIGHT as u32);
-            }
+            player.next_marker();
         }
 
-        if window.is_key_pressed(Key::L, KeyRepeat::No) {
-            lottie_player = DotLottiePlayer::new(Config {
-                mode: Mode::ReverseBounce,
-                loop_animation: true,
-                autoplay: true,
-                segment: vec![10.0, 45.0],
-                background_color: 0xffffffff,
-                ..Config::default()
-            });
-
-            lottie_player.load_animation_data(&string, WIDTH as u32, HEIGHT as u32);
+        if player.update() {
+            window
+                .update_with_buffer(player.frame_buffer(), WIDTH, HEIGHT)
+                .expect("Failed to update window");
         }
-
-        if window.is_key_pressed(Key::R, KeyRepeat::No) {
-            lottie_player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
-        }
-
-        if window.is_key_down(Key::Up) {
-            lottie_player.unsubscribe(&observer1);
-        }
-
-        if window.is_key_down(Key::Down) {
-            lottie_player.unsubscribe(&observer2);
-        }
-
-        if window.is_key_pressed(Key::K, KeyRepeat::No) {
-            let mut config = lottie_player.config();
-
-            config.layout.fit = Fit::None;
-            // randomize alignment
-            config.layout.align =
-                vec![(rand::random::<f32>() * 1.0), (rand::random::<f32>() * 1.0)];
-
-            lottie_player.set_config(config);
-        }
-
-        if window.is_key_pressed(Key::Q, KeyRepeat::No) {
-            let mut config = lottie_player.config();
-
-            config.marker = "bird".to_string();
-
-            lottie_player.set_config(config);
-        }
-
-        if window.is_key_pressed(Key::W, KeyRepeat::No) {
-            let mut config = lottie_player.config();
-
-            config.marker = "explosion".to_string();
-
-            lottie_player.set_config(config);
-        }
-
-        if window.is_key_pressed(Key::E, KeyRepeat::No) {
-            let mut config = lottie_player.config();
-
-            config.marker = "feather".to_string();
-
-            lottie_player.set_config(config);
-        }
-
-        if cpu_memory_monitor_timer.elapsed().as_secs() >= 1 {
-            cpu_memory_monitor_timer = Instant::now();
-        }
-
-        let (buffer_ptr, buffer_len) = (lottie_player.buffer_ptr(), lottie_player.buffer_len());
-
-        let buffer =
-            unsafe { std::slice::from_raw_parts(buffer_ptr as *const u32, buffer_len as usize) };
-
-        window.update_with_buffer(buffer, WIDTH, HEIGHT).unwrap();
     }
-
-    cpu_memory_monitor_thread.join().unwrap();
 }

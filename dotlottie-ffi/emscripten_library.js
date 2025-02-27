@@ -116,54 +116,54 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  state_machine_observer_on_string_trigger_value_change: function (dotlottie_instance_id, trigger_name, trigger_name_len, old_value, old_value_len, new_value, new_value_len) {
-    const trigger_name_converted = UTF8ToString(trigger_name, trigger_name_len);
+  state_machine_observer_on_string_input_value_change: function (dotlottie_instance_id, input_name, input_name_len, old_value, old_value_len, new_value, new_value_len) {
+    const input_name_converted = UTF8ToString(input_name, input_name_len);
     const old_value_converted = UTF8ToString(old_value, old_value_len);
     const new_value_converted = UTF8ToString(new_value, new_value_len);
 
-    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_string_trigger_value_change) {
-      Module.dotlottieBridge.state_machine_observer_on_string_trigger_value_change(
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_string_input_value_change) {
+      Module.dotlottieBridge.state_machine_observer_on_string_input_value_change(
         dotlottie_instance_id,
-        trigger_name_converted,
+        input_name_converted,
         old_value_converted,
         new_value_converted
       );
     }
   },
 
-  state_machine_observer_on_numeric_trigger_value_change: function (dotlottie_instance_id, trigger_name, trigger_name_len, old_value, new_value) {
-    const trigger_name_converted = UTF8ToString(trigger_name, trigger_name_len);
+  state_machine_observer_on_numeric_input_value_change: function (dotlottie_instance_id, input_name, input_name_len, old_value, new_value) {
+    const input_name_converted = UTF8ToString(input_name, input_name_len);
 
-    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_numeric_trigger_value_change) {
-      Module.dotlottieBridge.state_machine_observer_on_numeric_trigger_value_change(
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_numeric_input_value_change) {
+      Module.dotlottieBridge.state_machine_observer_on_numeric_input_value_change(
         dotlottie_instance_id,
-        trigger_name_converted,
+        input_name_converted,
         old_value,
         new_value
       );
     }
   },
 
-  state_machine_observer_on_boolean_trigger_value_change: function (dotlottie_instance_id, trigger_name, trigger_name_len, old_value, new_value) {
-    const trigger_name_converted = UTF8ToString(trigger_name, trigger_name_len);
+  state_machine_observer_on_boolean_input_value_change: function (dotlottie_instance_id, input_name, input_name_len, old_value, new_value) {
+    const input_name_converted = UTF8ToString(input_name, input_name_len);
 
-    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_boolean_trigger_value_change) {
-      Module.dotlottieBridge.state_machine_observer_on_boolean_trigger_value_change(
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_boolean_input_value_change) {
+      Module.dotlottieBridge.state_machine_observer_on_boolean_input_value_change(
         dotlottie_instance_id,
-        trigger_name_converted,
+        input_name_converted,
         old_value,
         new_value
       );
     }
   },
 
-  state_machine_observer_on_trigger_fired: function (dotlottie_instance_id, trigger_name, trigger_name_len) {
-    const trigger_name_converted = UTF8ToString(trigger_name, trigger_name_len);
+  state_machine_observer_on_input_fired: function (dotlottie_instance_id, input_name, input_name_len) {
+    const input_name_converted = UTF8ToString(input_name, input_name_len);
 
-    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_string_trigger_value_change) {
-      Module.dotlottieBridge.state_machine_observer_on_trigger_fired(
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_string_input_value_change) {
+      Module.dotlottieBridge.state_machine_observer_on_input_fired(
         dotlottie_instance_id,
-        trigger_name_converted,
+        input_name_converted,
       );
     }
   },

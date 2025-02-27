@@ -44,7 +44,7 @@ mod tests {
     #[test]
     pub fn pointer_down_up_test() {
         let global_state =
-            include_str!("fixtures/statemachines/listener_tests/pointer_down_up.json");
+            include_str!("fixtures/statemachines/interaction_tests/pointer_down_up.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -85,7 +85,8 @@ mod tests {
 
     #[test]
     pub fn pointer_down_test() {
-        let global_state = include_str!("fixtures/statemachines/listener_tests/pointer_down.json");
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/pointer_down.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -104,7 +105,8 @@ mod tests {
 
     #[test]
     pub fn pointer_enter_test() {
-        let global_state = include_str!("fixtures/statemachines/listener_tests/pointer_enter.json");
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/pointer_enter.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -139,7 +141,8 @@ mod tests {
 
     #[test]
     pub fn pointer_enter_via_move_test() {
-        let global_state = include_str!("fixtures/statemachines/listener_tests/pointer_enter.json");
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/pointer_enter.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -174,7 +177,8 @@ mod tests {
 
     #[test]
     pub fn pointer_exit_test() {
-        let global_state = include_str!("fixtures/statemachines/listener_tests/pointer_exit.json");
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/pointer_exit.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -196,7 +200,8 @@ mod tests {
 
     #[test]
     pub fn pointer_exit_via_move_test() {
-        let global_state = include_str!("fixtures/statemachines/listener_tests/pointer_exit.json");
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/pointer_exit.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -246,7 +251,8 @@ mod tests {
 
     #[test]
     pub fn pointer_move_test() {
-        let global_state = include_str!("fixtures/statemachines/listener_tests/pointer_move.json");
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/pointer_move.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -274,7 +280,8 @@ mod tests {
 
     #[test]
     pub fn on_complete_manual_test() {
-        let global_state = include_str!("fixtures/statemachines/listener_tests/on_complete.json");
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/on_complete.json");
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -302,7 +309,7 @@ mod tests {
 
     #[test]
     pub fn on_complete_player_test() {
-        let global_state = include_str!("fixtures/statemachines/listener_tests/pigeon_fsm.json");
+        let global_state = include_str!("fixtures/statemachines/interaction_tests/pigeon_fsm.json");
         let player = DotLottiePlayer::new(Config::default());
 
         player.load_dotlottie_data(include_bytes!("fixtures/pigeon.lottie"), 100, 100);
@@ -334,7 +341,7 @@ mod tests {
     #[test]
     pub fn on_loop_complete_player_test() {
         let global_state =
-            include_str!("fixtures/statemachines/listener_tests/on_loop_complete.json");
+            include_str!("fixtures/statemachines/interaction_tests/on_loop_complete.json");
         let player = DotLottiePlayer::new(Config::default());
 
         player.load_dotlottie_data(include_bytes!("fixtures/pigeon.lottie"), 100, 100);

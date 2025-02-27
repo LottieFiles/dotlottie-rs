@@ -13,7 +13,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "NumericTrigger",
+              "inputName": "NumericInput",
               "compareTo": 10.0
             }
           ]
@@ -25,7 +25,7 @@
             {
               "type": "Numeric",
               "conditionType": "Equal",
-              "triggerName": "NumericTrigger",
+              "inputName": "NumericInput",
               "compareTo": 20.0
             }
           ]
@@ -37,7 +37,7 @@
             {
               "type": "String",
               "conditionType": "Equal",
-              "triggerName": "StringTrigger",
+              "inputName": "StringInput",
               "compareTo": "second"
             }
           ]
@@ -49,7 +49,7 @@
             {
               "type": "Boolean",
               "conditionType": "Equal",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "compareTo": true
             }
           ]
@@ -61,7 +61,7 @@
             {
               "type": "Boolean",
               "conditionType": "Equal",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "compareTo": false
             }
           ]
@@ -72,7 +72,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         }
@@ -98,7 +98,7 @@
       "entryActions": [
         {
           "type": "SetBoolean",
-          "triggerName": "OnOffSwitch",
+          "inputName": "OnOffSwitch",
           "value": true
         }
       ]
@@ -117,12 +117,12 @@
       "entryActions": [
         {
           "type": "SetNumeric",
-          "triggerName": "NumericTrigger",
+          "inputName": "NumericInput",
           "value": 20
         },
         {
           "type": "SetString",
-          "triggerName": "StringTrigger",
+          "inputName": "StringInput",
           "value": "second"
         }
       ]
@@ -134,8 +134,8 @@
       "transitions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Boolean",
       "name": "OnOffSwitch",
@@ -147,17 +147,17 @@
     },
     {
       "type": "Numeric",
-      "name": "NumericTrigger",
+      "name": "NumericInput",
       "value": 0
     },
     {
       "type": "Numeric",
-      "name": "NumericTrigger",
+      "name": "NumericInput",
       "value": 0
     },
     {
       "type": "String",
-      "name": "StringTrigger",
+      "name": "StringInput",
       "value": "first"
     }
   ]

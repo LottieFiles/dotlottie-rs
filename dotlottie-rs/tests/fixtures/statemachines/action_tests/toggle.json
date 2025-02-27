@@ -13,7 +13,7 @@
             {
               "type": "Boolean",
               "conditionType": "Equal",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "compareTo": true
             }
           ]
@@ -25,7 +25,7 @@
             {
               "type": "Boolean",
               "conditionType": "Equal",
-              "triggerName": "OnOffSwitch",
+              "inputName": "OnOffSwitch",
               "compareTo": false
             }
           ]
@@ -36,7 +36,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         }
@@ -62,13 +62,13 @@
       "entryActions": [
         {
           "type": "Toggle",
-          "triggerName": "OnOffSwitch"
+          "inputName": "OnOffSwitch"
         }
       ]
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Boolean",
       "name": "OnOffSwitch",

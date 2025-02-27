@@ -13,7 +13,7 @@
           "guards": [
             {
               "type": "Event",
-              "triggerName": "Step"
+              "inputName": "Step"
             }
           ]
         }
@@ -21,7 +21,7 @@
       "entryActions": [
         {
           "type": "Fire",
-          "triggerName": "Step"
+          "inputName": "Step"
         }
       ]
     },
@@ -55,8 +55,8 @@
       "transitions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "Numeric",
       "name": "rating",

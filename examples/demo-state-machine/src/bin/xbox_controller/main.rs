@@ -133,8 +133,8 @@ fn main() {
                         Button::East => Some("ButtonB"),  // B button
                         Button::West => Some("ButtonX"),  // X button
                         Button::North => Some("ButtonY"), // Y button
-                        Button::LeftTrigger => Some("LB"), // LB button
-                        Button::RightTrigger => Some("RB"), // RB button
+                        Button::LeftInput => Some("LB"), // LB button
+                        Button::RightInput => Some("RB"), // RB button
                         Button::Select => Some("Select"), // View button
                         Button::Start => Some("Start"),   // Menu button
                         _ => None,
@@ -210,13 +210,13 @@ fn main() {
         // Handle keyboard input
         if window.is_key_pressed(Key::Space, minifb::KeyRepeat::Yes) {
             let p = &mut *locked_player.write().unwrap();
-            p.state_machine_set_numeric_trigger("Rating", 1.0);
+            p.state_machine_set_numeric_input("Rating", 1.0);
         }
 
         if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
             let p = &mut *locked_player.write().unwrap();
             oo = !oo;
-            p.state_machine_set_boolean_trigger("OnOffSwitch", oo);
+            p.state_machine_set_boolean_input("OnOffSwitch", oo);
         }
 
         // Update window buffer

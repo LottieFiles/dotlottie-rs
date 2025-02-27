@@ -13,7 +13,7 @@
             {
               "type": "String",
               "conditionType": "Equal",
-              "triggerName": "CurrentAnimation",
+              "inputName": "CurrentAnimation",
               "compareTo": "anger"
             }
           ]
@@ -25,7 +25,7 @@
             {
               "type": "String",
               "conditionType": "Equal",
-              "triggerName": "CurrentAnimation",
+              "inputName": "CurrentAnimation",
               "compareTo": "blush"
             }
           ]
@@ -37,7 +37,7 @@
             {
               "type": "String",
               "conditionType": "Equal",
-              "triggerName": "CurrentAnimation",
+              "inputName": "CurrentAnimation",
               "compareTo": "clowns"
             }
           ]
@@ -58,7 +58,7 @@
             {
               "type": "String",
               "conditionType": "Equal",
-              "triggerName": "CurrentAnimation",
+              "inputName": "CurrentAnimation",
               "compareTo": "devil"
             }
           ]
@@ -67,12 +67,12 @@
       "entryActions": [
         {
           "type": "SetString",
-          "triggerName": "CurrentAnimation",
+          "inputName": "CurrentAnimation",
           "value": "devil"
         },
         {
           "type": "Toggle",
-          "triggerName": "tt"
+          "inputName": "tt"
         }
       ],
       "exitActions": []
@@ -111,7 +111,7 @@
             {
               "type": "Boolean",
               "conditionType": "Equal",
-              "triggerName": "tt",
+              "inputName": "tt",
               "compareTo": true
             }
           ]
@@ -131,8 +131,8 @@
       "exitActions": []
     }
   ],
-  "listeners": [],
-  "triggers": [
+  "interactions": [],
+  "inputs": [
     {
       "type": "String",
       "name": "CurrentAnimation",

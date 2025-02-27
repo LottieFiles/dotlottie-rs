@@ -22,12 +22,12 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "global");
 
-        player.state_machine_set_numeric_trigger("Rating", 2.0);
+        player.state_machine_set_numeric_input("Rating", 2.0);
 
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "b");
 
-        player.state_machine_set_numeric_trigger("Rating", 1.0);
+        player.state_machine_set_numeric_input("Rating", 1.0);
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "d");
     }
@@ -53,7 +53,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "d");
 
-        player.state_machine_set_numeric_trigger("r", 1.0);
+        player.state_machine_set_numeric_input("r", 1.0);
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "a");
 
@@ -78,7 +78,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "global");
 
-        player.state_machine_set_numeric_trigger("Rating", 1.0);
+        player.state_machine_set_numeric_input("Rating", 1.0);
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "c");
     }

@@ -976,6 +976,10 @@ $(NATIVE): $(RUNTIME_FFI)/target/$(RELEASE)/$(RUNTIME_FFI_LIB)
 .PHONY: all
 all: $(APPLE) $(ANDROID) $(WASM) $(NATIVE)
 
+.PHONY: local
+local: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
+	$(info $(GREEN)Local architecture dependencies built successfully!$(NC))
+
 .PHONY: deps
 deps:
 	@git submodule update --init --recursive

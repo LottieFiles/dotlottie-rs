@@ -889,7 +889,9 @@ impl DotLottieRuntime {
     pub fn tween_to_marker(&mut self, marker: &str, duration: f32, easing: [f32; 4]) -> bool {
         let markers = self.markers();
         if let Some(marker) = markers.iter().find(|m| m.name == marker) {
-            self.tween_to(marker.time, duration, easing)
+            self.tween_to(marker.time, duration, easing);
+            self.config.marker = marker.name.clone();
+            true
         } else {
             false
         }
@@ -900,7 +902,12 @@ impl DotLottieRuntime {
     }
 
     pub fn tween_update(&mut self) -> bool {
-        self.renderer.tween_update().is_ok()
+        let ok = self.renderer.tween_update().is_ok();
+        if !ok {
+            // so after the tweening is completed, we can start calculating the next frame based on the start time
+            self.start_time = Instant::now();
+        }
+        ok
     }
 }
 
@@ -1293,10 +1300,10 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn tick(&self) -> bool {
-        let next_frame = self.request_frame();
         if self.is_tweening() {
             self.tween_update() && self.render()
         } else {
+            let next_frame = self.request_frame();
             self.set_frame(next_frame) && self.render()
         }
     }

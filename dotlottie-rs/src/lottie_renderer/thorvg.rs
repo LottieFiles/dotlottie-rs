@@ -469,8 +469,10 @@ impl Animation for TvgAnimation {
                     );
                 };
 
-                if t >= 1.0 {
+                if progress >= 1.0 {
+                    let target_frame = tween_state.to;
                     self.tween_state = None;
+                    self.set_frame(target_frame)?;
                     Ok(false)
                 } else {
                     Ok(true)

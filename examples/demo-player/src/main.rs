@@ -2,8 +2,8 @@ use dotlottie_rs::{Config, DotLottiePlayer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::{path::Path, time::Instant};
 
-const WIDTH: usize = 300;
-const HEIGHT: usize = 300;
+const WIDTH: usize = 600;
+const HEIGHT: usize = 600;
 const EASE_LINEAR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
 struct Player {
@@ -53,7 +53,8 @@ impl Player {
 
         let marker = &markers[index];
         // self.player.tween_to(marker.time, 1.0, EASE_LINEAR);
-        self.player.tween_to_marker(&marker.name, 1.0, EASE_LINEAR);
+        self.player
+            .tween_to_marker(&marker.name, 1.0, EASE_LINEAR.to_vec());
         println!("Playing marker: '{}'", marker.name);
         let mut config = self.player.config();
         config.marker = marker.name.clone();

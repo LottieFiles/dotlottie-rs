@@ -1734,6 +1734,39 @@ impl DotLottiePlayerContainer {
             self.tween_update() && self.render()
         } else {
             let next_frame = self.request_frame();
+
+            let mut is_sm_still_tweening = false;
+            match self.state_machine.try_read() {
+                Ok(state_machine) => {
+                    let sm = &*state_machine;
+
+                    if let Some(sm) = sm {
+                        if sm.status == StateMachineEngineStatus::Tweening {
+                            is_sm_still_tweening = true;
+                        }
+                    }
+                }
+                Err(_) => {
+                    // return false;
+                    println!("🚨 Failed to read sm ...");
+                }
+            }
+
+            if is_sm_still_tweening {
+                match self.state_machine.try_write() {
+                    Ok(mut state_machine) => {
+                        if let Some(sm) = state_machine.as_mut() {
+                            println!("🐸 Resuming from tweening");
+                            sm.resume_from_tweening();
+                        }
+                    }
+                    Err(_) => {
+                        // return false;
+                        println!("🚨 Failed to write sm ...");
+                    }
+                }
+            }
+
             self.set_frame(next_frame) && self.render()
         }
     }
@@ -2003,6 +2036,8 @@ impl DotLottiePlayer {
     }
 
     pub fn state_machine_set_numeric_input(&self, key: &str, value: f32) -> bool {
+        println!("🐸 Setting numeric input: {} = {}", key, value);
+
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {

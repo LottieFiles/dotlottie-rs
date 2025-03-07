@@ -238,56 +238,6 @@ impl StateMachineEngine {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<InputValue> {
-        if let Some(c_s) = &self.current_state {
-            match &**c_s {
-                State::TweenState {
-                    progress_input,
-                    end_segment,
-                    ..
-                } => {
-                    if progress_input == key {
-                        let ret = self.inputs.set_numeric(key, value);
-
-                        if let Some(old_value) = &ret {
-                            if let InputValue::Numeric(old_value) = *old_value {
-                                self.observe_numeric_input_value_change(key, old_value, value);
-                            }
-                        }
-
-                        // Now use the extracted information
-                        if let Some(rc_player) = &self.player {
-                            let try_read_lock = rc_player.try_read();
-
-                            if let Ok(player_container) = try_read_lock {
-                                if let Some(end_marker_frame) = player_container
-                                    .markers()
-                                    .iter()
-                                    .find(|m| m.name == *end_segment)
-                                {
-                                    println!(
-                                        "🚨 Tweening to segment: {:?} end frame value: {} with progress {} | Current frame {}",
-                                        end_segment, end_marker_frame.time, value, player_container.current_frame()
-                                    );
-                                    let curr_frame = player_container.current_frame();
-
-                                    player_container.tween(
-                                        curr_frame,
-                                        end_marker_frame.time,
-                                        value,
-                                    );
-                                }
-                            }
-                        }
-
-                        println!("Done with input in tween state!");
-
-                        return ret;
-                    }
-                }
-                _ => {}
-            }
-        }
-
         let ret = self.inputs.set_numeric(key, value);
 
         if called_from_action {
@@ -630,14 +580,12 @@ impl StateMachineEngine {
 
     pub fn resume_from_tweening(&mut self) {
         if self.status != StateMachineEngineStatus::Tweening {
-            println!("🚨 Exiting from resume");
             return;
         }
 
         self.status = StateMachineEngineStatus::Running;
 
         if let Some(target_state) = &self.target_blended_state {
-            println!("🚨 Resuming from tween");
             // Assign the new state to the current_state
             self.current_state = Some(target_state.clone());
 
@@ -655,6 +603,18 @@ impl StateMachineEngine {
             if let (Some(state), Some(player)) = (state, player) {
                 // Enter the state
                 state.enter(self, &player);
+
+                // If autoplay on the state is false and we've used tweening,
+                // The hit check will start failing. Render fixes this bug.
+                if let State::PlaybackState { autoplay, .. } = &*state {
+                    if !autoplay.unwrap_or(false) {
+                        let try_read_lock = &player.try_read();
+
+                        if let Ok(player) = try_read_lock {
+                            player.render();
+                        }
+                    }
+                }
 
                 // Don't forget to put things back
                 // new_state becomes the current state
@@ -696,8 +656,6 @@ impl StateMachineEngine {
             // Emit transtion occured event
             self.observe_on_state_exit(&self.get_current_state_name());
 
-            println!("🤖 Setting current state to: {}", state_name);
-
             // Todo: Check transition type to see if we have to tween
             // Todo: - get type of transition causing the transition
             // Todo: - If it has segment, blend to it and pause the state machine / put it in blend mode
@@ -707,10 +665,6 @@ impl StateMachineEngine {
             // The state machine is alerted of blending finishing because the player calls the blend_finished() method
             if let Some(causing_transition) = causing_transition {
                 if let Transition::Tweened { .. } = causing_transition {
-                    println!("😘 Tweening to state: {}", state_name);
-                    // Tween between states if necessary
-                    // let player = self.player.take();
-
                     // Now use the extracted information
                     if let Some(unwrapped_player) = &self.player {
                         let read_lock = &unwrapped_player.try_read();
@@ -720,38 +674,24 @@ impl StateMachineEngine {
                                 // todo: this assumes that its the same animation for the moment
                                 // todo: this assumes the target is using a segment
                                 match &*new_state {
+                                    // If we're transitioning to a PlaybackState, grab the start segment
                                     State::PlaybackState { segment, .. } => {
                                         if let Some(target_segment) = segment {
                                             self.status = StateMachineEngineStatus::Tweening;
                                             self.target_blended_state = Some(new_state.clone());
 
-                                            println!(
-                                                "😘 Tweening to segment: {:?}",
-                                                target_segment
-                                            );
+                                            // player.tween_stop();
                                             player.tween_to_marker(
                                                 target_segment,
-                                                causing_transition.duration(),
-                                                causing_transition.easing(),
+                                                Some(causing_transition.duration()),
+                                                Some(causing_transition.easing()),
                                             );
 
                                             return Ok(());
                                         }
                                     }
+                                    // If we're transitioning to a GlobalState, do nothing
                                     State::GlobalState { .. } => {
-                                        return Ok(());
-                                    }
-                                    State::TweenState { start_segment, .. } => {
-                                        self.status = StateMachineEngineStatus::Tweening;
-                                        self.target_blended_state = Some(new_state.clone());
-
-                                        println!("😘 Tweening to segment: {:?}", start_segment);
-                                        player.tween_to_marker(
-                                            start_segment,
-                                            causing_transition.duration(),
-                                            causing_transition.easing(),
-                                        );
-
                                         return Ok(());
                                     }
                                 }
@@ -771,6 +711,7 @@ impl StateMachineEngine {
                 "🤖 Setting current state to: {} without tweening",
                 state_name
             );
+
             // Assign the new state to the current_state
             self.current_state = Some(new_state);
 
@@ -901,6 +842,11 @@ impl StateMachineEngine {
     pub fn run_current_state_pipeline(&mut self) -> Result<(), StateMachineEngineError> {
         // Reset cycle count for each pipeline run
         self.current_cycle_count = 0;
+
+        // If the state machine is tweening, don't run the pipeline
+        if self.status == StateMachineEngineStatus::Tweening {
+            return Ok(());
+        }
 
         // If the state machine is not running, or there is no current state, return an error
         // Otherwise this will block the pipeline in a loop

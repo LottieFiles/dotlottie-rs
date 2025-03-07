@@ -27,7 +27,7 @@ struct DummyObserver;
 
 impl StateMachineObserver for DummyObserver {
     fn on_transition(&self, previous_state: String, new_state: String) {
-        println!("on_transition2: {} -> {}", previous_state, new_state);
+        // println!("on_transition2: {} -> {}", previous_state, new_state);
     }
 
     fn on_state_entered(&self, entering_state: String) {
@@ -177,6 +177,7 @@ fn main() {
     let locked_player = Arc::new(RwLock::new(lottie_player));
 
     let mut progress = 0.0;
+    let mut rating = 1.0;
     // return;
 
     let mut mx = 0.0;
@@ -219,7 +220,7 @@ fn main() {
         });
 
         if !tmp && left_down {
-            let event = Event::PointerUp { x: mx, y: my };
+            let event = Event::Click { x: mx, y: my };
 
             // println!("Sending pointer up");
             let p = &mut *locked_player.write().unwrap();
@@ -265,12 +266,22 @@ fn main() {
         if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
             let p = &mut *locked_player.write().unwrap();
 
-            oo = !oo;
-            p.state_machine_set_boolean_input("OnOffSwitch", oo);
+            // oo = !oo;
+            // p.state_machine_set_boolean_input("OnOffSwitch", oo);
 
-            // rating += 1.0;
+            rating += 1.0;
             // println!("current state: {}", p.state_machine_current_state());
-            // p.state_machine_set_numeric_input("rating", rating);
+            p.state_machine_set_numeric_input("rating", rating);
+        }
+        if window.is_key_pressed(Key::Delete, minifb::KeyRepeat::No) {
+            let p = &mut *locked_player.write().unwrap();
+
+            // oo = !oo;
+            // p.state_machine_set_boolean_input("OnOffSwitch", oo);
+
+            rating -= 1.0;
+            // println!("current state: {}", p.state_machine_current_state());
+            p.state_machine_set_numeric_input("rating", rating);
         }
 
         let updated = timer.tick(&*locked_player.read().unwrap());

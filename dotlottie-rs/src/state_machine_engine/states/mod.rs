@@ -59,16 +59,6 @@ pub enum State {
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
     },
-    TweenState {
-        name: String,
-        animation: String,
-        transitions: Vec<Transition>,
-        start_segment: String,
-        end_segment: String,
-        progress_input: String,
-        entry_actions: Option<Vec<Action>>,
-        exit_actions: Option<Vec<Action>>,
-    },
 }
 
 impl StateTrait for State {
@@ -173,85 +163,16 @@ impl StateTrait for State {
                 if let Ok(player_read) = player.try_read() {
                     let size = player_read.size();
 
-                    // Todo compare against currently loaded animation
-                    if let Some(id) = animation {
-                        if let Some(animation) = animation {
-                            if player_read.active_animation_id() != *animation {
-                                player_read.load_animation(animation, size.0, size.1);
-                            }
-                        }
-
-                        // Perform entry actions
-                        if let Some(actions) = entry_actions {
-                            for action in actions {
-                                let _ = action.execute(engine, player.clone(), false);
-                            }
+                    if let Some(animation) = animation {
+                        if player_read.active_animation_id() != *animation {
+                            player_read.load_animation(animation, size.0, size.1);
                         }
                     }
-                }
-            }
-            State::TweenState {
-                animation,
-                start_segment,
-                end_segment,
-                entry_actions,
-                progress_input,
-                ..
-            } => {
-                // Unwrap or return -1
-                let progress_value = engine
-                    .get_numeric_input(progress_input)
-                    .unwrap_or_else(|| return -1.0);
 
-                if progress_value < 0.0 || progress_value > 1.0 {
-                    return 1;
-                }
-
-                if let Ok(player_read) = player.try_read() {
-                    let size = player_read.size();
-                    if let Some(start_marker_frame) = player_read
-                        .markers()
-                        .iter()
-                        .find(|m| m.name == *start_segment)
-                    {
-                        if let Some(end_marker_frame) = player_read
-                            .markers()
-                            .iter()
-                            .find(|m| m.name == *end_segment)
-                        {
-                            if !animation.is_empty()
-                                && player_read.active_animation_id() != *animation
-                            {
-                                player_read.load_animation(animation, size.0, size.1);
-                            }
-
-                            let config = Config {
-                                marker: start_segment.to_string(),
-                                ..Config::default()
-                            };
-
-                            player_read.set_config(config);
-
-                            // Since we set the marker, the current frame is the start marker frame
-                            // We can tween from the current frame to the end marker frame
-
-                            player_read.tween(
-                                start_marker_frame.time,
-                                end_marker_frame.time,
-                                progress_value,
-                            );
-
-                            // engine.status = StateMachineEngineStatus::Tweening;
-
-                            //todo: Anyway to update frame without calling play?
-                            player_read.play();
-
-                            /* Perform entry actions */
-                            if let Some(actions) = entry_actions {
-                                for action in actions {
-                                    let _ = action.execute(engine, player.clone(), false);
-                                }
-                            }
+                    // Perform entry actions
+                    if let Some(actions) = entry_actions {
+                        for action in actions {
+                            let _ = action.execute(engine, player.clone(), false);
                         }
                     }
                 }
@@ -265,7 +186,6 @@ impl StateTrait for State {
         match self {
             State::PlaybackState { animation, .. } => animation,
             State::GlobalState { .. } => "",
-            State::TweenState { animation, .. } => animation,
         }
     }
 
@@ -273,7 +193,6 @@ impl StateTrait for State {
         match self {
             State::PlaybackState { transitions, .. } => transitions,
             State::GlobalState { transitions, .. } => transitions,
-            State::TweenState { transitions, .. } => transitions,
         }
     }
 
@@ -281,7 +200,6 @@ impl StateTrait for State {
         match self {
             State::PlaybackState { name, .. } => name.to_string(),
             State::GlobalState { name, .. } => name.to_string(),
-            State::TweenState { name, .. } => name.to_string(),
         }
     }
 
@@ -289,7 +207,6 @@ impl StateTrait for State {
         match self {
             State::PlaybackState { .. } => "PlaybackState".to_string(),
             State::GlobalState { .. } => "GlobalState".to_string(),
-            State::TweenState { .. } => "TweenState".to_string(),
         }
     }
 
@@ -314,13 +231,6 @@ impl StateTrait for State {
                     }
                 }
             }
-            State::TweenState { exit_actions, .. } => {
-                if let Some(actions) = exit_actions {
-                    for action in actions {
-                        let _ = action.execute(engine, player.clone(), false);
-                    }
-                }
-            }
         }
 
         Ok(())
@@ -330,7 +240,6 @@ impl StateTrait for State {
         match self {
             State::PlaybackState { entry_actions, .. } => entry_actions.as_ref(),
             State::GlobalState { entry_actions, .. } => entry_actions.as_ref(),
-            State::TweenState { entry_actions, .. } => entry_actions.as_ref(),
         }
     }
 
@@ -338,7 +247,6 @@ impl StateTrait for State {
         match self {
             State::PlaybackState { exit_actions, .. } => exit_actions.as_ref(),
             State::GlobalState { exit_actions, .. } => exit_actions.as_ref(),
-            State::TweenState { exit_actions, .. } => exit_actions.as_ref(),
         }
     }
 }

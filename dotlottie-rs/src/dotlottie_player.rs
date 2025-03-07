@@ -706,7 +706,6 @@ impl DotLottieRuntime {
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
         self.config.segment = new_config.segment;
         self.config.autoplay = new_config.autoplay;
-        // self.config.marker = new_config.marker;
         self.config.theme_id = new_config.theme_id;
     }
 
@@ -1763,9 +1762,7 @@ impl DotLottiePlayerContainer {
                         }
                     }
                 }
-                Err(_) => {
-                    return false;
-                }
+                Err(_) => {}
             }
 
             if is_sm_still_tweening {
@@ -1775,9 +1772,7 @@ impl DotLottiePlayerContainer {
                             sm.resume_from_tweening();
                         }
                     }
-                    Err(_) => {
-                        return false;
-                    }
+                    Err(_) => {}
                 }
             }
 
@@ -2055,8 +2050,6 @@ impl DotLottiePlayer {
     }
 
     pub fn state_machine_set_numeric_input(&self, key: &str, value: f32) -> bool {
-        println!("🐸 Setting numeric input: {} = {}", key, value);
-
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
@@ -2338,12 +2331,19 @@ impl DotLottiePlayer {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
-        let mut sm = self.state_machine.write().unwrap();
+        let sm = self.state_machine.try_write();
 
-        if sm.is_none() {
-            return false;
+        match sm {
+            Ok(mut sm) => {
+                if sm.is_none() {
+                    return false;
+                }
+                sm.as_mut().unwrap().subscribe(observer);
+            }
+            Err(_) => {
+                return false;
+            }
         }
-        sm.as_mut().unwrap().subscribe(observer);
 
         true
     }

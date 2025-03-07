@@ -139,7 +139,7 @@ pub struct StateMachineEngine {
     action_mutated_inputs: bool,
 
     // The state to target once blending has finished
-    target_blended_state: Option<Rc<State>>,
+    tween_transition_target_state: Option<Rc<State>>,
 }
 
 impl Default for StateMachineEngine {
@@ -161,7 +161,7 @@ impl Default for StateMachineEngine {
             max_cycle_count: 20,
             current_cycle_count: 0,
             action_mutated_inputs: false,
-            target_blended_state: None,
+            tween_transition_target_state: None,
         }
     }
 }
@@ -195,7 +195,7 @@ impl StateMachineEngine {
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
             action_mutated_inputs: false,
-            target_blended_state: None,
+            tween_transition_target_state: None,
         };
 
         state_machine.create_state_machine(state_machine_definition, &player)
@@ -380,7 +380,6 @@ impl StateMachineEngine {
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine::default();
-
         if parsed_state_machine.is_err() {
             println!(
                 "Error parsing state machine definition: {:?}",
@@ -440,6 +439,7 @@ impl StateMachineEngine {
                 match check_report {
                     Ok(_) => {}
                     Err(error) => {
+                        println!("Error loading state machine: {:?}", error);
                         return Err(StateMachineEngineError::ParsingError {
                             reason: error.to_string(),
                         });
@@ -450,6 +450,7 @@ impl StateMachineEngine {
                 match err {
                     Ok(_) => {}
                     Err(error) => {
+                        println!("Error loading state machine: {:?}", error);
                         return Err(StateMachineEngineError::CreationError {
                             reason: error.to_string(),
                         });
@@ -585,11 +586,11 @@ impl StateMachineEngine {
 
         self.status = StateMachineEngineStatus::Running;
 
-        if let Some(target_state) = &self.target_blended_state {
+        if let Some(target_state) = &self.tween_transition_target_state {
             // Assign the new state to the current_state
             self.current_state = Some(target_state.clone());
 
-            self.target_blended_state = None;
+            self.tween_transition_target_state = None;
 
             // Emit transtion occured event
             self.observe_on_state_entered(&self.get_current_state_name());
@@ -656,31 +657,27 @@ impl StateMachineEngine {
             // Emit transtion occured event
             self.observe_on_state_exit(&self.get_current_state_name());
 
-            // Todo: Check transition type to see if we have to tween
-            // Todo: - get type of transition causing the transition
-            // Todo: - If it has segment, blend to it and pause the state machine / put it in blend mode
-            // Todo: - If it has animation / no segment blend to frame 0
             // Since the blended transition will take time
             // We have to save the target state and do the final transition when blending has completed
             // The state machine is alerted of blending finishing because the player calls the blend_finished() method
+            //  Note: If the tweened transition targets a State without a segment, it will not tween and the target state is treated it usually would.
             if let Some(causing_transition) = causing_transition {
+                // If we dealing with a tweened transition
                 if let Transition::Tweened { .. } = causing_transition {
-                    // Now use the extracted information
                     if let Some(unwrapped_player) = &self.player {
                         let read_lock = &unwrapped_player.try_read();
 
                         match read_lock {
                             Ok(player) => {
-                                // todo: this assumes that its the same animation for the moment
-                                // todo: this assumes the target is using a segment
                                 match &*new_state {
                                     // If we're transitioning to a PlaybackState, grab the start segment
                                     State::PlaybackState { segment, .. } => {
                                         if let Some(target_segment) = segment {
                                             self.status = StateMachineEngineStatus::Tweening;
-                                            self.target_blended_state = Some(new_state.clone());
+                                            self.tween_transition_target_state =
+                                                Some(new_state.clone());
 
-                                            // player.tween_stop();
+                                            // Tweening is activated and the state machine has been paused whilst it transitions
                                             player.tween_to_marker(
                                                 target_segment,
                                                 Some(causing_transition.duration()),
@@ -696,21 +693,11 @@ impl StateMachineEngine {
                                     }
                                 }
                             }
-                            Err(_) => {
-                                println!(
-                                    "Failed to get read lock on player inside set_current_state"
-                                );
-                            }
+                            Err(_) => {}
                         }
                     }
-                    return Ok(());
                 }
             }
-
-            println!(
-                "🤖 Setting current state to: {} without tweening",
-                state_name
-            );
 
             // Assign the new state to the current_state
             self.current_state = Some(new_state);
@@ -730,7 +717,7 @@ impl StateMachineEngine {
                 self.current_state = Some(state);
                 self.player = Some(player);
             } else {
-                return Err(StateMachineEngineError::SetStateError {});
+                return Err(StateMachineEngineError::SetStateError);
             }
             return Ok(());
         }
@@ -739,9 +726,7 @@ impl StateMachineEngine {
         })
     }
 
-    /* Returns the target state, otherwise None */
-    /* Todo: Integrate transitions with no guards */
-    /* Todo: Integrate if only one transitions with no guard */
+    // Returns: The target state and the causing transition
     fn evaluate_transitions(
         &self,
         state_to_evaluate: &Rc<State>,

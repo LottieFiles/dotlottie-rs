@@ -43,7 +43,7 @@ impl StateMachineObserver for DummyObserver {
     }
 
     fn on_error(&self, error: String) {
-        // println!("error2: {}", error);
+        println!("error2: {}", error);
     }
 
     fn on_start(&self) {
@@ -67,10 +67,10 @@ impl StateMachineObserver for DummyObserver {
     }
 
     fn on_numeric_input_value_change(&self, input_name: String, old_value: f32, new_value: f32) {
-        // println!(
-        //     "numeric_input_value_change ==> {} : {} -> {}",
-        //     input_name, old_value, new_value
-        // );
+        println!(
+            "numeric_input_value_change ==> {} : {} -> {}",
+            input_name, old_value, new_value
+        );
     }
 
     fn on_boolean_input_value_change(&self, input_name: String, old_value: bool, new_value: bool) {
@@ -165,7 +165,6 @@ fn main() {
 
     println!("Load state machine data -> {}", r);
     lottie_player.state_machine_subscribe(observer.clone());
-
     let s = lottie_player.state_machine_start(OpenUrl::default());
 
     println!("Start state machine -> {}", s);

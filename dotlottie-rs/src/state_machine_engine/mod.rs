@@ -855,8 +855,6 @@ impl StateMachineEngine {
                 self.current_cycle_count += 1;
 
                 if self.current_cycle_count >= self.max_cycle_count {
-                    println!("🚨Infinite loop detected! Stopping the state machine.");
-
                     self.stop();
                     self.observe_on_error("Infinite loop detected! Stopping the state machine.");
                     return Err(StateMachineEngineError::InfiniteLoopError);

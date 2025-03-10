@@ -701,7 +701,7 @@ impl StateMachineEngine {
                                             player.tween_to_marker(
                                                 target_segment,
                                                 Some(causing_transition.duration()),
-                                                Some(causing_transition.easing()),
+                                                Some(causing_transition.easing().to_vec()),
                                             );
 
                                             return Ok(());

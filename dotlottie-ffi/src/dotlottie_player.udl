@@ -171,12 +171,12 @@ interface DotLottiePlayer {
     f32 segment_duration();
     sequence<f32> animation_size();
     sequence<f32> get_layer_bounds([ByRef] string layer_name);
-        boolean tick();
-    boolean tween(f32 from, f32 to, f32 progress);
-    boolean tween_to(f32 to, f32 duration, sequence<f32> easing);
-    boolean tween_to_marker([ByRef] string marker, f32 duration, sequence<f32> easing);
+    boolean tick();
+    boolean tween(f32 to, f32? duration, sequence<f32>? easing);
+    boolean tween_stop();
+    boolean tween_to_marker([ByRef] string marker, f32? duration, sequence<f32>? easing);
     boolean is_tweening();
-    boolean tween_update();
+    boolean tween_update(f32? progress);
 
     boolean state_machine_load([ByRef] string state_machine_id);
     boolean state_machine_load_data([ByRef] string state_machine);

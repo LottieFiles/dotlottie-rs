@@ -1788,20 +1788,38 @@ impl DotLottiePlayerContainer {
         }
     }
 
-    pub fn tween(&self, to: f32, duration: Option<f32>, easing: Option<[f32; 4]>) -> bool {
+    pub fn tween(&self, to: f32, duration: Option<f32>, easing: Option<Vec<f32>>) -> bool {
+        // Convert Vec<f32> to [f32; 4]
+        let easing = easing.map_or(None, |e| {
+            if e.len() == 4 {
+                Some([e[0], e[1], e[2], e[3]])
+            } else {
+                None
+            }
+        });
+
         self.runtime.write().unwrap().tween(to, duration, easing)
     }
 
-    pub fn tween_stop(&self) {
-        self.runtime.write().unwrap().tween_stop();
+    pub fn tween_stop(&self) -> bool {
+        self.runtime.write().unwrap().tween_stop()
     }
 
     pub fn tween_to_marker(
         &self,
         marker: &str,
         duration: Option<f32>,
-        easing: Option<[f32; 4]>,
+        easing: Option<Vec<f32>>,
     ) -> bool {
+        // Convert Vec<f32> to [f32; 4]
+        let easing = easing.map_or(None, |e| {
+            if e.len() == 4 {
+                Some([e[0], e[1], e[2], e[3]])
+            } else {
+                None
+            }
+        });
+
         self.runtime
             .write()
             .unwrap()
@@ -2574,11 +2592,11 @@ impl DotLottiePlayer {
         self.player.read().unwrap().tick()
     }
 
-    pub fn tween(&self, to: f32, duration: Option<f32>, easing: Option<[f32; 4]>) -> bool {
+    pub fn tween(&self, to: f32, duration: Option<f32>, easing: Option<Vec<f32>>) -> bool {
         self.player.read().unwrap().tween(to, duration, easing)
     }
 
-    pub fn tween_stop(&self) {
+    pub fn tween_stop(&self) -> bool {
         self.player.read().unwrap().tween_stop()
     }
 
@@ -2594,7 +2612,7 @@ impl DotLottiePlayer {
         &self,
         marker_name: &str,
         duration: Option<f32>,
-        easing: Option<[f32; 4]>,
+        easing: Option<Vec<f32>>,
     ) -> bool {
         self.player
             .read()

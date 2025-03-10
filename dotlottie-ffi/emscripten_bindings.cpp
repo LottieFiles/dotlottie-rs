@@ -1,6 +1,7 @@
 #include "dotlottie_player.hpp"
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
+#include <optional>
 
 using namespace emscripten;
 using namespace dotlottie_player;
@@ -24,6 +25,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 
     // Register std::vector<float> as VectorFloat for the Config::segment field
     register_vector<float>("VectorFloat");
+    // Then register the optional type for the vector - without a name parameter
+    register_optional<std::vector<float>>();
     register_vector<Marker>("VectorMarker");
     register_vector<std::string>("VectorString");
 
@@ -135,12 +138,12 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("getLayerBounds", &DotLottiePlayer::get_layer_bounds)
 
         .function("tick", &DotLottiePlayer::tick)
+        .function("tween", &DotLottiePlayer::tween)
+        .function("tweenStop", &DotLottiePlayer::tween_stop)
+        .function("tweenToMarker", &DotLottiePlayer::tween_to_marker)
         .function("isTweening", &DotLottiePlayer::is_tweening)
         .function("tweenUpdate", &DotLottiePlayer::tween_update)
-        .function("tween", &DotLottiePlayer::tween)
-        .function("tweenTo", &DotLottiePlayer::tween_to)
-        .function("tweenToMarker", &DotLottiePlayer::tween_to_marker)
-        
+
         .function("getStateMachine", &DotLottiePlayer::get_state_machine)
         .function("activeStateMachineId", &DotLottiePlayer::active_state_machine_id)
         .function("stateMachineCurrentState", &DotLottiePlayer::state_machine_current_state)

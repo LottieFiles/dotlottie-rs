@@ -238,6 +238,11 @@ impl StateMachineEngine {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<InputValue> {
+        // Modifying triggers whilst tweening isn't allowed
+        if self.status != StateMachineEngineStatus::Running {
+            return None;
+        }
+
         let ret = self.inputs.set_numeric(key, value);
 
         if called_from_action {
@@ -268,6 +273,11 @@ impl StateMachineEngine {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<InputValue> {
+        // Modifying triggers whilst tweening isn't allowed
+        if self.status != StateMachineEngineStatus::Running {
+            return None;
+        }
+
         let ret = self.inputs.set_string(key, value.to_string());
 
         if called_from_action {
@@ -297,6 +307,11 @@ impl StateMachineEngine {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<InputValue> {
+        // Modifying triggers whilst tweening isn't allowed
+        if self.status != StateMachineEngineStatus::Running {
+            return None;
+        }
+
         let ret = self.inputs.set_boolean(key, value);
 
         if called_from_action {
@@ -320,6 +335,11 @@ impl StateMachineEngine {
     }
 
     pub fn reset_input(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
+        // Modifying triggers whilst tweening isn't allowed
+        if self.status != StateMachineEngineStatus::Running {
+            return;
+        }
+
         let ret = self.inputs.reset(key);
 
         match ret {

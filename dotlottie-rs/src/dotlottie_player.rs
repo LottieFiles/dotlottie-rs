@@ -681,16 +681,6 @@ impl DotLottieRuntime {
         self.renderer.clear()
     }
 
-    pub fn update_marker(&mut self, marker: &String) {
-        if self.config.marker == *marker {
-            return;
-        }
-
-        self.start_time = Instant::now();
-
-        self.config.marker = marker.clone();
-    }
-
     // Notes: Runtime doesn't have the state machine
     // Therefor the state machine can't be loaded here, user must use the load methods.
     pub fn set_config(&mut self, new_config: Config) {
@@ -707,6 +697,24 @@ impl DotLottieRuntime {
         self.config.segment = new_config.segment;
         self.config.autoplay = new_config.autoplay;
         self.config.theme_id = new_config.theme_id;
+    }
+
+    pub fn update_marker(&mut self, marker: &String) {
+        if self.config.marker == *marker {
+            return;
+        }
+
+        let markers = self.markers();
+
+        if let Some(marker) = markers.iter().find(|m| m.name == *marker) {
+            self.start_time = Instant::now();
+
+            self.config.marker = marker.name.clone();
+
+            self.set_frame(marker.time);
+
+            self.render();
+        }
     }
 
     pub fn update_layout(&mut self, layout: &Layout) {

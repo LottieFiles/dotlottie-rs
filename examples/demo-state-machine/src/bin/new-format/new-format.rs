@@ -27,23 +27,23 @@ struct DummyObserver;
 
 impl StateMachineObserver for DummyObserver {
     fn on_transition(&self, previous_state: String, new_state: String) {
-        // println!("on_transition2: {} -> {}", previous_state, new_state);
+        println!("on_transition: {} -> {}", previous_state, new_state);
     }
 
     fn on_state_entered(&self, entering_state: String) {
-        // println!("on_state_entered2: {}", entering_state);
+        println!("on_state_entered: {}", entering_state);
     }
 
     fn on_state_exit(&self, leaving_state: String) {
-        // println!("on_state_exit2: {}", leaving_state);
+        println!("on_state_exit: {}", leaving_state);
     }
 
     fn on_custom_event(&self, message: String) {
-        // println!("custom_event2: {}", message);
+        println!("custom_event: {}", message);
     }
 
     fn on_error(&self, error: String) {
-        println!("error2: {}", error);
+        println!("error: {}", error);
     }
 
     fn on_start(&self) {

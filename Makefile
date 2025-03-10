@@ -391,7 +391,7 @@ define CARGO_BUILD
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--no-default-features \
-		--features thorvg_v1,thorvg_v1_$(THORVG_RENDERER) \
+		--features thorvg_v1_sw,thorvg_v1_$(THORVG_RENDERER) \
 		--release; \
 	else \
 		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
@@ -400,7 +400,7 @@ define CARGO_BUILD
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--no-default-features \
-		--features thorvg_v1,thorvg_v1_$(THORVG_RENDERER) \
+		--features thorvg_v1_$(THORVG_RENDERER) \
 		--release; \
 	fi
 endef
@@ -679,7 +679,8 @@ endef
 
 define NEW_WASM_DEPS_BUILD
 $(eval $(call NEW_WASM_CROSS_FILE,$1,$$($1_THORVG_DEP_BUILD_DIR)/..,emscripten))
-$(eval $(call NEW_THORVG_BUILD,$1,false,true,"lottie_expressions",false,$(THORVG_RENDERER)))
+$(eval THORVG_ENGINE_PARAM="sw,$(THORVG_RENDERER)")
+$(eval $(call NEW_THORVG_BUILD,$1,false,true,"lottie_expressions",false,$(THORVG_ENGINE_PARAM)))
 endef
 
 define NEW_ANDROID_BUILD

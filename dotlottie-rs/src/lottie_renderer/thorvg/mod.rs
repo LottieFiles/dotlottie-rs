@@ -94,7 +94,7 @@ impl Renderer for TvgRenderer {
     }
 
     fn clear(&self, _free: bool) -> Result<(), TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "thorvg_v1")]
         unsafe {
             tvg::tvg_canvas_remove(self.raw_canvas, ptr::null_mut::<tvg::Tvg_Paint>()).into_result()
         }
@@ -143,7 +143,7 @@ impl Drop for TvgRenderer {
     }
 }
 
-#[cfg(feature = "thorvg-v1")]
+#[cfg(feature = "thorvg_v1")]
 struct TweenState {
     start_time: Instant,
     from: f32,
@@ -155,7 +155,7 @@ struct TweenState {
 pub struct TvgAnimation {
     raw_animation: *mut tvg::Tvg_Animation,
     raw_paint: *mut tvg::Tvg_Paint,
-    #[cfg(feature = "thorvg-v1")]
+    #[cfg(feature = "thorvg_v1")]
     tween_state: Option<TweenState>,
 }
 
@@ -167,7 +167,7 @@ impl Default for TvgAnimation {
         Self {
             raw_animation,
             raw_paint,
-            #[cfg(feature = "thorvg-v1")]
+            #[cfg(feature = "thorvg_v1")]
             tween_state: None,
         }
     }
@@ -346,7 +346,7 @@ impl Animation for TvgAnimation {
     }
 
     fn tween(&mut self, _from: f32, _to: f32, _progress: f32) -> Result<(), TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "thorvg_v1")]
         {
             if self.is_tweening() || _progress <= 0.0 {
                 return Err(TvgError::InvalidArgument);
@@ -358,12 +358,12 @@ impl Animation for TvgAnimation {
             }
         }
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "thorvg_v1"))]
         Err(TvgError::NotSupported)
     }
 
     fn tween_to(&mut self, _to: f32, _duration: f32, _easing: [f32; 4]) -> Result<(), TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "thorvg_v1")]
         {
             if self.is_tweening() || _duration <= 0.0 {
                 return Err(TvgError::InvalidArgument);
@@ -380,20 +380,20 @@ impl Animation for TvgAnimation {
             Ok(())
         }
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "thorvg_v1"))]
         Err(TvgError::NotSupported)
     }
 
     fn is_tweening(&self) -> bool {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "thorvg_v1")]
         return self.tween_state.is_some();
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "thorvg_v1"))]
         false
     }
 
     fn tween_update(&mut self) -> Result<bool, TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "thorvg_v1")]
         {
             if let Some(tween_state) = self.tween_state.as_mut() {
                 let elapsed = Instant::now().duration_since(tween_state.start_time);
@@ -427,7 +427,7 @@ impl Animation for TvgAnimation {
             }
         }
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "thorvg_v1"))]
         Err(TvgError::NotSupported)
     }
 }

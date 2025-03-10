@@ -19,34 +19,34 @@ pub fn get_animation(
     let mut archive =
         ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
 
-    let search_file_name: String = if version == 2 {
+    let json_path = if version == 2 {
         format!("a/{}.json", animation_id)
     } else {
         format!("animations/{}.json", animation_id)
     };
 
-    let mut result =
-        archive
-            .by_name(&search_file_name)
-            .map_err(|_| DotLottieError::FileFindError {
-                file_name: search_file_name,
-            })?;
+    let lot_path = if version == 2 {
+        format!("a/{}.lot", animation_id)
+    } else {
+        format!("animations/{}.lot", animation_id)
+    };
 
-    let mut content = Vec::new();
+    let file_data = if let Ok(data) = read_zip_file(&mut archive, &json_path) {
+        data
+    } else if let Ok(data) = read_zip_file(&mut archive, &lot_path) {
+        data
+    } else {
+        return Err(DotLottieError::FileFindError {
+            file_name: format!("{} or {}", json_path, lot_path),
+        });
+    };
 
-    result
-        .read_to_end(&mut content)
-        .map_err(|_| DotLottieError::ReadContentError)?;
+    let animation_data =
+        String::from_utf8(file_data).map_err(|_| DotLottieError::ReadContentError)?;
 
-    // We can drop result so that we can use archive later, everything has been read in to content variable
-    drop(result);
+    let mut lottie_animation =
+        jzon::parse(&animation_data).map_err(|_| DotLottieError::ReadContentError)?;
 
-    let animation_data = String::from_utf8(content).unwrap();
-
-    // Untyped JSON value
-    let mut lottie_animation = jzon::parse(&animation_data).unwrap();
-
-    // Loop through the parsed lottie animation and check for image assets
     if let Some(assets) = lottie_animation["assets"].as_array_mut() {
         for asset in assets {
             if let Some(p) = asset["p"].as_str() {
@@ -164,4 +164,22 @@ pub fn get_state_machine(bytes: &[u8], state_machine_id: &str) -> Result<String,
         .map_err(|_| DotLottieError::ReadContentError)?;
 
     String::from_utf8(content).map_err(|_| DotLottieError::InvalidUtf8Error)
+}
+
+// Helper function to read a file from a ZIP archive
+fn read_zip_file(
+    archive: &mut ZipArchive<io::Cursor<&Vec<u8>>>,
+    path: &str,
+) -> Result<Vec<u8>, DotLottieError> {
+    let mut file = archive
+        .by_name(path)
+        .map_err(|_| DotLottieError::FileFindError {
+            file_name: path.to_string(),
+        })?;
+
+    let mut buf = Vec::new();
+    file.read_to_end(&mut buf)
+        .map_err(|_| DotLottieError::ReadContentError)?;
+
+    Ok(buf)
 }

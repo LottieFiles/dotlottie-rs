@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::Config;
 
 mod test_utils;
 
@@ -12,7 +12,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_default_play_mode() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         assert_eq!(player.config().mode, Mode::Forward);
     }
@@ -27,7 +27,7 @@ mod play_mode_tests {
         ];
 
         for mode in play_modes {
-            let player = DotLottiePlayer::new(Config::default());
+            let player = crate::test_utils::create_test_player(Config::default());
 
             let mut config = player.config();
             config.mode = mode;
@@ -81,7 +81,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             mode: Mode::Forward,
             autoplay: true,
             ..Config::default()
@@ -129,7 +129,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_play_mode() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             mode: Mode::Reverse,
             autoplay: true,
             ..Config::default()
@@ -175,7 +175,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_bounce_play_mode() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             mode: Mode::Bounce,
             autoplay: true,
             ..Config::default()
@@ -241,7 +241,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_bounce_play_mode() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             mode: Mode::ReverseBounce,
             autoplay: true,
             ..Config::default()

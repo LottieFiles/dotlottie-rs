@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use dotlottie_rs::{Config, DotLottiePlayer, Observer};
+use dotlottie_rs::{Config, Observer};
 
 mod test_utils;
 
@@ -70,7 +70,7 @@ mod tests {
 
     #[test]
     fn test_subscribe_unsubscribe() {
-        let player = DotLottiePlayer::new(Config {
+        let player = crate::test_utils::create_test_player(Config {
             autoplay: true,
             loop_animation: true,
             ..Config::default()

@@ -7,8 +7,9 @@ build = "build.rs"
 [profile.release]
 lto = true
 opt-level = "z"
-strip = true 
 codegen-units = 1
+strip = true
+panic = "abort"
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -19,9 +20,12 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [features]
-default = ["thorvg-v0"]
-thorvg-v0 = ["dotlottie-rs/thorvg-v0"]
-thorvg-v1 = ["dotlottie-rs/thorvg-v1"]
+default = ["thorvg_v0"]
+thorvg_v0 = ["dotlottie-rs/thorvg_v0"]
+thorvg_v1 = ["dotlottie-rs/thorvg_v1"]
+thorvg_v1_sw = ["dotlottie-rs/thorvg_v1_sw"]
+thorvg_v1_gl = ["dotlottie-rs/thorvg_v1_gl"]
+thorvg_v1_wg = ["dotlottie-rs/thorvg_v1_wg"]
 
 [dependencies]
 uniffi = { version = "0.28", features = ["cli"] }

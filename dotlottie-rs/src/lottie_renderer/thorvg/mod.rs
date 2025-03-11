@@ -16,11 +16,6 @@ use spin::Mutex;
 pub use error::{IntoResult, TvgError};
 pub use types::{TvgBackend, TvgEngine};
 
-#[cfg(all(feature = "thorvg_v1_gl", target_arch = "wasm32"))]
-pub use gl::GlBackend;
-#[cfg(all(feature = "thorvg_v1_wg", target_arch = "wasm32"))]
-pub use wg::WgBackend;
-
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
 use std::{ffi::CString, ptr};
 

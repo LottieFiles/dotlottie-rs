@@ -1,5 +1,3 @@
-#include <emscripten/html5.h>
-
 #ifdef THORVG_V1_GL
 #include <emscripten/html5_webgl.h>
 #endif

@@ -246,6 +246,13 @@ cpu = '$(CPU)'
 endian = 'little'
 endef
 
+EMSCRIPTEN_RENDERER_FLAGS := $(if $(filter gl,$(THORVG_RENDERER)), \
+    '-sMAX_WEBGL_VERSION=2' '-sFULL_ES3', \
+    $(if $(filter wg,$(THORVG_RENDERER)), \
+        '-sUSE_WEBGPU=1', \
+    ) \
+)
+
 define WASM_CROSS_FILE
 [binaries]
 cpp = ['$(EMSDK_DIR)/upstream/emscripten/em++.py', '-std=c++20']
@@ -262,7 +269,7 @@ exe_suffix = 'js'
 [built-in options]
 cpp_args = ['-Wshift-negative-value', '-flto', '-Oz', '-ffunction-sections', '-fdata-sections']
 cpp_link_args = [
-	'-sASYNCIFY=1',
+  	$(foreach f,$(EMSCRIPTEN_RENDERER_FLAGS),$(f),)
 	'-sMALLOC=emmalloc',
 	'-Wl,-u,htons',
 	'-Wl,-u,ntohs',
@@ -281,9 +288,7 @@ cpp_link_args = [
 	'--no-entry',
 	'--strip-all',
 	'--emit-tsd=${WASM_MODULE}.d.ts',
-	'--closure=1',
-	$(if $(filter $(THORVG_RENDERER),gl),'-sMAX_WEBGL_VERSION=2', '-sFULL_ES3',)\
-	$(if $(filter $(THORVG_RENDERER),wg),'-sUSE_WEBGPU=1',)]
+	'--closure=1']
 
 [host_machine]
 system = '$(SYSTEM)'

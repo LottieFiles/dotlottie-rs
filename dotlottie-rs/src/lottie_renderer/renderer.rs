@@ -91,4 +91,6 @@ pub trait Renderer: Sized + 'static {
     fn sync(&mut self) -> Result<(), Self::Error>;
 
     fn update(&mut self) -> Result<(), Self::Error>;
+
+    fn needs_target(&self) -> bool;
 }

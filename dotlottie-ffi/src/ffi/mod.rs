@@ -540,37 +540,6 @@ pub unsafe extern "C" fn dotlottie_animation_size(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_layer_bounds(
-    ptr: *mut DotLottiePlayer,
-    layer_name: *const c_char,
-    bounding_box: *mut LayerBoundingBox,
-) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        if bounding_box.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
-        }
-        let bounding_box = match bounding_box.as_mut() {
-            Some(v) => v,
-            None => return DOTLOTTIE_INVALID_PARAMETER,
-        };
-        let layer_name = match DotLottieString::read(layer_name) {
-            Ok(v) => v,
-            Err(_) => return DOTLOTTIE_INVALID_PARAMETER,
-        };
-        match dotlottie_player.get_layer_bounds(&layer_name).as_slice() {
-            [x, y, w, h] => {
-                bounding_box.x = *x;
-                bounding_box.y = *y;
-                bounding_box.w = *w;
-                bounding_box.h = *h;
-                DOTLOTTIE_SUCCESS
-            }
-            _ => DOTLOTTIE_ERROR,
-        }
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn dotlottie_subscribe(
     ptr: *mut DotLottiePlayer,
     observer: *mut types::Observer,

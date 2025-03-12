@@ -16,9 +16,9 @@ impl NativeOpenUrl {
             use std::ffi::CString;
 
             let command = if target.is_empty() {
-                format!("window.open('{}');", url)
+                format!("typeof window !== 'undefined' && window.open('{}');", url)
             } else {
-                format!("window.open('{}', '{}');", url, target)
+                format!("typeof window !== 'undefined' && window.open('{}', '{}');", url, target)
             };
 
             let command_cstr = CString::new(command).unwrap();

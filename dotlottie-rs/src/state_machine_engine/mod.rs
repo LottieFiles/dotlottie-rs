@@ -1010,14 +1010,14 @@ impl StateMachineEngine {
                             // If we have a pointer down event, we need to check if the pointer is outside of the layer
                             if let Event::PointerExit { x, y } = event {
                                 if self.pointer_management.curr_entered_layer == *layer
-                                    && !player_container.hit_check(&layer, *x, *y)
+                                    && !player_container.intersect(*x, *y, &layer)
                                 {
                                     entered_layer = "".to_string();
                                     actions_to_execute.extend(interaction.get_actions().clone());
                                 }
                             } else {
                                 // Hit check will return true if the layer was hit
-                                if player_container.hit_check(&layer, x, y) {
+                                if player_container.intersect(x, y, &layer) {
                                     entered_layer = layer.clone();
                                     actions_to_execute.extend(interaction.get_actions().clone());
                                 }
@@ -1072,7 +1072,7 @@ impl StateMachineEngine {
                     if event_name == event_type_name!(PointerEnter)
                         || event_name == event_type_name!(PointerExit)
                     {
-                        if player_container.hit_check(&layer, x, y) {
+                        if player_container.intersect(x, y, &layer) {
                             hit = true;
 
                             // If it's that same current layer, do nothing

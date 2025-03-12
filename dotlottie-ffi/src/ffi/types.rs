@@ -429,30 +429,6 @@ impl DotLottieFit {
     }
 }
 
-// #[derive(Clone, PartialEq)]
-// #[repr(C)]
-// pub enum OpenUrlMode {
-//     Deny,
-//     Interaction,
-//     Allow,
-// }
-
-// #[derive(Clone, PartialEq)]
-// #[repr(C)]
-// pub struct OpenUrl {
-//     pub mode: OpenUrlMode,
-//     pub whitelist: Vec<DotLottieString>,
-// }
-
-// impl DotLottieOpenUrl {
-//     pub fn new() -> Self {
-//         Self {
-//             mode: OpenUrlMode::Interaction,
-//             whitelist: vec![],
-//         }
-//     }
-// }
-
 #[derive(Clone, PartialEq)]
 #[repr(C)]
 pub struct DotLottieLayout {

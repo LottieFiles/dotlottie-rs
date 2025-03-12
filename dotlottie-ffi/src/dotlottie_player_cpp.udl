@@ -96,7 +96,7 @@ interface DotLottiePlayer {
     boolean set_viewport(i32 x, i32 y, i32 w, i32 h);
     f32 segment_duration();
     sequence<f32> animation_size();
-    sequence<f32> get_layer_bounds([ByRef] string layer_name);
+    boolean intersect(f32 x, f32 y, [ByRef] string layer_name);
     
     boolean state_machine_load([ByRef] string state_machine_id);
     boolean state_machine_load_data([ByRef] string state_machine);

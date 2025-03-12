@@ -123,7 +123,6 @@ impl StateTrait for State {
                 if let Ok(player_read) = player.try_read() {
                     let size = player_read.size();
 
-                    // Todo compare against currently loaded animation
                     if !animation.is_empty() && player_read.active_animation_id() != *animation {
                         player_read.load_animation(animation, size.0, size.1);
                     }
@@ -156,7 +155,6 @@ impl StateTrait for State {
                     }
                 }
             }
-
             State::GlobalState {
                 animation,
                 entry_actions,
@@ -165,15 +163,16 @@ impl StateTrait for State {
                 if let Ok(player_read) = player.try_read() {
                     let size = player_read.size();
 
-                    // Todo compare against currently loaded animation
-                    if let Some(id) = animation {
-                        player_read.load_animation(id, size.0, size.1);
+                    if let Some(animation) = animation {
+                        if player_read.active_animation_id() != *animation {
+                            player_read.load_animation(animation, size.0, size.1);
+                        }
+                    }
 
-                        // Perform entry actions
-                        if let Some(actions) = entry_actions {
-                            for action in actions {
-                                let _ = action.execute(engine, player.clone(), false);
-                            }
+                    // Perform entry actions
+                    if let Some(actions) = entry_actions {
+                        for action in actions {
+                            let _ = action.execute(engine, player.clone(), false);
                         }
                     }
                 }
@@ -225,7 +224,6 @@ impl StateTrait for State {
                     }
                 }
             }
-
             State::GlobalState { exit_actions, .. } => {
                 if let Some(actions) = exit_actions {
                     for action in actions {

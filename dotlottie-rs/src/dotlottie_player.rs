@@ -688,6 +688,7 @@ impl DotLottieRuntime {
         self.update_background_color(&new_config);
         self.update_speed(&new_config);
         self.update_loop_animation(&new_config);
+        self.update_marker(&new_config.marker);
         self.update_layout(&new_config.layout);
         self.set_theme(&new_config.theme_id);
 
@@ -695,8 +696,25 @@ impl DotLottieRuntime {
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
         self.config.segment = new_config.segment;
         self.config.autoplay = new_config.autoplay;
-        self.config.marker = new_config.marker;
         self.config.theme_id = new_config.theme_id;
+    }
+
+    pub fn update_marker(&mut self, marker: &String) {
+        if self.config.marker == *marker {
+            return;
+        }
+
+        let markers = self.markers();
+
+        if let Some(marker) = markers.iter().find(|m| m.name == *marker) {
+            self.start_time = Instant::now();
+
+            self.config.marker = marker.name.clone();
+
+            self.set_frame(marker.time);
+
+            self.render();
+        }
     }
 
     pub fn update_layout(&mut self, layout: &Layout) {
@@ -979,18 +997,23 @@ impl DotLottieRuntime {
         self.active_state_machine_id = state_machine_id.to_string();
     }
 
-    pub fn tween(&mut self, from: f32, to: f32, progress: f32) -> bool {
-        self.renderer.tween(from, to, progress).is_ok()
+    pub fn tween(&mut self, to: f32, duration: Option<f32>, easing: Option<[f32; 4]>) -> bool {
+        self.renderer.tween(to, duration, easing).is_ok()
     }
 
-    pub fn tween_to(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> bool {
-        self.renderer.tween_to(to, duration, easing).is_ok()
+    pub fn tween_stop(&mut self) -> bool {
+        self.renderer.tween_stop().is_ok()
     }
 
-    pub fn tween_to_marker(&mut self, marker: &str, duration: f32, easing: [f32; 4]) -> bool {
+    pub fn tween_to_marker(
+        &mut self,
+        marker: &str,
+        duration: Option<f32>,
+        easing: Option<[f32; 4]>,
+    ) -> bool {
         let markers = self.markers();
         if let Some(marker) = markers.iter().find(|m| m.name == marker) {
-            self.tween_to(marker.time, duration, easing);
+            self.tween(marker.time, duration, easing);
             self.config.marker = marker.name.clone();
             true
         } else {
@@ -1002,8 +1025,8 @@ impl DotLottieRuntime {
         self.renderer.is_tweening()
     }
 
-    pub fn tween_update(&mut self) -> bool {
-        let ok = self.renderer.tween_update().is_ok();
+    pub fn tween_update(&mut self, progress: Option<f32>) -> bool {
+        let ok = self.renderer.tween_update(progress).is_ok();
         if !ok {
             // so after the tweening is completed, we can start calculating the next frame based on the start time
             self.start_time = Instant::now();
@@ -1731,22 +1754,72 @@ impl DotLottiePlayerContainer {
 
     pub fn tick(&self) -> bool {
         if self.is_tweening() {
-            self.tween_update() && self.render()
+            self.tween_update(None) && self.render()
         } else {
             let next_frame = self.request_frame();
-            self.set_frame(next_frame) && self.render()
+            let sf = self.set_frame(next_frame) && self.render();
+
+            let mut is_sm_still_tweening = false;
+            match self.state_machine.try_read() {
+                Ok(state_machine) => {
+                    let sm = &*state_machine;
+
+                    if let Some(sm) = sm {
+                        if sm.status == StateMachineEngineStatus::Tweening {
+                            is_sm_still_tweening = true;
+                        }
+                    }
+                }
+                Err(_) => {}
+            }
+
+            if is_sm_still_tweening {
+                match self.state_machine.try_write() {
+                    Ok(mut state_machine) => {
+                        if let Some(sm) = state_machine.as_mut() {
+                            sm.resume_from_tweening();
+                        }
+                    }
+                    Err(_) => {}
+                }
+            }
+
+            sf
         }
     }
 
-    pub fn tween(&self, from: f32, to: f32, progress: f32) -> bool {
-        self.runtime.write().unwrap().tween(from, to, progress)
+    pub fn tween(&self, to: f32, duration: Option<f32>, easing: Option<Vec<f32>>) -> bool {
+        // Convert Vec<f32> to [f32; 4]
+        let easing = easing.map_or(None, |e| {
+            if e.len() == 4 {
+                Some([e[0], e[1], e[2], e[3]])
+            } else {
+                None
+            }
+        });
+
+        self.runtime.write().unwrap().tween(to, duration, easing)
     }
 
-    pub fn tween_to(&self, to: f32, duration: f32, easing: [f32; 4]) -> bool {
-        self.runtime.write().unwrap().tween_to(to, duration, easing)
+    pub fn tween_stop(&self) -> bool {
+        self.runtime.write().unwrap().tween_stop()
     }
 
-    pub fn tween_to_marker(&self, marker: &str, duration: f32, easing: [f32; 4]) -> bool {
+    pub fn tween_to_marker(
+        &self,
+        marker: &str,
+        duration: Option<f32>,
+        easing: Option<Vec<f32>>,
+    ) -> bool {
+        // Convert Vec<f32> to [f32; 4]
+        let easing = easing.map_or(None, |e| {
+            if e.len() == 4 {
+                Some([e[0], e[1], e[2], e[3]])
+            } else {
+                None
+            }
+        });
+
         self.runtime
             .write()
             .unwrap()
@@ -1757,8 +1830,8 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().is_tweening()
     }
 
-    pub fn tween_update(&self) -> bool {
-        self.runtime.write().unwrap().tween_update()
+    pub fn tween_update(&self, progress: Option<f32>) -> bool {
+        self.runtime.write().unwrap().tween_update(progress)
     }
 }
 
@@ -2284,12 +2357,19 @@ impl DotLottiePlayer {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
-        let mut sm = self.state_machine.write().unwrap();
+        let sm = self.state_machine.try_write();
 
-        if sm.is_none() {
-            return false;
+        match sm {
+            Ok(mut sm) => {
+                if sm.is_none() {
+                    return false;
+                }
+                sm.as_mut().unwrap().subscribe(observer);
+            }
+            Err(_) => {
+                return false;
+            }
         }
-        sm.as_mut().unwrap().subscribe(observer);
 
         true
     }
@@ -2512,31 +2592,32 @@ impl DotLottiePlayer {
         self.player.read().unwrap().tick()
     }
 
-    pub fn tween(&self, from: f32, to: f32, progress: f32) -> bool {
-        self.player.read().unwrap().tween(from, to, progress)
+    pub fn tween(&self, to: f32, duration: Option<f32>, easing: Option<Vec<f32>>) -> bool {
+        self.player.read().unwrap().tween(to, duration, easing)
+    }
+
+    pub fn tween_stop(&self) -> bool {
+        self.player.read().unwrap().tween_stop()
     }
 
     pub fn is_tweening(&self) -> bool {
         self.player.read().unwrap().is_tweening()
     }
 
-    pub fn tween_update(&self) -> bool {
-        self.player.read().unwrap().tween_update()
+    pub fn tween_update(&self, progress: Option<f32>) -> bool {
+        self.player.read().unwrap().tween_update(progress)
     }
 
-    pub fn tween_to(&self, to: f32, duration: f32, easing: Vec<f32>) -> bool {
+    pub fn tween_to_marker(
+        &self,
+        marker_name: &str,
+        duration: Option<f32>,
+        easing: Option<Vec<f32>>,
+    ) -> bool {
         self.player
             .read()
             .unwrap()
-            .tween_to(to, duration, easing.try_into().unwrap())
-    }
-
-    pub fn tween_to_marker(&self, marker_name: &str, duration: f32, easing: Vec<f32>) -> bool {
-        self.player.read().unwrap().tween_to_marker(
-            marker_name,
-            duration,
-            easing.try_into().unwrap(),
-        )
+            .tween_to_marker(marker_name, duration, easing)
     }
 }
 

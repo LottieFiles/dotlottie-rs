@@ -10,8 +10,12 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const STATE_MACHINE_NAME: &str = "rating";
-pub const ANIMATION_NAME: &str = "star_marked";
+pub const STATE_MACHINE_NAME: &str = "smiley-slider-state";
+pub const ANIMATION_NAME: &str = "smiley-slider";
+// pub const STATE_MACHINE_NAME: &str = "rating";
+// pub const ANIMATION_NAME: &str = "star_marked";
+// pub const STATE_MACHINE_NAME: &str = "StateMachine1";
+// pub const ANIMATION_NAME: &str = "pig";
 
 struct Timer {
     last_update: Instant,
@@ -23,31 +27,31 @@ struct DummyObserver;
 
 impl StateMachineObserver for DummyObserver {
     fn on_transition(&self, previous_state: String, new_state: String) {
-        println!("on_transition2: {} -> {}", previous_state, new_state);
+        println!("on_transition: {} -> {}", previous_state, new_state);
     }
 
     fn on_state_entered(&self, entering_state: String) {
-        println!("on_state_entered2: {}", entering_state);
+        println!("on_state_entered: {}", entering_state);
     }
 
     fn on_state_exit(&self, leaving_state: String) {
-        println!("on_state_exit2: {}", leaving_state);
+        println!("on_state_exit: {}", leaving_state);
     }
 
     fn on_custom_event(&self, message: String) {
-        println!("custom_event2: {}", message);
+        println!("custom_event: {}", message);
     }
 
     fn on_error(&self, error: String) {
-        println!("error2: {}", error);
+        println!("error: {}", error);
     }
 
     fn on_start(&self) {
-        println!(">>>> start");
+        // println!(">>>> start");
     }
 
     fn on_stop(&self) {
-        println!(">>>> stop");
+        // println!(">>>> stop");
     }
 
     fn on_string_input_value_change(
@@ -62,32 +66,22 @@ impl StateMachineObserver for DummyObserver {
         );
     }
 
-    fn on_numeric_input_value_change(
-        &self,
-        input_name: String,
-        old_value: f32,
-        new_value: f32,
-    ) {
+    fn on_numeric_input_value_change(&self, input_name: String, old_value: f32, new_value: f32) {
         println!(
             "numeric_input_value_change ==> {} : {} -> {}",
             input_name, old_value, new_value
         );
     }
 
-    fn on_boolean_input_value_change(
-        &self,
-        input_name: String,
-        old_value: bool,
-        new_value: bool,
-    ) {
-        println!(
-            "boolean_input_value_change ==> {} : {} -> {}",
-            input_name, old_value, new_value
-        );
+    fn on_boolean_input_value_change(&self, input_name: String, old_value: bool, new_value: bool) {
+        // println!(
+        //     "boolean_input_value_change ==> {} : {} -> {}",
+        //     input_name, old_value, new_value
+        // );
     }
 
     fn on_input_fired(&self, input_name: String) {
-        println!("input_fired ==> {}", input_name);
+        todo!()
     }
 }
 
@@ -100,18 +94,24 @@ impl Timer {
         }
     }
 
-    fn tick(&mut self, animation: &DotLottiePlayer) {
-        let next_frame = animation.request_frame();
+    fn tick(&mut self, animation: &DotLottiePlayer) -> bool {
+        let updated = animation.tick();
 
-        animation.set_frame(next_frame);
+        // let next_frame = animation.request_frame();
+        // animation.set_frame(next_frame);
 
-        if next_frame != self.prev_frame || !self.first {
+        if updated || !self.first {
             animation.render();
             self.first = true;
+
+            return updated;
         }
 
         self.last_update = Instant::now(); // Reset the timer
-        self.prev_frame = next_frame;
+                                           // self.prev_frame = next_frame;
+
+        // updated
+        true
     }
 }
 
@@ -164,10 +164,8 @@ fn main() {
     );
 
     println!("Load state machine data -> {}", r);
-    lottie_player.state_machine_framework_subscribe(observer.clone());
-    let config = OpenUrl::default();
-
-    let s = lottie_player.state_machine_start(config);
+    lottie_player.state_machine_subscribe(observer.clone());
+    let s = lottie_player.state_machine_start(OpenUrl::default());
 
     println!("Start state machine -> {}", s);
 
@@ -177,7 +175,8 @@ fn main() {
 
     let locked_player = Arc::new(RwLock::new(lottie_player));
 
-    let mut rating = 0.0;
+    let mut progress = 0.0;
+    let mut rating = 1.0;
     // return;
 
     let mut mx = 0.0;
@@ -220,9 +219,9 @@ fn main() {
         });
 
         if !tmp && left_down {
-            let event = Event::PointerUp { x: mx, y: my };
+            let event = Event::Click { x: mx, y: my };
 
-            println!("Sending pointer up");
+            // println!("Sending pointer up");
             let p = &mut *locked_player.write().unwrap();
             let _m = p.state_machine_post_event(&event);
         }
@@ -233,7 +232,7 @@ fn main() {
         if left_down {
             let event = Event::PointerDown { x: mx, y: my };
 
-            println!("Sending pointer down");
+            // println!("Sending pointer down");
             let p = &mut *locked_player.write().unwrap();
             let _m = p.state_machine_post_event(&event);
         } else {
@@ -243,32 +242,59 @@ fn main() {
             let _m = p.state_machine_post_event(&event);
         }
 
-        timer.tick(&*locked_player.read().unwrap());
-
         // Send event on key press
         if window.is_key_pressed(Key::Space, minifb::KeyRepeat::Yes) {
             let p = &mut *locked_player.write().unwrap();
 
-            p.state_machine_set_numeric_input("Rating", 1.0);
+            progress += 0.01;
+
+            println!("SETTING PROGRESS {}", progress);
+
+            p.state_machine_set_numeric_input("Progress", progress);
+        }
+        if window.is_key_pressed(Key::Up, minifb::KeyRepeat::Yes) {
+            let p = &mut *locked_player.write().unwrap();
+
+            progress -= 0.01;
+
+            println!("SETTING PROGRESS {}", progress);
+
+            p.state_machine_set_numeric_input("Progress", progress);
         }
 
         if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
             let p = &mut *locked_player.write().unwrap();
 
-            oo = !oo;
-            p.state_machine_set_boolean_input("OnOffSwitch", oo);
+            // oo = !oo;
+            // p.state_machine_set_boolean_input("OnOffSwitch", oo);
 
-            // rating += 1.0;
+            rating += 1.0;
             // println!("current state: {}", p.state_machine_current_state());
-            // p.state_machine_set_numeric_input("rating", rating);
+            p.state_machine_set_numeric_input("rating", rating);
         }
-        let p = &mut *locked_player.write().unwrap();
+        if window.is_key_pressed(Key::Delete, minifb::KeyRepeat::No) {
+            let p = &mut *locked_player.write().unwrap();
 
-        let (buffer_ptr, buffer_len) = (p.buffer_ptr(), p.buffer_len());
+            // oo = !oo;
+            // p.state_machine_set_boolean_input("OnOffSwitch", oo);
 
-        let buffer =
-            unsafe { std::slice::from_raw_parts(buffer_ptr as *const u32, buffer_len as usize) };
+            rating -= 1.0;
+            // println!("current state: {}", p.state_machine_current_state());
+            p.state_machine_set_numeric_input("rating", rating);
+        }
 
-        window.update_with_buffer(buffer, WIDTH, HEIGHT).unwrap();
+        let updated = timer.tick(&*locked_player.read().unwrap());
+
+        if updated {
+            let p = &mut *locked_player.write().unwrap();
+
+            let (buffer_ptr, buffer_len) = (p.buffer_ptr(), p.buffer_len());
+
+            let buffer = unsafe {
+                std::slice::from_raw_parts(buffer_ptr as *const u32, buffer_len as usize)
+            };
+
+            window.update_with_buffer(buffer, WIDTH, HEIGHT).unwrap();
+        }
     }
 }

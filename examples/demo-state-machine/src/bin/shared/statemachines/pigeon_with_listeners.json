@@ -97,7 +97,8 @@
       ]
     },
     {
-      "type": "PointerDown",
+      "type": "OnComplete",
+      "stateName": "feathersFalling",
       "actions": [
         {
           "type": "Fire",

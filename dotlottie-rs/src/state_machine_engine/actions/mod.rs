@@ -98,10 +98,7 @@ impl ActionTrait for Action {
         run_pipeline: bool,
     ) -> Result<(), StateMachineActionError> {
         match self {
-            Action::Increment {
-                input_name,
-                value,
-            } => {
+            Action::Increment { input_name, value } => {
                 let val = engine.get_numeric_input(input_name);
 
                 if let Some(val) = val {
@@ -142,10 +139,7 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::Decrement {
-                input_name,
-                value,
-            } => {
+            Action::Decrement { input_name, value } => {
                 let val = engine.get_numeric_input(input_name);
 
                 if let Some(val) = val {
@@ -195,27 +189,18 @@ impl ActionTrait for Action {
                 Ok(())
             }
             // Todo: Add support for setting a input to a input value
-            Action::SetBoolean {
-                input_name,
-                value,
-            } => {
+            Action::SetBoolean { input_name, value } => {
                 engine.set_boolean_input(input_name, *value, run_pipeline, true);
 
                 Ok(())
             }
             // Todo: Add support for setting a input to a input value
-            Action::SetNumeric {
-                input_name,
-                value,
-            } => {
+            Action::SetNumeric { input_name, value } => {
                 engine.set_numeric_input(input_name, *value, run_pipeline, true);
                 Ok(())
             }
             // Todo: Add support for setting a input to a input value
-            Action::SetString {
-                input_name,
-                value,
-            } => {
+            Action::SetString { input_name, value } => {
                 engine.set_string_input(input_name, value, run_pipeline, true);
 
                 Ok(())
@@ -322,13 +307,14 @@ impl ActionTrait for Action {
                     OpenUrlMode::Interaction => {
                         if let Some(event) = interaction {
                             if let Event::PointerDown { .. } = event {
-                                let _ = NativeOpenUrl::open_url(url, target, &engine);
+                                let _ =
+                                    NativeOpenUrl::open_url(url, target, &engine, player.clone());
                                 return Ok(());
                             }
                         }
                     }
                     OpenUrlMode::Allow => {
-                        let _ = NativeOpenUrl::open_url(url, target, &engine);
+                        let _ = NativeOpenUrl::open_url(url, target, &engine, player.clone());
                         return Ok(());
                     }
                 }

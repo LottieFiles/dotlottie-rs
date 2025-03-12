@@ -1,28 +1,29 @@
-use crate::StateMachineEngine;
-
-#[cfg(target_os = "emscripten")]
-mod em {
-    extern "C" {
-        pub fn emscripten_run_script(script: *const i8);
-    }
-}
+use crate::{DotLottiePlayerContainer, StateMachineEngine};
+use std::{rc::Rc, sync::RwLock};
 
 pub struct NativeOpenUrl;
 
 impl NativeOpenUrl {
-    pub fn open_url(url: &str, target: &str, engine: &StateMachineEngine) -> Result<(), String> {
+    pub fn open_url(
+        url: &str,
+        target: &str,
+        engine: &StateMachineEngine,
+        _player: Rc<RwLock<DotLottiePlayerContainer>>,
+    ) -> Result<(), String> {
         #[cfg(target_os = "emscripten")]
         unsafe {
             use std::ffi::CString;
 
             let command = if target.is_empty() {
-                format!("window.open('{}');", url)
+                format!("OpenUrl: {}", url)
             } else {
-                format!("window.open('{}', '{}');", url, target)
+                format!("OpenUrl: {} | Target: {}", url, target)
             };
 
-            let command_cstr = CString::new(command).unwrap();
-            em::emscripten_run_script(command_cstr.as_ptr() as *const i8);
+            _player
+                .read()
+                .unwrap()
+                .emit_state_machine_observer_on_custom_event(command);
 
             return Ok(());
         }

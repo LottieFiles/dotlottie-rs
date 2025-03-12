@@ -268,25 +268,29 @@ impl Animation for TvgAnimation {
             let layer_id = tvg::tvg_accessor_generate_id(layer_name_cstr.as_ptr());
             let layer_paint = tvg::tvg_picture_get_paint(paint, layer_id);
 
-            tvg::tvg_paint_get_obb(layer_paint, obb.as_mut_ptr());
+            if !layer_paint.is_null() {
+                tvg::tvg_paint_get_obb(layer_paint, obb.as_mut_ptr());
 
-            let e1 = tvg::Tvg_Point {
-                x: obb[1].x - obb[0].x,
-                y: obb[1].y - obb[0].y,
-            };
-            let e2 = tvg::Tvg_Point {
-                x: obb[3].x - obb[0].x,
-                y: obb[3].y - obb[0].y,
-            };
-            let o = tvg::Tvg_Point {
-                x: x - obb[0].x,
-                y: y - obb[0].y,
-            };
-            let u = (o.x * e1.x + o.y * e1.y) / (e1.x * e1.x + e1.y * e1.y);
-            let v = (o.x * e2.x + o.y * e2.y) / (e2.x * e2.x + e2.y * e2.y);
+                let e1 = tvg::Tvg_Point {
+                    x: obb[1].x - obb[0].x,
+                    y: obb[1].y - obb[0].y,
+                };
+                let e2 = tvg::Tvg_Point {
+                    x: obb[3].x - obb[0].x,
+                    y: obb[3].y - obb[0].y,
+                };
+                let o = tvg::Tvg_Point {
+                    x: x - obb[0].x,
+                    y: y - obb[0].y,
+                };
+                let u = (o.x * e1.x + o.y * e1.y) / (e1.x * e1.x + e1.y * e1.y);
+                let v = (o.x * e2.x + o.y * e2.y) / (e2.x * e2.x + e2.y * e2.y);
 
-            // Check if point is inside the OBB
-            Ok(u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0)
+                // Check if point is inside the OBB
+                Ok(u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0)
+            } else {
+                Ok(false)
+            }
         }
     }
 

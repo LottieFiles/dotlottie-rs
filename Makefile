@@ -100,7 +100,7 @@ EMSDK_VERSION := 3.1.73
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
-UNIFFI_BINDGEN_CPP_VERSION := v0.6.3+v0.25.0
+UNIFFI_BINDGEN_CPP_VERSION := v0.7.0+v0.28.3
 
 WASM_MODULE := DotLottiePlayer
 
@@ -418,7 +418,7 @@ define UNIFFI_BINDINGS_CPP_BUILD
 	$(UNIFFI_BINDGEN_CPP) \
 		--config $(RUNTIME_FFI)/uniffi.toml \
 		--out-dir $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS) \
-		$(RUNTIME_FFI)/src/dotlottie_player_cpp.udl
+		$(RUNTIME_FFI)/src/dotlottie_player.udl
 	sed -i .bak 's/uint8_t/char/g' $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/*
 	cp $(RUNTIME_FFI)/emscripten_bindings.cpp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/.
 endef
@@ -953,21 +953,8 @@ $(ANDROID): $(ANDROID_BUILD_TARGETS)
 .PHONY: $(APPLE)
 $(APPLE): $(APPLE_BUILD_TARGETS)
 
-.PHONY: pre-make-wasm
-pre-make-wasm:
-	@echo "Copy Cargo.wasm.toml to Cargo.toml..."
-	@cp $(RUNTIME_FFI)/Cargo.wasm.toml $(RUNTIME_FFI)/Cargo.toml
-
-.PHONY: post-make-wasm
-post-make-wasm:
-	@echo "Reset Cargo.toml..."
-	@git -C $(RUNTIME_FFI) checkout -- Cargo.toml
-
 .PHONY: $(WASM)
-$(WASM):
-	@$(MAKE) pre-make-wasm
-	@$(MAKE) $(WASM_BUILD_TARGETS)
-	@$(MAKE) post-make-wasm
+$(WASM): $(WASM_BUILD_TARGETS)
 
 .PHONY: $(NATIVE)
 $(NATIVE): $(RUNTIME_FFI)/target/$(RELEASE)/$(RUNTIME_FFI_LIB)

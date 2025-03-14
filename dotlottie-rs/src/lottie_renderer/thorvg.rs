@@ -200,11 +200,11 @@ impl Drop for TvgRenderer {
 
 #[cfg(feature = "thorvg-v1")]
 struct TweenState {
-    start_time: Instant,
     from: f32,
     to: f32,
-    duration: f32,
-    easing: [f32; 4],
+    start_time: Option<Instant>,
+    duration: Option<f32>,
+    easing: Option<[f32; 4]>,
 }
 
 pub struct TvgAnimation {
@@ -400,33 +400,35 @@ impl Animation for TvgAnimation {
         result.into_result()
     }
 
-    fn tween(&mut self, _from: f32, _to: f32, _progress: f32) -> Result<(), TvgError> {
+    fn tween(
+        &mut self,
+        _to: f32,
+        _duration: Option<f32>,
+        _easing: Option<[f32; 4]>,
+    ) -> Result<(), TvgError> {
         #[cfg(feature = "thorvg-v1")]
         {
-            if self.is_tweening() || _progress <= 0.0 {
+            if self.is_tweening() {
+                return Err(TvgError::InvalidArgument);
+            }
+            if _duration.is_some() && _duration.unwrap() <= 0.0 {
+                return Err(TvgError::InvalidArgument);
+            }
+            if _easing.is_some() && _easing.unwrap().iter().any(|&x| x < 0.0 || x > 1.0) {
                 return Err(TvgError::InvalidArgument);
             }
 
-            unsafe {
-                tvg::tvg_lottie_animation_tween(self.raw_animation, _from, _to, _progress)
-                    .into_result()
-            }
-        }
-
-        #[cfg(not(feature = "thorvg-v1"))]
-        Err(TvgError::NotSupported)
-    }
-
-    fn tween_to(&mut self, _to: f32, _duration: f32, _easing: [f32; 4]) -> Result<(), TvgError> {
-        #[cfg(feature = "thorvg-v1")]
-        {
-            if self.is_tweening() || _duration <= 0.0 {
-                return Err(TvgError::InvalidArgument);
-            }
+            let from = self.get_frame()?;
 
             self.tween_state = Some(TweenState {
-                start_time: Instant::now(),
-                from: self.get_frame()?,
+                start_time: {
+                    if _duration.is_some() {
+                        Some(Instant::now())
+                    } else {
+                        None
+                    }
+                },
+                from,
                 to: _to,
                 duration: _duration,
                 easing: _easing,
@@ -447,16 +449,44 @@ impl Animation for TvgAnimation {
         false
     }
 
-    fn tween_update(&mut self) -> Result<bool, TvgError> {
+    fn tween_stop(&mut self) -> Result<(), TvgError> {
         #[cfg(feature = "thorvg-v1")]
         {
+            self.tween_state = None;
+            Ok(())
+        }
+
+        #[cfg(not(feature = "thorvg-v1"))]
+        Err(TvgError::NotSupported)
+    }
+
+    fn tween_update(&mut self, _given_progress: Option<f32>) -> Result<bool, TvgError> {
+        #[cfg(feature = "thorvg-v1")]
+        {
+            if self.tween_state.is_some() && self.tween_state.as_ref().unwrap().duration.is_none() {
+                if _given_progress.is_none() {
+                    return Err(TvgError::InvalidArgument);
+                }
+
+                unsafe {
+                    tvg::tvg_lottie_animation_tween(
+                        self.raw_animation,
+                        self.tween_state.as_ref().unwrap().from.clone(),
+                        self.tween_state.as_ref().unwrap().to.clone(),
+                        _given_progress.unwrap(),
+                    );
+                };
+
+                return Ok(true);
+            }
+
             if let Some(tween_state) = self.tween_state.as_mut() {
-                let elapsed = Instant::now().duration_since(tween_state.start_time);
-                let t = elapsed.as_secs_f32() / tween_state.duration;
+                let elapsed = Instant::now().duration_since(tween_state.start_time.unwrap());
+                let t = elapsed.as_secs_f32() / tween_state.duration.unwrap();
                 let progress = if t >= 1.0 {
                     1.0
                 } else {
-                    let [x1, y1, x2, y2] = tween_state.easing;
+                    let [x1, y1, x2, y2] = tween_state.easing.unwrap_or([0.0, 0.0, 1.0, 1.0]);
                     bezier::cubic_bezier(t, x1, y1, x2, y2)
                 };
 

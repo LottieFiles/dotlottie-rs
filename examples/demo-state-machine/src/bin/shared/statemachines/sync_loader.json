@@ -1,0 +1,41 @@
+{
+  "initial": "sync",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "sync",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "sync",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "LessThanOrEqual",
+              "inputName": "progress",
+              "compareTo": 100.0
+            }
+          ]
+        }
+      ],
+      "entryActions": [
+        {
+          "type": "SetProgress",
+          "value": "$progress"
+        }
+      ]
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    {
+      "type": "Numeric",
+      "name": "progress",
+      "value": 0
+    },
+    {
+      "type": "Event",
+      "name": "step"
+    }
+  ]
+}

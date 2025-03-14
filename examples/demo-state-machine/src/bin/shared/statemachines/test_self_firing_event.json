@@ -1,0 +1,70 @@
+{
+  "initial": "star_1",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "star_1",
+      "autoplay": true,
+      "segment": "star_1",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "star_2",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "Step"
+            }
+          ]
+        }
+      ],
+      "entryActions": [
+        {
+          "type": "Fire",
+          "inputName": "Step"
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "star_2",
+      "autoplay": true,
+      "segment": "star_2",
+      "transitions": [],
+      "entryActions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "star_3",
+      "autoplay": true,
+      "segment": "star_3",
+      "transitions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "star_4",
+      "autoplay": true,
+      "segment": "star_4",
+      "transitions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "star_5",
+      "autoplay": true,
+      "segment": "star_5",
+      "transitions": []
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    {
+      "type": "Numeric",
+      "name": "rating",
+      "value": 0
+    },
+    {
+      "type": "Event",
+      "name": "Step"
+    }
+  ]
+}

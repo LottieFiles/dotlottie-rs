@@ -22,6 +22,8 @@ base64 = "0.22.1"
 json = "0.12.4"
 jzon = "0.12.5"
 spin = "0.9"
+url = "2.5.4"
+glob = "0.3.2"
 
 [build-dependencies]
 bindgen = "0.70.1"
@@ -31,7 +33,7 @@ conan2 = "0.1"
 [dev-dependencies]
 criterion = "0.5.1"
 # This is a workaround to enable this feature only on dev.
-dotlottie-rs= { path = ".", features = ["thorvg-v0"] }
+dotlottie-rs = { path = ".", features = ["thorvg-v0"] }
 
 [[bench]]
 name = "benchmarks"

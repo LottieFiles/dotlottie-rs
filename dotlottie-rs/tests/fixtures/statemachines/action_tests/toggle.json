@@ -1,0 +1,82 @@
+{
+  "initial": "global",
+  "states": [
+    {
+      "animation": "",
+      "name": "global",
+      "type": "GlobalState",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "a",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "inputName": "OnOffSwitch",
+              "compareTo": true
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "inputName": "OnOffSwitch",
+              "compareTo": false
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "c",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "Step"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a",
+      "animation": "",
+      "type": "PlaybackState",
+      "transitions": []
+    },
+    {
+      "name": "b",
+      "animation": "",
+      "type": "PlaybackState",
+      "transitions": []
+    },
+    {
+      "name": "c",
+      "animation": "",
+      "type": "PlaybackState",
+      "transitions": [],
+      "entryActions": [
+        {
+          "type": "Toggle",
+          "inputName": "OnOffSwitch"
+        }
+      ]
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    {
+      "type": "Boolean",
+      "name": "OnOffSwitch",
+      "value": false
+    },
+    {
+      "type": "Event",
+      "name": "Step"
+    }
+  ]
+}

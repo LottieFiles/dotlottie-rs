@@ -1,0 +1,40 @@
+{
+  "initial": "Start",
+  "states": [
+    {
+      "animationId": "scroll",
+      "type": "PlaybackState",
+      "name": "Start",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "Start",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "Step"
+            }
+          ]
+        }
+      ],
+      "entryActions": [
+        {
+          "type": "SetProgress",
+          "value": "$Progress"
+        }
+      ]
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    {
+      "type": "Numeric",
+      "name": "Progress",
+      "value": 0
+    },
+    {
+      "type": "Event",
+      "name": "Step"
+    }
+  ]
+}

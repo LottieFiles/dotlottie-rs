@@ -714,6 +714,8 @@ impl DotLottieRuntime {
             self.set_frame(marker.time);
 
             self.render();
+        } else {
+            self.config.marker = String::new();
         }
     }
 

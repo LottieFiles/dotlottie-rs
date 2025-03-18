@@ -1071,30 +1071,28 @@ impl StateMachineEngine {
                     // We're only interested in the listened layers that need enter / exit event
                     if event_name == event_type_name!(PointerEnter)
                         || event_name == event_type_name!(PointerExit)
+                            && player_container.intersect(x, y, &layer)
                     {
-                        if player_container.intersect(x, y, &layer) {
-                            hit = true;
+                        hit = true;
 
-                            // If it's that same current layer, do nothing
-                            if self.pointer_management.curr_entered_layer == *layer {
-                                break;
-                            }
+                        // If it's that same current layer, do nothing
+                        if self.pointer_management.curr_entered_layer == *layer {
+                            break;
+                        }
 
-                            self.pointer_management.curr_entered_layer = layer.to_string();
+                        self.pointer_management.curr_entered_layer = layer.to_string();
 
-                            // Get all pointer_enter interactions
-                            let pointer_enter_interactions =
-                                self.interactions(Some(event_type_name!(PointerEnter).to_string()));
+                        // Get all pointer_enter interactions
+                        let pointer_enter_interactions =
+                            self.interactions(Some(event_type_name!(PointerEnter).to_string()));
 
-                            // Add their actions if their layer name matches the current layer name in loop
-                            for interaction in pointer_enter_interactions {
-                                if let Some(interaction_layer_name) = interaction.get_layer_name() {
-                                    if *interaction_layer_name
-                                        == self.pointer_management.curr_entered_layer
-                                    {
-                                        actions_to_execute
-                                            .extend(interaction.get_actions().clone());
-                                    }
+                        // Add their actions if their layer name matches the current layer name in loop
+                        for interaction in pointer_enter_interactions {
+                            if let Some(interaction_layer_name) = interaction.get_layer_name() {
+                                if *interaction_layer_name
+                                    == self.pointer_management.curr_entered_layer
+                                {
+                                    actions_to_execute.extend(interaction.get_actions().clone());
                                 }
                             }
                         }

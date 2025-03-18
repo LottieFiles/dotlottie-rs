@@ -14,13 +14,20 @@ struct Player {
 
 impl Player {
     fn new(animation_path: &str) -> Self {
-        let mut player = DotLottiePlayer::new(Config {
+        let player = DotLottiePlayer::new(Config {
             autoplay: true,
             loop_animation: true,
             ..Default::default()
         });
 
-        player.load_animation_path(animation_path, WIDTH as u32, HEIGHT as u32);
+        let is_dotlottie = animation_path.ends_with(".lottie");
+
+        if is_dotlottie {
+            let data = std::fs::read(animation_path).unwrap();
+            player.load_dotlottie_data(&data, WIDTH as u32, HEIGHT as u32);
+        } else {
+            player.load_animation_path(animation_path, WIDTH as u32, HEIGHT as u32);
+        }
 
         for marker in player.markers() {
             println!("Marker '{}' at frame {}", marker.name, marker.time);

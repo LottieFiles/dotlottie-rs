@@ -10,8 +10,6 @@ use dotlottie_rs::{
     Marker, Mode,
 };
 
-use dotlottie_rs::actions::open_url::OpenUrl;
-
 // Function return codes
 pub const DOTLOTTIE_SUCCESS: i32 = 0;
 pub const DOTLOTTIE_ERROR: i32 = 1;
@@ -48,7 +46,9 @@ bitflags! {
 pub(crate) struct InteractionTypeParseError;
 
 impl InteractionType {
-    pub fn new(interaction_types: &Vec<String>) -> Result<InteractionType, InteractionTypeParseError> {
+    pub fn new(
+        interaction_types: &Vec<String>,
+    ) -> Result<InteractionType, InteractionTypeParseError> {
         let mut result: InteractionType = InteractionType::UNSET;
         for interaction_type in interaction_types {
             result |= InteractionType::from_str(interaction_type)?;

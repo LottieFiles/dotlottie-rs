@@ -179,25 +179,35 @@ impl Default for Config {
 
 #[repr(C)]
 pub struct LayerBoundingBox {
-    pub x: f32,
-    pub y: f32,
-    pub w: f32,
-    pub h: f32,
+    pub x1: f32,
+    pub y1: f32,
+    pub x2: f32,
+    pub y2: f32,
+    pub x3: f32,
+    pub y3: f32,
+    pub x4: f32,
+    pub y4: f32,
 }
 
 impl From<LayerBoundingBox> for Vec<f32> {
     fn from(bbox: LayerBoundingBox) -> Vec<f32> {
-        vec![bbox.x, bbox.y, bbox.w, bbox.h]
+        vec![
+            bbox.x1, bbox.y1, bbox.x2, bbox.y2, bbox.x3, bbox.y3, bbox.x4, bbox.y4,
+        ]
     }
 }
 
 impl Default for LayerBoundingBox {
     fn default() -> Self {
         LayerBoundingBox {
-            x: 0.0,
-            y: 0.0,
-            w: 0.0,
-            h: 0.0,
+            x1: 0.0,
+            y1: 0.0,
+            x2: 0.0,
+            y2: 0.0,
+            x3: 0.0,
+            y3: 0.0,
+            x4: 0.0,
+            y4: 0.0,
         }
     }
 }
@@ -291,6 +301,25 @@ impl DotLottieRuntime {
 
     pub fn intersect(&self, x: f32, y: f32, layer_name: &str) -> bool {
         self.renderer.intersect(x, y, layer_name).unwrap_or(false)
+    }
+
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+        let bbox = self.renderer.get_layer_bounds(layer_name);
+
+        match bbox {
+            Err(_) => LayerBoundingBox::default().into(),
+            Ok(bbox) => LayerBoundingBox {
+                x1: bbox.0,
+                y1: bbox.1,
+                x2: bbox.2,
+                y2: bbox.3,
+                x3: bbox.4,
+                y3: bbox.5,
+                x4: bbox.6,
+                y4: bbox.7,
+            }
+            .into(),
+        }
     }
 
     pub fn is_loaded(&self) -> bool {
@@ -1678,6 +1707,10 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().markers()
     }
 
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+        self.runtime.read().unwrap().get_layer_bounds(layer_name)
+    }
+
     pub fn active_animation_id(&self) -> String {
         self.runtime
             .read()
@@ -1860,6 +1893,10 @@ impl DotLottiePlayer {
 
     pub fn intersect(&self, x: f32, y: f32, layer_name: &str) -> bool {
         self.player.read().unwrap().intersect(x, y, layer_name)
+    }
+
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+        self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 
     pub fn state_machine_start(&self, open_url: OpenUrl) -> bool {

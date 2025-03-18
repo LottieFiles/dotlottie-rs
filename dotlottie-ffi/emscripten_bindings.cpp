@@ -136,6 +136,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("stateMachineGetStringInput", &DotLottiePlayer::state_machine_get_string_input)
         .function("stateMachineGetBooleanInput", &DotLottiePlayer::state_machine_get_boolean_input)
         .function("intersect", &DotLottiePlayer::intersect)
+        .function("getLayerBounds", &DotLottiePlayer::get_layer_bounds)
 
         .function("tick", &DotLottiePlayer::tick)
         .function("tween", &DotLottiePlayer::tween)

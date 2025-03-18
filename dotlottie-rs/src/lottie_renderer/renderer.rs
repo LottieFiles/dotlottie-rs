@@ -37,6 +37,11 @@ pub trait Animation: Default {
 
     fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, Self::Error>;
 
+    fn get_layer_bounds(
+        &self,
+        layer_name: &str,
+    ) -> Result<(f32, f32, f32, f32, f32, f32, f32, f32), Self::Error>;
+
     fn get_size(&self) -> Result<(f32, f32), Self::Error>;
 
     fn set_size(&mut self, width: f32, height: f32) -> Result<(), Self::Error>;

@@ -71,10 +71,14 @@ typedef struct DotLottieConfig {
 } DotLottieConfig;
 
 typedef struct LayerBoundingBox {
-  float x;
-  float y;
-  float w;
-  float h;
+  float x1;
+  float y1;
+  float x2;
+  float y2;
+  float x3;
+  float y3;
+  float x4;
+  float y4;
 } LayerBoundingBox;
 
 typedef struct DotLottieOption_DotLottieString {
@@ -116,7 +120,9 @@ typedef enum DotLottieEvent_Tag {
   PointerMove,
   PointerEnter,
   PointerExit,
+  Click,
   OnComplete,
+  OnLoopComplete,
 } DotLottieEvent_Tag;
 
 typedef struct PointerDown_Body {
@@ -144,6 +150,11 @@ typedef struct PointerExit_Body {
   float y;
 } PointerExit_Body;
 
+typedef struct Click_Body {
+  float x;
+  float y;
+} Click_Body;
+
 typedef struct DotLottieEvent {
   DotLottieEvent_Tag tag;
   union {
@@ -152,6 +163,7 @@ typedef struct DotLottieEvent {
     PointerMove_Body pointer_move;
     PointerEnter_Body pointer_enter;
     PointerExit_Body pointer_exit;
+    Click_Body click;
   };
 } DotLottieEvent;
 
@@ -167,17 +179,15 @@ typedef void (*OnStateErrorOp)(const char*);
 
 typedef void (*OnStateMachineStartOp)(void);
 
-typedef void (*OnStateMachinePauseOp)(void);
-
 typedef void (*OnStateMachineStopOp)(void);
 
-typedef void (*OnStringTriggerValueChangeOp)(const char*, const char*, const char*);
+typedef void (*OnStringInputValueChangeOp)(const char*, const char*, const char*);
 
-typedef void (*OnNumericTriggerValueChangeOp)(const char*, float, float);
+typedef void (*OnNumericInputValueChangeOp)(const char*, float, float);
 
-typedef void (*OnBooleanTriggerValueChangeOp)(const char*, bool, bool);
+typedef void (*OnBooleanInputValueChangeOp)(const char*, bool, bool);
 
-typedef void (*OnTriggerFiredOp)(const char*);
+typedef void (*OnInputFiredOp)(const char*);
 
 typedef struct StateMachineObserver {
   OnTransitionOp on_transition_op;
@@ -186,12 +196,11 @@ typedef struct StateMachineObserver {
   OnStateCustomEventOp on_state_custom_event_op;
   OnStateErrorOp on_state_error_op;
   OnStateMachineStartOp on_state_machine_start_op;
-  OnStateMachinePauseOp on_state_machine_pause_op;
   OnStateMachineStopOp on_state_machine_stop_op;
-  OnStringTriggerValueChangeOp on_string_trigger_value_change_op;
-  OnNumericTriggerValueChangeOp on_numeric_trigger_value_change_op;
-  OnBooleanTriggerValueChangeOp on_boolean_trigger_value_change_op;
-  OnTriggerFiredOp on_trigger_fired_op;
+  OnStringInputValueChangeOp on_string_input_value_change_op;
+  OnNumericInputValueChangeOp on_numeric_input_value_change_op;
+  OnBooleanInputValueChangeOp on_boolean_input_value_change_op;
+  OnInputFiredOp on_input_fired_op;
 } StateMachineObserver;
 
 typedef void (*OnOp)(void);
@@ -330,26 +339,24 @@ int32_t dotlottie_state_machine_load(struct DotLottiePlayer *ptr, const char *st
 int32_t dotlottie_state_machine_load_data(struct DotLottiePlayer *ptr,
                                           const char *state_machine_definition);
 
-int32_t dotlottie_state_machine_override_current_state1(struct DotLottiePlayer *ptr,
-                                                        const char *state_name,
-                                                        bool do_tick);
+int32_t dotlottie_state_machine_override_current_state(struct DotLottiePlayer *ptr,
+                                                       const char *state_name,
+                                                       bool do_tick);
 
 int32_t dotlottie_state_machine_post_event(struct DotLottiePlayer *ptr,
                                            const struct DotLottieEvent *event);
 
-int32_t dotlottie_state_machine_set_boolean_trigger(struct DotLottiePlayer *ptr,
-                                                    const char *key,
-                                                    bool value);
+int32_t dotlottie_state_machine_set_boolean_input(struct DotLottiePlayer *ptr,
+                                                  const char *key,
+                                                  bool value);
 
-int32_t dotlottie_state_machine_set_numeric_trigger(struct DotLottiePlayer *ptr,
-                                                    const char *key,
-                                                    float value);
+int32_t dotlottie_state_machine_set_numeric_input(struct DotLottiePlayer *ptr,
+                                                  const char *key,
+                                                  float value);
 
-int32_t dotlottie_state_machine_set_string_trigger(struct DotLottiePlayer *ptr,
-                                                   const char *key,
-                                                   const char *value);
-
-int32_t dotlottie_state_machine_start(struct DotLottiePlayer *ptr);
+int32_t dotlottie_state_machine_set_string_input(struct DotLottiePlayer *ptr,
+                                                 const char *key,
+                                                 const char *value);
 
 int32_t dotlottie_state_machine_status(struct DotLottiePlayer *ptr, char *result);
 

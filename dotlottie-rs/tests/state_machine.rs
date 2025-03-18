@@ -21,7 +21,9 @@ mod tests {
             fs::metadata("tests/fixtures/statemachines/normal_usecases/sm_exploding_pigeon.lottie")
                 .expect("unable to read metadata");
         let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
-        markers.read(&mut markers_buffer).expect("buffer overflow");
+        markers
+            .read_exact(&mut markers_buffer)
+            .expect("buffer overflow");
 
         player.load_dotlottie_data(&markers_buffer, 500, 500);
 
@@ -50,7 +52,7 @@ mod tests {
 
         let r = player.state_machine_start(OpenUrl::default());
 
-        assert_eq!(r, false);
+        assert!(!r);
 
         let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
         player.state_machine_load_data(global_state);
@@ -69,7 +71,7 @@ mod tests {
         // Not started
         let r = player.state_machine_stop();
 
-        assert_eq!(r, false);
+        assert!(!r);
 
         let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
         player.state_machine_load_data(global_state);
@@ -176,16 +178,16 @@ mod tests {
         let r = player.state_machine_start(OpenUrl::default());
         assert!(r);
 
-        assert_eq!(player.state_machine_get_boolean_input("OnOffSwitch"), false);
+        assert!(!player.state_machine_get_boolean_input("OnOffSwitch"));
 
         // Setting the inputs
         player.state_machine_set_boolean_input("OnOffSwitch", true);
         assert_eq!(player.state_machine_current_state(), "a".to_string());
-        assert_eq!(player.state_machine_get_boolean_input("OnOffSwitch"), true);
+        assert!(player.state_machine_get_boolean_input("OnOffSwitch"));
 
         player.state_machine_set_boolean_input("OnOffSwitch", false);
         assert_eq!(player.state_machine_current_state(), "b".to_string());
-        assert_eq!(player.state_machine_get_boolean_input("OnOffSwitch"), false);
+        assert!(!player.state_machine_get_boolean_input("OnOffSwitch"));
     }
 
     #[test]

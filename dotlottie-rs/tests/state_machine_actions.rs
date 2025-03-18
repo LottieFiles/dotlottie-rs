@@ -379,7 +379,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_3");
 
-        let expected_events = vec![
+        let expected_events = [
             "on_transition: star_0 -> star_3".to_string(),
             "on_state_exit: star_0".to_string(),
             "on_state_entered: star_3".to_string(),

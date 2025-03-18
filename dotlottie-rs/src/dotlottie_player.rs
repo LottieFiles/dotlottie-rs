@@ -1776,27 +1776,24 @@ impl DotLottiePlayerContainer {
             let sf = self.set_frame(next_frame) && self.render();
 
             let mut is_sm_still_tweening = false;
-            match self.state_machine.try_read() {
-                Ok(state_machine) => {
-                    let sm = &*state_machine;
 
-                    if let Some(sm) = sm {
-                        if sm.status == StateMachineEngineStatus::Tweening {
-                            is_sm_still_tweening = true;
-                        }
+            if let Ok(state_machine) = self.state_machine.try_read() {
+                let sm = &*state_machine;
+
+                if let Some(sm) = sm {
+                    if sm.status == StateMachineEngineStatus::Tweening {
+                        is_sm_still_tweening = true;
                     }
                 }
-                Err(_) => {}
             }
 
             if is_sm_still_tweening {
-                match self.state_machine.try_write() {
-                    Ok(mut state_machine) => {
+                if let Ok(mut state_machine) = self.state_machine.try_write() {
+                    {
                         if let Some(sm) = state_machine.as_mut() {
                             sm.resume_from_tweening();
                         }
                     }
-                    Err(_) => {}
                 }
             }
 
@@ -1806,7 +1803,7 @@ impl DotLottiePlayerContainer {
 
     pub fn tween(&self, to: f32, duration: Option<f32>, easing: Option<Vec<f32>>) -> bool {
         // Convert Vec<f32> to [f32; 4]
-        let easing = easing.map_or(None, |e| {
+        let easing = easing.and_then(|e| {
             if e.len() == 4 {
                 Some([e[0], e[1], e[2], e[3]])
             } else {
@@ -1828,7 +1825,7 @@ impl DotLottiePlayerContainer {
         easing: Option<Vec<f32>>,
     ) -> bool {
         // Convert Vec<f32> to [f32; 4]
-        let easing = easing.map_or(None, |e| {
+        let easing = easing.and_then(|e| {
             if e.len() == 4 {
                 Some([e[0], e[1], e[2], e[3]])
             } else {
@@ -1890,7 +1887,7 @@ impl DotLottiePlayer {
             return sm;
         }
 
-        return "".to_string();
+        "".to_string()
     }
 
     pub fn intersect(&self, x: f32, y: f32, layer_name: &str) -> bool {
@@ -1945,7 +1942,6 @@ impl DotLottiePlayer {
                     }
 
                     *state_machine = None;
-                    println!("State machine stopped {:?}", state_machine.is_some());
                 }
             }
             Err(_) => return false,

@@ -253,10 +253,8 @@ impl StateMachineEngine {
             let _ = self.run_current_state_pipeline();
         }
 
-        if let Some(old_value) = &ret {
-            if let InputValue::Numeric(old_value) = *old_value {
-                self.observe_numeric_input_value_change(key, old_value, value);
-            }
+        if let Some(InputValue::Numeric(old_value)) = &ret {
+            self.observe_numeric_input_value_change(key, *old_value, value);
         }
 
         ret
@@ -287,10 +285,8 @@ impl StateMachineEngine {
             let _ = self.run_current_state_pipeline();
         }
 
-        if let Some(old_value) = ret.clone() {
-            if let InputValue::String(old_value) = old_value {
-                self.observe_string_input_value_change(key, &old_value, value);
-            }
+        if let Some(InputValue::String(old_value)) = ret.clone() {
+            self.observe_string_input_value_change(key, &old_value, value);
         }
 
         ret
@@ -321,10 +317,8 @@ impl StateMachineEngine {
             let _ = self.run_current_state_pipeline();
         }
 
-        if let Some(old_value) = ret.clone() {
-            if let InputValue::Boolean(old_value) = old_value {
-                self.observe_boolean_input_value_change(key, old_value, value);
-            }
+        if let Some(InputValue::Boolean(old_value)) = ret.clone() {
+            self.observe_boolean_input_value_change(key, old_value, value);
         }
 
         ret
@@ -342,28 +336,24 @@ impl StateMachineEngine {
 
         let ret = self.inputs.reset(key);
 
-        match ret {
-            Some((old_value, new_value)) => match old_value {
-                InputValue::Numeric(old_value) => match new_value {
-                    InputValue::Numeric(new_value) => {
+        if let Some((old_value, new_value)) = ret {
+            match old_value {
+                InputValue::Numeric(old_value) => {
+                    if let InputValue::Numeric(new_value) = new_value {
                         self.observe_numeric_input_value_change(key, old_value, new_value);
                     }
-                    _ => {}
-                },
-                InputValue::String(old_value) => match new_value {
-                    InputValue::String(new_value) => {
+                }
+                InputValue::String(old_value) => {
+                    if let InputValue::String(new_value) = new_value {
                         self.observe_string_input_value_change(key, &old_value, &new_value);
                     }
-                    _ => {}
-                },
-                InputValue::Boolean(old_value) => match new_value {
-                    InputValue::Boolean(new_value) => {
+                }
+                InputValue::Boolean(old_value) => {
+                    if let InputValue::Boolean(new_value) = new_value {
                         self.observe_boolean_input_value_change(key, old_value, new_value);
                     }
-                    _ => {}
-                },
-            },
-            None => {}
+                }
+            }
         }
 
         if called_from_action {
@@ -377,7 +367,7 @@ impl StateMachineEngine {
     pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), StateMachineEngineError> {
         // If the event is a valid input
         if let Some(valid_event) = self.event_input.get(event) {
-            self.observe_on_input_fired(&valid_event);
+            self.observe_on_input_fired(valid_event);
 
             self.curr_event = Some(valid_event.to_string());
 
@@ -401,10 +391,10 @@ impl StateMachineEngine {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine::default();
         if parsed_state_machine.is_err() {
-            println!(
-                "Error parsing state machine definition: {:?}",
-                parsed_state_machine.err()
-            );
+            // println!(
+            //     "Error parsing state machine definition: {:?}",
+            //     parsed_state_machine.err()
+            // );
             return Err(StateMachineEngineError::ParsingError {
                 reason: "Failed to parse state machine definition".to_string(),
             });
@@ -459,7 +449,7 @@ impl StateMachineEngine {
                 match check_report {
                     Ok(_) => {}
                     Err(error) => {
-                        println!("Error loading state machine: {:?}", error);
+                        // println!("Error loading state machine: {:?}", error);
                         return Err(StateMachineEngineError::ParsingError {
                             reason: error.to_string(),
                         });
@@ -470,7 +460,7 @@ impl StateMachineEngine {
                 match err {
                     Ok(_) => {}
                     Err(error) => {
-                        println!("Error loading state machine: {:?}", error);
+                        // println!("Error loading state machine: {:?}", error);
                         return Err(StateMachineEngineError::CreationError {
                             reason: error.to_string(),
                         });
@@ -552,30 +542,28 @@ impl StateMachineEngine {
         // Get every layer we listen to
         for interaction in interactions {
             match interaction {
-                Interaction::PointerEnter { layer_name, .. } => {
-                    if let Some(layer) = layer_name {
-                        all_listened_layers
-                            .push((layer.clone(), event_type_name!(PointerEnter).to_string()));
-                    }
+                Interaction::PointerEnter {
+                    layer_name: Some(layer),
+                    ..
+                } => {
+                    all_listened_layers
+                        .push((layer.clone(), event_type_name!(PointerEnter).to_string()));
                 }
-                Interaction::PointerExit { layer_name, .. } => {
-                    if let Some(layer) = layer_name {
-                        all_listened_layers
-                            .push((layer.clone(), event_type_name!(PointerExit).to_string()))
-                    }
-                }
-                Interaction::PointerUp { layer_name, .. } => {
-                    if let Some(layer) = layer_name {
-                        all_listened_layers
-                            .push((layer.clone(), event_type_name!(PointerUp).to_string()))
-                    }
-                }
-                Interaction::PointerDown { layer_name, .. } => {
-                    if let Some(layer) = layer_name {
-                        all_listened_layers
-                            .push((layer.clone(), event_type_name!(PointerDown).to_string()))
-                    }
-                }
+                Interaction::PointerExit {
+                    layer_name: Some(layer),
+                    ..
+                } => all_listened_layers
+                    .push((layer.clone(), event_type_name!(PointerExit).to_string())),
+                Interaction::PointerUp {
+                    layer_name: Some(layer),
+                    ..
+                } => all_listened_layers
+                    .push((layer.clone(), event_type_name!(PointerUp).to_string())),
+                Interaction::PointerDown {
+                    layer_name: Some(layer),
+                    ..
+                } => all_listened_layers
+                    .push((layer.clone(), event_type_name!(PointerDown).to_string())),
                 _ => {}
             }
         }
@@ -687,33 +675,30 @@ impl StateMachineEngine {
                     if let Some(unwrapped_player) = &self.player {
                         let read_lock = &unwrapped_player.try_read();
 
-                        match read_lock {
-                            Ok(player) => {
-                                match &*new_state {
-                                    // If we're transitioning to a PlaybackState, grab the start segment
-                                    State::PlaybackState { segment, .. } => {
-                                        if let Some(target_segment) = segment {
-                                            self.status = StateMachineEngineStatus::Tweening;
-                                            self.tween_transition_target_state =
-                                                Some(new_state.clone());
+                        if let Ok(player) = read_lock {
+                            match &*new_state {
+                                // If we're transitioning to a PlaybackState, grab the start segment
+                                State::PlaybackState { segment, .. } => {
+                                    if let Some(target_segment) = segment {
+                                        self.status = StateMachineEngineStatus::Tweening;
+                                        self.tween_transition_target_state =
+                                            Some(new_state.clone());
 
-                                            // Tweening is activated and the state machine has been paused whilst it transitions
-                                            player.tween_to_marker(
-                                                target_segment,
-                                                Some(causing_transition.duration()),
-                                                Some(causing_transition.easing().to_vec()),
-                                            );
+                                        // Tweening is activated and the state machine has been paused whilst it transitions
+                                        player.tween_to_marker(
+                                            target_segment,
+                                            Some(causing_transition.duration()),
+                                            Some(causing_transition.easing().to_vec()),
+                                        );
 
-                                            return Ok(());
-                                        }
-                                    }
-                                    // If we're transitioning to a GlobalState, do nothing
-                                    State::GlobalState { .. } => {
                                         return Ok(());
                                     }
                                 }
+                                // If we're transitioning to a GlobalState, do nothing
+                                State::GlobalState { .. } => {
+                                    return Ok(());
+                                }
                             }
-                            Err(_) => {}
                         }
                     }
                 }
@@ -1071,7 +1056,7 @@ impl StateMachineEngine {
                     // We're only interested in the listened layers that need enter / exit event
                     if event_name == event_type_name!(PointerEnter)
                         || event_name == event_type_name!(PointerExit)
-                            && player_container.intersect(x, y, &layer)
+                            && player_container.intersect(x, y, layer)
                     {
                         hit = true;
 

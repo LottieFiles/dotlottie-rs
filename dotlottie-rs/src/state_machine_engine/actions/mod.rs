@@ -282,15 +282,15 @@ impl ActionTrait for Action {
                 let open_url_config = &engine.open_url_config;
 
                 // If theres a whitelist and the url isn't present, do nothing
-                if open_url_config.whitelist.len() != 0 {
+                if !open_url_config.whitelist.is_empty() {
                     let mut whitelist = Whitelist::new();
 
                     // Add patterns to whitelist
                     for entry in &open_url_config.whitelist {
-                        let _ = whitelist.add(&entry);
+                        let _ = whitelist.add(entry);
                     }
 
-                    if let Ok(false) | Err(_) = whitelist.is_allowed(&url) {
+                    if let Ok(false) | Err(_) = whitelist.is_allowed(url) {
                         return Err(StateMachineActionError::ExecuteError(
                             "URL contained inside the Action has not been whitelisted.".to_string(),
                         ));
@@ -305,16 +305,13 @@ impl ActionTrait for Action {
                         ));
                     }
                     OpenUrlMode::Interaction => {
-                        if let Some(event) = interaction {
-                            if let Event::PointerDown { .. } = event {
-                                let _ =
-                                    NativeOpenUrl::open_url(url, target, &engine, player.clone());
-                                return Ok(());
-                            }
+                        if let Some(Event::PointerDown { .. }) = interaction {
+                            let _ = NativeOpenUrl::open_url(url, target, engine, player.clone());
+                            return Ok(());
                         }
                     }
                     OpenUrlMode::Allow => {
-                        let _ = NativeOpenUrl::open_url(url, target, &engine, player.clone());
+                        let _ = NativeOpenUrl::open_url(url, target, engine, player.clone());
                         return Ok(());
                     }
                 }

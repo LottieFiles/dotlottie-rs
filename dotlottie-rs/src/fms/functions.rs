@@ -63,7 +63,7 @@ pub fn get_animation(
                     let image_ext = asset["p"]
                         .to_string()
                         .split('.')
-                        .last()
+                        .next_back()
                         .unwrap()
                         .to_string()
                         .replace('"', "");

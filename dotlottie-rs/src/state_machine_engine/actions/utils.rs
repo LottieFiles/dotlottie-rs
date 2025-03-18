@@ -33,7 +33,7 @@ impl NativeOpenUrl {
             let _ = target.to_lowercase();
             let command = format!("OpenUrl: {}", url);
             engine.observe_framework_open_url_event(&command);
-            return Ok(());
+            Ok(())
         }
     }
 }

@@ -558,11 +558,16 @@ pub unsafe extern "C" fn dotlottie_layer_bounds(
             Err(_) => return DOTLOTTIE_INVALID_PARAMETER,
         };
         match dotlottie_player.get_layer_bounds(&layer_name).as_slice() {
-            [x, y, w, h] => {
-                bounding_box.x = *x;
-                bounding_box.y = *y;
-                bounding_box.w = *w;
-                bounding_box.h = *h;
+            [x1, y1, x2, y2, x3, y3, x4, y4] => {
+                bounding_box.x1 = *x1;
+                bounding_box.y1 = *y1;
+                bounding_box.x2 = *x2;
+                bounding_box.y2 = *y2;
+                bounding_box.x3 = *x3;
+                bounding_box.y3 = *y3;
+                bounding_box.x4 = *x4;
+                bounding_box.y4 = *y4;
+
                 DOTLOTTIE_SUCCESS
             }
             _ => DOTLOTTIE_ERROR,

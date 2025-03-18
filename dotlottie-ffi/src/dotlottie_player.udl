@@ -170,6 +170,7 @@ interface DotLottiePlayer {
     boolean set_viewport(i32 x, i32 y, i32 w, i32 h);
     f32 segment_duration();
     sequence<f32> animation_size();
+    boolean intersect(f32 x, f32 y, [ByRef] string layer_name);
     sequence<f32> get_layer_bounds([ByRef] string layer_name);
     boolean tick();
     boolean tween(f32 to, f32? duration, sequence<f32>? easing);

@@ -73,10 +73,7 @@ pub trait LottieRenderer {
 
     fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError>;
 
-    fn get_layer_bounds(
-        &self,
-        layer_name: &str,
-    ) -> Result<(f32, f32, f32, f32, f32, f32, f32, f32), LottieRendererError>;
+    fn get_layer_bounds(&self, layer_name: &str) -> Result<[f32; 8], LottieRendererError>;
 
     fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, LottieRendererError>;
 
@@ -395,10 +392,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn get_layer_bounds(
-        &self,
-        layer_name: &str,
-    ) -> Result<(f32, f32, f32, f32, f32, f32, f32, f32), LottieRendererError> {
+    fn get_layer_bounds(&self, layer_name: &str) -> Result<[f32; 8], LottieRendererError> {
         self.animation
             .get_layer_bounds(layer_name)
             .map_err(into_lottie::<R>)

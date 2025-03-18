@@ -298,10 +298,7 @@ impl Animation for TvgAnimation {
         Err(TvgError::NotSupported)
     }
 
-    fn get_layer_bounds(
-        &self,
-        _layer_name: &str,
-    ) -> Result<(f32, f32, f32, f32, f32, f32, f32, f32), TvgError> {
+    fn get_layer_bounds(&self, _layer_name: &str) -> Result<[f32; 8], TvgError> {
         #[cfg(feature = "thorvg-v1")]
         unsafe {
             let mut obb: [tvg::Tvg_Point; 4] = [tvg::Tvg_Point { x: 0.0, y: 0.0 }; 4];
@@ -321,7 +318,7 @@ impl Animation for TvgAnimation {
                     point_vec.push(obb[i].y);
                 }
 
-                Ok((
+                Ok([
                     point_vec[0],
                     point_vec[1],
                     point_vec[2],
@@ -330,7 +327,7 @@ impl Animation for TvgAnimation {
                     point_vec[5],
                     point_vec[6],
                     point_vec[7],
-                ))
+                ])
             } else {
                 Err(TvgError::Unknown)
             }

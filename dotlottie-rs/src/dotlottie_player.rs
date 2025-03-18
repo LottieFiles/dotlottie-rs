@@ -309,14 +309,14 @@ impl DotLottieRuntime {
         match bbox {
             Err(_) => LayerBoundingBox::default().into(),
             Ok(bbox) => LayerBoundingBox {
-                x1: bbox.0,
-                y1: bbox.1,
-                x2: bbox.2,
-                y2: bbox.3,
-                x3: bbox.4,
-                y3: bbox.5,
-                x4: bbox.6,
-                y4: bbox.7,
+                x1: bbox[0],
+                y1: bbox[1],
+                x2: bbox[2],
+                y2: bbox[3],
+                x3: bbox[4],
+                y3: bbox[5],
+                x4: bbox[6],
+                y4: bbox[7],
             }
             .into(),
         }

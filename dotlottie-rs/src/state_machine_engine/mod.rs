@@ -1030,7 +1030,7 @@ impl StateMachineEngine {
         let mut actions_to_execute = Vec::new();
 
         // Manage pointerMove interactions
-        if event.type_name() == event_type_name!(PointerMove).to_string() {
+        if event.type_name() == *"PointerMove" {
             let pointer_move_interactions =
                 self.interactions(Some(event_type_name!(PointerMove).to_string()));
 

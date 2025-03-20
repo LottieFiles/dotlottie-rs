@@ -86,6 +86,11 @@ mod tests {
 
         let marker_name = "Marker_3".to_string();
 
+        assert!(
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            "Animation should load"
+        );
+
         player.set_config(Config {
             marker: marker_name.clone(),
             ..player.config()
@@ -93,10 +98,6 @@ mod tests {
 
         assert_eq!(player.config().marker, marker_name.clone());
 
-        assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            "Animation should load"
-        );
         assert!(player.is_playing(), "Animation should be playing");
 
         // assert current frame is the marker time

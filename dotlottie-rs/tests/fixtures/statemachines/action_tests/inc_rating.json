@@ -1,0 +1,223 @@
+{
+  "initial": "global",
+  "states": [
+    {
+      "animation": "",
+      "name": "global",
+      "type": "GlobalState",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "star_1",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "rating",
+              "compareTo": 1
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_2",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "rating",
+              "compareTo": 2
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_3",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "rating",
+              "compareTo": 3
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_4",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "rating",
+              "compareTo": 4
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_5",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "rating",
+              "compareTo": 5
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_6",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "rating",
+              "compareTo": 6
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_12",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "rating",
+              "compareTo": 12
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_13",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "rating",
+              "compareTo": 13
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "star_14",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "rating",
+              "compareTo": 14
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_1",
+      "autoplay": true,
+      "segment": "star_1",
+      "transitions": [],
+      "entryActions": [
+        {
+          "type": "Increment",
+          "inputName": "rating"
+        }
+      ]
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_2",
+      "autoplay": true,
+      "segment": "star_2",
+      "transitions": []
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_3",
+      "autoplay": true,
+      "segment": "star_3",
+      "transitions": [],
+      "entryActions": [
+        {
+          "type": "Increment",
+          "inputName": "rating",
+          "value": 2.0
+        }
+      ]
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_4",
+      "autoplay": true,
+      "segment": "star_4",
+      "transitions": []
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_5",
+      "autoplay": true,
+      "segment": "star_5",
+      "transitions": []
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_6",
+      "autoplay": true,
+      "transitions": [],
+      "entryActions": [
+        {
+          "type": "Increment",
+          "inputName": "rating",
+          "value": "$rating"
+        }
+      ]
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_12",
+      "autoplay": true,
+      "transitions": []
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_13",
+      "autoplay": true,
+      "transitions": [],
+      "entryActions": [
+        {
+          "type": "Increment",
+          "inputName": "rating",
+          "value": "$badTriggerName"
+        }
+      ]
+    },
+    {
+      "animation": "",
+      "type": "PlaybackState",
+      "name": "star_14",
+      "autoplay": true,
+      "transitions": []
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    {
+      "type": "Numeric",
+      "name": "rating",
+      "value": 0.0
+    }
+  ]
+}

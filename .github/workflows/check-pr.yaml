@@ -3,12 +3,6 @@ name: Check PR
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   check-pr:

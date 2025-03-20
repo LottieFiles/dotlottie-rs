@@ -74,7 +74,7 @@ mergeInto(LibraryManager.library, {
   state_machine_observer_on_state_exit: function (dotlottie_instance_id, state_ptr, state_len) {
     const state = UTF8ToString(state_ptr, state_len);
 
-    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_state_entered) {
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_state_exit) {
       Module.dotlottieBridge.state_machine_observer_on_state_exit(
         dotlottie_instance_id,
         state
@@ -85,7 +85,7 @@ mergeInto(LibraryManager.library, {
   state_machine_observer_on_custom_event: function (dotlottie_instance_id, message_ptr, message_len) {
     const message = UTF8ToString(message_ptr, message_len);
 
-    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_state_entered) {
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_custom_event) {
       Module.dotlottieBridge.state_machine_observer_on_custom_event(
         dotlottie_instance_id,
         message
@@ -96,7 +96,7 @@ mergeInto(LibraryManager.library, {
   state_machine_observer_on_error: function (dotlottie_instance_id, message_ptr, message_len) {
     const message = UTF8ToString(message_ptr, message_len);
 
-    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_state_entered) {
+    if (Module.dotlottieBridge && Module.dotlottieBridge.state_machine_observer_on_error) {
       Module.dotlottieBridge.state_machine_observer_on_error(
         dotlottie_instance_id,
         message

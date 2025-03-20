@@ -128,7 +128,7 @@ pub struct StateMachineEngine {
     // PointerEnter/PointerExit management
     pointer_management: PointerData,
 
-    observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
+    pub observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
     framework_url_observer: RwLock<Option<Arc<dyn StateMachineObserver>>>,
 
     state_machine: StateMachine,
@@ -391,13 +391,15 @@ impl StateMachineEngine {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine::default();
         if parsed_state_machine.is_err() {
-            // println!(
-            //     "Error parsing state machine definition: {:?}",
-            //     parsed_state_machine.err()
-            // );
-            return Err(StateMachineEngineError::ParsingError {
-                reason: "Failed to parse state machine definition".to_string(),
-            });
+            let message = format!(
+                "Failed to parse state machine definition: {:?}",
+                parsed_state_machine.err()
+            )
+            .to_string();
+
+            self.observe_on_error(message.as_str());
+
+            return Err(StateMachineEngineError::ParsingError { reason: message });
         }
 
         match parsed_state_machine {
@@ -449,10 +451,14 @@ impl StateMachineEngine {
                 match check_report {
                     Ok(_) => {}
                     Err(error) => {
-                        // println!("Error loading state machine: {:?}", error);
-                        return Err(StateMachineEngineError::ParsingError {
-                            reason: error.to_string(),
-                        });
+                        let message = format!(
+                            "Failed to parse state machine definition: {:?}",
+                            error.to_string()
+                        );
+
+                        self.observe_on_error(message.as_str());
+
+                        return Err(StateMachineEngineError::ParsingError { reason: message });
                     }
                 }
 
@@ -460,10 +466,12 @@ impl StateMachineEngine {
                 match err {
                     Ok(_) => {}
                     Err(error) => {
-                        // println!("Error loading state machine: {:?}", error);
-                        return Err(StateMachineEngineError::CreationError {
-                            reason: error.to_string(),
-                        });
+                        let message =
+                            format!("Error loading state machine: {:?}", error.to_string());
+
+                        self.observe_on_error(message.as_str());
+
+                        return Err(StateMachineEngineError::CreationError { reason: message });
                     }
                 }
 
@@ -482,9 +490,14 @@ impl StateMachineEngine {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self, open_url: &OpenUrl) {
+    pub fn start(&mut self, open_url: &OpenUrl) -> bool {
+        // Start can still be called even if load failed. If load failed initial and states will be empty.
+        if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
+            return false;
+        }
+
         if self.status == StateMachineEngineStatus::Running {
-            return;
+            return true;
         }
 
         self.open_url_config = open_url.clone();
@@ -494,6 +507,8 @@ impl StateMachineEngine {
         self.status = StateMachineEngineStatus::Running;
 
         let _ = self.run_current_state_pipeline();
+
+        true
     }
 
     pub fn stop(&mut self) {

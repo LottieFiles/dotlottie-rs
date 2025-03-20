@@ -7,13 +7,11 @@ impl NativeOpenUrl {
     pub fn open_url(
         url: &str,
         target: &str,
-        engine: &StateMachineEngine,
+        _engine: &StateMachineEngine,
         _player: Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<(), String> {
         #[cfg(target_os = "emscripten")]
-        unsafe {
-            use std::ffi::CString;
-
+        {
             let command = if target.is_empty() {
                 format!("OpenUrl: {}", url)
             } else {
@@ -32,7 +30,7 @@ impl NativeOpenUrl {
         {
             let _ = target.to_lowercase();
             let command = format!("OpenUrl: {}", url);
-            engine.observe_framework_open_url_event(&command);
+            _engine.observe_framework_open_url_event(&command);
             Ok(())
         }
     }

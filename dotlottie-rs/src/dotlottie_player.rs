@@ -1913,7 +1913,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    sm.start(&open_url);
+                    return sm.start(&open_url);
                 }
             }
             Err(_) => {
@@ -1921,7 +1921,7 @@ impl DotLottiePlayer {
             }
         }
 
-        true
+        false
     }
 
     pub fn state_machine_stop(&self) -> bool {
@@ -2374,9 +2374,16 @@ impl DotLottiePlayer {
         match sm {
             Ok(mut sm) => {
                 if sm.is_none() {
-                    return false;
+                    let new_state_machine: StateMachineEngine = StateMachineEngine::default();
+
+                    new_state_machine.subscribe(observer);
+
+                    sm.replace(new_state_machine);
+
+                    return true;
+                } else if let Some(sm) = sm.as_mut() {
+                    sm.subscribe(observer);
                 }
-                sm.as_mut().unwrap().subscribe(observer);
             }
             Err(_) => {
                 return false;
@@ -2456,33 +2463,56 @@ impl DotLottiePlayer {
     }
 
     pub fn state_machine_load_data(&self, state_machine: &str) -> bool {
-        let state_machine = StateMachineEngine::new(state_machine, self.player.clone(), None);
+        let new_state_machine = StateMachineEngine::new(state_machine, self.player.clone(), None);
 
-        if state_machine.is_ok() {
-            match self.state_machine.try_write() {
-                Ok(mut sm) => {
-                    sm.replace(state_machine.unwrap());
+        match new_state_machine {
+            Ok(sm) => {
+                if let Ok(mut state_machine) = self.state_machine.try_write() {
+                    // We've called subscribe before loading a state machine
+                    if (*state_machine).is_some() {
+                        let tmp_sm = state_machine.as_ref().unwrap();
+                        let tmp_sm_observers = tmp_sm.observers.read().unwrap().clone();
+
+                        for observer in tmp_sm_observers {
+                            sm.subscribe(observer.clone());
+                        }
+                    }
+
+                    state_machine.replace(sm);
                 }
-                Err(_) => {
-                    return false;
+
+                let player = self.player.try_write();
+
+                match player {
+                    Ok(mut player) => {
+                        player.state_machine = self.state_machine.clone();
+                        player.set_active_state_machine_id("");
+                    }
+                    Err(_) => {
+                        return false;
+                    }
                 }
             }
+            Err(error) => {
+                if let Ok(state_machine) = self.state_machine.read() {
+                    // We've called subscribe before loading a state machine
+                    if (*state_machine).is_some() {
+                        let tmp_sm = state_machine.as_ref().unwrap();
 
-            let player = self.player.try_write();
-
-            match player {
-                Ok(mut player) => {
-                    player.state_machine = self.state_machine.clone();
-                    player.set_active_state_machine_id("");
-                    return true;
+                        match error {
+                            StateMachineEngineError::ParsingError { reason } => tmp_sm.observe_on_error(&reason),
+                            StateMachineEngineError::CreationError { reason } => tmp_sm.observe_on_error(&reason),
+                            StateMachineEngineError::SecurityCheckErrorMultipleGuardlessTransitions { state_name } => tmp_sm.observe_on_error(&state_name),
+                            StateMachineEngineError::SecurityCheckErrorDuplicateStateName { state_name } => tmp_sm.observe_on_error(&state_name),
+                            _ => {}
+                        }
+                    }
                 }
-                Err(_) => {
-                    return false;
-                }
+                return false;
             }
         }
 
-        false
+        true
     }
 
     pub fn state_machine_load(&self, state_machine_id: &str) -> bool {
@@ -2500,6 +2530,16 @@ impl DotLottiePlayer {
                 match state_machine {
                     Ok(sm) => {
                         if let Ok(mut state_machine) = self.state_machine.try_write() {
+                            // We've called subscribe before loading a state machine
+                            if (*state_machine).is_some() {
+                                let tmp_sm = state_machine.as_ref().unwrap();
+                                let tmp_sm_observers = tmp_sm.observers.read().unwrap().clone();
+
+                                for observer in tmp_sm_observers {
+                                    sm.subscribe(observer.clone());
+                                }
+                            }
+
                             state_machine.replace(sm);
                         }
 

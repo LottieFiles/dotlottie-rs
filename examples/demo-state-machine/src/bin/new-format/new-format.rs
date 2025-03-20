@@ -11,7 +11,7 @@ pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
 pub const STATE_MACHINE_NAME: &str = "smiley-slider-state";
-pub const ANIMATION_NAME: &str = "smiley-slider";
+pub const ANIMATION_NAME: &str = "sm_smiley_slider";
 // pub const STATE_MACHINE_NAME: &str = "rating";
 // pub const ANIMATION_NAME: &str = "star_marked";
 // pub const STATE_MACHINE_NAME: &str = "StateMachine1";
@@ -27,31 +27,34 @@ struct DummyObserver;
 
 impl StateMachineObserver for DummyObserver {
     fn on_transition(&self, previous_state: String, new_state: String) {
-        println!("on_transition: {} -> {}", previous_state, new_state);
+        println!(
+            "[state machine event] on_transition: {} -> {}",
+            previous_state, new_state
+        );
     }
 
     fn on_state_entered(&self, entering_state: String) {
-        println!("on_state_entered: {}", entering_state);
+        println!("[state machine event] on_state_entered: {}", entering_state);
     }
 
     fn on_state_exit(&self, leaving_state: String) {
-        println!("on_state_exit: {}", leaving_state);
+        println!("[state machine event] on_state_exit: {}", leaving_state);
     }
 
     fn on_custom_event(&self, message: String) {
-        println!("custom_event: {}", message);
+        println!("[state machine event] custom_event: {}", message);
     }
 
     fn on_error(&self, error: String) {
-        println!("error: {}", error);
+        println!("[state machine event] {}", error);
     }
 
     fn on_start(&self) {
-        // println!(">>>> start");
+        println!("[state machine event] on_start");
     }
 
     fn on_stop(&self) {
-        // println!(">>>> stop");
+        println!("[state machine event] on_stop");
     }
 
     fn on_string_input_value_change(
@@ -61,27 +64,27 @@ impl StateMachineObserver for DummyObserver {
         new_value: String,
     ) {
         println!(
-            "string_input_value_change ==> {} : {} -> {}",
+            "[state machine event] string_input_value_change ==> {} : {} -> {}",
             input_name, old_value, new_value
         );
     }
 
     fn on_numeric_input_value_change(&self, input_name: String, old_value: f32, new_value: f32) {
         println!(
-            "numeric_input_value_change ==> {} : {} -> {}",
+            "[state machine event] numeric_input_value_change ==> {} : {} -> {}",
             input_name, old_value, new_value
         );
     }
 
     fn on_boolean_input_value_change(&self, input_name: String, old_value: bool, new_value: bool) {
-        // println!(
-        //     "boolean_input_value_change ==> {} : {} -> {}",
-        //     input_name, old_value, new_value
-        // );
+        println!(
+            "[state machine event] boolean_input_value_change ==> {} : {} -> {}",
+            input_name, old_value, new_value
+        );
     }
 
     fn on_input_fired(&self, input_name: String) {
-        todo!()
+        println!("[state machine event] input_fired ==> {}", input_name);
     }
 }
 
@@ -156,15 +159,15 @@ fn main() {
     ))
     .unwrap();
 
+    lottie_player.state_machine_subscribe(observer.clone());
+    lottie_player.state_machine_subscribe(observer.clone());
+    lottie_player.state_machine_subscribe(observer.clone());
+    lottie_player.state_machine_subscribe(observer.clone());
+    lottie_player.state_machine_subscribe(observer.clone());
+
     let r = lottie_player.state_machine_load_data(&state_machine);
 
-    println!(
-        "🚨 Activate state machine -> {}",
-        lottie_player.active_state_machine_id()
-    );
-
     println!("Load state machine data -> {}", r);
-    lottie_player.state_machine_subscribe(observer.clone());
     let s = lottie_player.state_machine_start(OpenUrl::default());
 
     println!("Start state machine -> {}", s);

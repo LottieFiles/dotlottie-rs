@@ -35,9 +35,9 @@ pub trait Animation: Default {
 
     fn load_data(&mut self, data: &str, mimetype: &str, copy: bool) -> Result<(), Self::Error>;
 
-    fn get_layer_bounds(&self, layer_name: &str) -> Result<(f32, f32, f32, f32), Self::Error>;
+    fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, Self::Error>;
 
-    fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> Result<bool, Self::Error>;
+    fn get_layer_bounds(&self, layer_name: &str) -> Result<[f32; 8], Self::Error>;
 
     fn get_size(&self) -> Result<(f32, f32), Self::Error>;
 
@@ -57,11 +57,16 @@ pub trait Animation: Default {
 
     fn set_slots(&mut self, slots: &str) -> Result<(), Self::Error>;
 
-    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), Self::Error>;
+    fn tween(
+        &mut self,
+        to: f32,
+        duration: Option<f32>,
+        easing: Option<[f32; 4]>,
+    ) -> Result<(), Self::Error>;
 
-    fn tween_to(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> Result<(), Self::Error>;
+    fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, Self::Error>;
 
-    fn tween_update(&mut self) -> Result<bool, Self::Error>;
+    fn tween_stop(&mut self) -> Result<(), Self::Error>;
 
     fn is_tweening(&self) -> bool;
 }

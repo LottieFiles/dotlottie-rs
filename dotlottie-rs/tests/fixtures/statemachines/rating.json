@@ -1,0 +1,119 @@
+{
+    "descriptor": {
+        "id": "star-rating",
+        "initial": "global"
+    },
+    "states": [
+        {
+            "name": "global",
+            "type": "GlobalState",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "to_state": "star_1",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "input_name": "rating",
+                            "compare_to": 1
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_2",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "input_name": "rating",
+                            "compare_to": 2
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_3",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "input_name": "rating",
+                            "compare_to": 3
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_4",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "input_name": "rating",
+                            "compare_to": 4
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "to_state": "star_5",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "condition_type": "Equal",
+                            "input_name": "rating",
+                            "compare_to": 5
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_1",
+            "autoplay": true,
+            "segment": "star_1",
+            "transitions": [],
+            "entry_actions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_2",
+            "autoplay": true,
+            "segment": "star_2",
+            "transitions": [],
+            "entry_actions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_3",
+            "autoplay": true,
+            "segment": "star_3",
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_4",
+            "autoplay": true,
+            "segment": "star_4",
+            "transitions": []
+        },
+        {
+            "type": "PlaybackState",
+            "name": "star_5",
+            "autoplay": true,
+            "segment": "star_5",
+            "transitions": []
+        }
+    ],
+    "interactions": [],
+    "inputs": [
+        {
+            "type": "Numeric",
+            "name": "rating",
+            "value": 0
+        }
+    ]
+}

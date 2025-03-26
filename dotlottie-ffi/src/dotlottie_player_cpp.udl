@@ -1,6 +1,7 @@
 namespace dotlottie_player {
     Layout create_default_layout();
     Config create_default_config();
+    OpenUrl create_default_open_url();
     string transform_theme_to_lottie_slots([ByRef] string theme_data, [ByRef] string animation_id);
 };
 
@@ -25,6 +26,17 @@ dictionary Layout {
     sequence<f32> align;
 };
 
+enum OpenUrlMode {
+    "Deny",
+    "Interaction",
+    "Allow",
+};
+
+dictionary OpenUrl {
+    OpenUrlMode mode;
+    sequence<string> whitelist;
+};
+
 dictionary Config {
     boolean autoplay;
     boolean loop_animation;
@@ -36,6 +48,7 @@ dictionary Config {
     Layout layout;
     string marker;
     string theme_id;
+    string state_machine_id;
 };
 
 dictionary Marker {
@@ -83,30 +96,38 @@ interface DotLottiePlayer {
     boolean set_viewport(i32 x, i32 y, i32 w, i32 h);
     f32 segment_duration();
     sequence<f32> animation_size();
+    boolean intersect(f32 x, f32 y, [ByRef] string layer_name);
     sequence<f32> get_layer_bounds([ByRef] string layer_name);
     
-    boolean load_state_machine([ByRef] string str);
-    boolean start_state_machine();
-    boolean stop_state_machine();
-    boolean set_state_machine_numeric_context([ByRef] string key, f32 value);
-    boolean set_state_machine_string_context([ByRef] string key, [ByRef] string value);
-    boolean set_state_machine_boolean_context([ByRef] string key, boolean value);
+    boolean state_machine_load([ByRef] string state_machine_id);
+    boolean state_machine_load_data([ByRef] string state_machine);
+    boolean state_machine_start(OpenUrl open_url);
+    boolean state_machine_stop();
+    string active_state_machine_id();
+    string get_state_machine([ByRef] string state_machine_id);
     sequence<string> state_machine_framework_setup();
-    boolean load_state_machine_data([ByRef] string state_machine);
-    i32 post_bool_event(boolean value);
-    i32 post_string_event([ByRef] string value);
-    i32 post_numeric_event(f32 value);
-    i32 post_pointer_down_event(f32 x, f32 y);
-    i32 post_pointer_up_event(f32 x, f32 y);
-    i32 post_pointer_move_event(f32 x, f32 y);
-    i32 post_pointer_enter_event(f32 x, f32 y);
-    i32 post_pointer_exit_event(f32 x, f32 y);
-    i32 post_set_numeric_context([ByRef] string key, f32 value);
-
     boolean tick();
-    boolean tween(f32 from, f32 to, f32 progress);
-    boolean tween_to(f32 to, f32 duration, sequence<f32> easing);
-    boolean tween_to_marker([ByRef] string marker, f32 duration, sequence<f32> easing);
+    boolean tween(f32 to, f32? duration, sequence<f32>? easing);
+    boolean tween_stop();
+    boolean tween_to_marker([ByRef] string marker, f32? duration, sequence<f32>? easing);
     boolean is_tweening();
-    boolean tween_update();
+    boolean tween_update(f32? progress);
+
+    i32 state_machine_post_click_event(f32 x, f32 y);
+    i32 state_machine_post_pointer_down_event(f32 x, f32 y);
+    i32 state_machine_post_pointer_up_event(f32 x, f32 y);
+    i32 state_machine_post_pointer_move_event(f32 x, f32 y);
+    i32 state_machine_post_pointer_enter_event(f32 x, f32 y);
+    i32 state_machine_post_pointer_exit_event(f32 x, f32 y);
+    void state_machine_fire_event([ByRef] string event);
+    string state_machine_current_state();
+    boolean state_machine_set_boolean_input([ByRef] string key, boolean value);
+    boolean state_machine_set_string_input([ByRef] string key, [ByRef] string value);
+    boolean state_machine_set_numeric_input([ByRef] string key, f32 value);
+    f32 state_machine_get_numeric_input([ByRef] string key);
+    string state_machine_get_string_input([ByRef] string key);
+    boolean state_machine_get_boolean_input([ByRef] string key);
+    boolean state_machine_override_current_state([ByRef] string state_name, boolean do_tick);
+    u32 instance_id();
+    string state_machine_status();
 };

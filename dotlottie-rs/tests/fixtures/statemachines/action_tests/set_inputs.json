@@ -1,0 +1,164 @@
+{
+  "initial": "global",
+  "states": [
+    {
+      "name": "global",
+      "type": "GlobalState",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "e",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "NumericInput",
+              "compareTo": 10.0
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "d",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "NumericInput",
+              "compareTo": 20.0
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "f",
+          "guards": [
+            {
+              "type": "String",
+              "conditionType": "Equal",
+              "inputName": "StringInput",
+              "compareTo": "second"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "a",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "inputName": "OnOffSwitch",
+              "compareTo": true
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "inputName": "OnOffSwitch",
+              "compareTo": false
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "c",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "Step"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    },
+    {
+      "name": "b",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    },
+    {
+      "name": "c",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
+        {
+          "type": "SetBoolean",
+          "inputName": "OnOffSwitch",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "d",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    },
+    {
+      "name": "e",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
+        {
+          "type": "SetNumeric",
+          "inputName": "NumericInput",
+          "value": 20
+        },
+        {
+          "type": "SetString",
+          "inputName": "StringInput",
+          "value": "second"
+        }
+      ]
+    },
+    {
+      "name": "f",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    {
+      "type": "Boolean",
+      "name": "OnOffSwitch",
+      "value": false
+    },
+    {
+      "type": "Event",
+      "name": "Step"
+    },
+    {
+      "type": "Numeric",
+      "name": "NumericInput",
+      "value": 0
+    },
+    {
+      "type": "Numeric",
+      "name": "NumericInput",
+      "value": 0
+    },
+    {
+      "type": "String",
+      "name": "StringInput",
+      "value": "first"
+    }
+  ]
+}

@@ -275,11 +275,11 @@ cpp_link_args = [
 	'-sUSE_ES6_IMPORT_META=0',
 	'-sENVIRONMENT=web',
 	'-sFILESYSTEM=0',
-	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
 	'--emit-tsd=${WASM_MODULE}.d.ts',
-	'--closure=1']
+	'--closure=1',
+	'--js-library=$(PROJECT_DIR)/$(RUNTIME_FFI)/emscripten_library.js']
 
 [host_machine]
 system = '$(SYSTEM)'
@@ -942,6 +942,11 @@ $(RUNTIME_FFI)/$(APPLE_BUILD)/$(MODULE_MAP): $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI
 .PHONY: demo-player
 demo-player:
 	cargo build --manifest-path examples/demo-player/Cargo.toml
+
+# Build local architecture dependencies
+.PHONY: local
+local: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
+	$(info $(GREEN)Local architecture dependencies built successfully!$(NC))
 
 .PHONY: demo-state-machine
 demo-state-machine:

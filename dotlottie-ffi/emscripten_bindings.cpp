@@ -1,21 +1,10 @@
 #include "dotlottie_player.hpp"
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
+#include <optional>
 
 using namespace emscripten;
 using namespace dotlottie_player;
-
-extern "C"
-{
-    /*
-        This is a workaround as instant crate expects a _ prefix for the emscripten_get_now function
-        https://github.com/sebcrozet/instant/issues/35
-    */
-    double _emscripten_get_now()
-    {
-        return emscripten_get_now();
-    }
-}
 
 val buffer(DotLottiePlayer &player)
 {
@@ -36,10 +25,10 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 
     // Register std::vector<float> as VectorFloat for the Config::segment field
     register_vector<float>("VectorFloat");
+    // Then register the optional type for the vector - without a name parameter
+    register_optional<std::vector<float>>();
     register_vector<Marker>("VectorMarker");
     register_vector<std::string>("VectorString");
-    // register_vector<ManifestTheme>("VectorManifestTheme");
-    // register_vector<ManifestAnimation>("VectorManifestAnimation");
 
     enum_<Mode>("Mode")
         .value("Forward", Mode::kForward)
@@ -61,6 +50,17 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 
     function("createDefaultLayout", &create_default_layout);
 
+    enum_<OpenUrlMode>("OpenUrlMode")
+        .value("Deny", OpenUrlMode::kDeny)
+        .value("Interaction", OpenUrlMode::kInteraction)
+        .value("Allow", OpenUrlMode::kAllow);
+
+    value_object<OpenUrl>("OpenUrl")
+        .field("mode", &OpenUrl::mode)
+        .field("whitelist", &OpenUrl::whitelist);
+
+    function("createDefaultOpenURL", &create_default_open_url);
+
     value_object<Marker>("Marker")
         .field("name", &Marker::name)
         .field("time", &Marker::time)
@@ -76,56 +76,11 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("backgroundColor", &Config::background_color)
         .field("layout", &Config::layout)
         .field("marker", &Config::marker)
-        .field("themeId", &Config::theme_id);
+        .field("themeId", &Config::theme_id)
+        .field("stateMachineId", &Config::state_machine_id);
 
     function("createDefaultConfig", &create_default_config);
     function("transformThemeToLottieSlots", &transform_theme_to_lottie_slots);
-
-    // value_object<ManifestTheme>("ManifestTheme")
-    //     .field("id", &ManifestTheme::id)
-    //     .field("animations", &ManifestTheme::animations);
-
-    // value_object<ManifestAnimation>("ManifestAnimation")
-    //     .field("autoplay", &ManifestAnimation::autoplay)
-    //     .field("defaultTheme", &ManifestAnimation::default_theme)
-    //     .field("direction", &ManifestAnimation::direction)
-    //     .field("hover", &ManifestAnimation::hover)
-    //     .field("id", &ManifestAnimation::id)
-    //     .field("intermission", &ManifestAnimation::intermission)
-    //     .field("loop", &ManifestAnimation::loop)
-    //     .field("loop_count", &ManifestAnimation::loop_count)
-    //     .field("playMode", &ManifestAnimation::play_mode)
-    //     .field("speed", &ManifestAnimation::speed)
-    //     .field("themeColor", &ManifestAnimation::theme_color);
-
-    // value_object<Manifest>("Manifest")
-    //     .field("active_animation_id", &Manifest::active_animation_id)
-    //     .field("animations", &Manifest::animations)
-    //     .field("author", &Manifest::author)
-    //     .field("description", &Manifest::description)
-    //     .field("generator", &Manifest::generator)
-    //     .field("keywords", &Manifest::keywords)
-    //     .field("revision", &Manifest::revision)
-    //     .field("themes", &Manifest::themes)
-    //     .field("states", &Manifest::states)
-    //     .field("version", &Manifest::version);
-
-    // class_<Observer>("Observer")
-    //     .smart_ptr<std::shared_ptr<Observer>>("Observer")
-    //     .function("onFrame", &Observer::on_frame)
-    //     .function("onLoad", &Observer::on_load)
-    //     .function("onLoop", &Observer::on_loop)
-    //     .function("onPause", &Observer::on_pause)
-    //     .function("onPlay", &Observer::on_play)
-    //     .function("onRender", &Observer::on_render)
-    //     .function("onComplete", &Observer::on_complete)
-    //     .function("onStop", &Observer::on_stop);
-
-    // class_<StateMachineObserver>("StateMachineObserver")
-    //     .smart_ptr<std::shared_ptr<StateMachineObserver>>("StateMachineObserver")
-    //     .function("OnTransition", &StateMachineObserver::on_transition);
-    //     .function("onStateEntered", &StateMachineObserver::on_state_entered);
-    //     .function("onStateExit", &StateMachineObserver::on_state_exit);
 
     class_<DotLottiePlayer>("DotLottiePlayer")
         .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
@@ -156,8 +111,6 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("seek", &DotLottiePlayer::seek)
         .function("stop", &DotLottiePlayer::stop)
         .function("totalFrames", &DotLottiePlayer::total_frames)
-        // .function("subscribe", &DotLottiePlayer::subscribe)
-        // .function("unsubscribe", &DotLottiePlayer::unsubscribe)
         .function("isComplete", &DotLottiePlayer::is_complete)
         .function("setTheme", &DotLottiePlayer::set_theme)
         .function("setThemeData", &DotLottiePlayer::set_theme_data)
@@ -170,31 +123,38 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("segmentDuration", &DotLottiePlayer::segment_duration)
         .function("animationSize", &DotLottiePlayer::animation_size)
 
-        .function("loadStateMachine", &DotLottiePlayer::load_state_machine)
-        .function("startStateMachine", &DotLottiePlayer::start_state_machine)
-        .function("stopStateMachine", &DotLottiePlayer::stop_state_machine)
+        .function("stateMachineLoad", &DotLottiePlayer::state_machine_load)
+        .function("stateMachineStart", &DotLottiePlayer::state_machine_start)
+        .function("stateMachineStop", &DotLottiePlayer::state_machine_stop)
         .function("stateMachineFrameworkSetup", &DotLottiePlayer::state_machine_framework_setup)
-        .function("setStateMachineNumericContext", &DotLottiePlayer::set_state_machine_numeric_context)
-        .function("setStateMachineStringContext", &DotLottiePlayer::set_state_machine_string_context)
-        .function("setStateMachineBooleanContext", &DotLottiePlayer::set_state_machine_boolean_context)
-        .function("loadStateMachineData", &DotLottiePlayer::load_state_machine_data)
+        .function("stateMachineLoadData", &DotLottiePlayer::state_machine_load_data)
+        .function("stateMachineFireEvent", &DotLottiePlayer::state_machine_fire_event)
+        .function("stateMachineSetNumericInput", &DotLottiePlayer::state_machine_set_numeric_input)
+        .function("stateMachineSetStringInput", &DotLottiePlayer::state_machine_set_string_input)
+        .function("stateMachineSetBooleanInput", &DotLottiePlayer::state_machine_set_boolean_input)
+        .function("stateMachineGetNumericInput", &DotLottiePlayer::state_machine_get_numeric_input)
+        .function("stateMachineGetStringInput", &DotLottiePlayer::state_machine_get_string_input)
+        .function("stateMachineGetBooleanInput", &DotLottiePlayer::state_machine_get_boolean_input)
+        .function("intersect", &DotLottiePlayer::intersect)
         .function("getLayerBounds", &DotLottiePlayer::get_layer_bounds)
-        .function("postBoolEvent", &DotLottiePlayer::post_bool_event)
-        .function("postStringEvent", &DotLottiePlayer::post_string_event)
-        .function("postNumericEvent", &DotLottiePlayer::post_numeric_event)
-        .function("postPointerDownEvent", &DotLottiePlayer::post_pointer_down_event)
-        .function("postPointerUpEvent", &DotLottiePlayer::post_pointer_up_event)
-        .function("postPointerMoveEvent", &DotLottiePlayer::post_pointer_move_event)
-        .function("postPointerEnterEvent", &DotLottiePlayer::post_pointer_enter_event)
-        .function("postPointerExitEvent", &DotLottiePlayer::post_pointer_exit_event)
-        .function("postSetNumericContext", &DotLottiePlayer::post_set_numeric_context)
 
         .function("tick", &DotLottiePlayer::tick)
+        .function("tween", &DotLottiePlayer::tween)
+        .function("tweenStop", &DotLottiePlayer::tween_stop)
+        .function("tweenToMarker", &DotLottiePlayer::tween_to_marker)
         .function("isTweening", &DotLottiePlayer::is_tweening)
         .function("tweenUpdate", &DotLottiePlayer::tween_update)
-        .function("tween", &DotLottiePlayer::tween)
-        .function("tweenTo", &DotLottiePlayer::tween_to)
-        .function("tweenToMarker", &DotLottiePlayer::tween_to_marker);
-    // .function("state_machine_subscribe", &DotLottiePlayer::state_machine_subscribe)
-    // .function("state_machine_unsubscribe", &DotLottiePlayer::state_machine_unsubscribe)
+
+        .function("getStateMachine", &DotLottiePlayer::get_state_machine)
+        .function("activeStateMachineId", &DotLottiePlayer::active_state_machine_id)
+        .function("stateMachineCurrentState", &DotLottiePlayer::state_machine_current_state)
+        .function("stateMachinePostClickEvent", &DotLottiePlayer::state_machine_post_click_event)
+        .function("stateMachinePostPointerDownEvent", &DotLottiePlayer::state_machine_post_pointer_down_event)
+        .function("stateMachinePostPointerUpEvent", &DotLottiePlayer::state_machine_post_pointer_up_event)
+        .function("stateMachinePostPointerMoveEvent", &DotLottiePlayer::state_machine_post_pointer_move_event)
+        .function("stateMachinePostPointerEnterEvent", &DotLottiePlayer::state_machine_post_pointer_enter_event)
+        .function("stateMachinePostPointerExitEvent", &DotLottiePlayer::state_machine_post_pointer_exit_event)
+        .function("stateMachineOverrideCurrentState", &DotLottiePlayer::state_machine_override_current_state)
+        .function("stateMachineStatus", &DotLottiePlayer::state_machine_status)
+        .function("instanceId", &DotLottiePlayer::instance_id);
 }

@@ -1,552 +1,189 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::states::StateTrait;
-    use dotlottie_rs::{
-        parser::TransitionGuardConditionType,
-        transitions::{guard::Guard, TransitionTrait},
-    };
+    use dotlottie_rs::{actions::open_url::OpenUrl, Config, DotLottiePlayer};
 
-    use dotlottie_rs::DotLottiePlayer;
-
-    #[test]
-    #[ignore]
-    pub fn guards_loaded_correctly() {
-        use dotlottie_rs::transitions::TransitionTrait;
-
-        use dotlottie_rs::{states::State, Config, DotLottiePlayer};
-
-        // let file_path = format!(
-        //     "{}{}",
-        //     env!("CARGO_MANIFEST_DIR"),
-        //     "/tests/fixtures/pigeon_fsm_gt_gte_guard.lottie"
-        // );
-        // let mut loaded_file = File::open(file_path.clone()).expect("no file found");
-        // let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
-
-        // let mut buffer = vec![0; meta_data.len() as usize];
-        // loaded_file.read(&mut buffer).expect("buffer overflow");
-
-        let player = DotLottiePlayer::new(Config::default());
-        player.load_dotlottie_data(
-            include_bytes!("fixtures/pigeon_fsm_gt_gte_guard.lottie"),
-            100,
-            100,
-        );
-
-        // player.load_dotlottie_data(&buffer, 100, 100);
-
-        // let mut sm_definition = File::open(file_path).unwrap();
-        // let mut buffer_to_string = String::new();
-
-        // sm_definition.read_to_string(&mut buffer_to_string).unwrap();
-
-        player.load_state_machine("gt_gte_guard");
-
-        player.start_state_machine();
-
-        let sm = player.get_state_machine();
-
-        assert!(
-            sm.read().unwrap().as_ref().is_some(),
-            "State machine is not loaded"
-        );
-
-        let tmp_unwrap = sm.read().unwrap();
-        let unwrapped_sm = tmp_unwrap.as_ref().unwrap();
-
-        let guard_0 = Guard {
-            context_key: "counter_0".to_string(),
-            condition_type: TransitionGuardConditionType::GreaterThan,
-            compare_to: dotlottie_rs::parser::StringNumberBool::F32(5.0),
-        };
-        let guard_1 = Guard {
-            context_key: "counter_0".to_string(),
-            condition_type: TransitionGuardConditionType::GreaterThanOrEqual,
-            compare_to: dotlottie_rs::parser::StringNumberBool::F32(60.0),
-        };
-        let guard_2 = Guard {
-            context_key: "counter_0".to_string(),
-            condition_type: TransitionGuardConditionType::GreaterThanOrEqual,
-            compare_to: dotlottie_rs::parser::StringNumberBool::F32(65.0),
-        };
-
-        let guards = [guard_0, guard_1, guard_2];
-
-        for (i, state) in unwrapped_sm.states.iter().enumerate() {
-            let unwrapped_state = &*state.read().unwrap();
-
-            // match unwrapped_state {
-            if let State::Playback {
-                name: _,
-                config: _,
-                reset_context: _,
-                animation_id: _,
-                transitions,
-            } = unwrapped_state
-            {
-                let first_transition = &*transitions[0].read().unwrap();
-
-                assert_eq!(
-                    first_transition.get_guards()[0].compare_to,
-                    guards[i].compare_to
-                );
-
-                assert_eq!(
-                    first_transition.get_guards()[0].condition_type,
-                    guards[i].condition_type
-                );
-
-                assert_eq!(
-                    first_transition.get_guards()[0].context_key,
-                    guards[i].context_key
-                );
-            }
-        }
-    }
-
-    // Helper function to get the current transition event as a string
-    pub fn get_current_transition_event(player: &DotLottiePlayer) -> String {
-        let players_first_state = player
-            .get_state_machine()
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .get_current_state()
-            .unwrap();
-
-        let players_first_transition =
-            &*players_first_state.read().unwrap().get_transitions()[0].clone();
-
-        let complete_event = &*players_first_transition.read().unwrap();
-
-        let complete_event_string = format!("{}", complete_event.get_event().read().unwrap());
-
-        complete_event_string.clone()
+    fn get_current_state_name(player: &DotLottiePlayer) -> String {
+        player.state_machine_current_state()
     }
 
     #[test]
-    #[ignore]
     pub fn not_equal_test() {
-        use dotlottie_rs::transitions::TransitionTrait;
-
-        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
-
-        // let file_path = format!(
-        //     "{}{}",
-        //     env!("CARGO_MANIFEST_DIR"),
-        //     "/tests/fixtures/pigeon_fsm_ne_guard.lottie"
-        // );
-        // let mut loaded_file = File::open(file_path.clone()).expect("no file found");
-        // let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
-
-        // let mut buffer = vec![0; meta_data.len() as usize];
-        // loaded_file.read(&mut buffer).expect("buffer overflow");
-
+        let global_state = include_str!("fixtures/statemachines/guard_tests/equal_not_equal.json");
         let player = DotLottiePlayer::new(Config::default());
-        player.load_dotlottie_data(
-            include_bytes!("fixtures/pigeon_fsm_ne_guard.lottie"),
-            100,
-            100,
-        );
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start(OpenUrl::default());
 
-        // player.load_dotlottie_data(&buffer, 100, 100);
+        assert!(l);
+        assert!(s);
 
-        player.load_state_machine("ne_guard");
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "global");
 
-        player.start_state_machine();
+        player.state_machine_set_numeric_input("rating", 3.0);
 
-        let sm = player.get_state_machine();
-
-        assert!(
-            sm.read().unwrap().as_ref().is_some(),
-            "State machine is not loaded"
-        );
-
-        let players_first_state = sm
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .get_current_state()
-            .unwrap();
-
-        let players_first_transition =
-            &*players_first_state.read().unwrap().get_transitions()[0].clone();
-
-        let first_player_transition_unwrapped = players_first_transition.read().unwrap();
-
-        assert_eq!(
-            format!(
-                "{}",
-                &*first_player_transition_unwrapped
-                    .get_event()
-                    .read()
-                    .unwrap()
-            ),
-            "explosion".to_string()
-        );
-
-        // Test != with a numeric value
-        player.set_state_machine_numeric_context("counter_0", 5.0);
-        player.post_event(&Event::String {
-            value: "explosion".to_string(),
-        });
-
-        // Should stay in stage 0 since 5 = 5
-        assert_eq!(get_current_transition_event(&player), "explosion");
-
-        player.set_state_machine_numeric_context("counter_0", 18.0);
-        player.post_event(&Event::String {
-            value: "explosion".to_string(),
-        });
-
-        // Should go to stage 2
-        assert_eq!(get_current_transition_event(&player), "complete");
-
-        // Test != with a string value
-        player.set_state_machine_string_context("counter_1", "to_be_the_same".to_string().as_str());
-        player.post_event(&Event::String {
-            value: "complete".to_string(),
-        });
-
-        // Should stay in stage 2 since diff_value = diff_value
-        assert_eq!(get_current_transition_event(&player), "complete");
-
-        player.set_state_machine_string_context("counter_1", "not_the_same".to_string().as_str());
-        player.post_event(&Event::String {
-            value: "complete".to_string(),
-        });
-
-        // Should go to stage 3
-        assert_eq!(get_current_transition_event(&player), "done");
-
-        // Test != with a bool value
-        player.set_state_machine_boolean_context("counter_2", true);
-        player.post_event(&Event::String {
-            value: "done".to_string(),
-        });
-
-        // Should stay in stage 3 since diff_value = diff_value
-        assert_eq!(get_current_transition_event(&player), "done");
-
-        player.set_state_machine_boolean_context("counter_2", false);
-        player.post_event(&Event::String {
-            value: "done".to_string(),
-        });
-
-        // Should go to stage 0
-        assert_eq!(get_current_transition_event(&player), "explosion");
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_2");
     }
 
     #[test]
-    #[ignore]
     pub fn equal_test() {
-        use dotlottie_rs::transitions::TransitionTrait;
-
-        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
-
-        // let file_path = format!(
-        //     "{}{}",
-        //     env!("CARGO_MANIFEST_DIR"),
-        //     "/tests/fixtures/pigeon_fsm_eq_guard.lottie"
-        // );
-        // let mut loaded_file = File::open(file_path.clone()).expect("no file found");
-        // let meta_data = fs::metadata(file_path.clone()).expect("unable to read metadata");
-
-        // let mut buffer = vec![0; meta_data.len() as usize];
-        // loaded_file.read(&mut buffer).expect("buffer overflow");
-
+        let global_state = include_str!("fixtures/statemachines/guard_tests/equal_not_equal.json");
         let player = DotLottiePlayer::new(Config::default());
-        // player.load_dotlottie_data(&buffer, 100, 100);
-        player.load_dotlottie_data(
-            include_bytes!("fixtures/pigeon_fsm_eq_guard.lottie"),
-            100,
-            100,
-        );
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start(OpenUrl::default());
 
-        player.load_state_machine("fsm_eq_guard");
+        assert!(l);
+        assert!(s);
 
-        player.start_state_machine();
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "global");
 
-        let sm = player.get_state_machine();
+        player.state_machine_set_numeric_input("rating", 5.0);
 
-        assert!(
-            sm.read().unwrap().as_ref().is_some(),
-            "State machine is not loaded"
-        );
-
-        let players_first_state = sm
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .get_current_state()
-            .unwrap();
-
-        let players_first_transition =
-            &*players_first_state.read().unwrap().get_transitions()[0].clone();
-
-        let first_player_transition_unwrapped = players_first_transition.read().unwrap();
-
-        assert_eq!(
-            format!(
-                "{}",
-                &*first_player_transition_unwrapped
-                    .get_event()
-                    .read()
-                    .unwrap()
-            ),
-            "explosion".to_string()
-        );
-
-        // Test with a numeric value
-        player.set_state_machine_numeric_context("counter_0", 4.0);
-        player.post_event(&Event::String {
-            value: "explosion".to_string(),
-        });
-
-        // Should stay on stage 0 since 4 != 5
-        assert_eq!(get_current_transition_event(&player), "explosion");
-
-        player.set_state_machine_numeric_context("counter_0", 5.0);
-        player.post_event(&Event::String {
-            value: "explosion".to_string(),
-        });
-
-        // Should go to stage 1
-        assert_eq!(get_current_transition_event(&player), "complete");
-
-        // Test with a string value
-        player.set_state_machine_string_context("counter_1", "diff");
-        player.post_event(&Event::String {
-            value: "complete".to_string(),
-        });
-
-        // Should stay on stage 1 since to_be_the_same != diff
-        assert_eq!(get_current_transition_event(&player), "complete");
-
-        player.set_state_machine_string_context("counter_1", "to_be_the_same");
-        player.post_event(&Event::String {
-            value: "complete".to_string(),
-        });
-
-        // Should go to stage 2
-        assert_eq!(get_current_transition_event(&player), "done");
-
-        // Test with a bool value
-        player.set_state_machine_boolean_context("counter_2", false);
-        player.post_event(&Event::String {
-            value: "done".to_string(),
-        });
-
-        // Should stay on stage 3 since false != true
-        assert_eq!(get_current_transition_event(&player), "done");
-
-        player.set_state_machine_boolean_context("counter_2", true);
-        player.post_event(&Event::String {
-            value: "done".to_string(),
-        });
-
-        // Should go to stage 0
-        assert_eq!(get_current_transition_event(&player), "explosion");
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_5");
     }
 
     #[test]
-    #[ignore]
-    pub fn greater_than_greater_than_or_equal_test() {
-        use dotlottie_rs::transitions::TransitionTrait;
-
-        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
-
+    pub fn greater_than() {
+        let global_state = include_str!("fixtures/statemachines/guard_tests/greater_than.json");
         let player = DotLottiePlayer::new(Config::default());
-        player.load_dotlottie_data(
-            include_bytes!("fixtures/pigeon_fsm_gt_gte_guard.lottie"),
-            100,
-            100,
-        );
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start(OpenUrl::default());
 
-        player.load_state_machine("gt_gte_guard");
+        assert!(l);
+        assert!(s);
 
-        player.start_state_machine();
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "global");
 
-        let sm = player.get_state_machine();
+        player.state_machine_set_numeric_input("rating", 5.0);
 
-        assert!(
-            sm.read().unwrap().as_ref().is_some(),
-            "State machine is not loaded"
-        );
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_2");
 
-        let players_first_state = sm
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .get_current_state()
-            .unwrap();
+        player.state_machine_set_numeric_input("rating", 4.0);
 
-        let players_first_transition =
-            &*players_first_state.read().unwrap().get_transitions()[0].clone();
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_2");
 
-        let first_player_transition_unwrapped = players_first_transition.read().unwrap();
+        player.state_machine_set_numeric_input("rating", 3.0);
 
-        assert_eq!(
-            format!(
-                "{}",
-                &*first_player_transition_unwrapped
-                    .get_event()
-                    .read()
-                    .unwrap()
-            ),
-            "explosion".to_string()
-        );
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_2");
 
-        drop(sm);
+        player.state_machine_set_numeric_input("rating", 1.0);
 
-        player.set_state_machine_numeric_context("counter_0", 5.0);
-        player.post_event(&Event::String {
-            value: "explosion".to_string(),
-        });
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_1");
 
-        // Not greater than 5.0, should stay on first stage
-        assert_eq!(get_current_transition_event(&player), "explosion");
+        player.state_machine_set_numeric_input("rating", 2.0);
 
-        // Greater than, should go to stage 2
-        player.set_state_machine_numeric_context("counter_0", 6.0);
-
-        player.post_event(&Event::String {
-            value: "explosion".to_string(),
-        });
-
-        // Assert stage 2
-        assert_eq!(get_current_transition_event(&player), "complete");
-
-        // Greater than or equal, since its equal should go to stage 3
-        player.set_state_machine_numeric_context("counter_0", 60.0);
-
-        player.post_event(&Event::String {
-            value: "complete".to_string(),
-        });
-
-        // Assert stage 3
-        assert_eq!(get_current_transition_event(&player), "done");
-
-        // Greater than or equal, since its not >= should stay on same stage
-        player.set_state_machine_numeric_context("counter_0", 64.0);
-
-        player.post_event(&Event::String {
-            value: "done".to_string(),
-        });
-
-        // Assert stage 3
-        assert_eq!(get_current_transition_event(&player), "done");
-
-        // Greater than or equal, greater than should go to stage 0
-        player.set_state_machine_numeric_context("counter_0", 66.0);
-
-        player.post_event(&Event::String {
-            value: "done".to_string(),
-        });
-
-        // Assert stage 0
-        assert_eq!(get_current_transition_event(&player), "explosion");
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_1");
     }
 
     #[test]
-    #[ignore]
-    pub fn less_than_less_than_equal_test() {
-        use dotlottie_rs::transitions::TransitionTrait;
-
-        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
-
+    pub fn greater_than_or_equal() {
+        let global_state =
+            include_str!("fixtures/statemachines/guard_tests/greater_than_equal.json");
         let player = DotLottiePlayer::new(Config::default());
-        player.load_dotlottie_data(
-            include_bytes!("fixtures/pigeon_fsm_lt_lte_guard.lottie"),
-            100,
-            100,
-        );
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start(OpenUrl::default());
 
-        player.load_state_machine("lt_lte_guard");
+        assert!(l);
+        assert!(s);
 
-        player.start_state_machine();
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "global");
 
-        let sm = player.get_state_machine();
+        player.state_machine_set_numeric_input("rating", 5.0);
 
-        assert!(
-            sm.read().unwrap().as_ref().is_some(),
-            "State machine is not loaded"
-        );
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_2");
 
-        let players_first_state = sm
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .get_current_state()
-            .unwrap();
+        player.state_machine_set_numeric_input("rating", 1.0);
 
-        let players_first_transition =
-            &*players_first_state.read().unwrap().get_transitions()[0].clone();
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_1");
 
-        let first_player_transition_unwrapped = players_first_transition.read().unwrap();
+        player.state_machine_set_numeric_input("rating", 2.0);
 
-        assert_eq!(
-            format!(
-                "{}",
-                &*first_player_transition_unwrapped
-                    .get_event()
-                    .read()
-                    .unwrap()
-            ),
-            "explosion".to_string()
-        );
-
-        // Test less than
-        player.set_state_machine_numeric_context("counter_0", 5.0);
-        player.post_event(&Event::String {
-            value: "explosion".to_string(),
-        });
-
-        // Should stay in first stage since 5 == 5
-        assert_eq!(get_current_transition_event(&player), "explosion");
-
-        // Test less than
-        player.set_state_machine_numeric_context("counter_0", 1.0);
-
-        let string_event = Event::String {
-            value: "explosion".to_string(),
-        };
-
-        player.post_event(&string_event);
-
-        // Should go to stage 2
-        assert_eq!(get_current_transition_event(&player), "complete");
-
-        // Start testing less than equal
-        player.set_state_machine_numeric_context("counter_0", 11.0);
-        player.post_event(&Event::String {
-            value: "complete".to_string(),
-        });
-
-        // Should stay in second stage since 11 > 10
-        assert_eq!(get_current_transition_event(&player), "complete");
-
-        // Test equal
-        player.set_state_machine_numeric_context("counter_0", 10.0);
-        player.post_event(&Event::String {
-            value: "complete".to_string(),
-        });
-
-        // Should go to third stage
-        assert_eq!(get_current_transition_event(&player), "done");
-
-        // Test less than
-        player.set_state_machine_numeric_context("counter_0", 14.0);
-        player.post_event(&Event::String {
-            value: "done".to_string(),
-        });
-
-        // Should go back to first stage
-        assert_eq!(get_current_transition_event(&player), "explosion");
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_2");
     }
+
+    #[test]
+    pub fn less_than_equal() {
+        let global_state = include_str!("fixtures/statemachines/guard_tests/less_than_equal.json");
+        let player = DotLottiePlayer::new(Config::default());
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start(OpenUrl::default());
+
+        assert!(l);
+        assert!(s);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_3");
+
+        player.state_machine_set_numeric_input("rating", 5.0);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_5");
+
+        player.state_machine_set_numeric_input("rating", 3.0);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_3");
+
+        player.state_machine_set_numeric_input("rating", 5.0);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_5");
+
+        player.state_machine_set_numeric_input("rating", 1.0);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_3");
+    }
+
+    #[test]
+    pub fn less_than() {
+        let global_state = include_str!("fixtures/statemachines/guard_tests/less_than.json");
+        let player = DotLottiePlayer::new(Config::default());
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start(OpenUrl::default());
+
+        assert!(l);
+        assert!(s);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_3");
+
+        player.state_machine_set_numeric_input("rating", 5.0);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_5");
+
+        player.state_machine_set_numeric_input("rating", 3.0);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_5");
+
+        player.state_machine_set_numeric_input("rating", 1.0);
+
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "star_3");
+    }
+
+    #[test]
+    pub fn guardless_transition() {}
+
+    // Todo cases
 }

@@ -1,0 +1,78 @@
+{
+  "initial": "Pigeon Running",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "Pigeon Running",
+      "loop": true,
+      "autoplay": true,
+      "segment": "bird",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "Explosion",
+          "guards": [
+            {
+              "type": "Numeric",
+              "inputName": "a",
+              "conditionType": "Equal",
+              "compareTo": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "Explosion",
+      "loop": false,
+      "autoplay": true,
+      "segment": "explosion",
+      "speed": 0.5,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "Feathers falling",
+          "guards": [
+            {
+              "type": "Numeric",
+              "inputName": "b",
+              "conditionType": "Equal",
+              "compareTo": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "Feathers falling",
+      "loop": false,
+      "autoplay": true,
+      "segment": "feather",
+      "speed": 1,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "Pigeon Running",
+          "guards": [
+            {
+              "type": "Numeric",
+              "inputName": "c",
+              "conditionType": "Equal",
+              "compareTo": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    {
+      "type": "Numeric",
+      "name": "a",
+      "value": 0
+    }
+  ]
+}

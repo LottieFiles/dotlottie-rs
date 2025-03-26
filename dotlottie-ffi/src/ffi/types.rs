@@ -26,12 +26,12 @@ pub const LISTENER_TYPE_POINTER_ENTER: u16 = 1 << 2;
 pub const LISTENER_TYPE_POINTER_EXIT: u16 = 1 << 3;
 pub const LISTENER_TYPE_POINTER_MOVE: u16 = 1 << 4;
 
-// This type allows us to work with Listener Types as bit flags and easily communicate this
+// This type allows us to work with Interaction Types as bit flags and easily communicate this
 // information to the C side
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     #[repr(C)]
-    pub(crate) struct ListenerType: u16 {
+    pub(crate) struct InteractionType: u16 {
         const UNSET = LISTENER_TYPE_UNSET;
 
         const POINTER_UP    = LISTENER_TYPE_POINTER_UP;
@@ -43,29 +43,31 @@ bitflags! {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct ListenerTypeParseError;
+pub(crate) struct InteractionTypeParseError;
 
-impl ListenerType {
-    pub fn new(listener_types: &Vec<String>) -> Result<ListenerType, ListenerTypeParseError> {
-        let mut result: ListenerType = ListenerType::UNSET;
-        for listener_type in listener_types {
-            result |= ListenerType::from_str(listener_type)?;
+impl InteractionType {
+    pub fn new(
+        interaction_types: &Vec<String>,
+    ) -> Result<InteractionType, InteractionTypeParseError> {
+        let mut result: InteractionType = InteractionType::UNSET;
+        for interaction_type in interaction_types {
+            result |= InteractionType::from_str(interaction_type)?;
         }
         Ok(result)
     }
 }
 
-impl FromStr for ListenerType {
-    type Err = ListenerTypeParseError;
+impl FromStr for InteractionType {
+    type Err = InteractionTypeParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "PointerUp" => Ok(ListenerType::POINTER_UP),
-            "PointerDown" => Ok(ListenerType::POINTER_DOWN),
-            "PointerEnter" => Ok(ListenerType::POINTER_ENTER),
-            "PointerExit" => Ok(ListenerType::POINTER_EXIT),
-            "PointerMove" => Ok(ListenerType::POINTER_MOVE),
-            _ => Err(ListenerTypeParseError),
+            "PointerUp" => Ok(InteractionType::POINTER_UP),
+            "PointerDown" => Ok(InteractionType::POINTER_DOWN),
+            "PointerEnter" => Ok(InteractionType::POINTER_ENTER),
+            "PointerExit" => Ok(InteractionType::POINTER_EXIT),
+            "PointerMove" => Ok(InteractionType::POINTER_MOVE),
+            _ => Err(InteractionTypeParseError),
         }
     }
 }
@@ -256,6 +258,7 @@ pub struct DotLottieConfig {
     pub layout: DotLottieLayout,
     pub marker: DotLottieString,
     pub theme_id: DotLottieString,
+    pub state_machine_id: DotLottieString,
 }
 
 impl Transferable<Config> for DotLottieConfig {
@@ -276,6 +279,7 @@ impl Transferable<Config> for DotLottieConfig {
             layout: DotLottieLayout::new(&config.layout),
             marker: DotLottieString::new(&config.marker)?,
             theme_id: DotLottieString::new(&config.theme_id)?,
+            state_machine_id: DotLottieString::new(&config.state_machine_id)?,
         })
     }
 }
@@ -297,6 +301,7 @@ impl DotLottieConfig {
             layout: self.layout.to_layout(),
             marker: self.marker.to_string(),
             theme_id: self.theme_id.to_string(),
+            state_machine_id: self.state_machine_id.to_string(),
         })
     }
 }
@@ -460,36 +465,27 @@ impl DotLottieLayout {
 #[allow(dead_code)]
 #[repr(C)]
 pub enum DotLottieEvent {
-    Boolean { value: bool },
-    String { value: DotLottieString },
-    Numeric { value: f32 },
-    OnPointerDown { x: f32, y: f32 },
-    OnPointerUp { x: f32, y: f32 },
-    OnPointerMove { x: f32, y: f32 },
-    OnPointerEnter { x: f32, y: f32 },
-    OnPointerExit { x: f32, y: f32 },
+    PointerDown { x: f32, y: f32 },
+    PointerUp { x: f32, y: f32 },
+    PointerMove { x: f32, y: f32 },
+    PointerEnter { x: f32, y: f32 },
+    PointerExit { x: f32, y: f32 },
+    Click { x: f32, y: f32 },
     OnComplete,
-    SetNumericContext { key: DotLottieString, value: f32 },
+    OnLoopComplete,
 }
 
 impl DotLottieEvent {
     pub unsafe fn to_event(&self) -> Event {
         match self {
-            DotLottieEvent::Boolean { value } => Event::Bool { value: *value },
-            DotLottieEvent::String { value } => Event::String {
-                value: value.to_string(),
-            },
-            DotLottieEvent::Numeric { value } => Event::Numeric { value: *value },
-            DotLottieEvent::OnPointerDown { x, y } => Event::OnPointerDown { x: *x, y: *y },
-            DotLottieEvent::OnPointerUp { x, y } => Event::OnPointerUp { x: *x, y: *y },
-            DotLottieEvent::OnPointerMove { x, y } => Event::OnPointerMove { x: *x, y: *y },
-            DotLottieEvent::OnPointerEnter { x, y } => Event::OnPointerEnter { x: *x, y: *y },
-            DotLottieEvent::OnPointerExit { x, y } => Event::OnPointerExit { x: *x, y: *y },
+            DotLottieEvent::PointerDown { x, y } => Event::PointerDown { x: *x, y: *y },
+            DotLottieEvent::PointerUp { x, y } => Event::PointerUp { x: *x, y: *y },
+            DotLottieEvent::PointerMove { x, y } => Event::PointerMove { x: *x, y: *y },
+            DotLottieEvent::PointerEnter { x, y } => Event::PointerEnter { x: *x, y: *y },
+            DotLottieEvent::PointerExit { x, y } => Event::PointerExit { x: *x, y: *y },
+            DotLottieEvent::Click { x, y } => Event::Click { x: *x, y: *y },
             DotLottieEvent::OnComplete => Event::OnComplete,
-            DotLottieEvent::SetNumericContext { key, value } => Event::SetNumericContext {
-                key: key.to_string(),
-                value: *value,
-            },
+            DotLottieEvent::OnLoopComplete => Event::OnLoopComplete,
         }
     }
 }
@@ -554,12 +550,29 @@ impl Observer {
 pub type OnTransitionOp = unsafe extern "C" fn(*const c_char, *const c_char);
 pub type OnStateEnteredOp = unsafe extern "C" fn(*const c_char);
 pub type OnStateExitOp = unsafe extern "C" fn(*const c_char);
+pub type OnStateCustomEventOp = unsafe extern "C" fn(*const c_char);
+pub type OnStateErrorOp = unsafe extern "C" fn(*const c_char);
+pub type OnStateMachineStartOp = unsafe extern "C" fn();
+pub type OnStateMachineStopOp = unsafe extern "C" fn();
+pub type OnStringInputValueChangeOp =
+    unsafe extern "C" fn(*const c_char, *const c_char, *const c_char);
+pub type OnNumericInputValueChangeOp = unsafe extern "C" fn(*const c_char, f32, f32);
+pub type OnBooleanInputValueChangeOp = unsafe extern "C" fn(*const c_char, bool, bool);
+pub type OnInputFiredOp = unsafe extern "C" fn(*const c_char);
 
 #[repr(C)]
 pub struct StateMachineObserver {
     pub on_transition_op: OnTransitionOp,
     pub on_state_entered_op: OnStateEnteredOp,
     pub on_state_exit_op: OnStateExitOp,
+    pub on_state_custom_event_op: OnStateCustomEventOp,
+    pub on_state_error_op: OnStateErrorOp,
+    pub on_state_machine_start_op: OnStateMachineStartOp,
+    pub on_state_machine_stop_op: OnStateMachineStopOp,
+    pub on_string_input_value_change_op: OnStringInputValueChangeOp,
+    pub on_numeric_input_value_change_op: OnNumericInputValueChangeOp,
+    pub on_boolean_input_value_change_op: OnBooleanInputValueChangeOp,
+    pub on_input_fired_op: OnInputFiredOp,
 }
 
 impl dotlottie_rs::StateMachineObserver for StateMachineObserver {
@@ -590,6 +603,85 @@ impl dotlottie_rs::StateMachineObserver for StateMachineObserver {
         if let Ok(leaving_state) = CString::new(leaving_state) {
             unsafe {
                 (self.on_state_exit_op)(leaving_state.as_bytes_with_nul().as_ptr() as *const c_char)
+            }
+        }
+    }
+
+    fn on_custom_event(&self, message: String) {
+        if let Ok(message) = CString::new(message) {
+            unsafe {
+                (self.on_state_custom_event_op)(
+                    message.as_bytes_with_nul().as_ptr() as *const c_char
+                )
+            }
+        }
+    }
+
+    fn on_error(&self, message: String) {
+        if let Ok(message) = CString::new(message) {
+            unsafe {
+                (self.on_state_error_op)(message.as_bytes_with_nul().as_ptr() as *const c_char)
+            }
+        }
+    }
+
+    fn on_start(&self) {
+        unsafe { (self.on_state_machine_start_op)() }
+    }
+
+    fn on_stop(&self) {
+        unsafe { (self.on_state_machine_stop_op)() }
+    }
+
+    fn on_string_input_value_change(
+        &self,
+        input_name: String,
+        old_value: String,
+        new_value: String,
+    ) {
+        if let (Ok(input_name), Ok(old_value), Ok(new_value)) = (
+            CString::new(input_name),
+            CString::new(old_value),
+            CString::new(new_value),
+        ) {
+            unsafe {
+                (self.on_string_input_value_change_op)(
+                    input_name.as_bytes_with_nul().as_ptr() as *const c_char,
+                    old_value.as_bytes_with_nul().as_ptr() as *const c_char,
+                    new_value.as_bytes_with_nul().as_ptr() as *const c_char,
+                )
+            }
+        }
+    }
+
+    fn on_numeric_input_value_change(&self, input_name: String, old_value: f32, new_value: f32) {
+        if let Ok(input_name) = CString::new(input_name) {
+            unsafe {
+                (self.on_numeric_input_value_change_op)(
+                    input_name.as_bytes_with_nul().as_ptr() as *const c_char,
+                    old_value,
+                    new_value,
+                )
+            }
+        }
+    }
+
+    fn on_boolean_input_value_change(&self, input_name: String, old_value: bool, new_value: bool) {
+        if let Ok(input_name) = CString::new(input_name) {
+            unsafe {
+                (self.on_boolean_input_value_change_op)(
+                    input_name.as_bytes_with_nul().as_ptr() as *const c_char,
+                    old_value,
+                    new_value,
+                )
+            }
+        }
+    }
+
+    fn on_input_fired(&self, input_name: String) {
+        if let Ok(input_name) = CString::new(input_name) {
+            unsafe {
+                (self.on_input_fired_op)(input_name.as_bytes_with_nul().as_ptr() as *const c_char)
             }
         }
     }

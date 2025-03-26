@@ -1,0 +1,158 @@
+{
+    "initial": "Initial",
+    "states": [
+        {
+            "name": "Initial",
+            "type": "GlobalState",
+            "animation": "",
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "a",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "conditionType": "Equal",
+                            "inputName": "rating",
+                            "compareTo": 1
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "b",
+                    "guards": [
+                        {
+                            "type": "Numeric",
+                            "conditionType": "Equal",
+                            "inputName": "rating",
+                            "compareTo": 2
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "a",
+            "animation": "",
+            "type": "PlaybackState",
+            "autoplay": true,
+            "loop": true,
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "c",
+                    "guards": [
+                        {
+                            "type": "Event",
+                            "inputName": "Step"
+                        }
+                    ]
+                }
+            ],
+            "exitActions": [
+                {
+                    "type": "Toggle",
+                    "inputName": "a_exited"
+                }
+            ]
+        },
+        {
+            "name": "b",
+            "animation": "",
+            "type": "PlaybackState",
+            "autoplay": true,
+            "loop": true,
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "c",
+                    "guards": [
+                        {
+                            "type": "Event",
+                            "inputName": "Step"
+                        }
+                    ]
+                }
+            ],
+            "exitActions": [
+                {
+                    "type": "Toggle",
+                    "inputName": "b_exited",
+                    "value": true
+                }
+            ]
+        },
+        {
+            "name": "c",
+            "animation": "",
+            "type": "PlaybackState",
+            "autoplay": true,
+            "loop": true,
+            "transitions": [
+                {
+                    "type": "Transition",
+                    "toState": "d",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "inputName": "a_exited",
+                            "compareTo": true,
+                            "conditionType": "Equal"
+                        }
+                    ]
+                },
+                {
+                    "type": "Transition",
+                    "toState": "e",
+                    "guards": [
+                        {
+                            "type": "Boolean",
+                            "inputName": "b_exited",
+                            "compareTo": true,
+                            "conditionType": "Equal"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "d",
+            "animation": "",
+            "type": "PlaybackState",
+            "autoplay": true,
+            "loop": true,
+            "transitions": []
+        },
+        {
+            "name": "e",
+            "animation": "",
+            "type": "PlaybackState",
+            "autoplay": true,
+            "loop": true,
+            "transitions": []
+        }
+    ],
+    "interactions": [],
+    "inputs": [
+        {
+            "type": "Boolean",
+            "name": "a_exited",
+            "value": false
+        },
+        {
+            "type": "Boolean",
+            "name": "b_exited",
+            "value": false
+        },
+        {
+            "type": "Numeric",
+            "name": "rating",
+            "value": 0.0
+        },
+        {
+            "type": "Event",
+            "name": "Step"
+        }
+    ]
+}

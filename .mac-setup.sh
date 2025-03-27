@@ -15,7 +15,7 @@ NC=$(tput sgr0)
 
 # Environment
 EMSDK_VERSION=${EMSDK_VERSION:-latest}
-UNIFFI_BINDGEN_CPP_VERSION=${UNIFFI_BINDGEN_CPP_VERSION:-"v0.6.3+v0.25.0"}
+UNIFFI_BINDGEN_CPP_VERSION=${UNIFFI_BINDGEN_CPP_VERSION:-"v0.7.0+v0.28.3"}
 
 die() { printf %s "${@+$@$'\n'}" 1>&2 ; exit 1; }
 

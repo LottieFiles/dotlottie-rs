@@ -620,7 +620,7 @@ impl StateMachine {
         false
     }
 
-    fn perform_hit_check(&self, target: &str, x: f32, y: f32) -> bool {
+    fn perform_hit_check(&self, x: f32, y: f32, target: &str) -> bool {
         // A layer name was provided, we need to check if the pointer is within the layer
         let pointer_target = target;
 
@@ -634,7 +634,7 @@ impl StateMachine {
                 Ok(player) => {
                     let player = &*player;
 
-                    player.hit_check(pointer_target, x, y)
+                    player.intersect(x, y, pointer_target)
                 }
                 Err(_) => false,
             }
@@ -737,7 +737,7 @@ impl StateMachine {
                                 }
                             }
                         } else if target.is_some() && self.player.is_some() {
-                            if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                            if self.perform_hit_check(*x, *y, target.as_ref().unwrap()) {
                                 tmp_state = target_state as i32;
                             }
                         } else {
@@ -755,7 +755,7 @@ impl StateMachine {
                                 }
                             }
                         } else if target.is_some() && self.player.is_some() {
-                            if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                            if self.perform_hit_check(*x, *y, target.as_ref().unwrap()) {
                                 tmp_state = target_state as i32;
                             }
                         } else {
@@ -773,7 +773,7 @@ impl StateMachine {
                                 }
                             }
                         } else if target.is_some() && self.player.is_some() {
-                            if self.perform_hit_check(target.as_ref().unwrap(), *x, *y) {
+                            if self.perform_hit_check(*x, *y, target.as_ref().unwrap()) {
                                 tmp_state = target_state as i32;
                             }
                         } else {
@@ -803,9 +803,9 @@ impl StateMachine {
                         }
                     } else if target.is_some() && self.player.is_some() {
                         if self.perform_hit_check(
-                            target.as_ref().unwrap(),
                             received_event_values.x(),
                             received_event_values.y(),
+                            target.as_ref().unwrap(),
                         ) {
                             let current_state_name =
                                 if let Some(current_state) = &self.current_state {
@@ -873,9 +873,9 @@ impl StateMachine {
 
                         if current_state_name == *target.as_ref().unwrap()
                             && !self.perform_hit_check(
-                                target.as_ref().unwrap(),
                                 received_event_values.x(),
                                 received_event_values.y(),
+                                target.as_ref().unwrap(),
                             )
                         {
                             tmp_state = target_state as i32;

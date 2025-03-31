@@ -130,24 +130,24 @@
       });
 
       const data = await fetch(
-        // "./examples/demo-player/src/v2/gradient.json"
+        "./examples/demo-player/src/v2/gradient.json"
         // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie",
         // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
-        "./examples/demo-player/src/v2/bouncy-ball-lot.lottie"
-      ).then((res) => res.arrayBuffer());
+        // "./examples/demo-player/src/v2/bouncy-ball-lot.lottie"
+      ).then((res) => res.text());
 
       const canvas = document.querySelector("canvas");
 
-      // const loaded = dotLottiePlayer.loadAnimationData(
-      //   data,
-      //   canvas.width,
-      //   canvas.height
-      // );
-      const loaded = dotLottiePlayer.loadDotLottieData(
+      const loaded = dotLottiePlayer.loadAnimationData(
         data,
         canvas.width,
         canvas.height
       );
+      // const loaded = dotLottiePlayer.loadDotLottieData(
+      //   data,
+      //   canvas.width,
+      //   canvas.height
+      // );
 
       // const manifest = JSON.parse(dotLottiePlayer.manifestString());
 
@@ -242,6 +242,25 @@
           const imageData = ctx.createImageData(canvas.width, canvas.height);
           imageData.data.set(frameBuffer);
           ctx.putImageData(imageData, 0, 0);
+
+          const layerOBB = dotLottiePlayer.getLayerBounds("S");
+          const x1 = layerOBB.get(0);
+          const y1 = layerOBB.get(1);
+          const x2 = layerOBB.get(2);
+          const y2 = layerOBB.get(3);
+          const x3 = layerOBB.get(4);
+          const y3 = layerOBB.get(5);
+          const x4 = layerOBB.get(6);
+          const y4 = layerOBB.get(7);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.lineTo(x3, y3);
+          ctx.lineTo(x4, y4);
+          ctx.closePath();
+          ctx.lineWidth = 10;
+          ctx.strokeStyle = "black";
+          ctx.stroke();
           return true;
         } else {
           return false;

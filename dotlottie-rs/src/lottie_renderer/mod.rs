@@ -73,12 +73,9 @@ pub trait LottieRenderer {
 
     fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError>;
 
-    fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> Result<bool, LottieRendererError>;
+    fn get_layer_bounds(&self, layer_name: &str) -> Result<[f32; 8], LottieRendererError>;
 
-    fn get_layer_bounds(
-        &self,
-        layer_name: &str,
-    ) -> Result<(f32, f32, f32, f32), LottieRendererError>;
+    fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, LottieRendererError>;
 
     fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), LottieRendererError>;
 
@@ -395,18 +392,15 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> Result<bool, LottieRendererError> {
+    fn get_layer_bounds(&self, layer_name: &str) -> Result<[f32; 8], LottieRendererError> {
         self.animation
-            .hit_check(layer_name, x, y)
+            .get_layer_bounds(layer_name)
             .map_err(into_lottie::<R>)
     }
 
-    fn get_layer_bounds(
-        &self,
-        layer_name: &str,
-    ) -> Result<(f32, f32, f32, f32), LottieRendererError> {
+    fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, LottieRendererError> {
         self.animation
-            .get_layer_bounds(layer_name)
+            .intersect(x, y, layer_name)
             .map_err(into_lottie::<R>)
     }
 }

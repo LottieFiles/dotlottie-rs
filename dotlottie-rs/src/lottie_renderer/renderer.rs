@@ -35,9 +35,9 @@ pub trait Animation: Default {
 
     fn load_data(&mut self, data: &str, mimetype: &str, copy: bool) -> Result<(), Self::Error>;
 
-    fn get_layer_bounds(&self, layer_name: &str) -> Result<(f32, f32, f32, f32), Self::Error>;
+    fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, Self::Error>;
 
-    fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> Result<bool, Self::Error>;
+    fn get_layer_bounds(&self, layer_name: &str) -> Result<[f32; 8], Self::Error>;
 
     fn get_size(&self) -> Result<(f32, f32), Self::Error>;
 

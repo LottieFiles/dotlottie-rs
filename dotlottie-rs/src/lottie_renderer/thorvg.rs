@@ -228,6 +228,26 @@ impl Default for TvgAnimation {
     }
 }
 
+impl TvgAnimation {
+    #[cfg(feature = "thorvg-v1")]
+    fn get_layer_obb(&self, layer_name: &str) -> Result<Option<[tvg::Tvg_Point; 4]>, TvgError> {
+        unsafe {
+            let mut obb: [tvg::Tvg_Point; 4] = [tvg::Tvg_Point { x: 0.0, y: 0.0 }; 4];
+            let paint = self.raw_paint;
+            let layer_name_cstr = CString::new(layer_name).expect("Failed to create CString");
+            let layer_id = tvg::tvg_accessor_generate_id(layer_name_cstr.as_ptr());
+            let layer_paint = tvg::tvg_picture_get_paint(paint, layer_id);
+
+            if !layer_paint.is_null() {
+                tvg::tvg_paint_get_obb(layer_paint, obb.as_mut_ptr());
+                Ok(Some(obb))
+            } else {
+                Ok(None)
+            }
+        }
+    }
+}
+
 impl Animation for TvgAnimation {
     type Error = TvgError;
 
@@ -260,68 +280,65 @@ impl Animation for TvgAnimation {
         }
     }
 
-    fn get_layer_bounds(&self, layer_name: &str) -> Result<(f32, f32, f32, f32), TvgError> {
-        let paint = self.raw_paint;
-        let layer_name_cstr = CString::new(layer_name).expect("Failed to create CString");
-        let layer_id = unsafe { tvg::tvg_accessor_generate_id(layer_name_cstr.as_ptr()) };
-        let layer = unsafe { tvg::tvg_picture_get_paint(paint, layer_id) };
+    fn intersect(&self, _x: f32, _y: f32, _layer_name: &str) -> Result<bool, TvgError> {
+        #[cfg(feature = "thorvg-v1")]
+        {
+            if let Some(obb) = self.get_layer_obb(_layer_name)? {
+                let e1 = tvg::Tvg_Point {
+                    x: obb[1].x - obb[0].x,
+                    y: obb[1].y - obb[0].y,
+                };
+                let e2 = tvg::Tvg_Point {
+                    x: obb[3].x - obb[0].x,
+                    y: obb[3].y - obb[0].y,
+                };
+                let o = tvg::Tvg_Point {
+                    x: _x - obb[0].x,
+                    y: _y - obb[0].y,
+                };
+                let u = (o.x * e1.x + o.y * e1.y) / (e1.x * e1.x + e1.y * e1.y);
+                let v = (o.x * e2.x + o.y * e2.y) / (e2.x * e2.x + e2.y * e2.y);
 
-        if !layer.is_null() {
-            let mut px: f32 = -1.0;
-            let mut py: f32 = -1.0;
-            let mut pw: f32 = -1.0;
-            let mut ph: f32 = -1.0;
-
-            let bounds = unsafe {
-                tvg::tvg_paint_get_bounds(
-                    layer,
-                    &mut px as *mut f32,
-                    &mut py as *mut f32,
-                    &mut pw as *mut f32,
-                    &mut ph as *mut f32,
-                    true,
-                )
-            };
-
-            bounds.into_result()?;
-
-            Ok((px, py, pw, ph))
-        } else {
-            Err(TvgError::Unknown)
-        }
-    }
-
-    fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> Result<bool, TvgError> {
-        let paint = self.raw_paint;
-        let layer_name_cstr = CString::new(layer_name).expect("Failed to create CString");
-        let layer_id = unsafe { tvg::tvg_accessor_generate_id(layer_name_cstr.as_ptr()) };
-        let layer = unsafe { tvg::tvg_picture_get_paint(paint, layer_id) };
-
-        if !layer.is_null() {
-            let mut px: f32 = -1.0;
-            let mut py: f32 = -1.0;
-            let mut pw: f32 = -1.0;
-            let mut ph: f32 = -1.0;
-
-            let bounds = unsafe {
-                tvg::tvg_paint_get_bounds(
-                    layer,
-                    &mut px as *mut f32,
-                    &mut py as *mut f32,
-                    &mut pw as *mut f32,
-                    &mut ph as *mut f32,
-                    true,
-                )
-            };
-
-            bounds.into_result()?;
-
-            if x >= px && x <= px + pw && y >= py && y <= py + ph {
-                return Ok(true);
+                // Check if point is inside the OBB
+                Ok(u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0)
+            } else {
+                Ok(false)
             }
         }
 
-        Ok(false)
+        #[cfg(not(feature = "thorvg-v1"))]
+        Err(TvgError::NotSupported)
+    }
+
+    fn get_layer_bounds(&self, _layer_name: &str) -> Result<[f32; 8], TvgError> {
+        #[cfg(feature = "thorvg-v1")]
+        {
+            if let Some(obb) = self.get_layer_obb(_layer_name)? {
+                // Return the 8 points out of obb
+                let mut point_vec: Vec<f32> = Vec::with_capacity(8);
+
+                for i in 0..4 {
+                    point_vec.push(obb[i].x);
+                    point_vec.push(obb[i].y);
+                }
+
+                Ok([
+                    point_vec[0],
+                    point_vec[1],
+                    point_vec[2],
+                    point_vec[3],
+                    point_vec[4],
+                    point_vec[5],
+                    point_vec[6],
+                    point_vec[7],
+                ])
+            } else {
+                Err(TvgError::Unknown)
+            }
+        }
+
+        #[cfg(not(feature = "thorvg-v1"))]
+        Err(TvgError::NotSupported)
     }
 
     fn get_size(&self) -> Result<(f32, f32), TvgError> {

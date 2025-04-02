@@ -99,7 +99,7 @@ fn apply_build_settings(build_settings: &BuildSettings) {
 }
 
 fn get_emscripten_include_path() -> String {
-    let emscripten_include_path = env::var("EMSDK").unwrap();
+    let emscripten_include_path = env::var("EMSDK").expect("EMSDK environment variable is not set");
     let path =
         PathBuf::from(emscripten_include_path).join("upstream/emscripten/cache/sysroot/include");
     path.to_str().unwrap().to_string()

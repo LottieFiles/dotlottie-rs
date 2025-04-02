@@ -8,86 +8,16 @@
 
   <body>
     <h1>Test</h1>
-    <div style="width: 800px">
-      <label for="fit">Fit:</label>
-      <select id="fit">
-        <option value="1" selected>Contain</option>
-        <option value="2">Fill</option>
-        <option value="3">Cover</option>
-        <option value="4">FitWidth</option>
-        <option value="5">FitHeight</option>
-        <option value="6">None</option>
-      </select>
-      <label for="align">Align:</label>
-      <select id="align">
-        <option value="0,0">top-left</option>
-        <option value="0.5,0">top-center</option>
-        <option value="1,0">top-right</option>
-
-        <option value="0,0.5">center-left</option>
-        <option value="0.5,0.5" selected>center</option>
-        <option value="1,0.5">center-right</option>
-
-        <option value="0,1">bottom-left</option>
-        <option value="0.5,1">bottom-center</option>
-        <option value="1,1">bottom-right</option>
-      </select>
-      <canvas
-        style="width: 100%; height: 100%; border: 1px solid black"
-      ></canvas>
-      <button id="play">play</button>
-      <button id="pause">pause</button>
-      <button id="resize">resize</button>
-      <select id="theme-select">
-        <option value="">None</option>
-        <option value="theme">Theme</option>
-      </select>
-      <input
-        id="progress-bar"
-        type="range"
-        min="0"
-        max="100"
-        defaultValue="0"
-        step="0.01"
-      />
-      <select id="mode">
-        <option value="1">Forward</option>
-        <option value="2">Reverse</option>
-        <option value="3">Bounce</option>
-        <option value="4">ReverseBounce</option>
-      </select>
-    </div>
-    <button id="jump">Jump</button>
-    <button id="speed-up">speed +</button>
-    <button id="speed-down">speed -</button>
-    <button id="loop">loopToggle</button>
-    <button id="next">Next</button>
-    <input id="bg-color" type="color" />
-    <div>
-      <label for="width">Rendering Area Width:</label>
-      <input id="width" type="range" min="0" max="1" step="0.01" value="1" />
-      <label for="height">Rendering Area Height:</label>
-      <input id="height" type="range" min="0" max="1" step="0.01" value="1" />
-    </div>
+    <canvas style="width: 100%; height: 100%"></canvas>
     <script type="module">
       import createDotLottiePlayerModule from "./release/wasm/DotLottiePlayer.mjs";
 
-      const playBtn = document.querySelector("#play");
-      const pauseBtn = document.querySelector("#pause");
-      const resizeBtn = document.querySelector("#resize");
-      const progressBar = document.querySelector("#progress-bar");
-      const jumpBtn = document.querySelector("#jump");
-      const modeSelect = document.querySelector("#mode");
-      const speedUpBtn = document.querySelector("#speed-up");
-      const speedDownBtn = document.querySelector("#speed-down");
-      const loopToggle = document.querySelector("#loop");
-      const nextBtn = document.querySelector("#next");
-      const bgColorInput = document.querySelector("#bg-color");
-      const fitSelect = document.querySelector("#fit");
-      const alignSelect = document.querySelector("#align");
-      const themeSelect = document.querySelector("#theme-select");
-      const renderAreaWidthInput = document.querySelector("#width");
-      const renderAreaHeightInput = document.querySelector("#height");
+      const canvas = document.querySelector("canvas");
+
+      canvas.setAttribute("data-id", "dotlottie-canvas");
+
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
 
       const Module = await createDotLottiePlayerModule({
         locateFile: (path, prefix) => {
@@ -96,350 +26,89 @@
           }
           return `${prefix}${path}`;
         },
+        preinitializedWebGPUDevice: device,
       });
 
-      function createSegment(startFrame, endFrame) {
-        const vector = new Module.VectorFloat();
+      // let renderer = Module.TvgEngine.TvgEngineSw;
+      // let renderer = Module.TvgEngine.TvgEngineGl;
+      let renderer = Module.TvgEngine.TvgEngineWg;
 
-        if (typeof startFrame === "number" && typeof endFrame === "number") {
-          vector.push_back(startFrame);
-          vector.push_back(endFrame);
-        }
-
-        return vector;
+      let ctx;
+      if (renderer == Module.TvgEngine.TvgEngineSw) {
+        ctx = canvas.getContext("2d");
       }
 
-      function createAlign(x, y) {
-        const vector = new Module.VectorFloat();
+      const { height, width } = canvas.getBoundingClientRect();
 
-        if (typeof x === "number" && typeof y === "number") {
-          vector.push_back(x);
-          vector.push_back(y);
-        }
+      canvas.width = width * window.devicePixelRatio;
+      canvas.height = height * window.devicePixelRatio;
 
-        return vector;
-      }
+      console.log(canvas.width, canvas.height);
 
-      const dotLottiePlayer = new Module.DotLottiePlayer({
-        ...Module.createDefaultConfig(),
-        autoplay: true,
-        loopAnimation: true,
-        mode: Module.Mode.values[3],
-        segment: createSegment(0, 40),
-        marker: "feather",
-      });
+      console.log(Module);
+
+      const player = new Module.DotLottiePlayer(
+        {
+          ...Module.createDefaultConfig(),
+          autoplay: true,
+          loopAnimation: true,
+        },
+        renderer,
+        0,
+        "[data-id='dotlottie-canvas']"
+      );
 
       const data = await fetch(
-        "./examples/demo-player/src/v2/gradient.json"
-        // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie",
+        // "https://lottie.host/5c89381e-0d1a-4422-8247-f5b7e4b3c4e2/mqs5juC4PW.lottie"
+        // "./examples/demo-player/src/cartoon.json"
+        "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie"
         // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
-        // "./examples/demo-player/src/v2/bouncy-ball-lot.lottie"
-      ).then((res) => res.text());
+      ).then((res) => res.arrayBuffer());
 
-      const canvas = document.querySelector("canvas");
-
-      const loaded = dotLottiePlayer.loadAnimationData(
+      const loaded = player.loadDotLottieData(
         data,
         canvas.width,
         canvas.height
       );
-      // const loaded = dotLottiePlayer.loadDotLottieData(
-      //   data,
-      //   canvas.width,
-      //   canvas.height
-      // );
 
-      // const manifest = JSON.parse(dotLottiePlayer.manifestString());
+      console.log({ loaded });
 
-      // console.log(manifest);
-
-      if (loaded) {
-        console.log({
-          width: dotLottiePlayer.animationSize().get(0),
-          height: dotLottiePlayer.animationSize().get(1),
-        });
-        resize();
-      }
-
-      dotLottiePlayer.setConfig({
-        ...dotLottiePlayer.config(),
-        mode: Module.Mode.values[1],
-        segment: createSegment(),
-      });
-
-      console.log(dotLottiePlayer.markers());
-
-      console.log("Loaded: ", loaded);
-
-      const ctx = canvas.getContext("2d");
-
-      let animationFrameId = null;
-
-      function animationLoop() {
-        if (render()) {
-          animationFrameId = requestAnimationFrame(animationLoop);
-        }
-      }
-
-      animationFrameId = requestAnimationFrame(animationLoop);
-
-      playBtn.addEventListener("click", () => {
-        dotLottiePlayer.play();
-      });
-
-      pauseBtn.addEventListener("click", () => {
-        dotLottiePlayer.pause();
-      });
-
-      jumpBtn.addEventListener("click", () => {
-        dotLottiePlayer.seek(44);
-      });
-
-      resizeBtn.addEventListener("click", () => {
-        resize();
-      });
-
-      progressBar.addEventListener("mousedown", () => {
-        cancelAnimationFrame(animationFrameId);
-      });
-
-      progressBar.addEventListener("mouseup", () => {
-        animationFrameId = requestAnimationFrame(animationLoop);
-      });
-
-      progressBar.addEventListener("input", (event) => {
-        const newFrame =
-          (event.target.value / 100) * dotLottiePlayer.totalFrames();
-
-        if (dotLottiePlayer.seek(newFrame)) {
-          render();
-        }
-      });
-
-      function resize() {
-        const { width: clientWidth, height: clientHeight } =
-          canvas.getBoundingClientRect();
-
-        const width = clientWidth * (window.devicePixelRatio || 1);
-        const height = clientHeight * (window.devicePixelRatio || 1);
-
-        canvas.width = width;
-        canvas.height = height;
-
-        dotLottiePlayer.resize(width, height);
-      }
-
-      function setViewport() {
-        const width = Number(renderAreaWidthInput.value) * canvas.width;
-        const height = Number(renderAreaHeightInput.value) * canvas.height;
-        dotLottiePlayer.setViewport(0, 0, width, height);
-      }
-
-      function render() {
-        setViewport();
-        if (dotLottiePlayer.tick()) {
-          const frameBuffer = dotLottiePlayer.buffer();
-          const imageData = ctx.createImageData(canvas.width, canvas.height);
-          imageData.data.set(frameBuffer);
-          ctx.putImageData(imageData, 0, 0);
-
-          const layerOBB = dotLottiePlayer.getLayerBounds("S");
-          const x1 = layerOBB.get(0);
-          const y1 = layerOBB.get(1);
-          const x2 = layerOBB.get(2);
-          const y2 = layerOBB.get(3);
-          const x3 = layerOBB.get(4);
-          const y3 = layerOBB.get(5);
-          const x4 = layerOBB.get(6);
-          const y4 = layerOBB.get(7);
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.lineTo(x3, y3);
-          ctx.lineTo(x4, y4);
-          ctx.closePath();
-          ctx.lineWidth = 10;
-          ctx.strokeStyle = "black";
-          ctx.stroke();
-          return true;
-        } else {
-          return false;
-        }
-      }
-
-      modeSelect.addEventListener("change", (event) => {
-        const mode = Module.Mode.values[event.target.value];
-        dotLottiePlayer.setConfig({
-          ...dotLottiePlayer.config(),
-          mode,
-        });
-      });
-
-      speedUpBtn.addEventListener("click", () => {
-        const speed = dotLottiePlayer.config().speed + 0.1;
-        dotLottiePlayer.setConfig({
-          ...dotLottiePlayer.config(),
-          speed,
-        });
-      });
-
-      speedDownBtn.addEventListener("click", () => {
-        const speed = dotLottiePlayer.config().speed - 0.1;
-
-        dotLottiePlayer.setConfig({
-          ...dotLottiePlayer.config(),
-          speed: speed <= 0 ? 0.001 : speed,
-        });
-      });
-
-      loopToggle.addEventListener("click", () => {
-        const loopAnimation = !dotLottiePlayer.config().loopAnimation;
-
-        dotLottiePlayer.setConfig({
-          ...dotLottiePlayer.config(),
-          loopAnimation,
-        });
-      });
-
-      let i = 0;
-      nextBtn.addEventListener("click", () => {
-        const manifest = dotLottiePlayer.manifestString();
-
-        if (manifest) {
-          const animations = JSON.parse(manifest).animations;
-
-          if (i < animations.length) {
-            const animation = animations[i];
-            dotLottiePlayer.loadAnimation(
-              animation.id,
-              canvas.width,
-              canvas.height
-            );
-            i++;
-          } else {
-            i = 0;
+      const draw = () => {
+        if (player.isPlaying()) {
+          const nextFrame = player.requestFrame();
+          if (player.setFrame(nextFrame)) {
+            if (renderer == Module.TvgEngine.TvgEngineSw) {
+              const frameBuffer = player.buffer();
+              const imageData = ctx.createImageData(
+                canvas.width,
+                canvas.height
+              );
+              imageData.data.set(frameBuffer);
+              ctx.putImageData(imageData, 0, 0);
+            }
+            player.render();
           }
         }
+
+        requestAnimationFrame(draw);
+      };
+
+      draw();
+
+      window.addEventListener("resize", () => {
+        const { height, width } = canvas.getBoundingClientRect();
+        canvas.width = width * window.devicePixelRatio;
+        canvas.height = height * window.devicePixelRatio;
+        player.resize(canvas.width, canvas.height);
       });
 
-      bgColorInput.addEventListener("input", (event) => {
-        const color = parseInt(event.target.value.slice(1) + "ff", 16);
-
-        dotLottiePlayer.setConfig({
-          ...dotLottiePlayer.config(),
-          // the expected color is in the format of 0xRRGGBBAA and the alpha component is not provided by the input element
-          backgroundColor: (color << 8) | 0xff,
+      setInterval(() => {
+        const randomColor = Math.floor(Math.random() * 16777215);
+        player.setConfig({
+          ...player.config(),
+          backgroundColor: randomColor,
         });
-      });
-
-      fitSelect.addEventListener("change", (event) => {
-        const fit = Module.Fit.values[event.target.value];
-        const layout = dotLottiePlayer.config().layout;
-        layout.fit = fit;
-        dotLottiePlayer.setConfig({
-          ...dotLottiePlayer.config(),
-          layout,
-        });
-      });
-
-      alignSelect.addEventListener("change", (event) => {
-        const [x, y] = event.target.value.split(",").map(Number);
-        const layout = dotLottiePlayer.config().layout;
-        layout.align = createAlign(x, y);
-        dotLottiePlayer.setConfig({
-          ...dotLottiePlayer.config(),
-          layout,
-        });
-      });
-
-      themeSelect.addEventListener("change", (event) => {
-        const theme = event.target.value;
-
-        if (theme) {
-          const slots = Module.transformThemeToLottieSlots(
-            JSON.stringify({
-              rules: [
-                {
-                  id: "gradient_fill",
-                  type: "Gradient",
-                  keyframes: [
-                    {
-                      frame: 0,
-                      value: [
-                        {
-                          color: [1, 0, 1], // RGB (initial color)
-                          offset: 0,
-                        },
-                        {
-                          color: [0, 1, 0, 0.2], // RGBA (green with 20% opacity)
-                          offset: 1,
-                        },
-                      ],
-                      inTangent: {
-                        x: 0.2,
-                        y: 0.2,
-                      },
-                      outTangent: {
-                        x: 0.8,
-                        y: 0.8,
-                      },
-                    },
-                    {
-                      frame: 30,
-                      value: [
-                        {
-                          color: [1, 1, 0], // Yellow RGB
-                          offset: 0,
-                        },
-                        {
-                          color: [0, 0, 1, 0.5], // Blue with 50% opacity
-                          offset: 1,
-                        },
-                      ],
-                      inTangent: {
-                        x: 0.4,
-                        y: 0.4,
-                      },
-                      outTangent: {
-                        x: 0.6,
-                        y: 0.6,
-                      },
-                    },
-                    {
-                      frame: 60,
-                      value: [
-                        {
-                          color: [0, 1, 1, 0.8], // Cyan with 80% opacity
-                          offset: 0,
-                        },
-                        {
-                          color: [1, 0, 0], // Red RGB (fully opaque)
-                          offset: 1,
-                        },
-                      ],
-                      inTangent: {
-                        x: 0.3,
-                        y: 0.3,
-                      },
-                      outTangent: {
-                        x: 0.7,
-                        y: 0.7,
-                      },
-                    },
-                  ],
-                },
-              ],
-            }),
-            ""
-          );
-
-          console.log(slots);
-
-          dotLottiePlayer.setSlots(slots);
-        } else {
-          dotLottiePlayer.setSlots("");
-        }
-      });
+      }, 1000);
     </script>
   </body>
 </html>

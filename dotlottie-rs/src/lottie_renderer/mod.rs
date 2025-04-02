@@ -5,11 +5,12 @@ use thiserror::Error;
 use crate::Layout;
 
 mod renderer;
-#[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
+
+#[cfg(any(feature = "thorvg_v0", feature = "thorvg_v1"))]
 mod thorvg;
 
 pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
-#[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
+#[cfg(any(feature = "thorvg_v0", feature = "thorvg_v1"))]
 pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
 
 #[derive(Error, Debug)]
@@ -93,15 +94,9 @@ pub trait LottieRenderer {
 
 impl dyn LottieRenderer {
     pub fn new<R: Renderer>(renderer: R) -> Box<Self> {
-        let mut renderer = renderer;
-        let background_shape = R::Shape::default();
-
-        renderer.push(Drawable::Shape(&background_shape)).unwrap();
-        renderer.sync().unwrap();
-
         Box::new(LottieRendererImpl {
             animation: R::Animation::default(),
-            background_shape,
+            background_shape: None,
             renderer,
             buffer: vec![],
             width: 0,
@@ -118,13 +113,13 @@ impl dyn LottieRenderer {
 #[derive(Default)]
 struct LottieRendererImpl<R: Renderer> {
     animation: R::Animation,
-    background_shape: R::Shape,
+    background_shape: Option<R::Shape>,
     renderer: R,
+    buffer: Vec<u32>,
     picture_width: f32,
     picture_height: f32,
     width: u32,
     height: u32,
-    buffer: Vec<u32>,
     background_color: u32,
     current_frame: f32,
     layout: Layout,
@@ -146,8 +141,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.width = width;
         self.height = height;
 
-        self.buffer
-            .resize((self.width * self.height * 4) as usize, 0);
+        if self.renderer.needs_target() {
+            self.buffer = vec![0; (self.width * self.height * 4) as usize];
+        }
+
         self.renderer
             .set_target(
                 &mut self.buffer,
@@ -159,7 +156,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)?;
 
         self.animation = R::Animation::default();
-        self.background_shape = R::Shape::default();
+        self.background_shape = Some(R::Shape::default());
 
         self.animation
             .load_data(data, "lottie", copy)
@@ -180,21 +177,27 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.animation
             .set_size(scaled_picture_width, scaled_picture_height)
             .map_err(into_lottie::<R>)?;
+
         self.animation
             .translate(shift_x, shift_y)
             .map_err(into_lottie::<R>)?;
 
-        self.background_shape
-            .append_rect(0.0, 0.0, self.width as f32, self.height as f32, 0.0, 0.0)
-            .map_err(into_lottie::<R>)?;
-        let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
-        self.background_shape
-            .fill((red, green, blue, alpha))
-            .map_err(into_lottie::<R>)?;
+        if let Some(bg_shape) = &mut self.background_shape {
+            bg_shape
+                .append_rect(0.0, 0.0, self.width as f32, self.height as f32, 0.0, 0.0)
+                .map_err(into_lottie::<R>)?;
 
-        self.renderer
-            .push(Drawable::Shape(&self.background_shape))
-            .map_err(into_lottie::<R>)?;
+            let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
+
+            bg_shape
+                .fill((red, green, blue, alpha))
+                .map_err(into_lottie::<R>)?;
+
+            self.renderer
+                .push(Drawable::Shape(bg_shape))
+                .map_err(into_lottie::<R>)?;
+        }
+
         self.renderer
             .push(Drawable::Animation(&self.animation))
             .map_err(into_lottie::<R>)?;
@@ -285,8 +288,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.width = width;
         self.height = height;
 
-        self.buffer
-            .resize((self.width * self.height * 4) as usize, 0);
+        if self.renderer.needs_target() {
+            self.buffer = vec![0; (self.width * self.height * 4) as usize];
+        }
 
         self.renderer
             .set_target(
@@ -313,9 +317,11 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .translate(shift_x, shift_y)
             .map_err(into_lottie::<R>)?;
 
-        self.background_shape
-            .append_rect(0.0, 0.0, self.width as f32, self.height as f32, 0.0, 0.0)
-            .map_err(into_lottie::<R>)?;
+        if let Some(bg_shape) = &mut self.background_shape {
+            bg_shape
+                .append_rect(0.0, 0.0, self.width as f32, self.height as f32, 0.0, 0.0)
+                .map_err(into_lottie::<R>)?;
+        }
 
         Ok(())
     }
@@ -329,13 +335,21 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn set_background_color(&mut self, hex_color: u32) -> Result<(), LottieRendererError> {
+        if self.background_color == hex_color {
+            return Ok(());
+        }
+
         self.background_color = hex_color;
 
         let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
 
-        self.background_shape
-            .fill((red, green, blue, alpha))
-            .map_err(into_lottie::<R>)
+        if let Some(bg_shape) = &mut self.background_shape {
+            bg_shape
+                .fill((red, green, blue, alpha))
+                .map_err(into_lottie::<R>)?;
+        }
+
+        Ok(())
     }
 
     fn set_slots(&mut self, slots: &str) -> Result<(), LottieRendererError> {

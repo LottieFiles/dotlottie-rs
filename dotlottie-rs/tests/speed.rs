@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::Config;
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -10,14 +10,14 @@ mod tests {
 
     #[test]
     fn test_default_speed() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         assert_eq!(player.config().speed, 1.0);
     }
 
     #[test]
     fn test_set_speed() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         let mut config = player.config();
         config.speed = 2.0;
@@ -76,7 +76,7 @@ mod tests {
         ];
 
         for (config, expected_speed) in configs {
-            let player = DotLottiePlayer::new(config);
+            let player = crate::test_utils::create_test_player(config);
 
             assert!(
                 player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
@@ -114,7 +114,7 @@ mod tests {
 
     #[test]
     fn test_zero_speed() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         let mut config = player.config();
         config.speed = 0.0;
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_negative_speed() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         let mut config = player.config();
         config.speed = -1.0;

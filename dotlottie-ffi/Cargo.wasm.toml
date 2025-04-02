@@ -1,15 +1,14 @@
 [package]
 name = "dotlottie-ffi"
-version = "0.1.36"
+version = "0.1.38"
 edition = "2021"
 build = "build.rs"
 
 [profile.release]
 lto = true
 opt-level = "z"
-strip = true 
 codegen-units = 1
-panic = "abort" 
+strip = true
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -20,9 +19,12 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [features]
-default = ["thorvg-v0"]
-thorvg-v0 = ["dotlottie-rs/thorvg-v0"]
-thorvg-v1 = ["dotlottie-rs/thorvg-v1"]
+default = ["thorvg_v0"]
+thorvg_v0 = ["dotlottie-rs/thorvg_v0"]
+thorvg_v1 = ["dotlottie-rs/thorvg_v1"]
+thorvg_v1_sw = ["dotlottie-rs/thorvg_v1_sw"]
+thorvg_v1_gl = ["dotlottie-rs/thorvg_v1_gl"]
+thorvg_v1_wg = ["dotlottie-rs/thorvg_v1_wg"]
 
 [dependencies]
 uniffi = { version = "0.25", features = ["cli"] }

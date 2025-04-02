@@ -1,6 +1,6 @@
 use std::{ffi::c_char, slice};
 
-use dotlottie_rs::{Config, DotLottiePlayer, LayerBoundingBox};
+use dotlottie_rs::{Config, DotLottiePlayer, LayerBoundingBox, TvgEngine};
 use types::*;
 
 pub mod types;
@@ -33,7 +33,12 @@ fn to_exit_status(result: bool) -> i32 {
 pub unsafe extern "C" fn dotlottie_new_player(ptr: *const DotLottieConfig) -> *mut DotLottiePlayer {
     if let Some(dotlottie_config) = ptr.as_ref() {
         if let Ok(config) = dotlottie_config.to_config() {
-            let dotlottie_player = Box::new(DotLottiePlayer::new(config));
+            let dotlottie_player = Box::new(DotLottiePlayer::new(
+                config,
+                TvgEngine::TvgEngineSw,
+                0,
+                "".to_string(),
+            ));
             return Box::into_raw(dotlottie_player);
         }
     }

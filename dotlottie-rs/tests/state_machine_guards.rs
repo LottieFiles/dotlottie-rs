@@ -1,19 +1,20 @@
+mod test_utils;
+
 #[cfg(test)]
 mod tests {
     use dotlottie_rs::states::StateTrait;
+    use dotlottie_rs::DotLottiePlayer;
     use dotlottie_rs::{
         parser::TransitionGuardConditionType,
         transitions::{guard::Guard, TransitionTrait},
     };
-
-    use dotlottie_rs::DotLottiePlayer;
 
     #[test]
     #[ignore]
     pub fn guards_loaded_correctly() {
         use dotlottie_rs::transitions::TransitionTrait;
 
-        use dotlottie_rs::{states::State, Config, DotLottiePlayer};
+        use dotlottie_rs::{states::State, Config};
 
         // let file_path = format!(
         //     "{}{}",
@@ -26,7 +27,7 @@ mod tests {
         // let mut buffer = vec![0; meta_data.len() as usize];
         // loaded_file.read(&mut buffer).expect("buffer overflow");
 
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
         player.load_dotlottie_data(
             include_bytes!("fixtures/pigeon_fsm_gt_gte_guard.lottie"),
             100,
@@ -130,7 +131,7 @@ mod tests {
     pub fn not_equal_test() {
         use dotlottie_rs::transitions::TransitionTrait;
 
-        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
+        use dotlottie_rs::{events::Event, Config};
 
         // let file_path = format!(
         //     "{}{}",
@@ -143,7 +144,7 @@ mod tests {
         // let mut buffer = vec![0; meta_data.len() as usize];
         // loaded_file.read(&mut buffer).expect("buffer overflow");
 
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
         player.load_dotlottie_data(
             include_bytes!("fixtures/pigeon_fsm_ne_guard.lottie"),
             100,
@@ -244,7 +245,7 @@ mod tests {
     pub fn equal_test() {
         use dotlottie_rs::transitions::TransitionTrait;
 
-        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
+        use dotlottie_rs::{events::Event, Config};
 
         // let file_path = format!(
         //     "{}{}",
@@ -257,7 +258,7 @@ mod tests {
         // let mut buffer = vec![0; meta_data.len() as usize];
         // loaded_file.read(&mut buffer).expect("buffer overflow");
 
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
         // player.load_dotlottie_data(&buffer, 100, 100);
         player.load_dotlottie_data(
             include_bytes!("fixtures/pigeon_fsm_eq_guard.lottie"),
@@ -357,9 +358,9 @@ mod tests {
     pub fn greater_than_greater_than_or_equal_test() {
         use dotlottie_rs::transitions::TransitionTrait;
 
-        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
+        use dotlottie_rs::{events::Event, Config};
 
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
         player.load_dotlottie_data(
             include_bytes!("fixtures/pigeon_fsm_gt_gte_guard.lottie"),
             100,
@@ -457,9 +458,9 @@ mod tests {
     pub fn less_than_less_than_equal_test() {
         use dotlottie_rs::transitions::TransitionTrait;
 
-        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
+        use dotlottie_rs::{events::Event, Config};
 
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
         player.load_dotlottie_data(
             include_bytes!("fixtures/pigeon_fsm_lt_lte_guard.lottie"),
             100,

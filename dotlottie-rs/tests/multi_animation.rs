@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::Config;
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -9,7 +9,7 @@ mod tests {
 
     #[test]
     pub fn test_load_animation() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
         assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
 
         let manifest = player.manifest();

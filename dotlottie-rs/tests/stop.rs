@@ -1,7 +1,7 @@
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
 
-use dotlottie_rs::{Config, DotLottiePlayer, Mode};
+use dotlottie_rs::{Config, Mode};
 
 #[cfg(test)]
 mod tests {
@@ -57,7 +57,7 @@ mod tests {
         ];
 
         for config in configs {
-            let player = DotLottiePlayer::new(config);
+            let player = crate::test_utils::create_test_player(config);
 
             assert!(
                 player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),

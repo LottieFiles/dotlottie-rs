@@ -4,6 +4,8 @@ use std::{fs, rc::Rc, sync::Arc};
 
 use crate::errors::StateMachineError::ParsingError;
 use crate::listeners::ListenerTrait;
+#[cfg(any(feature = "thorvg_v0", feature = "thorvg_v1"))]
+use crate::lottie_renderer::TvgEngine;
 use crate::state_machine::events::Event;
 use crate::{
     extract_markers,
@@ -138,12 +140,9 @@ struct DotLottieRuntime {
 }
 
 impl DotLottieRuntime {
-    #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
-    pub fn new(config: Config) -> Self {
-        Self::with_renderer(
-            config,
-            crate::TvgRenderer::new(crate::TvgEngine::TvgEngineSw, 0),
-        )
+    #[cfg(any(feature = "thorvg_v0", feature = "thorvg_v1"))]
+    pub fn new(config: Config, engine: TvgEngine, threads: u32, selector: String) -> Self {
+        Self::with_renderer(config, crate::TvgRenderer::new(engine, threads, &selector))
     }
 
     pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
@@ -932,10 +931,10 @@ pub struct DotLottiePlayerContainer {
 }
 
 impl DotLottiePlayerContainer {
-    #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
-    pub fn new(config: Config) -> Self {
+    #[cfg(any(feature = "thorvg_v0", feature = "thorvg_v1"))]
+    pub fn new(config: Config, engine: TvgEngine, threads: u32, selector: String) -> Self {
         DotLottiePlayerContainer {
-            runtime: RwLock::new(DotLottieRuntime::new(config)),
+            runtime: RwLock::new(DotLottieRuntime::new(config, engine, threads, selector)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
         }
@@ -1352,10 +1351,12 @@ pub struct DotLottiePlayer {
 }
 
 impl DotLottiePlayer {
-    #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
-    pub fn new(config: Config) -> Self {
+    #[cfg(any(feature = "thorvg_v0", feature = "thorvg_v1"))]
+    pub fn new(config: Config, engine: TvgEngine, threads: u32, selector: String) -> Self {
         DotLottiePlayer {
-            player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config))),
+            player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(
+                config, engine, threads, selector,
+            ))),
             state_machine: Rc::new(RwLock::new(None)),
         }
     }

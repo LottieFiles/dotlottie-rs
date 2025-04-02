@@ -72,9 +72,6 @@ jobs:
       - uses: Homebrew/actions/setup-homebrew@master
       - uses: ningenMe/setup-rustup@v1.1.0
 
-      - name: Install Binaryen
-        run: brew install binaryen
-
       - name: Install Make
         run: brew install make
 
@@ -86,13 +83,30 @@ jobs:
       - name: Build WASM
         run: make wasm
 
-      - name: Optimize WASM
-        run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
-
       - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.wasm.tar.gz
+          path: release/wasm/dotlottie-player.wasm.tar.gz
+          if-no-files-found: error
+
+      - name: Build WASM (webgpu)
+        run: make wasm-webgpu
+
+      - name: Upload WASM (webgpu) Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.webgpu.wasm.tar.gz
+          path: release/wasm/dotlottie-player.wasm.tar.gz
+          if-no-files-found: error
+
+      - name: Build WASM (webgl)
+        run: make wasm-webgl
+
+      - name: Upload WASM (webgl) Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.webgl.wasm.tar.gz
           path: release/wasm/dotlottie-player.wasm.tar.gz
           if-no-files-found: error
 

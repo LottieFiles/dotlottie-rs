@@ -1,3 +1,5 @@
+mod test_utils;
+
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, RwLock};
@@ -11,12 +13,12 @@ mod tests {
 
     use dotlottie_rs::{listeners::ListenerType, parser::StringNumberBool};
 
-    use dotlottie_rs::{events::Event, states::State, Config, DotLottiePlayer, Mode};
+    use dotlottie_rs::{events::Event, states::State, Config, Mode};
 
     #[test]
     #[ignore]
     pub fn load_multiple_states() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/exploding_pigeon.lottie"), 100, 100);
 
         player.load_state_machine("pigeon_fsm");
@@ -223,9 +225,7 @@ mod tests {
             custom_data: RwLock::new("No event so far".to_string()),
         });
 
-        use dotlottie_rs::{events::Event, Config, DotLottiePlayer};
-
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         player.load_dotlottie_data(
             include_bytes!("fixtures/pigeon_fsm_ne_guard.lottie"),
@@ -295,7 +295,7 @@ mod tests {
     fn state_machine_from_data_test() {
         let pigeon_fsm = include_str!("fixtures/pigeon_fsm.json");
 
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         player.load_dotlottie_data(include_bytes!("fixtures/exploding_pigeon.lottie"), 100, 100);
 
@@ -375,7 +375,7 @@ mod tests {
     #[test]
     #[ignore]
     fn state_machine_listener_test() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         player.load_dotlottie_data(
             include_bytes!("fixtures/pigeon_with_listeners.lottie"),
@@ -437,7 +437,7 @@ mod tests {
     fn state_machine_sync_state_test() {
         let sync_state = include_str!("fixtures/sync_state_machine.json");
 
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         player.load_dotlottie_data(include_bytes!("fixtures/exploding_pigeon.lottie"), 100, 100);
 
@@ -523,7 +523,7 @@ mod tests {
     fn state_machine_global_state() {
         let global_state = include_str!("fixtures/global_state_sm.json");
 
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
 
         player.load_dotlottie_data(include_bytes!("fixtures/exploding_pigeon.lottie"), 100, 100);
 

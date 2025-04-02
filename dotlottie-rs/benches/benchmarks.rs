@@ -1,11 +1,11 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer, TvgEngine};
 
 const WIDTH: u32 = 1000;
 const HEIGHT: u32 = 1000;
 
 fn load_animation_data_benchmark(c: &mut Criterion) {
-    let player = DotLottiePlayer::new(Config::default());
+    let player = DotLottiePlayer::new(Config::default(), TvgEngine::TvgEngineSw, 1, String::new());
     let data = std::str::from_utf8(include_bytes!("../tests/fixtures/test.json")).unwrap();
 
     c.bench_function("load_animation_data", |b| {
@@ -16,7 +16,7 @@ fn load_animation_data_benchmark(c: &mut Criterion) {
 }
 
 fn load_animation_path_benchmark(c: &mut Criterion) {
-    let player = DotLottiePlayer::new(Config::default());
+    let player = DotLottiePlayer::new(Config::default(), TvgEngine::TvgEngineSw, 1, String::new());
 
     let path = &format!(
         "{}/tests/fixtures/test.json",
@@ -31,7 +31,7 @@ fn load_animation_path_benchmark(c: &mut Criterion) {
 }
 
 fn load_dotlottie_data_benchmark(c: &mut Criterion) {
-    let player = DotLottiePlayer::new(Config::default());
+    let player = DotLottiePlayer::new(Config::default(), TvgEngine::TvgEngineSw, 1, String::new());
 
     let data = include_bytes!("../tests/fixtures/emoji.lottie");
 
@@ -43,11 +43,16 @@ fn load_dotlottie_data_benchmark(c: &mut Criterion) {
 }
 
 fn animation_loop_benchmark(c: &mut Criterion) {
-    let player = DotLottiePlayer::new(Config {
-        autoplay: true,
-        loop_animation: true,
-        ..Config::default()
-    });
+    let player = DotLottiePlayer::new(
+        Config {
+            autoplay: true,
+            loop_animation: true,
+            ..Config::default()
+        },
+        TvgEngine::TvgEngineSw,
+        1,
+        String::new(),
+    );
 
     assert!(player.load_dotlottie_data(
         include_bytes!("../tests/fixtures/emoji.lottie"),
@@ -65,12 +70,17 @@ fn animation_loop_benchmark(c: &mut Criterion) {
         });
     });
 
-    let player = DotLottiePlayer::new(Config {
-        autoplay: true,
-        loop_animation: true,
-        use_frame_interpolation: true,
-        ..Config::default()
-    });
+    let player = DotLottiePlayer::new(
+        Config {
+            autoplay: true,
+            loop_animation: true,
+            use_frame_interpolation: true,
+            ..Config::default()
+        },
+        TvgEngine::TvgEngineSw,
+        1,
+        String::new(),
+    );
     assert!(player.load_dotlottie_data(
         include_bytes!("../tests/fixtures/emoji.lottie"),
         WIDTH,
@@ -89,7 +99,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
 }
 
 fn set_theme_benchmark(c: &mut Criterion) {
-    let player = DotLottiePlayer::new(Config::default());
+    let player = DotLottiePlayer::new(Config::default(), TvgEngine::TvgEngineSw, 1, String::new());
 
     let data = include_bytes!("../tests/fixtures/test.lottie");
     assert!(player.load_dotlottie_data(data, WIDTH, HEIGHT));

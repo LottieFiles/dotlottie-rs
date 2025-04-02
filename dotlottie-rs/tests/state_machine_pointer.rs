@@ -1,11 +1,13 @@
+mod test_utils;
+
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{states::StateTrait, Config, DotLottiePlayer, Event};
+    use dotlottie_rs::{states::StateTrait, Config, Event};
 
     #[test]
     #[ignore]
     pub fn pointer_down_up_test() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star-rating.lottie"), 100, 100);
 
         // Load the state machine as a string
@@ -210,7 +212,7 @@ mod tests {
     #[test]
     #[ignore]
     pub fn pointer_enter_exit_test() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = crate::test_utils::create_test_player(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star-rating.lottie"), 100, 100);
 
         // Load the state machine as a string

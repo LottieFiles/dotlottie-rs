@@ -108,6 +108,9 @@ make deps
 
 if [[ "${TARGET}" == "wasm" || "${TARGET}" == "all" ]]; then
   echo
+  echo "Installing binaryen"
+  brew install binaryen
+
   echo "Installing cargo dependencies"
   cargo install uniffi-bindgen-cpp \
     --git https://github.com/NordSecurity/uniffi-bindgen-cpp \

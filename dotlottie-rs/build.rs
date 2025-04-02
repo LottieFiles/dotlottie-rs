@@ -47,7 +47,9 @@ lazy_static! {
         true if is_wasm_build() => BuildSettings{
             static_libs: vec![String::from("thorvg")],
             dynamic_libs: vec![],
-            link_args: vec![String::from("--no-entry")],
+            link_args: vec![
+                String::from("--no-entry")
+            ],
         },
         true => BuildSettings{
             static_libs: vec![String::from("thorvg"), String::from("turbojpeg"), String::from("png"), String::from("z"), String::from("webp")],
@@ -96,13 +98,24 @@ fn apply_build_settings(build_settings: &BuildSettings) {
     build_settings.link_args.iter().for_each(register_link_arg);
 }
 
+fn get_emscripten_include_path() -> String {
+    let emscripten_include_path = env::var("EMSDK").unwrap();
+    let path =
+        PathBuf::from(emscripten_include_path).join("upstream/emscripten/cache/sysroot/include");
+    path.to_str().unwrap().to_string()
+}
+
 fn main() {
-    if !cfg!(feature = "thorvg-v0") && !cfg!(feature = "thorvg-v1") {
+    if !cfg!(feature = "thorvg_v0") && !cfg!(feature = "thorvg_v1") {
         return;
     }
 
-    if !is_artifacts_provided() && cfg!(feature = "thorvg-v1") {
-        panic!("ARTIFACTS_INCLUDE_DIR and ARTIFACTS_LIB_DIR environment variables are required for thorvg-v1");
+    if cfg!(feature = "thorvg_v0") && is_wasm_build() {
+        panic!("thorvg_v0 is not supported for wasm");
+    }
+
+    if !is_artifacts_provided() && cfg!(feature = "thorvg_v1") {
+        panic!("ARTIFACTS_INCLUDE_DIR and ARTIFACTS_LIB_DIR environment variables are required for thorvg_v1");
     }
 
     let mut builder = bindgen::Builder::default().header("wrapper.h");
@@ -147,4 +160,31 @@ fn main() {
     bindings
         .write_to_file(bindings_output_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
+
+    if is_wasm_build() {
+        if cfg!(feature = "thorvg_v1_gl") || cfg!(feature = "thorvg_v1_wg") {
+            println!("cargo:rerun-if-changed=emscripten_wrapper.h");
+            let mut emscripten_builder = bindgen::Builder::default()
+                .header("emscripten_wrapper.h")
+                .layout_tests(false)
+                .clang_arg(format!("-I{}", get_emscripten_include_path()))
+                .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
+
+            if cfg!(feature = "thorvg_v1_gl") {
+                emscripten_builder = emscripten_builder.clang_arg("-DTHORVG_V1_GL");
+            }
+
+            if cfg!(feature = "thorvg_v1_wg") {
+                emscripten_builder = emscripten_builder.clang_arg("-DTHORVG_V1_WG");
+            }
+
+            let emscripten_bindings = emscripten_builder
+                .generate()
+                .expect("Unable to generate emscripten bindings");
+
+            emscripten_bindings
+                .write_to_file(bindings_output_path.join("emscripten_bindings.rs"))
+                .expect("Couldn't write emscripten bindings!");
+        }
+    }
 }

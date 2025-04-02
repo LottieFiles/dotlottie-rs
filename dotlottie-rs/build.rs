@@ -161,30 +161,28 @@ fn main() {
         .write_to_file(bindings_output_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
 
-    if is_wasm_build() {
-        if cfg!(feature = "thorvg_v1_gl") || cfg!(feature = "thorvg_v1_wg") {
-            println!("cargo:rerun-if-changed=emscripten_wrapper.h");
-            let mut emscripten_builder = bindgen::Builder::default()
-                .header("emscripten_wrapper.h")
-                .layout_tests(false)
-                .clang_arg(format!("-I{}", get_emscripten_include_path()))
-                .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
+    if is_wasm_build() && (cfg!(feature = "thorvg_v1_gl") || cfg!(feature = "thorvg_v1_wg")) {
+        println!("cargo:rerun-if-changed=emscripten_wrapper.h");
+        let mut emscripten_builder = bindgen::Builder::default()
+            .header("emscripten_wrapper.h")
+            .layout_tests(false)
+            .clang_arg(format!("-I{}", get_emscripten_include_path()))
+            .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
 
-            if cfg!(feature = "thorvg_v1_gl") {
-                emscripten_builder = emscripten_builder.clang_arg("-DTHORVG_V1_GL");
-            }
-
-            if cfg!(feature = "thorvg_v1_wg") {
-                emscripten_builder = emscripten_builder.clang_arg("-DTHORVG_V1_WG");
-            }
-
-            let emscripten_bindings = emscripten_builder
-                .generate()
-                .expect("Unable to generate emscripten bindings");
-
-            emscripten_bindings
-                .write_to_file(bindings_output_path.join("emscripten_bindings.rs"))
-                .expect("Couldn't write emscripten bindings!");
+        if cfg!(feature = "thorvg_v1_gl") {
+            emscripten_builder = emscripten_builder.clang_arg("-DTHORVG_V1_GL");
         }
+
+        if cfg!(feature = "thorvg_v1_wg") {
+            emscripten_builder = emscripten_builder.clang_arg("-DTHORVG_V1_WG");
+        }
+
+        let emscripten_bindings = emscripten_builder
+            .generate()
+            .expect("Unable to generate emscripten bindings");
+
+        emscripten_bindings
+            .write_to_file(bindings_output_path.join("emscripten_bindings.rs"))
+            .expect("Couldn't write emscripten bindings!");
     }
 }

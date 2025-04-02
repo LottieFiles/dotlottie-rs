@@ -169,7 +169,7 @@ impl Default for TvgAnimation {
 }
 
 impl TvgAnimation {
-    #[cfg(feature = "thorvg-v1")]
+    #[cfg(feature = "thorvg_v1")]
     fn get_layer_obb(&self, layer_name: &str) -> Result<Option<[tvg::Tvg_Point; 4]>, TvgError> {
         unsafe {
             let mut obb: [tvg::Tvg_Point; 4] = [tvg::Tvg_Point { x: 0.0, y: 0.0 }; 4];
@@ -221,7 +221,7 @@ impl Animation for TvgAnimation {
     }
 
     fn intersect(&self, _x: f32, _y: f32, _layer_name: &str) -> Result<bool, TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "thorvg_v1")]
         {
             if let Some(obb) = self.get_layer_obb(_layer_name)? {
                 let e1 = tvg::Tvg_Point {
@@ -246,12 +246,12 @@ impl Animation for TvgAnimation {
             }
         }
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "thorvg_v1"))]
         Err(TvgError::NotSupported)
     }
 
     fn get_layer_bounds(&self, _layer_name: &str) -> Result<[f32; 8], TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "thorvg_v1")]
         {
             if let Some(obb) = self.get_layer_obb(_layer_name)? {
                 // Return the 8 points out of obb
@@ -277,7 +277,7 @@ impl Animation for TvgAnimation {
             }
         }
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "thorvg_v1"))]
         Err(TvgError::NotSupported)
     }
 

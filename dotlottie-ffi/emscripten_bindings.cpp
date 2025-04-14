@@ -321,6 +321,5 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("stateMachineSubscribe", &stateMachineSubscribe, allow_raw_pointers())
         .function("stateMachineUnsubscribe", &stateMachineUnsubscribe, allow_raw_pointers())
         .function("stateMachineFrameworkSubscribe", &stateMachineFrameworkSubscribe, allow_raw_pointers())
-        .function("stateMachineFrameworkUnsubscribe", &stateMachineFrameworkUnsubscribe, allow_raw_pointers())
-        .function("instanceId", &DotLottiePlayer::instance_id);
+        .function("stateMachineFrameworkUnsubscribe", &stateMachineFrameworkUnsubscribe, allow_raw_pointers());
 }

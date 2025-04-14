@@ -972,20 +972,15 @@ pub struct DotLottiePlayerContainer {
     runtime: RwLock<DotLottieRuntime>,
     observers: RwLock<Vec<Arc<dyn Observer>>>,
     state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
-    instance_id: u32,
 }
 
 impl DotLottiePlayerContainer {
     #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
     pub fn new(config: Config) -> Self {
-        static NEXT_INSTANCE_ID: std::sync::atomic::AtomicU32 =
-            std::sync::atomic::AtomicU32::new(1);
-
         DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
-            instance_id: NEXT_INSTANCE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
         }
     }
 
@@ -994,7 +989,6 @@ impl DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::with_renderer(config, renderer)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
-            instance_id: 0,
         }
     }
 
@@ -1419,10 +1413,6 @@ impl DotLottiePlayerContainer {
         }
 
         "".to_string()
-    }
-
-    pub fn instance_id(&self) -> u32 {
-        self.instance_id
     }
 
     pub fn tick(&self) -> bool {
@@ -2281,10 +2271,6 @@ impl DotLottiePlayer {
 
     pub fn animation_size(&self) -> Vec<f32> {
         self.player.read().unwrap().animation_size()
-    }
-
-    pub fn instance_id(&self) -> u32 {
-        self.player.read().unwrap().instance_id()
     }
 
     pub fn state_machine_current_state(&self) -> String {

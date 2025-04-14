@@ -179,7 +179,6 @@ interface DotLottiePlayer {
     boolean tween_to_marker([ByRef] string marker, f32? duration, sequence<f32>? easing);
     boolean is_tweening();
     boolean tween_update(f32? progress);
-    u32 instance_id();
 
     boolean state_machine_load([ByRef] string state_machine_id);
     boolean state_machine_load_data([ByRef] string state_machine);

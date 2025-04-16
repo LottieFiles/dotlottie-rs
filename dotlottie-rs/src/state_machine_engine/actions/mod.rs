@@ -306,12 +306,12 @@ impl ActionTrait for Action {
                     }
                     OpenUrlMode::Interaction => {
                         if let Some(Event::PointerDown { .. }) = interaction {
-                            let _ = NativeOpenUrl::open_url(url, target, engine, player.clone());
+                            let _ = NativeOpenUrl::open_url(url, target, engine);
                             return Ok(());
                         }
                     }
                     OpenUrlMode::Allow => {
-                        let _ = NativeOpenUrl::open_url(url, target, engine, player.clone());
+                        let _ = NativeOpenUrl::open_url(url, target, engine);
                         return Ok(());
                     }
                 }

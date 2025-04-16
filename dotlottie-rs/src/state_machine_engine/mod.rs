@@ -129,7 +129,7 @@ pub struct StateMachineEngine {
     pointer_management: PointerData,
 
     pub observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
-    framework_url_observer: RwLock<Option<Arc<dyn StateMachineObserver>>>,
+    pub framework_url_observer: RwLock<Option<Arc<dyn StateMachineObserver>>>,
 
     state_machine: StateMachine,
 
@@ -1261,18 +1261,6 @@ impl StateMachineEngine {
     }
 
     fn observe_on_state_entered(&self, entering_state: &str) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
-
-                if let Ok(player_container) = try_read_lock {
-                    player_container
-                        .emit_state_machine_observer_on_state_entered(entering_state.to_string());
-                }
-            }
-        }
-
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_state_entered(entering_state.to_string());
@@ -1281,17 +1269,6 @@ impl StateMachineEngine {
     }
 
     fn observe_on_state_exit(&self, leaving_state: &str) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
-
-                if let Ok(player_container) = try_read_lock {
-                    player_container
-                        .emit_state_machine_observer_on_state_exit(leaving_state.to_string());
-                }
-            }
-        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_state_exit(leaving_state.to_string());
@@ -1300,20 +1277,6 @@ impl StateMachineEngine {
     }
 
     fn observe_on_transition(&self, previous_state: &str, new_state: &str) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
-
-                if let Ok(player_container) = try_read_lock {
-                    player_container.emit_state_machine_observer_on_transition(
-                        previous_state.to_string(),
-                        new_state.to_string(),
-                    );
-                }
-            }
-        }
-
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_transition(previous_state.to_string(), new_state.to_string());
@@ -1330,17 +1293,6 @@ impl StateMachineEngine {
     }
 
     pub fn observe_custom_event(&self, message: &str) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
-
-                if let Ok(player_container) = try_read_lock {
-                    player_container
-                        .emit_state_machine_observer_on_custom_event(message.to_string());
-                }
-            }
-        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_custom_event(message.to_string());
@@ -1349,16 +1301,6 @@ impl StateMachineEngine {
     }
 
     pub fn observe_on_error(&self, message: &str) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
-
-                if let Ok(player_container) = try_read_lock {
-                    player_container.emit_state_machine_observer_on_error(message.to_string());
-                }
-            }
-        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_error(message.to_string());
@@ -1372,20 +1314,6 @@ impl StateMachineEngine {
         old_value: &str,
         new_value: &str,
     ) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
-
-                if let Ok(player_container) = try_read_lock {
-                    player_container.emit_state_machine_observer_on_string_input_value_change(
-                        input_name.to_string(),
-                        old_value.to_string(),
-                        new_value.to_string(),
-                    );
-                }
-            }
-        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_string_input_value_change(
@@ -1403,20 +1331,6 @@ impl StateMachineEngine {
         old_value: f32,
         new_value: f32,
     ) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
-
-                if let Ok(player_container) = try_read_lock {
-                    player_container.emit_state_machine_observer_on_numeric_input_value_change(
-                        input_name.to_string(),
-                        old_value,
-                        new_value,
-                    );
-                }
-            }
-        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_numeric_input_value_change(
@@ -1434,20 +1348,6 @@ impl StateMachineEngine {
         old_value: bool,
         new_value: bool,
     ) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
-
-                if let Ok(player_container) = try_read_lock {
-                    player_container.emit_state_machine_observer_on_boolean_input_value_change(
-                        input_name.to_string(),
-                        old_value,
-                        new_value,
-                    );
-                }
-            }
-        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_boolean_input_value_change(
@@ -1460,16 +1360,6 @@ impl StateMachineEngine {
     }
 
     pub fn observe_on_start(&self) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
-
-                if let Ok(player_container) = try_read_lock {
-                    player_container.emit_state_machine_observer_on_start();
-                }
-            }
-        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_start();
@@ -1478,16 +1368,6 @@ impl StateMachineEngine {
     }
 
     pub fn observe_on_stop(&self) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
-
-                if let Ok(player_container) = try_read_lock {
-                    player_container.emit_state_machine_observer_on_stop();
-                }
-            }
-        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_stop();
@@ -1496,17 +1376,6 @@ impl StateMachineEngine {
     }
 
     pub fn observe_on_input_fired(&self, input_name: &str) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(rc_player) = &self.player {
-                let try_read_lock = rc_player.try_read();
-
-                if let Ok(player_container) = try_read_lock {
-                    player_container
-                        .emit_state_machine_observer_on_input_fired(input_name.to_string());
-                }
-            }
-        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_input_fired(input_name.to_string());

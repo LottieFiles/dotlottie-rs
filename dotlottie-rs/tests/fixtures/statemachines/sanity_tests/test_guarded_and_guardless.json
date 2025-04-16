@@ -1,0 +1,116 @@
+{
+  "initial": "a",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "a",
+      "loop": true,
+      "autoplay": true,
+      "animation": "anger",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "Step"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "b",
+      "loop": true,
+      "autoplay": true,
+      "animation": "astonished",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "c"
+        },
+        {
+          "type": "Transition",
+          "toState": "f",
+          "guards": [
+            {
+              "type": "Numeric",
+              "inputName": "r",
+              "conditionType": "Equal",
+              "compareTo": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "c",
+      "autoplay": true,
+      "loop": true,
+      "animation": "blush",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "d"
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "d",
+      "autoplay": true,
+      "loop": true,
+      "animation": "clowns",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "a",
+          "guards": [
+            {
+              "type": "Numeric",
+              "inputName": "r",
+              "conditionType": "Equal",
+              "compareTo": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "f",
+      "autoplay": true,
+      "loop": true,
+      "animation": "cool",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "g"
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "g",
+      "autoplay": true,
+      "loop": true,
+      "animation": "confused",
+      "transitions": []
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    {
+      "type": "Numeric",
+      "name": "r",
+      "value": 2.0
+    },
+    {
+      "type": "Event",
+      "name": "Step"
+    }
+  ]
+}

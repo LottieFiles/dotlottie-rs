@@ -67,6 +67,7 @@ typedef struct DotLottieConfig {
   struct DotLottieLayout layout;
   struct DotLottieString marker;
   struct DotLottieString theme_id;
+  struct DotLottieString state_machine_id;
 } DotLottieConfig;
 
 typedef struct LayerBoundingBox {
@@ -114,72 +115,55 @@ typedef struct DotLottieMarker {
 } DotLottieMarker;
 
 typedef enum DotLottieEvent_Tag {
-  Boolean,
-  String,
-  Numeric,
-  OnPointerDown,
-  OnPointerUp,
-  OnPointerMove,
-  OnPointerEnter,
-  OnPointerExit,
+  PointerDown,
+  PointerUp,
+  PointerMove,
+  PointerEnter,
+  PointerExit,
+  Click,
   OnComplete,
-  SetNumericContext,
+  OnLoopComplete,
 } DotLottieEvent_Tag;
 
-typedef struct Boolean_Body {
-  bool value;
-} Boolean_Body;
-
-typedef struct String_Body {
-  struct DotLottieString value;
-} String_Body;
-
-typedef struct Numeric_Body {
-  float value;
-} Numeric_Body;
-
-typedef struct OnPointerDown_Body {
+typedef struct PointerDown_Body {
   float x;
   float y;
-} OnPointerDown_Body;
+} PointerDown_Body;
 
-typedef struct OnPointerUp_Body {
+typedef struct PointerUp_Body {
   float x;
   float y;
-} OnPointerUp_Body;
+} PointerUp_Body;
 
-typedef struct OnPointerMove_Body {
+typedef struct PointerMove_Body {
   float x;
   float y;
-} OnPointerMove_Body;
+} PointerMove_Body;
 
-typedef struct OnPointerEnter_Body {
+typedef struct PointerEnter_Body {
   float x;
   float y;
-} OnPointerEnter_Body;
+} PointerEnter_Body;
 
-typedef struct OnPointerExit_Body {
+typedef struct PointerExit_Body {
   float x;
   float y;
-} OnPointerExit_Body;
+} PointerExit_Body;
 
-typedef struct SetNumericContext_Body {
-  struct DotLottieString key;
-  float value;
-} SetNumericContext_Body;
+typedef struct Click_Body {
+  float x;
+  float y;
+} Click_Body;
 
 typedef struct DotLottieEvent {
   DotLottieEvent_Tag tag;
   union {
-    Boolean_Body boolean;
-    String_Body string;
-    Numeric_Body numeric;
-    OnPointerDown_Body on_pointer_down;
-    OnPointerUp_Body on_pointer_up;
-    OnPointerMove_Body on_pointer_move;
-    OnPointerEnter_Body on_pointer_enter;
-    OnPointerExit_Body on_pointer_exit;
-    SetNumericContext_Body set_numeric_context;
+    PointerDown_Body pointer_down;
+    PointerUp_Body pointer_up;
+    PointerMove_Body pointer_move;
+    PointerEnter_Body pointer_enter;
+    PointerExit_Body pointer_exit;
+    Click_Body click;
   };
 } DotLottieEvent;
 
@@ -189,10 +173,34 @@ typedef void (*OnStateEnteredOp)(const char*);
 
 typedef void (*OnStateExitOp)(const char*);
 
+typedef void (*OnStateCustomEventOp)(const char*);
+
+typedef void (*OnStateErrorOp)(const char*);
+
+typedef void (*OnStateMachineStartOp)(void);
+
+typedef void (*OnStateMachineStopOp)(void);
+
+typedef void (*OnStringInputValueChangeOp)(const char*, const char*, const char*);
+
+typedef void (*OnNumericInputValueChangeOp)(const char*, float, float);
+
+typedef void (*OnBooleanInputValueChangeOp)(const char*, bool, bool);
+
+typedef void (*OnInputFiredOp)(const char*);
+
 typedef struct StateMachineObserver {
   OnTransitionOp on_transition_op;
   OnStateEnteredOp on_state_entered_op;
   OnStateExitOp on_state_exit_op;
+  OnStateCustomEventOp on_state_custom_event_op;
+  OnStateErrorOp on_state_error_op;
+  OnStateMachineStartOp on_state_machine_start_op;
+  OnStateMachineStopOp on_state_machine_stop_op;
+  OnStringInputValueChangeOp on_string_input_value_change_op;
+  OnNumericInputValueChangeOp on_numeric_input_value_change_op;
+  OnBooleanInputValueChangeOp on_boolean_input_value_change_op;
+  OnInputFiredOp on_input_fired_op;
 } StateMachineObserver;
 
 typedef void (*OnOp)(void);
@@ -272,11 +280,6 @@ int32_t dotlottie_load_dotlottie_data(struct DotLottiePlayer *ptr,
                                       uint32_t width,
                                       uint32_t height);
 
-int32_t dotlottie_load_state_machine(struct DotLottiePlayer *ptr, const char *state_machine_id);
-
-int32_t dotlottie_load_state_machine_data(struct DotLottiePlayer *ptr,
-                                          const char *state_machine_definition);
-
 int32_t dotlottie_loop_count(struct DotLottiePlayer *ptr, uint32_t *result);
 
 int32_t dotlottie_manifest(struct DotLottiePlayer *ptr, struct DotLottieManifest *result);
@@ -303,8 +306,6 @@ int32_t dotlottie_pause(struct DotLottiePlayer *ptr);
 
 int32_t dotlottie_play(struct DotLottiePlayer *ptr);
 
-int32_t dotlottie_post_event(struct DotLottiePlayer *ptr, const struct DotLottieEvent *event);
-
 int32_t dotlottie_render(struct DotLottiePlayer *ptr);
 
 int32_t dotlottie_request_frame(struct DotLottiePlayer *ptr, float *result);
@@ -319,18 +320,6 @@ int32_t dotlottie_segment_duration(struct DotLottiePlayer *ptr, float *result);
 
 int32_t dotlottie_set_frame(struct DotLottiePlayer *ptr, float no);
 
-int32_t dotlottie_set_state_machine_boolean_context(struct DotLottiePlayer *ptr,
-                                                    const char *key,
-                                                    bool value);
-
-int32_t dotlottie_set_state_machine_numeric_context(struct DotLottiePlayer *ptr,
-                                                    const char *key,
-                                                    float value);
-
-int32_t dotlottie_set_state_machine_string_context(struct DotLottiePlayer *ptr,
-                                                   const char *key,
-                                                   const char *value);
-
 int32_t dotlottie_set_theme(struct DotLottiePlayer *ptr, const char *theme_id);
 
 int32_t dotlottie_set_theme_data(struct DotLottiePlayer *ptr, const char *theme_data);
@@ -341,9 +330,37 @@ int32_t dotlottie_set_viewport(struct DotLottiePlayer *ptr,
                                int32_t w,
                                int32_t h);
 
-int32_t dotlottie_start_state_machine(struct DotLottiePlayer *ptr);
+int32_t dotlottie_state_machine_current_state(struct DotLottiePlayer *ptr, char *result);
 
 int32_t dotlottie_state_machine_framework_setup(struct DotLottiePlayer *ptr, uint16_t *result);
+
+int32_t dotlottie_state_machine_load(struct DotLottiePlayer *ptr, const char *state_machine_id);
+
+int32_t dotlottie_state_machine_load_data(struct DotLottiePlayer *ptr,
+                                          const char *state_machine_definition);
+
+int32_t dotlottie_state_machine_override_current_state(struct DotLottiePlayer *ptr,
+                                                       const char *state_name,
+                                                       bool do_tick);
+
+int32_t dotlottie_state_machine_post_event(struct DotLottiePlayer *ptr,
+                                           const struct DotLottieEvent *event);
+
+int32_t dotlottie_state_machine_set_boolean_input(struct DotLottiePlayer *ptr,
+                                                  const char *key,
+                                                  bool value);
+
+int32_t dotlottie_state_machine_set_numeric_input(struct DotLottiePlayer *ptr,
+                                                  const char *key,
+                                                  float value);
+
+int32_t dotlottie_state_machine_set_string_input(struct DotLottiePlayer *ptr,
+                                                 const char *key,
+                                                 const char *value);
+
+int32_t dotlottie_state_machine_status(struct DotLottiePlayer *ptr, char *result);
+
+int32_t dotlottie_state_machine_stop(struct DotLottiePlayer *ptr);
 
 int32_t dotlottie_state_machine_subscribe(struct DotLottiePlayer *ptr,
                                           struct StateMachineObserver *observer);
@@ -352,8 +369,6 @@ int32_t dotlottie_state_machine_unsubscribe(struct DotLottiePlayer *ptr,
                                             struct StateMachineObserver *observer);
 
 int32_t dotlottie_stop(struct DotLottiePlayer *ptr);
-
-int32_t dotlottie_stop_state_machine(struct DotLottiePlayer *ptr);
 
 int32_t dotlottie_subscribe(struct DotLottiePlayer *ptr, struct Observer *observer);
 

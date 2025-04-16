@@ -60,7 +60,7 @@ fn handle_image_slot(rule: &Value) -> Value {
 
         if let Some(path) = value.get("path").and_then(|v| v.as_str()) {
             image_data["u"] = json!(path); // should be the path
-            image_data["p"] = json!(path.split('/').last().unwrap_or("")); // should be the file name
+            image_data["p"] = json!(path.split('/').next_back().unwrap_or("")); // should be the file name
             image_data["e"] = json!(0);
         }
 

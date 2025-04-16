@@ -40,11 +40,7 @@ fn main() {
     // Always re-run the build script
     println!("cargo:rerun-if-changed=NULL");
 
-    if is_wasm_build() {
-        uniffi::generate_scaffolding("src/dotlottie_player_cpp.udl").unwrap();
-    } else {
-        uniffi::generate_scaffolding("src/dotlottie_player.udl").unwrap();
-    }
+    uniffi::generate_scaffolding("src/dotlottie_player.udl").unwrap();
 
     // Apply build settings
     apply_build_settings(&TARGET_BUILD_SETTINGS);

@@ -1,0 +1,96 @@
+{
+  "initial": "pigeonRunning",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "pigeonRunning",
+      "animation": "",
+      "loop": true,
+      "autoplay": true,
+      "segment": "bird",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "explosion",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "explode"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "type": "PointerDown",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "explode"
+        }
+      ]
+    },
+    {
+      "type": "PointerUp",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "explode"
+        }
+      ]
+    },
+    {
+      "type": "PointerMove",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "explode"
+        }
+      ]
+    },
+    {
+      "type": "PointerEnter",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "explode"
+        }
+      ]
+    },
+    {
+      "type": "PointerExit",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "explode"
+        }
+      ]
+    },
+    {
+      "type": "OnComplete",
+      "stateName": "explosion",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "rainFeathers"
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "type": "Event",
+      "name": "explode"
+    },
+    {
+      "type": "Event",
+      "name": "rainFeathers"
+    },
+    {
+      "type": "Event",
+      "name": "restart"
+    }
+  ]
+}

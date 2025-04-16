@@ -129,6 +129,10 @@
         marker: "feather",
       });
 
+      const instances = {};
+
+      instances[dotLottiePlayer.instanceId()] = dotLottiePlayer;
+
       const data = await fetch(
         "./examples/demo-player/src/v2/gradient.json"
         // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie",
@@ -158,6 +162,7 @@
           width: dotLottiePlayer.animationSize().get(0),
           height: dotLottiePlayer.animationSize().get(1),
         });
+
         resize();
       }
 
@@ -168,8 +173,6 @@
       });
 
       console.log(dotLottiePlayer.markers());
-
-      console.log("Loaded: ", loaded);
 
       const ctx = canvas.getContext("2d");
 

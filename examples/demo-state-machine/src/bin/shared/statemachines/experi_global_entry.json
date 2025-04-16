@@ -1,0 +1,114 @@
+{
+  "initial": "anger",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "anger",
+      "animationId": "anger",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "devil",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "Step"
+            }
+          ]
+        }
+      ],
+      "entryActions": [
+        {
+          "type": "Speed",
+          "value": 1.5
+        },
+        {
+          "type": "Play",
+          "value": true
+        },
+        {
+          "type": "Loop",
+          "value": true
+        },
+        {
+          "type": "Mode",
+          "value": "Reverse"
+        }
+      ],
+      "exitActions": [
+        {
+          "type": "Speed",
+          "value": 0.1
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "devil",
+      "animationId": "devil",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "glasses",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "Step"
+            }
+          ]
+        }
+      ],
+      "entryActions": [
+        {
+          "type": "Mode",
+          "value": "Normal"
+        }
+      ],
+      "exitActions": [
+        {
+          "type": "Speed",
+          "value": 0.5
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "glasses",
+      "animationId": "glasses",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "anger",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "Step"
+            }
+          ]
+        }
+      ],
+      "entryActions": [
+        {
+          "type": "FrameInterpolation",
+          "value": false
+        },
+        {
+          "type": "Speed",
+          "value": 2
+        },
+        {
+          "type": "Mode",
+          "value": "ReverseBounce"
+        }
+      ],
+      "exitActions": []
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    {
+      "type": "Event",
+      "name": "Step"
+    }
+  ]
+}

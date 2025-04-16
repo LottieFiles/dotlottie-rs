@@ -2,7 +2,7 @@
 default: minor
 ---
 
-# feat: add support for state machines, bumps ThorVG to version 1.0-pre16
+# feat: add support for state machines, bumps ThorVG to version 1.0-pre19
 
 Added cross-platform state machine support. State machines allow you to create deep interactive scenarios with Lottie animations. With a single state machine definition file your animations can become interactive across Web, Android and iOS.
 
@@ -50,4 +50,4 @@ Notes:
 
 - This update also includes support for event observer bindings for WASM. All player events are supported alongside state machine events.
 
-- Bumps ThorVG to v1.0-pre16 for the use of new OBB (Oriented Bounding Box) support.
+- Bumps ThorVG to v1.0-pre19 for the use of new OBB (Oriented Bounding Box) support.

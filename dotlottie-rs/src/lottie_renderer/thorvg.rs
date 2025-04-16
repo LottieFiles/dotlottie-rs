@@ -228,6 +228,26 @@ impl Default for TvgAnimation {
     }
 }
 
+impl TvgAnimation {
+    #[cfg(feature = "thorvg-v1")]
+    fn get_layer_obb(&self, layer_name: &str) -> Result<Option<[tvg::Tvg_Point; 4]>, TvgError> {
+        unsafe {
+            let mut obb: [tvg::Tvg_Point; 4] = [tvg::Tvg_Point { x: 0.0, y: 0.0 }; 4];
+            let paint = self.raw_paint;
+            let layer_name_cstr = CString::new(layer_name).expect("Failed to create CString");
+            let layer_id = tvg::tvg_accessor_generate_id(layer_name_cstr.as_ptr());
+            let layer_paint = tvg::tvg_picture_get_paint(paint, layer_id);
+
+            if !layer_paint.is_null() {
+                tvg::tvg_paint_get_obb(layer_paint, obb.as_mut_ptr());
+                Ok(Some(obb))
+            } else {
+                Ok(None)
+            }
+        }
+    }
+}
+
 impl Animation for TvgAnimation {
     type Error = TvgError;
 
@@ -262,16 +282,8 @@ impl Animation for TvgAnimation {
 
     fn intersect(&self, _x: f32, _y: f32, _layer_name: &str) -> Result<bool, TvgError> {
         #[cfg(feature = "thorvg-v1")]
-        unsafe {
-            let mut obb: [tvg::Tvg_Point; 4] = [tvg::Tvg_Point { x: 0.0, y: 0.0 }; 4];
-            let paint = self.raw_paint;
-            let layer_name_cstr = CString::new(_layer_name).expect("Failed to create CString");
-            let layer_id = tvg::tvg_accessor_generate_id(layer_name_cstr.as_ptr());
-            let layer_paint = tvg::tvg_picture_get_paint(paint, layer_id);
-
-            if !layer_paint.is_null() {
-                tvg::tvg_paint_get_obb(layer_paint, obb.as_mut_ptr());
-
+        {
+            if let Some(obb) = self.get_layer_obb(_layer_name)? {
                 let e1 = tvg::Tvg_Point {
                     x: obb[1].x - obb[0].x,
                     y: obb[1].y - obb[0].y,
@@ -300,16 +312,8 @@ impl Animation for TvgAnimation {
 
     fn get_layer_bounds(&self, _layer_name: &str) -> Result<[f32; 8], TvgError> {
         #[cfg(feature = "thorvg-v1")]
-        unsafe {
-            let mut obb: [tvg::Tvg_Point; 4] = [tvg::Tvg_Point { x: 0.0, y: 0.0 }; 4];
-            let paint = self.raw_paint;
-            let layer_name_cstr = CString::new(_layer_name).expect("Failed to create CString");
-            let layer_id = tvg::tvg_accessor_generate_id(layer_name_cstr.as_ptr());
-            let layer_paint = tvg::tvg_picture_get_paint(paint, layer_id);
-
-            if !layer_paint.is_null() {
-                tvg::tvg_paint_get_obb(layer_paint, obb.as_mut_ptr());
-
+        {
+            if let Some(obb) = self.get_layer_obb(_layer_name)? {
                 // Return the 8 points out of obb
                 let mut point_vec: Vec<f32> = Vec::with_capacity(8);
 

@@ -480,7 +480,16 @@ define APPLE_RELEASE
 	rm -rf $(RELEASE)/$(APPLE)
 	mkdir -p $(RELEASE)/$(APPLE)
   $(XCODEBUILD) -create-xcframework \
-                $$(find $(RUNTIME_FFI)/$(APPLE_BUILD) -type d -depth 2 | sed 's/^/-framework /' | tr '\n' ' ') \
+                $$(for fw in $$(find $(RUNTIME_FFI)/$(APPLE_BUILD) -type d -depth 2); do \
+                   echo "-framework $$fw"; \
+                   # Check if this is a macOS framework and add Catalyst variant if it exists
+                   if [[ "$${fw}" == *"macosx"* ]]; then \
+                     catalyst_fw="$${fw/macosx/maccatalyst}"; \
+                     if [ -d "$$catalyst_fw" ]; then \
+                       echo "-framework $$catalyst_fw"; \
+                     fi; \
+                   fi; \
+                 done) \
                 -output $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
 	cp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(SWIFT)/$(DOTLOTTIE_PLAYER_SWIFT) $(RELEASE)/$(APPLE)/.
 	cd $(RELEASE)/$(APPLE) && \

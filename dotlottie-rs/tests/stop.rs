@@ -67,7 +67,7 @@ mod tests {
             assert!(player.is_playing(), "Animation should be playing");
 
             let (start_frame, end_frame) = if player.config().segment.is_empty() {
-                (0.0, player.total_frames())
+                (0.0, player.total_frames() - 1.0)
             } else {
                 (player.config().segment[0], player.config().segment[1])
             };

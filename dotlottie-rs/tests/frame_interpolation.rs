@@ -36,7 +36,6 @@ mod tests {
 
         assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
 
-        let total_frames = player.total_frames();
         let mut rendered_frames: Vec<f32> = vec![];
 
         while !player.is_complete() {
@@ -49,9 +48,15 @@ mod tests {
         }
 
         assert!(!rendered_frames.is_empty());
-        assert_eq!({ rendered_frames.len() }, total_frames as usize);
+        assert_eq!(
+            rendered_frames.len(),
+            (player.total_frames() - 1.0) as usize
+        );
 
-        assert_eq!(rendered_frames[rendered_frames.len() - 1], total_frames);
+        assert_eq!(
+            rendered_frames[rendered_frames.len() - 1],
+            player.total_frames() - 1.0
+        );
 
         for (i, frame) in rendered_frames.iter().enumerate() {
             assert!(*frame == frame.floor(), "Frame {} is interpolated.", i);

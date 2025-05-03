@@ -569,10 +569,7 @@ impl DotLottieRuntime {
     }
 
     pub fn total_frames(&self) -> f32 {
-        match self.renderer.total_frames() {
-            Ok(total_frames) => total_frames,
-            Err(_) => 0.0,
-        }
+        self.renderer.total_frames().unwrap_or(0.0)
     }
 
     pub fn duration(&self) -> f32 {

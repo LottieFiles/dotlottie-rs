@@ -20,6 +20,11 @@ mod tests {
 
         let animations = manifest.animations;
 
+        assert!(
+            animations[0].id == player.active_animation_id(),
+            "Active animation id is not the first animation id"
+        );
+
         for animation in animations {
             assert!(
                 player.load_animation(&animation.id, WIDTH, HEIGHT),

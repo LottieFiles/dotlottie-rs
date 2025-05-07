@@ -68,6 +68,7 @@ typedef struct DotLottieConfig {
   struct DotLottieString marker;
   struct DotLottieString theme_id;
   struct DotLottieString state_machine_id;
+  struct DotLottieString animation_id;
 } DotLottieConfig;
 
 typedef struct LayerBoundingBox {

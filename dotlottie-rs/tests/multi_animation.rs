@@ -8,6 +8,20 @@ mod tests {
     use super::*;
 
     #[test]
+    pub fn test_load_animation_with_animation_id() {
+        let animation_id = "crying".to_string();
+        
+        let player = DotLottiePlayer::new(Config {
+            animation_id: animation_id.clone(),
+            ..Config::default()
+        });
+
+        assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
+
+        assert_eq!(player.active_animation_id(), animation_id);
+    }
+
+    #[test]
     pub fn test_load_animation() {
         let player = DotLottiePlayer::new(Config::default());
         assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));

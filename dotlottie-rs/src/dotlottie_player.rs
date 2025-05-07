@@ -73,6 +73,7 @@ pub struct Config {
     pub layout: Layout,
     pub marker: String,
     pub theme_id: String,
+    pub animation_id: String,
     pub state_machine_id: String,
 }
 
@@ -89,6 +90,7 @@ impl Default for Config {
             layout: Layout::default(),
             marker: String::new(),
             theme_id: String::new(),
+            animation_id: String::new(),
             state_machine_id: String::new(),
         }
     }
@@ -625,6 +627,7 @@ impl DotLottieRuntime {
         self.config.segment = new_config.segment;
         self.config.autoplay = new_config.autoplay;
         self.config.theme_id = new_config.theme_id;
+        self.config.animation_id = new_config.animation_id;
     }
 
     pub fn update_marker(&mut self, marker: &String) {
@@ -744,11 +747,24 @@ impl DotLottieRuntime {
 
         self.markers = extract_markers(animation_data);
 
-        self.load_animation_common(
+        let animation_loaded = self.load_animation_common(
             |renderer, w, h| renderer.load_data(animation_data, w, h, false),
             width,
             height,
-        )
+        );
+
+        if animation_loaded {
+            if !self.config.animation_id.is_empty() {
+                self.active_animation_id = self.config.animation_id.clone();
+            }
+
+            let theme_id = self.config.theme_id.clone();
+            if !theme_id.is_empty() {
+                self.set_theme(&theme_id);
+            }
+        }
+
+        animation_loaded
     }
 
     pub fn load_animation_path(&mut self, file_path: &str, width: u32, height: u32) -> bool {
@@ -770,9 +786,13 @@ impl DotLottieRuntime {
             Ok(manager) => {
                 self.dotlottie_manager = Some(manager);
                 if let Some(manager) = &mut self.dotlottie_manager {
-                    let first_animation = manager.get_active_animation();
-                    let active_animation_id = manager.active_animation_id();
-                    if let Ok(animation_data) = first_animation {
+                    let (active_animation, active_animation_id) = if !self.config.animation_id.is_empty() {
+                        (manager.get_animation(&self.config.animation_id), self.config.animation_id.clone())
+                    } else {
+                        (manager.get_active_animation(), manager.active_animation_id())
+                    };
+
+                    if let Ok(animation_data) = active_animation {
                         self.markers = extract_markers(animation_data.as_str());
                         let animation_loaded = self.load_animation_common(
                             |renderer, w, h| renderer.load_data(&animation_data, w, h, false),

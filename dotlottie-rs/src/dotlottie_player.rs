@@ -774,6 +774,7 @@ impl DotLottieRuntime {
                 self.dotlottie_manager = Some(manager);
                 if let Some(manager) = &mut self.dotlottie_manager {
                     let first_animation = manager.get_active_animation();
+                    let active_animation_id = manager.active_animation_id();
                     if let Ok(animation_data) = first_animation {
                         self.markers = extract_markers(animation_data.as_str());
                         let animation_loaded = self.load_animation_common(
@@ -781,9 +782,14 @@ impl DotLottieRuntime {
                             width,
                             height,
                         );
-                        if animation_loaded && !self.config.theme_id.is_empty() {
-                            self.set_theme(&self.config.theme_id.clone());
+
+                        if animation_loaded {
+                            self.active_animation_id = active_animation_id;
+                            if !self.config.theme_id.is_empty() {
+                                self.set_theme(&self.config.theme_id.clone());
+                            }
                         }
+
                         return animation_loaded;
                     }
                 }

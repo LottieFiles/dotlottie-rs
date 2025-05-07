@@ -259,6 +259,7 @@ pub struct DotLottieConfig {
     pub marker: DotLottieString,
     pub theme_id: DotLottieString,
     pub state_machine_id: DotLottieString,
+    pub animation_id: DotLottieString,
 }
 
 impl Transferable<Config> for DotLottieConfig {
@@ -280,6 +281,7 @@ impl Transferable<Config> for DotLottieConfig {
             marker: DotLottieString::new(&config.marker)?,
             theme_id: DotLottieString::new(&config.theme_id)?,
             state_machine_id: DotLottieString::new(&config.state_machine_id)?,
+            animation_id: DotLottieString::new(&config.animation_id)?,
         })
     }
 }
@@ -302,6 +304,7 @@ impl DotLottieConfig {
             marker: self.marker.to_string(),
             theme_id: self.theme_id.to_string(),
             state_machine_id: self.state_machine_id.to_string(),
+            animation_id: self.animation_id.to_string(),
         })
     }
 }

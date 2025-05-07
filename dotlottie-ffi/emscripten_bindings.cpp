@@ -113,7 +113,7 @@ struct StateMachineObserverWrapper : public wrapper<StateMachineObserver>
 std::shared_ptr<Observer> subscribe(DotLottiePlayer &player, Observer *observer)
 {
     // Create a shared pointer to the observer
-    std::shared_ptr<Observer> ob = std::shared_ptr<Observer>(observer);    
+    std::shared_ptr<Observer> ob = std::shared_ptr<Observer>(observer);
 
     player.subscribe(ob);
 
@@ -134,7 +134,7 @@ std::shared_ptr<StateMachineObserver> stateMachineSubscribe(DotLottiePlayer &pla
     return ob;
 }
 
-void stateMachineUnsubscribe(DotLottiePlayer &player,std::shared_ptr<StateMachineObserver> observer)
+void stateMachineUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachineObserver> observer)
 {
     player.state_machine_unsubscribe(observer);
 }
@@ -148,7 +148,7 @@ std::shared_ptr<StateMachineObserver> stateMachineFrameworkSubscribe(DotLottiePl
     return ob;
 }
 
-void stateMachineFrameworkUnsubscribe(DotLottiePlayer &player,std::shared_ptr<StateMachineObserver> observer)
+void stateMachineFrameworkUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachineObserver> observer)
 {
     player.state_machine_framework_unsubscribe(observer);
 }
@@ -210,7 +210,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("layout", &Config::layout)
         .field("marker", &Config::marker)
         .field("themeId", &Config::theme_id)
-        .field("stateMachineId", &Config::state_machine_id);
+        .field("stateMachineId", &Config::state_machine_id)
+        .field("animationId", &Config::animation_id);
 
     function("createDefaultConfig", &create_default_config);
     function("transformThemeToLottieSlots", &transform_theme_to_lottie_slots);

@@ -118,6 +118,7 @@ impl StateTrait for State {
                     segment: [].to_vec(),
                     theme_id: "".to_string(),
                     state_machine_id: "".to_string(),
+                    animation_id: "".to_string(),
                 };
 
                 if let Ok(player_read) = player.try_read() {

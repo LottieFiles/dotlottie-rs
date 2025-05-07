@@ -372,7 +372,7 @@ impl ActionTrait for Action {
                                 let percentage = engine.get_numeric_input(value);
                                 if let Some(percentage) = percentage {
                                     let new_perc = percentage / 100.0;
-                                    let frame = player.total_frames() * new_perc;
+                                    let frame = (player.total_frames() - 1.0) * new_perc;
                                     player.set_frame(frame);
                                 }
 
@@ -380,7 +380,7 @@ impl ActionTrait for Action {
                             }
                             StringNumber::F32(value) => {
                                 let new_perc = value / 100.0;
-                                let frame = player.total_frames() * new_perc;
+                                let frame = (player.total_frames() - 1.0) * new_perc;
                                 player.set_frame(frame);
                             }
                         }

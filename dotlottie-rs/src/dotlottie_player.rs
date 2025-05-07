@@ -205,15 +205,15 @@ impl DotLottieRuntime {
     fn end_frame(&self) -> f32 {
         if !self.config.marker.is_empty() {
             if let Some((time, duration)) = self.markers.get(&self.config.marker) {
-                return (time + duration).min(self.total_frames());
+                return (time + duration).min(self.total_frames() - 1.0);
             }
         }
 
         if self.config.segment.len() == 2 {
-            return self.config.segment[1].min(self.total_frames());
+            return self.config.segment[1].min(self.total_frames() - 1.0);
         }
 
-        self.total_frames()
+        self.total_frames() - 1.0
     }
 
     pub fn intersect(&self, x: f32, y: f32, layer_name: &str) -> bool {
@@ -569,10 +569,7 @@ impl DotLottieRuntime {
     }
 
     pub fn total_frames(&self) -> f32 {
-        match self.renderer.total_frames() {
-            Ok(total_frames) => total_frames - 1.0,
-            Err(_) => 0.0,
-        }
+        self.renderer.total_frames().unwrap_or(0.0)
     }
 
     pub fn duration(&self) -> f32 {

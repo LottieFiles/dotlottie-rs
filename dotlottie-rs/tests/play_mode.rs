@@ -57,8 +57,8 @@ mod play_mode_tests {
                 Mode::Reverse => {
                     assert_eq!(
                         player.current_frame(),
-                        player.total_frames(),
-                        "Expected current frame to be total frames"
+                        player.total_frames() - 1.0,
+                        "Expected current frame to be end frame"
                     );
                 }
                 Mode::Bounce => {
@@ -71,8 +71,8 @@ mod play_mode_tests {
                 Mode::ReverseBounce => {
                     assert_eq!(
                         player.current_frame(),
-                        player.total_frames(),
-                        "Expected current frame to be total frames"
+                        player.total_frames() - 1.0,
+                        "Expected current frame to be end frame"
                     );
                 }
             }
@@ -107,7 +107,7 @@ mod play_mode_tests {
         }
 
         assert!(
-            rendered_frames.len() >= player.total_frames() as usize,
+            rendered_frames.len() >= (player.total_frames() - 1.0) as usize,
             "Expected rendered frames to be greater than or equal to total frames"
         );
 
@@ -121,7 +121,7 @@ mod play_mode_tests {
         }
 
         assert_eq!(
-            player.total_frames(),
+            player.total_frames() - 1.0,
             prev_frame,
             "Expected last frame to be total frames"
         );
@@ -156,11 +156,11 @@ mod play_mode_tests {
         }
 
         assert!(
-            rendered_frames.len() >= player.total_frames() as usize,
+            rendered_frames.len() >= (player.total_frames() - 1.0) as usize,
             "Expected rendered frames to be greater than or equal to total frames"
         );
 
-        let mut prev_frame = player.total_frames();
+        let mut prev_frame = player.total_frames() - 1.0;
         for frame in rendered_frames {
             assert!(
                 frame <= prev_frame,
@@ -202,14 +202,14 @@ mod play_mode_tests {
         }
 
         assert!(
-            rendered_frames.len() >= player.total_frames() as usize,
+            rendered_frames.len() >= (player.total_frames() - 1.0) as usize,
             "Expected rendered frames to be greater than or equal to total frames"
         );
 
         let mut frame_idx = 0;
 
         while frame_idx < rendered_frames.len()
-            && rendered_frames[frame_idx] < player.total_frames()
+            && rendered_frames[frame_idx] < player.total_frames() - 1.0
         {
             assert!(
                 rendered_frames[frame_idx] <= rendered_frames[frame_idx + 1],
@@ -219,7 +219,7 @@ mod play_mode_tests {
         }
 
         assert!(
-            rendered_frames[frame_idx] == player.total_frames(),
+            rendered_frames[frame_idx] == player.total_frames() - 1.0,
             "Expected frame to be total frames at index {}",
             frame_idx
         );
@@ -268,7 +268,7 @@ mod play_mode_tests {
         }
 
         assert!(
-            rendered_frames.len() >= player.total_frames() as usize,
+            rendered_frames.len() >= (player.total_frames() - 1.0) as usize,
             "Expected rendered frames to be greater than or equal to total frames"
         );
 
@@ -289,7 +289,7 @@ mod play_mode_tests {
         );
 
         while frame_idx < rendered_frames.len()
-            && rendered_frames[frame_idx] < player.total_frames()
+            && rendered_frames[frame_idx] < player.total_frames() - 1.0
         {
             assert!(
                 rendered_frames[frame_idx] <= rendered_frames[frame_idx + 1],
@@ -299,7 +299,7 @@ mod play_mode_tests {
         }
 
         assert!(
-            rendered_frames[frame_idx] == player.total_frames(),
+            rendered_frames[frame_idx] == player.total_frames() - 1.0,
             "Expected frame to be total frames at index {}",
             frame_idx
         );

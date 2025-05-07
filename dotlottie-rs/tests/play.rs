@@ -106,7 +106,7 @@ mod tests {
         assert!(!player.is_playing(), "Expected player to not be playing");
 
         assert!(
-            player.current_frame() == player.total_frames(),
+            player.current_frame() == player.total_frames() - 1.0,
             "Expected current frame to be total frames"
         );
 

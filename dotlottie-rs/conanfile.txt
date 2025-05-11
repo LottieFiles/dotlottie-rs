@@ -1,2 +1,2 @@
 [requires]
-thorvg/0.15.3
+thorvg/0.15.9

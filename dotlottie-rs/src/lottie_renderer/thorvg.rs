@@ -74,6 +74,7 @@ pub enum TvgEngine {
     TvgEngineGl,
 }
 
+#[cfg(feature = "thorvg-v0")]
 impl From<TvgEngine> for tvg::Tvg_Engine {
     fn from(engine_method: TvgEngine) -> Self {
         match engine_method {
@@ -87,24 +88,33 @@ static RENDERERS_COUNT: spin::Mutex<usize> = spin::Mutex::new(0);
 
 pub struct TvgRenderer {
     raw_canvas: *mut tvg::Tvg_Canvas,
+    #[cfg(feature = "thorvg-v0")]
     engine_method: tvg::Tvg_Engine,
 }
 
 impl TvgRenderer {
     pub fn new(engine_method: TvgEngine, threads: u32) -> Self {
-        let engine = engine_method.into();
-
+        
         let mut count = RENDERERS_COUNT.lock();
-
+        
+        #[cfg(feature = "thorvg-v0")]
+        let engine = engine_method.into();
+        
         if *count == 0 {
-            unsafe { tvg::tvg_engine_init(engine, threads).into_result() }
-                .expect("Failed to initialize ThorVG engine");
+            #[cfg(feature = "thorvg-v0")]
+            {
+                unsafe { tvg::tvg_engine_init(engine, threads).into_result() }.unwrap();
+            }
+
+            #[cfg(feature = "thorvg-v1")]
+            unsafe { tvg::tvg_engine_init(threads).into_result() }.unwrap();
         }
 
         *count += 1;
 
         TvgRenderer {
             raw_canvas: unsafe { tvg::tvg_swcanvas_create() },
+            #[cfg(feature = "thorvg-v0")]
             engine_method: engine,
         }
     }
@@ -193,7 +203,11 @@ impl Drop for TvgRenderer {
         *count = count.checked_sub(1).unwrap();
 
         if *count == 0 {
+            #[cfg(feature = "thorvg-v0")]
             unsafe { tvg::tvg_engine_term(self.engine_method) };
+
+            #[cfg(feature = "thorvg-v1")]
+            unsafe { tvg::tvg_engine_term() };
         }
     }
 }

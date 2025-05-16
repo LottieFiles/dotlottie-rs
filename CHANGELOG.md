@@ -1,17 +1,3 @@
-## 0.1.41 (2025-05-14)
-
-### Features
-
-#### add animation_id to DotLottieConfig (#317)
-
-#### upgrade to ThorVG@v1.0-pre20 (#321)
-
-### Fixes
-
-#### active_animation_id not being updated when the .lottie file is initially loaded (#320)
-
-#### return unadjusted frame count from total_frames()  (#319)
-
 ## 0.1.40 (2025-04-16)
 
 ### Features

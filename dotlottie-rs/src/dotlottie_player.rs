@@ -788,9 +788,9 @@ impl DotLottieRuntime {
                 if let Some(manager) = &mut self.dotlottie_manager {
                     let (active_animation, active_animation_id) = if !self.config.animation_id.is_empty() {
                         (manager.get_animation(&self.config.animation_id), self.config.animation_id.clone())
-                    } else {
+                        } else {
                         (manager.get_active_animation(), manager.active_animation_id())
-                    };
+                        };
 
                     if let Ok(animation_data) = active_animation {
                         self.markers = extract_markers(animation_data.as_str());
@@ -1064,7 +1064,7 @@ impl DotLottiePlayerContainer {
 
         if let Ok(mut state_machine) = self.state_machine.try_write() {
             if let Some(sm) = state_machine.as_mut() {
-                sm.post_event(&Event::OnComplete);
+                sm.post_event(&Event::OnLoopComplete);
             }
         }
     }

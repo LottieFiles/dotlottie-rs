@@ -170,7 +170,7 @@ impl InteractionTrait for Interaction {
             Interaction::PointerMove { .. } => "PointerMove".to_string(),
             Interaction::PointerExit { .. } => "PointerExit".to_string(),
             Interaction::OnComplete { .. } => "OnComplete".to_string(),
-            Interaction::OnLoopComplete { .. } => "OnComplete".to_string(),
+            Interaction::OnLoopComplete { .. } => "OnLoopComplete".to_string(),
             Interaction::Click { .. } => "Click".to_string(),
         }
     }

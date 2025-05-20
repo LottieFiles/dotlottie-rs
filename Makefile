@@ -275,6 +275,7 @@ cpp_link_args = [
 	'-sUSE_ES6_IMPORT_META=0',
 	'-sENVIRONMENT=web',
 	'-sFILESYSTEM=0',
+	'-sDYNAMIC_EXECUTION=0',
 	'--no-entry',
 	'--strip-all',
 	'--emit-tsd=${WASM_MODULE}.d.ts',
@@ -418,7 +419,7 @@ define UNIFFI_BINDINGS_CPP_BUILD
 	$(UNIFFI_BINDGEN_CPP) \
 		--config $(RUNTIME_FFI)/uniffi.toml \
 		--out-dir $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS) \
-		$(RUNTIME_FFI)/src/dotlottie_player.udl
+		$(RUNTIME_FFI)/src/dotlottie_player_cpp.udl
 	sed -i .bak 's/uint8_t/char/g' $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/*
 	cp $(RUNTIME_FFI)/emscripten_bindings.cpp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/.
 endef
@@ -958,8 +959,21 @@ $(ANDROID): $(ANDROID_BUILD_TARGETS)
 .PHONY: $(APPLE)
 $(APPLE): $(APPLE_BUILD_TARGETS)
 
+.PHONY: pre-make-wasm
+pre-make-wasm:
+	@echo "Copy Cargo.wasm.toml to Cargo.toml..."
+	@cp $(RUNTIME_FFI)/Cargo.wasm.toml $(RUNTIME_FFI)/Cargo.toml
+
+.PHONY: post-make-wasm
+post-make-wasm:
+	@echo "Reset Cargo.toml..."
+	@git -C $(RUNTIME_FFI) checkout -- Cargo.toml
+
 .PHONY: $(WASM)
-$(WASM): $(WASM_BUILD_TARGETS)
+$(WASM):
+	@$(MAKE) pre-make-wasm
+	@$(MAKE) $(WASM_BUILD_TARGETS)
+	@$(MAKE) post-make-wasm
 
 .PHONY: $(NATIVE)
 $(NATIVE): $(RUNTIME_FFI)/target/$(RELEASE)/$(RUNTIME_FFI_LIB)
@@ -979,8 +993,8 @@ deps:
 # Cleanup extraneous files from the zlib dependency build...
 .PHONY: clean-build
 clean-build:
-	@git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git clean -fd &>/dev/null
-	@git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git checkout . &>/dev/null
+	# @git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git clean -fd &>/dev/null
+	# @git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git checkout . &>/dev/null
 
 .PHONY: clean-deps
 clean-deps: clean-build

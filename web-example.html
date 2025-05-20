@@ -133,6 +133,36 @@
 
       instances[dotLottiePlayer.instanceId()] = dotLottiePlayer;
 
+      globalThis._DOTLOTTIE_BRIDGE_JS = {
+        observer_on_load: (dotlottie_instance_id) => {
+          console.log("Loaded", instances[dotlottie_instance_id]);
+        },
+        observer_on_load_error: (dotlottie_instance_id) => {
+          console.log("Error", instances[dotlottie_instance_id]);
+        },
+        observer_on_play: (dotlottie_instance_id) => {
+          console.log("Play", instances[dotlottie_instance_id]);
+        },
+        observer_on_pause: (dotlottie_instance_id) => {
+          console.log("Pause", instances[dotlottie_instance_id]);
+        },
+        observer_on_stop: (dotlottie_instance_id) => {
+          console.log("Stop", instances[dotlottie_instance_id]);
+        },
+        observer_on_frame: (dotlottie_instance_id, frame_no) => {
+          console.log("Frame", instances[dotlottie_instance_id], frame_no);
+        },
+        observer_on_render: (dotlottie_instance_id, frame_no) => {
+          console.log("Render", instances[dotlottie_instance_id], frame_no);
+        },
+        observer_on_loop: (dotlottie_instance_id, loop_count) => {
+          console.log("Loop", instances[dotlottie_instance_id], loop_count);
+        },
+        observer_on_complete: (dotlottie_instance_id) => {
+          console.log("Complete", instances[instance_id]);
+        },
+      };
+
       const data = await fetch(
         "./examples/demo-player/src/v2/gradient.json"
         // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie",

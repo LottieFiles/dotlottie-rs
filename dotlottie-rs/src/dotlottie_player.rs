@@ -14,6 +14,7 @@ use crate::{
     transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer, StateMachineEngineError,
 };
 
+#[cfg(not(target_arch = "wasm32"))]
 use crate::StateMachineObserver;
 
 use crate::StateMachineEngineStatus;
@@ -28,6 +29,89 @@ pub trait Observer: Send + Sync {
     fn on_render(&self, frame_no: f32);
     fn on_loop(&self, loop_count: u32);
     fn on_complete(&self);
+}
+
+#[cfg(target_arch = "wasm32")]
+pub mod wasm_observer_callbacks_ffi {
+    extern "C" {
+        pub fn observer_on_load(dotlottie_instance_id: u32);
+        pub fn observer_on_load_error(dotlottie_instance_id: u32);
+        pub fn observer_on_play(dotlottie_instance_id: u32);
+        pub fn observer_on_pause(dotlottie_instance_id: u32);
+        pub fn observer_on_stop(dotlottie_instance_id: u32);
+        pub fn observer_on_frame(dotlottie_instance_id: u32, frame_no: f32);
+        pub fn observer_on_render(dotlottie_instance_id: u32, frame_no: f32);
+        pub fn observer_on_loop(dotlottie_instance_id: u32, loop_count: u32);
+        pub fn observer_on_complete(dotlottie_instance_id: u32);
+
+        pub fn state_machine_observer_on_transition(
+            dotlottie_instance_id: u32,
+            previous_state_ptr: *const u8,
+            previous_state_len: usize,
+            new_state_ptr: *const u8,
+            new_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_state_entered(
+            dotlottie_instance_id: u32,
+            entering_state_ptr: *const u8,
+            entering_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_state_exit(
+            dotlottie_instance_id: u32,
+            leaving_state_ptr: *const u8,
+            leaving_state_len: usize,
+        );
+
+        pub fn state_machine_observer_on_custom_event(
+            dotlottie_instance_id: u32,
+            message_ptr: *const u8,
+            message_len: usize,
+        );
+
+        pub fn state_machine_observer_on_error(
+            dotlottie_instance_id: u32,
+            message_ptr: *const u8,
+            message_len: usize,
+        );
+
+        pub fn state_machine_observer_on_start(dotlottie_instance_id: u32);
+
+        pub fn state_machine_observer_on_stop(dotlottie_instance_id: u32);
+
+        pub fn state_machine_observer_on_string_input_value_change(
+            dotlottie_instance_id: u32,
+            input_name_ptr: *const u8,
+            input_name_len: usize,
+            old_value_ptr: *const u8,
+            old_value_len: usize,
+            new_value_ptr: *const u8,
+            new_value_len: usize,
+        );
+
+        pub fn state_machine_observer_on_numeric_input_value_change(
+            dotlottie_instance_id: u32,
+            input_name_ptr: *const u8,
+            input_name_len: usize,
+            old_value: f32,
+            new_value: f32,
+        );
+
+        pub fn state_machine_observer_on_boolean_input_value_change(
+            dotlottie_instance_id: u32,
+            input_name_ptr: *const u8,
+            input_name_len: usize,
+            old_value: bool,
+            new_value: bool,
+        );
+
+        pub fn state_machine_observer_on_input_fired(
+            dotlottie_instance_id: u32,
+            input_name_ptr: *const u8,
+            input_name_len: usize,
+        );
+    }
 }
 
 pub enum PlaybackState {
@@ -972,15 +1056,23 @@ pub struct DotLottiePlayerContainer {
     runtime: RwLock<DotLottieRuntime>,
     observers: RwLock<Vec<Arc<dyn Observer>>>,
     state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
+    #[cfg(target_arch = "wasm32")]
+    instance_id: u32,
 }
 
 impl DotLottiePlayerContainer {
     #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
     pub fn new(config: Config) -> Self {
+        #[cfg(target_arch = "wasm32")]
+        static NEXT_INSTANCE_ID: std::sync::atomic::AtomicU32 =
+            std::sync::atomic::AtomicU32::new(1);
+
         DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
+            #[cfg(target_arch = "wasm32")]
+            instance_id: NEXT_INSTANCE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
         }
     }
 
@@ -989,55 +1081,145 @@ impl DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::with_renderer(config, renderer)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
+            #[cfg(target_arch = "wasm32")]
+            instance_id: 0,
         }
     }
 
     pub fn emit_on_load(&self) {
-        self.observers.read().unwrap().iter().for_each(|observer| {
-            observer.on_load();
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                println!("emit_on_load: instance_id: {}", self.instance_id);
+                wasm_observer_callbacks_ffi::observer_on_load(self.instance_id);
+            }
+        }
     }
 
     pub fn emit_on_load_error(&self) {
-        self.observers.read().unwrap().iter().for_each(|observer| {
-            observer.on_load_error();
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_load_error();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                println!("emit_on_load_error: instance_id: {}", self.instance_id);
+                wasm_observer_callbacks_ffi::observer_on_load_error(self.instance_id);
+            }
+        }
     }
 
     pub fn emit_on_play(&self) {
-        self.observers.read().unwrap().iter().for_each(|observer| {
-            observer.on_play();
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_play();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                println!("emit_on_play: instance_id: {}", self.instance_id);
+                wasm_observer_callbacks_ffi::observer_on_play(self.instance_id);
+            }
+        }
     }
 
     pub fn emit_on_pause(&self) {
-        self.observers.read().unwrap().iter().for_each(|observer| {
-            observer.on_pause();
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_pause();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                println!("emit_on_pause: instance_id: {}", self.instance_id);
+                wasm_observer_callbacks_ffi::observer_on_pause(self.instance_id);
+            }
+        }
     }
 
     pub fn emit_on_stop(&self) {
-        self.observers.read().unwrap().iter().for_each(|observer| {
-            observer.on_stop();
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_stop();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                println!("emit_on_stop: instance_id: {}", self.instance_id);
+                wasm_observer_callbacks_ffi::observer_on_stop(self.instance_id);
+            }
+        }
     }
 
     pub fn emit_on_frame(&self, frame_no: f32) {
-        self.observers.read().unwrap().iter().for_each(|observer| {
-            observer.on_frame(frame_no);
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_frame(frame_no);
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                println!("emit_on_frame: instance_id: {}", self.instance_id);
+                wasm_observer_callbacks_ffi::observer_on_frame(self.instance_id, frame_no);
+            }
+        }
     }
 
     pub fn emit_on_render(&self, frame_no: f32) {
-        self.observers.read().unwrap().iter().for_each(|observer| {
-            observer.on_render(frame_no);
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_render(frame_no);
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                println!("emit_on_render: instance_id: {}", self.instance_id);
+                wasm_observer_callbacks_ffi::observer_on_render(self.instance_id, frame_no);
+            }
+        }
     }
 
     pub fn emit_on_loop(&self, loop_count: u32) {
-        self.observers.read().unwrap().iter().for_each(|observer| {
-            observer.on_loop(loop_count);
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_loop(loop_count);
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                println!("emit_on_loop: instance_id: {}", self.instance_id);
+                wasm_observer_callbacks_ffi::observer_on_loop(self.instance_id, loop_count);
+            }
+        }
 
         if let Ok(mut state_machine) = self.state_machine.try_write() {
             if let Some(sm) = state_machine.as_mut() {
@@ -1047,14 +1229,188 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn emit_on_complete(&self) {
-        self.observers.read().unwrap().iter().for_each(|observer| {
-            observer.on_complete();
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.observers.read().unwrap().iter().for_each(|observer| {
+                observer.on_complete();
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            unsafe {
+                println!("emit_on_complete: instance_id: {}", self.instance_id);
+                wasm_observer_callbacks_ffi::observer_on_complete(self.instance_id);
+            }
+        }
 
         if let Ok(mut state_machine) = self.state_machine.try_write() {
             if let Some(sm) = state_machine.as_mut() {
                 sm.post_event(&Event::OnComplete);
             }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_transition(
+        &self,
+        previous_state: String,
+        next_state: String,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_transition(
+                    self.instance_id,
+                    previous_state.as_ptr(),
+                    previous_state.len(),
+                    next_state.as_ptr(),
+                    next_state.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_state_entered(&self, entered_state: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_state_entered(
+                    self.instance_id,
+                    entered_state.as_ptr(),
+                    entered_state.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_state_exit(&self, leaving_state: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_state_exit(
+                    self.instance_id,
+                    leaving_state.as_ptr(),
+                    leaving_state.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_custom_event(&self, message: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_custom_event(
+                    self.instance_id,
+                    message.as_ptr(),
+                    message.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_error(&self, message: String) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_error(
+                    self.instance_id,
+                    message.as_ptr(),
+                    message.len(),
+                );
+            }
+        }
+    }
+
+    // add all wasm state machine observer callbacks
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_start(&self) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_start(self.instance_id);
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_stop(&self) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_stop(self.instance_id);
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_string_input_value_change(
+        &self,
+        input_name: String,
+        old_value: String,
+        new_value: String,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_string_input_value_change(
+                    self.instance_id,
+                    input_name.as_ptr(),
+                    input_name.len(),
+                    old_value.as_ptr(),
+                    old_value.len(),
+                    new_value.as_ptr(),
+                    new_value.len(),
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_numeric_input_value_change(
+        &self,
+        input_name: String,
+        old_value: f32,
+        new_value: f32,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_numeric_input_value_change(
+                    self.instance_id,
+                    input_name.as_ptr(),
+                    input_name.len(),
+                    old_value,
+                    new_value,
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_boolean_input_value_change(
+        &self,
+        input_name: String,
+        old_value: bool,
+        new_value: bool,
+    ) {
+        {
+            unsafe {
+                wasm_observer_callbacks_ffi::state_machine_observer_on_boolean_input_value_change(
+                    self.instance_id,
+                    input_name.as_ptr(),
+                    input_name.len(),
+                    old_value,
+                    new_value,
+                );
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit_state_machine_observer_on_input_fired(&self, input_name: String) {
+        unsafe {
+            wasm_observer_callbacks_ffi::state_machine_observer_on_input_fired(
+                self.instance_id,
+                input_name.as_ptr(),
+                input_name.len(),
+            );
         }
     }
 
@@ -1413,6 +1769,11 @@ impl DotLottiePlayerContainer {
         }
 
         "".to_string()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn instance_id(&self) -> u32 {
+        self.instance_id
     }
 
     pub fn tick(&self) -> bool {
@@ -2014,6 +2375,7 @@ impl DotLottiePlayer {
         self.player.write().unwrap().subscribe(observer)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn state_machine_subscribe(&self, observer: Arc<dyn StateMachineObserver>) -> bool {
         let sm = self.state_machine.try_write();
 
@@ -2039,6 +2401,7 @@ impl DotLottiePlayer {
         true
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn state_machine_unsubscribe(&self, observer: &Arc<dyn StateMachineObserver>) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
@@ -2053,6 +2416,7 @@ impl DotLottiePlayer {
 
     // Framework internal state machine observer subscribe function
     // This allows us to send custom internal messages to the frameworks, without polluting the user's observers.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn state_machine_framework_subscribe(
         &self,
         observer: Arc<dyn StateMachineObserver>,
@@ -2081,6 +2445,7 @@ impl DotLottiePlayer {
         true
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn state_machine_framework_unsubscribe(
         &self,
         observer: &Arc<dyn StateMachineObserver>,
@@ -2271,6 +2636,11 @@ impl DotLottiePlayer {
 
     pub fn animation_size(&self) -> Vec<f32> {
         self.player.read().unwrap().animation_size()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn instance_id(&self) -> u32 {
+        self.player.read().unwrap().instance_id()
     }
 
     pub fn state_machine_current_state(&self) -> String {

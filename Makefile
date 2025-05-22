@@ -412,11 +412,25 @@ define CARGO_BUILD
 		--target $(CARGO_TARGET) \
 		--no-default-features \
 		--features thorvg-v1 \
+		-Z build-std \
+		--release; \
+	elif [[ "$(CARGO_TARGET)" == *"-apple-ios"* ]]; then \
+		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
+		cargo build \
+		--manifest-path $(PROJECT_DIR)/Cargo.toml \
+		--target $(CARGO_TARGET) \
+		--no-default-features \
+		--features thorvg-v1 \
+		--release; \
+	elif [[ "$(CARGO_TARGET)" == *"-apple-darwin"* ]]; then \
+		MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
+		cargo build \
+		--manifest-path $(PROJECT_DIR)/Cargo.toml \
+		--target $(CARGO_TARGET) \
+		--no-default-features \
+		--features thorvg-v1 \
 		--release; \
 	else \
-		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
-		MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
-		XROS_DEPLOYMENT_TARGET=$(APPLE_VISIONOS_VERSION_MIN) \
 		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \

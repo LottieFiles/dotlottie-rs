@@ -44,8 +44,7 @@ jobs:
       - name: Build Apple
         run: |
           rm -f /usr/local/lib/libjpeg*
-          make aarch64-apple-visionos
-          make aarch64-apple-visionos-sim
+          make apple
 
       - name: Upload Apple Artifacts
         uses: actions/upload-artifact@v4

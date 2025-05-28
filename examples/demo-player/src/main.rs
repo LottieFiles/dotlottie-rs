@@ -61,7 +61,7 @@ impl Player {
         let marker = &markers[index];
         // self.player.tween_to(marker.time, 1.0, EASE_LINEAR);
         self.player
-            .tween_to_marker(&marker.name, 1.0, EASE_LINEAR.to_vec());
+            .tween_to_marker(&marker.name, Some(1.0), Some(EASE_LINEAR.to_vec()));
         println!("Playing marker: '{}'", marker.name);
         let mut config = self.player.config();
         config.marker = marker.name.clone();

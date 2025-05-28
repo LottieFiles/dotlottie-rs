@@ -63,6 +63,15 @@ if [[ "${TARGET}" == "android" || "${TARGET}" == "all" ]]; then
   brew install android-ndk
 fi
 
+echo "Installing Rust nightly for visionOS targets..."
+rustup toolchain install nightly
+rustup component add rust-src --toolchain nightly
+
+echo
+echo "Adding nightly targets for visionOS..."
+rustup target add aarch64-apple-visionos --toolchain nightly
+rustup target add aarch64-apple-visionos-sim --toolchain nightly
+
 rustup component add rust-src
 
 echo

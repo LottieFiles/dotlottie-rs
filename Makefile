@@ -69,6 +69,7 @@ APPLE_IOS_PLATFORM := iPhoneOS
 APPLE_IOS_SDK ?= iPhoneOS
 APPLE_MACOS_VERSION_MIN ?= 11.0
 APPLE_IOS_VERSION_MIN ?= 13.0
+APPLE_VISIONOS_VERSION_MIN ?= 1.0
 APPLE_XCODE_APP_NAME ?= Xcode.app
 
 APPLE_IOS_SIMULATOR := ios-simulator
@@ -79,10 +80,20 @@ APPLE_MACOSX := macosx
 APPLE_MACOSX_PLATFORM := MacOSX
 APPLE_MACOSX_SDK ?= MacOSX
 
+APPLE_VISIONOS := visionos
+APPLE_VISIONOS_PLATFORM := XROS
+APPLE_VISIONOS_SDK ?= XROS
+
+APPLE_VISIONOS_SIMULATOR := visionos-simulator
+APPLE_VISIONOS_SIMULATOR_PLATFORM := XRSimulator
+APPLE_VISIONOS_SIMULATOR_SDK ?= XRSimulator
+
 APPLE_IOS_FRAMEWORK_TYPE := $(APPLE_IOS)
 APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_IOS_SIMULATOR)
 APPLE_MACOSX_FRAMEWORK_TYPE := $(APPLE_MACOSX)
-APPLE_FRAMEWORK_TYPES := $(APPLE_IOS_FRAMEWORK_TYPE) $(APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE) $(APPLE_MACOSX_FRAMEWORK_TYPE)
+APPLE_VISIONOS_FRAMEWORK_TYPE := $(APPLE_VISIONOS)
+APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_VISIONOS_SIMULATOR)
+APPLE_FRAMEWORK_TYPES := $(APPLE_IOS_FRAMEWORK_TYPE) $(APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE) $(APPLE_MACOSX_FRAMEWORK_TYPE) $(APPLE_VISIONOS_FRAMEWORK_TYPE) $(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE)
 
 # Apple tools
 LIPO := lipo
@@ -209,7 +220,6 @@ pkg-config = 'pkg-config'
 system = '$(ANDROID)'
 cpu_family = '$(CPU_FAMILY)'
 cpu = '$(CPU)'
-endian = 'little'
 endef
 
 define APPLE_CROSS_FILE
@@ -221,7 +231,7 @@ strip = 'strip'
 pkg-config = 'pkg-config'
 
 [properties]
-root = '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(SDK).platform/Developer'
+root = '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer'
 has_function_printf = true
 
 $(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),\
@@ -234,6 +244,12 @@ $(if $(filter $(PLATFORM),$(APPLE_MACOSX_PLATFORM)),\
 [built-in options]\n\
 cpp_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)']\n\
 cpp_link_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)']\n\
+,)
+
+$(if $(filter $(PLATFORM),$(APPLE_VISIONOS_PLATFORM) $(APPLE_VISIONOS_SIMULATOR_PLATFORM)),\
+[built-in options]\n\
+cpp_args = ['-mxros-version-min=$(APPLE_VISIONOS_VERSION_MIN)']\n\
+cpp_link_args = ['-mxros-version-min=$(APPLE_VISIONOS_VERSION_MIN)']\n\
 ,)
 
 [host_machine]
@@ -355,7 +371,8 @@ define SETUP_CMAKE
 		-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 		-DBUILD_SHARED_LIBS=OFF $(CMAKE_BUILD_SETTINGS) $(PLATFORM) $(TOOLCHAIN_FILE) \
 		-B $(DEP_BUILD_DIR) \
-		$(DEP_SOURCE_DIR)
+		$(DEP_SOURCE_DIR) \
+		$(1)
 endef
 
 define CMAKE_MAKE_BUILD
@@ -388,9 +405,32 @@ define CARGO_BUILD
 		--no-default-features \
 		--features thorvg-v1 \
 		--release; \
-	else \
+	elif [ "$(CARGO_TARGET)" = "aarch64-apple-visionos" ] || [ "$(CARGO_TARGET)" = "aarch64-apple-visionos-sim" ]; then \
+		XROS_DEPLOYMENT_TARGET=$(APPLE_VISIONOS_VERSION_MIN) \
+		cargo +nightly build \
+		--manifest-path $(PROJECT_DIR)/Cargo.toml \
+		--target $(CARGO_TARGET) \
+		--no-default-features \
+		--features thorvg-v1 \
+		-Z build-std \
+		--release; \
+	elif [[ "$(CARGO_TARGET)" == *"-apple-ios"* ]]; then \
 		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
+		cargo build \
+		--manifest-path $(PROJECT_DIR)/Cargo.toml \
+		--target $(CARGO_TARGET) \
+		--no-default-features \
+		--features thorvg-v1 \
+		--release; \
+	elif [[ "$(CARGO_TARGET)" == *"-apple-darwin"* ]]; then \
 		MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
+		cargo build \
+		--manifest-path $(PROJECT_DIR)/Cargo.toml \
+		--target $(CARGO_TARGET) \
+		--no-default-features \
+		--features thorvg-v1 \
+		--release; \
+	else \
 		cargo build \
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
@@ -466,7 +506,7 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :MinimumOSVersion string $(if $(findstring macosx,$(BASE_DIR)),$(APPLE_MACOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN))" \
+                     -c "Add :MinimumOSVersion string $(if $(findstring macosx,$(BASE_DIR)),$(APPLE_MACOS_VERSION_MIN),$(if $(findstring visionos,$(BASE_DIR)),$(APPLE_VISIONOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN)))" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \
@@ -504,16 +544,18 @@ endef
 # $1: rust target triple, e.g. aarch64-linux-android
 # $2: rust target triple in screaming snake case, e.g. AARCH64_LINUX_ANDROID
 # $3: build specific, i.e. android/apple, target
-# $4: build specific, i.e. android/apple, abi
-# $5: CPU Family, e.g. arm
-# $6: CPU, e.g. aarch64
+# $4: build specific platform identifier for toolchain
+# $5: build specific, i.e. android/apple, abi
+# $6: CPU Family, e.g. arm
+# $7: CPU, e.g. aarch64
 define NEW_BUILD_TARGET
 # Setup architecture variables
 $2 := $1
 $2_ARCH := $3
-$2_ABI := $4
-$2_CPU_FAMILY := $5
-$2_CPU := $6
+$2_PLATFORM_ID := $4
+$2_ABI := $5
+$2_CPU_FAMILY := $6
+$2_CPU := $7
 
 # Setup dependency build variables
 $2_DEPS_BUILD_DIR := $(DEPS_BUILD_DIR)/$1
@@ -548,6 +590,14 @@ APPLE_IOS_SIMULATOR_FRAMEWORK_TARGETS += $$($1))
 $(if $(filter $3,$(APPLE_MACOSX_PLATFORM)),\
 $1_FRAMEWORK_TYPE := $(APPLE_MACOSX_FRAMEWORK_TYPE)
 APPLE_MACOSX_FRAMEWORK_TARGETS += $$($1))
+
+$(if $(filter $3,$(APPLE_VISIONOS_PLATFORM)),\
+$1_FRAMEWORK_TYPE := $(APPLE_VISIONOS_FRAMEWORK_TYPE)
+APPLE_VISIONOS_FRAMEWORK_TARGETS += $$($1))
+
+$(if $(filter $3,$(APPLE_VISIONOS_SIMULATOR_PLATFORM)),\
+$1_FRAMEWORK_TYPE := $(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE)
+APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TARGETS += $$($1))
 endef
 
 define NEW_ANDROID_CMAKE_BUILD
@@ -565,8 +615,9 @@ $4/$(CMAKE_MAKEFILE): DEP_BUILD_DIR := $4
 $4/$(CMAKE_MAKEFILE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
 $4/$(CMAKE_MAKEFILE): CMAKE_BUILD_SETTINGS := -DANDROID_NDK=$(ANDROID_NDK_HOME) -DANDROID_ABI=$$($1_ABI)
 $4/$(CMAKE_MAKEFILE): TOOLCHAIN_FILE := -DCMAKE_TOOLCHAIN_FILE=../$(CMAKE_TOOLCHAIN_FILE)
+$4/$(CMAKE_MAKEFILE): CMAKE_EXTRA_ARGS := $(if $(findstring webp,$3),-DWEBP_BUILD_ANIM_UTILS=OFF -DWEBP_BUILD_CWEBP=OFF -DWEBP_BUILD_DWEBP=OFF -DWEBP_BUILD_GIF2WEBP=OFF -DWEBP_BUILD_IMG2WEBP=OFF -DWEBP_BUILD_VWEBP=OFF -DWEBP_BUILD_WEBPINFO=OFF -DWEBP_BUILD_WEBPMUX=OFF -DWEBP_BUILD_EXTRAS=OFF,)
 $4/$(CMAKE_MAKEFILE): $4/../$(CMAKE_TOOLCHAIN_FILE)
-	$$(SETUP_CMAKE)
+	$$(SETUP_CMAKE) $$(CMAKE_EXTRA_ARGS)
 
 # Build
 $$($1_DEPS_LIB_DIR)/$5: CMAKE_BUILD_DIR := $4
@@ -579,16 +630,17 @@ define NEW_APPLE_CMAKE_BUILD
 $4/$(CMAKE_CACHE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$3
 $4/$(CMAKE_CACHE): DEP_BUILD_DIR := $4
 $4/$(CMAKE_CACHE): DEP_ARTIFACTS_DIR := $$($1_DEPS_ARTIFACTS_DIR)
-$4/$(CMAKE_CACHE): CMAKE_BUILD_SETTINGS := -GXcode -DCMAKE_MACOSX_BUNDLE=NO -DDEPLOYMENT_TARGET=$(if $(findstring DARWIN,$1),$(APPLE_MACOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN))
-$4/$(CMAKE_CACHE): PLATFORM := -DPLATFORM=$$($1_ARCH)
+$4/$(CMAKE_CACHE): CMAKE_BUILD_SETTINGS := -GXcode -DCMAKE_MACOSX_BUNDLE=NO -DDEPLOYMENT_TARGET=$(if $(findstring DARWIN,$1),$(APPLE_MACOS_VERSION_MIN),$(if $(findstring VISIONOS,$1),$(APPLE_VISIONOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN)))
+$4/$(CMAKE_CACHE): PLATFORM := -DPLATFORM=$$($1_PLATFORM_ID)
 $4/$(CMAKE_CACHE): TOOLCHAIN_FILE := -DCMAKE_TOOLCHAIN_FILE=$(PWD)/$(DEPS_MODULES_DIR)/ios-cmake/ios.toolchain.cmake
+$4/$(CMAKE_CACHE): CMAKE_EXTRA_ARGS := $(if $(findstring webp,$3),-DWEBP_BUILD_ANIM_UTILS=OFF -DWEBP_BUILD_CWEBP=OFF -DWEBP_BUILD_DWEBP=OFF -DWEBP_BUILD_GIF2WEBP=OFF -DWEBP_BUILD_IMG2WEBP=OFF -DWEBP_BUILD_VWEBP=OFF -DWEBP_BUILD_WEBPINFO=OFF -DWEBP_BUILD_WEBPMUX=OFF -DWEBP_BUILD_EXTRAS=OFF,)
 $4/$(CMAKE_CACHE):
-	$$(SETUP_CMAKE)
+	$$(SETUP_CMAKE) $$(CMAKE_EXTRA_ARGS)
 
 # Build
 $(call CLEAN_LIBGJPEG)
 $$($1_DEPS_LIB_DIR)/$5: CMAKE_BUILD_DIR := $4
-$$($1_DEPS_LIB_DIR)/$5: CMAKE_BUILD_OPTIONS := $(if $(filter $($1_SUBSYSTEM),$(APPLE_IOS)),CODE_SIGNING_ALLOWED=NO,)
+$$($1_DEPS_LIB_DIR)/$5: CMAKE_BUILD_OPTIONS := $(if $(filter $($1_SUBSYSTEM),$(APPLE_IOS) $(APPLE_VISIONOS)),CODE_SIGNING_ALLOWED=NO,)
 $$($1_DEPS_LIB_DIR)/$5: $4/$(CMAKE_CACHE)
 	$$(CMAKE_BUILD)
 endef
@@ -802,12 +854,12 @@ $(shell echo $(1) | tr '[:lower:]-' '[:upper:]_')
 endef
 
 define DEFINE_TARGET
-$(eval $(call NEW_BUILD_TARGET,$1,$(call TARGET_PREFIX,$1),$2,$3,$4,$5))
+$(eval $(call NEW_BUILD_TARGET,$1,$(call TARGET_PREFIX,$1),$2,$3,$4,$5,$6))
 endef
 
 define DEFINE_APPLE_TARGET
-$(eval $(call DEFINE_TARGET,$1,$2,$3,$4,$5))
-$(eval $(call NEW_APPLE_TARGET,$(call TARGET_PREFIX,$1),$6,$7,$8))
+$(eval $(call DEFINE_TARGET,$1,$2,$3,$4,$5,$6))
+$(eval $(call NEW_APPLE_TARGET,$(call TARGET_PREFIX,$1),$7,$8,$9))
 endef
 
 # Local architecture dependencies builds
@@ -897,11 +949,13 @@ $(eval $(call NEW_ANDROID_BUILD,X86_64_LINUX_ANDROID))
 $(eval $(call NEW_ANDROID_BUILD,I686_LINUX_ANDROID))
 
 # Define all apple targets
-$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-darwin,MAC_ARM64,arm64,arm,aarch64,$(APPLE_MACOSX),$(APPLE_MACOSX_PLATFORM),$(APPLE_MACOSX_SDK)))
-$(eval $(call DEFINE_APPLE_TARGET,x86_64-apple-darwin,MAC,x86_64,x86_64,x86_64,$(APPLE_MACOSX),$(APPLE_MACOSX_PLATFORM),$(APPLE_MACOSX_SDK)))
-$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-ios,OS64,arm64,arm,aarch64,$(APPLE_IOS),$(APPLE_IOS_PLATFORM),$(APPLE_IOS_SDK)))
-$(eval $(call DEFINE_APPLE_TARGET,x86_64-apple-ios,SIMULATOR64,x86_64,x86_64,x86_64,$(APPLE_IOS),$(APPLE_IOS_SIMULATOR_PLATFORM),$(APPLE_IOS_SIMULATOR_SDK)))
-$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-ios-sim,SIMULATORARM64,arm64,arm,aarch64,$(APPLE_IOS),$(APPLE_IOS_SIMULATOR_PLATFORM),$(APPLE_IOS_SIMULATOR_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-darwin,MAC_ARM64,MAC_ARM64,arm64,arm,aarch64,$(APPLE_MACOSX),$(APPLE_MACOSX_PLATFORM),$(APPLE_MACOSX_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,x86_64-apple-darwin,MAC,MAC,x86_64,x86_64,x86_64,$(APPLE_MACOSX),$(APPLE_MACOSX_PLATFORM),$(APPLE_MACOSX_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-ios,OS64,OS64,arm64,arm,aarch64,$(APPLE_IOS),$(APPLE_IOS_PLATFORM),$(APPLE_IOS_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,x86_64-apple-ios,SIMULATOR64,SIMULATOR64,x86_64,x86_64,x86_64,$(APPLE_IOS),$(APPLE_IOS_SIMULATOR_PLATFORM),$(APPLE_IOS_SIMULATOR_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-ios-sim,SIMULATORARM64,SIMULATORARM64,arm64,arm,aarch64,$(APPLE_IOS),$(APPLE_IOS_SIMULATOR_PLATFORM),$(APPLE_IOS_SIMULATOR_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-visionos,VISIONOS,VISIONOS,arm64,arm,aarch64,$(APPLE_VISIONOS),$(APPLE_VISIONOS_PLATFORM),$(APPLE_VISIONOS_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-visionos-sim,SIMULATOR_VISIONOS,SIMULATOR_VISIONOS,arm64,arm,aarch64,$(APPLE_VISIONOS),$(APPLE_VISIONOS_SIMULATOR_PLATFORM),$(APPLE_VISIONOS_SIMULATOR_SDK)))
 
 # Define all apple deps builds
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_DARWIN))
@@ -909,6 +963,8 @@ $(eval $(call NEW_APPLE_DEPS_BUILD,X86_64_APPLE_DARWIN))
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_IOS))
 $(eval $(call NEW_APPLE_DEPS_BUILD,X86_64_APPLE_IOS))
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_IOS_SIM))
+$(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_VISIONOS))
+$(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_VISIONOS_SIM))
 
 # Define all apple builds
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_DARWIN))
@@ -916,11 +972,15 @@ $(eval $(call NEW_APPLE_BUILD,X86_64_APPLE_DARWIN))
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_IOS))
 $(eval $(call NEW_APPLE_BUILD,X86_64_APPLE_IOS))
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_IOS_SIM))
+$(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_VISIONOS))
+$(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_VISIONOS_SIM))
 
 # Define all apple framework builds (for release)
 $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_IOS_FRAMEWORK_TYPE),$(APPLE_IOS_FRAMEWORK_TARGETS),$(APPLE_IOS_PLATFORM),))
 $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE),$(APPLE_IOS_SIMULATOR_FRAMEWORK_TARGETS),$(APPLE_IOS_SIMULATOR_PLATFORM),))
 $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_MACOSX_FRAMEWORK_TYPE),$(APPLE_MACOSX_FRAMEWORK_TARGETS),$(APPLE_MACOSX_PLATFORM),))
+$(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_VISIONOS_FRAMEWORK_TYPE),$(APPLE_VISIONOS_FRAMEWORK_TARGETS),$(APPLE_VISIONOS_PLATFORM),))
+$(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE),$(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TARGETS),$(APPLE_VISIONOS_SIMULATOR_PLATFORM),))
 
 # Define WASM targets
 $(eval $(call DEFINE_TARGET,wasm32-unknown-emscripten,emscripten,emscripten,x86,i686))

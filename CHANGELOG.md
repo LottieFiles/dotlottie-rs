@@ -1,3 +1,17 @@
+## 0.1.42 (2025-05-28)
+
+### Features
+
+#### lazily create the animation and background shape right after setting the frame buffer and renderer target
+
+#### upgrade thorvg v1.0-pre21
+
+### Fixes
+
+#### on_loop_complete event firing issue in state machine
+
+#### optimize frame buffer reuse to reduce unnecessary memory allocations
+
 ## 0.1.41 (2025-05-16)
 
 ### Features

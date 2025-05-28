@@ -365,7 +365,7 @@ impl DotLottieRuntime {
 
         // Apply frame interpolation
         next_frame = if self.config.use_frame_interpolation {
-            (next_frame * 1000.0).round() / 1000.0
+            (next_frame * 1000.0).round() * 0.001
         } else {
             next_frame.round()
         };
@@ -786,10 +786,17 @@ impl DotLottieRuntime {
             Ok(manager) => {
                 self.dotlottie_manager = Some(manager);
                 if let Some(manager) = &mut self.dotlottie_manager {
-                    let (active_animation, active_animation_id) = if !self.config.animation_id.is_empty() {
-                        (manager.get_animation(&self.config.animation_id), self.config.animation_id.clone())
+                    let (active_animation, active_animation_id) =
+                        if !self.config.animation_id.is_empty() {
+                            (
+                                manager.get_animation(&self.config.animation_id),
+                                self.config.animation_id.clone(),
+                            )
                         } else {
-                        (manager.get_active_animation(), manager.active_animation_id())
+                            (
+                                manager.get_active_animation(),
+                                manager.active_animation_id(),
+                            )
                         };
 
                     if let Ok(animation_data) = active_animation {

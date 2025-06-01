@@ -40,20 +40,24 @@ fn main() {
     // Always re-run the build script
     println!("cargo:rerun-if-changed=NULL");
 
-    uniffi::generate_scaffolding("src/dotlottie_player.udl").unwrap();
-
     // Apply build settings
     apply_build_settings(&TARGET_BUILD_SETTINGS);
 
-    // Execute cbindgen
-    let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let config_path = PathBuf::from(&crate_dir).join("cbindgen.toml");
-    let config = cbindgen::Config::from_file(config_path).unwrap();
+    if cfg!(feature = "uniffi") {
+        uniffi::generate_scaffolding("src/dotlottie_player.udl").unwrap();
+    }
 
-    cbindgen::Builder::new()
-        .with_crate(crate_dir)
-        .with_config(config)
-        .generate()
-        .expect("Unable to generate bindings")
-        .write_to_file("bindings.h");
+    if cfg!(feature = "ffi") {
+        // Execute cbindgen
+        let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let config_path = PathBuf::from(&crate_dir).join("cbindgen.toml");
+        let config = cbindgen::Config::from_file(config_path).unwrap();
+
+        cbindgen::Builder::new()
+            .with_crate(crate_dir)
+            .with_config(config)
+            .generate()
+            .expect("Unable to generate bindings")
+            .write_to_file("bindings.h");
+    }
 }

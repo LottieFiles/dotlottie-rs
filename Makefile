@@ -109,25 +109,12 @@ NATIVE := native
 
 # External dependencies
 THORVG := thorvg
-LIBJPEG_TURBO := libjpeg-turbo
-LIBPNG := libpng
-ZLIB := zlib
-WEBP := libwebp
 
 # External dependency artifacts
 MESON_CROSS_FILE := cross.txt
 MESON_BUILD_FILE := meson.build
 NINJA_BUILD_FILE := build.ninja
 THORVG_LIB := libthorvg.a
-
-CMAKE_TOOLCHAIN_FILE := toolchain.cmake
-CMAKE_MAKEFILE := Makefile
-CMAKE_CACHE := CMakeCache.txt
-
-LIBPNG_LIB := libpng.a
-LIBJPEG_TURBO_LIB := libturbojpeg.a
-ZLIB_LIB := libz.a
-WEBP_LIB := libwebp.a
 
 # Release artifacts will be placed in this directory
 RELEASE := release
@@ -182,13 +169,6 @@ LOCAL_ARCH_LIB_DIR := $(LOCAL_ARCH_ARTIFACTS_DIR)/lib
 LOCAL_ARCH_LIB64_DIR := $(LOCAL_ARCH_ARTIFACTS_DIR)/lib64
 
 THORVG_LOCAL_ARCH_BUILD_DIR := $(LOCAL_ARCH_BUILD_DIR)/$(THORVG)/build
-LIBJPEG_TURBO_LOCAL_ARCH_BUILD_DIR := $(LOCAL_ARCH_BUILD_DIR)/$(LIBJPEG_TURBO)/build
-LIBPNG_LOCAL_ARCH_BUILD_DIR := $(LOCAL_ARCH_BUILD_DIR)/$(LIBPNG)/build
-ZLIB_LOCAL_ARCH_BUILD_DIR := $(LOCAL_ARCH_BUILD_DIR)/$(ZLIB)/build
-WEBP_LOCAL_ARCH_BUILD_DIR := $(LOCAL_ARCH_BUILD_DIR)/$(WEBP)/build
-
-# Other build flags for dependencies
-ZLIB_LDFLAGS := -Wl,--undefined-version
 
 # Sources
 CORE_SRC := $(shell find $(CORE)/src -name "*.rs")
@@ -342,7 +322,7 @@ define SETUP_MESON
 		-Dbindings=capi \
 		-Dlog=false \
 		-Dthreads=false \
-		-Dstatic=$(STATIC) \
+		-Dstatic=true \
 		-Dextra=$(EXTRA) \
 		-Dfile=$(FILE) \
 		$(CROSS_FILE) "$(THORVG_DEP_SOURCE_DIR)" "$(THORVG_DEP_BUILD_DIR)"
@@ -357,27 +337,6 @@ endef
 
 define NINJA_BUILD
 	DESTDIR=$(ARTIFACTS_DIR) ninja -C $(DEP_BUILD_DIR) install
-endef
-
-define SETUP_CMAKE
-	cmake -DCMAKE_INSTALL_PREFIX=$(DEP_ARTIFACTS_DIR) \
-		-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-		-DBUILD_SHARED_LIBS=OFF $(CMAKE_BUILD_SETTINGS) $(PLATFORM) $(TOOLCHAIN_FILE) \
-		-B $(DEP_BUILD_DIR) \
-		$(DEP_SOURCE_DIR)
-endef
-
-define CMAKE_MAKE_BUILD
-  $(MAKE) -C $(CMAKE_BUILD_DIR) install
-endef
-
-define CMAKE_BUILD
-  cmake --build $(CMAKE_BUILD_DIR) --config Release --target install -- $(CMAKE_BUILD_OPTIONS)
-endef
-
-define CLEAN_LIBGJPEG
-	echo "Removing libjpeg from rm /usr/local/lib/libjpeg*"
-	rm -f /usr/local/lib/libjpeg*
 endef
 
 define SIMPLE_CARGO_BUILD
@@ -528,11 +487,6 @@ $2_CPU := $6
 $2_DEPS_BUILD_DIR := $(DEPS_BUILD_DIR)/$1
 
 $2_THORVG_DEP_BUILD_DIR := $$($2_DEPS_BUILD_DIR)/$(THORVG)
-$2_LIBJPEG_TURBO_DEP_BUILD_DIR := $$($2_DEPS_BUILD_DIR)/$(LIBJPEG_TURBO)
-$2_LIBPNG_DEP_BUILD_DIR := $$($2_DEPS_BUILD_DIR)/$(LIBPNG)
-$2_ZLIB_DEP_BUILD_DIR := $$($2_DEPS_BUILD_DIR)/$(ZLIB)
-$2_WEBP_DEP_BUILD_DIR := $$($2_DEPS_BUILD_DIR)/$(WEBP)
-
 $2_DEPS_ARTIFACTS_DIR := $(DEPS_ARTIFACTS_DIR)/$1/usr
 $2_DEPS_INCLUDE_DIR := $$($2_DEPS_ARTIFACTS_DIR)/include
 $2_DEPS_LIB_DIR := $$($2_DEPS_ARTIFACTS_DIR)/lib
@@ -644,15 +598,9 @@ $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_SOURCE_DIR := $(DEPS
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_BUILD_DIR := $$($1_THORVG_DEP_BUILD_DIR)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): CROSS_FILE := --cross-file $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE)
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): LOG := false
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): STATIC := $3
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): EXTRA := $4
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): FILE := $5
+$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): EXTRA := $3
+$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): FILE := $4
 $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE)
-$(if $(filter $3,false),
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(LIBJPEG_TURBO_LIB)
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(LIBPNG_LIB)
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(WEBP_LIB)
-$$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FILE): $$($1_DEPS_LIB_DIR)/$(ZLIB_LIB),)
 	$$(SETUP_MESON)
 
 # Build thorvg
@@ -663,26 +611,18 @@ $$($1_DEPS_LIB_DIR)/$(THORVG_LIB): $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FIL
 endef
 
 define NEW_ANDROID_DEPS_BUILD
-$(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,LIBJPEG_TURBO,$(LIBJPEG_TURBO),$$($1_LIBJPEG_TURBO_DEP_BUILD_DIR),$(LIBJPEG_TURBO_LIB)))
-$(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,LIBPNG_LIB,$(LIBPNG),$$($1_LIBPNG_DEP_BUILD_DIR),$(LIBPNG_LIB)))
-$(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,ZLIB,$(ZLIB),$$($1_ZLIB_DEP_BUILD_DIR),$(ZLIB_LIB)))
-$(eval $(call NEW_ANDROID_CMAKE_BUILD,$1,WEBP,$(WEBP),$$($1_WEBP_DEP_BUILD_DIR),$(WEBP_LIB)))
 $(eval $(call NEW_ANDROID_CROSS_FILE,$1))
-$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions",true))
+$(eval $(call NEW_THORVG_BUILD,$1,false,"lottie_expressions",true))
 endef
 
 define NEW_APPLE_DEPS_BUILD
-$(eval $(call NEW_APPLE_CMAKE_BUILD,$1,LIBJPEG_TURBO,$(LIBJPEG_TURBO),$$($1_LIBJPEG_TURBO_DEP_BUILD_DIR),$(LIBJPEG_TURBO_LIB)))
-$(eval $(call NEW_APPLE_CMAKE_BUILD,$1,LIBPNG_LIB,$(LIBPNG),$$($1_LIBPNG_DEP_BUILD_DIR),$(LIBPNG_LIB)))
-$(eval $(call NEW_APPLE_CMAKE_BUILD,$1,ZLIB,$(ZLIB),$$($1_ZLIB_DEP_BUILD_DIR),$(ZLIB_LIB)))
-$(eval $(call NEW_APPLE_CMAKE_BUILD,$1,WEBP,$(WEBP),$$($1_WEBP_DEP_BUILD_DIR),$(WEBP_LIB)))
 $(eval $(call NEW_APPLE_CROSS_FILE,$1))
-$(eval $(call NEW_THORVG_BUILD,$1,false,false,"lottie_expressions",true))
+$(eval $(call NEW_THORVG_BUILD,$1,false,"lottie_expressions",true))
 endef
 
 define NEW_WASM_DEPS_BUILD
 $(eval $(call NEW_WASM_CROSS_FILE,$1,$$($1_THORVG_DEP_BUILD_DIR)/..,windows))
-$(eval $(call NEW_THORVG_BUILD,$1,false,true,"lottie_expressions",false))
+$(eval $(call NEW_THORVG_BUILD,$1,false,"lottie_expressions",false))
 endef
 
 define NEW_ANDROID_BUILD
@@ -821,25 +761,6 @@ $(eval $(call NEW_APPLE_TARGET,$(call TARGET_PREFIX,$1),$6,$7,$8))
 endef
 
 # Local architecture dependencies builds
-define NEW_LOCAL_ARCH_CMAKE_BUILD
-# Setup cmake for local arch build
-$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$2
-$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_BUILD_DIR := $$($1_LOCAL_ARCH_BUILD_DIR)
-$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE): DEP_ARTIFACTS_DIR := $(LOCAL_ARCH_ARTIFACTS_DIR)
-$$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE):
-	$$(SETUP_CMAKE)
-
-# Build local arch
-$(LOCAL_ARCH_LIB_DIR)/$3: CMAKE_BUILD_DIR := $$($1_LOCAL_ARCH_BUILD_DIR)
-$(LOCAL_ARCH_LIB_DIR)/$3: $$($1_LOCAL_ARCH_BUILD_DIR)/$(CMAKE_MAKEFILE)
-	$$(CMAKE_BUILD)
-endef
-
-# Define local deps builds
-$(eval $(call NEW_LOCAL_ARCH_CMAKE_BUILD,LIBJPEG_TURBO,$(LIBJPEG_TURBO),$(LIBJPEG_TURBO_LIB)))
-$(eval $(call NEW_LOCAL_ARCH_CMAKE_BUILD,LIBPNG,$(LIBPNG),$(LIBPNG_LIB)))
-$(eval $(call NEW_LOCAL_ARCH_CMAKE_BUILD,ZLIB,$(ZLIB),$(ZLIB_LIB)))
-$(eval $(call NEW_LOCAL_ARCH_CMAKE_BUILD,WEBP,$(WEBP),$(WEBP_LIB)))
 
 # Setup meson for thorvg local arch build
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): export PKG_CONFIG_PATH := $(PWD)/$(LOCAL_ARCH_LIB_DIR)/pkgconfig:$(PWD)/$(LOCAL_ARCH_LIB64_DIR)
@@ -849,10 +770,7 @@ $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): LOG := false
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): STATIC := false
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): EXTRA := lottie_expressions
 $(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): FILE := true
-$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(LIBJPEG_TURBO_LIB)
-$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(LIBPNG_LIB)
-$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(ZLIB_LIB)
-$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): $(LOCAL_ARCH_LIB_DIR)/$(WEBP_LIB)
+$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE):
 	$(SETUP_MESON)
 
 # Build thorvg local arch
@@ -985,11 +903,10 @@ local: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
 deps:
 	@git submodule update --init --recursive
 
-# Cleanup extraneous files from the zlib dependency build...
+# Cleanup extraneous files
 .PHONY: clean-build
 clean-build:
-	@git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git clean -fd &>/dev/null
-	@git --git-dir=$(DEPS_MODULES_DIR)/$(ZLIB)/.git checkout . &>/dev/null
+	@echo "Build cleanup completed"
 
 .PHONY: clean-deps
 clean-deps: clean-build

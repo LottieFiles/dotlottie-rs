@@ -1,22 +1,6 @@
 [submodule "deps/modules/thorvg"]
 	path = deps/modules/thorvg
 	url = https://github.com/thorvg/thorvg.git
-[submodule "deps/modules/libjpeg-turbo"]
-	path = deps/modules/libjpeg-turbo
-	url = https://github.com/libjpeg-turbo/libjpeg-turbo.git
-[submodule "deps/modules/libpng"]
-	path = deps/modules/libpng
-	url = https://github.com/glennrp/libpng.git
-[submodule "deps/modules/zlib"]
-	path = deps/modules/zlib
-	url = https://github.com/madler/zlib.git
-[submodule "deps/modules/ios-cmake"]
-	path = deps/modules/ios-cmake
-	url = https://github.com/leetal/ios-cmake.git
 [submodule "deps/modules/emsdk"]
 	path = deps/modules/emsdk
 	url = https://github.com/emscripten-core/emsdk.git
-[submodule "deps/modules/libwebp"]
-	path = deps/modules/libwebp
-	url = https://github.com/webmproject/libwebp.git
-	

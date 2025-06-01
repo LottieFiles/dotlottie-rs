@@ -50,7 +50,7 @@ ANDROID := android
 
 ANDROID_BUILD_PLATFORM := $(BUILD_PLATFORM)-x86_64
 ANDROID_NDK_HOME ?= /opt/homebrew/share/android-ndk
-ANDROID_API_VERSION ?= 24
+ANDROID_API_VERSION ?= 21
 
 # Android Tool chain
 AR := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(ANDROID_BUILD_PLATFORM)/bin/llvm-ar
@@ -194,6 +194,11 @@ ZLIB_LDFLAGS := -Wl,--undefined-version
 CORE_SRC := $(shell find $(CORE)/src -name "*.rs")
 RUNTIME_FFI_SRC := $(shell find $(RUNTIME_FFI)/src -name "*.rs") $(shell find $(RUNTIME_FFI)/src -name "*.udl")
 
+AARCH64_LINUX_ANDROID_CPP_ARGS := []
+ARMV7_LINUX_ANDROIDEABI_CPP_ARGS := ['-Dfseeko=fseek', '-Dftello=ftell', '-D_FILE_OFFSET_BITS=32']
+X86_64_LINUX_ANDROID_CPP_ARGS := []
+I686_LINUX_ANDROID_CPP_ARGS := ['-Dfseeko=fseek', '-Dftello=ftell', '-D_FILE_OFFSET_BITS=32']
+
 # Helper functions
 define ANDROID_CROSS_FILE
 [binaries]
@@ -204,6 +209,9 @@ ranlib     = '$(RANLIB)'
 ld         = '$(LD)'
 strip      = '$(STRIP)'
 pkg-config = 'pkg-config'
+
+[built-in options]
+cpp_args = $(CPP_ARGS)
 
 [host_machine]
 system = '$(ANDROID)'
@@ -600,6 +608,7 @@ $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE): SYSROOT := $(ANDROID_NDK_HOM
 $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE): CPP := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(ANDROID_BUILD_PLATFORM)/bin/$$($1_ARCH)$(ANDROID_API_VERSION)-clang++
 $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE): CPU_FAMILY := $$($1_CPU_FAMILY)
 $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE): CPU := $$($1_CPU)
+$$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE): CPP_ARGS := $$($1_CPP_ARGS)
 $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE): export OUTPUT_FILE := $$(ANDROID_CROSS_FILE)
 $$($1_THORVG_DEP_BUILD_DIR)/../$(MESON_CROSS_FILE):
 	$$(CREATE_OUTPUT_FILE)

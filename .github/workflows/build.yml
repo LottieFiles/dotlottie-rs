@@ -64,7 +64,6 @@ jobs:
 
       - uses: Homebrew/actions/setup-homebrew@master
       - uses: ningenMe/setup-rustup@v1.1.0
-
       - name: Install Make
         run: brew install make
 

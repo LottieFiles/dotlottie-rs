@@ -327,7 +327,7 @@ define SETUP_MESON
 	meson setup \
 		--prefix=/ \
 		--backend=ninja \
-		-Dloaders="lottie, png, jpg, webp" \
+		-Dloaders="lottie, png, jpg, webp, ttf" \
 		-Ddefault_library=static \
 		-Dengines=sw \
 		-Dbindings=capi \

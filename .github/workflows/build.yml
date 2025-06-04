@@ -75,6 +75,11 @@ jobs:
 
       - name: Build Android
         run: make android
+        env:
+          ANDROID_NDK_HOME: "/opt/homebrew/share/android-ndk"
+
+      - name: Check ELF Alignment
+        run: ./check_elf_alignment.sh release/android/dotlottie-player/src/main/jniLibs
 
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4

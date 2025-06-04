@@ -395,7 +395,7 @@ define CARGO_BUILD
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--no-default-features \
-		--features thorvg-v1 \
+		--features thorvg-v1,uniffi \
 		--release; \
 	else \
 		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
@@ -404,7 +404,7 @@ define CARGO_BUILD
 		--manifest-path $(PROJECT_DIR)/Cargo.toml \
 		--target $(CARGO_TARGET) \
 		--no-default-features \
-		--features thorvg-v1 \
+		--features thorvg-v1,uniffi \
 		--release; \
 	fi
 endef
@@ -414,7 +414,7 @@ define UNIFFI_BINDINGS_BUILD
 	cargo run \
 		--manifest-path $(RUNTIME_FFI)/Cargo.toml \
 		--no-default-features \
-		--features=uniffi/cli,thorvg-v1 \
+		--features=uniffi/cli,thorvg-v1,uniffi \
 		--bin uniffi-bindgen \
 		generate $(RUNTIME_FFI)/src/dotlottie_player.udl \
 		--language $(BINDINGS_LANGUAGE) \

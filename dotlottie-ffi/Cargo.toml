@@ -19,9 +19,11 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [features]
-default = ["thorvg-v0"]
+default = ["thorvg-v0", "ffi"]
 thorvg-v0 = ["dotlottie-rs/thorvg-v0"]
 thorvg-v1 = ["dotlottie-rs/thorvg-v1"]
+ffi = []
+uniffi = []
 
 [dependencies]
 uniffi = { version = "0.28", features = ["cli"] }

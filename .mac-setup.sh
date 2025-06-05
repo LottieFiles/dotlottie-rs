@@ -63,6 +63,10 @@ if [[ "${TARGET}" == "android" || "${TARGET}" == "all" ]]; then
   brew install android-ndk
 fi
 
+echo "Installing Rust nightly..."
+rustup toolchain install nightly
+rustup component add rust-src --toolchain nightly
+
 rustup component add rust-src
 
 echo

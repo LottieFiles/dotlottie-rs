@@ -63,7 +63,16 @@ if [[ "${TARGET}" == "android" || "${TARGET}" == "all" ]]; then
   brew install android-ndk
 fi
 
-rustup component add rust-src
+echo "Checking if Rust nightly is already installed..."
+if ! rustup toolchain list | grep -q nightly; then
+  echo "Installing Rust nightly..."
+  rustup toolchain install nightly
+  rustup component add rust-src --toolchain nightly
+else
+  echo "Rust nightly is already installed. Skipping installation."
+fi
+
+rustup component add rust-src --toolchain stable
 
 echo
 echo "Installing rust target(s) ..."

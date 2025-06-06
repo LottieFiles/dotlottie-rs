@@ -79,10 +79,32 @@ APPLE_MACOSX := macosx
 APPLE_MACOSX_PLATFORM := MacOSX
 APPLE_MACOSX_SDK ?= MacOSX
 
+APPLE_VISIONOS := visionos
+APPLE_VISIONOS_PLATFORM := XROS
+APPLE_VISIONOS_SDK ?= XROS
+APPLE_VISIONOS_VERSION_MIN ?= 1.0
+
+APPLE_VISIONOS_SIMULATOR := visionos-simulator
+APPLE_VISIONOS_SIMULATOR_PLATFORM := XRSimulator
+APPLE_VISIONOS_SIMULATOR_SDK ?= XRSimulator
+
+APPLE_TVOS := tvos
+APPLE_TVOS_PLATFORM := AppleTVOS
+APPLE_TVOS_SDK ?= AppleTVOS
+APPLE_TVOS_VERSION_MIN ?= 13.0
+
+APPLE_TVOS_SIMULATOR := tvos-simulator
+APPLE_TVOS_SIMULATOR_PLATFORM := AppleTVSimulator
+APPLE_TVOS_SIMULATOR_SDK ?= AppleTVSimulator
+
 APPLE_IOS_FRAMEWORK_TYPE := $(APPLE_IOS)
 APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_IOS_SIMULATOR)
 APPLE_MACOSX_FRAMEWORK_TYPE := $(APPLE_MACOSX)
-APPLE_FRAMEWORK_TYPES := $(APPLE_IOS_FRAMEWORK_TYPE) $(APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE) $(APPLE_MACOSX_FRAMEWORK_TYPE)
+APPLE_VISIONOS_FRAMEWORK_TYPE := $(APPLE_VISIONOS)
+APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_VISIONOS_SIMULATOR)
+APPLE_TVOS_FRAMEWORK_TYPE := $(APPLE_TVOS)
+APPLE_TVOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_TVOS_SIMULATOR)
+APPLE_FRAMEWORK_TYPES := $(APPLE_IOS_FRAMEWORK_TYPE) $(APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE) $(APPLE_MACOSX_FRAMEWORK_TYPE) $(APPLE_VISIONOS_FRAMEWORK_TYPE) $(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE) $(APPLE_TVOS_FRAMEWORK_TYPE) $(APPLE_TVOS_SIMULATOR_FRAMEWORK_TYPE)
 
 # Apple tools
 LIPO := lipo
@@ -224,6 +246,18 @@ cpp_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)']\n\
 cpp_link_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)']\n\
 ,)
 
+$(if $(filter $(PLATFORM),$(APPLE_VISIONOS_PLATFORM) $(APPLE_VISIONOS_SIMULATOR_PLATFORM)),\
+[built-in options]\n\
+cpp_args = ['-mxros-version-min=$(APPLE_VISIONOS_VERSION_MIN)']\n\
+cpp_link_args = ['-mxros-version-min=$(APPLE_VISIONOS_VERSION_MIN)']\n\
+,)
+
+$(if $(filter $(PLATFORM),$(APPLE_TVOS_PLATFORM) $(APPLE_TVOS_SIMULATOR_PLATFORM)),\
+[built-in options]\n\
+cpp_args = ['-mtvos-version-min=$(APPLE_TVOS_VERSION_MIN)']\n\
+cpp_link_args = ['-mtvos-version-min=$(APPLE_TVOS_VERSION_MIN)']\n\
+,)
+
 [host_machine]
 system = 'darwin'
 subsystem = '$(SUBSYSTEM)'
@@ -347,6 +381,20 @@ define SIMPLE_CARGO_BUILD
 	--release;
 endef
 
+# Helper function for nightly builds with deployment target
+# $1: deployment target variable name (e.g., XROS_DEPLOYMENT_TARGET)
+# $2: deployment target value (e.g., $(APPLE_VISIONOS_VERSION_MIN))
+define CARGO_NIGHTLY_BUILD
+	$1=$2 \
+	cargo +nightly build \
+	-Z build-std=std,panic_abort \
+	--manifest-path $(PROJECT_DIR)/Cargo.toml \
+	--target $(CARGO_TARGET) \
+	--no-default-features \
+	--features thorvg-v1,uniffi \
+	--release;
+endef
+
 define CARGO_BUILD
 	if [ "$(CARGO_TARGET)" = "wasm32-unknown-emscripten" ]; then \
 		source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
@@ -356,6 +404,10 @@ define CARGO_BUILD
 		--no-default-features \
 		--features thorvg-v1,uniffi \
 		--release; \
+	elif [ "$(CARGO_TARGET)" = "aarch64-apple-visionos" ] || [ "$(CARGO_TARGET)" = "aarch64-apple-visionos-sim" ]; then \
+		$(call CARGO_NIGHTLY_BUILD,XROS_DEPLOYMENT_TARGET,$(APPLE_VISIONOS_VERSION_MIN)) \
+	elif [ "$(CARGO_TARGET)" = "aarch64-apple-tvos" ] || [ "$(CARGO_TARGET)" = "aarch64-apple-tvos-sim" ]; then \
+		$(call CARGO_NIGHTLY_BUILD,TVOS_DEPLOYMENT_TARGET,$(APPLE_TVOS_VERSION_MIN)) \
 	else \
 		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
 		MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
@@ -434,7 +486,7 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :MinimumOSVersion string $(if $(findstring macosx,$(BASE_DIR)),$(APPLE_MACOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN))" \
+                     -c "Add :MinimumOSVersion string $(if $(findstring macosx,$(BASE_DIR)),$(APPLE_MACOS_VERSION_MIN),$(if $(findstring visionos,$(BASE_DIR)),$(APPLE_VISIONOS_VERSION_MIN),$(if $(findstring tvos,$(BASE_DIR)),$(APPLE_TVOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN)))))" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \
@@ -511,6 +563,22 @@ APPLE_IOS_SIMULATOR_FRAMEWORK_TARGETS += $$($1))
 $(if $(filter $3,$(APPLE_MACOSX_PLATFORM)),\
 $1_FRAMEWORK_TYPE := $(APPLE_MACOSX_FRAMEWORK_TYPE)
 APPLE_MACOSX_FRAMEWORK_TARGETS += $$($1))
+
+$(if $(filter $3,$(APPLE_VISIONOS_PLATFORM)),\
+$1_FRAMEWORK_TYPE := $(APPLE_VISIONOS_FRAMEWORK_TYPE)
+APPLE_VISIONOS_FRAMEWORK_TARGETS += $$($1))
+
+$(if $(filter $3,$(APPLE_VISIONOS_SIMULATOR_PLATFORM)),\
+$1_FRAMEWORK_TYPE := $(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE)
+APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TARGETS += $$($1))
+
+$(if $(filter $3,$(APPLE_TVOS_PLATFORM)),\
+$1_FRAMEWORK_TYPE := $(APPLE_TVOS_FRAMEWORK_TYPE)
+APPLE_TVOS_FRAMEWORK_TARGETS += $$($1))
+
+$(if $(filter $3,$(APPLE_TVOS_SIMULATOR_PLATFORM)),\
+$1_FRAMEWORK_TYPE := $(APPLE_TVOS_SIMULATOR_FRAMEWORK_TYPE)
+APPLE_TVOS_SIMULATOR_FRAMEWORK_TARGETS += $$($1))
 endef
 
 define NEW_ANDROID_CMAKE_BUILD
@@ -830,6 +898,10 @@ $(eval $(call DEFINE_APPLE_TARGET,x86_64-apple-darwin,MAC,x86_64,x86_64,x86_64,$
 $(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-ios,OS64,arm64,arm,aarch64,$(APPLE_IOS),$(APPLE_IOS_PLATFORM),$(APPLE_IOS_SDK)))
 $(eval $(call DEFINE_APPLE_TARGET,x86_64-apple-ios,SIMULATOR64,x86_64,x86_64,x86_64,$(APPLE_IOS),$(APPLE_IOS_SIMULATOR_PLATFORM),$(APPLE_IOS_SIMULATOR_SDK)))
 $(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-ios-sim,SIMULATORARM64,arm64,arm,aarch64,$(APPLE_IOS),$(APPLE_IOS_SIMULATOR_PLATFORM),$(APPLE_IOS_SIMULATOR_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-visionos,VISIONOS,arm64,arm,aarch64,$(APPLE_VISIONOS),$(APPLE_VISIONOS_PLATFORM),$(APPLE_VISIONOS_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-visionos-sim,VISIONOS_SIMULATOR,arm64,arm,aarch64,$(APPLE_VISIONOS),$(APPLE_VISIONOS_SIMULATOR_PLATFORM),$(APPLE_VISIONOS_SIMULATOR_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-tvos,TVOS,arm64,arm,aarch64,$(APPLE_TVOS),$(APPLE_TVOS_PLATFORM),$(APPLE_TVOS_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-tvos-sim,TVOS_SIMULATOR,arm64,arm,aarch64,$(APPLE_TVOS),$(APPLE_TVOS_SIMULATOR_PLATFORM),$(APPLE_TVOS_SIMULATOR_SDK)))
 
 # Define all apple deps builds
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_DARWIN))
@@ -837,6 +909,10 @@ $(eval $(call NEW_APPLE_DEPS_BUILD,X86_64_APPLE_DARWIN))
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_IOS))
 $(eval $(call NEW_APPLE_DEPS_BUILD,X86_64_APPLE_IOS))
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_IOS_SIM))
+$(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_VISIONOS))
+$(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_VISIONOS_SIM))
+$(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_TVOS))
+$(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_TVOS_SIM))
 
 # Define all apple builds
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_DARWIN))
@@ -844,11 +920,19 @@ $(eval $(call NEW_APPLE_BUILD,X86_64_APPLE_DARWIN))
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_IOS))
 $(eval $(call NEW_APPLE_BUILD,X86_64_APPLE_IOS))
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_IOS_SIM))
+$(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_VISIONOS))
+$(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_VISIONOS_SIM))
+$(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_TVOS))
+$(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_TVOS_SIM))
 
 # Define all apple framework builds (for release)
 $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_IOS_FRAMEWORK_TYPE),$(APPLE_IOS_FRAMEWORK_TARGETS),$(APPLE_IOS_PLATFORM),))
 $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE),$(APPLE_IOS_SIMULATOR_FRAMEWORK_TARGETS),$(APPLE_IOS_SIMULATOR_PLATFORM),))
 $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_MACOSX_FRAMEWORK_TYPE),$(APPLE_MACOSX_FRAMEWORK_TARGETS),$(APPLE_MACOSX_PLATFORM),))
+$(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_VISIONOS_FRAMEWORK_TYPE),$(APPLE_VISIONOS_FRAMEWORK_TARGETS),$(APPLE_VISIONOS_PLATFORM),))
+$(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE),$(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TARGETS),$(APPLE_VISIONOS_SIMULATOR_PLATFORM),))
+$(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_TVOS_FRAMEWORK_TYPE),$(APPLE_TVOS_FRAMEWORK_TARGETS),$(APPLE_TVOS_PLATFORM),))
+$(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_TVOS_SIMULATOR_FRAMEWORK_TYPE),$(APPLE_TVOS_SIMULATOR_FRAMEWORK_TARGETS),$(APPLE_TVOS_SIMULATOR_PLATFORM),))
 
 # Define WASM targets
 $(eval $(call DEFINE_TARGET,wasm32-unknown-emscripten,emscripten,emscripten,x86,i686))
@@ -894,10 +978,6 @@ $(NATIVE): $(RUNTIME_FFI)/target/$(RELEASE)/$(RUNTIME_FFI_LIB)
 
 .PHONY: all
 all: $(APPLE) $(ANDROID) $(WASM) $(NATIVE)
-
-.PHONY: local
-local: $(LOCAL_ARCH_LIB_DIR)/$(THORVG_LIB)
-	$(info $(GREEN)Local architecture dependencies built successfully!$(NC))
 
 .PHONY: deps
 deps:

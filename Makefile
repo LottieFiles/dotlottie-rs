@@ -381,6 +381,20 @@ define SIMPLE_CARGO_BUILD
 	--release;
 endef
 
+# Helper function for nightly builds with deployment target
+# $1: deployment target variable name (e.g., XROS_DEPLOYMENT_TARGET)
+# $2: deployment target value (e.g., $(APPLE_VISIONOS_VERSION_MIN))
+define CARGO_NIGHTLY_BUILD
+	$1=$2 \
+	cargo +nightly build \
+	-Z build-std=std,panic_abort \
+	--manifest-path $(PROJECT_DIR)/Cargo.toml \
+	--target $(CARGO_TARGET) \
+	--no-default-features \
+	--features thorvg-v1,uniffi \
+	--release;
+endef
+
 define CARGO_BUILD
 	if [ "$(CARGO_TARGET)" = "wasm32-unknown-emscripten" ]; then \
 		source $(EMSDK_DIR)/$(EMSDK)_env.sh && \
@@ -391,23 +405,9 @@ define CARGO_BUILD
 		--features thorvg-v1,uniffi \
 		--release; \
 	elif [ "$(CARGO_TARGET)" = "aarch64-apple-visionos" ] || [ "$(CARGO_TARGET)" = "aarch64-apple-visionos-sim" ]; then \
-		XROS_DEPLOYMENT_TARGET=$(APPLE_VISIONOS_VERSION_MIN) \
-		cargo +nightly build \
-		-Z build-std=std,panic_abort \
-		--manifest-path $(PROJECT_DIR)/Cargo.toml \
-		--target $(CARGO_TARGET) \
-		--no-default-features \
-		--features thorvg-v1,uniffi \
-		--release; \
-	elif [ "$(CARGO_TARGET)" = "aarch64-apple-tvos" ] || [ "$(CARGO_TARGET)" = "aarch64-apple-tvos-sim" ] || [ "$(CARGO_TARGET)" = "x86_64-apple-tvos-sim" ]; then \
-		TVOS_DEPLOYMENT_TARGET=$(APPLE_TVOS_VERSION_MIN) \
-		cargo +nightly build \
-		-Z build-std=std,panic_abort \
-		--manifest-path $(PROJECT_DIR)/Cargo.toml \
-		--target $(CARGO_TARGET) \
-		--no-default-features \
-		--features thorvg-v1,uniffi \
-		--release; \
+		$(call CARGO_NIGHTLY_BUILD,XROS_DEPLOYMENT_TARGET,$(APPLE_VISIONOS_VERSION_MIN)) \
+	elif [ "$(CARGO_TARGET)" = "aarch64-apple-tvos" ] || [ "$(CARGO_TARGET)" = "aarch64-apple-tvos-sim" ]; then \
+		$(call CARGO_NIGHTLY_BUILD,TVOS_DEPLOYMENT_TARGET,$(APPLE_TVOS_VERSION_MIN)) \
 	else \
 		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
 		MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
@@ -902,7 +902,6 @@ $(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-visionos,VISIONOS,arm64,arm,aarc
 $(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-visionos-sim,VISIONOS_SIMULATOR,arm64,arm,aarch64,$(APPLE_VISIONOS),$(APPLE_VISIONOS_SIMULATOR_PLATFORM),$(APPLE_VISIONOS_SIMULATOR_SDK)))
 $(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-tvos,TVOS,arm64,arm,aarch64,$(APPLE_TVOS),$(APPLE_TVOS_PLATFORM),$(APPLE_TVOS_SDK)))
 $(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-tvos-sim,TVOS_SIMULATOR,arm64,arm,aarch64,$(APPLE_TVOS),$(APPLE_TVOS_SIMULATOR_PLATFORM),$(APPLE_TVOS_SIMULATOR_SDK)))
-$(eval $(call DEFINE_APPLE_TARGET,x86_64-apple-tvos,TVOS_SIMULATOR_X64,x86_64,x86_64,x86_64,$(APPLE_TVOS),$(APPLE_TVOS_SIMULATOR_PLATFORM),$(APPLE_TVOS_SIMULATOR_SDK)))
 
 # Define all apple deps builds
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_DARWIN))
@@ -914,7 +913,6 @@ $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_VISIONOS))
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_VISIONOS_SIM))
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_TVOS))
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_TVOS_SIM))
-$(eval $(call NEW_APPLE_DEPS_BUILD,X86_64_APPLE_TVOS))
 
 # Define all apple builds
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_DARWIN))
@@ -926,7 +924,6 @@ $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_VISIONOS))
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_VISIONOS_SIM))
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_TVOS))
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_TVOS_SIM))
-$(eval $(call NEW_APPLE_BUILD,X86_64_APPLE_TVOS))
 
 # Define all apple framework builds (for release)
 $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_IOS_FRAMEWORK_TYPE),$(APPLE_IOS_FRAMEWORK_TARGETS),$(APPLE_IOS_PLATFORM),))

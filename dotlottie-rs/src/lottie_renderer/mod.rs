@@ -142,12 +142,9 @@ impl<R: Renderer> LottieRendererImpl<R> {
     }
 
     fn resize_buffer(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError> {
-        let buffer_size = (width as u64)
-            .checked_mul(height as u64)
-            .and_then(|size| size.checked_mul(4))
-            .ok_or_else(|| {
-                LottieRendererError::InvalidArgument("Buffer size overflow".to_string())
-            })? as usize;
+        let buffer_size = (width as u64).checked_mul(height as u64).ok_or_else(|| {
+            LottieRendererError::InvalidArgument("Buffer size overflow".to_string())
+        })? as usize;
 
         if self.buffer.capacity() >= buffer_size {
             self.buffer.clear();

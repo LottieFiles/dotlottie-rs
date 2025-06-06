@@ -8,8 +8,8 @@ using namespace dotlottie_player;
 
 val buffer(DotLottiePlayer &player)
 {
-    auto buffer_ptr = player.buffer_ptr();
-    auto buffer_len = player.buffer_len();
+    auto buffer_ptr = (uint32_t *)player.buffer_ptr();
+    auto buffer_len = player.buffer_len() * sizeof(uint32_t);
     return val(typed_memory_view(buffer_len, reinterpret_cast<uint8_t *>(buffer_ptr)));
 }
 

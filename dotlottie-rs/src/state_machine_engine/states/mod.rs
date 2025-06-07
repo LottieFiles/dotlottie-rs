@@ -8,10 +8,9 @@ use super::{actions::StateMachineActionError, transitions::Transition, StateMach
 
 use super::actions::{Action, ActionTrait};
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum StatesError {
-    #[error("Failed to parse JSON state machine definition")]
-    ParsingError { reason: String },
+    ParsingError,
 }
 
 pub trait StateTrait {

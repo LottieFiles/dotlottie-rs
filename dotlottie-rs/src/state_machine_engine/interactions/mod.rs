@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use serde::Deserialize;
 
 use super::actions::Action;
@@ -53,73 +51,6 @@ pub enum Interaction {
         state_name: String,
         actions: Vec<Action>,
     },
-}
-
-impl Display for Interaction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::PointerUp {
-                layer_name,
-                actions,
-            } => f
-                .debug_struct("PointerUp")
-                .field("layer_name", layer_name)
-                .field("action", actions)
-                .finish(),
-            Self::PointerDown {
-                layer_name,
-                actions,
-            } => f
-                .debug_struct("PointerDown")
-                .field("layer_name", layer_name)
-                .field("action", actions)
-                .finish(),
-            Self::PointerEnter {
-                layer_name,
-                actions,
-            } => f
-                .debug_struct("PointerEnter")
-                .field("layer_name", layer_name)
-                .field("action", actions)
-                .finish(),
-            Self::PointerMove { actions } => f
-                .debug_struct("PointerMove")
-                .field("action", actions)
-                .finish(),
-            Self::PointerExit {
-                layer_name,
-                actions,
-            } => f
-                .debug_struct("PointerExit")
-                .field("layer_name", layer_name)
-                .field("action", actions)
-                .finish(),
-            Self::Click {
-                layer_name,
-                actions,
-            } => f
-                .debug_struct("Click")
-                .field("layer_name", layer_name)
-                .field("action", actions)
-                .finish(),
-            Self::OnComplete {
-                state_name,
-                actions,
-            } => f
-                .debug_struct("OnComplete")
-                .field("state_name", state_name)
-                .field("action", actions)
-                .finish(),
-            Self::OnLoopComplete {
-                state_name,
-                actions,
-            } => f
-                .debug_struct("OnLoopComplete")
-                .field("state_name", state_name)
-                .field("action", actions)
-                .finish(),
-        }
-    }
 }
 
 impl InteractionTrait for Interaction {

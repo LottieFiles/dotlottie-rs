@@ -148,9 +148,7 @@ impl DotLottieManager {
             }
         }
 
-        Err(DotLottieError::AnimationNotFound {
-            animation_id: animation_id.to_string(),
-        })
+        Err(DotLottieError::AnimationNotFound)
     }
 
     pub fn contains_animation(&self, animation_id: &str) -> Result<bool, DotLottieError> {
@@ -197,9 +195,7 @@ impl DotLottieManager {
 
                 Ok(animation)
             } else {
-                Err(DotLottieError::AnimationNotFound {
-                    animation_id: animation_id.to_string(),
-                })
+                Err(DotLottieError::AnimationNotFound)
             }
         }
     }
@@ -213,9 +209,7 @@ impl DotLottieManager {
             }
         }
 
-        Err(DotLottieError::AnimationNotFound {
-            animation_id: animation_id.to_string(),
-        })
+        Err(DotLottieError::AnimationNotFound)
     }
 
     ///

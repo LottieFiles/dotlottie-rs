@@ -1,6 +1,5 @@
 use core::result::Result::Ok;
 use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
@@ -58,37 +57,16 @@ pub enum StateMachineEngineStatus {
     Stopped,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum StateMachineEngineError {
-    #[error("Failed to parse JSON state machine definition.")]
-    ParsingError { reason: String },
-
-    #[error("Failed to create StateMachineEngine.")]
-    CreationError { reason: String },
-
-    #[error("Event can not be fired as it does not exist.")]
+    ParsingError,
+    CreationError,
     FireEventError,
-
-    #[error("Infinite loop detected.")]
     InfiniteLoopError,
-
-    #[error("State machine engine is not running.")]
     NotRunningError,
-
-    #[error("Failed to change the current state.")]
     SetStateError,
-
-    #[error(
-        "The state: {} has multiple transitions without guards. This is not allowed.",
-        state_name
-    )]
-    SecurityCheckErrorMultipleGuardlessTransitions { state_name: String },
-
-    #[error(
-        "The state name: {} has been used multiple times. This is not allowed.",
-        state_name
-    )]
-    SecurityCheckErrorDuplicateStateName { state_name: String },
+    SecurityCheckErrorMultipleGuardlessTransitions,
+    SecurityCheckErrorDuplicateStateName,
 }
 
 struct PointerData {
@@ -163,12 +141,6 @@ impl Default for StateMachineEngine {
             action_mutated_inputs: false,
             tween_transition_target_state: None,
         }
-    }
-}
-
-impl std::fmt::Display for StateMachineEngineStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
     }
 }
 
@@ -391,15 +363,11 @@ impl StateMachineEngine {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine::default();
         if parsed_state_machine.is_err() {
-            let message = format!(
-                "Failed to parse state machine definition: {:?}",
-                parsed_state_machine.err()
-            )
-            .to_string();
+            let message = format!("Load: {:?}", parsed_state_machine.err());
 
             self.observe_on_error(message.as_str());
 
-            return Err(StateMachineEngineError::ParsingError { reason: message });
+            return Err(StateMachineEngineError::ParsingError);
         }
 
         match parsed_state_machine {
@@ -451,14 +419,11 @@ impl StateMachineEngine {
                 match check_report {
                     Ok(_) => {}
                     Err(error) => {
-                        let message = format!(
-                            "Failed to parse state machine definition: {:?}",
-                            error.to_string()
-                        );
+                        let message = format!("Load: {:?}", error);
 
                         self.observe_on_error(message.as_str());
 
-                        return Err(StateMachineEngineError::ParsingError { reason: message });
+                        return Err(StateMachineEngineError::CreationError);
                     }
                 }
 
@@ -466,20 +431,17 @@ impl StateMachineEngine {
                 match err {
                     Ok(_) => {}
                     Err(error) => {
-                        let message =
-                            format!("Error loading state machine: {:?}", error.to_string());
+                        let message = format!("Load: {:?}", error);
 
                         self.observe_on_error(message.as_str());
 
-                        return Err(StateMachineEngineError::CreationError { reason: message });
+                        return Err(StateMachineEngineError::CreationError);
                     }
                 }
 
                 Ok(new_state_machine)
             }
-            Err(error) => Err(StateMachineEngineError::CreationError {
-                reason: error.to_string(),
-            }),
+            Err(_error) => Err(StateMachineEngineError::CreationError),
         }
     }
 
@@ -518,7 +480,11 @@ impl StateMachineEngine {
     }
 
     pub fn status(&self) -> String {
-        self.status.to_string()
+        match self.status {
+            StateMachineEngineStatus::Running => "Running".to_string(),
+            StateMachineEngineStatus::Tweening => "Tweening".to_string(),
+            StateMachineEngineStatus::Stopped => "Stopped".to_string(),
+        }
     }
 
     pub fn get_current_state(&self) -> Option<Rc<State>> {
@@ -741,9 +707,7 @@ impl StateMachineEngine {
             }
             return Ok(());
         }
-        Err(StateMachineEngineError::CreationError {
-            reason: format!("Failed to find state: {}", state_name),
-        })
+        Err(StateMachineEngineError::CreationError)
     }
 
     // Returns: The target state and the causing transition
@@ -876,7 +840,7 @@ impl StateMachineEngine {
 
                 if self.current_cycle_count >= self.max_cycle_count {
                     self.stop();
-                    self.observe_on_error("Infinite loop detected! Stopping the state machine.");
+                    self.observe_on_error("InfiniteLoop");
                     return Err(StateMachineEngineError::InfiniteLoopError);
                 }
 

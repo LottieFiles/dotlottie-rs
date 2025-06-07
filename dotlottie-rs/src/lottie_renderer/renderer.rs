@@ -1,4 +1,4 @@
-use std::{error::Error, fmt};
+use core::fmt;
 
 pub enum ColorSpace {
     ABGR8888,
@@ -13,7 +13,7 @@ pub enum Drawable<'d, R: Renderer> {
 }
 
 pub trait Shape: Default {
-    type Error: Error;
+    type Error: fmt::Debug;
 
     fn fill(&mut self, color: (u8, u8, u8, u8)) -> Result<(), Self::Error>;
 
@@ -31,7 +31,7 @@ pub trait Shape: Default {
 }
 
 pub trait Animation: Default {
-    type Error: Error;
+    type Error: fmt::Debug;
 
     fn load_data(&mut self, data: &str, mimetype: &str, copy: bool) -> Result<(), Self::Error>;
 
@@ -74,7 +74,7 @@ pub trait Animation: Default {
 pub trait Renderer: Sized + 'static {
     type Shape: Shape<Error = Self::Error>;
     type Animation: Animation<Error = Self::Error>;
-    type Error: fmt::Debug + Error + 'static;
+    type Error: fmt::Debug + 'static;
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), Self::Error>;
 

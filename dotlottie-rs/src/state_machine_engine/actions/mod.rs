@@ -1,5 +1,4 @@
 use open_url::OpenUrlMode;
-use thiserror::Error;
 
 use serde::Deserialize;
 use utils::NativeOpenUrl;
@@ -15,10 +14,9 @@ pub mod open_url;
 mod utils;
 mod whitelist;
 
-#[derive(Error, Debug)]
+#[derive(Debug)]
 pub enum StateMachineActionError {
-    #[error("Error executing action: {0}")]
-    ExecuteError(String),
+    ExecuteError,
 }
 
 pub trait ActionTrait {
@@ -235,16 +233,11 @@ impl ActionTrait for Action {
                 match read_lock {
                     Ok(player) => {
                         if !player.set_theme(value) {
-                            return Err(StateMachineActionError::ExecuteError(format!(
-                                "Error loading theme: {}",
-                                value
-                            )));
+                            return Err(StateMachineActionError::ExecuteError);
                         }
                     }
                     Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ));
+                        return Err(StateMachineActionError::ExecuteError);
                     }
                 }
                 Ok(())
@@ -261,16 +254,11 @@ impl ActionTrait for Action {
                             .replace("$y", &engine.pointer_management.pointer_y.to_string());
 
                         if !player.set_slots(&value) {
-                            return Err(StateMachineActionError::ExecuteError(format!(
-                                "Error loading theme data: {}",
-                                value
-                            )));
+                            return Err(StateMachineActionError::ExecuteError);
                         }
                     }
                     Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ));
+                        return Err(StateMachineActionError::ExecuteError);
                     }
                 }
 
@@ -291,18 +279,13 @@ impl ActionTrait for Action {
                     }
 
                     if let Ok(false) | Err(_) = whitelist.is_allowed(url) {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "URL contained inside the Action has not been whitelisted.".to_string(),
-                        ));
+                        return Err(StateMachineActionError::ExecuteError);
                     }
                 }
 
                 match open_url_config.mode {
                     OpenUrlMode::Deny => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Opening URLs has been denied by the player's configuration."
-                                .to_string(),
-                        ));
+                        return Err(StateMachineActionError::ExecuteError);
                     }
                     OpenUrlMode::Interaction => {
                         if let Some(Event::PointerDown { .. }) = interaction {
@@ -336,24 +319,18 @@ impl ActionTrait for Action {
                             if let Some(frame) = frame {
                                 player.set_frame(frame);
                             } else {
-                                return Err(StateMachineActionError::ExecuteError(
-                                    "Error getting value from input.".to_string(),
-                                ));
+                                return Err(StateMachineActionError::ExecuteError);
                             }
                             return Ok(());
                         } else {
-                            return Err(StateMachineActionError::ExecuteError(
-                                "Error getting read lock on player".to_string(),
-                            ));
+                            return Err(StateMachineActionError::ExecuteError);
                         }
                     }
                     StringNumber::F32(value) => {
                         if let Ok(player) = read_lock {
                             player.set_frame(*value);
                         } else {
-                            return Err(StateMachineActionError::ExecuteError(
-                                "Error getting read lock on player".to_string(),
-                            ));
+                            return Err(StateMachineActionError::ExecuteError);
                         }
                     }
                 }
@@ -386,9 +363,7 @@ impl ActionTrait for Action {
                         }
                     }
                     Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError(
-                            "Error getting read lock on player".to_string(),
-                        ));
+                        return Err(StateMachineActionError::ExecuteError);
                     }
                 }
 

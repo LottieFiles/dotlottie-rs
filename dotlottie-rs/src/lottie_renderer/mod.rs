@@ -1,7 +1,3 @@
-use std::error::Error;
-
-use thiserror::Error;
-
 use crate::Layout;
 
 mod renderer;
@@ -12,27 +8,18 @@ pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
 #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
 pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
 
-#[derive(Error, Debug)]
+#[derive(Debug)]
 pub enum LottieRendererError {
-    #[error("Renderer error: {0}")]
-    RendererError(Box<dyn Error>),
-
-    #[error("Invalid color: {0}")]
-    InvalidColor(String),
-
-    #[error("Invalid argument: {0}")]
-    InvalidArgument(String),
-
-    #[error("Animation not loaded")]
+    RendererError,
+    InvalidColor,
+    InvalidArgument,
     AnimationNotLoaded,
-
-    #[error("Background shape not initialized")]
     BackgroundShapeNotInitialized,
 }
 
 #[inline]
-fn into_lottie<R: Renderer>(err: R::Error) -> LottieRendererError {
-    LottieRendererError::RendererError(Box::new(err))
+fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {
+    LottieRendererError::RendererError
 }
 
 pub trait LottieRenderer {
@@ -142,9 +129,10 @@ impl<R: Renderer> LottieRendererImpl<R> {
     }
 
     fn resize_buffer(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError> {
-        let buffer_size = (width as u64).checked_mul(height as u64).ok_or_else(|| {
-            LottieRendererError::InvalidArgument("Buffer size overflow".to_string())
-        })? as usize;
+        let buffer_size = (width as u64)
+            .checked_mul(height as u64)
+            .ok_or_else(|| LottieRendererError::InvalidArgument)?
+            as usize;
 
         if self.buffer.capacity() >= buffer_size {
             self.buffer.clear();
@@ -363,9 +351,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError> {
         if no == self.current_frame {
-            return Err(LottieRendererError::InvalidArgument(
-                "Target frame is the same as the current frame".to_string(),
-            ));
+            return Err(LottieRendererError::InvalidArgument);
         }
 
         let total_frames = self
@@ -374,10 +360,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)?;
 
         if no < 0.0 || no >= total_frames {
-            return Err(LottieRendererError::InvalidArgument(format!(
-                "Frame number must be between 0 and {}",
-                total_frames - 1.0
-            )));
+            return Err(LottieRendererError::InvalidArgument);
         }
 
         self.get_animation_mut()?
@@ -395,9 +378,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         }
 
         if width == 0 || height == 0 {
-            return Err(LottieRendererError::InvalidArgument(
-                "Width and height must be greater than 0".to_string(),
-            ));
+            return Err(LottieRendererError::InvalidArgument);
         }
 
         let _ = self.renderer.sync();

@@ -1,42 +1,24 @@
 use std::collections::HashSet;
 
 use super::{
+    inputs::Input,
     state_machine::StringBool,
     states::StateTrait,
     transitions::{
         guard::{self, Guard},
         Transition, TransitionTrait,
     },
-    inputs::Input,
     StateMachineEngine,
 };
 
 use crate::state_machine::StringNumberBool;
 use crate::state_machine_engine::State::GlobalState;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum StateMachineEngineSecurityError {
-    #[error(
-        "The state: {} has multiple transitions without guards. This is not allowed.",
-        state_name
-    )]
-    SecurityCheckErrorMultipleGuardlessTransitions { state_name: String },
-
-    #[error(
-        "The state name: {} has been used multiple times. This is not allowed.",
-        state_name
-    )]
-    SecurityCheckErrorDuplicateStateName { state_name: String },
-
-    #[error(
-        "A guard is using a input: {} for its compareTo that does not exist or is of the wrong type. This is not allowed.",
-        input_name
-    )]
-    SecurityCheckErrorInputCompareToIsWrong { input_name: String },
-
-    #[error(
-        "Multiple GlobalState state types have been used. Only a single GlobalState is allowed."
-    )]
+    SecurityCheckErrorMultipleGuardlessTransitions,
+    SecurityCheckErrorDuplicateStateName,
+    SecurityCheckErrorInputCompareToIsWrong,
     MultipleGlobalStates,
 }
 
@@ -64,11 +46,7 @@ pub fn state_machine_state_check_pipeline(
 
         // Check if the state names are unique
         if !name_set.insert(state_name.to_string()) {
-            return Err(
-                StateMachineEngineSecurityError::SecurityCheckErrorDuplicateStateName {
-                    state_name: state_name.to_string(),
-                },
-            );
+            return Err(StateMachineEngineSecurityError::SecurityCheckErrorDuplicateStateName);
         }
 
         let transitions = state.transitions();
@@ -94,9 +72,7 @@ pub fn state_machine_state_check_pipeline(
         // Checks for multiple guardless transitions
         if count > 1 {
             return Err(
-                StateMachineEngineSecurityError::SecurityCheckErrorMultipleGuardlessTransitions {
-                    state_name: state.name(),
-                },
+                StateMachineEngineSecurityError::SecurityCheckErrorMultipleGuardlessTransitions,
             );
         }
     }
@@ -134,9 +110,7 @@ pub fn check_guards_for_existing_inputs(
                         }
 
                         if !found {
-                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong {
-                                            input_name: input_name.to_string(),
-                                        });
+                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong);
                         }
                     }
                 }
@@ -156,9 +130,7 @@ pub fn check_guards_for_existing_inputs(
                         }
 
                         if !found {
-                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong {
-                                            input_name: input_name.to_string(),
-                                        });
+                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong);
                         }
                     }
                 }
@@ -179,9 +151,7 @@ pub fn check_guards_for_existing_inputs(
                             }
 
                             if !found {
-                                return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong {
-                                                input_name: input_name.to_string(),
-                                            });
+                                return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong);
                             }
                         }
                     }
@@ -221,9 +191,7 @@ pub fn check_guards_for_existing_events(
 
                 if !found {
                     return Err(
-                        StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong {
-                            input_name: input_name.to_string(),
-                        },
+                        StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong,
                     );
                 }
             }

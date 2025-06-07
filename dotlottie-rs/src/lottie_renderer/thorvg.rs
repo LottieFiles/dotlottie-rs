@@ -9,7 +9,6 @@ use instant::Instant;
 use spin::Mutex;
 
 use std::{ffi::CString, ptr, result::Result};
-use thiserror::Error;
 
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
 
@@ -21,19 +20,13 @@ mod tvg {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
-#[derive(Error, Debug)]
+#[derive(Debug)]
 pub enum TvgError {
-    #[error("Invalid argument")]
     InvalidArgument,
-    #[error("Insufficient condition")]
     InsufficientCondition,
-    #[error("Failed allocation")]
     FailedAllocation,
-    #[error("Memory corruption")]
     MemoryCorruption,
-    #[error("Not supported")]
     NotSupported,
-    #[error("Unknown error")]
     Unknown,
 }
 
@@ -94,12 +87,11 @@ pub struct TvgRenderer {
 
 impl TvgRenderer {
     pub fn new(engine_method: TvgEngine, threads: u32) -> Self {
-        
         let mut count = RENDERERS_COUNT.lock();
-        
+
         #[cfg(feature = "thorvg-v0")]
         let engine = engine_method.into();
-        
+
         if *count == 0 {
             #[cfg(feature = "thorvg-v0")]
             {
@@ -204,10 +196,14 @@ impl Drop for TvgRenderer {
 
         if *count == 0 {
             #[cfg(feature = "thorvg-v0")]
-            unsafe { tvg::tvg_engine_term(self.engine_method) };
+            unsafe {
+                tvg::tvg_engine_term(self.engine_method)
+            };
 
             #[cfg(feature = "thorvg-v1")]
-            unsafe { tvg::tvg_engine_term() };
+            unsafe {
+                tvg::tvg_engine_term()
+            };
         }
     }
 }

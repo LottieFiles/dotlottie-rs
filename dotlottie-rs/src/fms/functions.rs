@@ -36,9 +36,7 @@ pub fn get_animation(
     } else if let Ok(data) = read_zip_file(&mut archive, &lot_path) {
         data
     } else {
-        return Err(DotLottieError::FileFindError {
-            file_name: format!("{} or {}", json_path, lot_path),
-        });
+        return Err(DotLottieError::FileFindError);
     };
 
     let animation_data =
@@ -68,11 +66,9 @@ pub fn get_animation(
                         .to_string()
                         .replace('"', "");
 
-                    let mut result = archive.by_name(&image_asset_filename).map_err(|_| {
-                        DotLottieError::FileFindError {
-                            file_name: image_asset_filename,
-                        }
-                    })?;
+                    let mut result = archive
+                        .by_name(&image_asset_filename)
+                        .map_err(|_| DotLottieError::FileFindError)?;
 
                     let mut content = Vec::new();
 
@@ -104,12 +100,9 @@ pub fn get_manifest(bytes: &[u8]) -> Result<Manifest, DotLottieError> {
     let mut archive =
         ZipArchive::new(io::Cursor::new(bytes)).map_err(|_| DotLottieError::ArchiveOpenError)?;
 
-    let mut result =
-        archive
-            .by_name("manifest.json")
-            .map_err(|_| DotLottieError::FileFindError {
-                file_name: String::from("manifest.json"),
-            })?;
+    let mut result = archive
+        .by_name("manifest.json")
+        .map_err(|_| DotLottieError::FileFindError)?;
 
     let mut content = Vec::new();
     result
@@ -140,9 +133,7 @@ pub fn get_theme(bytes: &[u8], theme_id: &str) -> Result<String, DotLottieError>
     let mut content = Vec::new();
     archive
         .by_name(&search_file_name)
-        .map_err(|_| DotLottieError::FileFindError {
-            file_name: search_file_name,
-        })?
+        .map_err(|_| DotLottieError::FileFindError)?
         .read_to_end(&mut content)
         .map_err(|_| DotLottieError::ReadContentError)?;
 
@@ -157,9 +148,7 @@ pub fn get_state_machine(bytes: &[u8], state_machine_id: &str) -> Result<String,
     let mut content = Vec::new();
     archive
         .by_name(&search_file_name)
-        .map_err(|_| DotLottieError::FileFindError {
-            file_name: search_file_name,
-        })?
+        .map_err(|_| DotLottieError::FileFindError)?
         .read_to_end(&mut content)
         .map_err(|_| DotLottieError::ReadContentError)?;
 
@@ -173,9 +162,7 @@ fn read_zip_file(
 ) -> Result<Vec<u8>, DotLottieError> {
     let mut file = archive
         .by_name(path)
-        .map_err(|_| DotLottieError::FileFindError {
-            file_name: path.to_string(),
-        })?;
+        .map_err(|_| DotLottieError::FileFindError)?;
 
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)

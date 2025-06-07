@@ -1,3 +1,27 @@
+## 0.1.43 (2025-06-07)
+
+### Features
+
+#### enable ttf font loader in ThorVG (#334)
+
+#### 🎸 add 16KB page size support for arm64 & x86_64 Android (#330)
+
+#### target Android API level 21 for wider device support (#332)
+
+#### add support for Apple visionOS & tvOS (#327)
+
+#### refactor: replace base64 encoding dependency with custom implementation
+
+#### refactor: simplify error handling and remove unnecessary error details
+
+#### binary size improvement by removing external webp/png/jpeg dependencies in favor of ThorVG's internal implementations
+
+### Fixes
+
+#### correct internal frame buffer length (#336)
+
+#### remove emscripten Observer bindings violating CSP in WASM (#338)
+
 ## 0.1.42 (2025-05-28)
 
 ### Features

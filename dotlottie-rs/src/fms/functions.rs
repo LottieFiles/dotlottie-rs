@@ -1,9 +1,37 @@
 use super::{DotLottieError, Manifest};
 use std::io::{self, Read};
 
-use base64::{engine::general_purpose, Engine};
 use serde_json::Value;
 use zip::ZipArchive;
+
+static BASE64_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+fn encode_base64(input: &[u8]) -> String {
+    let mut result = String::with_capacity((input.len() + 2) / 3 * 4);
+
+    for chunk in input.chunks(3) {
+        let b1 = chunk[0];
+        let b2 = chunk.get(1).copied().unwrap_or(0);
+        let b3 = chunk.get(2).copied().unwrap_or(0);
+
+        let n = ((b1 as u32) << 16) | ((b2 as u32) << 8) | (b3 as u32);
+
+        result.push(BASE64_CHARS[((n >> 18) & 63) as usize] as char);
+        result.push(BASE64_CHARS[((n >> 12) & 63) as usize] as char);
+        result.push(if chunk.len() > 1 {
+            BASE64_CHARS[((n >> 6) & 63) as usize] as char
+        } else {
+            '='
+        });
+        result.push(if chunk.len() > 2 {
+            BASE64_CHARS[(n & 63) as usize] as char
+        } else {
+            '='
+        });
+    }
+
+    result
+}
 
 /// Extract a single animation with its image assets inlined.
 ///
@@ -77,7 +105,7 @@ pub fn get_animation(
                         .map_err(|_| DotLottieError::ReadContentError)?;
 
                     // Write the image data to the lottie
-                    let image_data_base64 = general_purpose::STANDARD.encode(&content);
+                    let image_data_base64 = encode_base64(&content);
 
                     asset["u"] = "".into();
                     asset["p"] =

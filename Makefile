@@ -118,7 +118,7 @@ WASM_BUILD := $(BUILD)/$(WASM)
 
 EMSDK := emsdk
 EMSDK_DIR := $(PROJECT_DIR)/$(DEPS_MODULES_DIR)/$(EMSDK)
-EMSDK_VERSION := 4.0.8
+EMSDK_VERSION := 3.1.74
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
@@ -294,6 +294,8 @@ cpp_link_args = [
 	'-sMODULARIZE=1',
 	'-sEXPORT_NAME=create$(WASM_MODULE)Module',
 	'-sEXPORT_ES6=1',
+	'-sUSE_ES6_IMPORT_META=0',
+	'-sDYNAMIC_EXECUTION=0',
 	'-sENVIRONMENT=web',
 	'-sFILESYSTEM=0',
 	'--no-entry',

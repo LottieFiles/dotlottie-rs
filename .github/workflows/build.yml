@@ -42,9 +42,7 @@ jobs:
           TARGET: apple
 
       - name: Build Apple
-        run: |
-          rm -f /usr/local/lib/libjpeg*
-          make apple
+        run: make apple
 
       - name: Upload Apple Artifacts
         uses: actions/upload-artifact@v4
@@ -78,7 +76,7 @@ jobs:
           ANDROID_NDK_HOME: "/opt/homebrew/share/android-ndk"
 
       - name: Check ELF Alignment
-        run: ./check_elf_alignment.sh release/android/dotlottie-player/src/main/jniLibs
+        run: ./scripts/check_elf_alignment.sh release/android/dotlottie-player/src/main/jniLibs
 
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4

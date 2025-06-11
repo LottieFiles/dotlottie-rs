@@ -78,14 +78,34 @@ if [[ "${dir}" == *.apex ]]; then
   dir="${tmp}"
 fi
 
-RED="\e[31m"
-GREEN="\e[32m"
-ENDCOLOR="\e[0m"
+RED="\033[31m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+ENDCOLOR="\033[0m"
+
+# Check if we're in a terminal that supports colors
+if [ -t 1 ]; then
+  USE_COLORS=true
+else
+  USE_COLORS=false
+fi
+
+# Function to print with color support
+print_colored() {
+  local color="$1"
+  local message="$2"
+  if [ "$USE_COLORS" = true ]; then
+    echo -e "${color}${message}${ENDCOLOR}"
+  else
+    echo "$message"
+  fi
+}
 
 unaligned_libs=()
+unaligned_64bit_libs=()
 
 echo
-echo "=== ELF alignment ==="
+echo "=== ELF Alignment Check ==="
 
 matches="$(find "${dir}" -type f)"
 IFS=$'\n'
@@ -97,21 +117,54 @@ for match in $matches; do
   [[ $(file "${match}") == *"ELF"* ]] || continue
 
   res="$(objdump -p "${match}" | grep LOAD | awk '{ print $NF }' | head -1)"
+  lib_name=$(basename "${match}")
+  lib_path=$(dirname "${match}" | sed 's|.*/jniLibs/||')
+  
   if [[ $res =~ 2\*\*(1[4-9]|[2-9][0-9]|[1-9][0-9]{2,}) ]]; then
-    echo -e "${match}: ${GREEN}ALIGNED${ENDCOLOR} ($res)"
+    print_colored "$GREEN" "✓ ${lib_path}/${lib_name}: ALIGNED ($res)"
   else
-    echo -e "${match}: ${RED}UNALIGNED${ENDCOLOR} ($res)"
+    print_colored "$RED" "✗ ${lib_path}/${lib_name}: UNALIGNED ($res)"
     unaligned_libs+=("${match}")
+    
+    # Check if this is a 64-bit architecture that requires alignment
+    if [[ "${match}" == *"arm64-v8a"* ]] || [[ "${match}" == *"x86_64"* ]]; then
+      unaligned_64bit_libs+=("${match}")
+    fi
   fi
 done
 
-if [ ${#unaligned_libs[@]} -gt 0 ]; then
-  echo -e "${RED}Found ${#unaligned_libs[@]} unaligned libs (only arm64-v8a/x86_64 libs need to be aligned).${ENDCOLOR}"
-  echo "====================="
-elif [ -n "${dir_filename}" ]; then
-  echo -e "ELF Verification Successful"
-  echo "====================="
+echo "============================"
+
+if [ ${#unaligned_64bit_libs[@]} -gt 0 ]; then
+  echo
+  print_colored "$RED" "❌ FATAL ERROR: Found ${#unaligned_64bit_libs[@]} unaligned 64-bit library(ies)"
+  print_colored "$RED" "64-bit libraries (arm64-v8a/x86_64) MUST be 16KB aligned for Android."
+  echo
+  print_colored "$RED" "Unaligned 64-bit libraries:"
+  for lib in "${unaligned_64bit_libs[@]}"; do
+    lib_name=$(basename "${lib}")
+    lib_path=$(dirname "${lib}" | sed 's|.*/jniLibs/||')
+    print_colored "$RED" "  • ${lib_path}/${lib_name}"
+  done
+  echo
+  print_colored "$RED" "Build FAILED due to unaligned 64-bit libraries."
+  echo "============================"
+  exit 1
+elif [ ${#unaligned_libs[@]} -gt 0 ]; then
+  echo
+  print_colored "$YELLOW" "⚠️  Found ${#unaligned_libs[@]} unaligned 32-bit library(ies)"
+  print_colored "$YELLOW" "32-bit libraries don't require alignment, but 64-bit libraries do."
+  echo
+  for lib in "${unaligned_libs[@]}"; do
+    lib_name=$(basename "${lib}")
+    lib_path=$(dirname "${lib}" | sed 's|.*/jniLibs/||')
+    print_colored "$YELLOW" "  • ${lib_path}/${lib_name}"
+  done
+  echo
+  print_colored "$GREEN" "✅ All 64-bit libraries are properly aligned."
+  echo "============================"
 else
-  echo -e "ELF Verification Successful"
-  echo "====================="
+  echo
+  print_colored "$GREEN" "✅ All libraries are properly aligned!"
+  echo "============================"
 fi

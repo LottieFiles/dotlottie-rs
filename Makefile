@@ -45,12 +45,31 @@ DEPS_MODULES_DIR := $(DEPS_DIR)/modules
 DEPS_BUILD_DIR := $(DEPS_DIR)/build
 DEPS_ARTIFACTS_DIR := $(DEPS_DIR)/artifacts
 
+# Android libc++ shared library paths
+AARCH64_LINUX_ANDROID_LIBCPP_PATH := aarch64-linux-android
+ARMV7_LINUX_ANDROIDEABI_LIBCPP_PATH := arm-linux-androideabi
+X86_64_LINUX_ANDROID_LIBCPP_PATH := x86_64-linux-android
+I686_LINUX_ANDROID_LIBCPP_PATH := i686-linux-android
+
 # Android
 ANDROID := android
 
 ANDROID_BUILD_PLATFORM := $(BUILD_PLATFORM)-x86_64
 ANDROID_NDK_HOME ?= /opt/homebrew/share/android-ndk
 ANDROID_API_VERSION ?= 21
+
+# JNA (Java Native Access) version and related variables
+JNA_VERSION ?= 5.17.0
+JNA_BASE_URL := https://github.com/java-native-access/jna/raw/refs/tags/$(JNA_VERSION)/lib/native
+
+# JNA JAR file mapping for Android architectures
+AARCH64_LINUX_ANDROID_JNA_JAR := android-aarch64.jar
+ARMV7_LINUX_ANDROIDEABI_JNA_JAR := android-armv7.jar
+X86_64_LINUX_ANDROID_JNA_JAR := android-x86-64.jar
+I686_LINUX_ANDROID_JNA_JAR := android-x86.jar
+
+JNA_DISPATCH_LIB := libjnidispatch.so
+JNA_ARTIFACTS_DIR := $(DEPS_ARTIFACTS_DIR)/jna
 
 # Android Tool chain
 AR := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(ANDROID_BUILD_PLATFORM)/bin/llvm-ar
@@ -444,10 +463,28 @@ define UNIFFI_BINDINGS_CPP_BUILD
 	cp $(RUNTIME_FFI)/emscripten_bindings.cpp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(CPLUSPLUS)/.
 endef
 
+define DOWNLOAD_JNA_LIB
+	mkdir -p $(JNA_ARCH_ARTIFACTS_DIR)
+	@echo "$(YELLOW)Downloading JNA library for $(GREEN)$(JNA_JAR)$(NC)..."
+	curl -L -f "$(JNA_BASE_URL)/$(JNA_JAR)" -o "$(JNA_ARCH_ARTIFACTS_DIR)/$(JNA_JAR)"
+	@echo "$(YELLOW)Extracting $(GREEN)$(JNA_DISPATCH_LIB)$(NC) from $(GREEN)$(JNA_JAR)$(NC)..."
+	unzip -j "$(JNA_ARCH_ARTIFACTS_DIR)/$(JNA_JAR)" "$(JNA_DISPATCH_LIB)" -d "$(JNA_ARCH_ARTIFACTS_DIR)/"
+	rm "$(JNA_ARCH_ARTIFACTS_DIR)/$(JNA_JAR)"
+	@echo "$(GREEN)JNA library extracted successfully!$(NC)"
+endef
+
 define ANDROID_RELEASE
   mkdir -p $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR) $(DOTLOTTIE_PLAYER_ANDROID_SRC_DIR) $(DOTLOTTIE_PLAYER_LIB_DIR)
   cp -r $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(KOTLIN)/* $(DOTLOTTIE_PLAYER_ANDROID_SRC_DIR)
-  cp $(RUNTIME_FFI_TARGET_LIB) $(DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB)
+  cp $(RUNTIME_FFI_TARGET_LIB) $(DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB).temp
+  $(STRIP) --strip-unneeded $(DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB).temp
+  mv $(DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB).temp $(DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB)
+  cp $(LIBCPP_SHARED_LIB) $(DOTLOTTIE_PLAYER_LIB_DIR)/libc++_shared.so.temp
+  $(STRIP) --strip-unneeded $(DOTLOTTIE_PLAYER_LIB_DIR)/libc++_shared.so.temp
+  mv $(DOTLOTTIE_PLAYER_LIB_DIR)/libc++_shared.so.temp $(DOTLOTTIE_PLAYER_LIB_DIR)/libc++_shared.so
+  cp $(JNA_DISPATCH_LIB_PATH) $(DOTLOTTIE_PLAYER_LIB_DIR)/$(JNA_DISPATCH_LIB).temp
+  $(STRIP) --strip-unneeded $(DOTLOTTIE_PLAYER_LIB_DIR)/$(JNA_DISPATCH_LIB).temp
+  mv $(DOTLOTTIE_PLAYER_LIB_DIR)/$(JNA_DISPATCH_LIB).temp $(DOTLOTTIE_PLAYER_LIB_DIR)/$(JNA_DISPATCH_LIB)
   cp $(RUNTIME_FFI)/$(RUNTIME_FFI_ANDROID_ASSETS)/$(ANDROID)/* $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)
   echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_GRADLE_PROPERTIES)
 	cd $(RELEASE)/$(ANDROID) && \
@@ -536,6 +573,8 @@ $2_ARCH := $3
 $2_ABI := $4
 $2_CPU_FAMILY := $5
 $2_CPU := $6
+$2_LIBCPP_PATH := $$($2_LIBCPP_PATH)
+$2_JNA_JAR := $$($2_JNA_JAR)
 
 # Setup dependency build variables
 $2_DEPS_BUILD_DIR := $(DEPS_BUILD_DIR)/$1
@@ -545,6 +584,10 @@ $2_DEPS_ARTIFACTS_DIR := $(DEPS_ARTIFACTS_DIR)/$1/usr
 $2_DEPS_INCLUDE_DIR := $$($2_DEPS_ARTIFACTS_DIR)/include
 $2_DEPS_LIB_DIR := $$($2_DEPS_ARTIFACTS_DIR)/lib
 $2_DEPS_LIB64_DIR := $$($2_DEPS_ARTIFACTS_DIR)/lib64
+
+# Setup JNA artifacts directories
+$2_JNA_ARTIFACTS_DIR := $(JNA_ARTIFACTS_DIR)/$1
+$2_JNA_DISPATCH_LIB_PATH := $$($2_JNA_ARTIFACTS_DIR)/$(JNA_DISPATCH_LIB)
 endef
 
 define NEW_APPLE_TARGET
@@ -680,9 +723,18 @@ $$($1_DEPS_LIB_DIR)/$(THORVG_LIB): $$($1_THORVG_DEP_BUILD_DIR)/$(NINJA_BUILD_FIL
 	$$(NINJA_BUILD)
 endef
 
+define NEW_JNA_BUILD
+# Download and extract JNA library
+$$($1_JNA_DISPATCH_LIB_PATH): JNA_ARCH_ARTIFACTS_DIR := $$($1_JNA_ARTIFACTS_DIR)
+$$($1_JNA_DISPATCH_LIB_PATH): JNA_JAR := $$($1_JNA_JAR)
+$$($1_JNA_DISPATCH_LIB_PATH):
+	$$(DOWNLOAD_JNA_LIB)
+endef
+
 define NEW_ANDROID_DEPS_BUILD
 $(eval $(call NEW_ANDROID_CROSS_FILE,$1))
 $(eval $(call NEW_THORVG_BUILD,$1,false,"lottie_expressions",true))
+$(eval $(call NEW_JNA_BUILD,$1))
 endef
 
 define NEW_APPLE_DEPS_BUILD
@@ -714,9 +766,12 @@ $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB): $(RUNTIME_FFI)/$(RUNTIME_F
 # Build release
 $$($1_DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB): DOTLOTTIE_PLAYER_LIB_DIR := $$($1_DOTLOTTIE_PLAYER_LIB_DIR)
 $$($1_DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB): RUNTIME_FFI_TARGET_LIB := $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB)
+$$($1_DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB): LIBCPP_SHARED_LIB := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(ANDROID_BUILD_PLATFORM)/sysroot/usr/lib/$$($1_LIBCPP_PATH)/libc++_shared.so
+$$($1_DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB): JNA_DISPATCH_LIB_PATH := $$($1_JNA_DISPATCH_LIB_PATH)
 $$($1_DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB): CRATE_VERSION := $(shell grep -m 1 version $(RUNTIME_FFI)/Cargo.toml | sed 's/.*"\([0-9.]\+\)"/\1/')
 $$($1_DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB): COMMIT_HASH := $(shell git rev-parse --short HEAD)
 $$($1_DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB): $$($1_RUNTIME_FFI_DEPS_BUILD_DIR)/$(RUNTIME_FFI_LIB)
+$$($1_DOTLOTTIE_PLAYER_LIB_DIR)/$(DOTLOTTIE_PLAYER_LIB): $$($1_JNA_DISPATCH_LIB_PATH)
 	$$(ANDROID_RELEASE)
 
 .PHONY: $$($1)
@@ -1076,4 +1131,10 @@ help:
 	@echo "  - $(YELLOW)bench$(NC)       - run all benchmarks"
 	@echo "  - $(YELLOW)clippy$(NC)      - run clippy on all projects"
 	@echo
+	@echo "$(GREEN)-------------------------------------------------------------------------------------------------$(NC)"
+	@echo "Environment variables you can set:"
+	@echo "  - $(YELLOW)JNA_VERSION$(NC)  - Version of JNA to download for Android builds (default: $(JNA_VERSION))"
+	@echo "  - $(YELLOW)ANDROID_NDK_HOME$(NC) - Path to Android NDK (default: $(ANDROID_NDK_HOME))"
+	@echo "  - $(YELLOW)ANDROID_API_VERSION$(NC) - Android API version (default: $(ANDROID_API_VERSION))"
+	@echo "$(GREEN)-------------------------------------------------------------------------------------------------$(NC)"
 	@echo

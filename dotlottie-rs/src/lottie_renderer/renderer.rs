@@ -80,7 +80,7 @@ pub trait Renderer: Sized + 'static {
 
     fn set_target(
         &mut self,
-        buffer: &mut Vec<u32>,
+        buffer: &mut [u32],
         stride: u32,
         width: u32,
         height: u32,

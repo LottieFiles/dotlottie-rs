@@ -123,7 +123,7 @@ impl Renderer for TvgRenderer {
 
     fn set_target(
         &mut self,
-        buffer: &mut Vec<u32>,
+        buffer: &mut [u32],
         stride: u32,
         width: u32,
         height: u32,
@@ -642,8 +642,8 @@ mod bezier {
     }
 
     /// Given a linear progress t in [0,1], uses a cubic Bézier easing function to compute
-    /// an eased progress value in [0,1].  
-    ///  
+    /// an eased progress value in [0,1].
+    ///
     /// The cubic Bézier is defined by:
     ///   P0 = (0, 0)
     ///   P1 = (x1, y1)

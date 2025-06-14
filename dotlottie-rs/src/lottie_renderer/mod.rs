@@ -8,6 +8,8 @@ pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
 #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
 pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
 
+use std::{error::Error, fmt};
+
 #[derive(Debug)]
 pub enum LottieRendererError {
     RendererError,
@@ -16,6 +18,14 @@ pub enum LottieRendererError {
     AnimationNotLoaded,
     BackgroundShapeNotInitialized,
 }
+
+impl fmt::Display for LottieRendererError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Error for LottieRendererError {}
 
 #[inline]
 fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {

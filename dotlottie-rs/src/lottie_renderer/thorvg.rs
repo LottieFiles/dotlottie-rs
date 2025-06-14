@@ -8,7 +8,7 @@ use instant::Instant;
 #[cfg(target_arch = "wasm32")]
 use spin::Mutex;
 
-use std::{ffi::CString, ptr, result::Result};
+use std::{error::Error, ffi::CString, fmt, ptr, result::Result};
 
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
 
@@ -29,6 +29,14 @@ pub enum TvgError {
     NotSupported,
     Unknown,
 }
+
+impl fmt::Display for TvgError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Error for TvgError {}
 
 pub trait IntoResult {
     fn into_result(self) -> Result<(), TvgError>;

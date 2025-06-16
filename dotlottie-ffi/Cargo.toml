@@ -5,10 +5,11 @@ edition = "2021"
 build = "build.rs"
 
 [profile.release]
-lto = true
+lto = "fat"
 opt-level = "z"
-strip = true 
+strip = "debuginfo"
 codegen-units = 1
+panic = "abort"
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]

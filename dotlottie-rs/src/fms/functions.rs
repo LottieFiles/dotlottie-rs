@@ -79,43 +79,33 @@ pub fn get_animation(
 
     if let Some(assets) = lottie_animation["assets"].as_array_mut() {
         for asset in assets {
-            if let Some(p) = asset["p"].as_str() {
+            let p_str = asset["p"].as_str().map(|s| s.to_string());
+            if let Some(p) = p_str {
                 if p.starts_with("data:image/") {
-                    // if the asset is already inlined, force the embed flag to 1
                     asset["e"] = 1.into();
                 } else {
+                    let p_clean = p.trim_matches('"');
                     let image_asset_filename: String = if version == 2 {
-                        format!("i/{}", asset["p"].to_string().replace('"', ""))
+                        format!("i/{}", p_clean)
                     } else {
-                        format!("images/{}", asset["p"].to_string().replace('"', ""))
+                        format!("images/{}", p_clean)
                     };
 
-                    let image_ext = asset["p"]
-                        .to_string()
-                        .split('.')
-                        .next_back()
-                        .unwrap()
-                        .to_string()
-                        .replace('"', "");
+                    let image_ext = p_clean.split('.').next_back().unwrap_or("png");
 
-                    let mut result = archive
-                        .by_name(&image_asset_filename)
-                        .map_err(|_| DotLottieError::FileFindError)?;
+                    if let Ok(mut result) = archive.by_name(&image_asset_filename) {
+                        let mut content = Vec::new();
 
-                    let mut content = Vec::new();
+                        if result.read_to_end(&mut content).is_ok() {
+                            let image_data_base64 = encode_base64(&content);
 
-                    result
-                        .read_to_end(&mut content)
-                        .map_err(|_| DotLottieError::ReadContentError)?;
-
-                    // Write the image data to the lottie
-                    let image_data_base64 = encode_base64(&content);
-
-                    asset["u"] = "".into();
-                    asset["p"] =
-                        format!("data:image/{};base64,{}", image_ext, image_data_base64).into();
-                    // explicitly indicate that the image asset is inlined
-                    asset["e"] = 1.into();
+                            asset["u"] = "".into();
+                            asset["p"] =
+                                format!("data:image/{};base64,{}", image_ext, image_data_base64)
+                                    .into();
+                            asset["e"] = 1.into();
+                        }
+                    }
                 }
             }
         }

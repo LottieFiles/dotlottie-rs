@@ -98,24 +98,19 @@ pub fn get_animation(
                         .to_string()
                         .replace('"', "");
 
-                    let mut result = archive
-                        .by_name(&image_asset_filename)
-                        .map_err(|_| DotLottieError::FileFindError)?;
+                    if let Ok(mut result) = archive.by_name(&image_asset_filename) {
+                        let mut content = Vec::new();
 
-                    let mut content = Vec::new();
+                        if result.read_to_end(&mut content).is_ok() {
+                            let image_data_base64 = encode_base64(&content);
 
-                    result
-                        .read_to_end(&mut content)
-                        .map_err(|_| DotLottieError::ReadContentError)?;
-
-                    // Write the image data to the lottie
-                    let image_data_base64 = encode_base64(&content);
-
-                    asset["u"] = "".into();
-                    asset["p"] =
-                        format!("data:image/{};base64,{}", image_ext, image_data_base64).into();
-                    // explicitly indicate that the image asset is inlined
-                    asset["e"] = 1.into();
+                            asset["u"] = "".into();
+                            asset["p"] =
+                                format!("data:image/{};base64,{}", image_ext, image_data_base64)
+                                    .into();
+                            asset["e"] = 1.into();
+                        }
+                    }
                 }
             }
         }

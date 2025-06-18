@@ -79,24 +79,19 @@ pub fn get_animation(
 
     if let Some(assets) = lottie_animation["assets"].as_array_mut() {
         for asset in assets {
-            if let Some(p) = asset["p"].as_str() {
+            let p_str = asset["p"].as_str().map(|s| s.to_string());
+            if let Some(p) = p_str {
                 if p.starts_with("data:image/") {
-                    // if the asset is already inlined, force the embed flag to 1
                     asset["e"] = 1.into();
                 } else {
+                    let p_clean = p.trim_matches('"');
                     let image_asset_filename: String = if version == 2 {
-                        format!("i/{}", asset["p"].to_string().replace('"', ""))
+                        format!("i/{}", p_clean)
                     } else {
-                        format!("images/{}", asset["p"].to_string().replace('"', ""))
+                        format!("images/{}", p_clean)
                     };
 
-                    let image_ext = asset["p"]
-                        .to_string()
-                        .split('.')
-                        .next_back()
-                        .unwrap()
-                        .to_string()
-                        .replace('"', "");
+                    let image_ext = p_clean.split('.').next_back().unwrap_or("png");
 
                     if let Ok(mut result) = archive.by_name(&image_asset_filename) {
                         let mut content = Vec::new();

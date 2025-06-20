@@ -1,12 +1,5 @@
-#[allow(unused_imports)]
-#[cfg(not(target_arch = "wasm32"))]
-use std::sync::Mutex;
-
-#[allow(unused_imports)]
-use instant::Instant;
-
-#[cfg(target_arch = "wasm32")]
-use spin::Mutex;
+#[cfg(feature = "thorvg-v1")]
+use crate::time::Instant;
 
 use std::{error::Error, ffi::CString, fmt, ptr, result::Result};
 
@@ -85,7 +78,7 @@ impl From<TvgEngine> for tvg::Tvg_Engine {
     }
 }
 
-static RENDERERS_COUNT: spin::Mutex<usize> = spin::Mutex::new(0);
+static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
 
 pub struct TvgRenderer {
     raw_canvas: *mut tvg::Tvg_Canvas,
@@ -95,7 +88,7 @@ pub struct TvgRenderer {
 
 impl TvgRenderer {
     pub fn new(engine_method: TvgEngine, threads: u32) -> Self {
-        let mut count = RENDERERS_COUNT.lock();
+        let mut count = RENDERERS_COUNT.lock().unwrap();
 
         #[cfg(feature = "thorvg-v0")]
         let engine = engine_method.into();
@@ -194,7 +187,7 @@ impl Renderer for TvgRenderer {
 
 impl Drop for TvgRenderer {
     fn drop(&mut self) {
-        let mut count = RENDERERS_COUNT.lock();
+        let mut count = RENDERERS_COUNT.lock().unwrap();
 
         unsafe {
             tvg::tvg_canvas_destroy(self.raw_canvas);

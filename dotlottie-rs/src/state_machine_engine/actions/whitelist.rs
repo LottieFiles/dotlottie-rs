@@ -1,6 +1,4 @@
-use glob::Pattern;
 use std::collections::HashSet;
-use url::{ParseError, Url};
 
 #[derive(Debug)]
 pub struct Whitelist {
@@ -10,7 +8,73 @@ pub struct Whitelist {
 #[derive(Debug, Hash, Eq, PartialEq)]
 enum WhitelistEntry {
     Exact(String),
-    Wildcard(String, Pattern),
+    Wildcard(String),
+}
+
+fn parse_url(url_str: &str) -> Result<(String, String), String> {
+    let url_str = url_str.trim();
+
+    if url_str.is_empty() {
+        return Err("Empty URL".to_string());
+    }
+
+    let without_protocol = if let Some(stripped) = url_str.strip_prefix("https://") {
+        stripped
+    } else if let Some(stripped) = url_str.strip_prefix("http://") {
+        stripped
+    } else {
+        url_str
+    };
+
+    if without_protocol.is_empty() {
+        return Err("URL has no host".to_string());
+    }
+
+    if let Some(slash_pos) = without_protocol.find('/') {
+        let host = &without_protocol[..slash_pos];
+        let path = &without_protocol[slash_pos..];
+
+        if host.is_empty() {
+            return Err("URL has no host".to_string());
+        }
+
+        Ok((host.to_string(), path.to_string()))
+    } else {
+        Ok((without_protocol.to_string(), String::new()))
+    }
+}
+
+impl WhitelistEntry {
+    fn matches_wildcard(pattern: &str, text: &str) -> bool {
+        if let Some(star_pos) = pattern.find('*') {
+            let prefix = &pattern[..star_pos];
+            let suffix = &pattern[star_pos + 1..];
+
+            let (prefix_matches, effective_prefix_len) =
+                if prefix.ends_with('/') && !text.contains('/') {
+                    let prefix_without_slash = &prefix[..prefix.len() - 1];
+                    let matches = text.starts_with(prefix_without_slash)
+                        && (text.len() == prefix_without_slash.len()
+                            || text.starts_with(&format!("{}/", prefix_without_slash)));
+                    (matches, prefix_without_slash.len())
+                } else {
+                    let matches = text.starts_with(prefix);
+                    (matches, prefix.len())
+                };
+
+            if !prefix_matches {
+                return false;
+            }
+
+            if text.len() < effective_prefix_len + suffix.len() {
+                return false;
+            }
+
+            suffix.is_empty() || text.ends_with(suffix)
+        } else {
+            pattern == text
+        }
+    }
 }
 
 impl Whitelist {
@@ -22,17 +86,15 @@ impl Whitelist {
 
     fn normalize_url(url: &str) -> Result<String, String> {
         let url = url.trim().to_lowercase();
-        let parsed_url = match Url::parse(&url) {
-            Ok(url) => url,
-            Err(ParseError::RelativeUrlWithoutBase) => Url::parse(&format!("https://{}", url))
-                .map_err(|e| format!("Invalid URL: {}", e))?,
-            Err(e) => return Err(format!("Invalid URL: {}", e)),
+
+        let (host, path) = match parse_url(&url) {
+            Ok(result) => result,
+            Err(_) => match parse_url(&format!("https://{}", url)) {
+                Ok(result) => result,
+                Err(e) => return Err(format!("Invalid URL: {}", e)),
+            },
         };
 
-        let host = parsed_url.host_str().ok_or("URL has no host")?;
-        let path = parsed_url.path();
-
-        // Normalize path: remove trailing slash unless it's just "/"
         let path = if path == "/" {
             ""
         } else {
@@ -45,25 +107,26 @@ impl Whitelist {
         let pattern = pattern.trim().to_lowercase();
 
         if pattern.contains('*') {
-            let base_domain = pattern
-                .split('*')
-                .next()
-                .ok_or("Invalid wildcard pattern")?
-                .trim_end_matches('/');
+            let normalized_pattern =
+                if pattern.starts_with("http://") || pattern.starts_with("https://") {
+                    match parse_url(&pattern.replace('*', "placeholder")) {
+                        Ok((host, path)) => {
+                            let path = path.trim_end_matches("placeholder");
+                            let path = if path.is_empty() {
+                                ""
+                            } else {
+                                path.trim_end_matches('/')
+                            };
+                            format!("{}{}*", host, path)
+                        }
+                        Err(_) => pattern.clone(),
+                    }
+                } else {
+                    pattern.clone()
+                };
 
-            // Create a more permissive glob pattern
-            let mut glob_pattern = pattern.to_string();
-            if !glob_pattern.ends_with('*') {
-                glob_pattern.push('*');
-            }
-
-            let glob_pattern =
-                Pattern::new(&glob_pattern).map_err(|e| format!("Invalid glob pattern: {}", e))?;
-
-            self.entries.insert(WhitelistEntry::Wildcard(
-                base_domain.to_string(),
-                glob_pattern,
-            ));
+            self.entries
+                .insert(WhitelistEntry::Wildcard(normalized_pattern));
         } else {
             let normalized_pattern = Self::normalize_url(&pattern)?;
             self.entries
@@ -83,11 +146,8 @@ impl Whitelist {
                         return Ok(true);
                     }
                 }
-                WhitelistEntry::Wildcard(base_domain, pattern) => {
-                    if normalized_url.starts_with(base_domain)
-                        && (pattern.matches(&normalized_url)
-                            || pattern.matches(&format!("{}/", normalized_url)))
-                    {
+                WhitelistEntry::Wildcard(pattern) => {
+                    if WhitelistEntry::matches_wildcard(pattern, &normalized_url) {
                         return Ok(true);
                     }
                 }
@@ -101,6 +161,40 @@ impl Whitelist {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_custom_url_parsing() {
+        assert_eq!(
+            parse_url("example.com").unwrap(),
+            ("example.com".to_string(), "".to_string())
+        );
+        assert_eq!(
+            parse_url("example.com/path").unwrap(),
+            ("example.com".to_string(), "/path".to_string())
+        );
+
+        assert_eq!(
+            parse_url("https://example.com").unwrap(),
+            ("example.com".to_string(), "".to_string())
+        );
+        assert_eq!(
+            parse_url("http://example.com/path").unwrap(),
+            ("example.com".to_string(), "/path".to_string())
+        );
+        assert_eq!(
+            parse_url("https://example.com/path/to/resource").unwrap(),
+            ("example.com".to_string(), "/path/to/resource".to_string())
+        );
+
+        assert!(parse_url("").is_err());
+        assert!(parse_url("https://").is_err());
+        assert!(parse_url("http://").is_err());
+
+        assert_eq!(
+            parse_url("  example.com  ").unwrap(),
+            ("example.com".to_string(), "".to_string())
+        );
+    }
 
     #[test]
     fn test_whitelist() {

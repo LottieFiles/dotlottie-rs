@@ -1,4 +1,4 @@
-use instant::{Duration, Instant};
+use crate::time::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 

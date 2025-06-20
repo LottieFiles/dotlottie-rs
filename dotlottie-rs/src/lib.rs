@@ -5,6 +5,7 @@ mod lottie_renderer;
 mod markers;
 mod state_machine_engine;
 mod theming;
+pub(crate) mod time;
 
 pub use dotlottie_player::*;
 pub use fms::*;

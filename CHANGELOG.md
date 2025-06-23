@@ -1,3 +1,15 @@
+## 0.1.44 (2025-06-23)
+
+### Features
+
+#### reduced binary size through dependency cleanup and optimization
+
+### Fixes
+
+#### Implement Error for LottieRendererError and TvgError (#345)
+
+#### handle missing image assets gracefully (#347)
+
 ## 0.1.43 (2025-06-07)
 
 ### Features

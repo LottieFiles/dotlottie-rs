@@ -44,3 +44,36 @@ jobs:
           cargo clippy --manifest-path=./dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
         env:
           RUSTFLAGS: "-Dwarnings"
+
+  check-windows:
+    if: github.head_ref != 'release'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Install uniffi-bindgen-cpp
+        run: cargo install uniffi-bindgen-cpp
+
+      - name: Install Windows targets
+        run: make install-windows-targets
+        working-directory: dotlottie-ffi
+
+      - name: Build Windows
+        run: |
+          cargo build --manifest-path=./dotlottie-rs/Cargo.toml --release
+          cargo build --manifest-path=./dotlottie-ffi/Cargo.toml --release
+
+      - name: Test Windows
+        run: |
+          cargo test --manifest-path=./dotlottie-rs/Cargo.toml --release -- --test-threads=1 
+          cargo test --manifest-path=./dotlottie-ffi/Cargo.toml --release -- --test-threads=1
+
+      - name: Lint Windows
+        run: |
+          cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --all-targets -- -D clippy::print_stdout
+          cargo clippy --manifest-path=./dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
+        env:
+          RUSTFLAGS: "-Dwarnings"

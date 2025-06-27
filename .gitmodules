@@ -1,0 +1,6 @@
+[submodule "dotlottie-rs/deps/thorvg"]
+	path = dotlottie-rs/deps/thorvg
+	url = https://github.com/thorvg/thorvg
+[submodule "dotlottie-ffi/deps/emsdk"]
+	path = dotlottie-ffi/deps/emsdk
+	url = https://github.com/emscripten-core/emsdk.git

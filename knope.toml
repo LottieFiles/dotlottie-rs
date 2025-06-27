@@ -18,6 +18,10 @@ name = "dotlottie-player.android.tar.gz"
 path = "release/dotlottie-player.wasm.tar.gz"
 name = "dotlottie-player.wasm.tar.gz"
 
+[[package.assets]]
+path = "release/dotlottie-player.windows.tar.gz"
+name = "dotlottie-player.windows.tar.gz"
+
 [[workflows]]
 name = "prepare-release"
 
@@ -41,11 +45,15 @@ base = "main"
 
 [workflows.steps.title]
 template = "chore: Release $version"
-variables = { "$version" = "Version" }
+
+[workflows.steps.title.variables]
+"$version" = "Version"
 
 [workflows.steps.body]
 template = "This PR was created by Knope. Merging it will create a new release\n\n$changelog"
-variables = { "$changelog" = "ChangelogEntry" }
+
+[workflows.steps.body.variables]
+"$changelog" = "ChangelogEntry"
 
 [[workflows]]
 name = "release"

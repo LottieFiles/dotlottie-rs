@@ -11,6 +11,7 @@ on:
           - "apple"
           - "android"
           - "wasm"
+          - "windows"
           - "all"
       commitSHA:
         description: "Commit SHA (leave blank for default branch)"
@@ -119,4 +120,34 @@ jobs:
         with:
           name: dotlottie-player.wasm.tar.gz
           path: release/wasm/dotlottie-player.wasm.tar.gz
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    if: github.event.inputs.target == 'windows' || github.event.inputs.target == 'all'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+
+      - name: Setup Rust
+        uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Install uniffi-bindgen-cpp
+        run: cargo install uniffi-bindgen-cpp
+
+      - name: Install Windows targets
+        run: make install-windows-targets
+        working-directory: dotlottie-ffi
+
+      - name: Build Windows
+        run: make windows
+        working-directory: dotlottie-ffi
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.windows.tar.gz
+          path: release/windows/dotlottie-player.windows.tar.gz
           if-no-files-found: error

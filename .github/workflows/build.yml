@@ -10,6 +10,7 @@ on:
         options:
           - "apple"
           - "android"
+          - "linux"
           - "wasm"
           - "windows"
           - "all"
@@ -37,23 +38,23 @@ jobs:
       - name: Install Make
         run: brew install make
 
-      - name: Build Setup
-        run: make mac-setup
-        env:
-          TARGET: apple
+      - name: Install Apple targets
+        run: make install-apple-targets
+        working-directory: dotlottie-ffi
 
       - name: Build Apple
         run: make apple
+        working-directory: dotlottie-ffi
 
       - name: Upload Apple Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dotlottie-player.darwin.tar.gz
-          path: release/apple/dotlottie-player.darwin.tar.gz
+          name: dotlottie-player.apple.tar.gz
+          path: dotlottie-ffi/release/apple/dotlottie-player.apple.tar.gz
           if-no-files-found: error
 
   build-android:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     if: github.event.inputs.target == 'android' || github.event.inputs.target == 'all'
     steps:
       - name: Checkout Repository
@@ -61,33 +62,70 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commitSHA || github.ref }}
 
-      - uses: Homebrew/actions/setup-homebrew@master
-      - uses: ningenMe/setup-rustup@v1.1.0
-      - name: Install Make
-        run: brew install make
+      - name: Setup Rust
+        uses: ningenMe/setup-rustup@v1.1.0
 
-      - name: Build Setup
-        run: make mac-setup
-        env:
-          TARGET: android
+      - name: Install uniffi-bindgen-cpp
+        run: cargo install uniffi-bindgen-cpp
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r28b
+
+      - name: Install Android targets
+        run: make install-android-targets
+        working-directory: dotlottie-ffi
 
       - name: Build Android
         run: make android
+        working-directory: dotlottie-ffi
         env:
-          ANDROID_NDK_HOME: "/opt/homebrew/share/android-ndk"
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
       - name: Check ELF Alignment
-        run: ./scripts/check_elf_alignment.sh release/android/dotlottie-player/src/main/jniLibs
+        run: ./scripts/check_elf_alignment.sh dotlottie-ffi/release/android/dotlottie-player/src/main/jniLibs
 
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.android.tar.gz
-          path: release/android/dotlottie-player.android.tar.gz
+          path: dotlottie-ffi/release/android/dotlottie-player.android.tar.gz
+          if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.target == 'linux' || github.event.inputs.target == 'all'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+
+      - name: Setup Rust
+        uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Install uniffi-bindgen-cpp
+        run: cargo install uniffi-bindgen-cpp
+
+      - name: Install Linux targets
+        run: make install-linux-targets
+        working-directory: dotlottie-ffi
+
+      - name: Build Linux
+        run: make linux
+        working-directory: dotlottie-ffi
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.linux.tar.gz
+          path: dotlottie-ffi/release/linux/dotlottie-player.linux.tar.gz
           if-no-files-found: error
 
   build-wasm:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     if: github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all'
     steps:
       - name: Checkout Repository
@@ -95,31 +133,37 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commitSHA || github.ref }}
 
-      - uses: Homebrew/actions/setup-homebrew@master
-      - uses: ningenMe/setup-rustup@v1.1.0
+      - name: Setup Rust
+        uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Install uniffi-bindgen-cpp
+        run: cargo install uniffi-bindgen-cpp
 
       - name: Install Binaryen
-        run: brew install binaryen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binaryen
 
-      - name: Install Make
-        run: brew install make
+      - name: Install WASM targets
+        run: make install-wasm-targets
+        working-directory: dotlottie-ffi
 
-      - name: Build Setup
-        run: make mac-setup
-        env:
-          TARGET: wasm
+      - name: Install Emscripten SDK
+        run: make wasm-install-emsdk
+        working-directory: dotlottie-ffi
 
       - name: Build WASM
         run: make wasm
+        working-directory: dotlottie-ffi
 
       - name: Optimize WASM
-        run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
+        run: wasm-opt dotlottie-ffi/build/wasm/DotLottiePlayer.wasm -o dotlottie-ffi/build/wasm/DotLottiePlayer.wasm -all -Oz
 
       - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.wasm.tar.gz
-          path: release/wasm/dotlottie-player.wasm.tar.gz
+          path: dotlottie-ffi/release/wasm/dotlottie-player.wasm.tar.gz
           if-no-files-found: error
 
   build-windows:
@@ -149,5 +193,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.windows.tar.gz
-          path: release/windows/dotlottie-player.windows.tar.gz
+          path: dotlottie-ffi/release/windows/dotlottie-player.windows.tar.gz
           if-no-files-found: error

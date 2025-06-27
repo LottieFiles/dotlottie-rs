@@ -23,34 +23,16 @@ CRATE_VERSION := $(shell grep -m 1 version Cargo.toml | sed 's/.*"\([0-9.]\+\)"/
 COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
 # WASM-specific phony targets
-.PHONY: wasm wasm-setup wasm-install-emsdk wasm-clean install-wasm-targets wasm-env-info wasm-help
+.PHONY: wasm install-wasm-targets wasm-install-emsdk wasm-clean
 
-# WASM help
-wasm-help:
-	@echo "WASM/Emscripten Build Targets:"
-	@echo "=============================="
-	@echo "  make wasm-install-emsdk                           - Install specific emsdk version ($(EMSDK_VERSION))"
-	@echo "  make wasm                                         - Build WASM module (makefile-only, no meson)"
-	@echo "  make wasm-clean                                   - Clean WASM bindings and build artifacts"
-	@echo ""
-	@echo "WASM Variables:"
-	@echo "==============="
-	@echo "  EMSDK_VERSION                                     - Emscripten SDK version (default: $(EMSDK_VERSION))"
-	@echo "  WASM_MODULE                                       - WASM module name (default: $(WASM_MODULE))"
-	@echo "  WASM_FEATURES                                     - Rust features to enable (default: $(WASM_FEATURES))"
-	@echo ""
-	@echo "WASM Examples:"
-	@echo "=============="
-	@echo "  make wasm-setup"
-	@echo "  make wasm"
-	@echo "  make wasm WASM_FEATURES=thorvg,uniffi"
-	@echo ""
-	@echo "Prerequisites:"
-	@echo "=============="
-	@echo "  make install-wasm-targets                         - Install Rust WASM target"
-	@echo "  make wasm-setup                                   - Setup emsdk toolchain"
-	@echo "  uniffi-bindgen-cpp                               - Required for C++ bindings"
 
+
+# Initialize emsdk submodule
+wasm-init-submodule:
+	@echo "Initializing emsdk submodule..."
+	@if [ ! -f "$(EMSDK_DIR)/emsdk" ]; then \
+		git submodule update --init --recursive $(EMSDK_DIR); \
+	fi
 
 # Install and activate specific emsdk version
 wasm-install-emsdk: wasm-init-submodule
@@ -215,47 +197,7 @@ install-wasm-targets:
 	rustup target add --toolchain nightly $(WASM_TARGET)
 	@echo "WASM target and nightly toolchain installed successfully!"
 
-# Show WASM environment info
-wasm-env-info: wasm-check-env
-	@echo "WASM Environment Information:"
-	@echo "============================="
-	@echo "EMSDK Version: $(EMSDK_VERSION)"
-	@echo "EMSDK Directory: $(EMSDK_DIR)"
-	@echo "WASM Target: $(WASM_TARGET)"
-	@echo "WASM Module: $(WASM_MODULE)"
-	@echo "C++ bindings directory: $(CPP_BINDINGS_DIR)"
-	@echo "Build directory: $(WASM_BUILD_DIR)"
-	@echo ""
-	@echo "Rust toolchain info:"
-	@echo "===================="
-	rustc --version
-	cargo --version
-	@echo ""
-	@echo "WASM Rust target:"
-	@echo "================"
-	@if rustup target list --installed | grep -q $(WASM_TARGET); then \
-		echo "✓ $(WASM_TARGET) (installed)"; \
-	else \
-		echo "✗ $(WASM_TARGET) (not installed - run 'make install-wasm-targets')"; \
-	fi
-	@echo ""
-	@echo "Emscripten toolchain:"
-	@echo "===================="
-	@if [ -f "$(EMSDK_DIR)/$(EMSDK_ENV)" ]; then \
-		echo "✓ emsdk found at $(EMSDK_DIR)"; \
-		bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && emcc --version | head -1"; \
-	else \
-		echo "✗ emsdk not found or not installed"; \
-		echo "Run 'make wasm-setup' to install emsdk"; \
-	fi
-	@echo ""
-	@echo "UniFFI bindgen C++ status:"
-	@echo "=========================="
-	@if command -v $(UNIFFI_BINDGEN_CPP) >/dev/null 2>&1; then \
-		echo "✓ $(UNIFFI_BINDGEN_CPP) found at: $$(which $(UNIFFI_BINDGEN_CPP))"; \
-	else \
-		echo "✗ $(UNIFFI_BINDGEN_CPP) not found in PATH"; \
-	fi
+
 
 # Clean WASM bindings and build artifacts
 wasm-clean:
@@ -264,8 +206,4 @@ wasm-clean:
 	rm -rf $(WASM_BUILD_DIR)
 	@echo "WASM artifacts cleaned!"
 
-# Clean everything including emsdk
-wasm-distclean: wasm-clean
-	@echo "Performing deep clean..."
-	rm -rf $(EMSDK_DIR)
-	@echo "Deep clean completed!"
+

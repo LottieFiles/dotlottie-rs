@@ -108,55 +108,9 @@ TVOS_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/tvos
 TVOS_SIMULATOR_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/tvos-simulator
 
 # Apple-specific phony targets
-.PHONY: apple apple-macos apple-ios apple-visionos apple-tvos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 swift-bindings install-apple-targets apple-env-info apple-help apple-frameworks apple-package apple-clean
+.PHONY: apple apple-macos apple-ios apple-visionos apple-tvos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 install-apple-targets apple-clean
 
-# Apple help
-apple-help:
-	@echo "Apple Build Targets:"
-	@echo "===================="
-	@echo "  make apple                                        - Build for all Apple platforms and create release package"
-	@echo "  make apple-macos                                  - Build for all macOS architectures"
-	@echo "  make apple-ios                                    - Build for all iOS architectures"
-	@echo "  make apple-visionos                               - Build for all visionOS architectures"
-	@echo "  make apple-tvos                                   - Build for all tvOS architectures"
-	@echo ""
-	@echo "Individual Architecture Targets:"
-	@echo "================================"
-	@echo "  make apple-macos-arm64                           - Build for macOS ARM64"
-	@echo "  make apple-macos-x86_64                          - Build for macOS x86_64"
-	@echo "  make apple-ios-arm64                             - Build for iOS ARM64"
-	@echo "  make apple-ios-x86_64                            - Build for iOS x86_64"
-	@echo "  make apple-ios-sim-arm64                         - Build for iOS Simulator ARM64"
-	@echo "  make apple-visionos-arm64                        - Build for visionOS ARM64 (requires nightly)"
-	@echo "  make apple-visionos-sim-arm64                    - Build for visionOS Simulator ARM64 (requires nightly)"
-	@echo "  make apple-tvos-arm64                            - Build for tvOS ARM64 (requires nightly)"
-	@echo "  make apple-tvos-sim-arm64                        - Build for tvOS Simulator ARM64 (requires nightly)"
-	@echo ""
-	@echo "Utility Targets:"
-	@echo "================"
-	@echo "  make swift-bindings                              - Generate Swift bindings (when UDL changes)"
-	@echo "  make install-apple-targets                       - Install all required Rust targets"
-	@echo "  make apple-env-info                              - Show Apple environment information"
-	@echo "  make apple-clean                                 - Clean all Apple builds and artifacts"
-	@echo ""
-	@echo "Apple Variables:"
-	@echo "================"
-	@echo "  APPLE_FEATURES       - Rust features to enable (default: $(APPLE_FEATURES))"
-	@echo "  MIN_IOS_VERSION      - Minimum iOS version (default: $(MIN_IOS_VERSION))"
-	@echo "  MIN_MACOS_VERSION    - Minimum macOS version (default: $(MIN_MACOS_VERSION))"
-	@echo "  MIN_TVOS_VERSION     - Minimum tvOS version (default: $(MIN_TVOS_VERSION))"
-	@echo "  MIN_VISIONOS_VERSION - Minimum visionOS version (default: $(MIN_VISIONOS_VERSION))"
-	@echo ""
-	@echo "Apple Examples:"
-	@echo "==============="
-	@echo "  make apple-macos"
-	@echo "  make apple-ios MIN_IOS_VERSION=12.0"
-	@echo "  make apple-macos APPLE_FEATURES=thorvg,uniffi"
-	@echo ""
-	@echo "Prerequisites:"
-	@echo "=============="
-	@echo "  Note: visionOS and tvOS require Rust nightly toolchain"
-	@echo "  Run 'make install-apple-targets' to install all required targets"
+
 
 # Swift bindings file target - automatically rebuilds when UDL changes
 $(SWIFT_BINDINGS_DIR)/dotlottie_player.swift: src/dotlottie_player.udl
@@ -615,35 +569,7 @@ install-apple-targets:
 	@echo "Attempting to install visionOS and tvOS targets with nightly toolchain..."
 	-rustup +nightly target add aarch64-apple-visionos aarch64-apple-visionos-sim aarch64-apple-tvos aarch64-apple-tvos-sim
 
-# Show Apple environment info
-apple-env-info: apple-check-xcode
-	@echo "Apple Environment Information:"
-	@echo "=============================="
-	@echo "Xcode Path: $(XCODE_PATH)"
-	@echo "Min iOS Version: $(MIN_IOS_VERSION)"
-	@echo "Min macOS Version: $(MIN_MACOS_VERSION)"
-	@echo "Min tvOS Version: $(MIN_TVOS_VERSION)"
-	@echo "Min visionOS Version: $(MIN_VISIONOS_VERSION)"
-	@echo ""
-	@echo "Apple SDKs:"
-	@echo "==========="
-	@echo "macOS SDK: $(MACOS_SDK)"
-	@echo "iOS SDK: $(IOS_SDK)"
-	@echo "iOS Simulator SDK: $(IOS_SIMULATOR_SDK)"
-	@echo "tvOS SDK: $(TVOS_SDK)"
-	@echo "tvOS Simulator SDK: $(TVOS_SIMULATOR_SDK)"
-	@echo "visionOS SDK: $(VISIONOS_SDK)"
-	@echo "visionOS Simulator SDK: $(VISIONOS_SIMULATOR_SDK)"
-	@echo ""
-	@echo "Apple Rust targets:"
-	@echo "==================="
-	@for target in $(APPLE_TARGETS); do \
-		if rustup target list --installed | grep -q $$target; then \
-			echo "✓ $$target (installed)"; \
-		else \
-			echo "✗ $$target (not installed - run 'make install-apple-targets')"; \
-		fi; \
-	done
+
 
 
 # Clean all Apple builds

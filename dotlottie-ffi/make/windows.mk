@@ -90,36 +90,12 @@ define WINDOWS_PACKAGE_ARCH
 endef
 
 # Windows-specific phony targets
-.PHONY: windows windows-x86_64-msvc windows-i686-msvc windows-aarch64-msvc windows-x86_64-gnu cpp-bindings install-windows-targets windows-env-info windows-help windows-package windows-clean
+.PHONY: windows windows-x86_64-msvc windows-i686-msvc windows-aarch64-msvc windows-x86_64-gnu install-windows-targets windows-clean
 
-# Windows help
-windows-help:
-	@echo "Windows Build Targets:"
-	@echo "======================"
-	@echo "  make windows                                      - Build for all Windows architectures"
-	@echo "  make windows-x86_64-msvc                         - Build for Windows x86_64 MSVC"
-	@echo "  make windows-i686-msvc                           - Build for Windows i686 MSVC"
-	@echo "  make windows-aarch64-msvc                        - Build for Windows aarch64 MSVC"
-	@echo "  make windows-x86_64-gnu                          - Build for Windows x86_64 GNU"
-	@echo "  make windows-clean                               - Clean Windows bindings and release artifacts"
-	@echo ""
-	@echo "Windows Variables:"
-	@echo "=================="
-	@echo "  WINDOWS_FEATURES - Rust features to enable (default: $(WINDOWS_FEATURES))"
-	@echo ""
-	@echo "Windows Examples:"
-	@echo "================="
-	@echo "  make windows                                      - Build with default features"
-	@echo "  make windows WINDOWS_FEATURES=thorvg,uniffi      - Build with custom features"
-	@echo "  make windows-x86_64-msvc                         - Build x86_64 MSVC only"
-	@echo ""
-	@echo "Prerequisites:"
-	@echo "=============="
-	@echo "  make install-windows-targets                     - Install all required Rust targets"
-	@echo "  uniffi-bindgen-cpp                               - Required for C++ bindings generation"
 
-# Generate C++ UniFFI bindings
-cpp-bindings:
+
+# Generate C++ UniFFI bindings for Windows
+windows-cpp-bindings:
 	@echo "Generating C++ UniFFI bindings..."
 	@mkdir -p $(CPP_BINDINGS_DIR)
 	rm -rf $(CPP_BINDINGS_DIR)/*
@@ -139,11 +115,11 @@ cpp-bindings:
 	@echo "C++ bindings generated in $(CPP_BINDINGS_DIR)"
 
 # Build for all Windows architectures (with bindings and packaging)
-windows: cpp-bindings $(addprefix windows-,x86_64-msvc i686-msvc aarch64-msvc x86_64-gnu) windows-package
+windows: windows-cpp-bindings $(addprefix windows-,x86_64-msvc i686-msvc aarch64-msvc x86_64-gnu) windows-package
 	@echo "All Windows builds completed and packaged!"
 
 # Build for Windows x86_64 MSVC
-windows-x86_64-msvc: cpp-bindings windows-check-env
+windows-x86_64-msvc: windows-cpp-bindings windows-check-env
 	@echo "Building dotlottie-ffi for Windows x86_64 MSVC..."
 	@echo "Target: $(WINDOWS_TARGET_x86_64_msvc)"
 	@echo "Features: $(WINDOWS_FEATURES)"
@@ -156,7 +132,7 @@ windows-x86_64-msvc: cpp-bindings windows-check-env
 	$(call WINDOWS_PACKAGE_ARCH,x86_64_msvc)
 
 # Build for Windows i686 MSVC
-windows-i686-msvc: cpp-bindings windows-check-env
+windows-i686-msvc: windows-cpp-bindings windows-check-env
 	@echo "Building dotlottie-ffi for Windows i686 MSVC..."
 	@echo "Target: $(WINDOWS_TARGET_i686_msvc)"
 	@echo "Features: $(WINDOWS_FEATURES)"
@@ -169,7 +145,7 @@ windows-i686-msvc: cpp-bindings windows-check-env
 	$(call WINDOWS_PACKAGE_ARCH,i686_msvc)
 
 # Build for Windows aarch64 MSVC
-windows-aarch64-msvc: cpp-bindings windows-check-env
+windows-aarch64-msvc: windows-cpp-bindings windows-check-env
 	@echo "Building dotlottie-ffi for Windows aarch64 MSVC..."
 	@echo "Target: $(WINDOWS_TARGET_aarch64_msvc)"
 	@echo "Features: $(WINDOWS_FEATURES)"
@@ -182,7 +158,7 @@ windows-aarch64-msvc: cpp-bindings windows-check-env
 	$(call WINDOWS_PACKAGE_ARCH,aarch64_msvc)
 
 # Build for Windows x86_64 GNU
-windows-x86_64-gnu: cpp-bindings windows-check-env
+windows-x86_64-gnu: windows-cpp-bindings windows-check-env
 	@echo "Building dotlottie-ffi for Windows x86_64 GNU..."
 	@echo "Target: $(WINDOWS_TARGET_x86_64_gnu)"
 	@echo "Features: $(WINDOWS_FEATURES)"
@@ -224,39 +200,7 @@ install-windows-targets:
 	rustup target add $(WINDOWS_TARGETS)
 	@echo "Windows targets installed successfully!"
 
-# Show Windows environment info
-windows-env-info: windows-check-env
-	@echo "Windows Environment Information:"
-	@echo "==============================="
-	@echo "Available targets: $(WINDOWS_TARGETS)"
-	@echo "C++ bindings directory: $(CPP_BINDINGS_DIR)"
-	@echo "UniFFI bindgen C++: $(UNIFFI_BINDGEN_CPP)"
-	@echo "Windows features: $(WINDOWS_FEATURES)"
-	@echo ""
-	@echo "Rust toolchain info:"
-	@echo "===================="
-	rustc --version
-	cargo --version
-	@echo ""
-	@echo "Windows Rust targets:"
-	@echo "===================="
-	@for target in $(WINDOWS_TARGETS); do \
-		if rustup target list --installed | grep -q $$target; then \
-			echo "✓ $$target (installed)"; \
-		else \
-			echo "✗ $$target (not installed - run 'make install-windows-targets')"; \
-		fi; \
-	done
-	@echo ""
-	@echo "UniFFI bindgen C++ status:"
-	@echo "========================="
-	@if command -v $(UNIFFI_BINDGEN_CPP) >/dev/null 2>&1; then \
-		echo "✓ $(UNIFFI_BINDGEN_CPP) found at: $$(which $(UNIFFI_BINDGEN_CPP))"; \
-		$(UNIFFI_BINDGEN_CPP) --version 2>/dev/null || echo "Version info not available"; \
-	else \
-		echo "✗ $(UNIFFI_BINDGEN_CPP) not found in PATH"; \
-		echo "Please install uniffi-bindgen-cpp for C++ bindings generation"; \
-	fi
+
 
 # Clean Windows bindings and release artifacts
 windows-clean:

@@ -124,31 +124,7 @@ define ANDROID_PACKAGE_ARCH
 endef
 
 # Android-specific phony targets
-.PHONY: android android-aarch64 android-x86_64 android-x86 android-armv7 install-android-targets android-env-info android-help android-clean
-
-# Android help
-android-help:
-	@echo "Android Build Targets:"
-	@echo "======================"
-	@echo "  make android [ANDROID_NDK_HOME=/opt/homebrew/share/android-ndk] [API_LEVEL=21]  - Build for all Android architectures"
-	@echo "  make android-aarch64    - Build for Android ARM64"
-	@echo "  make android-x86_64     - Build for Android x86_64"
-	@echo "  make android-x86        - Build for Android x86"
-	@echo "  make android-armv7      - Build for Android ARMv7"
-	@echo "  make android-clean      - Clean Android bindings and release artifacts"
-	@echo ""
-
-	@echo "Android Variables:"
-	@echo "=================="
-	@echo "  ANDROID_NDK_HOME - Path to Android NDK (required, r$(MIN_NDK_VERSION)+) (default: /opt/homebrew/share/android-ndk)"
-	@echo "  API_LEVEL        - Android API level (default: 21)"
-	@echo "  ANDROID_FEATURES - Rust features to enable (default: $(ANDROID_FEATURES))"
-	@echo ""
-	@echo "Android Examples:"
-	@echo "================="
-	@echo "  make android                                    - Build with default features"
-	@echo "  make android ANDROID_FEATURES=thorvg,uniffi    - Build with custom features"
-	@echo "  make android-aarch64 ANDROID_FEATURES=thorvg   - Build ARM64 with minimal features"
+.PHONY: android android-aarch64 android-x86_64 android-x86 android-armv7 install-android-targets android-clean
 
 # Generate Kotlin UniFFI bindings
 kotlin-bindings:
@@ -289,45 +265,7 @@ install-android-targets:
 	@echo "Installing Android Rust targets..."
 	rustup target add $(ANDROID_TARGETS)
 
-# Show Android environment info
-android-env-info: android-check-ndk
-	@echo "Android Environment Information:"
-	@echo "================================"
-	@echo "ANDROID_NDK_HOME: $(ANDROID_NDK_HOME)"
-	@echo "API_LEVEL: $(API_LEVEL)"
-	@echo "ANDROID_FEATURES: $(ANDROID_FEATURES)"
-	@echo "HOST_TAG: $(HOST_TAG)"
-	@echo "ANDROID_TOOLCHAIN: $(ANDROID_TOOLCHAIN)"
-	@echo ""
-	@echo "Release Information:"
-	@echo "==================="
-	@echo "CRATE_VERSION: $(CRATE_VERSION)"
-	@echo "COMMIT_HASH: $(COMMIT_HASH)"
-	@echo "ANDROID_RELEASE_DIR: $(ANDROID_RELEASE_DIR)"
-	@echo "DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR: $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)"
-	@echo ""
-	@echo "Android Compilers:"
-	@echo "=================="
-	@echo "aarch64 CXX: $(ANDROID_CXX_aarch64)"
-	@echo "x86_64 CXX: $(ANDROID_CXX_x86_64)"
-	@echo "x86 CXX: $(ANDROID_CXX_x86)"
-	@echo "armv7 CXX: $(ANDROID_CXX_armv7)"
-	@echo ""
-	@echo "Android Tools:"
-	@echo "=============="
-	@echo "AR: $(ANDROID_AR)"
-	@echo "RANLIB: $(ANDROID_RANLIB)"
-	@echo "STRIP: $(ANDROID_STRIP)"
-	@echo ""
-	@echo "Android Rust targets:"
-	@echo "===================="
-	@for target in $(ANDROID_TARGETS); do \
-		if rustup target list --installed | grep -q $$target; then \
-			echo "✓ $$target (installed)"; \
-		else \
-			echo "✗ $$target (not installed - run 'make install-android-targets')"; \
-		fi; \
-	done
+
 
 # Clean Android bindings and release artifacts
 android-clean:

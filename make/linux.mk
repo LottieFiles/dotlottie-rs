@@ -136,7 +136,11 @@ linux-package:
 	@echo "→ Creating Linux release package..."
 	@mkdir -p $(LINUX_RELEASE_DIR)
 	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(LINUX_RELEASE_DIR)/version.txt
+	
+	# Create compressed archive
+	@tar -czf release/dotlottie-player.linux.tar.gz -C release linux/
 	@echo "✓ Linux release package created: $(LINUX_RELEASE_DIR)/"
+	@echo "✓ Compressed archive created: release/dotlottie-player.linux.tar.gz"
 
 # Check Linux build environment
 linux-check-env:

@@ -117,7 +117,7 @@ define ANDROID_PACKAGE_ARCH
 endef
 
 # Android-specific phony targets
-.PHONY: android android-aarch64 android-x86_64 android-x86 android-armv7 android-install-targets android-clean
+.PHONY: android android-aarch64 android-x86_64 android-x86 android-armv7 android-package android-install-targets android-clean
 
 # Generate Kotlin UniFFI bindings
 kotlin-bindings:
@@ -136,8 +136,8 @@ kotlin-bindings:
 	@echo "✓ Kotlin bindings generated"
 
 # Build for all Android architectures (with bindings and packaging)
-android: kotlin-bindings $(addprefix android-,aarch64 x86_64 x86 armv7)
-	@echo "✓ All Android builds complete"
+android: kotlin-bindings $(addprefix android-,aarch64 x86_64 x86 armv7) android-package
+	@echo "✓ All Android builds and packaging complete"
 
 # Build for Android ARM64
 android-aarch64: kotlin-bindings android-check-ndk
@@ -219,6 +219,18 @@ android-armv7: kotlin-bindings android-check-ndk
 	@$(call ANDROID_PACKAGE_ARCH,armv7)
 	@echo "✓ Android ARMv7 build complete"
 
+# Package Android build
+android-package:
+	@echo "→ Creating Android release package..."
+	
+	# Create version file
+	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(ANDROID_RELEASE_DIR)/version.txt
+	
+	# Create compressed archive
+	@tar -czf release/dotlottie-player.android.tar.gz -C release android/
+	@echo "✓ Android release package created: $(ANDROID_RELEASE_DIR)/"
+	@echo "✓ Compressed archive created: release/dotlottie-player.android.tar.gz"
+
 # Check if NDK path is valid
 android-check-ndk:
 	@if [ ! -d "$(ANDROID_NDK_HOME)" ]; then \
@@ -259,4 +271,5 @@ android-clean:
 	@echo "→ Cleaning Android builds..."
 	@rm -rf $(KOTLIN_BINDINGS_DIR)
 	@rm -rf $(ANDROID_RELEASE_DIR)
+	@rm -f release/dotlottie-player.android.tar.gz
 	@echo "✓ Android builds cleaned"

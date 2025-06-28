@@ -9,101 +9,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-apple:
-    runs-on: macos-latest
+  build-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
       - uses: dtolnay/rust-toolchain@stable
-      - uses: dtolnay/rust-toolchain@nightly
 
-      - name: Setup Apple
-        run: make apple-install-targets
+      - name: Setup Windows
+        run: make windows-install-targets
 
-      - name: Build Apple
-        run: make apple
-
-      - name: Upload Apple Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotlottie-player.apple.tar.gz
-          path: release/dotlottie-player.apple.tar.gz
-          if-no-files-found: error
-
-  build-android:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: nttld/setup-ndk@v1.5.0
-        id: setup-ndk
-        with:
-          ndk-version: r28b
-          local-cache: true
-
-      - name: Setup Android
-        run: make android-install-targets
-
-      - name: Build Android
-        run: make android
-        env:
-          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-
-      - name: Upload Android Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotlottie-player.android.tar.gz
-          path: release/dotlottie-player.android.tar.gz
-          if-no-files-found: error
-
-  build-wasm:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-      - uses: dtolnay/rust-toolchain@nightly
-      - name: Setup WASM
-        run: |
-          make wasm-install-emsdk
-          make wasm-install-targets
-          cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag v0.7.1+v0.28.3
-          sudo apt-get update
-          sudo apt-get install -y binaryen
-
-      - name: Build WASM
-        run: make wasm
-
-      - name: Upload WASM Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotlottie-player.wasm.tar.gz
-          path: release/dotlottie-player.wasm.tar.gz
-          if-no-files-found: error
-
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Setup Linux
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag v0.7.1+v0.28.3
-          make linux-install-targets
-
-      - name: Build Linux
-        run: make linux
-
-      - name: Upload WASM Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotlottie-player.linux.tar.gz
-          path: release/dotlottie-player.linux.tar.gz
-          if-no-files-found: error
+      - name: Build Windows
+        run: make windows

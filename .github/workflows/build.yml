@@ -24,174 +24,102 @@ concurrency:
 
 jobs:
   build-apple:
-    runs-on: macos-latest-large
+    runs-on: macos-latest
     if: github.event.inputs.target == 'apple' || github.event.inputs.target == 'all'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@nightly
 
-      - uses: Homebrew/actions/setup-homebrew@master
-      - uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Install Make
-        run: brew install make
-
-      - name: Install Apple targets
-        run: make install-apple-targets
-        working-directory: dotlottie-ffi
+      - name: Setup Apple
+        run: make apple-install-targets
 
       - name: Build Apple
         run: make apple
-        working-directory: dotlottie-ffi
 
       - name: Upload Apple Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.apple.tar.gz
-          path: dotlottie-ffi/release/apple/dotlottie-player.apple.tar.gz
+          path: release/dotlottie-player.apple.tar.gz
           if-no-files-found: error
 
   build-android:
     runs-on: ubuntu-latest
     if: github.event.inputs.target == 'android' || github.event.inputs.target == 'all'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
-
-      - name: Setup Rust
-        uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Install uniffi-bindgen-cpp
-        run: cargo install uniffi-bindgen-cpp
-
-      - name: Setup Android NDK
-        uses: nttld/setup-ndk@v1
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: nttld/setup-ndk@v1.5.0
         id: setup-ndk
         with:
           ndk-version: r28b
+          local-cache: true
 
-      - name: Install Android targets
-        run: make install-android-targets
-        working-directory: dotlottie-ffi
+      - name: Setup Android
+        run: make android-install-targets
 
       - name: Build Android
         run: make android
-        working-directory: dotlottie-ffi
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-
-      - name: Check ELF Alignment
-        run: ./scripts/check_elf_alignment.sh dotlottie-ffi/release/android/dotlottie-player/src/main/jniLibs
 
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.android.tar.gz
-          path: dotlottie-ffi/release/android/dotlottie-player.android.tar.gz
-          if-no-files-found: error
-
-  build-linux:
-    runs-on: ubuntu-latest
-    if: github.event.inputs.target == 'linux' || github.event.inputs.target == 'all'
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
-
-      - name: Setup Rust
-        uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Install uniffi-bindgen-cpp
-        run: cargo install uniffi-bindgen-cpp
-
-      - name: Install Linux targets
-        run: make install-linux-targets
-        working-directory: dotlottie-ffi
-
-      - name: Build Linux
-        run: make linux
-        working-directory: dotlottie-ffi
-
-      - name: Upload Linux Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotlottie-player.linux.tar.gz
-          path: dotlottie-ffi/release/linux/dotlottie-player.linux.tar.gz
+          path: release/dotlottie-player.android.tar.gz
           if-no-files-found: error
 
   build-wasm:
     runs-on: ubuntu-latest
     if: github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
-
-      - name: Setup Rust
-        uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Install uniffi-bindgen-cpp
-        run: cargo install uniffi-bindgen-cpp
-
-      - name: Install Binaryen
+          submodules: true
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: Setup WASM
         run: |
-          sudo apt-get update
-          sudo apt-get install -y binaryen
-
-      - name: Install WASM targets
-        run: make install-wasm-targets
-        working-directory: dotlottie-ffi
-
-      - name: Install Emscripten SDK
-        run: make wasm-install-emsdk
-        working-directory: dotlottie-ffi
+          make wasm-install-emsdk
+          cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag v0.7.1+v0.28.3
+          make wasm-install-targets
 
       - name: Build WASM
         run: make wasm
-        working-directory: dotlottie-ffi
-
-      - name: Optimize WASM
-        run: wasm-opt dotlottie-ffi/build/wasm/DotLottiePlayer.wasm -o dotlottie-ffi/build/wasm/DotLottiePlayer.wasm -all -Oz
 
       - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.wasm.tar.gz
-          path: dotlottie-ffi/release/wasm/dotlottie-player.wasm.tar.gz
+          path: release/dotlottie-player.wasm.tar.gz
           if-no-files-found: error
 
-  build-windows:
-    runs-on: windows-latest
-    if: github.event.inputs.target == 'windows' || github.event.inputs.target == 'all'
+  build-linux:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.target == 'linux' || github.event.inputs.target == 'all'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Setup Linux
+        run: |
+          cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag v0.7.1+v0.28.3
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          make linux-install-targets
 
-      - name: Setup Rust
-        uses: ningenMe/setup-rustup@v1.1.0
+      - name: Build Linux
+        run: make linux
 
-      - name: Install uniffi-bindgen-cpp
-        run: cargo install uniffi-bindgen-cpp
-
-      - name: Install Windows targets
-        run: make install-windows-targets
-        working-directory: dotlottie-ffi
-
-      - name: Build Windows
-        run: make windows
-        working-directory: dotlottie-ffi
-
-      - name: Upload Windows Artifacts
+      - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dotlottie-player.windows.tar.gz
-          path: dotlottie-ffi/release/windows/dotlottie-player.windows.tar.gz
+          name: dotlottie-player.linux.tar.gz
+          path: release/dotlottie-player.linux.tar.gz
           if-no-files-found: error

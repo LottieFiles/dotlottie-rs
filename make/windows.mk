@@ -112,6 +112,9 @@ windows: windows-cpp-bindings $(addprefix windows-,x86_64-msvc i686-msvc aarch64
 # Build for Windows x86_64 MSVC
 windows-x86_64-msvc: windows-cpp-bindings windows-check-env
 	@echo "→ Building Windows x86_64 MSVC..."
+	@CC="cl.exe" \
+	CXX="cl.exe" \
+	AR="lib.exe" \
 	cargo build \
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(WINDOWS_TARGET_x86_64_msvc) \

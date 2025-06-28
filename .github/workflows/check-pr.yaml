@@ -9,6 +9,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build-apple:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - name: Setup Android
+        run: make apple-install-targets
+
+      - name: Build Android
+        run: make apple
+
+      - name: Upload Android Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.apple.tar.gz
+          path: release/dotlottie-player.apple.tar.gz
+          if-no-files-found: error
+
   build-android:
     runs-on: ubuntu-latest
     steps:

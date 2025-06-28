@@ -31,6 +31,11 @@ GRADLE_PROPERTIES ?= gradle.properties
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
 
+# Function to check platform support - only called when Android targets are invoked
+define check_android_platform_support
+$(if $(filter Darwin Linux,$(UNAME_S)),,$(error "Android builds not supported on $(UNAME_S). Requires macOS or Linux with Android NDK."))
+endef
+
 ifeq ($(UNAME_S),Darwin)
     ifeq ($(UNAME_M),arm64)
         HOST_TAG = darwin-x86_64
@@ -40,7 +45,8 @@ ifeq ($(UNAME_S),Darwin)
 else ifeq ($(UNAME_S),Linux)
     HOST_TAG = linux-x86_64
 else
-    $(error "Unsupported host platform: $(UNAME_S)")
+    # For unsupported platforms, set a default - error will be thrown when Android targets are used
+    HOST_TAG = linux-x86_64
 endif
 
 # Android NDK toolchain paths
@@ -121,6 +127,7 @@ endef
 
 # Generate Kotlin UniFFI bindings
 kotlin-bindings:
+	$(call check_android_platform_support)
 	@echo "→ Generating Kotlin UniFFI bindings..."
 	@mkdir -p $(KOTLIN_BINDINGS_DIR)
 	@rm -rf $(KOTLIN_BINDINGS_DIR)/*
@@ -141,6 +148,7 @@ android: kotlin-bindings $(addprefix android-,aarch64 x86_64 x86 armv7) android-
 
 # Build for Android ARM64
 android-aarch64: kotlin-bindings android-check-ndk
+	$(call check_android_platform_support)
 	@echo "→ Building Android aarch64..."
 	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
 	CC="$(ANDROID_TOOLCHAIN)/bin/aarch64-linux-android$(API_LEVEL)-clang" \
@@ -161,6 +169,7 @@ android-aarch64: kotlin-bindings android-check-ndk
 
 # Build for Android x86_64
 android-x86_64: kotlin-bindings android-check-ndk
+	$(call check_android_platform_support)
 	@echo "→ Building Android x86_64..."
 	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
 	CC="$(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang" \
@@ -181,6 +190,7 @@ android-x86_64: kotlin-bindings android-check-ndk
 
 # Build for Android x86
 android-x86: kotlin-bindings android-check-ndk
+	$(call check_android_platform_support)
 	@echo "→ Building Android x86..."
 	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
 	CC="$(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang" \
@@ -201,6 +211,7 @@ android-x86: kotlin-bindings android-check-ndk
 
 # Build for Android ARMv7
 android-armv7: kotlin-bindings android-check-ndk
+	$(call check_android_platform_support)
 	@echo "→ Building Android ARMv7..."
 	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
 	CC="$(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang" \

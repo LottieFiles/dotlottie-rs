@@ -5,12 +5,7 @@ mod thorvg {
     use std::path::PathBuf;
 
     fn platform_libs() -> Vec<String> {
-        match env::var("HOST") {
-            Ok(triple) if triple.contains("apple") => vec![String::from("c++")],
-            Ok(_) if std::env::var("CARGO_CFG_UNIX").is_ok() => vec![String::from("stdc++")],
-            Ok(_) => vec![],
-            Err(_) => panic!("CARGO_CFG_TARGET_VENDOR environment variable not set"),
-        }
+        vec![]
     }
 
     fn collect_files(dir: &str) -> Vec<String> {

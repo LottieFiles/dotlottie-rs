@@ -209,7 +209,7 @@ wasm-check-env:
 wasm-install-targets:
 	@echo "→ Installing Rust nightly toolchain and WASM target..."
 	@rustup toolchain install nightly >/dev/null
-	@rustup target add $(WASM_TARGET) >/dev/null
+	@rustup component add rust-src --toolchain nightly >/dev/null
 	@rustup target add --toolchain nightly $(WASM_TARGET) >/dev/null
 	@echo "✓ WASM targets and nightly toolchain installed"
 

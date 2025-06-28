@@ -174,19 +174,13 @@ wasm-package: wasm-link-module
 		cp $(WASM_BUILD_DIR)/$(WASM_MODULE).js $(WASM_RELEASE_DIR)/; \
 	fi
 	
-	# Copy C++ bindings
-	@if [ -d "$(CPP_BINDINGS_DIR)" ] && [ -n "$$(ls -A $(CPP_BINDINGS_DIR)/*.hpp 2>/dev/null || true)" ]; then \
-		mkdir -p $(WASM_RELEASE_DIR)/include; \
-		cp $(CPP_BINDINGS_DIR)/*.hpp $(WASM_RELEASE_DIR)/include/; \
-	fi
-	@if [ -d "$(CPP_BINDINGS_DIR)" ] && [ -n "$$(ls -A $(CPP_BINDINGS_DIR)/*.cpp 2>/dev/null || true)" ]; then \
-		mkdir -p $(WASM_RELEASE_DIR)/src/cpp; \
-		cp $(CPP_BINDINGS_DIR)/*.cpp $(WASM_RELEASE_DIR)/src/cpp/; \
-	fi
-	
 	# Create version file
 	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(WASM_RELEASE_DIR)/version.txt
+	
+	# Create compressed archive
+	@tar -czf release/dotlottie-player.wasm.tar.gz -C release wasm/
 	@echo "✓ WASM release package created: $(WASM_RELEASE_DIR)/"
+	@echo "✓ Compressed archive created: release/dotlottie-player.wasm.tar.gz"
 
 # Check WASM build environment
 wasm-check-env:
@@ -228,6 +222,7 @@ wasm-clean:
 	@rm -rf $(CPP_BINDINGS_DIR)
 	@rm -rf $(WASM_BUILD_DIR)
 	@rm -rf $(WASM_RELEASE_DIR)
+	@rm -f release/dotlottie-player.wasm.tar.gz
 	@echo "✓ WASM builds cleaned"
 
 

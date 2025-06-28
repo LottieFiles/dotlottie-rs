@@ -27,12 +27,9 @@ jobs:
       - name: Build WASM
         run: make wasm
 
-      - name: Optimize WASM
-        run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
-
       - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.wasm.tar.gz
-          path: release/wasm/dotlottie-player.wasm.tar.gz
+          path: release/dotlottie-player.wasm.tar.gz
           if-no-files-found: error

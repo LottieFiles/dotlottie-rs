@@ -3,6 +3,17 @@ UNIFFI_BINDGEN_CPP ?= uniffi-bindgen-cpp
 # Default Rust features for Linux builds
 LINUX_FEATURES ?= uniffi,thorvg,thorvg_webp,thorvg_png,thorvg_jpg,thorvg_ttf,thorvg_lottie_expressions
 
+# Linux toolchain configuration
+LINUX_CC_x86_64 ?= gcc
+LINUX_CXX_x86_64 ?= g++
+LINUX_AR_x86_64 ?= ar
+LINUX_RANLIB_x86_64 ?= ranlib
+
+LINUX_CC_aarch64 ?= aarch64-linux-gnu-gcc
+LINUX_CXX_aarch64 ?= aarch64-linux-gnu-g++
+LINUX_AR_aarch64 ?= aarch64-linux-gnu-ar
+LINUX_RANLIB_aarch64 ?= aarch64-linux-gnu-ranlib
+
 # UniFFI Bindings
 BINDINGS_DIR ?= dotlottie-ffi/uniffi_bindings
 CPP_BINDINGS_DIR ?= $(BINDINGS_DIR)/cpp
@@ -85,7 +96,13 @@ linux: linux-cpp-bindings $(addprefix linux-,x86_64 aarch64) linux-package
 # Linux x86_64
 linux-x86_64: linux-cpp-bindings linux-check-env
 	@echo "→ Building Linux x86_64..."
-	@cargo build \
+	@CC="$(LINUX_CC_x86_64)" \
+	CXX="$(LINUX_CXX_x86_64)" \
+	AR="$(LINUX_AR_x86_64)" \
+	RANLIB="$(LINUX_RANLIB_x86_64)" \
+	CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="$(LINUX_CC_x86_64)" \
+	BINDGEN_EXTRA_CLANG_ARGS="" \
+	cargo build \
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(LINUX_TARGET_x86_64) \
 		--no-default-features \
@@ -97,7 +114,15 @@ linux-x86_64: linux-cpp-bindings linux-check-env
 # Linux aarch64
 linux-aarch64: linux-cpp-bindings linux-check-env
 	@echo "→ Building Linux aarch64..."
-	@cargo build \
+	@CC="$(LINUX_CC_aarch64)" \
+	CXX="$(LINUX_CXX_aarch64)" \
+	AR="$(LINUX_AR_aarch64)" \
+	RANLIB="$(LINUX_RANLIB_aarch64)" \
+	CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="$(LINUX_CC_aarch64)" \
+	BINDGEN_EXTRA_CLANG_ARGS="--sysroot=/usr/aarch64-linux-gnu" \
+	PKG_CONFIG_ALLOW_CROSS=1 \
+	PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig" \
+	cargo build \
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(LINUX_TARGET_aarch64) \
 		--no-default-features \
@@ -123,6 +148,31 @@ linux-check-env:
 	@if ! command -v cargo >/dev/null 2>&1; then \
 		echo "Error: cargo not found"; \
 		exit 1; \
+	fi
+	@echo "✓ Checking x86_64 toolchain..."
+	@if ! command -v $(LINUX_CC_x86_64) >/dev/null 2>&1; then \
+		echo "Error: $(LINUX_CC_x86_64) not found"; \
+		echo "Please install build-essential or gcc"; \
+		exit 1; \
+	fi
+	@if ! command -v $(LINUX_CXX_x86_64) >/dev/null 2>&1; then \
+		echo "Error: $(LINUX_CXX_x86_64) not found"; \
+		echo "Please install build-essential or g++"; \
+		exit 1; \
+	fi
+	@echo "✓ Checking aarch64 cross-compilation toolchain..."
+	@if ! command -v $(LINUX_CC_aarch64) >/dev/null 2>&1; then \
+		echo "Warning: $(LINUX_CC_aarch64) not found"; \
+		echo "For aarch64 cross-compilation, please install:"; \
+		echo "  Ubuntu/Debian: sudo apt-get install gcc-aarch64-linux-gnu"; \
+		echo "  RHEL/CentOS: sudo yum install gcc-aarch64-linux-gnu"; \
+		echo "  Arch: sudo pacman -S aarch64-linux-gnu-gcc"; \
+		echo "Skipping aarch64 toolchain validation..."; \
+	else \
+		if ! command -v $(LINUX_CXX_aarch64) >/dev/null 2>&1; then \
+			echo "Warning: $(LINUX_CXX_aarch64) not found"; \
+			echo "Please install g++-aarch64-linux-gnu"; \
+		fi; \
 	fi
 
 # Install Linux targets if not already installed

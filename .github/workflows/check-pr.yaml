@@ -18,6 +18,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Setup Linux
         run: |
+          # Install cross-compilation toolchain for aarch64
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+          # Install Rust targets and UniFFI bindgen
           make linux-install-targets
           cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag v0.7.1+v0.28.3
 

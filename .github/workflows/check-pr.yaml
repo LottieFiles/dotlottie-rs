@@ -9,27 +9,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-apple:
-    runs-on: macos-latest
+  build-linux:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
       - uses: dtolnay/rust-toolchain@stable
-      - uses: dtolnay/rust-toolchain@nightly
+      - name: Setup Linux
+        run: |
+          make linux-install-targets
+          cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag v0.7.1+v0.28.3
 
-      - name: Setup Apple
-        run: make apple-install-targets
+      - name: Build Linux
+        run: make linux
 
-      - name: Build Apple
-        run: make apple
-
-      - name: Upload Apple Artifacts
+      - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dotlottie-player.apple.tar.gz
-          path: release/dotlottie-player.apple.tar.gz
+          name: dotlottie-player.linux.tar.gz
+          path: release/dotlottie-player.linux.tar.gz
           if-no-files-found: error
+
+  # build-apple:
+  #   runs-on: macos-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: true
+  #     - uses: dtolnay/rust-toolchain@stable
+  #     - uses: dtolnay/rust-toolchain@nightly
+
+  #     - name: Setup Apple
+  #       run: make apple-install-targets
+
+  #     - name: Build Apple
+  #       run: make apple
+
+  #     - name: Upload Apple Artifacts
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: dotlottie-player.apple.tar.gz
+  #         path: release/dotlottie-player.apple.tar.gz
+  #         if-no-files-found: error
 
   # build-android:
   #   runs-on: ubuntu-latest

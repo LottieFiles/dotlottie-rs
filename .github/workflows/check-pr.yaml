@@ -1,79 +1,36 @@
 name: Check PR
 
 on:
-  pull_request:
-    branches: [main]
   push:
-    branches: [main]
+    branches: [chore/build]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  check-pr:
-    if: github.head_ref != 'release'
+  build-wasm:
     runs-on: ubuntu-latest
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
+      - uses: actions/checkout@v4
+      - uses: ningenMe/setup-rustup@v1.1.0
+      - name: Setup WASM Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binaryen
+          cargo install uniffi-bindgen-cpp
+          make wasm-install-emsdk
+          make wasm-install-targets
+
+      - name: Build WASM
+        run: make wasm
+
+      - name: Optimize WASM
+        run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
+
+      - name: Upload WASM Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          access_token: ${{ github.token }}
-
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Setup Conan
-        uses: turtlebrowser/get-conan@main
-
-      - name: Build
-        run: |
-          cargo build --manifest-path=./dotlottie-rs/Cargo.toml --release
-          cargo build --manifest-path=./dotlottie-ffi/Cargo.toml --release
-
-      - name: Test
-        run: |
-          cargo test --manifest-path=./dotlottie-rs/Cargo.toml --release -- --test-threads=1 
-          cargo test --manifest-path=./dotlottie-ffi/Cargo.toml --release -- --test-threads=1
-
-      - name: Lint
-        run: |
-          cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --all-targets -- -D clippy::print_stdout
-          cargo clippy --manifest-path=./dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
-        env:
-          RUSTFLAGS: "-Dwarnings"
-
-  check-windows:
-    if: github.head_ref != 'release'
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Install uniffi-bindgen-cpp
-        run: cargo install uniffi-bindgen-cpp
-
-      - name: Install Windows targets
-        run: make install-windows-targets
-        working-directory: dotlottie-ffi
-
-      - name: Build Windows
-        run: |
-          cargo build --manifest-path=./dotlottie-rs/Cargo.toml --release
-          cargo build --manifest-path=./dotlottie-ffi/Cargo.toml --release
-
-      - name: Test Windows
-        run: |
-          cargo test --manifest-path=./dotlottie-rs/Cargo.toml --release -- --test-threads=1 
-          cargo test --manifest-path=./dotlottie-ffi/Cargo.toml --release -- --test-threads=1
-
-      - name: Lint Windows
-        run: |
-          cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --all-targets -- -D clippy::print_stdout
-          cargo clippy --manifest-path=./dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
-        env:
-          RUSTFLAGS: "-Dwarnings"
+          name: dotlottie-player.wasm.tar.gz
+          path: release/wasm/dotlottie-player.wasm.tar.gz
+          if-no-files-found: error

@@ -2,7 +2,7 @@
 # Main build orchestrator for dotlottie-ffi across multiple platforms
 
 # Variables that can be overridden
-BINDINGS_DIR ?= bindings
+BINDINGS_DIR ?= dotlottie-ffi/uniffi_bindings
 
 .PHONY: all clean help list-platforms
 
@@ -99,8 +99,6 @@ list-platforms:
 # Clean all build artifacts
 clean:
 	@echo "Cleaning all build artifacts..."
-	cargo clean
+	cargo clean --manifest-path dotlottie-ffi/Cargo.toml
 	rm -rf $(BINDINGS_DIR)
-	@echo "Clean complete."
-
-
+	@echo "Clean complete." 

@@ -8,7 +8,7 @@ MIN_VISIONOS_VERSION ?= 1.0
 APPLE_FEATURES ?= uniffi,thorvg,thorvg_webp,thorvg_png,thorvg_jpg,thorvg_ttf,thorvg_lottie_expressions
 
 # UniFFI Bindings
-BINDINGS_DIR ?= bindings
+BINDINGS_DIR ?= dotlottie-ffi/uniffi_bindings
 SWIFT_BINDINGS_DIR ?= $(BINDINGS_DIR)/swift
 
 # Release and packaging variables
@@ -37,7 +37,7 @@ INSTALL_NAME_TOOL := install_name_tool
 XCODEBUILD := xcodebuild
 
 # Get version information
-CRATE_VERSION := $(shell grep -m 1 version Cargo.toml | sed 's/.*"\([0-9.]\+\)"/\1/')
+CRATE_VERSION := $(shell grep -m 1 version dotlottie-ffi/Cargo.toml | sed 's/.*"\([0-9.]\+\)"/\1/')
 COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
 # Apple module map template
@@ -95,7 +95,7 @@ APPLE_TARGET_tvos_arm64 = aarch64-apple-tvos
 APPLE_TARGET_tvos_sim_arm64 = aarch64-apple-tvos-sim
 
 # Framework build directories
-APPLE_BUILD_DIR := build/apple
+APPLE_BUILD_DIR := dotlottie-ffi/build/apple
 FRAMEWORK_BUILD_DIR := $(APPLE_BUILD_DIR)/frameworks
 
 # Framework type directories
@@ -108,35 +108,37 @@ TVOS_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/tvos
 TVOS_SIMULATOR_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/tvos-simulator
 
 # Apple-specific phony targets
-.PHONY: apple apple-macos apple-ios apple-visionos apple-tvos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 install-apple-targets apple-clean
+.PHONY: apple apple-macos apple-ios apple-visionos apple-tvos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 apple-install-targets apple-clean
 
 
 
 # Swift bindings file target - automatically rebuilds when UDL changes
-$(SWIFT_BINDINGS_DIR)/dotlottie_player.swift: src/dotlottie_player.udl
-	@echo "Generating Swift UniFFI bindings..."
+$(SWIFT_BINDINGS_DIR)/dotlottie_player.swift: dotlottie-ffi/src/dotlottie_player.udl
+	@echo "→ Generating Swift UniFFI bindings..."
 	@mkdir -p $(SWIFT_BINDINGS_DIR)
-	cargo run \
+	@cargo run \
+		--manifest-path dotlottie-ffi/Cargo.toml \
 		--no-default-features \
 		--features=uniffi/cli,$(APPLE_FEATURES) \
 		--bin uniffi-bindgen \
-		generate $< \
+		generate dotlottie-ffi/src/dotlottie_player.udl \
 		--language swift \
-		--out-dir $(SWIFT_BINDINGS_DIR)
-	@echo "Swift bindings generated in $(SWIFT_BINDINGS_DIR)"
+		--out-dir $(SWIFT_BINDINGS_DIR) >/dev/null
+	@echo "✓ Swift bindings generated"
 
 # Swift bindings header file target
-$(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h: src/dotlottie_player.udl
-	@echo "Generating Swift UniFFI header..."
+$(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h: dotlottie-ffi/src/dotlottie_player.udl
+	@echo "→ Generating Swift UniFFI header..."
 	@mkdir -p $(SWIFT_BINDINGS_DIR)
-	cargo run \
+	@cargo run \
+		--manifest-path dotlottie-ffi/Cargo.toml \
 		--no-default-features \
 		--features=uniffi/cli,$(APPLE_FEATURES) \
 		--bin uniffi-bindgen \
-		generate $< \
+		generate dotlottie-ffi/src/dotlottie_player.udl \
 		--language swift \
-		--out-dir $(SWIFT_BINDINGS_DIR)
-	@echo "Swift bindings header generated in $(SWIFT_BINDINGS_DIR)"
+		--out-dir $(SWIFT_BINDINGS_DIR) >/dev/null
+	@echo "✓ Swift bindings header generated"
 
 # Convenience target that depends on the actual files
 swift-bindings: $(SWIFT_BINDINGS_DIR)/dotlottie_player.swift $(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h
@@ -146,63 +148,24 @@ apple: swift-bindings $(addprefix apple-,macos ios visionos tvos) apple-framewor
 
 # Build for all macOS architectures
 apple-macos: swift-bindings $(addprefix apple-macos-,arm64 x86_64) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)
-	@echo "Creating macOS release package..."
-	@mkdir -p $(APPLE_RELEASE_DIR)/macos
-	@rm -rf $(APPLE_RELEASE_DIR)/macos/*
-	cp -r $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(APPLE_RELEASE_DIR)/macos/
-	@if [ -f "$(SWIFT_BINDINGS_DIR)/dotlottie_player.swift" ]; then \
-		cp $(SWIFT_BINDINGS_DIR)/dotlottie_player.swift $(APPLE_RELEASE_DIR)/macos/; \
-	fi
-	@echo "macOS package created: $(APPLE_RELEASE_DIR)/macos/"
+	@echo "✓ macOS build complete"
 
 # Build for all iOS architectures (device + simulator)
 apple-ios: swift-bindings $(addprefix apple-ios-,arm64 x86_64 sim-arm64) $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)
-	@echo "Creating iOS release package..."
-	@mkdir -p $(APPLE_RELEASE_DIR)/ios
-	@rm -rf $(APPLE_RELEASE_DIR)/ios/*
-	$(XCODEBUILD) -create-xcframework \
-		-framework $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
-		-framework $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
-		-output $(APPLE_RELEASE_DIR)/ios/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
-	@if [ -f "$(SWIFT_BINDINGS_DIR)/dotlottie_player.swift" ]; then \
-		cp $(SWIFT_BINDINGS_DIR)/dotlottie_player.swift $(APPLE_RELEASE_DIR)/ios/; \
-	fi
-	@echo "iOS package created: $(APPLE_RELEASE_DIR)/ios/"
+	@echo "✓ iOS build complete"
 
 # Build for all visionOS architectures
 apple-visionos: swift-bindings $(addprefix apple-visionos-,arm64 sim-arm64) $(VISIONOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(VISIONOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)
-	@echo "Creating visionOS release package..."
-	@mkdir -p $(APPLE_RELEASE_DIR)/visionos
-	@rm -rf $(APPLE_RELEASE_DIR)/visionos/*
-	$(XCODEBUILD) -create-xcframework \
-		-framework $(VISIONOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
-		-framework $(VISIONOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
-		-output $(APPLE_RELEASE_DIR)/visionos/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
-	@if [ -f "$(SWIFT_BINDINGS_DIR)/dotlottie_player.swift" ]; then \
-		cp $(SWIFT_BINDINGS_DIR)/dotlottie_player.swift $(APPLE_RELEASE_DIR)/visionos/; \
-	fi
-	@echo "visionOS package created: $(APPLE_RELEASE_DIR)/visionos/"
+	@echo "✓ visionOS build complete"
 
 # Build for all tvOS architectures
 apple-tvos: swift-bindings $(addprefix apple-tvos-,arm64 sim-arm64) $(TVOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)
-	@echo "Creating tvOS release package..."
-	@mkdir -p $(APPLE_RELEASE_DIR)/tvos
-	@rm -rf $(APPLE_RELEASE_DIR)/tvos/*
-	$(XCODEBUILD) -create-xcframework \
-		-framework $(TVOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
-		-framework $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
-		-output $(APPLE_RELEASE_DIR)/tvos/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
-	@if [ -f "$(SWIFT_BINDINGS_DIR)/dotlottie_player.swift" ]; then \
-		cp $(SWIFT_BINDINGS_DIR)/dotlottie_player.swift $(APPLE_RELEASE_DIR)/tvos/; \
-	fi
-	@echo "tvOS package created: $(APPLE_RELEASE_DIR)/tvos/"
+	@echo "✓ tvOS build complete"
 
 # macOS ARM64
 apple-macos-arm64: swift-bindings apple-check-xcode
-	@echo "Building dotlottie-ffi for macOS ARM64..."
-	@echo "Using Xcode: $(XCODE_PATH)"
-	@echo "Min macOS Version: $(MIN_MACOS_VERSION)"
-	SDKROOT="$(MACOS_SDK)" \
+	@echo "→ Building macOS ARM64..."
+	@SDKROOT="$(MACOS_SDK)" \
 	MACOSX_DEPLOYMENT_TARGET="$(MIN_MACOS_VERSION)" \
 	CC="$(shell xcrun -sdk macosx --find clang)" \
 	CXX="$(shell xcrun -sdk macosx --find clang++)" \
@@ -212,17 +175,17 @@ apple-macos-arm64: swift-bindings apple-check-xcode
 	CXXFLAGS="-arch arm64 -isysroot $(MACOS_SDK) -mmacosx-version-min=$(MIN_MACOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER="$(shell xcrun -sdk macosx --find clang)" \
 	cargo build \
+		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(APPLE_TARGET_macos_arm64) \
 		--release \
 		--no-default-features \
-		--features $(APPLE_FEATURES)
+		--features $(APPLE_FEATURES) >/dev/null
+	@echo "✓ macOS ARM64 build complete"
 
 # macOS x86_64
 apple-macos-x86_64: swift-bindings apple-check-xcode
-	@echo "Building dotlottie-ffi for macOS x86_64..."
-	@echo "Using Xcode: $(XCODE_PATH)"
-	@echo "Min macOS Version: $(MIN_MACOS_VERSION)"
-	SDKROOT="$(MACOS_SDK)" \
+	@echo "→ Building macOS x86_64..."
+	@SDKROOT="$(MACOS_SDK)" \
 	MACOSX_DEPLOYMENT_TARGET="$(MIN_MACOS_VERSION)" \
 	CC="$(shell xcrun -sdk macosx --find clang)" \
 	CXX="$(shell xcrun -sdk macosx --find clang++)" \
@@ -232,17 +195,17 @@ apple-macos-x86_64: swift-bindings apple-check-xcode
 	CXXFLAGS="-arch x86_64 -isysroot $(MACOS_SDK) -mmacosx-version-min=$(MIN_MACOS_VERSION)" \
 	CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER="$(shell xcrun -sdk macosx --find clang)" \
 	cargo build \
+		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(APPLE_TARGET_macos_x86_64) \
 		--release \
 		--no-default-features \
-		--features $(APPLE_FEATURES)
+		--features $(APPLE_FEATURES) >/dev/null
+	@echo "✓ macOS x86_64 build complete"
 
 # iOS ARM64 (device)
 apple-ios-arm64: swift-bindings apple-check-xcode
-	@echo "Building dotlottie-ffi for iOS ARM64 (device)..."
-	@echo "Using Xcode: $(XCODE_PATH)"
-	@echo "Min iOS Version: $(MIN_IOS_VERSION)"
-	SDKROOT="$(IOS_SDK)" \
+	@echo "→ Building iOS ARM64..."
+	@SDKROOT="$(IOS_SDK)" \
 	IPHONEOS_DEPLOYMENT_TARGET="$(MIN_IOS_VERSION)" \
 	CC="$(shell xcrun -sdk iphoneos --find clang)" \
 	CXX="$(shell xcrun -sdk iphoneos --find clang++)" \
@@ -252,17 +215,17 @@ apple-ios-arm64: swift-bindings apple-check-xcode
 	CXXFLAGS="-arch arm64 -isysroot $(IOS_SDK) -miphoneos-version-min=$(MIN_IOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_IOS_LINKER="$(shell xcrun -sdk iphoneos --find clang)" \
 	cargo build \
+		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(APPLE_TARGET_ios_arm64) \
 		--release \
 		--no-default-features \
-		--features $(APPLE_FEATURES)
+		--features $(APPLE_FEATURES) >/dev/null
+	@echo "✓ iOS ARM64 build complete"
 
 # iOS x86_64 (simulator)
 apple-ios-x86_64: swift-bindings apple-check-xcode
-	@echo "Building dotlottie-ffi for iOS x86_64 (simulator)..."
-	@echo "Using Xcode: $(XCODE_PATH)"
-	@echo "Min iOS Version: $(MIN_IOS_VERSION)"
-	SDKROOT="$(IOS_SIMULATOR_SDK)" \
+	@echo "→ Building iOS x86_64 simulator..."
+	@SDKROOT="$(IOS_SIMULATOR_SDK)" \
 	IPHONEOS_DEPLOYMENT_TARGET="$(MIN_IOS_VERSION)" \
 	CC="$(shell xcrun -sdk iphonesimulator --find clang)" \
 	CXX="$(shell xcrun -sdk iphonesimulator --find clang++)" \
@@ -272,17 +235,17 @@ apple-ios-x86_64: swift-bindings apple-check-xcode
 	CXXFLAGS="-arch x86_64 -isysroot $(IOS_SIMULATOR_SDK) -miphoneos-version-min=$(MIN_IOS_VERSION)" \
 	CARGO_TARGET_X86_64_APPLE_IOS_LINKER="$(shell xcrun -sdk iphonesimulator --find clang)" \
 	cargo build \
+		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(APPLE_TARGET_ios_x86_64) \
 		--release \
 		--no-default-features \
-		--features $(APPLE_FEATURES)
+		--features $(APPLE_FEATURES) >/dev/null
+	@echo "✓ iOS x86_64 simulator build complete"
 
 # iOS ARM64 Simulator
 apple-ios-sim-arm64: swift-bindings apple-check-xcode
-	@echo "Building dotlottie-ffi for iOS ARM64 (simulator)..."
-	@echo "Using Xcode: $(XCODE_PATH)"
-	@echo "Min iOS Version: $(MIN_IOS_VERSION)"
-	SDKROOT="$(IOS_SIMULATOR_SDK)" \
+	@echo "→ Building iOS ARM64 simulator..."
+	@SDKROOT="$(IOS_SIMULATOR_SDK)" \
 	IPHONEOS_DEPLOYMENT_TARGET="$(MIN_IOS_VERSION)" \
 	CC="$(shell xcrun -sdk iphonesimulator --find clang)" \
 	CXX="$(shell xcrun -sdk iphonesimulator --find clang++)" \
@@ -292,18 +255,17 @@ apple-ios-sim-arm64: swift-bindings apple-check-xcode
 	CXXFLAGS="-arch arm64 -isysroot $(IOS_SIMULATOR_SDK) -miphoneos-version-min=$(MIN_IOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_IOS_SIM_LINKER="$(shell xcrun -sdk iphonesimulator --find clang)" \
 	cargo build \
+		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(APPLE_TARGET_ios_sim_arm64) \
 		--release \
 		--no-default-features \
-		--features $(APPLE_FEATURES)
+		--features $(APPLE_FEATURES) >/dev/null
+	@echo "✓ iOS ARM64 simulator build complete"
 
 # visionOS ARM64 (device)
 apple-visionos-arm64: swift-bindings apple-check-xcode
-	@echo "Building dotlottie-ffi for visionOS ARM64 (device)..."
-	@echo "Using Xcode: $(XCODE_PATH)"
-	@echo "Min visionOS Version: $(MIN_VISIONOS_VERSION)"
-	@echo "Note: Using Rust nightly with build-std for visionOS"
-	SDKROOT="$(VISIONOS_SDK)" \
+	@echo "→ Building visionOS ARM64 (nightly)..."
+	@SDKROOT="$(VISIONOS_SDK)" \
 	XROS_DEPLOYMENT_TARGET="$(MIN_VISIONOS_VERSION)" \
 	CC="$(shell xcrun -sdk xros --find clang)" \
 	CXX="$(shell xcrun -sdk xros --find clang++)" \
@@ -313,19 +275,18 @@ apple-visionos-arm64: swift-bindings apple-check-xcode
 	CXXFLAGS="-arch arm64 -isysroot $(VISIONOS_SDK)" \
 	CARGO_TARGET_AARCH64_APPLE_VISIONOS_LINKER="$(shell xcrun -sdk xros --find clang)" \
 	cargo +nightly build \
+		--manifest-path dotlottie-ffi/Cargo.toml \
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_visionos_arm64) \
 		--no-default-features \
 		--features $(APPLE_FEATURES) \
-		--release
+		--release >/dev/null
+	@echo "✓ visionOS ARM64 build complete"
 
 # visionOS ARM64 Simulator
 apple-visionos-sim-arm64: swift-bindings apple-check-xcode
-	@echo "Building dotlottie-ffi for visionOS ARM64 (simulator)..."
-	@echo "Using Xcode: $(XCODE_PATH)"
-	@echo "Min visionOS Version: $(MIN_VISIONOS_VERSION)"
-	@echo "Note: Using Rust nightly with build-std for visionOS"
-	SDKROOT="$(VISIONOS_SIMULATOR_SDK)" \
+	@echo "→ Building visionOS ARM64 simulator (nightly)..."
+	@SDKROOT="$(VISIONOS_SIMULATOR_SDK)" \
 	XROS_DEPLOYMENT_TARGET="$(MIN_VISIONOS_VERSION)" \
 	CC="$(shell xcrun -sdk xrsimulator --find clang)" \
 	CXX="$(shell xcrun -sdk xrsimulator --find clang++)" \
@@ -335,19 +296,18 @@ apple-visionos-sim-arm64: swift-bindings apple-check-xcode
 	CXXFLAGS="-arch arm64 -isysroot $(VISIONOS_SIMULATOR_SDK)" \
 	CARGO_TARGET_AARCH64_APPLE_VISIONOS_SIM_LINKER="$(shell xcrun -sdk xrsimulator --find clang)" \
 	cargo +nightly build \
+		--manifest-path dotlottie-ffi/Cargo.toml \
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_visionos_sim_arm64) \
 		--no-default-features \
 		--features $(APPLE_FEATURES) \
-		--release
+		--release >/dev/null
+	@echo "✓ visionOS ARM64 simulator build complete"
 
 # tvOS ARM64 (device)
 apple-tvos-arm64: swift-bindings apple-check-xcode
-	@echo "Building dotlottie-ffi for tvOS ARM64 (device)..."
-	@echo "Using Xcode: $(XCODE_PATH)"
-	@echo "Min tvOS Version: $(MIN_TVOS_VERSION)"
-	@echo "Note: Using Rust nightly with build-std for tvOS"
-	SDKROOT="$(TVOS_SDK)" \
+	@echo "→ Building tvOS ARM64 (nightly)..."
+	@SDKROOT="$(TVOS_SDK)" \
 	TVOS_DEPLOYMENT_TARGET="$(MIN_TVOS_VERSION)" \
 	CC="$(shell xcrun -sdk appletvos --find clang)" \
 	CXX="$(shell xcrun -sdk appletvos --find clang++)" \
@@ -357,19 +317,18 @@ apple-tvos-arm64: swift-bindings apple-check-xcode
 	CXXFLAGS="-arch arm64 -isysroot $(TVOS_SDK) -mtvos-version-min=$(MIN_TVOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_TVOS_LINKER="$(shell xcrun -sdk appletvos --find clang)" \
 	cargo +nightly build \
+		--manifest-path dotlottie-ffi/Cargo.toml \
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_tvos_arm64) \
 		--no-default-features \
 		--features $(APPLE_FEATURES) \
-		--release
+		--release >/dev/null
+	@echo "✓ tvOS ARM64 build complete"
 
 # tvOS ARM64 Simulator
 apple-tvos-sim-arm64: swift-bindings apple-check-xcode
-	@echo "Building dotlottie-ffi for tvOS ARM64 (simulator)..."
-	@echo "Using Xcode: $(XCODE_PATH)"
-	@echo "Min tvOS Version: $(MIN_TVOS_VERSION)"
-	@echo "Note: Using Rust nightly with build-std for tvOS"
-	SDKROOT="$(TVOS_SIMULATOR_SDK)" \
+	@echo "→ Building tvOS ARM64 simulator (nightly)..."
+	@SDKROOT="$(TVOS_SIMULATOR_SDK)" \
 	TVOS_DEPLOYMENT_TARGET="$(MIN_TVOS_VERSION)" \
 	CC="$(shell xcrun -sdk appletvsimulator --find clang)" \
 	CXX="$(shell xcrun -sdk appletvsimulator --find clang++)" \
@@ -379,38 +338,38 @@ apple-tvos-sim-arm64: swift-bindings apple-check-xcode
 	CXXFLAGS="-arch arm64 -isysroot $(TVOS_SIMULATOR_SDK) -mtvos-version-min=$(MIN_TVOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_TVOS_SIM_LINKER="$(shell xcrun -sdk appletvsimulator --find clang)" \
 	cargo +nightly build \
+		--manifest-path dotlottie-ffi/Cargo.toml \
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_tvos_sim_arm64) \
 		--no-default-features \
 		--features $(APPLE_FEATURES) \
-		--release
+		--release >/dev/null
+	@echo "✓ tvOS ARM64 simulator build complete"
 
 # Framework creation targets
 $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-macos-arm64 apple-macos-x86_64
-	@echo "Creating macOS framework..."
-	$(call create_framework_structure,$(MACOS_FRAMEWORK_DIR),$(MIN_MACOS_VERSION),MacOSX)
-	@echo "Creating universal binary for macOS..."
+	@echo "→ Creating macOS framework..."
+	@$(call create_framework_structure,$(MACOS_FRAMEWORK_DIR),$(MIN_MACOS_VERSION),MacOSX)
 	@rm -f $(MACOS_FRAMEWORK_DIR)/$(RUNTIME_FFI_DYLIB)
-	$(LIPO) -create target/$(APPLE_TARGET_macos_arm64)/release/$(RUNTIME_FFI_DYLIB) target/$(APPLE_TARGET_macos_x86_64)/release/$(RUNTIME_FFI_DYLIB) -o $(MACOS_FRAMEWORK_DIR)/$(RUNTIME_FFI_DYLIB)
-	cp $(MACOS_FRAMEWORK_DIR)/$(RUNTIME_FFI_DYLIB) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
+	@$(LIPO) -create dotlottie-ffi/target/$(APPLE_TARGET_macos_arm64)/release/$(RUNTIME_FFI_DYLIB) dotlottie-ffi/target/$(APPLE_TARGET_macos_x86_64)/release/$(RUNTIME_FFI_DYLIB) -o $(MACOS_FRAMEWORK_DIR)/$(RUNTIME_FFI_DYLIB)
+	@cp $(MACOS_FRAMEWORK_DIR)/$(RUNTIME_FFI_DYLIB) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 	@if [ -f "$(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h" ]; then \
 		cp $(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_HEADERS)/$(DOTLOTTIE_PLAYER_MODULE).h; \
 	fi
-	@echo "Creating module map for macOS..."
 	@echo 'framework module $(DOTLOTTIE_PLAYER_MODULE) {' > $(MACOS_FRAMEWORK_DIR)/$(MODULE_MAP)
 	@echo '  umbrella header "$(DOTLOTTIE_PLAYER_MODULE).h"' >> $(MACOS_FRAMEWORK_DIR)/$(MODULE_MAP)
 	@echo '  export *' >> $(MACOS_FRAMEWORK_DIR)/$(MODULE_MAP)
 	@echo '  module * { export * }' >> $(MACOS_FRAMEWORK_DIR)/$(MODULE_MAP)
 	@echo '}' >> $(MACOS_FRAMEWORK_DIR)/$(MODULE_MAP)
-	cp $(MACOS_FRAMEWORK_DIR)/$(MODULE_MAP) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_MODULES)/
-	$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
-	@echo "macOS framework created: $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)"
+	@cp $(MACOS_FRAMEWORK_DIR)/$(MODULE_MAP) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_MODULES)/
+	@$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
+	@echo "✓ macOS framework created"
 
 $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-ios-arm64
 	@echo "Creating iOS framework..."
 	$(call create_framework_structure,$(IOS_FRAMEWORK_DIR),$(MIN_IOS_VERSION),iPhoneOS)
 	@echo "Creating iOS binary..."
-	cp target/$(APPLE_TARGET_ios_arm64)/release/$(RUNTIME_FFI_DYLIB) $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
+	cp dotlottie-ffi/target/$(APPLE_TARGET_ios_arm64)/release/$(RUNTIME_FFI_DYLIB) $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 	@if [ -f "$(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h" ]; then \
 		cp $(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_HEADERS)/$(DOTLOTTIE_PLAYER_MODULE).h; \
 	fi
@@ -429,7 +388,7 @@ $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-ios-x86_64 a
 	$(call create_framework_structure,$(IOS_SIMULATOR_FRAMEWORK_DIR),$(MIN_IOS_VERSION),iPhoneSimulator)
 	@echo "Creating universal binary for iOS Simulator..."
 	@rm -f $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(RUNTIME_FFI_DYLIB)
-	$(LIPO) -create target/$(APPLE_TARGET_ios_x86_64)/release/$(RUNTIME_FFI_DYLIB) target/$(APPLE_TARGET_ios_sim_arm64)/release/$(RUNTIME_FFI_DYLIB) -o $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(RUNTIME_FFI_DYLIB)
+	$(LIPO) -create dotlottie-ffi/target/$(APPLE_TARGET_ios_x86_64)/release/$(RUNTIME_FFI_DYLIB) dotlottie-ffi/target/$(APPLE_TARGET_ios_sim_arm64)/release/$(RUNTIME_FFI_DYLIB) -o $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(RUNTIME_FFI_DYLIB)
 	cp $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(RUNTIME_FFI_DYLIB) $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 	@if [ -f "$(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h" ]; then \
 		cp $(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_HEADERS)/$(DOTLOTTIE_PLAYER_MODULE).h; \
@@ -448,7 +407,7 @@ $(VISIONOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-visionos-arm64
 	@echo "Creating visionOS framework..."
 	$(call create_framework_structure,$(VISIONOS_FRAMEWORK_DIR),$(MIN_VISIONOS_VERSION),XROS)
 	@echo "Creating visionOS binary..."
-	cp target/$(APPLE_TARGET_visionos_arm64)/release/$(RUNTIME_FFI_DYLIB) $(VISIONOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
+	cp dotlottie-ffi/target/$(APPLE_TARGET_visionos_arm64)/release/$(RUNTIME_FFI_DYLIB) $(VISIONOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 	@if [ -f "$(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h" ]; then \
 		cp $(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h $(VISIONOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_HEADERS)/$(DOTLOTTIE_PLAYER_MODULE).h; \
 	fi
@@ -466,7 +425,7 @@ $(VISIONOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-visiono
 	@echo "Creating visionOS Simulator framework..."
 	$(call create_framework_structure,$(VISIONOS_SIMULATOR_FRAMEWORK_DIR),$(MIN_VISIONOS_VERSION),XRSimulator)
 	@echo "Creating visionOS Simulator binary..."
-	cp target/$(APPLE_TARGET_visionos_sim_arm64)/release/$(RUNTIME_FFI_DYLIB) $(VISIONOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
+	cp dotlottie-ffi/target/$(APPLE_TARGET_visionos_sim_arm64)/release/$(RUNTIME_FFI_DYLIB) $(VISIONOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 	@if [ -f "$(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h" ]; then \
 		cp $(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h $(VISIONOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_HEADERS)/$(DOTLOTTIE_PLAYER_MODULE).h; \
 	fi
@@ -484,7 +443,7 @@ $(TVOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-tvos-arm64
 	@echo "Creating tvOS framework..."
 	$(call create_framework_structure,$(TVOS_FRAMEWORK_DIR),$(MIN_TVOS_VERSION),AppleTVOS)
 	@echo "Creating tvOS binary..."
-	cp target/$(APPLE_TARGET_tvos_arm64)/release/$(RUNTIME_FFI_DYLIB) $(TVOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
+	cp dotlottie-ffi/target/$(APPLE_TARGET_tvos_arm64)/release/$(RUNTIME_FFI_DYLIB) $(TVOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 	@if [ -f "$(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h" ]; then \
 		cp $(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h $(TVOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_HEADERS)/$(DOTLOTTIE_PLAYER_MODULE).h; \
 	fi
@@ -502,7 +461,7 @@ $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-tvos-sim-ar
 	@echo "Creating tvOS Simulator framework..."
 	$(call create_framework_structure,$(TVOS_SIMULATOR_FRAMEWORK_DIR),$(MIN_TVOS_VERSION),AppleTVSimulator)
 	@echo "Creating tvOS Simulator binary..."
-	cp target/$(APPLE_TARGET_tvos_sim_arm64)/release/$(RUNTIME_FFI_DYLIB) $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
+	cp dotlottie-ffi/target/$(APPLE_TARGET_tvos_sim_arm64)/release/$(RUNTIME_FFI_DYLIB) $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 	@if [ -f "$(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h" ]; then \
 		cp $(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_HEADERS)/$(DOTLOTTIE_PLAYER_MODULE).h; \
 	fi
@@ -518,15 +477,14 @@ $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-tvos-sim-ar
 
 # Create all frameworks
 apple-frameworks: $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(VISIONOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(VISIONOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(TVOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)
-	@echo "All Apple frameworks created successfully!"
+	@echo "✓ All Apple frameworks created"
 
 # Package Apple release
 apple-package: apple-frameworks
-	@echo "Packaging Apple release..."
-	@mkdir -p $(DOTLOTTIE_PLAYER_APPLE_RELEASE_DIR)
-	@echo "Creating XCFramework..."
-	@rm -rf $(DOTLOTTIE_PLAYER_APPLE_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
-	$(XCODEBUILD) -create-xcframework \
+	@echo "→ Creating Apple release package..."
+	@mkdir -p $(APPLE_RELEASE_DIR)
+	@rm -rf $(APPLE_RELEASE_DIR)/*
+	@$(XCODEBUILD) -create-xcframework \
 		-framework $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
 		-framework $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
 		-framework $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
@@ -534,14 +492,11 @@ apple-package: apple-frameworks
 		-framework $(VISIONOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
 		-framework $(TVOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
 		-framework $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
-		-output $(DOTLOTTIE_PLAYER_APPLE_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
+		-output $(APPLE_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK) >/dev/null
 	@if [ -f "$(SWIFT_BINDINGS_DIR)/dotlottie_player.swift" ]; then \
-		cp $(SWIFT_BINDINGS_DIR)/dotlottie_player.swift $(DOTLOTTIE_PLAYER_APPLE_RELEASE_DIR)/; \
-		echo "Copied Swift bindings to $(DOTLOTTIE_PLAYER_APPLE_RELEASE_DIR)"; \
-	else \
-		echo "Swift bindings not found, skipping copy"; \
+		cp $(SWIFT_BINDINGS_DIR)/dotlottie_player.swift $(APPLE_RELEASE_DIR)/; \
 	fi
-	@echo "Apple packaging completed in $(DOTLOTTIE_PLAYER_APPLE_RELEASE_DIR)"
+	@echo "✓ Apple release package created: $(APPLE_RELEASE_DIR)/"
 
 # Check if Xcode is available
 apple-check-xcode:
@@ -557,27 +512,21 @@ apple-check-xcode:
 	fi
 
 # Install Apple targets if not already installed
-install-apple-targets:
-	@echo "Installing Apple Rust targets..."
-	@echo "Installing stable targets (macOS and iOS)..."
-	rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
-	@echo ""
-	@echo "Installing Rust nightly (required for visionOS and tvOS)..."
-	rustup install nightly
-	@echo ""
-	@echo "Note: visionOS and tvOS targets require Rust nightly and may not be available in all versions"
-	@echo "Attempting to install visionOS and tvOS targets with nightly toolchain..."
-	-rustup +nightly target add aarch64-apple-visionos aarch64-apple-visionos-sim aarch64-apple-tvos aarch64-apple-tvos-sim
+apple-install-targets:
+	@echo "→ Installing Apple Rust targets..."
+	@rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim >/dev/null
+	@rustup install nightly >/dev/null
+	@rustup +nightly target add aarch64-apple-visionos aarch64-apple-visionos-sim aarch64-apple-tvos aarch64-apple-tvos-sim >/dev/null 2>&1 || true
+	@echo "✓ Apple targets installed"
 
 
 
 
 # Clean all Apple builds
 apple-clean:
-	@echo "Cleaning all Apple builds..."
-	cargo clean
-	rm -rf $(SWIFT_BINDINGS_DIR)
-	rm -rf $(BINDINGS_DIR)
-	rm -rf $(APPLE_BUILD_DIR)
-	rm -rf $(APPLE_RELEASE_DIR)
-	@echo "All Apple builds cleaned."
+	@echo "→ Cleaning Apple builds..."
+	@cargo clean --manifest-path dotlottie-ffi/Cargo.toml >/dev/null 2>&1
+	@rm -rf $(SWIFT_BINDINGS_DIR)
+	@rm -rf $(APPLE_BUILD_DIR)
+	@rm -rf $(APPLE_RELEASE_DIR)
+	@echo "✓ Apple builds cleaned"

@@ -6,7 +6,7 @@ WASM_FEATURES ?= thorvg,thorvg_webp,thorvg_png,thorvg_jpg,thorvg_ttf,thorvg_lott
 
 # WASM/Emscripten configuration
 EMSDK := emsdk
-EMSDK_DIR := deps/$(EMSDK)
+EMSDK_DIR := deps/modules/$(EMSDK)
 EMSDK_ENV := emsdk_env.sh
 
 # WASM module configuration
@@ -14,44 +14,47 @@ WASM_MODULE := DotLottiePlayer
 WASM_TARGET := wasm32-unknown-emscripten
 
 # UniFFI Bindings
-BINDINGS_DIR ?= bindings
+BINDINGS_DIR ?= dotlottie-ffi/uniffi_bindings
 CPP_BINDINGS_DIR ?= $(BINDINGS_DIR)/cpp
-WASM_BUILD_DIR := build/wasm
+WASM_BUILD_DIR := dotlottie-ffi/build/wasm
 
 # Get version information
-CRATE_VERSION := $(shell grep -m 1 version Cargo.toml | sed 's/.*"\([0-9.]\+\)"/\1/')
+CRATE_VERSION := $(shell grep -m 1 version dotlottie-ffi/Cargo.toml | sed 's/.*"\([0-9.]\+\)"/\1/')
 COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
+# Release directories
+WASM_RELEASE_DIR ?= release/wasm
+
 # WASM-specific phony targets
-.PHONY: wasm install-wasm-targets wasm-install-emsdk wasm-clean
+.PHONY: wasm wasm-install-targets wasm-install-emsdk wasm-package wasm-clean
 
 
 
 # Initialize emsdk submodule
 wasm-init-submodule:
-	@echo "Initializing emsdk submodule..."
+	@echo "→ Initializing emsdk submodule..."
 	@if [ ! -f "$(EMSDK_DIR)/emsdk" ]; then \
-		git submodule update --init --recursive $(EMSDK_DIR); \
+		git submodule update --init --recursive $(EMSDK_DIR) >/dev/null; \
 	fi
+	@echo "✓ emsdk submodule ready"
 
 # Install and activate specific emsdk version
 wasm-install-emsdk: wasm-init-submodule
-	@echo "Installing emsdk version $(EMSDK_VERSION)..."
-	cd $(EMSDK_DIR) && \
-		./emsdk install $(EMSDK_VERSION) && \
-		./emsdk activate $(EMSDK_VERSION)
-	@echo "emsdk $(EMSDK_VERSION) installed and activated"
+	@echo "→ Installing emsdk $(EMSDK_VERSION)..."
+	@cd $(EMSDK_DIR) && \
+		./emsdk install $(EMSDK_VERSION) >/dev/null && \
+		./emsdk activate $(EMSDK_VERSION) >/dev/null
+	@echo "✓ emsdk $(EMSDK_VERSION) installed and activated"
 
 # Generate C++ UniFFI bindings for WASM
 wasm-cpp-bindings:
-	@echo "Generating C++ UniFFI bindings for WASM..."
+	@echo "→ Generating C++ UniFFI bindings..."
 	@mkdir -p $(CPP_BINDINGS_DIR)
-	rm -rf $(CPP_BINDINGS_DIR)/*
-	$(UNIFFI_BINDGEN_CPP) \
-		--config uniffi.toml \
+	@rm -rf $(CPP_BINDINGS_DIR)/*
+	@$(UNIFFI_BINDGEN_CPP) \
+		--config dotlottie-ffi/uniffi.toml \
 		--out-dir $(CPP_BINDINGS_DIR) \
-		src/dotlottie_player.udl
-	@echo "Applying C++ bindings fixes for WASM..."
+		dotlottie-ffi/src/dotlottie_player.udl >/dev/null
 	@if ls $(CPP_BINDINGS_DIR)/*.hpp >/dev/null 2>&1; then \
 		sed -i.bak 's/uint8_t/char/g' $(CPP_BINDINGS_DIR)/*.hpp; \
 		rm -f $(CPP_BINDINGS_DIR)/*.bak; \
@@ -60,16 +63,16 @@ wasm-cpp-bindings:
 		sed -i.bak 's/uint8_t/char/g' $(CPP_BINDINGS_DIR)/*.cpp; \
 		rm -f $(CPP_BINDINGS_DIR)/*.bak; \
 	fi
-	@if [ -f emscripten_bindings.cpp ]; then \
-		cp emscripten_bindings.cpp $(CPP_BINDINGS_DIR)/.; \
+	@if [ -f dotlottie-ffi/emscripten_bindings.cpp ]; then \
+		cp dotlottie-ffi/emscripten_bindings.cpp $(CPP_BINDINGS_DIR)/.; \
 	fi
-	@echo "C++ bindings for WASM generated in $(CPP_BINDINGS_DIR)"
+	@echo "✓ C++ bindings generated"
 
 # Compile WASM C++ sources
 wasm-compile-cpp: wasm-cpp-bindings
-	@echo "Compiling C++ sources for WASM..."
+	@echo "→ Compiling C++ sources..."
 	@mkdir -p $(WASM_BUILD_DIR)
-	bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
+	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
 		export CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc && \
 		export CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ && \
 		export AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar && \
@@ -81,7 +84,7 @@ wasm-compile-cpp: wasm-cpp-bindings
 			-Oz \
 			-ffunction-sections \
 			-fdata-sections \
-			-c emscripten_bindings.cpp \
+			-c dotlottie-ffi/emscripten_bindings.cpp \
 			-o $(WASM_BUILD_DIR)/emscripten_bindings.o && \
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 			-std=c++20 \
@@ -92,39 +95,31 @@ wasm-compile-cpp: wasm-cpp-bindings
 			-ffunction-sections \
 			-fdata-sections \
 			-c $(CPP_BINDINGS_DIR)/dotlottie_player.cpp \
-			-o $(WASM_BUILD_DIR)/dotlottie_player.o"
+			-o $(WASM_BUILD_DIR)/dotlottie_player.o" >/dev/null
+	@echo "✓ C++ compilation complete"
 
 # Build Rust library for WASM target
 wasm-build-rust: wasm-check-env wasm-cpp-bindings
-	@echo "Building Rust library for WASM target..."
-	@echo "Target: $(WASM_TARGET)"
-	@echo "Features: $(WASM_FEATURES)"
-	@echo "Setting up emscripten toolchain..."
-	@echo "CC: $(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc"
-	@echo "CXX: $(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++"
-	@echo "AR: $(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar"
-	bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
+	@echo "→ Building Rust library (nightly)..."
+	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
 		export CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc && \
 		export CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ && \
 		export AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar && \
 		export RUSTFLAGS='-C link-arg=--no-entry' && \
-		echo 'Verifying toolchain:' && \
-		echo 'CC=' \$$CC && \
-		echo 'CXX=' \$$CXX && \
-		echo 'AR=' \$$AR && \
-		echo 'RUSTFLAGS=' \$$RUSTFLAGS && \
 		cargo +nightly build \
+			--manifest-path dotlottie-ffi/Cargo.toml \
 			-Z build-std=std,panic_abort \
 			-Z build-std-features=panic_immediate_abort \
 			--target $(WASM_TARGET) \
 			--no-default-features \
 			--features $(WASM_FEATURES) \
-			--release"
+			--release" >/dev/null
+	@echo "✓ Rust build complete"
 
 # Link WASM module
 wasm-link-module: wasm-build-rust wasm-compile-cpp
-	@echo "Linking WASM module..."
-	bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
+	@echo "→ Linking WASM module..."
+	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
 		export CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc && \
 		export CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ && \
 		export AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar && \
@@ -133,7 +128,7 @@ wasm-link-module: wasm-build-rust wasm-compile-cpp
 			-o $(WASM_BUILD_DIR)/$(WASM_MODULE).js \
 			$(WASM_BUILD_DIR)/emscripten_bindings.o \
 			$(WASM_BUILD_DIR)/dotlottie_player.o \
-			target/$(WASM_TARGET)/release/libdotlottie_player.a \
+			dotlottie-ffi/target/$(WASM_TARGET)/release/libdotlottie_player.a \
 			-Wl,-u,htons \
 			-Wl,-u,ntohs \
 			-Wl,-u,htonl \
@@ -153,18 +148,39 @@ wasm-link-module: wasm-build-rust wasm-compile-cpp
 			-sFILESYSTEM=0 \
 			--no-entry \
 			--strip-all \
-			--closure=1"
+			--closure=1" >/dev/null
+	@echo "✓ WASM module linked"
 
 # Main WASM build target
-wasm: wasm-link-module
-	@echo "WASM build complete!"
-	@echo "Output files should be in $(WASM_BUILD_DIR)/"
+wasm: wasm-link-module wasm-package
+	@echo "✓ WASM build and packaging complete"
+
+# Package WASM build
+wasm-package: wasm-link-module
+	@echo "→ Creating WASM release package..."
+	@mkdir -p $(WASM_RELEASE_DIR)
+	
+	# Copy WASM module files
 	@if [ -f "$(WASM_BUILD_DIR)/$(WASM_MODULE).wasm" ]; then \
-		echo "✓ $(WASM_MODULE).wasm generated"; \
+		cp $(WASM_BUILD_DIR)/$(WASM_MODULE).wasm $(WASM_RELEASE_DIR)/; \
 	fi
 	@if [ -f "$(WASM_BUILD_DIR)/$(WASM_MODULE).js" ]; then \
-		echo "✓ $(WASM_MODULE).js generated"; \
+		cp $(WASM_BUILD_DIR)/$(WASM_MODULE).js $(WASM_RELEASE_DIR)/; \
 	fi
+	
+	# Copy C++ bindings
+	@if [ -d "$(CPP_BINDINGS_DIR)" ] && [ -n "$$(ls -A $(CPP_BINDINGS_DIR)/*.hpp 2>/dev/null || true)" ]; then \
+		mkdir -p $(WASM_RELEASE_DIR)/include; \
+		cp $(CPP_BINDINGS_DIR)/*.hpp $(WASM_RELEASE_DIR)/include/; \
+	fi
+	@if [ -d "$(CPP_BINDINGS_DIR)" ] && [ -n "$$(ls -A $(CPP_BINDINGS_DIR)/*.cpp 2>/dev/null || true)" ]; then \
+		mkdir -p $(WASM_RELEASE_DIR)/src/cpp; \
+		cp $(CPP_BINDINGS_DIR)/*.cpp $(WASM_RELEASE_DIR)/src/cpp/; \
+	fi
+	
+	# Create version file
+	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(WASM_RELEASE_DIR)/version.txt
+	@echo "✓ WASM release package created: $(WASM_RELEASE_DIR)/"
 
 # Check WASM build environment
 wasm-check-env:
@@ -190,20 +206,22 @@ wasm-check-env:
 	fi
 
 # Install WASM Rust target
-install-wasm-targets:
-	@echo "Installing Rust nightly toolchain and WASM target..."
-	rustup toolchain install nightly
-	rustup target add $(WASM_TARGET)
-	rustup target add --toolchain nightly $(WASM_TARGET)
-	@echo "WASM target and nightly toolchain installed successfully!"
+wasm-install-targets:
+	@echo "→ Installing Rust nightly toolchain and WASM target..."
+	@rustup toolchain install nightly >/dev/null
+	@rustup target add $(WASM_TARGET) >/dev/null
+	@rustup target add --toolchain nightly $(WASM_TARGET) >/dev/null
+	@echo "✓ WASM targets and nightly toolchain installed"
 
 
 
 # Clean WASM bindings and build artifacts
 wasm-clean:
-	@echo "Cleaning WASM bindings and build artifacts..."
-	rm -rf $(CPP_BINDINGS_DIR)
-	rm -rf $(WASM_BUILD_DIR)
-	@echo "WASM artifacts cleaned!"
+	@echo "→ Cleaning WASM builds..."
+	cargo clean --manifest-path dotlottie-ffi/Cargo.toml >/dev/null
+	@rm -rf $(CPP_BINDINGS_DIR)
+	@rm -rf $(WASM_BUILD_DIR)
+	@rm -rf $(WASM_RELEASE_DIR)
+	@echo "✓ WASM builds cleaned"
 
 

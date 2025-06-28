@@ -7,6 +7,6 @@ pkg/
 wasm-pack.log
 **/.DS_Store
 /release
-bindings
-dotlottie-ffi/release
+dotlottie-ffi/uniffi_bindings
+dotlottie-ffi/build
 .DS_Store

@@ -496,7 +496,14 @@ apple-package: apple-frameworks
 	@if [ -f "$(SWIFT_BINDINGS_DIR)/dotlottie_player.swift" ]; then \
 		cp $(SWIFT_BINDINGS_DIR)/dotlottie_player.swift $(APPLE_RELEASE_DIR)/; \
 	fi
+	
+	# Create version file
+	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(APPLE_RELEASE_DIR)/version.txt
+	
+	# Create compressed archive
+	@tar -czf release/dotlottie-player.apple.tar.gz -C release apple/
 	@echo "✓ Apple release package created: $(APPLE_RELEASE_DIR)/"
+	@echo "✓ Compressed archive created: release/dotlottie-player.apple.tar.gz"
 
 # Check if Xcode is available
 apple-check-xcode:
@@ -515,8 +522,7 @@ apple-check-xcode:
 apple-install-targets:
 	@echo "→ Installing Apple Rust targets..."
 	@rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim >/dev/null
-	@rustup install nightly >/dev/null
-	@rustup +nightly target add aarch64-apple-visionos aarch64-apple-visionos-sim aarch64-apple-tvos aarch64-apple-tvos-sim >/dev/null 2>&1 || true
+	@rustup component add rust-src --toolchain nightly
 	@echo "✓ Apple targets installed"
 
 
@@ -529,4 +535,5 @@ apple-clean:
 	@rm -rf $(SWIFT_BINDINGS_DIR)
 	@rm -rf $(APPLE_BUILD_DIR)
 	@rm -rf $(APPLE_RELEASE_DIR)
+	@rm -f release/dotlottie-player.apple.tar.gz
 	@echo "✓ Apple builds cleaned"

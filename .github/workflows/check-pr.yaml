@@ -3,34 +3,26 @@ name: Check PR
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    env:
-      CARGO_BUILD_TARGET: x86_64-pc-windows-msvc
-    defaults:
-      run:
-        shell: cmd
+  build:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - name: Setup msvc
-        uses: ilammy/msvc-dev-cmd@v1
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-msvc
-      - name: Setup Environment
-        run: |
-          choco install -y make
-          echo CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=%VCToolsInstallDir%bin\Hostx64\x64\link.exe >> %GITHUB_ENV%
-      - name: Setup
-        run: |
-          cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag v0.7.1+v0.28.3
-      - name: Build Windows
-        run: make windows-x86_64-msvc
+          components: clippy
+      - name: Build
+        run: cargo build --manifest-path=./dotlottie-rs/Cargo.toml --features thorvg
+      - name: Test
+        run: cargo test --manifest-path=./dotlottie-rs/Cargo.toml --features thorvg -- --test-threads=1
+      - name: Lint
+        run: cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --features thorvg -- -D warnings

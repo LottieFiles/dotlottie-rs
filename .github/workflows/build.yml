@@ -12,7 +12,6 @@ on:
           - "android"
           - "linux"
           - "wasm"
-          - "windows"
           - "all"
       commitSHA:
         description: "Commit SHA (leave blank for default branch)"

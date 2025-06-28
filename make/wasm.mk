@@ -76,6 +76,7 @@ wasm-compile-cpp: wasm-cpp-bindings
 		export CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc && \
 		export CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ && \
 		export AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar && \
+		export RANLIB=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emranlib && \
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 			-std=c++20 \
 			-I$(CPP_BINDINGS_DIR) \
@@ -105,6 +106,10 @@ wasm-build-rust: wasm-check-env wasm-cpp-bindings
 		export CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc && \
 		export CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ && \
 		export AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar && \
+		export RANLIB=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emranlib && \
+		export CLANG_PATH=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc && \
+		export CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc && \
+		export BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot" && \
 		export RUSTFLAGS='-C link-arg=--no-entry' && \
 		cargo +nightly build \
 			--manifest-path dotlottie-ffi/Cargo.toml \
@@ -123,6 +128,7 @@ wasm-link-module: wasm-build-rust wasm-compile-cpp
 		export CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc && \
 		export CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ && \
 		export AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar && \
+		export RANLIB=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emranlib && \
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 			-std=c++20 \
 			-o $(WASM_BUILD_DIR)/$(WASM_MODULE).js \

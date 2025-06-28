@@ -102,6 +102,10 @@ mod thorvg {
         thorvg_config_h.flush()?;
 
         let compiler = env::var("CXX").unwrap_or("clang++".to_string());
+
+        // print the compiler
+        println!("cargo:warning=Using compiler: {}", compiler);
+
         cc::Build::new()
             .compiler(compiler)
             .std("c++14")

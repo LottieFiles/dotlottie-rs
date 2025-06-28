@@ -16,9 +16,8 @@ jobs:
         with:
           submodules: true
       - uses: dtolnay/rust-toolchain@stable
-
-      - name: Setup Windows
-        run: make windows-install-targets
+        with:
+          targets: x86_64-pc-windows-msvc,i686-pc-windows-msvc,aarch64-pc-windows-msvc,x86_64-pc-windows-gnu
 
       - name: Build Windows
         run: make windows

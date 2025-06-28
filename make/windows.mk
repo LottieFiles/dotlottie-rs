@@ -112,12 +112,6 @@ windows: windows-cpp-bindings $(addprefix windows-,x86_64-msvc i686-msvc aarch64
 # Build for Windows x86_64 MSVC
 windows-x86_64-msvc: windows-cpp-bindings windows-check-env
 	@echo "→ Building Windows x86_64 MSVC..."
-	@CC="cl.exe" \
-	CXX="cl.exe" \
-	AR="lib.exe" \
-	RANLIB="echo" \
-	CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER="link.exe" \
-	BINDGEN_EXTRA_CLANG_ARGS="" \
 	cargo build \
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(WINDOWS_TARGET_x86_64_msvc) \
@@ -130,12 +124,6 @@ windows-x86_64-msvc: windows-cpp-bindings windows-check-env
 # Build for Windows i686 MSVC
 windows-i686-msvc: windows-cpp-bindings windows-check-env
 	@echo "→ Building Windows i686 MSVC..."
-	@CC="cl.exe" \
-	CXX="cl.exe" \
-	AR="lib.exe" \
-	RANLIB="echo" \
-	CARGO_TARGET_I686_PC_WINDOWS_MSVC_LINKER="link.exe" \
-	BINDGEN_EXTRA_CLANG_ARGS="" \
 	cargo build \
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(WINDOWS_TARGET_i686_msvc) \
@@ -148,12 +136,6 @@ windows-i686-msvc: windows-cpp-bindings windows-check-env
 # Build for Windows aarch64 MSVC
 windows-aarch64-msvc: windows-cpp-bindings windows-check-env
 	@echo "→ Building Windows aarch64 MSVC..."
-	@CC="cl.exe" \
-	CXX="cl.exe" \
-	AR="lib.exe" \
-	RANLIB="echo" \
-	CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER="link.exe" \
-	BINDGEN_EXTRA_CLANG_ARGS="" \
 	cargo build \
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(WINDOWS_TARGET_aarch64_msvc) \
@@ -166,12 +148,6 @@ windows-aarch64-msvc: windows-cpp-bindings windows-check-env
 # Build for Windows x86_64 GNU
 windows-x86_64-gnu: windows-cpp-bindings windows-check-env
 	@echo "→ Building Windows x86_64 GNU..."
-	@CC="x86_64-w64-mingw32-gcc" \
-	CXX="x86_64-w64-mingw32-g++" \
-	AR="x86_64-w64-mingw32-ar" \
-	RANLIB="x86_64-w64-mingw32-ranlib" \
-	CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER="x86_64-w64-mingw32-gcc" \
-	BINDGEN_EXTRA_CLANG_ARGS="" \
 	cargo build \
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		--target $(WINDOWS_TARGET_x86_64_gnu) \

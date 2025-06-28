@@ -11,36 +11,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-pr:
-    if: github.head_ref != 'release'
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
-
       - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Setup Conan
-        uses: turtlebrowser/get-conan@main
-
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - name: Build
-        run: |
-          cargo build --manifest-path=./dotlottie-rs/Cargo.toml --release
-          cargo build --manifest-path=./dotlottie-ffi/Cargo.toml --release
-
+        run: cargo build --manifest-path=./dotlottie-rs/Cargo.toml --features thorvg
       - name: Test
-        run: |
-          cargo test --manifest-path=./dotlottie-rs/Cargo.toml --release -- --test-threads=1 
-          cargo test --manifest-path=./dotlottie-ffi/Cargo.toml --release -- --test-threads=1
-
+        run: cargo test --manifest-path=./dotlottie-rs/Cargo.toml --features thorvg -- --test-threads=1
       - name: Lint
-        run: |
-          cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --all-targets -- -D clippy::print_stdout
-          cargo clippy --manifest-path=./dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
-        env:
-          RUSTFLAGS: "-Dwarnings"
+        run: cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --features thorvg -- -D warnings

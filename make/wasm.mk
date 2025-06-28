@@ -96,29 +96,29 @@ wasm-compile-cpp: wasm-cpp-bindings
 			-ffunction-sections \
 			-fdata-sections \
 			-c $(CPP_BINDINGS_DIR)/dotlottie_player.cpp \
-			-o $(WASM_BUILD_DIR)/dotlottie_player.o" >/dev/null
+			-o $(WASM_BUILD_DIR)/dotlottie_player.o"
 	@echo "✓ C++ compilation complete"
 
 # Build Rust library for WASM target
 wasm-build-rust: wasm-check-env wasm-cpp-bindings
 	@echo "→ Building Rust library (nightly)..."
-	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
-		export CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc && \
-		export CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ && \
-		export AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar && \
-		export RANLIB=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emranlib && \
-		export CLANG_PATH=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc && \
-		export CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc && \
-		export BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot" && \
-		export RUSTFLAGS='-C link-arg=--no-entry' && \
-		cargo +nightly build \
-			--manifest-path dotlottie-ffi/Cargo.toml \
-			-Z build-std=std,panic_abort \
-			-Z build-std-features=panic_immediate_abort \
-			--target $(WASM_TARGET) \
-			--no-default-features \
-			--features $(WASM_FEATURES) \
-			--release" >/dev/null
+	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV)" && \
+	CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
+	CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
+	AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar \
+	RANLIB=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emranlib \
+	CLANG_PATH=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
+	CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
+	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot" \
+	RUSTFLAGS='-C link-arg=--no-entry' \
+	cargo +nightly build \
+		--manifest-path dotlottie-ffi/Cargo.toml \
+		-Z build-std=std,panic_abort \
+		-Z build-std-features=panic_immediate_abort \
+		--target $(WASM_TARGET) \
+		--no-default-features \
+		--features $(WASM_FEATURES) \
+		--release
 	@echo "✓ Rust build complete"
 
 # Link WASM module
@@ -154,7 +154,7 @@ wasm-link-module: wasm-build-rust wasm-compile-cpp
 			-sFILESYSTEM=0 \
 			--no-entry \
 			--strip-all \
-			--closure=1" >/dev/null
+			--closure=1"
 	@echo "✓ WASM module linked"
 
 # Main WASM build target

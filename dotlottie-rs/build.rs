@@ -38,6 +38,47 @@ fn platform_libs() -> Vec<String> {
     }
 }
 
+// Convert Rust target to clang target for bindgen
+fn get_clang_target_from_rust_target(target: &str) -> String {
+    match target {
+        // iOS Simulator fix - convert to the format clang expects
+        "aarch64-apple-ios-sim" => "arm64-apple-ios-simulator".to_string(),
+        "x86_64-apple-ios" => "x86_64-apple-ios-simulator".to_string(),
+        
+        // Regular iOS device targets
+        "aarch64-apple-ios" => "arm64-apple-ios".to_string(),
+        
+        // macOS targets
+        "aarch64-apple-darwin" => "arm64-apple-macosx".to_string(),
+        "x86_64-apple-darwin" => "x86_64-apple-macosx".to_string(),
+        
+        // Mac Catalyst targets
+        "aarch64-apple-ios-macabi" => "arm64-apple-ios-macabi".to_string(),
+        "x86_64-apple-ios-macabi" => "x86_64-apple-ios-macabi".to_string(),
+        
+        // tvOS targets
+        "aarch64-apple-tvos" => "arm64-apple-tvos".to_string(),
+        "aarch64-apple-tvos-sim" => "arm64-apple-tvos-simulator".to_string(),
+        
+        // visionOS targets
+        "aarch64-apple-visionos" => "arm64-apple-xros".to_string(),
+        "aarch64-apple-visionos-sim" => "arm64-apple-xros-simulator".to_string(),
+        
+        // Android targets
+        "aarch64-linux-android" => "aarch64-linux-android".to_string(),
+        "armv7-linux-androideabi" => "armv7-linux-androideabi".to_string(),
+        "x86_64-linux-android" => "x86_64-linux-android".to_string(),
+        "i686-linux-android" => "i686-linux-android".to_string(),
+        
+        // WASM
+        "wasm32-unknown-emscripten" => "wasm32-unknown-emscripten".to_string(),
+        
+        // Default: just replace aarch64 with arm64 for Apple targets
+        _ if target.contains("apple") => target.replace("aarch64", "arm64"),
+        _ => target.to_string(),
+    }
+}
+
 lazy_static! {
     // The project root directory
     static ref PROJECT_DIR: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -105,7 +146,14 @@ fn main() {
         panic!("ARTIFACTS_INCLUDE_DIR and ARTIFACTS_LIB_DIR environment variables are required for thorvg-v1");
     }
 
-    let mut builder = bindgen::Builder::default().header("wrapper.h");
+    // Get the target and convert it to clang format
+    let target = env::var("TARGET").expect("TARGET environment variable not set");
+    let clang_target = get_clang_target_from_rust_target(&target);
+
+    let mut builder = bindgen::Builder::default()
+        .header("wrapper.h")
+        .clang_arg(format!("--target={}", clang_target));
+
     if is_artifacts_provided() {
         let include_dir = find_path(ARTIFACTS_INCLUDE_DIR, true);
         let lib_dir = find_path(ARTIFACTS_LIB_DIR, true);

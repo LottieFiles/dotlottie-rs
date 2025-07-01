@@ -116,6 +116,11 @@ APPLE_TVOS_SIMULATOR := tvos-simulator
 APPLE_TVOS_SIMULATOR_PLATFORM := AppleTVSimulator
 APPLE_TVOS_SIMULATOR_SDK ?= AppleTVSimulator
 
+APPLE_MACCATALYST := maccatalyst
+APPLE_MACCATALYST_PLATFORM := MacOSX
+APPLE_MACCATALYST_SDK := MacOSX
+APPLE_MACCATALYST_VERSION_MIN ?= 13.0
+
 APPLE_IOS_FRAMEWORK_TYPE := $(APPLE_IOS)
 APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_IOS_SIMULATOR)
 APPLE_MACOSX_FRAMEWORK_TYPE := $(APPLE_MACOSX)
@@ -123,7 +128,8 @@ APPLE_VISIONOS_FRAMEWORK_TYPE := $(APPLE_VISIONOS)
 APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_VISIONOS_SIMULATOR)
 APPLE_TVOS_FRAMEWORK_TYPE := $(APPLE_TVOS)
 APPLE_TVOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_TVOS_SIMULATOR)
-APPLE_FRAMEWORK_TYPES := $(APPLE_IOS_FRAMEWORK_TYPE) $(APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE) $(APPLE_MACOSX_FRAMEWORK_TYPE) $(APPLE_VISIONOS_FRAMEWORK_TYPE) $(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE) $(APPLE_TVOS_FRAMEWORK_TYPE) $(APPLE_TVOS_SIMULATOR_FRAMEWORK_TYPE)
+APPLE_MACCATALYST_FRAMEWORK_TYPE := $(APPLE_MACCATALYST)
+APPLE_FRAMEWORK_TYPES := $(APPLE_IOS_FRAMEWORK_TYPE) $(APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE) $(APPLE_MACOSX_FRAMEWORK_TYPE) $(APPLE_VISIONOS_FRAMEWORK_TYPE) $(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE) $(APPLE_TVOS_FRAMEWORK_TYPE) $(APPLE_TVOS_SIMULATOR_FRAMEWORK_TYPE $(APPLE_MACCATALYST_FRAMEWORK_TYPE)
 
 # Apple tools
 LIPO := lipo
@@ -241,7 +247,8 @@ cpu = '$(CPU)'
 endian = 'little'
 endef
 
-define APPLE_CROSS_FILE
+# Mac Catalyst cross file template
+define MACCATALYST_CROSS_FILE
 [binaries]
 cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
 ld = 'ld'
@@ -253,29 +260,9 @@ pkg-config = 'pkg-config'
 root = '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(SDK).platform/Developer'
 has_function_printf = true
 
-$(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),\
-[built-in options]\n\
-cpp_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
-cpp_link_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']\n\
-,)
-
-$(if $(filter $(PLATFORM),$(APPLE_MACOSX_PLATFORM)),\
-[built-in options]\n\
-cpp_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)']\n\
-cpp_link_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)']\n\
-,)
-
-$(if $(filter $(PLATFORM),$(APPLE_VISIONOS_PLATFORM) $(APPLE_VISIONOS_SIMULATOR_PLATFORM)),\
-[built-in options]\n\
-cpp_args = ['-mxros-version-min=$(APPLE_VISIONOS_VERSION_MIN)']\n\
-cpp_link_args = ['-mxros-version-min=$(APPLE_VISIONOS_VERSION_MIN)']\n\
-,)
-
-$(if $(filter $(PLATFORM),$(APPLE_TVOS_PLATFORM) $(APPLE_TVOS_SIMULATOR_PLATFORM)),\
-[built-in options]\n\
-cpp_args = ['-mtvos-version-min=$(APPLE_TVOS_VERSION_MIN)']\n\
-cpp_link_args = ['-mtvos-version-min=$(APPLE_TVOS_VERSION_MIN)']\n\
-,)
+[built-in options]
+cpp_args = ['-target', '$(ARCH)-apple-ios13.1-macabi']
+cpp_link_args = ['-target', '$(ARCH)-apple-ios13.1-macabi']
 
 [host_machine]
 system = 'darwin'
@@ -284,6 +271,40 @@ kernel = 'xnu'
 cpu_family = '$(CPU_FAMILY)'
 cpu = '$(CPU)'
 endian = 'little'
+endef
+
+# Standard Apple cross file template
+define STANDARD_APPLE_CROSS_FILE
+[binaries]
+cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
+ld = 'ld'
+ar = 'ar'
+strip = 'strip'
+pkg-config = 'pkg-config'
+
+[properties]
+root = '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(SDK).platform/Developer'
+has_function_printf = true
+
+[built-in options]
+$(if $(filter $(PLATFORM),$(APPLE_IOS_PLATFORM) $(APPLE_IOS_SIMULATOR_PLATFORM)),cpp_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)']
+cpp_link_args = ['-miphoneos-version-min=$(APPLE_IOS_VERSION_MIN)'],)$(if $(filter $(PLATFORM),$(APPLE_MACOSX_PLATFORM)),cpp_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)']
+cpp_link_args = ['-mmacosx-version-min=$(APPLE_MACOS_VERSION_MIN)'],)$(if $(filter $(PLATFORM),$(APPLE_VISIONOS_PLATFORM) $(APPLE_VISIONOS_SIMULATOR_PLATFORM)),cpp_args = ['-mxros-version-min=$(APPLE_VISIONOS_VERSION_MIN)']
+cpp_link_args = ['-mxros-version-min=$(APPLE_VISIONOS_VERSION_MIN)'],)$(if $(filter $(PLATFORM),$(APPLE_TVOS_PLATFORM) $(APPLE_TVOS_SIMULATOR_PLATFORM)),cpp_args = ['-mtvos-version-min=$(APPLE_TVOS_VERSION_MIN)']
+cpp_link_args = ['-mtvos-version-min=$(APPLE_TVOS_VERSION_MIN)'],)
+
+[host_machine]
+system = 'darwin'
+subsystem = '$(SUBSYSTEM)'
+kernel = 'xnu'
+cpu_family = '$(CPU_FAMILY)'
+cpu = '$(CPU)'
+endian = 'little'
+endef
+
+# Choose which template to use based on subsystem
+define APPLE_CROSS_FILE
+$(if $(filter $(SUBSYSTEM),maccatalyst),$(MACCATALYST_CROSS_FILE),$(STANDARD_APPLE_CROSS_FILE))
 endef
 
 define WASM_CROSS_FILE
@@ -428,6 +449,14 @@ define CARGO_BUILD
 		$(call CARGO_NIGHTLY_BUILD,XROS_DEPLOYMENT_TARGET,$(APPLE_VISIONOS_VERSION_MIN)) \
 	elif [ "$(CARGO_TARGET)" = "aarch64-apple-tvos" ] || [ "$(CARGO_TARGET)" = "aarch64-apple-tvos-sim" ]; then \
 		$(call CARGO_NIGHTLY_BUILD,TVOS_DEPLOYMENT_TARGET,$(APPLE_TVOS_VERSION_MIN)) \
+	elif [ "$(CARGO_TARGET)" = "x86_64-apple-ios-macabi" ] || [ "$(CARGO_TARGET)" = "aarch64-apple-ios-macabi" ]; then \
+		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_MACCATALYST_VERSION_MIN) \
+		cargo build \
+		--manifest-path $(PROJECT_DIR)/Cargo.toml \
+		--target $(CARGO_TARGET) \
+		--no-default-features \
+		--features thorvg-v1,uniffi \
+		--release; \
 	else \
 		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
 		MACOSX_DEPLOYMENT_TARGET=$(APPLE_MACOS_VERSION_MIN) \
@@ -623,6 +652,10 @@ APPLE_TVOS_FRAMEWORK_TARGETS += $$($1))
 $(if $(filter $3,$(APPLE_TVOS_SIMULATOR_PLATFORM)),\
 $1_FRAMEWORK_TYPE := $(APPLE_TVOS_SIMULATOR_FRAMEWORK_TYPE)
 APPLE_TVOS_SIMULATOR_FRAMEWORK_TARGETS += $$($1))
+
+$(if $(filter $2,$(APPLE_MACCATALYST)),\
+$1_FRAMEWORK_TYPE := $(APPLE_MACCATALYST_FRAMEWORK_TYPE)
+APPLE_MACCATALYST_FRAMEWORK_TARGETS += $$($1))
 endef
 
 define NEW_ANDROID_CMAKE_BUILD
@@ -958,6 +991,8 @@ $(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-visionos,VISIONOS,arm64,arm,aarc
 $(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-visionos-sim,VISIONOS_SIMULATOR,arm64,arm,aarch64,$(APPLE_VISIONOS),$(APPLE_VISIONOS_SIMULATOR_PLATFORM),$(APPLE_VISIONOS_SIMULATOR_SDK)))
 $(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-tvos,TVOS,arm64,arm,aarch64,$(APPLE_TVOS),$(APPLE_TVOS_PLATFORM),$(APPLE_TVOS_SDK)))
 $(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-tvos-sim,TVOS_SIMULATOR,arm64,arm,aarch64,$(APPLE_TVOS),$(APPLE_TVOS_SIMULATOR_PLATFORM),$(APPLE_TVOS_SIMULATOR_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,x86_64-apple-ios-macabi,MACCATALYST,x86_64,x86_64,x86_64,$(APPLE_MACCATALYST),$(APPLE_MACCATALYST_PLATFORM),$(APPLE_MACCATALYST_SDK)))
+$(eval $(call DEFINE_APPLE_TARGET,aarch64-apple-ios-macabi,MACCATALYST_ARM64,arm64,arm,aarch64,$(APPLE_MACCATALYST),$(APPLE_MACCATALYST_PLATFORM),$(APPLE_MACCATALYST_SDK)))
 
 # Define all apple deps builds
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_DARWIN))
@@ -969,7 +1004,8 @@ $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_VISIONOS))
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_VISIONOS_SIM))
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_TVOS))
 $(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_TVOS_SIM))
-
+$(eval $(call NEW_APPLE_DEPS_BUILD,X86_64_APPLE_IOS_MACABI))
+$(eval $(call NEW_APPLE_DEPS_BUILD,AARCH64_APPLE_IOS_MACABI))
 # Define all apple builds
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_DARWIN))
 $(eval $(call NEW_APPLE_BUILD,X86_64_APPLE_DARWIN))
@@ -980,6 +1016,8 @@ $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_VISIONOS))
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_VISIONOS_SIM))
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_TVOS))
 $(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_TVOS_SIM))
+$(eval $(call NEW_APPLE_BUILD,X86_64_APPLE_IOS_MACABI))
+$(eval $(call NEW_APPLE_BUILD,AARCH64_APPLE_IOS_MACABI))
 
 # Define all apple framework builds (for release)
 $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_IOS_FRAMEWORK_TYPE),$(APPLE_IOS_FRAMEWORK_TARGETS),$(APPLE_IOS_PLATFORM),))
@@ -989,6 +1027,7 @@ $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_VISIONOS_FRAMEWORK_TYPE),$(APPLE_VISIO
 $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TYPE),$(APPLE_VISIONOS_SIMULATOR_FRAMEWORK_TARGETS),$(APPLE_VISIONOS_SIMULATOR_PLATFORM),))
 $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_TVOS_FRAMEWORK_TYPE),$(APPLE_TVOS_FRAMEWORK_TARGETS),$(APPLE_TVOS_PLATFORM),))
 $(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_TVOS_SIMULATOR_FRAMEWORK_TYPE),$(APPLE_TVOS_SIMULATOR_FRAMEWORK_TARGETS),$(APPLE_TVOS_SIMULATOR_PLATFORM),))
+$(eval $(call NEW_APPLE_FRAMEWORK,$(APPLE_MACCATALYST_FRAMEWORK_TYPE),$(APPLE_MACCATALYST_FRAMEWORK_TARGETS),$(APPLE_MACCATALYST),))
 
 # Define WASM targets
 $(eval $(call DEFINE_TARGET,wasm32-unknown-emscripten,emscripten,emscripten,x86,i686))

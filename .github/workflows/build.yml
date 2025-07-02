@@ -45,8 +45,8 @@ jobs:
           
           # Import certificate
           echo "${{ secrets.CERTIFICATE_P12 }}" | base64 --decode > certificate.p12
-          security import certificate.p12 -k build.keychain -P "${{ secrets.CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign -q
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+          security import certificate.p12 -k build.keychain -P "${{ secrets.CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign > /dev/null
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain > /dev/null          
           
           # Set signing identity for make
           CODESIGN_IDENTITY=$(security find-identity -v build.keychain | grep -E "(Developer ID|Apple Development)" | head -1 | sed 's/.*"\(.*\)"/\1/')

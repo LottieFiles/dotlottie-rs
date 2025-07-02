@@ -41,22 +41,34 @@ jobs:
           # Create temporary keychain
           security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
           security default-keychain -s build.keychain
-          security set-keychain-settings -t 0 -l build.keychain
-          
+          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+
           # Add to search list
           security list-keychains -d user -s build.keychain login.keychain
-          
-          # Import certificate
+
+          # Import certificate (suppress all output)
           echo "${{ secrets.CERTIFICATE_P12 }}" | base64 --decode > certificate.p12
-          security import certificate.p12 -k build.keychain -P "${{ secrets.CERTIFICATE_PASSWORD }}" -A > /dev/null 2>&1
+          security import certificate.p12 -k build.keychain -P "${{ secrets.CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign -A > /dev/null 2>&1
+
+          # Set partition list with more permissive settings
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
-          
-          # Set environment variables for Makefile
+
+          # Unlock again to ensure access
+          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+
+          # Set signing identity
           CODESIGN_IDENTITY=$(security find-identity -v build.keychain | grep -E "(Developer ID|Apple Development)" | head -1 | sed 's/.*"\(.*\)"/\1/')
           echo "CODESIGN_IDENTITY=$CODESIGN_IDENTITY" >> $GITHUB_ENV
           echo "SHOULD_SIGN=true" >> $GITHUB_ENV
           echo "KEYCHAIN_PASSWORD=${{ secrets.KEYCHAIN_PASSWORD }}" >> $GITHUB_ENV
-          
+
+
+          if [ -z "$CODESIGN_IDENTITY" ]; then
+            echo "No codesigning identity found!"
+            exit 1
+          fi
+
+          echo "Successfully configured signing certificate"
           rm certificate.p12
 
       - name: Build Setup

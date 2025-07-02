@@ -752,6 +752,30 @@ define APPLE_RELEASE
 		echo "Skipping codesigning (no identity provided or SHOULD_SIGN not set)"; \
 	fi
 	cp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(SWIFT)/$(DOTLOTTIE_PLAYER_SWIFT) $(RELEASE)/$(APPLE)/.
+
+	# Process each framework directory we find
+	for framework_dir in $$(find $(PWD)/$(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK) -name "DotLottiePlayer.framework"); do \
+		echo "Processing framework: $$framework_dir"; \
+		(cd "$$framework_dir" && \
+			mkdir A && \
+			mkdir Resources && \
+			mv Info.plist Resources/ && \
+			mkdir Versions && \
+			mv Resources A/ && \
+			mv Modules A/ && \
+			mv DotLottiePlayer A/ && \
+			mv Headers A/ && \
+			mv A Versions/ && \
+			cd Versions && \
+			ln -s A Current && \
+			cd .. && \
+			ln -s Versions/Current/DotLottiePlayer DotLottiePlayer && \
+			ln -s Versions/Current/Headers Headers && \
+			ln -s Versions/Current/Modules Modules && \
+			ln -s Versions/Current/Resources Resources \
+		) || exit 1; \
+	done
+
 	cd $(RELEASE)/$(APPLE) && \
 		rm -f $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz && \
 		tar zcf $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz *

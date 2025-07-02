@@ -743,6 +743,8 @@ define APPLE_RELEASE
                 $$(find $(RUNTIME_FFI)/$(APPLE_BUILD) -type d -depth 2 | sed 's/^/-framework /' | tr '\n' ' ') \
                 -output $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
 	@if [ "$(SHOULD_SIGN)" = "true" ] && [ -n "$(CODESIGN_IDENTITY)" ]; then \
+		echo "Unlocking keychain for signing..."; \
+		security unlock-keychain -p "$(KEYCHAIN_PASSWORD)" build.keychain; \
 		echo "Signing framework with identity: $(CODESIGN_IDENTITY)"; \
 		codesign --sign "$(CODESIGN_IDENTITY)" --timestamp --options runtime $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK); \
 		codesign --verify --verbose $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK); \

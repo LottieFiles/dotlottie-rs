@@ -36,6 +36,35 @@ jobs:
       - name: Install Make
         run: brew install make
 
+      - name: Setup signing
+        run: |
+          # Create temporary keychain
+          security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+          
+          # Import certificate
+          echo "${{ secrets.CERTIFICATE_P12 }}" | base64 --decode > certificate.p12
+          security import certificate.p12 -k build.keychain -P "${{ secrets.CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+          
+          # Set signing identity for make
+          CODESIGN_IDENTITY=$(security find-identity -v build.keychain | grep -E "(Developer ID|Apple Development)" | head -1 | sed 's/.*"\(.*\)"/\1/')
+          echo "CODESIGN_IDENTITY=$CODESIGN_IDENTITY" >> $GITHUB_ENV
+          echo "SHOULD_SIGN=true" >> $GITHUB_ENV
+          
+          # Verify we found an identity
+          if [ -z "$CODESIGN_IDENTITY" ]; then
+            echo "No codesigning identity found!"
+            security find-identity -v build.keychain
+            exit 1
+          fi
+          
+          echo "Found signing identity: $CODESIGN_IDENTITY"
+          
+          # Clean up
+          rm certificate.p12
+
       - name: Build Setup
         run: make mac-setup
         env:
@@ -50,6 +79,11 @@ jobs:
           name: dotlottie-player.darwin.tar.gz
           path: release/apple/dotlottie-player.darwin.tar.gz
           if-no-files-found: error
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain build.keychain || true
 
   build-android:
     runs-on: macos-latest

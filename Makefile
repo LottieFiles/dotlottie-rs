@@ -742,21 +742,17 @@ define APPLE_RELEASE
 	$(XCODEBUILD) -create-xcframework \
                 $$(find $(RUNTIME_FFI)/$(APPLE_BUILD) -type d -depth 2 | sed 's/^/-framework /' | tr '\n' ' ') \
                 -output $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
-	$(call SIGN_FRAMEWORK,$(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK))
+ifdef SHOULD_SIGN
+	@echo "Signing framework with identity: $(CODESIGN_IDENTITY)"
+	codesign --sign "$(CODESIGN_IDENTITY)" --timestamp --options runtime $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
+	codesign --verify --verbose $(RELEASE)/$(APPLE)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)
+else
+	@echo "Skipping codesigning (no identity provided)"
+endif
 	cp $(RUNTIME_FFI)/$(RUNTIME_FFI_UNIFFI_BINDINGS)/$(SWIFT)/$(DOTLOTTIE_PLAYER_SWIFT) $(RELEASE)/$(APPLE)/.
 	cd $(RELEASE)/$(APPLE) && \
 		rm -f $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz && \
 		tar zcf $(DOTLOTTIE_PLAYER).$(DARWIN).tar.gz *
-endef
-
-define SIGN_FRAMEWORK
-ifdef SHOULD_SIGN
-	@echo "Signing framework with identity: $(CODESIGN_IDENTITY)"
-	codesign --sign "$(CODESIGN_IDENTITY)" --timestamp --options runtime $(1)
-	codesign --verify --verbose $(1)
-else
-	@echo "Skipping codesigning (no identity provided)"
-endif
 endef
 
 define WASM_RELEASE

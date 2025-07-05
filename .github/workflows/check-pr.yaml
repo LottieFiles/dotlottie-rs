@@ -11,36 +11,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-pr:
-    if: github.head_ref != 'release'
+  check:
     runs-on: ubuntu-latest
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
-
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Setup Rust
-        uses: ningenMe/setup-rustup@v1.1.0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
 
-      - name: Setup Conan
-        uses: turtlebrowser/get-conan@main
+      - name: Setup
+        run: |
+          sudo apt-get update && sudo apt-get install -y clang
+          cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag v0.7.1+v0.28.3
 
       - name: Build
         run: |
-          cargo build --manifest-path=./dotlottie-rs/Cargo.toml --release
-          cargo build --manifest-path=./dotlottie-ffi/Cargo.toml --release
+          cargo build --manifest-path dotlottie-rs/Cargo.toml --features thorvg
+          cargo build --manifest-path dotlottie-ffi/Cargo.toml --all-features
 
-      - name: Test
+      - name: Uniffi Bindgen
         run: |
-          cargo test --manifest-path=./dotlottie-rs/Cargo.toml --release -- --test-threads=1 
-          cargo test --manifest-path=./dotlottie-ffi/Cargo.toml --release -- --test-threads=1
+          cargo run --manifest-path dotlottie-ffi/Cargo.toml --bin uniffi-bindgen generate dotlottie-ffi/src/dotlottie_player.udl --language kotlin 
+          cargo run --manifest-path dotlottie-ffi/Cargo.toml --bin uniffi-bindgen generate dotlottie-ffi/src/dotlottie_player.udl --language swift
+          uniffi-bindgen-cpp --config dotlottie-ffi/uniffi.toml dotlottie-ffi/src/dotlottie_player.udl
 
       - name: Lint
         run: |
-          cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --all-targets -- -D clippy::print_stdout
-          cargo clippy --manifest-path=./dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
-        env:
-          RUSTFLAGS: "-Dwarnings"
+          cargo clippy --manifest-path dotlottie-rs/Cargo.toml --all-features -- -D warnings
+          cargo clippy --manifest-path dotlottie-ffi/Cargo.toml --all-features -- -D warnings
+
+      - name: Test
+        run: |
+          cargo test --manifest-path dotlottie-rs/Cargo.toml --features thorvg -- --test-threads=1
+          cargo test --manifest-path dotlottie-ffi/Cargo.toml --features thorvg -- --test-threads=1

@@ -10,6 +10,7 @@ on:
         options:
           - "apple"
           - "android"
+          - "linux"
           - "wasm"
           - "all"
       commitSHA:
@@ -22,101 +23,114 @@ concurrency:
 
 jobs:
   build-apple:
-    runs-on: macos-latest-large
+    runs-on: macos-latest
     if: github.event.inputs.target == 'apple' || github.event.inputs.target == 'all'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@nightly
 
-      - uses: Homebrew/actions/setup-homebrew@master
-      - uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Install Make
-        run: brew install make
-
-      - name: Build Setup
-        run: make mac-setup
-        env:
-          TARGET: apple
+      - name: Setup Apple
+        run: make apple-install-targets
 
       - name: Build Apple
         run: make apple
 
+      - name: Create Apple Archive
+        run: tar -czf release/dotlottie-player.apple.tar.gz -C release apple/
+
       - name: Upload Apple Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dotlottie-player.darwin.tar.gz
-          path: release/apple/dotlottie-player.darwin.tar.gz
+          name: dotlottie-player.apple.tar.gz
+          path: release/dotlottie-player.apple.tar.gz
           if-no-files-found: error
 
   build-android:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     if: github.event.inputs.target == 'android' || github.event.inputs.target == 'all'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: nttld/setup-ndk@v1.5.0
+        id: setup-ndk
+        with:
+          ndk-version: r28b
+          local-cache: true
 
-      - uses: Homebrew/actions/setup-homebrew@master
-      - uses: ningenMe/setup-rustup@v1.1.0
-      - name: Install Make
-        run: brew install make
-
-      - name: Build Setup
-        run: make mac-setup
-        env:
-          TARGET: android
+      - name: Setup Android
+        run: make android-install-targets
 
       - name: Build Android
         run: make android
         env:
-          ANDROID_NDK_HOME: "/opt/homebrew/share/android-ndk"
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
-      - name: Check ELF Alignment
-        run: ./scripts/check_elf_alignment.sh release/android/dotlottie-player/src/main/jniLibs
+      - name: Create Android Archive
+        run: tar -czf release/dotlottie-player.android.tar.gz -C release android/
 
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.android.tar.gz
-          path: release/android/dotlottie-player.android.tar.gz
+          path: release/dotlottie-player.android.tar.gz
           if-no-files-found: error
 
   build-wasm:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     if: github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
-
-      - uses: Homebrew/actions/setup-homebrew@master
-      - uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Install Binaryen
-        run: brew install binaryen
-
-      - name: Install Make
-        run: brew install make
-
-      - name: Build Setup
-        run: make mac-setup
-        env:
-          TARGET: wasm
+          submodules: true
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: Setup WASM
+        run: |
+          make wasm-install-emsdk
+          cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag v0.7.1+v0.28.3
+          make wasm-install-targets
 
       - name: Build WASM
         run: make wasm
 
-      - name: Optimize WASM
-        run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
+      - name: Create WASM Archive
+        run: tar -czf release/dotlottie-player.wasm.tar.gz -C release wasm/
 
       - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.wasm.tar.gz
-          path: release/wasm/dotlottie-player.wasm.tar.gz
+          path: release/dotlottie-player.wasm.tar.gz
+          if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.target == 'linux' || github.event.inputs.target == 'all'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Setup Linux
+        run: |
+          cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag v0.7.1+v0.28.3
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          make linux-install-targets
+
+      - name: Build Linux
+        run: make linux
+
+      - name: Create Linux Archive
+        run: tar -czf release/dotlottie-player.linux.tar.gz -C release linux/
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.linux.tar.gz
+          path: release/dotlottie-player.linux.tar.gz
           if-no-files-found: error

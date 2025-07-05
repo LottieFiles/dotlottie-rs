@@ -29,11 +29,14 @@ jobs:
       - name: Build Apple
         run: make apple
 
+      - name: Create Apple Archive
+        run: tar -czf release/dotlottie-player.darwin.tar.gz -C release apple/
+
       - name: Upload Apple Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.darwin.tar.gz
-          path: release/apple/dotlottie-player.darwin.tar.gz
+          path: release/dotlottie-player.darwin.tar.gz
           if-no-files-found: error
 
   build-android:
@@ -60,11 +63,14 @@ jobs:
       - name: Check ELF Alignment
         run: ./scripts/check_elf_alignment.sh release/android/dotlottie-player/src/main/jniLibs
 
+      - name: Create Android Archive
+        run: tar -czf release/dotlottie-player.android.tar.gz -C release android/
+
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4.0.0
         with:
           name: dotlottie-player.android.tar.gz
-          path: release/android/dotlottie-player.android.tar.gz
+          path: release/dotlottie-player.android.tar.gz
           if-no-files-found: error
 
   build-wasm:
@@ -92,11 +98,14 @@ jobs:
       - name: Optimize WASM
         run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
 
+      - name: Create WASM Archive
+        run: tar -czf release/dotlottie-player.wasm.tar.gz -C release wasm/
+
       - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.wasm.tar.gz
-          path: release/wasm/dotlottie-player.wasm.tar.gz
+          path: release/dotlottie-player.wasm.tar.gz
           if-no-files-found: error
 
   release:

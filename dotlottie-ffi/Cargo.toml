@@ -20,15 +20,19 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [features]
-default = ["thorvg-v0", "ffi"]
-thorvg-v0 = ["dotlottie-rs/thorvg-v0"]
-thorvg-v1 = ["dotlottie-rs/thorvg-v1"]
+default = ["thorvg", "ffi"]
+thorvg = ["dotlottie-rs/thorvg"]
+thorvg_webp = ["dotlottie-rs/thorvg_webp"]
+thorvg_png = ["dotlottie-rs/thorvg_png"]
+thorvg_jpg = ["dotlottie-rs/thorvg_jpg"]
+thorvg_ttf = ["dotlottie-rs/thorvg_ttf"]
+thorvg_lottie_expressions = ["dotlottie-rs/thorvg_lottie_expressions"]
 ffi = []
 uniffi = []
 
 [dependencies]
 uniffi = { version = "0.28", features = ["cli"] }
-dotlottie-rs = { path = "../dotlottie-rs", default-features = false }
+dotlottie-rs = { path = "../dotlottie-rs" }
 cfg-if = "1.0"
 bitflags = "2.6.0"
 

@@ -28,7 +28,7 @@ debug: demo-player
 	@gdb demo-player
 
 skia:
-	git clone git@github.com:google/skia.git
+	git clone https://github.com/google/skia
 
 skia-build: skia
 	cd skia && \

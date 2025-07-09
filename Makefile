@@ -303,7 +303,6 @@ cpu = '$(CPU)'
 endian = 'little'
 endef
 
-# iOS Simulator Cross File
 define IOS_SIMULATOR_CROSS_FILE
 [binaries]
 cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
@@ -329,7 +328,6 @@ cpu = '$(CPU)'
 endian = 'little'
 endef
 
-# macOS Cross File
 define MACOS_CROSS_FILE
 [binaries]
 cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
@@ -355,7 +353,6 @@ cpu = '$(CPU)'
 endian = 'little'
 endef
 
-# visionOS Device Cross File
 define VISIONOS_DEVICE_CROSS_FILE
 [binaries]
 cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
@@ -381,7 +378,6 @@ cpu = '$(CPU)'
 endian = 'little'
 endef
 
-# visionOS Simulator Cross File
 define VISIONOS_SIMULATOR_CROSS_FILE
 [binaries]
 cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
@@ -407,7 +403,6 @@ cpu = '$(CPU)'
 endian = 'little'
 endef
 
-# tvOS Device Cross File
 define TVOS_DEVICE_CROSS_FILE
 [binaries]
 cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
@@ -433,7 +428,6 @@ cpu = '$(CPU)'
 endian = 'little'
 endef
 
-# tvOS Simulator Cross File
 define TVOS_SIMULATOR_CROSS_FILE
 [binaries]
 cpp = ['clang++', '-arch', '$(ARCH)', '-isysroot', '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(PLATFORM).platform/Developer/SDKs/$(SDK).sdk']
@@ -458,8 +452,6 @@ cpu_family = '$(CPU_FAMILY)'
 cpu = '$(CPU)'
 endian = 'little'
 endef
-
-# Step 2: Update the APPLE_CROSS_FILE definition (around line 320) to:
 
 define APPLE_CROSS_FILE
 $(if $(filter $(SUBSYSTEM),maccatalyst),$(MACCATALYST_CROSS_FILE),\

@@ -76,15 +76,15 @@ fn register_link_path(lib_path: &Path) {
 }
 
 fn register_static_lib(lib: &String) {
-    println!("cargo:rustc-link-lib=static={}", lib);
+    println!("cargo:rustc-link-lib=static={lib}");
 }
 
 fn register_dylib(lib: &String) {
-    println!("cargo:rustc-link-lib=dylib={}", lib);
+    println!("cargo:rustc-link-lib=dylib={lib}");
 }
 
 fn register_link_arg(arg: &String) {
-    println!("cargo:rustc-link-arg={}", arg);
+    println!("cargo:rustc-link-arg={arg}");
 }
 
 fn apply_build_settings(build_settings: &BuildSettings) {

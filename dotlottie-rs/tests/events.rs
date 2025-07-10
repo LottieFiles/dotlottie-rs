@@ -49,17 +49,17 @@ impl Observer for MockObserver {
 
     fn on_loop(&self, loop_count: u32) {
         let mut events = self.events.lock().unwrap();
-        events.push(format!("on_loop: {}", loop_count));
+        events.push(format!("on_loop: {loop_count}"));
     }
 
     fn on_frame(&self, frame: f32) {
         let mut events = self.events.lock().unwrap();
-        events.push(format!("on_frame: {}", frame));
+        events.push(format!("on_frame: {frame}"));
     }
 
     fn on_render(&self, frame: f32) {
         let mut events = self.events.lock().unwrap();
-        events.push(format!("on_render: {}", frame));
+        events.push(format!("on_render: {frame}"));
     }
 }
 
@@ -109,7 +109,7 @@ mod tests {
                     if player.is_complete() {
                         if player.config().loop_animation {
                             let loop_count = player.loop_count();
-                            expected_events.push(format!("on_loop: {}", loop_count));
+                            expected_events.push(format!("on_loop: {loop_count}"));
 
                             if loop_count == 1 {
                                 player.pause();

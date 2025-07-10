@@ -220,8 +220,7 @@ mod play_mode_tests {
 
         assert!(
             rendered_frames[frame_idx] == player.total_frames() - 1.0,
-            "Expected frame to be total frames at index {}",
-            frame_idx
+            "Expected frame to be total frames at index {frame_idx}"
         );
 
         while frame_idx < rendered_frames.len() && rendered_frames[frame_idx] > 0.0 {
@@ -234,8 +233,7 @@ mod play_mode_tests {
 
         assert!(
             rendered_frames[frame_idx] == 0.0,
-            "Expected frame to be 0 at index {}",
-            frame_idx
+            "Expected frame to be 0 at index {frame_idx}"
         );
     }
 
@@ -284,8 +282,7 @@ mod play_mode_tests {
 
         assert!(
             rendered_frames[frame_idx] == 0.0,
-            "Expected frame to be 0 at index {}",
-            frame_idx
+            "Expected frame to be 0 at index {frame_idx}"
         );
 
         while frame_idx < rendered_frames.len()
@@ -300,8 +297,7 @@ mod play_mode_tests {
 
         assert!(
             rendered_frames[frame_idx] == player.total_frames() - 1.0,
-            "Expected frame to be total frames at index {}",
-            frame_idx
+            "Expected frame to be total frames at index {frame_idx}"
         );
     }
 }

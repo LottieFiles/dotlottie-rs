@@ -187,7 +187,7 @@ impl fmt::Display for DotLottieString {
         let value = unsafe {
             DotLottieString::read(self.value.as_ptr() as *const c_char).map_err(|_| fmt::Error)?
         };
-        write!(f, "{}", value)
+        write!(f, "{value}")
     }
 }
 

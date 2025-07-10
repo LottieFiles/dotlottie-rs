@@ -66,13 +66,13 @@ impl DotLottieManager {
 
         let (json_path, lot_path) = if self.version == 2 {
             (
-                format!("a/{}.json", animation_id),
-                format!("a/{}.lot", animation_id),
+                format!("a/{animation_id}.json"),
+                format!("a/{animation_id}.lot"),
             )
         } else {
             (
-                format!("animations/{}.json", animation_id),
-                format!("animations/{}.lot", animation_id),
+                format!("animations/{animation_id}.json"),
+                format!("animations/{animation_id}.lot"),
             )
         };
 
@@ -115,11 +115,7 @@ impl DotLottieManager {
                                     let image_data_base64 = Self::encode_base64(&content);
 
                                     let data_url = format!(
-                                        "{}{}{}{}",
-                                        DATA_IMAGE_PREFIX,
-                                        image_ext,
-                                        BASE64_PREFIX,
-                                        image_data_base64
+                                        "{DATA_IMAGE_PREFIX}{image_ext}{BASE64_PREFIX}{image_data_base64}"
                                     );
 
                                     asset_obj.insert("u".to_string(), empty_u.clone());
@@ -139,7 +135,7 @@ impl DotLottieManager {
     #[inline]
     pub fn get_state_machine(&self, state_machine_id: &str) -> Result<String, DotLottieError> {
         let mut archive = self.archive.borrow_mut();
-        let path = format!("s/{}.json", state_machine_id);
+        let path = format!("s/{state_machine_id}.json");
         let content = Self::read_zip_file(&mut archive, &path)?;
         String::from_utf8(content).map_err(|_| DotLottieError::InvalidUtf8Error)
     }
@@ -157,7 +153,7 @@ impl DotLottieManager {
     #[inline]
     pub fn get_theme(&self, theme_id: &str) -> Result<String, DotLottieError> {
         let mut archive = self.archive.borrow_mut();
-        let path = format!("t/{}.json", theme_id);
+        let path = format!("t/{theme_id}.json");
         let content = Self::read_zip_file(&mut archive, &path)?;
         String::from_utf8(content).map_err(|_| DotLottieError::InvalidUtf8Error)
     }

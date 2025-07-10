@@ -21,7 +21,7 @@ pub enum LottieRendererError {
 
 impl fmt::Display for LottieRendererError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

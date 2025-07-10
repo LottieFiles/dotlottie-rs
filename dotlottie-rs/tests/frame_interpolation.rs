@@ -59,7 +59,7 @@ mod tests {
         );
 
         for (i, frame) in rendered_frames.iter().enumerate() {
-            assert!(*frame == frame.floor(), "Frame {} is interpolated.", i);
+            assert!(*frame == frame.floor(), "Frame {i} is interpolated.");
         }
     }
 }

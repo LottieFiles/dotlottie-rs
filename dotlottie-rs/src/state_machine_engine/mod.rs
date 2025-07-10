@@ -419,7 +419,7 @@ impl StateMachineEngine {
                 match check_report {
                     Ok(_) => {}
                     Err(error) => {
-                        let message = format!("Load: {:?}", error);
+                        let message = format!("Load: {error:?}");
 
                         self.observe_on_error(message.as_str());
 
@@ -431,7 +431,7 @@ impl StateMachineEngine {
                 match err {
                     Ok(_) => {}
                     Err(error) => {
-                        let message = format!("Load: {:?}", error);
+                        let message = format!("Load: {error:?}");
 
                         self.observe_on_error(message.as_str());
 

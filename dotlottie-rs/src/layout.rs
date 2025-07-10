@@ -223,10 +223,7 @@ mod tests {
             );
             assert!(
                 nearly_equal(actual, expected, 0.01),
-                "Case '{}': expected {:?}, got {:?}",
-                case_name,
-                expected,
-                actual
+                "Case '{case_name}': expected {expected:?}, got {actual:?}"
             );
         }
     }

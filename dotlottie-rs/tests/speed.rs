@@ -105,9 +105,7 @@ mod tests {
             // assert if actual playback speed is close to the expected speed +/- 0.1
             assert!(
                 (playback_speed - expected_speed).abs() <= 0.1,
-                "Expected playback speed to be close to {}, found {}",
-                expected_speed,
-                playback_speed
+                "Expected playback speed to be close to {expected_speed}, found {playback_speed}"
             );
         }
     }

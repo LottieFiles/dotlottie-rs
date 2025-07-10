@@ -29,7 +29,7 @@ lazy_static! {
 }
 
 fn register_link_arg(arg: &String) {
-    println!("cargo:rustc-link-arg={}", arg);
+    println!("cargo:rustc-link-arg={arg}");
 }
 
 fn apply_build_settings(build_settings: &BuildSettings) {

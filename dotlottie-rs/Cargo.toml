@@ -8,8 +8,14 @@ links = "thorvg"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
-thorvg-v0 = []
-thorvg-v1 = []
+default = []
+thorvg = []
+thorvg_lottie_expressions = []
+thorvg_jpg = []
+thorvg_png = []
+thorvg_webp = []
+thorvg_ttf = []
+thorvg_threads = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
@@ -18,14 +24,14 @@ serde = { version = "1.0", features = ["derive"] }
 zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
 
 [build-dependencies]
-bindgen = "0.70.1"
-lazy_static = "1.4"
-conan2 = "0.1"
+bindgen = "0.72.0"
+cc = { version = "1.2", features = ["parallel"] }
+cfg-if = "1.0"
 
 [dev-dependencies]
 criterion = "0.5.1"
 # This is a workaround to enable this feature only on dev.
-dotlottie-rs = { path = ".", features = ["thorvg-v0"] }
+dotlottie-rs = { path = ".", features = ["thorvg"] }
 
 [[bench]]
 name = "benchmarks"

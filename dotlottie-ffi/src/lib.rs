@@ -1,3 +1,5 @@
+#![allow(clippy::empty_line_after_doc_comments)]
+
 #[cfg(feature = "ffi")]
 mod ffi;
 

@@ -363,7 +363,7 @@ impl StateMachineEngine {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine::default();
         if parsed_state_machine.is_err() {
-            let message = format!("Load: {:?}", parsed_state_machine.err());
+            let message = format!("Load: {error:?}", error = parsed_state_machine.err());
 
             self.observe_on_error(message.as_str());
 

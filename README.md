@@ -42,7 +42,7 @@ dotLottie-rs builds on the Lottie format, adding powerful quality of life improv
 - Built-in interactivity powered by state machines (in development)
 - Reduced animation file sizes
 - Feature parity across platforms
-- Guarenteed visual consistancy across platforms (Thanks to the [Thorvg renderer](https://github.com/thorvg/thorvg))
+- Guaranteed visual consistancy across platforms (Thanks to the [Thorvg renderer](https://github.com/thorvg/thorvg))
 
 ## Available Players
 

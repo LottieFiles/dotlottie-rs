@@ -266,8 +266,8 @@ root = '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(SDK
 has_function_printf = true
 
 [built-in options]
-cpp_args = ['-target', '$(ARCH)-apple-ios13.1-macabi']
-cpp_link_args = ['-target', '$(ARCH)-apple-ios13.1-macabi']
+cpp_args = ['-target', '$(ARCH)-apple-ios13.0-macabi']
+cpp_link_args = ['-target', '$(ARCH)-apple-ios13.0-macabi']
 
 [host_machine]
 system = 'darwin'
@@ -607,14 +607,6 @@ define CARGO_BUILD
 		$(call CARGO_NIGHTLY_BUILD,XROS_DEPLOYMENT_TARGET,$(APPLE_VISIONOS_VERSION_MIN)) \
 	elif [ "$(CARGO_TARGET)" = "aarch64-apple-tvos" ] || [ "$(CARGO_TARGET)" = "aarch64-apple-tvos-sim" ]; then \
 		$(call CARGO_NIGHTLY_BUILD,TVOS_DEPLOYMENT_TARGET,$(APPLE_TVOS_VERSION_MIN)) \
-	elif [ "$(CARGO_TARGET)" = "aarch64-apple-ios-sim" ] || [ "$(CARGO_TARGET)" = "x86_64-apple-ios" ]; then \
-		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_IOS_VERSION_MIN) \
-		cargo build \
-		--manifest-path $(PROJECT_DIR)/Cargo.toml \
-		--target $(CARGO_TARGET) \
-		--no-default-features \
-		--features thorvg-v1,uniffi \
-		--release; \
 	elif [ "$(CARGO_TARGET)" = "x86_64-apple-ios-macabi" ] || [ "$(CARGO_TARGET)" = "aarch64-apple-ios-macabi" ]; then \
 		IPHONEOS_DEPLOYMENT_TARGET=$(APPLE_MACCATALYST_VERSION_MIN) \
 		cargo build \

@@ -1,3 +1,11 @@
+## 0.1.45 (2025-07-23)
+
+### Features
+
+#### update thorvg v1.0-pre23 (#355)
+
+#### upgrade to thorvg-1.0-pre24 (#357)
+
 ## 0.1.44 (2025-06-23)
 
 ### Features

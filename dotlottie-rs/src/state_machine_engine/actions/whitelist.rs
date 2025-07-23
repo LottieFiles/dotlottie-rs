@@ -55,7 +55,7 @@ impl WhitelistEntry {
                     let prefix_without_slash = &prefix[..prefix.len() - 1];
                     let matches = text.starts_with(prefix_without_slash)
                         && (text.len() == prefix_without_slash.len()
-                            || text.starts_with(&format!("{}/", prefix_without_slash)));
+                            || text.starts_with(&format!("{prefix_without_slash}/")));
                     (matches, prefix_without_slash.len())
                 } else {
                     let matches = text.starts_with(prefix);
@@ -89,9 +89,9 @@ impl Whitelist {
 
         let (host, path) = match parse_url(&url) {
             Ok(result) => result,
-            Err(_) => match parse_url(&format!("https://{}", url)) {
+            Err(_) => match parse_url(&format!("https://{url}")) {
                 Ok(result) => result,
-                Err(e) => return Err(format!("Invalid URL: {}", e)),
+                Err(e) => return Err(format!("Invalid URL: {e}")),
             },
         };
 
@@ -100,7 +100,7 @@ impl Whitelist {
         } else {
             path.trim_end_matches('/')
         };
-        Ok(format!("{}{}", host, path))
+        Ok(format!("{host}{path}"))
     }
 
     pub fn add(&mut self, pattern: &str) -> Result<(), String> {
@@ -117,7 +117,7 @@ impl Whitelist {
                             } else {
                                 path.trim_end_matches('/')
                             };
-                            format!("{}{}*", host, path)
+                            format!("{host}{path}*")
                         }
                         Err(_) => pattern.clone(),
                     }

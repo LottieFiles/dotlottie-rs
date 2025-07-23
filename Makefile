@@ -554,6 +554,7 @@ define SETUP_MESON
 		-Dengines=sw \
 		-Dbindings=capi \
 		-Dlog=false \
+		-Dpartial=false \
 		-Dthreads=false \
 		-Dstatic=true \
 		-Dextra=$(EXTRA) \

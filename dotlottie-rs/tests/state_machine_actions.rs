@@ -16,24 +16,23 @@ impl StateMachineObserver for MockObserver {
     fn on_transition(&self, previous_state: String, new_state: String) {
         let mut events = self.events.lock().unwrap();
         events.push(format!(
-            "on_transition: {} -> {}",
-            previous_state, new_state
+            "on_transition: {previous_state} -> {new_state}"
         ));
     }
 
     fn on_state_entered(&self, entering_state: String) {
         let mut events = self.events.lock().unwrap();
-        events.push(format!("on_state_entered: {}", entering_state));
+        events.push(format!("on_state_entered: {entering_state}"));
     }
 
     fn on_state_exit(&self, leaving_state: String) {
         let mut events = self.events.lock().unwrap();
-        events.push(format!("on_state_exit: {}", leaving_state));
+        events.push(format!("on_state_exit: {leaving_state}"));
     }
 
     fn on_custom_event(&self, message: String) {
         let mut events = self.events.lock().unwrap();
-        events.push(format!("custom_event: {}", message));
+        events.push(format!("custom_event: {message}"));
     }
 
     fn on_start(&self) {

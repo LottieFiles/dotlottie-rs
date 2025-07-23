@@ -35,7 +35,7 @@ mod tests {
         fn on_loop(&self, loop_count: u32) {
             let mut events = self.events.lock().unwrap();
 
-            events.push(format!("on_loop {}", loop_count));
+            events.push(format!("on_loop {loop_count}"));
         }
 
         fn on_complete(&self) {}

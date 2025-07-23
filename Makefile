@@ -119,7 +119,7 @@ APPLE_TVOS_SIMULATOR_SDK ?= AppleTVSimulator
 APPLE_MACCATALYST := maccatalyst
 APPLE_MACCATALYST_PLATFORM := MacOSX
 APPLE_MACCATALYST_SDK := MacOSX
-APPLE_MACCATALYST_VERSION_MIN ?= 13.0
+APPLE_MACCATALYST_VERSION_MIN ?= 13.1
 
 APPLE_IOS_FRAMEWORK_TYPE := $(APPLE_IOS)
 APPLE_IOS_SIMULATOR_FRAMEWORK_TYPE := $(APPLE_IOS_SIMULATOR)
@@ -266,12 +266,12 @@ root = '/Applications/$(APPLE_XCODE_APP_NAME)/Contents/Developer/Platforms/$(SDK
 has_function_printf = true
 
 [built-in options]
-cpp_args = ['-target', '$(ARCH)-apple-ios13.0-macabi']
-cpp_link_args = ['-target', '$(ARCH)-apple-ios13.0-macabi']
+cpp_args = ['-target', '$(ARCH)-apple-ios$(APPLE_MACCATALYST_VERSION_MIN)-macabi']
+cpp_link_args = ['-target', '$(ARCH)-apple-ios$(APPLE_MACCATALYST_VERSION_MIN)-macabi']
 
 [host_machine]
 system = 'darwin'
-subsystem = '$(SUBSYSTEM)'
+subsystem = 'macos'
 kernel = 'xnu'
 cpu_family = '$(CPU_FAMILY)'
 cpu = '$(CPU)'

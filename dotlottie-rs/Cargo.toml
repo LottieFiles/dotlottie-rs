@@ -18,7 +18,7 @@ serde = { version = "1.0", features = ["derive"] }
 zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
 
 [build-dependencies]
-bindgen = "0.70.1"
+bindgen = "0.72.0"
 lazy_static = "1.4"
 conan2 = "0.1"
 

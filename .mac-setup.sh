@@ -88,7 +88,9 @@ case "${TARGET}" in
       x86_64-apple-darwin \
       aarch64-apple-ios \
       x86_64-apple-ios \
-      aarch64-apple-ios-sim
+      aarch64-apple-ios-sim \
+      x86_64-apple-ios-macabi \
+      aarch64-apple-ios-macabi
     ;;
   wasm)
     rustup target add wasm32-unknown-emscripten
@@ -103,7 +105,9 @@ case "${TARGET}" in
       aarch64-apple-ios \
       x86_64-apple-ios \
       aarch64-apple-ios-sim \
-      wasm32-unknown-emscripten
+      wasm32-unknown-emscripten \
+      x86_64-apple-ios-macabi \
+      aarch64-apple-ios-macabi
     ;;
   *)
     echo "${RED}Invalid target specified: ${TARGET}${NC}"

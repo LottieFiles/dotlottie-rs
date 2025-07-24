@@ -106,6 +106,7 @@ fn main() {
     }
 
     let mut builder = bindgen::Builder::default().header("wrapper.h");
+
     if is_artifacts_provided() {
         let include_dir = find_path(ARTIFACTS_INCLUDE_DIR, true);
         let lib_dir = find_path(ARTIFACTS_LIB_DIR, true);

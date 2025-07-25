@@ -2,6 +2,7 @@
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
 #include <optional>
+#include <functional>
 
 using namespace emscripten;
 using namespace dotlottie_player;
@@ -20,15 +21,230 @@ bool load_dotlottie_data(DotLottiePlayer &player, std::string data, uint32_t wid
     return player.load_dotlottie_data(data_vector, width, height);
 }
 
+struct ObserverCallbacks {
+    std::function<void()> on_complete;
+    std::function<void()> on_load;
+    std::function<void()> on_load_error;
+    std::function<void()> on_play;
+    std::function<void()> on_pause;
+    std::function<void()> on_stop;
+    std::function<void(float)> on_frame;
+    std::function<void(float)> on_render;
+    std::function<void(uint32_t)> on_loop;
+};
+
+class CallbackObserver : public Observer {
+public:
+    CallbackObserver() = default;
+    void setOnComplete(val cb) { 
+        callbacks_.on_complete = [cb]() { if (cb != val::undefined()) cb(); };
+    }
+    void setOnLoad(val cb) { 
+        callbacks_.on_load = [cb]() { if (cb != val::undefined()) cb(); };
+    }
+    void setOnLoadError(val cb) { 
+        callbacks_.on_load_error = [cb]() { if (cb != val::undefined()) cb(); };
+    }
+    void setOnPlay(val cb) { 
+        callbacks_.on_play = [cb]() { if (cb != val::undefined()) cb(); };
+    }
+    void setOnPause(val cb) { 
+        callbacks_.on_pause = [cb]() { if (cb != val::undefined()) cb(); };
+    }
+    void setOnStop(val cb) { 
+        callbacks_.on_stop = [cb]() { if (cb != val::undefined()) cb(); };
+    }
+    void setOnFrame(val cb) { 
+        callbacks_.on_frame = [cb](float frame_no) { if (cb != val::undefined()) cb(frame_no); };
+    }
+    void setOnRender(val cb) { 
+        callbacks_.on_render = [cb](float frame_no) { if (cb != val::undefined()) cb(frame_no); };
+    }
+    void setOnLoop(val cb) { 
+        callbacks_.on_loop = [cb](uint32_t loop_count) { if (cb != val::undefined()) cb(loop_count); };
+    }
+
+    void on_complete() override { if (callbacks_.on_complete) callbacks_.on_complete(); }
+    void on_load() override { if (callbacks_.on_load) callbacks_.on_load(); }
+    void on_load_error() override { if (callbacks_.on_load_error) callbacks_.on_load_error(); }
+    void on_play() override { if (callbacks_.on_play) callbacks_.on_play(); }
+    void on_pause() override { if (callbacks_.on_pause) callbacks_.on_pause(); }
+    void on_stop() override { if (callbacks_.on_stop) callbacks_.on_stop(); }
+    void on_frame(float frame_no) override { if (callbacks_.on_frame) callbacks_.on_frame(frame_no); }
+    void on_render(float frame_no) override { if (callbacks_.on_render) callbacks_.on_render(frame_no); }
+    void on_loop(uint32_t loop_count) override { if (callbacks_.on_loop) callbacks_.on_loop(loop_count); }
+private:
+    ObserverCallbacks callbacks_;
+};
+
+struct StateMachineObserverCallbacks {
+    std::function<void()> on_start;
+    std::function<void()> on_stop;
+    std::function<void(const std::string&, const std::string&)> on_transition;
+    std::function<void(const std::string&)> on_state_entered;
+    std::function<void(const std::string&)> on_state_exit;
+    std::function<void(const std::string&)> on_custom_event;
+    std::function<void(const std::string&, const std::string&, const std::string&)> on_string_input_value_change;
+    std::function<void(const std::string&, float, float)> on_numeric_input_value_change;
+    std::function<void(const std::string&, bool, bool)> on_boolean_input_value_change;
+    std::function<void(const std::string&)> on_input_fired;
+    std::function<void(const std::string&)> on_error;
+};
+
+class CallbackStateMachineObserver : public StateMachineObserver {
+public:
+    CallbackStateMachineObserver() = default;
+    
+    void setOnStart(val cb) { 
+        callbacks_.on_start = [cb]() { if (cb != val::undefined()) cb(); };
+    }
+    void setOnStop(val cb) { 
+        callbacks_.on_stop = [cb]() { if (cb != val::undefined()) cb(); };
+    }
+    void setOnTransition(val cb) { 
+        callbacks_.on_transition = [cb](const std::string& prev, const std::string& next) { 
+            if (cb != val::undefined()) cb(prev, next); 
+        };
+    }
+    void setOnStateEntered(val cb) { 
+        callbacks_.on_state_entered = [cb](const std::string& state) { 
+            if (cb != val::undefined()) cb(state); 
+        };
+    }
+    void setOnStateExit(val cb) { 
+        callbacks_.on_state_exit = [cb](const std::string& state) { 
+            if (cb != val::undefined()) cb(state); 
+        };
+    }
+    void setOnCustomEvent(val cb) { 
+        callbacks_.on_custom_event = [cb](const std::string& event) { 
+            if (cb != val::undefined()) cb(event); 
+        };
+    }
+    void setOnStringInputValueChange(val cb) { 
+        callbacks_.on_string_input_value_change = [cb](const std::string& input, const std::string& oldv, const std::string& newv) { 
+            if (cb != val::undefined()) cb(input, oldv, newv); 
+        };
+    }
+    void setOnNumericInputValueChange(val cb) { 
+        callbacks_.on_numeric_input_value_change = [cb](const std::string& input, float oldv, float newv) { 
+            if (cb != val::undefined()) cb(input, oldv, newv); 
+        };
+    }
+    void setOnBooleanInputValueChange(val cb) { 
+        callbacks_.on_boolean_input_value_change = [cb](const std::string& input, bool oldv, bool newv) { 
+            if (cb != val::undefined()) cb(input, oldv, newv); 
+        };
+    }
+    void setOnInputFired(val cb) { 
+        callbacks_.on_input_fired = [cb](const std::string& input) { 
+            if (cb != val::undefined()) cb(input); 
+        };
+    }
+    void setOnError(val cb) { 
+        callbacks_.on_error = [cb](const std::string& err) { 
+            if (cb != val::undefined()) cb(err); 
+        };
+    }
+
+    void on_start() override { if (callbacks_.on_start) callbacks_.on_start(); }
+    void on_stop() override { if (callbacks_.on_stop) callbacks_.on_stop(); }
+    void on_transition(const std::string &prev, const std::string &next) override { if (callbacks_.on_transition) callbacks_.on_transition(prev, next); }
+    void on_state_entered(const std::string &state) override { if (callbacks_.on_state_entered) callbacks_.on_state_entered(state); }
+    void on_state_exit(const std::string &state) override { if (callbacks_.on_state_exit) callbacks_.on_state_exit(state); }
+    void on_custom_event(const std::string &event) override { if (callbacks_.on_custom_event) callbacks_.on_custom_event(event); }
+    void on_string_input_value_change(const std::string &input, const std::string &oldv, const std::string &newv) override { if (callbacks_.on_string_input_value_change) callbacks_.on_string_input_value_change(input, oldv, newv); }
+    void on_numeric_input_value_change(const std::string &input, float oldv, float newv) override { if (callbacks_.on_numeric_input_value_change) callbacks_.on_numeric_input_value_change(input, oldv, newv); }
+    void on_boolean_input_value_change(const std::string &input, bool oldv, bool newv) override { if (callbacks_.on_boolean_input_value_change) callbacks_.on_boolean_input_value_change(input, oldv, newv); }
+    void on_input_fired(const std::string &input) override { if (callbacks_.on_input_fired) callbacks_.on_input_fired(input); }
+    void on_error(const std::string &err) override { if (callbacks_.on_error) callbacks_.on_error(err); }
+private:
+    StateMachineObserverCallbacks callbacks_;
+};
+
+std::shared_ptr<Observer> subscribe(DotLottiePlayer &player, Observer* observer)
+{
+    // Create shared_ptr from raw pointer (without taking ownership)
+    std::shared_ptr<Observer> shared_observer(observer, [](Observer*){});
+    player.subscribe(shared_observer);
+    return shared_observer;
+}
+
+void unsubscribe(DotLottiePlayer &player, std::shared_ptr<Observer> observer)
+{
+    player.unsubscribe(observer);
+}
+
+std::shared_ptr<StateMachineObserver> stateMachineSubscribe(DotLottiePlayer &player, StateMachineObserver* observer)
+{
+    // Create shared_ptr from raw pointer (without taking ownership)
+    std::shared_ptr<StateMachineObserver> shared_observer(observer, [](StateMachineObserver*){});
+    player.state_machine_subscribe(shared_observer);
+    return shared_observer;
+}
+
+void stateMachineUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachineObserver> observer)
+{
+    player.state_machine_unsubscribe(observer);
+}
+
+std::shared_ptr<StateMachineObserver> stateMachineFrameworkSubscribe(DotLottiePlayer &player, StateMachineObserver* observer)
+{
+    // Create shared_ptr from raw pointer (without taking ownership)
+    std::shared_ptr<StateMachineObserver> shared_observer(observer, [](StateMachineObserver*){});
+    player.state_machine_framework_subscribe(shared_observer);
+    return shared_observer;
+}
+
+void stateMachineFrameworkUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachineObserver> observer)
+{
+    player.state_machine_framework_unsubscribe(observer);
+}
+
+EMSCRIPTEN_BINDINGS(observer_callbacks) {
+    class_<CallbackObserver, base<Observer>>("CallbackObserver")
+        .constructor<>()
+        .function("setOnComplete", &CallbackObserver::setOnComplete)
+        .function("setOnLoad", &CallbackObserver::setOnLoad)
+        .function("setOnLoadError", &CallbackObserver::setOnLoadError)
+        .function("setOnPlay", &CallbackObserver::setOnPlay)
+        .function("setOnPause", &CallbackObserver::setOnPause)
+        .function("setOnStop", &CallbackObserver::setOnStop)
+        .function("setOnFrame", &CallbackObserver::setOnFrame)
+        .function("setOnRender", &CallbackObserver::setOnRender)
+        .function("setOnLoop", &CallbackObserver::setOnLoop);
+}
+
+EMSCRIPTEN_BINDINGS(state_machine_observer_callbacks) {
+    class_<CallbackStateMachineObserver, base<StateMachineObserver>>("CallbackStateMachineObserver")
+        .constructor<>()
+        .function("setOnStart", &CallbackStateMachineObserver::setOnStart)
+        .function("setOnStop", &CallbackStateMachineObserver::setOnStop)
+        .function("setOnTransition", &CallbackStateMachineObserver::setOnTransition)
+        .function("setOnStateEntered", &CallbackStateMachineObserver::setOnStateEntered)
+        .function("setOnStateExit", &CallbackStateMachineObserver::setOnStateExit)
+        .function("setOnCustomEvent", &CallbackStateMachineObserver::setOnCustomEvent)
+        .function("setOnStringInputValueChange", &CallbackStateMachineObserver::setOnStringInputValueChange)
+        .function("setOnNumericInputValueChange", &CallbackStateMachineObserver::setOnNumericInputValueChange)
+        .function("setOnBooleanInputValueChange", &CallbackStateMachineObserver::setOnBooleanInputValueChange)
+        .function("setOnInputFired", &CallbackStateMachineObserver::setOnInputFired)
+        .function("setOnError", &CallbackStateMachineObserver::setOnError);
+}
+
 EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 {
-
-    // Register std::vector<float> as VectorFloat for the Config::segment field
     register_vector<float>("VectorFloat");
-    // Then register the optional type for the vector - without a name parameter
-    register_optional<std::vector<float>>();
-    register_vector<Marker>("VectorMarker");
     register_vector<std::string>("VectorString");
+    register_vector<Marker>("VectorMarker");
+    
+    register_optional<std::vector<float>>();
+    register_optional<std::string>();
+    register_optional<Layout>();
+    register_optional<uint32_t>();
+    register_optional<bool>();
+    register_optional<Mode>();
+    register_optional<float>();
+    
 
     enum_<Mode>("Mode")
         .value("Forward", Mode::kForward)
@@ -83,9 +299,35 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     function("createDefaultConfig", &create_default_config);
     function("transformThemeToLottieSlots", &transform_theme_to_lottie_slots);
 
+    class_<Observer>("Observer")
+        .smart_ptr<std::shared_ptr<Observer>>("Observer")
+        .function("on_load", &Observer::on_load, pure_virtual())
+        .function("on_load_error", &Observer::on_load_error, pure_virtual())
+        .function("on_play", &Observer::on_play, pure_virtual())
+        .function("on_pause", &Observer::on_pause, pure_virtual())
+        .function("on_stop", &Observer::on_stop, pure_virtual())
+        .function("on_frame", &Observer::on_frame, pure_virtual())
+        .function("on_render", &Observer::on_render, pure_virtual())
+        .function("on_loop", &Observer::on_loop, pure_virtual())
+        .function("on_complete", &Observer::on_complete, pure_virtual());
+
+    class_<StateMachineObserver>("StateMachineObserver")
+        .smart_ptr<std::shared_ptr<StateMachineObserver>>("StateMachineObserver")
+        .function("on_start", &StateMachineObserver::on_start, pure_virtual())
+        .function("on_stop", &StateMachineObserver::on_stop, pure_virtual())
+        .function("on_transition", &StateMachineObserver::on_transition, pure_virtual())
+        .function("on_state_entered", &StateMachineObserver::on_state_entered, pure_virtual())
+        .function("on_state_exit", &StateMachineObserver::on_state_exit, pure_virtual())
+        .function("on_custom_event", &StateMachineObserver::on_custom_event, pure_virtual())
+        .function("on_string_input_value_change", &StateMachineObserver::on_string_input_value_change, pure_virtual())
+        .function("on_numeric_input_value_change", &StateMachineObserver::on_numeric_input_value_change, pure_virtual())
+        .function("on_boolean_input_value_change", &StateMachineObserver::on_boolean_input_value_change, pure_virtual())
+        .function("on_input_fired", &StateMachineObserver::on_input_fired, pure_virtual())
+        .function("on_error", &StateMachineObserver::on_error, pure_virtual());
+
     class_<DotLottiePlayer>("DotLottiePlayer")
         .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
-        .constructor(&DotLottiePlayer::init, allow_raw_pointers())
+        .constructor(&DotLottiePlayer::init)
         .function("buffer", &buffer)
         .function("clear", &DotLottiePlayer::clear)
         .function("config", &DotLottiePlayer::config)
@@ -95,10 +337,10 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("isPaused", &DotLottiePlayer::is_paused)
         .function("isPlaying", &DotLottiePlayer::is_playing)
         .function("isStopped", &DotLottiePlayer::is_stopped)
-        .function("loadAnimationData", &DotLottiePlayer::load_animation_data, allow_raw_pointers())
-        .function("loadAnimationPath", &DotLottiePlayer::load_animation_path, allow_raw_pointers())
-        .function("loadDotLottieData", &load_dotlottie_data, allow_raw_pointers())
-        .function("loadAnimation", &DotLottiePlayer::load_animation, allow_raw_pointers())
+        .function("loadAnimationData", &DotLottiePlayer::load_animation_data)
+        .function("loadAnimationPath", &DotLottiePlayer::load_animation_path)
+        .function("loadDotLottieData", &load_dotlottie_data)
+        .function("loadAnimation", &DotLottiePlayer::load_animation)
         // .function("manifest", &DotLottiePlayer::manifest)
         .function("manifestString", &DotLottiePlayer::manifest_string)
         .function("loopCount", &DotLottiePlayer::loop_count)
@@ -123,6 +365,8 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("setViewport", &DotLottiePlayer::set_viewport)
         .function("segmentDuration", &DotLottiePlayer::segment_duration)
         .function("animationSize", &DotLottiePlayer::animation_size)
+        .function("subscribe", &subscribe, allow_raw_pointers())
+        .function("unsubscribe", &unsubscribe)
 
         .function("stateMachineLoad", &DotLottiePlayer::state_machine_load)
         .function("stateMachineStart", &DotLottiePlayer::state_machine_start)
@@ -155,5 +399,9 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("stateMachinePostPointerEnterEvent", &DotLottiePlayer::state_machine_post_pointer_enter_event)
         .function("stateMachinePostPointerExitEvent", &DotLottiePlayer::state_machine_post_pointer_exit_event)
         .function("stateMachineOverrideCurrentState", &DotLottiePlayer::state_machine_override_current_state)
+        .function("stateMachineSubscribe", &stateMachineSubscribe, allow_raw_pointers())
+        .function("stateMachineUnsubscribe", &stateMachineUnsubscribe)
+        .function("stateMachineFrameworkSubscribe", &stateMachineFrameworkSubscribe, allow_raw_pointers())
+        .function("stateMachineFrameworkUnsubscribe", &stateMachineFrameworkUnsubscribe)
         .function("stateMachineStatus", &DotLottiePlayer::state_machine_status);
 }

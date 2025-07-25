@@ -152,7 +152,7 @@ EMSDK_VERSION := 3.1.74
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
-UNIFFI_BINDGEN_CPP_VERSION := v0.7.0+v0.28.3
+UNIFFI_BINDGEN_CPP_VERSION := v0.7.2+v0.28.3
 
 WASM_MODULE := DotLottiePlayer
 

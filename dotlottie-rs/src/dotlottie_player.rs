@@ -2193,7 +2193,7 @@ impl DotLottiePlayer {
                         let tmp_sm = state_machine.as_ref().unwrap();
 
                         match error {
-                            StateMachineEngineError::ParsingError => tmp_sm.observe_on_error("ParsingError"),
+                            StateMachineEngineError::ParsingError(err) => tmp_sm.observe_on_error(&format!("Parsing error: {}", err)),
                             StateMachineEngineError::CreationError => tmp_sm.observe_on_error("CreationError"),
                             StateMachineEngineError::SecurityCheckErrorMultipleGuardlessTransitions => tmp_sm.observe_on_error("SecurityCheckErrorMultipleGuardlessTransitions"),
                             StateMachineEngineError::SecurityCheckErrorDuplicateStateName => tmp_sm.observe_on_error("SecurityCheckErrorDuplicateStateName"),

@@ -86,6 +86,8 @@ pub fn state_machine_parse(json: &str) -> Result<StateMachine, StateMachineError
 
     match result {
         Ok(k) => Ok(k),
-        Err(_err) => Err(StateMachineError::ParsingError),
+        Err(err) => {
+            return Err(StateMachineError::ParsingError(err.to_string()))
+        },
     }
 }

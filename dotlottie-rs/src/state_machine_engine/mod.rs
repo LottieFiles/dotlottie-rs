@@ -59,7 +59,7 @@ pub enum StateMachineEngineStatus {
 
 #[derive(Debug)]
 pub enum StateMachineEngineError {
-    ParsingError,
+    ParsingError(String),
     CreationError,
     FireEventError,
     InfiniteLoopError,
@@ -363,11 +363,14 @@ impl StateMachineEngine {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine::default();
         if parsed_state_machine.is_err() {
-            let message = format!("Load: {:?}", parsed_state_machine.err());
+            let message = match parsed_state_machine.err() {
+                Some(e) => format!("Parsing error: {:?}", e),
+                None => "Parsing error: Unknown error".to_string(),
+            };
 
             self.observe_on_error(message.as_str());
 
-            return Err(StateMachineEngineError::ParsingError);
+            return Err(StateMachineEngineError::ParsingError(message));
         }
 
         match parsed_state_machine {

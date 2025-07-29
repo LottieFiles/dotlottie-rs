@@ -129,9 +129,41 @@
         marker: "feather",
       });
 
-      // const instances = {};
+      const observer = new Module.CallbackObserver();
 
-      // instances[dotLottiePlayer.instanceId()] = dotLottiePlayer;
+      observer.setOnLoad(() => {
+        console.log("Animation loaded!");
+      });
+
+      observer.setOnPlay(() => {
+        console.log("Animation started playing");
+      });
+
+      observer.setOnPause(() => {
+        console.log("Animation paused");
+      });
+
+      observer.setOnStop(() => {
+        console.log("Animation stopped");
+      });
+
+      observer.setOnComplete(() => {
+        console.log("Animation completed!");
+      });
+
+      observer.setOnFrame((frameNo) => {
+        // console.log(`Current frame: ${frameNo}`);
+      });
+
+      observer.setOnRender((frameNo) => {
+        // console.log(`Rendered frame: ${frameNo}`);
+      });
+
+      observer.setOnLoop((loopCount) => {
+        console.log(`Loop completed! Loop count: ${loopCount}`);
+      });
+
+      const observerHandle = dotLottiePlayer.subscribe(observer);
 
       const data = await fetch(
         // "./examples/demo-player/src/optimized.lottie"

@@ -1,3 +1,13 @@
+## 0.1.46 (2025-07-29)
+
+### Features
+
+#### mac catalyst support, codesigning for apple (#354)
+
+### Fixes
+
+#### Observer & StateMachineObserver Emscripten bindings (#361)
+
 ## 0.1.45 (2025-07-23)
 
 ### Features

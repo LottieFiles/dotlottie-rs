@@ -1,6 +1,7 @@
 #[cfg(feature = "thorvg-v1")]
 use crate::time::Instant;
 
+#[cfg_attr(not(feature = "thorvg-v1"), allow(unused_imports))]
 use std::{error::Error, ffi::CString, fmt, ptr, result::Result};
 
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
@@ -421,7 +422,11 @@ impl Animation for TvgAnimation {
         Ok(curr_frame)
     }
 
-    fn set_slots(&mut self, slots: &str) -> Result<(), TvgError> {
+    fn set_slots(
+        &mut self,
+        #[cfg_attr(not(feature = "thorvg-v1"), allow(unused_variables))]
+        slots: &str,
+    ) -> Result<(), TvgError> {
         #[cfg(feature = "thorvg-v1")]
         {
             let result = if slots.is_empty() {

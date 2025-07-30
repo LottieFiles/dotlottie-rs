@@ -1,5 +1,5 @@
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 pub fn transform_theme_to_lottie_slots(
     theme_json: &str,
@@ -10,7 +10,7 @@ pub fn transform_theme_to_lottie_slots(
         .as_array()
         .ok_or_else(|| serde::de::Error::custom("Invalid rules field"))?;
 
-    let mut lottie_slots = HashMap::new();
+    let mut lottie_slots = BTreeMap::new();
 
     for rule in rules {
         if !should_process_rule(rule, active_animation_id) {

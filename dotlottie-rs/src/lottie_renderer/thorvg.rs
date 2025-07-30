@@ -1,6 +1,7 @@
 #[cfg(feature = "tvg-v1")]
 use crate::time::Instant;
 
+#[cfg_attr(not(feature = "tvg-v1"), allow(unused_imports))]
 use std::{
     error::Error,
     ffi::{c_char, CString},

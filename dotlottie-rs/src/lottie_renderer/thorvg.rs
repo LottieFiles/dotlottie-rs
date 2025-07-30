@@ -87,7 +87,11 @@ pub struct TvgRenderer {
 }
 
 impl TvgRenderer {
-    pub fn new(engine_method: TvgEngine, threads: u32) -> Self {
+    pub fn new(
+        #[cfg_attr(not(feature = "thorvg-v0"), allow(unused_variables))]
+        engine_method: TvgEngine,
+        threads: u32,
+    ) -> Self {
         let mut count = RENDERERS_COUNT.lock().unwrap();
 
         #[cfg(feature = "thorvg-v0")]

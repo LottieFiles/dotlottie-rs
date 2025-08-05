@@ -1,6 +1,7 @@
 #[cfg(feature = "thorvg-v1")]
 use crate::time::Instant;
 
+#[cfg_attr(not(feature = "thorvg-v1"), allow(unused_imports))]
 use std::{error::Error, ffi::CString, fmt, ptr, result::Result};
 
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
@@ -421,15 +422,29 @@ impl Animation for TvgAnimation {
         Ok(curr_frame)
     }
 
-    fn set_slots(&mut self, slots: &str) -> Result<(), TvgError> {
-        let result = if slots.is_empty() {
-            unsafe { tvg::tvg_lottie_animation_override(self.raw_animation, ptr::null()) }
-        } else {
-            let slots_cstr = CString::new(slots).expect("Failed to create CString");
-            unsafe { tvg::tvg_lottie_animation_override(self.raw_animation, slots_cstr.as_ptr()) }
-        };
+    fn set_slots(
+        &mut self,
+        #[cfg_attr(not(feature = "thorvg-v1"), allow(unused_variables))]
+        slots: &str,
+    ) -> Result<(), TvgError> {
+        #[cfg(feature = "thorvg-v1")]
+        {
+            let result = if slots.is_empty() {
+                unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, 0) }
+            } else {
+                let slots_cstr = CString::new(slots).expect("Failed to create CString");
+                let slot_id = unsafe { tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slots_cstr.as_ptr()) };
+                if slot_id == 0 {
+                    return Err(TvgError::InvalidArgument);
+                }
+                unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_id) }
+            };
 
-        result.into_result()
+            result.into_result()
+        }
+
+        #[cfg(not(feature = "thorvg-v1"))]
+        Err(TvgError::NotSupported)
     }
 
     fn tween(

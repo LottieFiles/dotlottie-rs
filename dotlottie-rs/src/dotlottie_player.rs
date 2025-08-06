@@ -1576,7 +1576,7 @@ impl DotLottiePlayer {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 
-    pub fn state_machine_start(&self, open_url: OpenUrlPolicy) -> bool {
+    pub fn state_machine_start(&self, open_url_policy: OpenUrlPolicy) -> bool {
         match self.state_machine.try_read() {
             Ok(state_machine) => {
                 if state_machine.is_none() {
@@ -1591,7 +1591,7 @@ impl DotLottiePlayer {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    return sm.start(&open_url);
+                    return sm.start(&open_url_policy);
                 }
             }
             Err(_) => {

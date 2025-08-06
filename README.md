@@ -62,7 +62,7 @@ dotLottie-rs serves as a core player from which our framework players use:
 
 - [dotlottie-rs](./dotlottie-rs): The core library for dotLottie native players
 - [dotlottie-ffi](./dotlottie-ffi): The FFI bindings for dotLottie core player to kotlin, swift and wasm
-- [demo-player](./demo-player): A demo player for dotLottie written in Rust
+- [demo-player](./examples/demo-player): A demo player for dotLottie written in Rust
 
 ## Development
 
@@ -73,30 +73,40 @@ installed, at a bare minimum. To ensure that your local machine has all the othe
 tools installed to build the project, run the following from the root of the repo:
 
 ```bash
-make mac-setup
+make setup
 ```
+
+This will configure all platforms. You can also setup individual platforms using:
+- `make android-setup` - Setup Android environment (requires Android NDK)
+- `make apple-setup` - Setup Apple environment (requires Xcode)
+- `make wasm-setup` - Setup WASM environment (installs emsdk and dependencies)
 
 ### Performing builds
 
 Builds can be performed for the following groups of targets:
 
-- `android`
-- `apple`
-- `WASM`
-- `native`
+- `android` - All Android architectures (ARM64, x86_64, x86, ARMv7)
+- `apple` - All Apple platforms (macOS, iOS, tvOS, visionOS, macCatalyst)
+- `wasm` - WebAssembly module with TypeScript definitions
+- `native` - Native library for current platform
 
 For `android` and `apple`, builds will be performed for all supported architectures, whereas
-for `WASM`, only a single target will be built. These names refer to Makefile targets that can be
+for `wasm`, only a single target will be built. These names refer to Makefile targets that can be
 used to build them. For example, to build all `android` targets, execute the following:
 
 ```bash
 make android
 ```
 
-To build all targets, execute the following:
-
+You can also build specific architectures:
 ```bash
-make all
+make android-aarch64          # Android ARM64 only
+make apple-macos-arm64        # macOS ARM64 only
+```
+
+The default target shows the help menu:
+```bash
+make                          # Shows comprehensive help
 ```
 
 ### Native C-API
@@ -119,9 +129,16 @@ Examples for using the native interface can be found in the `examples` directory
 
 ### Other useful targets
 
-- `demo-player`: Build the demo player
-- `clean`: Cleanup rust build artifacts
-- `distclean`: Cleanup ALL build artifacts
+- `test`: Run all tests with single-threaded execution
+- `clippy`: Run Rust linter with strict settings  
+- `clean`: Clean all build artifacts and Cargo cache
+- `list-platforms`: Show all supported platforms
+
+For platform-specific cleanup:
+- `android-clean`: Clean Android artifacts
+- `apple-clean`: Clean Apple artifacts  
+- `wasm-clean`: Clean WASM artifacts
+- `native-clean`: Clean native artifacts
 
 More information can be found by using the `help` target:
 

@@ -152,7 +152,7 @@ EMSDK_VERSION := 3.1.74
 EMSDK_ENV := emsdk_env.sh
 
 UNIFFI_BINDGEN_CPP := uniffi-bindgen-cpp
-UNIFFI_BINDGEN_CPP_VERSION := v0.7.0+v0.28.3
+UNIFFI_BINDGEN_CPP_VERSION := v0.7.2+v0.28.3
 
 WASM_MODULE := DotLottiePlayer
 
@@ -712,7 +712,7 @@ define CREATE_FRAMEWORK
                      -c "Add :CFBundleShortVersionString string 1.0.0" \
                      -c "Add :CFBundlePackageType string FMWK" \
                      -c "Add :CFBundleExecutable string $(DOTLOTTIE_PLAYER_MODULE)" \
-                     -c "Add :MinimumOSVersion string $(if $(findstring macosx,$(BASE_DIR)),$(APPLE_MACOS_VERSION_MIN),$(if $(findstring visionos,$(BASE_DIR)),$(APPLE_VISIONOS_VERSION_MIN),$(if $(findstring tvos,$(BASE_DIR)),$(APPLE_TVOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN)))))" \
+                     -c "Add :MinimumOSVersion string $(if $(findstring macosx,$(BASE_DIR)),$(APPLE_MACOS_VERSION_MIN),$(if $(findstring visionos,$(BASE_DIR)),$(APPLE_VISIONOS_VERSION_MIN),$(if $(findstring tvos,$(BASE_DIR)),$(APPLE_TVOS_VERSION_MIN),$(APPLE_IOS_VERSION_MIN))))" \
                      -c "Add :CFBundleSupportedPlatforms array" \
 										 $(foreach platform,$(PLIST_DISABLE),-c "Add :CFBundleSupportedPlatforms:0 string $(platform)" ) \
 										 $(foreach platform,$(PLIST_ENABLE),-c "Add :CFBundleSupportedPlatforms:1 string $(platform)" ) \

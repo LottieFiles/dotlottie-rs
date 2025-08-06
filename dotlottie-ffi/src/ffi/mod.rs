@@ -197,7 +197,7 @@ pub unsafe extern "C" fn dotlottie_manifest_state_machines(
 pub unsafe extern "C" fn dotlottie_state_machine_post_event(
     ptr: *mut DotLottiePlayer,
     event: *const DotLottieEvent,
-) -> i32 {
+) {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Some(event) = event.as_ref() {
             dotlottie_player.state_machine_post_event(&event.to_event())

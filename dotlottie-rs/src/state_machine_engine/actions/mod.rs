@@ -3,7 +3,7 @@ use whitelist::Whitelist;
 
 use std::{rc::Rc, sync::RwLock};
 
-use crate::{DotLottiePlayerContainer, Event};
+use crate::{state_machine::StringBool, DotLottiePlayerContainer, Event};
 
 use super::{state_machine::StringNumber, StateMachineEngine};
 
@@ -46,7 +46,7 @@ pub enum Action {
     },
     SetBoolean {
         input_name: String,
-        value: bool,
+        value: StringBool,
     },
     SetString {
         input_name: String,
@@ -54,7 +54,7 @@ pub enum Action {
     },
     SetNumeric {
         input_name: String,
-        value: f32,
+        value: StringNumber,
     },
     Fire {
         input_name: String,
@@ -189,21 +189,90 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            // Todo: Add support for setting a input to a input value
             Action::SetBoolean { input_name, value } => {
-                engine.set_boolean_input(input_name, *value, run_pipeline, called_from_action);
+                let val = engine.get_boolean_input(input_name);
 
+                if let Some(val) = val {
+                    match value {
+                        StringBool::String(string_value) => {
+                            let trimmed_value = string_value.trim_start_matches('$');
+                            let opt_input_value = engine.get_boolean_input(trimmed_value);
+
+                            // In case of failure, don't change the input_name's value
+                            if let Some(input_value) = opt_input_value {
+                                engine.set_boolean_input(
+                                    input_name,
+                                    input_value,
+                                    run_pipeline,
+                                    called_from_action,
+                                );
+                            }
+                        }
+                        StringBool::Bool(bool_value) => {
+                            engine.set_boolean_input(
+                                input_name,
+                                *bool_value,
+                                run_pipeline,
+                                called_from_action,
+                            );
+                        }
+                    }
+                }
                 Ok(())
             }
-            // Todo: Add support for setting a input to a input value
             Action::SetNumeric { input_name, value } => {
-                engine.set_numeric_input(input_name, *value, run_pipeline, called_from_action);
+                let val = engine.get_numeric_input(input_name);
+
+                if let Some(val) = val {
+                    match value {
+                        StringNumber::String(string_value) => {
+                            let trimmed_value = string_value.trim_start_matches('$');
+                            let opt_input_value = engine.get_numeric_input(trimmed_value);
+
+                            // In case of failure, don't change the input_name's value
+                            if let Some(input_value) = opt_input_value {
+                                engine.set_numeric_input(
+                                    input_name,
+                                    input_value,
+                                    run_pipeline,
+                                    called_from_action,
+                                );
+                            }
+                        }
+                        StringNumber::F32(numeric_value) => {
+                            engine.set_numeric_input(
+                                input_name,
+                                *numeric_value,
+                                run_pipeline,
+                                called_from_action,
+                            );
+                        }
+                    }
+                }
                 Ok(())
             }
-            // Todo: Add support for setting a input to a input value
             Action::SetString { input_name, value } => {
-                engine.set_string_input(input_name, value, run_pipeline, called_from_action);
+                let val = engine.get_string_input(input_name);
 
+                if let Some(val) = val {
+                    let trimmed_value = value.trim_start_matches('$');
+                    let opt_input_value = engine.get_string_input(trimmed_value);
+                    if let Some(input_value) = opt_input_value {
+                        engine.set_string_input(
+                            input_name,
+                            &input_value,
+                            run_pipeline,
+                            called_from_action,
+                        );
+                    } else {
+                        engine.set_string_input(
+                            input_name,
+                            value,
+                            run_pipeline,
+                            called_from_action,
+                        );
+                    }
+                }
                 Ok(())
             }
             Action::Fire { input_name } => {

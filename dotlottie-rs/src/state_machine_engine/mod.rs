@@ -13,7 +13,7 @@ pub mod state_machine;
 pub mod states;
 pub mod transitions;
 
-use actions::open_url::OpenUrl;
+use actions::open_url_policy::OpenUrlPolicy;
 use actions::{Action, ActionTrait};
 use inputs::{Input, InputManager, InputTrait, InputValue};
 use interactions::InteractionTrait;
@@ -48,6 +48,10 @@ pub trait StateMachineObserver: Send + Sync {
     fn on_boolean_input_value_change(&self, input_name: String, old_value: bool, new_value: bool);
     fn on_input_fired(&self, input_name: String);
     fn on_error(&self, error: String);
+}
+
+pub trait InternalStateMachineObserver: Send + Sync {
+    fn on_message(&self, message: String);
 }
 
 #[derive(PartialEq, Debug)]
@@ -97,7 +101,7 @@ pub struct StateMachineEngine {
 
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineEngineStatus,
-    pub open_url_config: OpenUrl,
+    pub open_url_config: OpenUrlPolicy,
 
     inputs: InputManager,
     event_input: HashMap<String, String>,
@@ -107,7 +111,7 @@ pub struct StateMachineEngine {
     pointer_management: PointerData,
 
     pub observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
-    pub framework_url_observer: RwLock<Option<Arc<dyn StateMachineObserver>>>,
+    pub internal_observer: RwLock<Option<Arc<dyn InternalStateMachineObserver>>>,
 
     state_machine: StateMachine,
 
@@ -126,7 +130,7 @@ impl Default for StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
-            open_url_config: OpenUrl::default(),
+            open_url_config: OpenUrlPolicy::default(),
             player: None,
             inputs: InputManager::new(),
             event_input: HashMap::new(),
@@ -134,7 +138,7 @@ impl Default for StateMachineEngine {
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
-            framework_url_observer: RwLock::new(None),
+            internal_observer: RwLock::new(None),
             state_history: Vec::new(),
             max_cycle_count: 20,
             current_cycle_count: 0,
@@ -154,7 +158,7 @@ impl StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
-            open_url_config: OpenUrl::default(),
+            open_url_config: OpenUrlPolicy::default(),
             player: Some(player.clone()),
             inputs: InputManager::new(),
             event_input: HashMap::new(),
@@ -162,7 +166,7 @@ impl StateMachineEngine {
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
-            framework_url_observer: RwLock::new(None),
+            internal_observer: RwLock::new(None),
             state_history: Vec::new(),
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
@@ -185,16 +189,16 @@ impl StateMachineEngine {
             .retain(|o| !Arc::ptr_eq(o, observer));
     }
 
-    pub fn framework_subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
-        let mut framework_observer = self.framework_url_observer.write().unwrap();
-        *framework_observer = Some(observer);
+    pub fn internal_subscribe(&self, observer: Arc<dyn InternalStateMachineObserver>) {
+        let mut internal_observer = self.internal_observer.write().unwrap();
+        *internal_observer = Some(observer);
     }
 
-    pub fn framework_unsubscribe(&self, observer: &Arc<dyn StateMachineObserver>) {
-        let mut framework_observer_write_lock = self.framework_url_observer.write().unwrap();
-        if let Some(framework_observer) = &*framework_observer_write_lock {
-            if Arc::ptr_eq(framework_observer, observer) {
-                *framework_observer_write_lock = None;
+    pub fn internal_unsubscribe(&self, observer: &Arc<dyn InternalStateMachineObserver>) {
+        let mut internal_observer_write_lock = self.internal_observer.write().unwrap();
+        if let Some(internal_observer) = &*internal_observer_write_lock {
+            if Arc::ptr_eq(internal_observer, observer) {
+                *internal_observer_write_lock = None;
             }
         }
     }
@@ -455,7 +459,7 @@ impl StateMachineEngine {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self, open_url: &OpenUrl) -> bool {
+    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> bool {
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
             return false;
@@ -795,6 +799,11 @@ impl StateMachineEngine {
             {
                 self.curr_event = None;
 
+                // Prevent re-entering the current state again
+                if target_state == self.get_current_state_name() {
+                    return false;
+                }
+
                 let success =
                     self.set_current_state(&target_state, Some(&causing_transition), true);
 
@@ -1003,7 +1012,7 @@ impl StateMachineEngine {
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
             if let Some(player_ref) = &self.player {
-                let _ = action.execute(self, player_ref.clone(), true);
+                let _ = action.execute(self, player_ref.clone(), true, false);
             }
         }
     }
@@ -1036,9 +1045,9 @@ impl StateMachineEngine {
                 // Loop through all layers we're listening to
                 for (layer, event_name) in &self.pointer_management.listened_layers {
                     // We're only interested in the listened layers that need enter / exit event
-                    if event_name == event_type_name!(PointerEnter)
-                        || event_name == event_type_name!(PointerExit)
-                            && player_container.intersect(x, y, layer)
+                    if (event_name == event_type_name!(PointerEnter)
+                        || event_name == event_type_name!(PointerExit))
+                        && player_container.intersect(x, y, layer)
                     {
                         hit = true;
 
@@ -1089,7 +1098,7 @@ impl StateMachineEngine {
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
             if let Some(player_ref) = &self.player {
-                let _ = action.execute(self, player_ref.clone(), true);
+                let _ = action.execute(self, player_ref.clone(), true, false);
             }
         }
     }
@@ -1175,18 +1184,12 @@ impl StateMachineEngine {
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
             if let Some(player_ref) = &self.player {
-                let _ = action.execute(self, player_ref.clone(), true);
+                let _ = action.execute(self, player_ref.clone(), true, false);
             }
         }
     }
 
-    // Return codes
-    // 0: Success
-    // 1: Failure
-    // 2: Play animation
-    // 3: Pause animation
-    // 4: Request and draw a new single frame of the animation (needed for sync state)
-    pub fn post_event(&mut self, event: &Event) -> i32 {
+    pub fn post_event(&mut self, event: &Event) {
         self.pointer_management.most_recent_event = Some(event.clone());
 
         if event.type_name().contains("Pointer") || event.type_name().contains("Click") {
@@ -1194,8 +1197,6 @@ impl StateMachineEngine {
         } else {
             self.manage_player_events(event);
         }
-
-        0
     }
 
     /**
@@ -1251,10 +1252,10 @@ impl StateMachineEngine {
         }
     }
 
-    pub fn observe_framework_open_url_event(&self, message: &str) {
-        if let Ok(observer) = self.framework_url_observer.try_read() {
+    pub fn observe_internal_event(&self, message: &str) {
+        if let Ok(observer) = self.internal_observer.try_read() {
             if let Some(ob) = &*observer {
-                ob.on_custom_event(message.to_string());
+                ob.on_message(message.to_string());
             }
         }
     }

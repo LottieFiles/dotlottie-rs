@@ -1,6 +1,6 @@
-use dotlottie_rs::actions::open_url::OpenUrl;
+use dotlottie_rs::actions::open_url_policy::{self, OpenUrlPolicy};
 use dotlottie_rs::events::Event;
-use dotlottie_rs::{Config, DotLottiePlayer, StateMachineObserver};
+use dotlottie_rs::{Config, DotLottiePlayer, InternalStateMachineObserver, StateMachineObserver};
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
@@ -10,8 +10,10 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const STATE_MACHINE_NAME: &str = "smiley-slider-state";
-pub const ANIMATION_NAME: &str = "sm_smiley_slider";
+pub const STATE_MACHINE_NAME: &str = "sm-star-marked";
+pub const ANIMATION_NAME: &str = "star_marked";
+// pub const STATE_MACHINE_NAME: &str = "theming";
+// pub const ANIMATION_NAME: &str = "themed";
 // pub const STATE_MACHINE_NAME: &str = "rating";
 // pub const ANIMATION_NAME: &str = "star_marked";
 // pub const STATE_MACHINE_NAME: &str = "StateMachine1";
@@ -24,6 +26,14 @@ struct Timer {
 }
 
 struct DummyObserver;
+
+struct DummyInternalObserver;
+
+impl InternalStateMachineObserver for DummyInternalObserver {
+    fn on_message(&self, message: String) {
+        println!("[state machine internal event] on_message: {}", message);
+    }
+}
 
 impl StateMachineObserver for DummyObserver {
     fn on_transition(&self, previous_state: String, new_state: String) {
@@ -130,6 +140,8 @@ fn main() {
     });
 
     let observer: Arc<dyn StateMachineObserver + 'static> = Arc::new(DummyObserver {});
+    let internal_observer: Arc<dyn InternalStateMachineObserver + 'static> =
+        Arc::new(DummyInternalObserver {});
 
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         background_color: 0xffffffff,
@@ -160,15 +172,17 @@ fn main() {
     .unwrap();
 
     lottie_player.state_machine_subscribe(observer.clone());
-    lottie_player.state_machine_subscribe(observer.clone());
-    lottie_player.state_machine_subscribe(observer.clone());
-    lottie_player.state_machine_subscribe(observer.clone());
-    lottie_player.state_machine_subscribe(observer.clone());
+    lottie_player.state_machine_internal_subscribe(internal_observer.clone());
 
     let r = lottie_player.state_machine_load_data(&state_machine);
 
     println!("Load state machine data -> {}", r);
-    let s = lottie_player.state_machine_start(OpenUrl::default());
+    let open_url = OpenUrlPolicy {
+        whitelist: [].to_vec(),
+        require_user_interaction: true,
+    };
+
+    let s = lottie_player.state_machine_start(open_url);
 
     println!("Start state machine -> {}", s);
 
@@ -192,7 +206,7 @@ fn main() {
     let mut entered = false;
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let tmp = window.get_mouse_down(MouseButton::Left);
-        let mouse_pos = window.get_mouse_pos(minifb::MouseMode::Pass);
+        let mouse_pos = window.get_mouse_pos(minifb::MouseMode::Discard);
         mouse_pos.map(|mouse| {
             if mouse.0 != mx || mouse.1 != my {
                 mx = mouse.0;
@@ -202,7 +216,10 @@ fn main() {
             if mx >= 0.0 && mx <= WIDTH as f32 && my >= 0.0 && my <= HEIGHT as f32 {
                 // println!("Sending pointer enter");
                 if !entered {
-                    let event = Event::PointerEnter { x: mx, y: my };
+                    let event = Event::PointerEnter {
+                        x: mx * 2.0,
+                        y: my * 2.0,
+                    };
 
                     let p = &mut *locked_player.write().unwrap();
                     let _m = p.state_machine_post_event(&event);
@@ -222,6 +239,7 @@ fn main() {
         });
 
         if !tmp && left_down {
+            println!("Sending click");
             let event = Event::Click { x: mx, y: my };
 
             // println!("Sending pointer up");
@@ -240,51 +258,53 @@ fn main() {
             let _m = p.state_machine_post_event(&event);
         } else {
             // println!("Sending pointer move {} {}", mx, my);
-            let event = Event::PointerMove { x: mx, y: my };
-            let p = &mut *locked_player.write().unwrap();
-            let _m = p.state_machine_post_event(&event);
+            if (mx != 0.0 && my != 0.0) {
+                let event = Event::PointerMove { x: mx, y: my };
+                let p = &mut *locked_player.write().unwrap();
+                let _m = p.state_machine_post_event(&event);
+            }
         }
 
         // Send event on key press
-        if window.is_key_pressed(Key::Space, minifb::KeyRepeat::Yes) {
-            let p = &mut *locked_player.write().unwrap();
+        // if window.is_key_pressed(Key::Space, minifb::KeyRepeat::Yes) {
+        //     let p = &mut *locked_player.write().unwrap();
 
-            progress += 0.01;
+        //     progress += 0.01;
 
-            println!("SETTING PROGRESS {}", progress);
+        //     println!("SETTING PROGRESS {}", progress);
 
-            p.state_machine_set_numeric_input("Progress", progress);
-        }
-        if window.is_key_pressed(Key::Up, minifb::KeyRepeat::Yes) {
-            let p = &mut *locked_player.write().unwrap();
+        //     p.state_machine_set_numeric_input("Progress", progress);
+        // }
+        // if window.is_key_pressed(Key::Up, minifb::KeyRepeat::Yes) {
+        //     let p = &mut *locked_player.write().unwrap();
 
-            progress -= 0.01;
+        //     progress -= 0.01;
 
-            println!("SETTING PROGRESS {}", progress);
+        //     println!("SETTING PROGRESS {}", progress);
 
-            p.state_machine_set_numeric_input("Progress", progress);
-        }
+        //     p.state_machine_set_numeric_input("Progress", progress);
+        // }
 
-        if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
-            let p = &mut *locked_player.write().unwrap();
+        // if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
+        //     let p = &mut *locked_player.write().unwrap();
 
-            // oo = !oo;
-            // p.state_machine_set_boolean_input("OnOffSwitch", oo);
+        //     // oo = !oo;
+        //     // p.state_machine_set_boolean_input("OnOffSwitch", oo);
 
-            rating += 1.0;
-            // println!("current state: {}", p.state_machine_current_state());
-            p.state_machine_set_numeric_input("rating", rating);
-        }
-        if window.is_key_pressed(Key::Delete, minifb::KeyRepeat::No) {
-            let p = &mut *locked_player.write().unwrap();
+        //     // rating += 1.0;
+        //     // println!("current state: {}", p.state_machine_current_state());
+        //     // p.state_machine_set_numeric_input("rating", rating);
+        // }
+        // if window.is_key_pressed(Key::Delete, minifb::KeyRepeat::No) {
+        //     let p = &mut *locked_player.write().unwrap();
 
-            // oo = !oo;
-            // p.state_machine_set_boolean_input("OnOffSwitch", oo);
+        //     // oo = !oo;
+        //     // p.state_machine_set_boolean_input("OnOffSwitch", oo);
 
-            rating -= 1.0;
-            // println!("current state: {}", p.state_machine_current_state());
-            p.state_machine_set_numeric_input("rating", rating);
-        }
+        //     rating -= 1.0;
+        //     // println!("current state: {}", p.state_machine_current_state());
+        //     p.state_machine_set_numeric_input("rating", rating);
+        // }
 
         let updated = timer.tick(&*locked_player.read().unwrap());
 

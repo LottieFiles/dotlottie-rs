@@ -1,7 +1,4 @@
-use open_url::OpenUrlMode;
-
 use serde::Deserialize;
-use utils::NativeOpenUrl;
 use whitelist::Whitelist;
 
 use std::{rc::Rc, sync::RwLock};
@@ -10,8 +7,7 @@ use crate::{DotLottiePlayerContainer, Event};
 
 use super::{state_machine::StringNumber, StateMachineEngine};
 
-pub mod open_url;
-mod utils;
+pub mod open_url_policy;
 mod whitelist;
 
 #[derive(Debug)]
@@ -25,6 +21,7 @@ pub trait ActionTrait {
         engine: &mut StateMachineEngine,
         player: Rc<RwLock<DotLottiePlayerContainer>>,
         run_pipeline: bool,
+        called_from_interaction: bool,
     ) -> Result<(), StateMachineActionError>;
 }
 
@@ -94,6 +91,7 @@ impl ActionTrait for Action {
         engine: &mut StateMachineEngine,
         player: Rc<RwLock<DotLottiePlayerContainer>>,
         run_pipeline: bool,
+        called_from_action: bool,
     ) -> Result<(), StateMachineActionError> {
         match self {
             Action::Increment { input_name, value } => {
@@ -110,14 +108,14 @@ impl ActionTrait for Action {
                                         input_name,
                                         val + input_value,
                                         run_pipeline,
-                                        true,
+                                        called_from_action,
                                     );
                                 } else {
                                     engine.set_numeric_input(
                                         input_name,
                                         val + 1.0,
                                         run_pipeline,
-                                        true,
+                                        called_from_action,
                                     );
                                 }
                             }
@@ -126,7 +124,7 @@ impl ActionTrait for Action {
                                     input_name,
                                     val + value,
                                     run_pipeline,
-                                    true,
+                                    called_from_action,
                                 );
                             }
                         }
@@ -151,14 +149,14 @@ impl ActionTrait for Action {
                                         input_name,
                                         val - input_value,
                                         run_pipeline,
-                                        true,
+                                        called_from_action,
                                     );
                                 } else {
                                     engine.set_numeric_input(
                                         input_name,
                                         val - 1.0,
                                         run_pipeline,
-                                        true,
+                                        called_from_action,
                                     );
                                 }
                             }
@@ -167,12 +165,17 @@ impl ActionTrait for Action {
                                     input_name,
                                     val - value,
                                     run_pipeline,
-                                    true,
+                                    called_from_action,
                                 );
                             }
                         }
                     } else {
-                        engine.set_numeric_input(input_name, val - 1.0, run_pipeline, true);
+                        engine.set_numeric_input(
+                            input_name,
+                            val - 1.0,
+                            run_pipeline,
+                            called_from_action,
+                        );
                     }
                 }
                 Ok(())
@@ -181,25 +184,25 @@ impl ActionTrait for Action {
                 let val = engine.get_boolean_input(input_name);
 
                 if let Some(val) = val {
-                    engine.set_boolean_input(input_name, !val, run_pipeline, true);
+                    engine.set_boolean_input(input_name, !val, run_pipeline, called_from_action);
                 }
 
                 Ok(())
             }
             // Todo: Add support for setting a input to a input value
             Action::SetBoolean { input_name, value } => {
-                engine.set_boolean_input(input_name, *value, run_pipeline, true);
+                engine.set_boolean_input(input_name, *value, run_pipeline, called_from_action);
 
                 Ok(())
             }
             // Todo: Add support for setting a input to a input value
             Action::SetNumeric { input_name, value } => {
-                engine.set_numeric_input(input_name, *value, run_pipeline, true);
+                engine.set_numeric_input(input_name, *value, run_pipeline, called_from_action);
                 Ok(())
             }
             // Todo: Add support for setting a input to a input value
             Action::SetString { input_name, value } => {
-                engine.set_string_input(input_name, value, run_pipeline, true);
+                engine.set_string_input(input_name, value, run_pipeline, called_from_action);
 
                 Ok(())
             }
@@ -208,7 +211,7 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::Reset { input_name } => {
-                engine.reset_input(input_name, run_pipeline, true);
+                engine.reset_input(input_name, run_pipeline, called_from_action);
 
                 Ok(())
             }
@@ -265,11 +268,10 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::OpenUrl { url, target } => {
-                let interaction = &engine.pointer_management.most_recent_event;
-
                 let open_url_config = &engine.open_url_config;
 
                 // If theres a whitelist and the url isn't present, do nothing
+                // Todo: Why recreate the list every time?
                 if !open_url_config.whitelist.is_empty() {
                     let mut whitelist = Whitelist::new();
 
@@ -283,21 +285,30 @@ impl ActionTrait for Action {
                     }
                 }
 
-                match open_url_config.mode {
-                    OpenUrlMode::Deny => {
-                        return Err(StateMachineActionError::ExecuteError);
-                    }
-                    OpenUrlMode::Interaction => {
-                        if let Some(Event::PointerDown { .. }) = interaction {
-                            let _ = NativeOpenUrl::open_url(url, target, engine);
-                            return Ok(());
+                let _ = target.to_lowercase();
+                let command = if target.is_empty() {
+                    format!("OpenUrl: {url}")
+                } else {
+                    format!("OpenUrl: {url} | Target: {target}")
+                };
+
+                if open_url_config.require_user_interaction {
+                    let interaction = &engine.pointer_management.most_recent_event;
+
+                    if let Some(event) = interaction {
+                        match event {
+                            Event::PointerDown { .. } | Event::Click { .. } => {
+                                engine.observe_internal_event(&command);
+
+                                return Ok(());
+                            }
+                            _ => {}
                         }
                     }
-                    OpenUrlMode::Allow => {
-                        let _ = NativeOpenUrl::open_url(url, target, engine);
-                        return Ok(());
-                    }
+                    return Err(StateMachineActionError::ExecuteError);
                 }
+
+                engine.observe_internal_event(&command);
 
                 Ok(())
             }

@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{actions::open_url::OpenUrl, Config, DotLottiePlayer, Event, Observer};
+    use dotlottie_rs::{
+        actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event, Observer,
+    };
     use std::sync::{Arc, Mutex};
 
     fn get_current_state_name(player: &DotLottiePlayer) -> String {
@@ -51,7 +53,7 @@ mod tests {
             player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
             let l = player.state_machine_load_data(global_state);
 
-            let s = player.state_machine_start(OpenUrl::default());
+            let s = player.state_machine_start(OpenUrlPolicy::default());
 
             assert!(l);
             assert!(s);
@@ -119,7 +121,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start(OpenUrl::default());
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -141,7 +143,7 @@ mod tests {
             let player = DotLottiePlayer::new(Config::default());
             player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
             let l = player.state_machine_load_data(global_state);
-            let s = player.state_machine_start(OpenUrl::default());
+            let s = player.state_machine_start(OpenUrlPolicy::default());
 
             assert!(l);
             assert!(s);
@@ -180,7 +182,7 @@ mod tests {
             let player = DotLottiePlayer::new(Config::default());
             player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
             let l = player.state_machine_load_data(global_state);
-            let s = player.state_machine_start(OpenUrl::default());
+            let s = player.state_machine_start(OpenUrlPolicy::default());
 
             assert!(l);
             assert!(s);
@@ -219,7 +221,7 @@ mod tests {
             let player = DotLottiePlayer::new(Config::default());
             player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
             let l = player.state_machine_load_data(global_state);
-            let s = player.state_machine_start(OpenUrl::default());
+            let s = player.state_machine_start(OpenUrlPolicy::default());
 
             assert!(l);
             assert!(s);
@@ -245,7 +247,7 @@ mod tests {
             let player = DotLottiePlayer::new(Config::default());
             player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
             let l = player.state_machine_load_data(global_state);
-            let s = player.state_machine_start(OpenUrl::default());
+            let s = player.state_machine_start(OpenUrlPolicy::default());
 
             assert!(l);
             assert!(s);
@@ -297,7 +299,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start(OpenUrl::default());
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -326,7 +328,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start(OpenUrl::default());
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -355,7 +357,7 @@ mod tests {
 
         player.load_dotlottie_data(include_bytes!("fixtures/pigeon.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start(OpenUrl::default());
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -387,7 +389,7 @@ mod tests {
 
         player.load_dotlottie_data(include_bytes!("fixtures/pigeon.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start(OpenUrl::default());
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         let events = Arc::new(Mutex::new(vec![]));
         let observer_events = Arc::clone(&events);

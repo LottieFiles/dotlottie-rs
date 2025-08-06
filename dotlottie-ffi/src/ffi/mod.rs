@@ -667,7 +667,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_override_current_state(
 // #[no_mangle]
 // pub unsafe extern "C" fn dotlottie_state_machine_start(
 //     ptr: *mut DotLottiePlayer,
-//     open_url_config: OpenURL,
+//     open_url_config: OpenUrlPolicy,
 // ) -> i32 {
 //     exec_dotlottie_player_op(ptr, |dotlottie_player| {
 //         // let config_ref = &*open_url_config;

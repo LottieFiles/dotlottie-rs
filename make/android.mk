@@ -1,3 +1,7 @@
+# Detect host platform first
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
 # Android NDK path
 # By default, set for macOS with Homebrew. For other platforms, override ANDROID_NDK_HOME or set it in your environment.
 ifeq ($(UNAME_S),Darwin)
@@ -41,8 +45,6 @@ LIBCPP_SHARED_LIB ?= libc++_shared.so
 GRADLE_PROPERTIES ?= gradle.properties
 
 # Detect host tag for NDK
-UNAME_S := $(shell uname -s)
-UNAME_M := $(shell uname -m)
 
 # Function to check platform support - only called when Android targets are invoked
 define check_android_platform_support

@@ -1,4 +1,4 @@
-#[cfg(feature = "thorvg-v1")]
+#[cfg(feature = "tvg-v1")]
 use crate::time::Instant;
 
 use std::{error::Error, ffi::CString, fmt, ptr, result::Result};
@@ -68,7 +68,7 @@ pub enum TvgEngine {
     TvgEngineGl,
 }
 
-#[cfg(feature = "thorvg-v0")]
+#[cfg(feature = "tvg-v0")]
 impl From<TvgEngine> for tvg::Tvg_Engine {
     fn from(engine_method: TvgEngine) -> Self {
         match engine_method {
@@ -82,28 +82,27 @@ static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
 
 pub struct TvgRenderer {
     raw_canvas: *mut tvg::Tvg_Canvas,
-    #[cfg(feature = "thorvg-v0")]
+    #[cfg(feature = "tvg-v0")]
     engine_method: tvg::Tvg_Engine,
 }
 
 impl TvgRenderer {
     pub fn new(
-        #[cfg_attr(not(feature = "thorvg-v0"), allow(unused_variables))]
-        engine_method: TvgEngine,
+        #[cfg_attr(not(feature = "tvg-v0"), allow(unused_variables))] engine_method: TvgEngine,
         threads: u32,
     ) -> Self {
         let mut count = RENDERERS_COUNT.lock().unwrap();
 
-        #[cfg(feature = "thorvg-v0")]
+        #[cfg(feature = "tvg-v0")]
         let engine = engine_method.into();
 
         if *count == 0 {
-            #[cfg(feature = "thorvg-v0")]
+            #[cfg(feature = "tvg-v0")]
             {
                 unsafe { tvg::tvg_engine_init(engine, threads).into_result() }.unwrap();
             }
 
-            #[cfg(feature = "thorvg-v1")]
+            #[cfg(feature = "tvg-v1")]
             unsafe { tvg::tvg_engine_init(threads).into_result() }.unwrap();
         }
 
@@ -111,7 +110,7 @@ impl TvgRenderer {
 
         TvgRenderer {
             raw_canvas: unsafe { tvg::tvg_swcanvas_create() },
-            #[cfg(feature = "thorvg-v0")]
+            #[cfg(feature = "tvg-v0")]
             engine_method: engine,
         }
     }
@@ -148,12 +147,12 @@ impl Renderer for TvgRenderer {
     }
 
     fn clear(&self, _free: bool) -> Result<(), TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         unsafe {
             tvg::tvg_canvas_remove(self.raw_canvas, ptr::null_mut::<tvg::Tvg_Paint>()).into_result()
         }
 
-        #[cfg(feature = "thorvg-v0")]
+        #[cfg(feature = "tvg-v0")]
         unsafe {
             tvg::tvg_canvas_clear(self.raw_canvas, _free).into_result()
         }
@@ -169,12 +168,12 @@ impl Renderer for TvgRenderer {
     }
 
     fn draw(&mut self, _clear_buffer: bool) -> Result<(), TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         unsafe {
             tvg::tvg_canvas_draw(self.raw_canvas, _clear_buffer).into_result()
         }
 
-        #[cfg(feature = "thorvg-v0")]
+        #[cfg(feature = "tvg-v0")]
         unsafe {
             tvg::tvg_canvas_draw(self.raw_canvas).into_result()
         }
@@ -200,12 +199,12 @@ impl Drop for TvgRenderer {
         *count = count.checked_sub(1).unwrap();
 
         if *count == 0 {
-            #[cfg(feature = "thorvg-v0")]
+            #[cfg(feature = "tvg-v0")]
             unsafe {
                 tvg::tvg_engine_term(self.engine_method)
             };
 
-            #[cfg(feature = "thorvg-v1")]
+            #[cfg(feature = "tvg-v1")]
             unsafe {
                 tvg::tvg_engine_term()
             };
@@ -213,7 +212,7 @@ impl Drop for TvgRenderer {
     }
 }
 
-#[cfg(feature = "thorvg-v1")]
+#[cfg(feature = "tvg-v1")]
 struct TweenState {
     from: f32,
     to: f32,
@@ -225,7 +224,7 @@ struct TweenState {
 pub struct TvgAnimation {
     raw_animation: *mut tvg::Tvg_Animation,
     raw_paint: *mut tvg::Tvg_Paint,
-    #[cfg(feature = "thorvg-v1")]
+    #[cfg(feature = "tvg-v1")]
     tween_state: Option<TweenState>,
 }
 
@@ -237,14 +236,14 @@ impl Default for TvgAnimation {
         Self {
             raw_animation,
             raw_paint,
-            #[cfg(feature = "thorvg-v1")]
+            #[cfg(feature = "tvg-v1")]
             tween_state: None,
         }
     }
 }
 
 impl TvgAnimation {
-    #[cfg(feature = "thorvg-v1")]
+    #[cfg(feature = "tvg-v1")]
     fn get_layer_obb(&self, layer_name: &str) -> Result<Option<[tvg::Tvg_Point; 4]>, TvgError> {
         unsafe {
             let mut obb: [tvg::Tvg_Point; 4] = [tvg::Tvg_Point { x: 0.0, y: 0.0 }; 4];
@@ -271,7 +270,7 @@ impl Animation for TvgAnimation {
         let data_cstr = CString::new(data).unwrap();
         let data_len = data_cstr.as_bytes().len() as u32;
 
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         unsafe {
             let data_ptr = data_cstr.as_ptr();
             let mimetype_ptr = mimetype_cstr.as_ptr();
@@ -286,7 +285,7 @@ impl Animation for TvgAnimation {
             .into_result()
         }
 
-        #[cfg(feature = "thorvg-v0")]
+        #[cfg(feature = "tvg-v0")]
         unsafe {
             let data_ptr = data_cstr.as_ptr();
             let mimetype_ptr = mimetype_cstr.as_ptr();
@@ -296,7 +295,7 @@ impl Animation for TvgAnimation {
     }
 
     fn intersect(&self, _x: f32, _y: f32, _layer_name: &str) -> Result<bool, TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         {
             if let Some(obb) = self.get_layer_obb(_layer_name)? {
                 let e1 = tvg::Tvg_Point {
@@ -321,12 +320,12 @@ impl Animation for TvgAnimation {
             }
         }
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "tvg-v1"))]
         Err(TvgError::NotSupported)
     }
 
     fn get_layer_bounds(&self, _layer_name: &str) -> Result<[f32; 8], TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         {
             if let Some(obb) = self.get_layer_obb(_layer_name)? {
                 // Return the 8 points out of obb
@@ -352,7 +351,7 @@ impl Animation for TvgAnimation {
             }
         }
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "tvg-v1"))]
         Err(TvgError::NotSupported)
     }
 
@@ -438,7 +437,7 @@ impl Animation for TvgAnimation {
         _duration: Option<f32>,
         _easing: Option<[f32; 4]>,
     ) -> Result<(), TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         {
             if self.is_tweening() {
                 return Err(TvgError::InvalidArgument);
@@ -469,31 +468,31 @@ impl Animation for TvgAnimation {
             Ok(())
         }
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "tvg-v1"))]
         Err(TvgError::NotSupported)
     }
 
     fn is_tweening(&self) -> bool {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         return self.tween_state.is_some();
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "tvg-v1"))]
         false
     }
 
     fn tween_stop(&mut self) -> Result<(), TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         {
             self.tween_state = None;
             Ok(())
         }
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "tvg-v1"))]
         Err(TvgError::NotSupported)
     }
 
     fn tween_update(&mut self, _given_progress: Option<f32>) -> Result<bool, TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         {
             if self.tween_state.is_some() && self.tween_state.as_ref().unwrap().duration.is_none() {
                 if _given_progress.is_none() {
@@ -544,7 +543,7 @@ impl Animation for TvgAnimation {
             }
         }
 
-        #[cfg(not(feature = "thorvg-v1"))]
+        #[cfg(not(feature = "tvg-v1"))]
         Err(TvgError::NotSupported)
     }
 }
@@ -588,12 +587,12 @@ impl Shape for TvgShape {
         rx: f32,
         ry: f32,
     ) -> Result<(), TvgError> {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         unsafe {
             tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry, true).into_result()
         }
 
-        #[cfg(feature = "thorvg-v0")]
+        #[cfg(feature = "tvg-v0")]
         unsafe {
             tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry).into_result()
         }
@@ -604,7 +603,7 @@ impl Shape for TvgShape {
     }
 }
 
-#[cfg(feature = "thorvg-v1")]
+#[cfg(feature = "tvg-v1")]
 mod bezier {
     /// Computes the x-coordinate of the cubic Bézier for parameter `u`.
     /// P0 = 0, P1 = (x1, _), P2 = (x2, _), P3 = 1.

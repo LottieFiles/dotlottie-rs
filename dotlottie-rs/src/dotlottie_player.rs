@@ -148,7 +148,7 @@ struct DotLottieRuntime {
 }
 
 impl DotLottieRuntime {
-    #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
+    #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
     pub fn new(config: Config) -> Self {
         Self::with_renderer(
             config,
@@ -1006,7 +1006,7 @@ pub struct DotLottiePlayerContainer {
 }
 
 impl DotLottiePlayerContainer {
-    #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
+    #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
     pub fn new(config: Config) -> Self {
         DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config)),
@@ -1532,7 +1532,7 @@ pub struct DotLottiePlayer {
 }
 
 impl DotLottiePlayer {
-    #[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
+    #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
     pub fn new(config: Config) -> Self {
         DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config))),

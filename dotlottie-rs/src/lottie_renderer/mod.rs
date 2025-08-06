@@ -1,11 +1,11 @@
 use crate::Layout;
 
 mod renderer;
-#[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
+#[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
 mod thorvg;
 
 pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
-#[cfg(any(feature = "thorvg-v0", feature = "thorvg-v1"))]
+#[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
 pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
 
 use std::{error::Error, fmt};

@@ -1,210 +1,208 @@
 ## Build System
 
-The build system uses GNU `make` to build all artifacts for `android`, `apple`, `wasm`, and `native`.
-This documentation provides some low-level implementation details relating to these builds. You can use
-this information to better understand how the builds work in order to extend the build system and
-make changes to it.
+The build system uses GNU `make` to build all artifacts for `android`, `apple`, `wasm`, and `native` platforms.
+The system is modular with a main orchestrator `Makefile` and platform-specific makefiles in the `make/` directory.
+This documentation provides implementation details to help understand and extend the build system.
 
 The build process works as follows:
 
-1. If not already built, perform a build of `Thorvg` and it's native dependencies for the local machine architecture
-2. For each target architecture, e.g. `aarch64-apple-darwin`, build `Thorvg` and, for Apple and Android targets, its native dependencies
-3. Generate `uniffi` bindings for the target platform, e.g. Android, by first building `uniffi-bindgen`. This relies on a local architecture build of `Thorvg`
-   - For WASM, instead use `uniffi-bindgen-cpp` to generate C++ bindings
-4. Build the Rust `dotlottie-player` library
-5. Put together the final release artifacts for each platform, i.e. Android, Apple, etc. and populate the `release` directory
+1. **Platform Setup**: Initialize and configure build tools for each target platform (NDK for Android, Xcode for Apple, emsdk for WASM)
+2. **UniFFI Bindings Generation**: Generate language-specific bindings (Kotlin for Android, Swift for Apple, C++ for WASM)
+3. **Rust Library Build**: Build the `dotlottie-ffi` library for each target architecture using platform-specific toolchains
+4. **Platform-Specific Packaging**: Create platform-appropriate release artifacts (AAR for Android, XCFramework for Apple, JS/WASM modules for Web)
+5. **Release Assembly**: Package all artifacts into the `release/` directory with version information
 
-### Define blocks
+### Platform-Specific Makefiles
 
-`define` blocks act like functions and are used for various purposes, such as to dynamically create
-sections of the Makefile, create output files, etc. The sections that follow provide details
-of each of these blocks.
+The build system is organized into modular makefiles, each handling a specific platform:
 
-When these blocks are referenced, they will usually be called with a mixture of top-level make
-variables and target-specific variables. Examples of target-specific variables are as follows:
+- **Main Makefile**: Orchestrates all builds and provides help/setup targets
+- **make/android.mk**: Handles Android builds across multiple architectures (ARM64, x86_64, x86, ARMv7)
+- **make/apple.mk**: Manages Apple platform builds (macOS, iOS, tvOS, visionOS, macCatalyst)
+- **make/wasm.mk**: Controls WebAssembly builds using Emscripten
 
-```
-$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): export PKG_CONFIG_PATH := $(PWD)/$(LOCAL_ARCH_LIB_DIR)/pkgconfig:$(PWD)/$(LOCAL_ARCH_LIB64_DIR)
-$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE): THORVG_DEP_SOURCE_DIR := $(DEPS_MODULES_DIR)/$(THORVG)
-```
+Each platform makefile is responsible for:
 
-Both of these variables are being given values in the specific case of the build for
-`$(THORVG_LOCAL_ARCH_BUILD_DIR)/$(NINJA_BUILD_FILE)`. In the first line, the value will
-also be exported to the shell environment being running the associated make recipe. In the case of
-the second line, the variable value will only be visible within the context of the make file.
+- Platform-specific environment setup and validation
+- UniFFI bindings generation for the target language
+- Cross-compilation configuration
+- Release artifact packaging
 
-#### Thorvg
+#### Android Build System (`make/android.mk`)
 
-These blocks are used to build the external dependencies for `Thorvg`, which are only used
-for Android and Apple build targets:
+The Android build system supports four architectures: ARM64, x86_64, x86, and ARMv7. Key features include:
 
-- `SETUP_CMAKE`: Perform a CMake setup for `Thorvg`'s dependencies
-- `ANDROID_CMAKE_TOOLCHAIN_FILE`: Creates a `CMake` Toolchain file used to build `Thorvg`'s dependencies
-- `CMAKE_BUILD`: Performs a `CMake` build as per a `CMake` specification
-- `CMAKE_MAKE_BUILD`: Performs a make build as per a `CMake` specification
-- `NEW_LOCAL_ARCH_CMAKE_BUILD`: Used to setup local architecture builds, i.e. for the local build machine
-- `NEW_ANDROID_CMAKE_BUILD`: Defines a `CMake` build for `Thorvg` dependencies for Android
-- `NEW_APPLE_CMAKE_BUILD`: Defines a `CMake` build for `Thorvg` dependencies for Apple
+- **NDK Integration**: Automatically detects and validates Android NDK installation
+- **Kotlin Bindings**: Generates UniFFI Kotlin bindings for Android integration
+- **Multi-Architecture Support**: Builds for all Android architectures in parallel
+- **Packaging**: Creates Android-ready package structure with JNI libraries and shared dependencies
+- **Version Management**: Includes build version and commit hash in release artifacts
 
-The following define blocks are used to setup `Meson` cross files for use with the `Thorvg` build. They are
-parameterized using Makefile variables, and their output is not yet written to file:
+Key targets:
 
-- `ANDROID_CROSS_FILE`: Defines an Android cross file to be used with `Meson`
-- `APPLE_CROSS_FILE`: Defines an Apple cross file to be used with `Meson`
-- `WASM_CROSS_FILE`: Defines an WASM cross file to be used with `Meson`
+- `android`: Builds all Android architectures and packages the release
+- `android-{arch}`: Builds specific architecture (e.g., `android-aarch64`)
+- `android-setup`: Installs required Rust targets
+- `android-clean`: Cleans Android-specific build artifacts
 
-These blocks use the previous ones and output the result to a file:
+#### Apple Build System (`make/apple.mk`)
 
-- `NEW_ANDROID_CROSS_FILE`: Creates an Android cross file for use with `Thorvg`
-- `NEW_APPLE_CROSS_FILE`: Creates an Apple cross file for use with `Thorvg`
-- `NEW_WASM_CROSS_FILE`: Creates a WASM cross file for use with `Thorvg`
+The Apple build system handles multiple Apple platforms with comprehensive framework generation:
 
-The following blocks are used to build `Thorvg`:
+- **Platform Support**: macOS, iOS, tvOS, visionOS, and macCatalyst
+- **Swift Bindings**: Automatic generation of Swift UniFFI bindings
+- **Framework Creation**: Builds individual frameworks and combines them into XCFramework
+- **Universal Binaries**: Creates universal binaries using `lipo` for multi-architecture support
+- **Code Signing**: Optional code signing support for distribution
 
-- `SETUP_MESON`: Runs `Meson` to setup a build using `Ninja`
-- `NINJA_BUILD`: Performs a `Ninja` build, as per a `Meson` build specification
-- `NEW_THORVG_BUILD`: Defines a new build of `Thorvg`
+Key targets:
 
-Finally, these blocks build on the previous ones to perform the builds for `Thorvg` and all of its
-dependencies:
+- `apple`: Builds all Apple platforms and creates XCFramework
+- `apple-{platform}`: Builds specific platform (e.g., `apple-ios`)
+- `apple-{platform}-{arch}`: Builds specific architecture (e.g., `apple-macos-arm64`)
+- `apple-setup`: Installs required Rust targets and toolchain components
 
-- `NEW_ANDROID_DEPS_BUILD`: Performs the native builds required for Android
-- `NEW_APPLE_DEPS_BUILD`: Performs the native builds required for Apple
-- `NEW_WASM_DEPS_BUILD`: Performs the native builds required for WASM
+#### WASM Build System (`make/wasm.mk`)
 
-#### Rust
+The WASM build system creates WebAssembly modules for web deployment:
 
-`Cargo` is used to build `uniffi-bindgen` and the `dotlottie-player` library:
+- **Emscripten Integration**: Uses Emscripten SDK for WASM compilation
+- **C++ Bindings**: Generates and compiles UniFFI C++ bindings
+- **TypeScript Support**: Generates TypeScript definition files
+- **Optimization**: Aggressive size optimization with LTO and closure compiler
+- **Self-Contained**: Manages emsdk submodule automatically
 
-- `SIMPLE_CARGO_BUILD`: Performs a `Cargo` build for Rust code using the default target
-- `CARGO_BUILD`: Performs a `Cargo` build for Rust code using a specified target
+Key targets:
 
-The following blocks are used to create `uniffi` bindings:
+- `wasm`: Builds complete WASM module with TypeScript definitions
+- `wasm-setup`: Installs emsdk, Rust nightly, and uniffi-bindgen-cpp
+- `wasm-clean`: Cleans WASM-specific build artifacts
 
-- `UNIFFI_BINDINGS_BUILD`: Creates UniFFI bindings for a specified language
-- `UNIFFI_BINDINGS_CPP_BUILD`: Creates UniIFFI bindings for C++, used for WASM builds
+#### Native Build System
 
-#### Releases
+For local development and testing, the native build system creates C libraries:
 
-The produce a release for Android, we must build up a directory containing all relevant
-architecture builds, the `uniffi` files for Kotlin, and other supporting files.
+- **FFI Library**: Builds `dotlottie-ffi` as a dynamic library
+- **C Headers**: Generates cbindgen-compatible headers
+- **Platform Detection**: Automatically builds for the current platform
 
-- `ANDROID_RELEASE`: Compiles the final artifacts for an Android release
+Key targets:
 
-For Apple, we must:
+- `native`: Builds native library for current platform
+- `native-clean`: Cleans native build artifacts
 
-1. Build a Lipo library
-2. Create a Framework
-3. Create an XC Framework
+### Build Features and Configuration
 
-The following define blocks are used to achieve this:
+The build system includes several configurable features:
 
-- `LIPO_CREATE`: Creates a Lipo library artifacts
-- `APPLE_MODULE_MAP_FILE`: Creates a Module Map file for an Apple release
-- `CREATE_FRAMEWORK`: Creates a Framework
-- `NEW_APPLE_FRAMEWORK`: Creates the Framework and XC Framework
-- `APPLE_RELEASE`: Compiles the final artifacts for an Apple release
+#### Feature Flags
 
-For WASM builds, we must compile the `uniffi-bindgen-cpp` generated bindings with the manually
-maintained `emscripten` C++ bindings, along with the `dotlottie-player` rust library to build
-the final release artifacts.
+All platforms support configurable Rust features through the `FEATURES` variable:
 
-- `WASM_MESON_BUILD_FILE`: Creates the `Meson` file used to build the WASM release artifacts
-- `SETUP_WASM_MESON`: Runs `Meson` to setup a WASM build using `Ninja`
-- `WASM_RELEASE`: Compiles the final artifacts for a WASM release
+- `tvg-webp`: WebP image format support
+- `tvg-png`: PNG image format support
+- `tvg-jpg`: JPEG image format support
+- `tvg-ttf`: TrueType font support
+- `tvg-lottie-expressions`: Lottie expression evaluation support
 
-For native builds, the `dotlottie-ffi` project must be built, which will automatically produce
-the related cbindgen-generated C header file. The library file(s) generated as part of the build
-and the header file are then copied to the `release/native` directory.
+Default features include:
 
-#### Top-level
+- `tvg-v1`: ThorVG version 1 API
+- `tvg-sw`: Software rendering backend
+- `uniffi`: UniFFI bindings support
 
-Each build operation heavily relies on Makefile variables, which allows for build data to be defined
-in a single place and reduces duplication. The variables for each build target are setup using the
-following blocks:
+#### Environment Variables
 
-- `NEW_BUILD_TARGET`: Defines to required make variables for a new build target
-- `NEW_APPLE_TARGET`: Defines additional variables required for Apple builds
+Platform-specific environment variables can be overridden:
 
-These previous blocks require access to the name of the target in SCREAMING_SNAKE case, in order
-to aid in the definition of the new variables. This is achieved using the following blocks:
+**Android:**
 
-- `DEFINE_TARGET`: Simple helper function to define a new target
-- `DEFINE_APPLE_TARGET`: Simple helper function to define a new apple target
+- `ANDROID_NDK_HOME`: Path to Android NDK (default: `/opt/homebrew/share/android-ndk`)
+- `API_LEVEL`: Android API level (default: `21`)
 
-After defining a target, the following top-level blocks perform all the necessary actions for a
-particular build type:
+**Apple:**
 
-- `NEW_ANDROID_BUILD`: Performs the Rust builds and release actions for Android
-- `NEW_APPLE_BUILD`: Performs the Rust builds and release actions for Apple
-- `NEW_WASM_BUILD`: Performs the Rust/C++ builds and release actions for WASM
+- `XCODE_PATH`: Path to Xcode installation
+- `MIN_IOS_VERSION`, `MIN_MACOS_VERSION`, etc.: Minimum OS versions
 
-#### Utilities
+**WASM:**
 
-The following are general utility blocks:
+- `EMSDK_VERSION`: Emscripten SDK version (default: `3.1.74`)
 
-- `TARGET_PREFIX`: Simple helper function to convert `cucumber-case` to `SCREAMING_SNAKE`
-- `CREATE_OUTPUT_FILE`: General utility to create an output file
+#### Version Management
 
-### Delayed variable expansion
+All builds include version information from:
 
-In certain define blocks, such as `NEW_BUILD_TARGET`, you will notice the use of a double-dollar (`$$`)
-expansions, such as:
+- `CRATE_VERSION`: Extracted from `dotlottie-ffi/Cargo.toml`
+- `COMMIT_HASH`: Current git commit hash
 
-```
-$2_THORVG_DEP_BUILD_DIR := $$($2_DEPS_BUILD_DIR)/$(THORVG)
-```
+This information is embedded in release artifacts for traceability.
 
-This is for the purpose of using the block that contains this code with the make `eval` function, which
-allows for dynamically creating sections of the Makefile. This greatly reduces the amount of repetition in
-the Makefile, and thus maintenance overhead, at the cost of a small amount of complexity.
+### Available Build Targets
 
-When a `define` block is called, variables references contained within it are expanded, and
-this behaviour is usually what you would want to happen outside the context of `eval`. However, when
-using `eval`, we may want certain variables to be expanded later by `eval` instead.
+The build system provides a comprehensive set of targets accessible via `make help`:
 
-In the example given above, we want `$2_THORVG_DEP_BUILD_DIR` to be expanded into the name of a variable
-to be created. As `$2` in this case is defined as the SCREAMING*SNAKE_CASE version of the current target
-architecture, and will be have a value such as `AARCH64_LINUX_ANDROID`, the line above will be expanded to
-something like the following, \_before* being passed to `eval`:
+#### Platform Targets
 
-```
-AARCH64_LINUX_ANDROID_THORVG_DEP_BUILD_DIR := $(AARCH64_LINUX_ANDROID_DEPS_BUILD_DIR)/thorvg
-```
+- `make android`: Build all Android architectures (ARM64, x86_64, x86, ARMv7)
+- `make apple`: Build all Apple platforms (macOS, iOS, tvOS, visionOS, macCatalyst)
+- `make wasm`: Build WebAssembly module with TypeScript definitions
+- `make native`: Build native library for current platform
 
-Here we can see that all the variables have been expanded, however, one of them still looks like a
-variable. This one will be expanded by `eval`, thus giving us the ability to dereference the
-`AARCH64_LINUX_ANDROID_DEPS_BUILD_DIR` variable only in the context of the `eval`. This technique
-is used fairly heavily throughout the Makefile.
+#### Architecture-Specific Targets
 
-To get a view of what these evaluated sections of the Makefile look like, you can try replacing
-any `eval` call with `info`, and then running `make` without any arguments. This will display the
-result of the expansion without evaluting it, which can be useful for debugging.
+- **Android**: `android-aarch64`, `android-x86_64`, `android-x86`, `android-armv7`
+- **Apple**: `apple-macos-arm64`, `apple-ios-arm64`, `apple-tvos-sim-arm64`, etc.
 
-### Submodule management
+#### Development Targets
 
-This repo uses git submodules for its external dependencies. Though these will normally be setup
-for you when running `make mac-setup`, it can sometimes be useful to run `make deps` manually as
-well.
+- `make test`: Run all tests with single-threaded execution
+- `make clippy`: Run Rust linter with strict settings
+- `make help`: Display comprehensive help menu
 
-If the version of a submodule, such as for `Thorvg`, is updated, when you pull this change your
-reference to the submodule will be updated, however, your local clone of the submodule
-would still point to the old commit. To bring your local copy into line with the checked in
-commit of the submodule, run `make deps`.
+### Platform Setup and Dependencies
 
-### Incremental builds
+The build system automatically manages platform-specific dependencies:
 
-Performing a `make all` and building all possible targets can take a long time when performed from
-scratch. However, after the initial build, the next `make all` build operation will be significantly
-faster, as all previous build files, such as for `Thorvg`, will already be available.
+#### WASM Dependencies
 
-#### Cleanup
+- **emsdk submodule**: Automatically initialized and configured for WASM builds
+- **uniffi-bindgen-cpp**: Installed via `make wasm-setup` for C++ binding generation
+- **Node.js dependencies**: TypeScript compiler installed within emsdk environment
 
-After building all artifacts, running `make distclean` will wipe out everything and return you to a
-clean repo, and is usually not what you want to do. Run `make clean` instead to just remove Rust
-build files. In most cases, this is also not required, and you can simply rebuild the target you are
-working with to perform an incremental build.
+#### Android Dependencies
 
-There a small quirk with the `zlib` dependency build, which makes its submodule clone appear dirty
-after a build. This does not cause any real problems, but can show up in git as an unncessary change.
-If this bothers you, run `make clean-build`.
+- **Android NDK**: Must be installed separately (minimum version r28)
+- **Rust targets**: Automatically installed via `make android-setup`
+
+#### Apple Dependencies
+
+- **Xcode**: Required for all Apple platform builds
+- **Rust targets**: Multiple targets installed via `make apple-setup`
+- **Nightly toolchain**: Required for newer Apple platforms (visionOS, tvOS)
+
+### Build Management
+
+#### Setup Commands
+
+- `make setup`: Configures all platforms
+- `make {platform}-setup`: Configures specific platform
+- `make list-platforms`: Shows all supported platforms
+
+#### Incremental Builds
+
+The build system supports efficient incremental builds:
+
+- **Cargo caching**: Rust builds leverage Cargo's incremental compilation
+- **Platform isolation**: Each platform builds independently
+- **Artifact reuse**: Previously built binaries are reused when possible
+
+#### Cleanup Commands
+
+Different cleanup levels are available:
+
+- `make clean`: Removes all build artifacts and Cargo cache
+- `make {platform}-clean`: Cleans specific platform artifacts
+- `make native-clean`: Cleans only native build artifacts
+
+The modular design means you can clean and rebuild individual platforms without affecting others.

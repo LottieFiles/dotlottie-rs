@@ -43,7 +43,7 @@ mod tests {
 
     #[test]
     pub fn pointer_down_up_test() {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         {
             let global_state =
                 include_str!("fixtures/statemachines/interaction_tests/pointer_down_up.json");
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     pub fn pointer_enter_test() {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         {
             let global_state =
                 include_str!("fixtures/statemachines/interaction_tests/pointer_enter.json");
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     pub fn pointer_enter_via_move_test() {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         {
             let global_state =
                 include_str!("fixtures/statemachines/interaction_tests/pointer_enter.json");
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     pub fn pointer_exit_test() {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         {
             let global_state =
                 include_str!("fixtures/statemachines/interaction_tests/pointer_exit.json");
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     pub fn pointer_exit_via_move_test() {
-        #[cfg(feature = "thorvg-v1")]
+        #[cfg(feature = "tvg-v1")]
         {
             let global_state =
                 include_str!("fixtures/statemachines/interaction_tests/pointer_exit.json");

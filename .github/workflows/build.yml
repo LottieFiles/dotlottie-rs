@@ -12,12 +12,34 @@ on:
           - "android"
           - "wasm"
           - "all"
-      commitSHA:
-        description: "Commit SHA (leave blank for default branch)"
+      feature_webp:
+        type: boolean
+        description: "Enable WebP Loader"
         required: false
+        default: true
+      feature_png:
+        type: boolean
+        description: "Enable PNG Loader"
+        required: false
+        default: true
+      feature_jpg:
+        type: boolean
+        description: "Enable JPEG Loader"
+        required: false
+        default: true
+      feature_ttf:
+        type: boolean
+        description: "Enable TTF Loader"
+        required: false
+        default: true
+      feature_expressions:
+        type: boolean
+        description: "Enable Lottie Expressions"
+        required: false
+        default: true
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.inputs.target }}-${{ github.event.inputs.commitSHA || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.inputs.target }}
   cancel-in-progress: true
 
 jobs:
@@ -25,16 +47,16 @@ jobs:
     runs-on: macos-latest-large
     if: github.event.inputs.target == 'apple' || github.event.inputs.target == 'all'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+          submodules: true
+          fetch-depth: 0
 
-      - uses: Homebrew/actions/setup-homebrew@master
-      - uses: ningenMe/setup-rustup@v1.1.0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@nightly
 
-      - name: Install Make
-        run: brew install make
+      - name: Setup Apple
+        run: make apple-setup
 
       - name: Setup signing
         run: |
@@ -71,13 +93,47 @@ jobs:
           echo "Successfully configured signing certificate"
           rm certificate.p12
 
-      - name: Build Setup
-        run: make mac-setup
-        env:
-          TARGET: apple
+      - name: Set Features
+        run: |
+          features=""
+
+          if [ "${{ github.event.inputs.feature_webp }}" = "true" ]; then
+            features="${features}tvg-webp,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_png }}" = "true" ]; then
+            features="${features}tvg-png,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_jpg }}" = "true" ]; then
+            features="${features}tvg-jpg,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_ttf }}" = "true" ]; then
+            features="${features}tvg-ttf,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_expressions }}" = "true" ]; then
+            features="${features}tvg-lottie-expressions,"
+          fi
+
+          # Remove trailing comma if features exist
+          if [ -n "$features" ]; then
+            features="${features%,}"
+          fi
+
+          echo "FEATURES=$features" >> $GITHUB_ENV
+          echo "Selected features: $features"
 
       - name: Build Apple
         run: make apple
+        env:
+          FEATURES: ${{ env.FEATURES }}
+
+      - name: Create Apple Archive
+        run: |
+          cd release/apple
+          tar -czf dotlottie-player.darwin.tar.gz *
 
       - name: Upload Apple Artifacts
         uses: actions/upload-artifact@v4
@@ -92,31 +148,69 @@ jobs:
           security delete-keychain build.keychain || true
 
   build-android:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     if: github.event.inputs.target == 'android' || github.event.inputs.target == 'all'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+          submodules: true
+          fetch-depth: 0
 
-      - uses: Homebrew/actions/setup-homebrew@master
-      - uses: ningenMe/setup-rustup@v1.1.0
-      - name: Install Make
-        run: brew install make
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: nttld/setup-ndk@v1.5.0
+        id: setup-ndk
+        with:
+          ndk-version: r28b
+          local-cache: true
 
-      - name: Build Setup
-        run: make mac-setup
-        env:
-          TARGET: android
+      - name: Setup Android
+        run: make android-setup
+
+      - name: Set Features
+        run: |
+          features=""
+
+          if [ "${{ github.event.inputs.feature_webp }}" = "true" ]; then
+            features="${features}tvg-webp,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_png }}" = "true" ]; then
+            features="${features}tvg-png,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_jpg }}" = "true" ]; then
+            features="${features}tvg-jpg,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_ttf }}" = "true" ]; then
+            features="${features}tvg-ttf,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_expressions }}" = "true" ]; then
+            features="${features}tvg-lottie-expressions,"
+          fi
+
+          # Remove trailing comma if features exist
+          if [ -n "$features" ]; then
+            features="${features%,}"
+          fi
+
+          echo "FEATURES=$features" >> $GITHUB_ENV
+          echo "Selected features: $features"
 
       - name: Build Android
         run: make android
         env:
-          ANDROID_NDK_HOME: "/opt/homebrew/share/android-ndk"
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          FEATURES: ${{ env.FEATURES }}
 
       - name: Check ELF Alignment
         run: ./scripts/check_elf_alignment.sh release/android/dotlottie-player/src/main/jniLibs
+
+      - name: Create Android Archive
+        run: |
+          cd release/android
+          tar -czf dotlottie-player.android.tar.gz *
 
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4
@@ -126,33 +220,63 @@ jobs:
           if-no-files-found: error
 
   build-wasm:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     if: github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commitSHA || github.ref }}
+          submodules: true
+          fetch-depth: 0
 
-      - uses: Homebrew/actions/setup-homebrew@master
-      - uses: ningenMe/setup-rustup@v1.1.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Install Binaryen
-        run: brew install binaryen
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: Setup WASM
+        run: make wasm-setup
 
-      - name: Install Make
-        run: brew install make
+      - name: Set Features
+        run: |
+          features=""
 
-      - name: Build Setup
-        run: make mac-setup
-        env:
-          TARGET: wasm
+          if [ "${{ github.event.inputs.feature_webp }}" = "true" ]; then
+            features="${features}tvg-webp,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_png }}" = "true" ]; then
+            features="${features}tvg-png,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_jpg }}" = "true" ]; then
+            features="${features}tvg-jpg,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_ttf }}" = "true" ]; then
+            features="${features}tvg-ttf,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_expressions }}" = "true" ]; then
+            features="${features}tvg-lottie-expressions,"
+          fi
+
+          # Remove trailing comma if features exist
+          if [ -n "$features" ]; then
+            features="${features%,}"
+          fi
+
+          echo "FEATURES=$features" >> $GITHUB_ENV
+          echo "Selected features: $features"
 
       - name: Build WASM
         run: make wasm
+        env:
+          FEATURES: ${{ env.FEATURES }}
 
-      - name: Optimize WASM
-        run: wasm-opt release/wasm/DotLottiePlayer.wasm -o release/wasm/DotLottiePlayer.wasm -all -Oz
+      - name: Create WASM Archive
+        run: |
+          cd release/wasm
+          tar -czf dotlottie-player.wasm.tar.gz *
 
       - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v4

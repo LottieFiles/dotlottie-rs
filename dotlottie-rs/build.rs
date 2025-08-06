@@ -1,125 +1,165 @@
-use conan2::{ConanInstall, ConanVerbosity};
-use lazy_static::lazy_static;
-use std::env;
-use std::path::{Path, PathBuf};
+mod thorvg {
+    use conan2::{ConanInstall, ConanVerbosity};
+    use std::env;
+    use std::fs::{self, OpenOptions};
+    use std::io::Write;
+    use std::path::PathBuf;
 
-// Artifacts environment variables
-const ARTIFACTS_INCLUDE_DIR: &str = "ARTIFACTS_INCLUDE_DIR";
-const ARTIFACTS_LIB_DIR: &str = "ARTIFACTS_LIB_DIR";
-const ARTIFACTS_LIB64_DIR: &str = "ARTIFACTS_LIB64_DIR";
+    /// Returns the C++ standard library that needs to be linked for the current platform.
+    ///
+    /// This is necessary because when we compile C++ code (either from source or use
+    /// prebuilt libraries), we need to link against the platform's C++ standard library
+    /// to resolve C++ symbols like std::string, std::mutex, etc.
+    fn get_cpp_standard_library() -> Vec<String> {
+        let host_target =
+            std::env::var("HOST").expect("HOST environment variable should be set by Cargo");
 
-// Target triple for WASM
-const WASM32_UNKNOWN_EMSCRIPTEN: &str = "wasm32-unknown-emscripten";
-
-// Target-specifc build settings
-struct BuildSettings {
-    static_libs: Vec<String>,
-    dynamic_libs: Vec<String>,
-    link_args: Vec<String>,
-}
-
-fn is_artifacts_provided() -> bool {
-    std::env::var(ARTIFACTS_INCLUDE_DIR).is_ok() && std::env::var(ARTIFACTS_LIB_DIR).is_ok()
-}
-
-fn is_wasm_build() -> bool {
-    match std::env::var("TARGET") {
-        Ok(target) => target == WASM32_UNKNOWN_EMSCRIPTEN,
-        Err(_) => panic!("TARGET environment variable not set"),
-    }
-}
-
-fn platform_libs() -> Vec<String> {
-    match env::var("HOST") {
-        Ok(triple) if triple.contains("apple") => vec![String::from("c++")],
-        Ok(_) if std::env::var("CARGO_CFG_UNIX").is_ok() => vec![String::from("stdc++")],
-        Ok(_) => vec![],
-        Err(_) => panic!("CARGO_CFG_TARGET_VENDOR environment variable not set"),
-    }
-}
-
-lazy_static! {
-    // The project root directory
-    static ref PROJECT_DIR: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-
-    // Native library dependencies
-    static ref TARGET_BUILD_SETTINGS: BuildSettings = match is_artifacts_provided() {
-        true if is_wasm_build() => BuildSettings{
-            static_libs: vec![String::from("thorvg")],
-            dynamic_libs: vec![],
-            link_args: vec![String::from("--no-entry")],
-        },
-        true => BuildSettings{
-            static_libs: vec![String::from("thorvg")],
-            dynamic_libs: platform_libs(),
-            link_args: vec![],
-        },
-        // Conan build
-        _ => BuildSettings{
-            static_libs: vec![],
-            dynamic_libs: platform_libs(),
-            link_args: vec![],
+        if is_apple_platform(&host_target) {
+            // macOS and iOS use libc++ as the C++ standard library
+            vec![String::from("c++")]
+        } else if is_unix_platform() {
+            // Linux and other Unix systems typically use libstdc++
+            vec![String::from("stdc++")]
+        } else {
+            // Windows and other platforms - C++ stdlib is handled differently
+            // (usually linked automatically by the compiler/linker)
+            vec![]
         }
-   };
-}
-
-fn find_path(var: &str, required: bool) -> PathBuf {
-    Some(env::var(var).map(|v| PROJECT_DIR.join(v)).unwrap())
-        .filter(|p| !required || p.exists())
-        .unwrap()
-}
-
-fn register_link_path(lib_path: &Path) {
-    if lib_path.exists() {
-        println!("cargo:rustc-link-search=native={}", lib_path.display());
-    }
-}
-
-fn register_static_lib(lib: &String) {
-    println!("cargo:rustc-link-lib=static={lib}");
-}
-
-fn register_dylib(lib: &String) {
-    println!("cargo:rustc-link-lib=dylib={lib}");
-}
-
-fn register_link_arg(arg: &String) {
-    println!("cargo:rustc-link-arg={arg}");
-}
-
-fn apply_build_settings(build_settings: &BuildSettings) {
-    build_settings
-        .static_libs
-        .iter()
-        .for_each(register_static_lib);
-    build_settings.dynamic_libs.iter().for_each(register_dylib);
-    build_settings.link_args.iter().for_each(register_link_arg);
-}
-
-fn main() {
-    if !cfg!(feature = "thorvg-v0") && !cfg!(feature = "thorvg-v1") {
-        return;
     }
 
-    if !is_artifacts_provided() && cfg!(feature = "thorvg-v1") {
-        panic!("ARTIFACTS_INCLUDE_DIR and ARTIFACTS_LIB_DIR environment variables are required for thorvg-v1");
+    /// Check if we're building for an Apple platform (macOS, iOS, etc.)
+    fn is_apple_platform(host_target: &str) -> bool {
+        host_target.contains("apple")
     }
 
-    let mut builder = bindgen::Builder::default().header("wrapper.h");
+    /// Check if we're building for a Unix-like platform
+    fn is_unix_platform() -> bool {
+        std::env::var("CARGO_CFG_UNIX").is_ok()
+    }
 
-    if is_artifacts_provided() {
-        let include_dir = find_path(ARTIFACTS_INCLUDE_DIR, true);
-        let lib_dir = find_path(ARTIFACTS_LIB_DIR, true);
-        let lib64_dir = find_path(ARTIFACTS_LIB64_DIR, false);
+    fn collect_files(dir: &str) -> Vec<String> {
+        let mut files = Vec::new();
 
-        // Add artifacts library directories
-        register_link_path(&lib_dir);
-        register_link_path(&lib64_dir);
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() && path.extension().is_some_and(|e| e == "cpp") {
+                    files.push(path.to_string_lossy().into_owned());
+                }
+            }
+        }
 
-        // Update bindings builder
-        builder = builder.clang_arg(format!("-I{}", include_dir.display()))
-    } else {
-        // Conan build
+        files
+    }
+
+    pub fn build() -> std::io::Result<()> {
+        get_cpp_standard_library()
+            .iter()
+            .for_each(|lib| println!("cargo:rustc-link-lib=dylib={lib}"));
+
+        let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+
+        let mut src = vec![
+            "deps/thorvg/inc",
+            "deps/thorvg/src/common",
+            "deps/thorvg/src/bindings/capi",
+            "deps/thorvg/src/loaders/lottie",
+            "deps/thorvg/src/loaders/raw",
+            "deps/thorvg/src/renderer",
+        ];
+
+        // thorvg config.h
+        let mut thorvg_config_h = OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(out_dir.join("config.h"))?;
+
+        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.0.0\"")?;
+        writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
+
+        if cfg!(feature = "tvg-log") {
+            writeln!(thorvg_config_h, "#define THORVG_LOG_ENABLED")?;
+        }
+
+        if cfg!(feature = "tvg-sw") {
+            writeln!(thorvg_config_h, "#define THORVG_SW_RASTER_SUPPORT")?;
+            src.push("deps/thorvg/src/renderer/sw_engine");
+        }
+
+        if cfg!(feature = "tvg-jpg") {
+            writeln!(thorvg_config_h, "#define THORVG_JPG_LOADER_SUPPORT")?;
+            src.push("deps/thorvg/src/loaders/jpg");
+        }
+
+        if cfg!(feature = "tvg-png") {
+            writeln!(thorvg_config_h, "#define THORVG_PNG_LOADER_SUPPORT")?;
+            src.push("deps/thorvg/src/loaders/png");
+        }
+
+        if cfg!(feature = "tvg-webp") {
+            writeln!(thorvg_config_h, "#define THORVG_WEBP_LOADER_SUPPORT")?;
+            src.push("deps/thorvg/src/loaders/webp");
+            src.push("deps/thorvg/src/loaders/webp/dec");
+            src.push("deps/thorvg/src/loaders/webp/dsp");
+            src.push("deps/thorvg/src/loaders/webp/utils");
+            src.push("deps/thorvg/src/loaders/webp/webp");
+        }
+
+        if cfg!(feature = "tvg-ttf") {
+            writeln!(thorvg_config_h, "#define THORVG_TTF_LOADER_SUPPORT")?;
+            src.push("deps/thorvg/src/loaders/ttf");
+        }
+
+        if cfg!(feature = "tvg-lottie-expressions") {
+            writeln!(thorvg_config_h, "#define THORVG_LOTTIE_EXPRESSIONS_SUPPORT")?;
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/api");
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/ecma/base");
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/ecma/builtin-objects");
+            src.push(
+                "deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/ecma/builtin-objects/typedarray",
+            );
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/ecma/operations");
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/include");
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/jcontext");
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/jmem");
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/jrt");
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/lit");
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/parser/js");
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/parser/regexp");
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/vm");
+        }
+
+        thorvg_config_h.flush()?;
+
+        let compiler = env::var("CXX").unwrap_or("clang++".to_string());
+
+
+        cc::Build::new()
+            .compiler(compiler)
+            .std("c++14")
+            .cpp(true)
+            .include(&out_dir)
+            .includes(&src)
+            .files(
+                src.iter()
+                    .flat_map(|dir| collect_files(dir))
+                    .collect::<Vec<_>>(),
+            )
+            .warnings(false)
+            .compile("thorvg");
+
+        let bindings = bindgen::Builder::default()
+            .header("deps/thorvg/src/bindings/capi/thorvg_capi.h")
+            .generate()
+            .expect("Failed to generate bindings");
+
+        bindings.write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
+
+        Ok(())
+    }
+
+    pub fn conan_build() -> std::io::Result<()> {
         let cargo_instructions = ConanInstall::new()
             .detect_profile()
             .build("missing")
@@ -130,22 +170,38 @@ fn main() {
         // Emit instructions to cargo
         cargo_instructions.emit();
 
-        // Update bindings builder
+        // Link platform-specific C++ standard library
+        get_cpp_standard_library()
+            .iter()
+            .for_each(|lib| println!("cargo:rustc-link-lib=dylib={lib}"));
+
+        // Create bindings
+        let mut bindings_builder = bindgen::Builder::default()
+            .header("wrapper.h")
+            .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
+
+        // Add conan include paths to bindgen
         for path in cargo_instructions.include_paths() {
-            builder = builder.clang_arg(format!("-I{}", path.display()))
+            bindings_builder = bindings_builder.clang_arg(format!("-I{}", path.display()));
         }
+
+        println!("cargo:rerun-if-changed=wrapper.h");
+        let bindings = bindings_builder
+            .generate()
+            .expect("Failed to generate bindings");
+
+        bindings.write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
+
+        Ok(())
+    }
+}
+
+fn main() -> std::io::Result<()> {
+    if cfg!(feature = "tvg-v1") {
+        thorvg::build()?;
+    } else if cfg!(feature = "tvg-v0") {
+        thorvg::conan_build()?;
     }
 
-    // Apply build settings
-    apply_build_settings(&TARGET_BUILD_SETTINGS);
-
-    println!("cargo:rerun-if-changed=wrapper.h");
-    let bindings_output_path = env::var("OUT_DIR").map(PathBuf::from).unwrap();
-    let bindings = builder
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-        .generate()
-        .expect("Unable to generate bindings");
-    bindings
-        .write_to_file(bindings_output_path.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
+    Ok(())
 }

@@ -1,6 +1,4 @@
 use serde::Deserialize;
-use whitelist::Whitelist;
-
 use std::{rc::Rc, sync::RwLock};
 
 use crate::{state_machine::StringBool, DotLottiePlayerContainer, Event};
@@ -8,7 +6,7 @@ use crate::{state_machine::StringBool, DotLottiePlayerContainer, Event};
 use super::{state_machine::StringNumber, StateMachineEngine};
 
 pub mod open_url_policy;
-mod whitelist;
+pub mod whitelist;
 
 #[derive(Debug)]
 pub enum StateMachineActionError {
@@ -192,7 +190,7 @@ impl ActionTrait for Action {
             Action::SetBoolean { input_name, value } => {
                 let val = engine.get_boolean_input(input_name);
 
-                if let Some(val) = val {
+                if val.is_some() {
                     match value {
                         StringBool::String(string_value) => {
                             let trimmed_value = string_value.trim_start_matches('$');
@@ -223,7 +221,7 @@ impl ActionTrait for Action {
             Action::SetNumeric { input_name, value } => {
                 let val = engine.get_numeric_input(input_name);
 
-                if let Some(val) = val {
+                if val.is_some() {
                     match value {
                         StringNumber::String(string_value) => {
                             let trimmed_value = string_value.trim_start_matches('$');
@@ -254,7 +252,7 @@ impl ActionTrait for Action {
             Action::SetString { input_name, value } => {
                 let val = engine.get_string_input(input_name);
 
-                if let Some(val) = val {
+                if val.is_some() {
                     let trimmed_value = value.trim_start_matches('$');
                     let opt_input_value = engine.get_string_input(trimmed_value);
                     if let Some(input_value) = opt_input_value {
@@ -337,21 +335,12 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::OpenUrl { url, target } => {
-                let open_url_config = &engine.open_url_config;
+                let whitelist = &engine.open_url_whitelist;
+                let user_interaction_required = &engine.open_url_requires_user_interaction;
 
-                // If theres a whitelist and the url isn't present, do nothing
-                // Todo: Why recreate the list every time?
-                if !open_url_config.whitelist.is_empty() {
-                    let mut whitelist = Whitelist::new();
-
-                    // Add patterns to whitelist
-                    for entry in &open_url_config.whitelist {
-                        let _ = whitelist.add(entry);
-                    }
-
-                    if let Ok(false) | Err(_) = whitelist.is_allowed(url) {
-                        return Err(StateMachineActionError::ExecuteError);
-                    }
+                // Urls are only opened if they are strictly inside the whitelist
+                if let Ok(false) | Err(_) = whitelist.is_allowed(url) {
+                    return Err(StateMachineActionError::ExecuteError);
                 }
 
                 let _ = target.to_lowercase();
@@ -361,18 +350,14 @@ impl ActionTrait for Action {
                     format!("OpenUrl: {url} | Target: {target}")
                 };
 
-                if open_url_config.require_user_interaction {
+                // User has configured the player to only open urls based on click or pointer down events
+                if *user_interaction_required {
                     let interaction = &engine.pointer_management.most_recent_event;
 
-                    if let Some(event) = interaction {
-                        match event {
-                            Event::PointerDown { .. } | Event::Click { .. } => {
-                                engine.observe_internal_event(&command);
+                    if let Some(Event::PointerDown { .. } | Event::Click { .. }) = interaction {
+                        engine.observe_internal_event(&command);
 
-                                return Ok(());
-                            }
-                            _ => {}
-                        }
+                        return Ok(());
                     }
                     return Err(StateMachineActionError::ExecuteError);
                 }

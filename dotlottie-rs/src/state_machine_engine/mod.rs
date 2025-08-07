@@ -22,6 +22,7 @@ use states::StateTrait;
 use transitions::guard::GuardTrait;
 use transitions::{Transition, TransitionTrait};
 
+use crate::actions::whitelist::Whitelist;
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, DotLottiePlayerContainer, EventName,
@@ -101,7 +102,10 @@ pub struct StateMachineEngine {
 
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineEngineStatus,
-    pub open_url_config: OpenUrlPolicy,
+
+    // Open url policu configurations
+    pub open_url_requires_user_interaction: bool,
+    pub open_url_whitelist: Whitelist,
 
     inputs: InputManager,
     event_input: HashMap<String, String>,
@@ -130,7 +134,8 @@ impl Default for StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
-            open_url_config: OpenUrlPolicy::default(),
+            open_url_requires_user_interaction: false,
+            open_url_whitelist: Whitelist::new(),
             player: None,
             inputs: InputManager::new(),
             event_input: HashMap::new(),
@@ -158,7 +163,8 @@ impl StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
-            open_url_config: OpenUrlPolicy::default(),
+            open_url_requires_user_interaction: false,
+            open_url_whitelist: Whitelist::new(),
             player: Some(player.clone()),
             inputs: InputManager::new(),
             event_input: HashMap::new(),
@@ -368,7 +374,7 @@ impl StateMachineEngine {
         let mut new_state_machine = StateMachineEngine::default();
         if parsed_state_machine.is_err() {
             let message = match parsed_state_machine.err() {
-                Some(e) => format!("Parsing error: {:?}", e),
+                Some(e) => format!("Parsing error: {e:?}"),
                 None => "Parsing error: Unknown error".to_string(),
             };
 
@@ -469,7 +475,18 @@ impl StateMachineEngine {
             return true;
         }
 
-        self.open_url_config = open_url.clone();
+        self.open_url_requires_user_interaction = open_url.require_user_interaction;
+
+        if !open_url.whitelist.is_empty() {
+            let mut whitelist = Whitelist::new();
+
+            // Add patterns to whitelist
+            for entry in &open_url.whitelist {
+                let _ = whitelist.add(entry);
+            }
+
+            self.open_url_whitelist = whitelist;
+        }
 
         self.observe_on_start();
 

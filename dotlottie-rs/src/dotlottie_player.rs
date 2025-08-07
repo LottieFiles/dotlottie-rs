@@ -1431,18 +1431,11 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn state_machine_status(&self) -> String {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if let Some(sm) = state_machine.as_ref() {
-                    return sm.status();
-                }
-            }
-
-            Err(_) => {
-                return "".to_string();
+        if let Ok(state_machine) = self.state_machine.try_read() {
+            if let Some(sm) = state_machine.as_ref() {
+                return sm.status();
             }
         }
-
         "".to_string()
     }
 
@@ -1577,55 +1570,33 @@ impl DotLottiePlayer {
     }
 
     pub fn state_machine_start(&self, open_url_policy: OpenUrlPolicy) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => {
-                return false;
-            }
-        }
-
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    return sm.start(&open_url_policy);
+                    sm.start(&open_url_policy)
+                } else {
+                    false
                 }
             }
-            Err(_) => {
-                return false;
-            }
+            Err(_) => false,
         }
-
-        false
     }
 
     pub fn state_machine_stop(&self) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
                     if sm.status == StateMachineEngineStatus::Running {
                         sm.stop();
                     }
-
                     *state_machine = None;
+                    true
+                } else {
+                    false
                 }
             }
-            Err(_) => return false,
+            Err(_) => false,
         }
-
-        true
     }
 
     /// Returns which types of interactions need to be setup.
@@ -1689,42 +1660,19 @@ impl DotLottiePlayer {
     }
 
     pub fn state_machine_post_event(&self, event: &Event) {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    {};
-                }
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                sm.post_event(event);
             }
-            Err(_) => {}
-        }
-
-        match self.state_machine.try_write() {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.post_event(event);
-                }
-            }
-            Err(_) => {}
         }
     }
 
     pub fn state_machine_override_current_state(&self, state_name: &str, do_tick: bool) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                sm.override_current_state(state_name, do_tick);
+                return true;
             }
-            Err(_) => return false,
-        }
-
-        match self.state_machine.try_write() {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.override_current_state(state_name, do_tick);
-                }
-            }
-            Err(_) => return false,
         }
 
         false
@@ -2189,7 +2137,7 @@ impl DotLottiePlayer {
                         let tmp_sm = state_machine.as_ref().unwrap();
 
                         match error {
-                            StateMachineEngineError::ParsingError(err) => tmp_sm.observe_on_error(&format!("Parsing error: {}", err)),
+                            StateMachineEngineError::ParsingError(err) => tmp_sm.observe_on_error(&format!("Parsing error: {err}")),
                             StateMachineEngineError::CreationError => tmp_sm.observe_on_error("CreationError"),
                             StateMachineEngineError::SecurityCheckErrorMultipleGuardlessTransitions => tmp_sm.observe_on_error("SecurityCheckErrorMultipleGuardlessTransitions"),
                             StateMachineEngineError::SecurityCheckErrorDuplicateStateName => tmp_sm.observe_on_error("SecurityCheckErrorDuplicateStateName"),
@@ -2300,34 +2248,20 @@ impl DotLottiePlayer {
     }
 
     pub fn state_machine_current_state(&self) -> String {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if let Some(sm) = state_machine.as_ref() {
-                    return sm.get_current_state_name();
-                }
-            }
-
-            Err(_) => {
-                return "".to_string();
+        if let Ok(state_machine) = self.state_machine.try_read() {
+            if let Some(sm) = state_machine.as_ref() {
+                return sm.get_current_state_name();
             }
         }
-
         "".to_string()
     }
 
     pub fn state_machine_status(&self) -> String {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if let Some(sm) = state_machine.as_ref() {
-                    return sm.status();
-                }
-            }
-
-            Err(_) => {
-                return "".to_string();
+        if let Ok(state_machine) = self.state_machine.try_read() {
+            if let Some(sm) = state_machine.as_ref() {
+                return sm.status();
             }
         }
-
         "".to_string()
     }
 

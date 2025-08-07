@@ -77,6 +77,12 @@ impl WhitelistEntry {
     }
 }
 
+impl Default for Whitelist {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Whitelist {
     pub fn new() -> Self {
         Whitelist {

@@ -116,33 +116,27 @@ mod tests {
         assert!(r);
 
         let event = Event::PointerDown { x: 0.0, y: 0.0 };
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "a".to_string());
 
         let event = Event::PointerUp { x: 0.0, y: 0.0 };
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "b".to_string());
 
         let event = Event::PointerMove { x: 0.0, y: 0.0 };
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "c".to_string());
 
         let event = Event::PointerEnter { x: 0.0, y: 0.0 };
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "d".to_string());
 
         let event = Event::PointerExit { x: 0.0, y: 0.0 };
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "e".to_string());
 
         let event = Event::OnComplete;
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "f".to_string());
     }
 

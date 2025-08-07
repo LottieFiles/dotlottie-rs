@@ -1,17 +1,8 @@
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 #[repr(C)]
 pub struct OpenUrlPolicy {
     pub whitelist: Vec<String>,
     pub require_user_interaction: bool,
-}
-
-impl Default for OpenUrlPolicy {
-    fn default() -> Self {
-        Self {
-            whitelist: vec![],
-            require_user_interaction: false,
-        }
-    }
 }
 
 impl OpenUrlPolicy {

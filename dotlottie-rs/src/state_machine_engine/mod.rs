@@ -103,7 +103,7 @@ pub struct StateMachineEngine {
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineEngineStatus,
 
-    // Open url policu configurations
+    // Open url policy configurations
     pub open_url_requires_user_interaction: bool,
     pub open_url_whitelist: Whitelist,
 

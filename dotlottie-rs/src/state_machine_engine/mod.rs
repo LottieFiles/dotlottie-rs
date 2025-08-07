@@ -97,8 +97,8 @@ impl Default for PointerData {
 pub struct StateMachineEngine {
     /* We keep references to the StateMachine's States. */
     /* This prevents duplicating the data inside the engine. */
-    pub global_state: Option<Rc<State>>,
-    pub current_state: Option<Rc<State>>,
+    pub global_state: Option<State>,
+    pub current_state: Option<State>,
 
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineEngineStatus,
@@ -125,7 +125,7 @@ pub struct StateMachineEngine {
     action_mutated_inputs: bool,
 
     // The state to target once blending has finished
-    tween_transition_target_state: Option<Rc<State>>,
+    tween_transition_target_state: Option<State>,
 }
 
 impl Default for StateMachineEngine {
@@ -417,7 +417,7 @@ impl StateMachineEngine {
                 */
                 for state in &parsed_state_machine.states {
                     if let State::GlobalState { .. } = state {
-                        new_state_machine.global_state = Some(Rc::new(state.clone()));
+                        new_state_machine.global_state = Some(state.clone());
                     }
                 }
 
@@ -511,7 +511,7 @@ impl StateMachineEngine {
         }
     }
 
-    pub fn get_current_state(&self) -> Option<Rc<State>> {
+    pub fn get_current_state(&self) -> Option<State> {
         self.current_state.clone()
     }
 
@@ -576,7 +576,7 @@ impl StateMachineEngine {
         self.pointer_management.listened_layers = all_listened_layers;
     }
 
-    fn get_state(&self, state_name: &str) -> Option<Rc<State>> {
+    fn get_state(&self, state_name: &str) -> Option<State> {
         if let Some(global_state) = &self.global_state {
             if global_state.name() == state_name {
                 return Some(global_state.clone());
@@ -585,7 +585,7 @@ impl StateMachineEngine {
 
         for state in self.state_machine.states.iter() {
             if state.name() == state_name {
-                return Some(Rc::new(state.clone()));
+                return Some(state.clone());
             }
         }
 
@@ -620,10 +620,9 @@ impl StateMachineEngine {
 
                 // If autoplay on the state is false and we've used tweening,
                 // The hit check will start failing. Render fixes this bug.
-                if let State::PlaybackState { autoplay, .. } = &*state {
+                if let State::PlaybackState { autoplay, .. } = state {
                     if !autoplay.unwrap_or(false) {
                         let try_read_lock = &player.try_read();
-
                         if let Ok(player) = try_read_lock {
                             player.render();
                         }
@@ -681,21 +680,24 @@ impl StateMachineEngine {
                         let read_lock = &unwrapped_player.try_read();
 
                         if let Ok(player) = read_lock {
-                            match &*new_state {
+                            // Clone segment before match to avoid partial move
+                            let segment_clone = match &new_state {
+                                State::PlaybackState { segment, .. } => segment.clone(),
+                                _ => None,
+                            };
+                            match &new_state {
                                 // If we're transitioning to a PlaybackState, grab the start segment
-                                State::PlaybackState { segment, .. } => {
-                                    if let Some(target_segment) = segment {
+                                State::PlaybackState { .. } => {
+                                    if let Some(target_segment) = segment_clone {
                                         self.status = StateMachineEngineStatus::Tweening;
                                         self.tween_transition_target_state =
                                             Some(new_state.clone());
-
                                         // Tweening is activated and the state machine has been paused whilst it transitions
                                         player.tween_to_marker(
-                                            target_segment,
+                                            target_segment.as_str(),
                                             Some(causing_transition.duration()),
                                             Some(causing_transition.easing().to_vec()),
                                         );
-
                                         return Ok(());
                                     }
                                 }
@@ -737,7 +739,7 @@ impl StateMachineEngine {
     // Returns: The target state and the causing transition
     fn evaluate_transitions(
         &self,
-        state_to_evaluate: &Rc<State>,
+        state_to_evaluate: &State,
         event: Option<&String>,
     ) -> Option<(String, Transition)> {
         let transitions = state_to_evaluate.transitions();

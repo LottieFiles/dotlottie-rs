@@ -200,7 +200,8 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_event(
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if let Some(event) = event.as_ref() {
-            dotlottie_player.state_machine_post_event(&event.to_event())
+            dotlottie_player.state_machine_post_event(&event.to_event());
+            DOTLOTTIE_SUCCESS
         } else {
             DOTLOTTIE_ERROR
         }
@@ -667,7 +668,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_override_current_state(
 // #[no_mangle]
 // pub unsafe extern "C" fn dotlottie_state_machine_start(
 //     ptr: *mut DotLottiePlayer,
-//     open_url_config: OpenURL,
+//     open_url_config: OpenUrlPolicy,
 // ) -> i32 {
 //     exec_dotlottie_player_op(ptr, |dotlottie_player| {
 //         // let config_ref = &*open_url_config;
@@ -838,6 +839,42 @@ pub unsafe extern "C" fn dotlottie_state_machine_unsubscribe(
         }
         if let Some(v) = observer.as_mut() {
             to_exit_status(dotlottie_player.state_machine_unsubscribe(&v.as_observer()))
+        } else {
+            DOTLOTTIE_ERROR
+        }
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_internal_subscribe(
+    ptr: *mut DotLottiePlayer,
+    observer: *mut types::StateMachineInternalObserver,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        if observer.is_null() {
+            return DOTLOTTIE_INVALID_PARAMETER;
+        }
+        if let Some(v) = observer.as_mut() {
+            to_exit_status(dotlottie_player.state_machine_internal_subscribe(v.as_observer()))
+        } else {
+            DOTLOTTIE_ERROR
+        }
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_internal_unsubscribe(
+    ptr: *mut DotLottiePlayer,
+    observer: *mut types::StateMachineInternalObserver,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        if observer.is_null() {
+            return DOTLOTTIE_INVALID_PARAMETER;
+        }
+        if let Some(v) = observer.as_mut() {
+            to_exit_status(dotlottie_player.state_machine_internal_unsubscribe(&v.as_observer()))
         } else {
             DOTLOTTIE_ERROR
         }

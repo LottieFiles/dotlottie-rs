@@ -2,7 +2,7 @@ use crate::time::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
 
-use crate::actions::open_url::OpenUrl;
+use crate::actions::open_url_policy::OpenUrlPolicy;
 use crate::state_machine_engine::events::Event;
 use crate::{
     extract_markers,
@@ -14,6 +14,7 @@ use crate::{
     transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer, StateMachineEngineError,
 };
 
+use crate::StateMachineInternalObserver;
 use crate::StateMachineObserver;
 
 use crate::StateMachineEngineStatus;
@@ -1430,18 +1431,11 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn state_machine_status(&self) -> String {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if let Some(sm) = state_machine.as_ref() {
-                    return sm.status();
-                }
-            }
-
-            Err(_) => {
-                return "".to_string();
+        if let Ok(state_machine) = self.state_machine.try_read() {
+            if let Some(sm) = state_machine.as_ref() {
+                return sm.status();
             }
         }
-
         "".to_string()
     }
 
@@ -1575,56 +1569,34 @@ impl DotLottiePlayer {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 
-    pub fn state_machine_start(&self, open_url: OpenUrl) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => {
-                return false;
-            }
-        }
-
+    pub fn state_machine_start(&self, open_url_policy: OpenUrlPolicy) -> bool {
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
-                    return sm.start(&open_url);
+                    sm.start(&open_url_policy)
+                } else {
+                    false
                 }
             }
-            Err(_) => {
-                return false;
-            }
+            Err(_) => false,
         }
-
-        false
     }
 
     pub fn state_machine_stop(&self) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
         match self.state_machine.try_write() {
             Ok(mut state_machine) => {
                 if let Some(sm) = state_machine.as_mut() {
                     if sm.status == StateMachineEngineStatus::Running {
                         sm.stop();
                     }
-
                     *state_machine = None;
+                    true
+                } else {
+                    false
                 }
             }
-            Err(_) => return false,
+            Err(_) => false,
         }
-
-        true
     }
 
     /// Returns which types of interactions need to be setup.
@@ -1687,79 +1659,51 @@ impl DotLottiePlayer {
         }
     }
 
-    // Return codes
-    // 0: Success
-    // 1: Failure
-    pub fn state_machine_post_event(&self, event: &Event) -> i32 {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return 1;
-                }
+    pub fn state_machine_post_event(&self, event: &Event) {
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                sm.post_event(event);
             }
-            Err(_) => return 1,
         }
-
-        match self.state_machine.try_write() {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    return sm.post_event(event);
-                }
-            }
-            Err(_) => return 1,
-        }
-
-        1
     }
 
     pub fn state_machine_override_current_state(&self, state_name: &str, do_tick: bool) -> bool {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if state_machine.is_none() {
-                    return false;
-                }
+        if let Ok(mut state_machine) = self.state_machine.try_write() {
+            if let Some(sm) = state_machine.as_mut() {
+                sm.override_current_state(state_name, do_tick);
+                return true;
             }
-            Err(_) => return false,
-        }
-
-        match self.state_machine.try_write() {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
-                    sm.override_current_state(state_name, do_tick);
-                }
-            }
-            Err(_) => return false,
         }
 
         false
     }
 
-    pub fn state_machine_post_click_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_click_event(&self, x: f32, y: f32) {
         let event = Event::Click { x, y };
         self.state_machine_post_event(&event)
     }
 
-    pub fn state_machine_post_pointer_down_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_down_event(&self, x: f32, y: f32) {
         let event = Event::PointerDown { x, y };
         self.state_machine_post_event(&event)
     }
 
-    pub fn state_machine_post_pointer_up_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_up_event(&self, x: f32, y: f32) {
         let event = Event::PointerUp { x, y };
         self.state_machine_post_event(&event)
     }
 
-    pub fn state_machine_post_pointer_move_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_move_event(&self, x: f32, y: f32) {
         let event = Event::PointerMove { x, y };
         self.state_machine_post_event(&event)
     }
 
-    pub fn state_machine_post_pointer_enter_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_enter_event(&self, x: f32, y: f32) {
         let event = Event::PointerEnter { x, y };
         self.state_machine_post_event(&event)
     }
 
-    pub fn state_machine_post_pointer_exit_event(&self, x: f32, y: f32) -> i32 {
+    pub fn state_machine_post_pointer_exit_event(&self, x: f32, y: f32) {
         let event: Event = Event::PointerExit { x, y };
         self.state_machine_post_event(&event)
     }
@@ -1879,7 +1823,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start(OpenUrl::default());
+                    let start = self.state_machine_start(OpenUrlPolicy::default());
 
                     return load && start;
                 }
@@ -1902,7 +1846,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start(OpenUrl::default());
+                    let start = self.state_machine_start(OpenUrlPolicy::default());
 
                     return load && start;
                 }
@@ -1925,7 +1869,7 @@ impl DotLottiePlayer {
 
                     let load = self.state_machine_load(&sm_id);
 
-                    let start = self.state_machine_start(OpenUrl::default());
+                    let start = self.state_machine_start(OpenUrlPolicy::default());
 
                     return load && start;
                 }
@@ -2081,11 +2025,11 @@ impl DotLottiePlayer {
         true
     }
 
-    // Framework internal state machine observer subscribe function
+    // Internal state machine observer subscribe function for frameworks
     // This allows us to send custom internal messages to the frameworks, without polluting the user's observers.
-    pub fn state_machine_framework_subscribe(
+    pub fn state_machine_internal_subscribe(
         &self,
-        observer: Arc<dyn StateMachineObserver>,
+        observer: Arc<dyn StateMachineInternalObserver>,
     ) -> bool {
         let sm = self.state_machine.try_write();
 
@@ -2094,13 +2038,13 @@ impl DotLottiePlayer {
                 if sm.is_none() {
                     let new_state_machine: StateMachineEngine = StateMachineEngine::default();
 
-                    new_state_machine.framework_subscribe(observer);
+                    new_state_machine.internal_subscribe(observer);
 
                     sm.replace(new_state_machine);
 
                     return true;
                 } else if let Some(sm) = sm.as_mut() {
-                    sm.framework_subscribe(observer);
+                    sm.internal_subscribe(observer);
                 }
             }
             Err(_) => {
@@ -2111,9 +2055,9 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn state_machine_framework_unsubscribe(
+    pub fn state_machine_internal_unsubscribe(
         &self,
-        observer: &Arc<dyn StateMachineObserver>,
+        observer: &Arc<dyn StateMachineInternalObserver>,
     ) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 
@@ -2121,7 +2065,7 @@ impl DotLottiePlayer {
             return false;
         }
 
-        sm.as_mut().unwrap().framework_unsubscribe(observer);
+        sm.as_mut().unwrap().internal_unsubscribe(observer);
 
         true
     }
@@ -2159,10 +2103,10 @@ impl DotLottiePlayer {
                         let tmp_sm = state_machine.as_ref().unwrap();
                         let tmp_sm_observers = tmp_sm.observers.read().unwrap().clone();
                         let tmp_sm_framework_observers =
-                            tmp_sm.framework_url_observer.read().unwrap().clone();
+                            tmp_sm.internal_observer.read().unwrap().clone();
 
                         if let Some(tmp_sm_framework_observers) = tmp_sm_framework_observers {
-                            sm.framework_subscribe(tmp_sm_framework_observers.clone());
+                            sm.internal_subscribe(tmp_sm_framework_observers.clone());
                         }
 
                         for observer in tmp_sm_observers {
@@ -2193,7 +2137,7 @@ impl DotLottiePlayer {
                         let tmp_sm = state_machine.as_ref().unwrap();
 
                         match error {
-                            StateMachineEngineError::ParsingError => tmp_sm.observe_on_error("ParsingError"),
+                            StateMachineEngineError::ParsingError(err) => tmp_sm.observe_on_error(&format!("Parsing error: {err}")),
                             StateMachineEngineError::CreationError => tmp_sm.observe_on_error("CreationError"),
                             StateMachineEngineError::SecurityCheckErrorMultipleGuardlessTransitions => tmp_sm.observe_on_error("SecurityCheckErrorMultipleGuardlessTransitions"),
                             StateMachineEngineError::SecurityCheckErrorDuplicateStateName => tmp_sm.observe_on_error("SecurityCheckErrorDuplicateStateName"),
@@ -2228,11 +2172,11 @@ impl DotLottiePlayer {
                                 let tmp_sm = state_machine.as_ref().unwrap();
                                 let tmp_sm_observers = tmp_sm.observers.read().unwrap().clone();
                                 let tmp_sm_framework_observers =
-                                    tmp_sm.framework_url_observer.read().unwrap().clone();
+                                    tmp_sm.internal_observer.read().unwrap().clone();
 
                                 if let Some(tmp_sm_framework_observers) = tmp_sm_framework_observers
                                 {
-                                    sm.framework_subscribe(tmp_sm_framework_observers.clone());
+                                    sm.internal_subscribe(tmp_sm_framework_observers.clone());
                                 }
 
                                 for observer in tmp_sm_observers {
@@ -2304,34 +2248,20 @@ impl DotLottiePlayer {
     }
 
     pub fn state_machine_current_state(&self) -> String {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if let Some(sm) = state_machine.as_ref() {
-                    return sm.get_current_state_name();
-                }
-            }
-
-            Err(_) => {
-                return "".to_string();
+        if let Ok(state_machine) = self.state_machine.try_read() {
+            if let Some(sm) = state_machine.as_ref() {
+                return sm.get_current_state_name();
             }
         }
-
         "".to_string()
     }
 
     pub fn state_machine_status(&self) -> String {
-        match self.state_machine.try_read() {
-            Ok(state_machine) => {
-                if let Some(sm) = state_machine.as_ref() {
-                    return sm.status();
-                }
-            }
-
-            Err(_) => {
-                return "".to_string();
+        if let Ok(state_machine) = self.state_machine.try_read() {
+            if let Some(sm) = state_machine.as_ref() {
+                return sm.status();
             }
         }
-
         "".to_string()
     }
 

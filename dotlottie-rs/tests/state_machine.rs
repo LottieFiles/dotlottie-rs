@@ -3,7 +3,7 @@ mod tests {
     use core::assert_eq;
     use std::fs::{self, File};
 
-    use dotlottie_rs::{actions::open_url::OpenUrl, Config, DotLottiePlayer, Event};
+    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event};
     use std::io::Read;
 
     #[test]
@@ -30,7 +30,7 @@ mod tests {
         assert!(player.is_playing());
 
         let load = player.state_machine_load("Exploding Pigeon");
-        let start = player.state_machine_start(OpenUrl::default());
+        let start = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(load);
         assert!(start);
@@ -50,14 +50,14 @@ mod tests {
 
         player.state_machine_load_data("bad_data");
 
-        let r = player.state_machine_start(OpenUrl::default());
+        let r = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(!r);
 
         let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
         player.state_machine_load_data(global_state);
 
-        let r = player.state_machine_start(OpenUrl::default());
+        let r = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(r);
     }
@@ -76,7 +76,7 @@ mod tests {
         let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
         player.state_machine_load_data(global_state);
 
-        let r = player.state_machine_start(OpenUrl::default());
+        let r = player.state_machine_start(OpenUrlPolicy::default());
         let s = player.state_machine_stop();
 
         assert!(r);
@@ -91,7 +91,7 @@ mod tests {
 
         player.state_machine_load_data(pointer_down);
 
-        let r = player.state_machine_start(OpenUrl::default());
+        let r = player.state_machine_start(OpenUrlPolicy::default());
         assert!(r);
 
         let r = player.state_machine_framework_setup();
@@ -112,37 +112,31 @@ mod tests {
 
         player.state_machine_load_data(pointer_down);
 
-        let r = player.state_machine_start(OpenUrl::default());
+        let r = player.state_machine_start(OpenUrlPolicy::default());
         assert!(r);
 
         let event = Event::PointerDown { x: 0.0, y: 0.0 };
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "a".to_string());
 
         let event = Event::PointerUp { x: 0.0, y: 0.0 };
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "b".to_string());
 
         let event = Event::PointerMove { x: 0.0, y: 0.0 };
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "c".to_string());
 
         let event = Event::PointerEnter { x: 0.0, y: 0.0 };
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "d".to_string());
 
         let event = Event::PointerExit { x: 0.0, y: 0.0 };
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "e".to_string());
 
         let event = Event::OnComplete;
-        let r = player.state_machine_post_event(&event);
-        assert_eq!(r, 0);
+        player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "f".to_string());
     }
 
@@ -153,7 +147,7 @@ mod tests {
 
         player.state_machine_load_data(rating);
 
-        let r = player.state_machine_start(OpenUrl::default());
+        let r = player.state_machine_start(OpenUrlPolicy::default());
         assert!(r);
 
         // Setting the inputs
@@ -175,7 +169,7 @@ mod tests {
 
         player.state_machine_load_data(sm);
 
-        let r = player.state_machine_start(OpenUrl::default());
+        let r = player.state_machine_start(OpenUrlPolicy::default());
         assert!(r);
 
         assert!(!player.state_machine_get_boolean_input("OnOffSwitch"));
@@ -197,7 +191,7 @@ mod tests {
 
         player.state_machine_load_data(sm);
 
-        let r = player.state_machine_start(OpenUrl::default());
+        let r = player.state_machine_start(OpenUrlPolicy::default());
         assert!(r);
 
         assert_eq!(
@@ -228,7 +222,7 @@ mod tests {
 
         player.state_machine_load_data(sm);
 
-        let r = player.state_machine_start(OpenUrl::default());
+        let r = player.state_machine_start(OpenUrlPolicy::default());
         assert!(r);
 
         player.state_machine_fire_event("Step");
@@ -245,7 +239,7 @@ mod tests {
 
         player.state_machine_load_data(sm);
 
-        let r = player.state_machine_start(OpenUrl::default());
+        let r = player.state_machine_start(OpenUrlPolicy::default());
         assert!(r);
 
         assert_eq!(player.state_machine_current_state(), "star_0".to_string());
@@ -268,7 +262,7 @@ mod tests {
 
         player.state_machine_load_data(pointer_down);
 
-        let r = player.state_machine_start(OpenUrl::default());
+        let r = player.state_machine_start(OpenUrlPolicy::default());
         assert!(r);
 
         let event = Event::PointerDown { x: 0.0, y: 0.0 };

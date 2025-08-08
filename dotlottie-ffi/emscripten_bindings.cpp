@@ -77,6 +77,25 @@ private:
     ObserverCallbacks callbacks_;
 };
 
+struct StateMachineInternalObserverCallbacks {
+    std::function<void(const std::string&)> on_message;
+};
+
+class CallbackStateMachineInternalObserver : public StateMachineInternalObserver {
+public:
+    CallbackStateMachineInternalObserver() = default;
+
+    void setOnMessage(val cb) { 
+        callbacks_.on_message = [cb](const std::string& message) { 
+            if (cb != val::undefined()) cb(message); 
+        };
+    }
+
+    void on_message(const std::string &message) override { if (callbacks_.on_message) callbacks_.on_message(message); }
+private:
+    StateMachineInternalObserverCallbacks callbacks_;
+};
+
 struct StateMachineObserverCallbacks {
     std::function<void()> on_start;
     std::function<void()> on_stop;
@@ -188,17 +207,17 @@ void stateMachineUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachi
     player.state_machine_unsubscribe(observer);
 }
 
-std::shared_ptr<StateMachineObserver> stateMachineFrameworkSubscribe(DotLottiePlayer &player, StateMachineObserver* observer)
+std::shared_ptr<StateMachineInternalObserver> stateMachineInternalSubscribe(DotLottiePlayer &player, StateMachineInternalObserver* observer)
 {
     // Create shared_ptr from raw pointer (without taking ownership)
-    std::shared_ptr<StateMachineObserver> shared_observer(observer, [](StateMachineObserver*){});
-    player.state_machine_framework_subscribe(shared_observer);
+    std::shared_ptr<StateMachineInternalObserver> shared_observer(observer, [](StateMachineInternalObserver*){});
+    player.state_machine_internal_subscribe(shared_observer);
     return shared_observer;
 }
 
-void stateMachineFrameworkUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachineObserver> observer)
+void stateMachineInternalUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachineInternalObserver> observer)
 {
-    player.state_machine_framework_unsubscribe(observer);
+    player.state_machine_internal_unsubscribe(observer);
 }
 
 EMSCRIPTEN_BINDINGS(observer_callbacks) {
@@ -213,6 +232,12 @@ EMSCRIPTEN_BINDINGS(observer_callbacks) {
         .function("setOnFrame", &CallbackObserver::setOnFrame)
         .function("setOnRender", &CallbackObserver::setOnRender)
         .function("setOnLoop", &CallbackObserver::setOnLoop);
+}
+
+EMSCRIPTEN_BINDINGS(state_machine_internal_observer_callbacks) {
+    class_<CallbackStateMachineInternalObserver, base<StateMachineInternalObserver>>("CallbackStateMachineInternalObserver")
+        .constructor<>()
+        .function("setOnMessage", &CallbackStateMachineInternalObserver::setOnMessage);
 }
 
 EMSCRIPTEN_BINDINGS(state_machine_observer_callbacks) {
@@ -266,16 +291,11 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 
     function("createDefaultLayout", &create_default_layout);
 
-    enum_<OpenUrlMode>("OpenUrlMode")
-        .value("Deny", OpenUrlMode::kDeny)
-        .value("Interaction", OpenUrlMode::kInteraction)
-        .value("Allow", OpenUrlMode::kAllow);
+    value_object<OpenUrlPolicy>("OpenUrlPolicy")
+        .field("requireUserInteraction", &OpenUrlPolicy::require_user_interaction)
+        .field("whitelist", &OpenUrlPolicy::whitelist);
 
-    value_object<OpenUrl>("OpenUrl")
-        .field("mode", &OpenUrl::mode)
-        .field("whitelist", &OpenUrl::whitelist);
-
-    function("createDefaultOpenURL", &create_default_open_url);
+    function("createDefaultOpenUrlPolicy", &create_default_open_url_policy);
 
     value_object<Marker>("Marker")
         .field("name", &Marker::name)
@@ -324,6 +344,10 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("on_boolean_input_value_change", &StateMachineObserver::on_boolean_input_value_change, pure_virtual())
         .function("on_input_fired", &StateMachineObserver::on_input_fired, pure_virtual())
         .function("on_error", &StateMachineObserver::on_error, pure_virtual());
+
+    class_<StateMachineInternalObserver>("StateMachineInternalObserver")
+        .smart_ptr<std::shared_ptr<StateMachineInternalObserver>>("StateMachineInternalObserver")
+        .function("on_message", &StateMachineInternalObserver::on_message, pure_virtual());
 
     class_<DotLottiePlayer>("DotLottiePlayer")
         .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
@@ -401,7 +425,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("stateMachineOverrideCurrentState", &DotLottiePlayer::state_machine_override_current_state)
         .function("stateMachineSubscribe", &stateMachineSubscribe, allow_raw_pointers())
         .function("stateMachineUnsubscribe", &stateMachineUnsubscribe)
-        .function("stateMachineFrameworkSubscribe", &stateMachineFrameworkSubscribe, allow_raw_pointers())
-        .function("stateMachineFrameworkUnsubscribe", &stateMachineFrameworkUnsubscribe)
+        .function("stateMachineInternalSubscribe", &stateMachineInternalSubscribe, allow_raw_pointers())
+        .function("stateMachineInternalUnsubscribe", &stateMachineInternalUnsubscribe)
         .function("stateMachineStatus", &DotLottiePlayer::state_machine_status);
 }

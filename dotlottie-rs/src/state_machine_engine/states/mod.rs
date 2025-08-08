@@ -47,7 +47,6 @@ pub enum State {
         speed: Option<f32>,
         segment: Option<String>,
         background_color: Option<u32>,
-        use_frame_interpolation: Option<bool>,
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
     },
@@ -82,7 +81,6 @@ impl StateTrait for State {
                 speed,
                 segment,
                 background_color,
-                use_frame_interpolation,
                 entry_actions,
                 ..
             } => {
@@ -104,24 +102,25 @@ impl StateTrait for State {
                     defined_segment = new_segment.clone();
                 }
 
-                let playback_config = Config {
-                    mode: defined_mode,
-                    loop_animation: r#loop.unwrap_or(default_config.loop_animation),
-                    speed: speed.unwrap_or(default_config.speed),
-                    use_frame_interpolation: use_frame_interpolation
-                        .unwrap_or(default_config.use_frame_interpolation),
-                    autoplay: autoplay.unwrap_or(default_config.autoplay),
-                    marker: defined_segment,
-                    background_color: background_color.unwrap_or(default_config.background_color),
-                    layout: Layout::default(),
-                    segment: [].to_vec(),
-                    theme_id: "".to_string(),
-                    state_machine_id: "".to_string(),
-                    animation_id: "".to_string(),
-                };
-
                 if let Ok(player_read) = player.try_read() {
                     let size = player_read.size();
+                    let uses_frame_interpolation = player_read.config().use_frame_interpolation;
+
+                    let playback_config = Config {
+                        mode: defined_mode,
+                        loop_animation: r#loop.unwrap_or(default_config.loop_animation),
+                        speed: speed.unwrap_or(default_config.speed),
+                        use_frame_interpolation: uses_frame_interpolation,
+                        autoplay: autoplay.unwrap_or(default_config.autoplay),
+                        marker: defined_segment,
+                        background_color: background_color
+                            .unwrap_or(default_config.background_color),
+                        layout: Layout::default(),
+                        segment: [].to_vec(),
+                        theme_id: "".to_string(),
+                        state_machine_id: "".to_string(),
+                        animation_id: "".to_string(),
+                    };
 
                     if !animation.is_empty()
                         && player_read.active_animation_id() != *animation
@@ -135,7 +134,7 @@ impl StateTrait for State {
                     /* Perform entry actions */
                     if let Some(actions) = entry_actions {
                         for action in actions {
-                            let _ = action.execute(engine, player.clone(), false);
+                            let _ = action.execute(engine, player.clone(), false, true);
                         }
                     }
 
@@ -175,7 +174,7 @@ impl StateTrait for State {
                     // Perform entry actions
                     if let Some(actions) = entry_actions {
                         for action in actions {
-                            let _ = action.execute(engine, player.clone(), false);
+                            let _ = action.execute(engine, player.clone(), false, true);
                         }
                     }
                 }
@@ -223,14 +222,14 @@ impl StateTrait for State {
                 /* Perform exit actions */
                 if let Some(actions) = exit_actions {
                     for action in actions {
-                        let _ = action.execute(engine, player.clone(), false);
+                        let _ = action.execute(engine, player.clone(), false, true);
                     }
                 }
             }
             State::GlobalState { exit_actions, .. } => {
                 if let Some(actions) = exit_actions {
                     for action in actions {
-                        let _ = action.execute(engine, player.clone(), false);
+                        let _ = action.execute(engine, player.clone(), false, true);
                     }
                 }
             }

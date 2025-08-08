@@ -115,6 +115,12 @@ typedef struct DotLottieMarker {
   float time;
 } DotLottieMarker;
 
+typedef void (*OnMessageOp)(const char*);
+
+typedef struct StateMachineInternalObserver {
+  OnMessageOp on_message_op;
+} StateMachineInternalObserver;
+
 typedef enum DotLottieEvent_Tag {
   PointerDown,
   PointerUp,
@@ -334,6 +340,12 @@ int32_t dotlottie_set_viewport(struct DotLottiePlayer *ptr,
 int32_t dotlottie_state_machine_current_state(struct DotLottiePlayer *ptr, char *result);
 
 int32_t dotlottie_state_machine_framework_setup(struct DotLottiePlayer *ptr, uint16_t *result);
+
+int32_t dotlottie_state_machine_internal_subscribe(struct DotLottiePlayer *ptr,
+                                                   struct StateMachineInternalObserver *observer);
+
+int32_t dotlottie_state_machine_internal_unsubscribe(struct DotLottiePlayer *ptr,
+                                                     struct StateMachineInternalObserver *observer);
 
 int32_t dotlottie_state_machine_load(struct DotLottiePlayer *ptr, const char *state_machine_id);
 

@@ -14,7 +14,7 @@ use crate::{
     transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer, StateMachineEngineError,
 };
 
-use crate::InternalStateMachineObserver;
+use crate::StateMachineInternalObserver;
 use crate::StateMachineObserver;
 
 use crate::StateMachineEngineStatus;
@@ -2029,7 +2029,7 @@ impl DotLottiePlayer {
     // This allows us to send custom internal messages to the frameworks, without polluting the user's observers.
     pub fn state_machine_internal_subscribe(
         &self,
-        observer: Arc<dyn InternalStateMachineObserver>,
+        observer: Arc<dyn StateMachineInternalObserver>,
     ) -> bool {
         let sm = self.state_machine.try_write();
 
@@ -2057,7 +2057,7 @@ impl DotLottiePlayer {
 
     pub fn state_machine_internal_unsubscribe(
         &self,
-        observer: &Arc<dyn InternalStateMachineObserver>,
+        observer: &Arc<dyn StateMachineInternalObserver>,
     ) -> bool {
         let mut sm = self.state_machine.write().unwrap();
 

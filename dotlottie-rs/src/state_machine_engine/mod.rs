@@ -51,7 +51,7 @@ pub trait StateMachineObserver: Send + Sync {
     fn on_error(&self, error: String);
 }
 
-pub trait InternalStateMachineObserver: Send + Sync {
+pub trait StateMachineInternalObserver: Send + Sync {
     fn on_message(&self, message: String);
 }
 
@@ -115,7 +115,7 @@ pub struct StateMachineEngine {
     pointer_management: PointerData,
 
     pub observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
-    pub internal_observer: RwLock<Option<Arc<dyn InternalStateMachineObserver>>>,
+    pub internal_observer: RwLock<Option<Arc<dyn StateMachineInternalObserver>>>,
 
     state_machine: StateMachine,
 
@@ -195,12 +195,12 @@ impl StateMachineEngine {
             .retain(|o| !Arc::ptr_eq(o, observer));
     }
 
-    pub fn internal_subscribe(&self, observer: Arc<dyn InternalStateMachineObserver>) {
+    pub fn internal_subscribe(&self, observer: Arc<dyn StateMachineInternalObserver>) {
         let mut internal_observer = self.internal_observer.write().unwrap();
         *internal_observer = Some(observer);
     }
 
-    pub fn internal_unsubscribe(&self, observer: &Arc<dyn InternalStateMachineObserver>) {
+    pub fn internal_unsubscribe(&self, observer: &Arc<dyn StateMachineInternalObserver>) {
         let mut internal_observer_write_lock = self.internal_observer.write().unwrap();
         if let Some(internal_observer) = &*internal_observer_write_lock {
             if Arc::ptr_eq(internal_observer, observer) {

@@ -77,13 +77,13 @@ private:
     ObserverCallbacks callbacks_;
 };
 
-struct InternalStateMachineObserverCallbacks {
+struct StateMachineInternalObserverCallbacks {
     std::function<void(const std::string&)> on_message;
 };
 
-class CallbackInternalStateMachineObserver : public InternalStateMachineObserver {
+class CallbackStateMachineInternalObserver : public StateMachineInternalObserver {
 public:
-    CallbackInternalStateMachineObserver() = default;
+    CallbackStateMachineInternalObserver() = default;
 
     void setOnMessage(val cb) { 
         callbacks_.on_message = [cb](const std::string& message) { 
@@ -93,7 +93,92 @@ public:
 
     void on_message(const std::string &message) override { if (callbacks_.on_message) callbacks_.on_message(message); }
 private:
-    InternalStateMachineObserverCallbacks callbacks_;
+    StateMachineInternalObserverCallbacks callbacks_;
+};
+
+struct StateMachineObserverCallbacks {
+    std::function<void()> on_start;
+    std::function<void()> on_stop;
+    std::function<void(const std::string&, const std::string&)> on_transition;
+    std::function<void(const std::string&)> on_state_entered;
+    std::function<void(const std::string&)> on_state_exit;
+    std::function<void(const std::string&)> on_custom_event;
+    std::function<void(const std::string&, const std::string&, const std::string&)> on_string_input_value_change;
+    std::function<void(const std::string&, float, float)> on_numeric_input_value_change;
+    std::function<void(const std::string&, bool, bool)> on_boolean_input_value_change;
+    std::function<void(const std::string&)> on_input_fired;
+    std::function<void(const std::string&)> on_error;
+};
+
+class CallbackStateMachineObserver : public StateMachineObserver {
+public:
+    CallbackStateMachineObserver() = default;
+    
+    void setOnStart(val cb) { 
+        callbacks_.on_start = [cb]() { if (cb != val::undefined()) cb(); };
+    }
+    void setOnStop(val cb) { 
+        callbacks_.on_stop = [cb]() { if (cb != val::undefined()) cb(); };
+    }
+    void setOnTransition(val cb) { 
+        callbacks_.on_transition = [cb](const std::string& prev, const std::string& next) { 
+            if (cb != val::undefined()) cb(prev, next); 
+        };
+    }
+    void setOnStateEntered(val cb) { 
+        callbacks_.on_state_entered = [cb](const std::string& state) { 
+            if (cb != val::undefined()) cb(state); 
+        };
+    }
+    void setOnStateExit(val cb) { 
+        callbacks_.on_state_exit = [cb](const std::string& state) { 
+            if (cb != val::undefined()) cb(state); 
+        };
+    }
+    void setOnCustomEvent(val cb) { 
+        callbacks_.on_custom_event = [cb](const std::string& event) { 
+            if (cb != val::undefined()) cb(event); 
+        };
+    }
+    void setOnStringInputValueChange(val cb) { 
+        callbacks_.on_string_input_value_change = [cb](const std::string& input, const std::string& oldv, const std::string& newv) { 
+            if (cb != val::undefined()) cb(input, oldv, newv); 
+        };
+    }
+    void setOnNumericInputValueChange(val cb) { 
+        callbacks_.on_numeric_input_value_change = [cb](const std::string& input, float oldv, float newv) { 
+            if (cb != val::undefined()) cb(input, oldv, newv); 
+        };
+    }
+    void setOnBooleanInputValueChange(val cb) { 
+        callbacks_.on_boolean_input_value_change = [cb](const std::string& input, bool oldv, bool newv) { 
+            if (cb != val::undefined()) cb(input, oldv, newv); 
+        };
+    }
+    void setOnInputFired(val cb) { 
+        callbacks_.on_input_fired = [cb](const std::string& input) { 
+            if (cb != val::undefined()) cb(input); 
+        };
+    }
+    void setOnError(val cb) { 
+        callbacks_.on_error = [cb](const std::string& err) { 
+            if (cb != val::undefined()) cb(err); 
+        };
+    }
+
+    void on_start() override { if (callbacks_.on_start) callbacks_.on_start(); }
+    void on_stop() override { if (callbacks_.on_stop) callbacks_.on_stop(); }
+    void on_transition(const std::string &prev, const std::string &next) override { if (callbacks_.on_transition) callbacks_.on_transition(prev, next); }
+    void on_state_entered(const std::string &state) override { if (callbacks_.on_state_entered) callbacks_.on_state_entered(state); }
+    void on_state_exit(const std::string &state) override { if (callbacks_.on_state_exit) callbacks_.on_state_exit(state); }
+    void on_custom_event(const std::string &event) override { if (callbacks_.on_custom_event) callbacks_.on_custom_event(event); }
+    void on_string_input_value_change(const std::string &input, const std::string &oldv, const std::string &newv) override { if (callbacks_.on_string_input_value_change) callbacks_.on_string_input_value_change(input, oldv, newv); }
+    void on_numeric_input_value_change(const std::string &input, float oldv, float newv) override { if (callbacks_.on_numeric_input_value_change) callbacks_.on_numeric_input_value_change(input, oldv, newv); }
+    void on_boolean_input_value_change(const std::string &input, bool oldv, bool newv) override { if (callbacks_.on_boolean_input_value_change) callbacks_.on_boolean_input_value_change(input, oldv, newv); }
+    void on_input_fired(const std::string &input) override { if (callbacks_.on_input_fired) callbacks_.on_input_fired(input); }
+    void on_error(const std::string &err) override { if (callbacks_.on_error) callbacks_.on_error(err); }
+private:
+    StateMachineObserverCallbacks callbacks_;
 };
 
 std::shared_ptr<Observer> subscribe(DotLottiePlayer &player, Observer* observer)
@@ -122,15 +207,15 @@ void stateMachineUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachi
     player.state_machine_unsubscribe(observer);
 }
 
-std::shared_ptr<InternalStateMachineObserver> stateMachineInternalSubscribe(DotLottiePlayer &player, InternalStateMachineObserver* observer)
+std::shared_ptr<StateMachineInternalObserver> stateMachineInternalSubscribe(DotLottiePlayer &player, StateMachineInternalObserver* observer)
 {
     // Create shared_ptr from raw pointer (without taking ownership)
-    std::shared_ptr<InternalStateMachineObserver> shared_observer(observer, [](InternalStateMachineObserver*){});
+    std::shared_ptr<StateMachineInternalObserver> shared_observer(observer, [](StateMachineInternalObserver*){});
     player.state_machine_internal_subscribe(shared_observer);
     return shared_observer;
 }
 
-void stateMachineInternalUnsubscribe(DotLottiePlayer &player, std::shared_ptr<InternalStateMachineObserver> observer)
+void stateMachineInternalUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachineInternalObserver> observer)
 {
     player.state_machine_internal_unsubscribe(observer);
 }
@@ -149,10 +234,26 @@ EMSCRIPTEN_BINDINGS(observer_callbacks) {
         .function("setOnLoop", &CallbackObserver::setOnLoop);
 }
 
-EMSCRIPTEN_BINDINGS(internal_state_machine_observer_callbacks) {
-    class_<CallbackInternalStateMachineObserver, base<InternalStateMachineObserver>>("CallbackInternalStateMachineObserver")
+EMSCRIPTEN_BINDINGS(state_machine_internal_observer_callbacks) {
+    class_<CallbackStateMachineInternalObserver, base<StateMachineInternalObserver>>("CallbackStateMachineInternalObserver")
         .constructor<>()
-        .function("onMessage", &CallbackInternalStateMachineObserver::setOnMessage);
+        .function("setOnMessage", &CallbackStateMachineInternalObserver::setOnMessage);
+}
+
+EMSCRIPTEN_BINDINGS(state_machine_observer_callbacks) {
+    class_<CallbackStateMachineObserver, base<StateMachineObserver>>("CallbackStateMachineObserver")
+        .constructor<>()
+        .function("setOnStart", &CallbackStateMachineObserver::setOnStart)
+        .function("setOnStop", &CallbackStateMachineObserver::setOnStop)
+        .function("setOnTransition", &CallbackStateMachineObserver::setOnTransition)
+        .function("setOnStateEntered", &CallbackStateMachineObserver::setOnStateEntered)
+        .function("setOnStateExit", &CallbackStateMachineObserver::setOnStateExit)
+        .function("setOnCustomEvent", &CallbackStateMachineObserver::setOnCustomEvent)
+        .function("setOnStringInputValueChange", &CallbackStateMachineObserver::setOnStringInputValueChange)
+        .function("setOnNumericInputValueChange", &CallbackStateMachineObserver::setOnNumericInputValueChange)
+        .function("setOnBooleanInputValueChange", &CallbackStateMachineObserver::setOnBooleanInputValueChange)
+        .function("setOnInputFired", &CallbackStateMachineObserver::setOnInputFired)
+        .function("setOnError", &CallbackStateMachineObserver::setOnError);
 }
 
 EMSCRIPTEN_BINDINGS(DotLottiePlayer)
@@ -244,9 +345,9 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("on_input_fired", &StateMachineObserver::on_input_fired, pure_virtual())
         .function("on_error", &StateMachineObserver::on_error, pure_virtual());
 
-    class_<InternalStateMachineObserver>("InternalStateMachineObserver")
-        .smart_ptr<std::shared_ptr<InternalStateMachineObserver>>("InternalStateMachineObserver")
-        .function("on_message", &InternalStateMachineObserver::on_message, pure_virtual());
+    class_<StateMachineInternalObserver>("StateMachineInternalObserver")
+        .smart_ptr<std::shared_ptr<StateMachineInternalObserver>>("StateMachineInternalObserver")
+        .function("on_message", &StateMachineInternalObserver::on_message, pure_virtual());
 
     class_<DotLottiePlayer>("DotLottiePlayer")
         .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")

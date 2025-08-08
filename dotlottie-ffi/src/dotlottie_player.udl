@@ -34,7 +34,7 @@ interface StateMachineObserver {
 };
 
 [Trait, WithForeign]
-interface InternalStateMachineObserver {
+interface StateMachineInternalObserver {
     void on_message(string message);
 };
 
@@ -204,8 +204,8 @@ interface DotLottiePlayer {
     string state_machine_current_state();
     boolean state_machine_subscribe(StateMachineObserver observer);
     boolean state_machine_unsubscribe([ByRef] StateMachineObserver observer);
-    boolean state_machine_internal_subscribe(InternalStateMachineObserver observer);
-    boolean state_machine_internal_unsubscribe([ByRef] InternalStateMachineObserver observer);
+    boolean state_machine_internal_subscribe(StateMachineInternalObserver observer);
+    boolean state_machine_internal_unsubscribe([ByRef] StateMachineInternalObserver observer);
     boolean state_machine_override_current_state([ByRef] string state_name, boolean do_tick);
     string state_machine_status();
 };

@@ -849,7 +849,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_unsubscribe(
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_internal_subscribe(
     ptr: *mut DotLottiePlayer,
-    observer: *mut types::InternalStateMachineObserver,
+    observer: *mut types::StateMachineInternalObserver,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if observer.is_null() {
@@ -867,7 +867,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_internal_subscribe(
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_internal_unsubscribe(
     ptr: *mut DotLottiePlayer,
-    observer: *mut types::InternalStateMachineObserver,
+    observer: *mut types::StateMachineInternalObserver,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if observer.is_null() {

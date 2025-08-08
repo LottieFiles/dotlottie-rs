@@ -697,3 +697,26 @@ impl StateMachineObserver {
         ))
     }
 }
+
+pub type OnMessageOp = unsafe extern "C" fn(*const c_char);
+
+#[repr(C)]
+pub struct InternalStateMachineObserver {
+    pub on_message_op: OnMessageOp,
+}
+
+impl dotlottie_rs::InternalStateMachineObserver for InternalStateMachineObserver {
+    fn on_message(&self, message: String) {
+        if let Ok(message) = CString::new(message) {
+            unsafe { (self.on_message_op)(message.as_bytes_with_nul().as_ptr() as *const c_char) }
+        }
+    }
+}
+
+impl InternalStateMachineObserver {
+    pub unsafe fn as_observer(&mut self) -> Arc<dyn dotlottie_rs::InternalStateMachineObserver> {
+        Arc::from(Box::from_raw(
+            self as *mut dyn dotlottie_rs::InternalStateMachineObserver,
+        ))
+    }
+}

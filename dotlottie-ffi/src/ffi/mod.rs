@@ -844,3 +844,39 @@ pub unsafe extern "C" fn dotlottie_state_machine_unsubscribe(
         }
     })
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_internal_subscribe(
+    ptr: *mut DotLottiePlayer,
+    observer: *mut types::InternalStateMachineObserver,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        if observer.is_null() {
+            return DOTLOTTIE_INVALID_PARAMETER;
+        }
+        if let Some(v) = observer.as_mut() {
+            to_exit_status(dotlottie_player.state_machine_internal_subscribe(v.as_observer()))
+        } else {
+            DOTLOTTIE_ERROR
+        }
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_internal_unsubscribe(
+    ptr: *mut DotLottiePlayer,
+    observer: *mut types::InternalStateMachineObserver,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        if observer.is_null() {
+            return DOTLOTTIE_INVALID_PARAMETER;
+        }
+        if let Some(v) = observer.as_mut() {
+            to_exit_status(dotlottie_player.state_machine_internal_unsubscribe(&v.as_observer()))
+        } else {
+            DOTLOTTIE_ERROR
+        }
+    })
+}

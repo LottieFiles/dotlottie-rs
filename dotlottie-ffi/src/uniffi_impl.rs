@@ -3,16 +3,14 @@
 
 pub use dotlottie_rs::*;
 
-pub use dotlottie_rs::actions::open_url::{OpenUrl, OpenUrlMode};
-
-use dotlottie_rs::actions::open_url::OpenUrl as OpenUrlType;
+pub use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
 
 pub fn create_default_layout() -> Layout {
     Layout::default()
 }
 
-pub fn create_default_open_url() -> OpenUrlType {
-    OpenUrlType::default()
+pub fn create_default_open_url_policy() -> OpenUrlPolicy {
+    OpenUrlPolicy::default()
 }
 
 pub fn create_default_config() -> Config {

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{actions::open_url::OpenUrl, Config, DotLottiePlayer};
+    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer};
 
     fn get_current_state_name(player: &DotLottiePlayer) -> String {
         player.state_machine_current_state()
@@ -12,7 +12,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start(OpenUrl::default());
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -32,7 +32,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start(OpenUrl::default());
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -52,7 +52,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start(OpenUrl::default());
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -93,7 +93,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start(OpenUrl::default());
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -123,7 +123,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start(OpenUrl::default());
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -158,7 +158,7 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
-        let s = player.state_machine_start(OpenUrl::default());
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);

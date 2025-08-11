@@ -13,7 +13,7 @@ pub mod state_machine;
 pub mod states;
 pub mod transitions;
 
-use actions::open_url::OpenUrl;
+use actions::open_url_policy::OpenUrlPolicy;
 use actions::{Action, ActionTrait};
 use inputs::{Input, InputManager, InputTrait, InputValue};
 use interactions::InteractionTrait;
@@ -22,6 +22,7 @@ use states::StateTrait;
 use transitions::guard::GuardTrait;
 use transitions::{Transition, TransitionTrait};
 
+use crate::actions::whitelist::Whitelist;
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, DotLottiePlayerContainer, EventName,
@@ -50,6 +51,10 @@ pub trait StateMachineObserver: Send + Sync {
     fn on_error(&self, error: String);
 }
 
+pub trait StateMachineInternalObserver: Send + Sync {
+    fn on_message(&self, message: String);
+}
+
 #[derive(PartialEq, Debug)]
 pub enum StateMachineEngineStatus {
     Running,
@@ -59,7 +64,7 @@ pub enum StateMachineEngineStatus {
 
 #[derive(Debug)]
 pub enum StateMachineEngineError {
-    ParsingError,
+    ParsingError(String),
     CreationError,
     FireEventError,
     InfiniteLoopError,
@@ -92,12 +97,15 @@ impl Default for PointerData {
 pub struct StateMachineEngine {
     /* We keep references to the StateMachine's States. */
     /* This prevents duplicating the data inside the engine. */
-    pub global_state: Option<Rc<State>>,
-    pub current_state: Option<Rc<State>>,
+    pub global_state: Option<State>,
+    pub current_state: Option<State>,
 
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineEngineStatus,
-    pub open_url_config: OpenUrl,
+
+    // Open url policy configurations
+    pub open_url_requires_user_interaction: bool,
+    pub open_url_whitelist: Whitelist,
 
     inputs: InputManager,
     event_input: HashMap<String, String>,
@@ -107,7 +115,7 @@ pub struct StateMachineEngine {
     pointer_management: PointerData,
 
     pub observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
-    pub framework_url_observer: RwLock<Option<Arc<dyn StateMachineObserver>>>,
+    pub internal_observer: RwLock<Option<Arc<dyn StateMachineInternalObserver>>>,
 
     state_machine: StateMachine,
 
@@ -117,7 +125,7 @@ pub struct StateMachineEngine {
     action_mutated_inputs: bool,
 
     // The state to target once blending has finished
-    tween_transition_target_state: Option<Rc<State>>,
+    tween_transition_target_state: Option<State>,
 }
 
 impl Default for StateMachineEngine {
@@ -126,7 +134,8 @@ impl Default for StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
-            open_url_config: OpenUrl::default(),
+            open_url_requires_user_interaction: false,
+            open_url_whitelist: Whitelist::new(),
             player: None,
             inputs: InputManager::new(),
             event_input: HashMap::new(),
@@ -134,7 +143,7 @@ impl Default for StateMachineEngine {
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
-            framework_url_observer: RwLock::new(None),
+            internal_observer: RwLock::new(None),
             state_history: Vec::new(),
             max_cycle_count: 20,
             current_cycle_count: 0,
@@ -154,7 +163,8 @@ impl StateMachineEngine {
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
-            open_url_config: OpenUrl::default(),
+            open_url_requires_user_interaction: false,
+            open_url_whitelist: Whitelist::new(),
             player: Some(player.clone()),
             inputs: InputManager::new(),
             event_input: HashMap::new(),
@@ -162,7 +172,7 @@ impl StateMachineEngine {
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
-            framework_url_observer: RwLock::new(None),
+            internal_observer: RwLock::new(None),
             state_history: Vec::new(),
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
@@ -185,16 +195,16 @@ impl StateMachineEngine {
             .retain(|o| !Arc::ptr_eq(o, observer));
     }
 
-    pub fn framework_subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
-        let mut framework_observer = self.framework_url_observer.write().unwrap();
-        *framework_observer = Some(observer);
+    pub fn internal_subscribe(&self, observer: Arc<dyn StateMachineInternalObserver>) {
+        let mut internal_observer = self.internal_observer.write().unwrap();
+        *internal_observer = Some(observer);
     }
 
-    pub fn framework_unsubscribe(&self, observer: &Arc<dyn StateMachineObserver>) {
-        let mut framework_observer_write_lock = self.framework_url_observer.write().unwrap();
-        if let Some(framework_observer) = &*framework_observer_write_lock {
-            if Arc::ptr_eq(framework_observer, observer) {
-                *framework_observer_write_lock = None;
+    pub fn internal_unsubscribe(&self, observer: &Arc<dyn StateMachineInternalObserver>) {
+        let mut internal_observer_write_lock = self.internal_observer.write().unwrap();
+        if let Some(internal_observer) = &*internal_observer_write_lock {
+            if Arc::ptr_eq(internal_observer, observer) {
+                *internal_observer_write_lock = None;
             }
         }
     }
@@ -363,11 +373,14 @@ impl StateMachineEngine {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine::default();
         if parsed_state_machine.is_err() {
-            let message = format!("Load: {:?}", parsed_state_machine.err());
+            let message = match parsed_state_machine.err() {
+                Some(e) => format!("Parsing error: {e:?}"),
+                None => "Parsing error: Unknown error".to_string(),
+            };
 
             self.observe_on_error(message.as_str());
 
-            return Err(StateMachineEngineError::ParsingError);
+            return Err(StateMachineEngineError::ParsingError(message));
         }
 
         match parsed_state_machine {
@@ -404,7 +417,7 @@ impl StateMachineEngine {
                 */
                 for state in &parsed_state_machine.states {
                     if let State::GlobalState { .. } = state {
-                        new_state_machine.global_state = Some(Rc::new(state.clone()));
+                        new_state_machine.global_state = Some(state.clone());
                     }
                 }
 
@@ -452,7 +465,7 @@ impl StateMachineEngine {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self, open_url: &OpenUrl) -> bool {
+    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> bool {
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
             return false;
@@ -462,7 +475,18 @@ impl StateMachineEngine {
             return true;
         }
 
-        self.open_url_config = open_url.clone();
+        self.open_url_requires_user_interaction = open_url.require_user_interaction;
+
+        if !open_url.whitelist.is_empty() {
+            let mut whitelist = Whitelist::new();
+
+            // Add patterns to whitelist
+            for entry in &open_url.whitelist {
+                let _ = whitelist.add(entry);
+            }
+
+            self.open_url_whitelist = whitelist;
+        }
 
         self.observe_on_start();
 
@@ -487,7 +511,7 @@ impl StateMachineEngine {
         }
     }
 
-    pub fn get_current_state(&self) -> Option<Rc<State>> {
+    pub fn get_current_state(&self) -> Option<State> {
         self.current_state.clone()
     }
 
@@ -552,7 +576,7 @@ impl StateMachineEngine {
         self.pointer_management.listened_layers = all_listened_layers;
     }
 
-    fn get_state(&self, state_name: &str) -> Option<Rc<State>> {
+    fn get_state(&self, state_name: &str) -> Option<State> {
         if let Some(global_state) = &self.global_state {
             if global_state.name() == state_name {
                 return Some(global_state.clone());
@@ -561,7 +585,7 @@ impl StateMachineEngine {
 
         for state in self.state_machine.states.iter() {
             if state.name() == state_name {
-                return Some(Rc::new(state.clone()));
+                return Some(state.clone());
             }
         }
 
@@ -596,10 +620,9 @@ impl StateMachineEngine {
 
                 // If autoplay on the state is false and we've used tweening,
                 // The hit check will start failing. Render fixes this bug.
-                if let State::PlaybackState { autoplay, .. } = &*state {
+                if let State::PlaybackState { autoplay, .. } = state {
                     if !autoplay.unwrap_or(false) {
                         let try_read_lock = &player.try_read();
-
                         if let Ok(player) = try_read_lock {
                             player.render();
                         }
@@ -657,21 +680,24 @@ impl StateMachineEngine {
                         let read_lock = &unwrapped_player.try_read();
 
                         if let Ok(player) = read_lock {
-                            match &*new_state {
+                            // Clone segment before match to avoid partial move
+                            let segment_clone = match &new_state {
+                                State::PlaybackState { segment, .. } => segment.clone(),
+                                _ => None,
+                            };
+                            match &new_state {
                                 // If we're transitioning to a PlaybackState, grab the start segment
-                                State::PlaybackState { segment, .. } => {
-                                    if let Some(target_segment) = segment {
+                                State::PlaybackState { .. } => {
+                                    if let Some(target_segment) = segment_clone {
                                         self.status = StateMachineEngineStatus::Tweening;
                                         self.tween_transition_target_state =
                                             Some(new_state.clone());
-
                                         // Tweening is activated and the state machine has been paused whilst it transitions
                                         player.tween_to_marker(
-                                            target_segment,
+                                            target_segment.as_str(),
                                             Some(causing_transition.duration()),
                                             Some(causing_transition.easing().to_vec()),
                                         );
-
                                         return Ok(());
                                     }
                                 }
@@ -713,7 +739,7 @@ impl StateMachineEngine {
     // Returns: The target state and the causing transition
     fn evaluate_transitions(
         &self,
-        state_to_evaluate: &Rc<State>,
+        state_to_evaluate: &State,
         event: Option<&String>,
     ) -> Option<(String, Transition)> {
         let transitions = state_to_evaluate.transitions();
@@ -791,6 +817,11 @@ impl StateMachineEngine {
                 self.evaluate_transitions(state_to_evaluate, self.curr_event.as_ref())
             {
                 self.curr_event = None;
+
+                // Prevent re-entering the current state again
+                if target_state == self.get_current_state_name() {
+                    return false;
+                }
 
                 let success =
                     self.set_current_state(&target_state, Some(&causing_transition), true);
@@ -1000,7 +1031,7 @@ impl StateMachineEngine {
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
             if let Some(player_ref) = &self.player {
-                let _ = action.execute(self, player_ref.clone(), true);
+                let _ = action.execute(self, player_ref.clone(), true, false);
             }
         }
     }
@@ -1033,9 +1064,9 @@ impl StateMachineEngine {
                 // Loop through all layers we're listening to
                 for (layer, event_name) in &self.pointer_management.listened_layers {
                     // We're only interested in the listened layers that need enter / exit event
-                    if event_name == event_type_name!(PointerEnter)
-                        || event_name == event_type_name!(PointerExit)
-                            && player_container.intersect(x, y, layer)
+                    if (event_name == event_type_name!(PointerEnter)
+                        || event_name == event_type_name!(PointerExit))
+                        && player_container.intersect(x, y, layer)
                     {
                         hit = true;
 
@@ -1086,7 +1117,7 @@ impl StateMachineEngine {
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
             if let Some(player_ref) = &self.player {
-                let _ = action.execute(self, player_ref.clone(), true);
+                let _ = action.execute(self, player_ref.clone(), true, false);
             }
         }
     }
@@ -1172,18 +1203,12 @@ impl StateMachineEngine {
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
             if let Some(player_ref) = &self.player {
-                let _ = action.execute(self, player_ref.clone(), true);
+                let _ = action.execute(self, player_ref.clone(), true, false);
             }
         }
     }
 
-    // Return codes
-    // 0: Success
-    // 1: Failure
-    // 2: Play animation
-    // 3: Pause animation
-    // 4: Request and draw a new single frame of the animation (needed for sync state)
-    pub fn post_event(&mut self, event: &Event) -> i32 {
+    pub fn post_event(&mut self, event: &Event) {
         self.pointer_management.most_recent_event = Some(event.clone());
 
         if event.type_name().contains("Pointer") || event.type_name().contains("Click") {
@@ -1191,8 +1216,6 @@ impl StateMachineEngine {
         } else {
             self.manage_player_events(event);
         }
-
-        0
     }
 
     /**
@@ -1248,10 +1271,10 @@ impl StateMachineEngine {
         }
     }
 
-    pub fn observe_framework_open_url_event(&self, message: &str) {
-        if let Ok(observer) = self.framework_url_observer.try_read() {
+    pub fn observe_internal_event(&self, message: &str) {
+        if let Ok(observer) = self.internal_observer.try_read() {
             if let Some(ob) = &*observer {
-                ob.on_custom_event(message.to_string());
+                ob.on_message(message.to_string());
             }
         }
     }

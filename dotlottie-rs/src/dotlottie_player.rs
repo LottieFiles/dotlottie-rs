@@ -1533,6 +1533,7 @@ impl DotLottiePlayer {
         }
     }
 
+    #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
     pub fn with_threads(config: Config, threads: u32) -> Self {
         DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config, threads))),

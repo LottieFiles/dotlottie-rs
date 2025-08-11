@@ -343,8 +343,8 @@ apple-visionos-arm64: swift-bindings apple-check-xcode
 	CXX="$(shell xcrun -sdk xros --find clang++)" \
 	AR="$(shell xcrun -sdk xros --find ar)" \
 	RANLIB="$(shell xcrun -sdk xros --find ranlib)" \
-	CFLAGS="-arch arm64 -isysroot $(VISIONOS_SDK)" \
-	CXXFLAGS="-arch arm64 -isysroot $(VISIONOS_SDK)" \
+	CFLAGS="-arch arm64 -isysroot $(VISIONOS_SDK) -target arm64-apple-xros$(MIN_VISIONOS_VERSION)" \
+	CXXFLAGS="-arch arm64 -isysroot $(VISIONOS_SDK) -target arm64-apple-xros$(MIN_VISIONOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_VISIONOS_LINKER="$(shell xcrun -sdk xros --find clang)" \
 	cargo +nightly build \
 		--manifest-path dotlottie-ffi/Cargo.toml \
@@ -364,8 +364,8 @@ apple-visionos-sim-arm64: swift-bindings apple-check-xcode
 	CXX="$(shell xcrun -sdk xrsimulator --find clang++)" \
 	AR="$(shell xcrun -sdk xrsimulator --find ar)" \
 	RANLIB="$(shell xcrun -sdk xrsimulator --find ranlib)" \
-	CFLAGS="-arch arm64 -isysroot $(VISIONOS_SIMULATOR_SDK)" \
-	CXXFLAGS="-arch arm64 -isysroot $(VISIONOS_SIMULATOR_SDK)" \
+	CFLAGS="-arch arm64 -isysroot $(VISIONOS_SIMULATOR_SDK) -target arm64-apple-xros$(MIN_VISIONOS_VERSION)-simulator" \
+	CXXFLAGS="-arch arm64 -isysroot $(VISIONOS_SIMULATOR_SDK) -target arm64-apple-xros$(MIN_VISIONOS_VERSION)-simulator" \
 	CARGO_TARGET_AARCH64_APPLE_VISIONOS_SIM_LINKER="$(shell xcrun -sdk xrsimulator --find clang)" \
 	cargo +nightly build \
 		--manifest-path dotlottie-ffi/Cargo.toml \

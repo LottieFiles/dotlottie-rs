@@ -44,7 +44,7 @@ concurrency:
 
 jobs:
   build-apple:
-    runs-on: macos-14-large
+    runs-on: macos-15-large
     if: github.event.inputs.target == 'apple' || github.event.inputs.target == 'all'
     steps:
       - uses: actions/checkout@v4

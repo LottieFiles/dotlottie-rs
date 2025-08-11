@@ -265,7 +265,7 @@ impl TvgAnimation {
 impl Animation for TvgAnimation {
     type Error = TvgError;
 
-    fn load_data(&mut self, data: &str, mimetype: &str, copy: bool) -> Result<(), TvgError> {
+    fn load_data(&mut self, data: &str, mimetype: &str) -> Result<(), TvgError> {
         let mimetype_cstr = CString::new(mimetype).unwrap();
         let data_cstr = CString::new(data).unwrap();
         let data_len = data_cstr.as_bytes().len() as u32;
@@ -280,7 +280,7 @@ impl Animation for TvgAnimation {
                 data_len,
                 mimetype_ptr,
                 ptr::null(),
-                copy,
+                true,
             )
             .into_result()
         }
@@ -289,7 +289,7 @@ impl Animation for TvgAnimation {
         unsafe {
             let data_ptr = data_cstr.as_ptr();
             let mimetype_ptr = mimetype_cstr.as_ptr();
-            tvg::tvg_picture_load_data(self.raw_paint, data_ptr, data_len, mimetype_ptr, copy)
+            tvg::tvg_picture_load_data(self.raw_paint, data_ptr, data_len, mimetype_ptr, true)
                 .into_result()
         }
     }

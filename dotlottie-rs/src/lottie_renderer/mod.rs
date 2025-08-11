@@ -33,13 +33,8 @@ fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {
 }
 
 pub trait LottieRenderer {
-    fn load_data(
-        &mut self,
-        data: &str,
-        width: u32,
-        height: u32,
-        copy: bool,
-    ) -> Result<(), LottieRendererError>;
+    fn load_data(&mut self, data: &str, width: u32, height: u32)
+        -> Result<(), LottieRendererError>;
 
     fn picture_width(&self) -> f32;
 
@@ -180,15 +175,11 @@ impl<R: Renderer> LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)
     }
 
-    fn load_animation(
-        &mut self,
-        data: &str,
-        copy: bool,
-    ) -> Result<R::Animation, LottieRendererError> {
+    fn load_animation(&mut self, data: &str) -> Result<R::Animation, LottieRendererError> {
         let mut animation = R::Animation::default();
 
         animation
-            .load_data(data, "lottie", copy)
+            .load_data(data, "lottie")
             .map_err(into_lottie::<R>)?;
 
         let (pw, ph) = animation.get_size().map_err(into_lottie::<R>)?;
@@ -283,13 +274,12 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         data: &str,
         width: u32,
         height: u32,
-        copy: bool,
     ) -> Result<(), LottieRendererError> {
         self.clear()?;
 
         self.setup_buffer_and_target(width, height)?;
 
-        let animation = self.load_animation(data, copy)?;
+        let animation = self.load_animation(data)?;
 
         let background_shape = self.create_background_shape()?;
 

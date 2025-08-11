@@ -14,11 +14,14 @@ struct Player {
 
 impl Player {
     fn new(animation_path: &str) -> Self {
-        let player = DotLottiePlayer::new(Config {
-            autoplay: true,
-            loop_animation: true,
-            ..Default::default()
-        });
+        let player = DotLottiePlayer::with_threads(
+            Config {
+                autoplay: true,
+                loop_animation: true,
+                ..Default::default()
+            },
+            2,
+        );
 
         let is_dotlottie = animation_path.ends_with(".lottie");
 

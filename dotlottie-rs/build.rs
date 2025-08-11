@@ -82,6 +82,10 @@ mod thorvg {
             writeln!(thorvg_config_h, "#define THORVG_LOG_ENABLED")?;
         }
 
+        if cfg!(feature = "tvg-threads") {
+            writeln!(thorvg_config_h, "#define THORVG_THREAD_SUPPORT")?;
+        }
+
         if cfg!(feature = "tvg-sw") {
             writeln!(thorvg_config_h, "#define THORVG_SW_RASTER_SUPPORT")?;
             src.push("deps/thorvg/src/renderer/sw_engine");
@@ -134,8 +138,8 @@ mod thorvg {
 
         let compiler = env::var("CXX").unwrap_or("clang++".to_string());
 
-
-        cc::Build::new()
+        let mut cc_build = cc::Build::new();
+        cc_build
             .compiler(compiler)
             .std("c++14")
             .cpp(true)
@@ -146,8 +150,17 @@ mod thorvg {
                     .flat_map(|dir| collect_files(dir))
                     .collect::<Vec<_>>(),
             )
-            .warnings(false)
-            .compile("thorvg");
+            .warnings(false);
+
+        if cfg!(feature = "tvg-threads") && std::env::var("CARGO_CFG_UNIX").is_ok() {
+            let target = std::env::var("TARGET").unwrap_or_default();
+            if !target.contains("apple") && !target.contains("android") {
+                cc_build.flag("-pthread");
+                println!("cargo:rustc-link-lib=pthread");
+            }
+        }
+
+        cc_build.compile("thorvg");
 
         let bindings = bindgen::Builder::default()
             .header("deps/thorvg/src/bindings/capi/thorvg_capi.h")

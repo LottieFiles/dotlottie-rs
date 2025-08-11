@@ -149,10 +149,10 @@ struct DotLottieRuntime {
 
 impl DotLottieRuntime {
     #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
-    pub fn new(config: Config) -> Self {
+    pub fn new(config: Config, threads: u32) -> Self {
         Self::with_renderer(
             config,
-            crate::TvgRenderer::new(crate::TvgEngine::TvgEngineSw, 0),
+            crate::TvgRenderer::new(crate::TvgEngine::TvgEngineSw, threads),
         )
     }
 
@@ -749,7 +749,7 @@ impl DotLottieRuntime {
         self.markers = extract_markers(animation_data);
 
         let animation_loaded = self.load_animation_common(
-            |renderer, w, h| renderer.load_data(animation_data, w, h, false),
+            |renderer, w, h| renderer.load_data(animation_data, w, h),
             width,
             height,
         );
@@ -803,7 +803,7 @@ impl DotLottieRuntime {
                     if let Ok(animation_data) = active_animation {
                         self.markers = extract_markers(animation_data.as_str());
                         let animation_loaded = self.load_animation_common(
-                            |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
+                            |renderer, w, h| renderer.load_data(&animation_data, w, h),
                             width,
                             height,
                         );
@@ -831,7 +831,7 @@ impl DotLottieRuntime {
 
             let ok = match animation_data {
                 Ok(animation_data) => self.load_animation_common(
-                    |renderer, w, h| renderer.load_data(&animation_data, w, h, false),
+                    |renderer, w, h| renderer.load_data(&animation_data, w, h),
                     width,
                     height,
                 ),
@@ -1007,9 +1007,9 @@ pub struct DotLottiePlayerContainer {
 
 impl DotLottiePlayerContainer {
     #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
-    pub fn new(config: Config) -> Self {
+    pub fn new(config: Config, threads: u32) -> Self {
         DotLottiePlayerContainer {
-            runtime: RwLock::new(DotLottieRuntime::new(config)),
+            runtime: RwLock::new(DotLottieRuntime::new(config, threads)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
         }
@@ -1528,7 +1528,14 @@ impl DotLottiePlayer {
     #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
     pub fn new(config: Config) -> Self {
         DotLottiePlayer {
-            player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config))),
+            player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config, 0))),
+            state_machine: Rc::new(RwLock::new(None)),
+        }
+    }
+
+    pub fn with_threads(config: Config, threads: u32) -> Self {
+        DotLottiePlayer {
+            player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config, threads))),
             state_machine: Rc::new(RwLock::new(None)),
         }
     }

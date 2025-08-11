@@ -12,6 +12,11 @@ on:
           - "android"
           - "wasm"
           - "all"
+      feature_threads:
+        type: boolean
+        description: "Enable Threads (for thorvg)"
+        required: false
+        default: true
       feature_webp:
         type: boolean
         description: "Enable WebP Loader"
@@ -95,6 +100,10 @@ jobs:
       - name: Set Features
         run: |
           features=""
+
+          if [ "${{ github.event.inputs.feature_threads }}" = "true" ]; then
+            features="${features}tvg-threads,"
+          fi
 
           if [ "${{ github.event.inputs.feature_webp }}" = "true" ]; then
             features="${features}tvg-webp,"

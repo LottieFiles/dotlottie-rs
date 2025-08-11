@@ -33,7 +33,7 @@ pub trait Shape: Default {
 pub trait Animation: Default {
     type Error: error::Error;
 
-    fn load_data(&mut self, data: &str, mimetype: &str, copy: bool) -> Result<(), Self::Error>;
+    fn load_data(&mut self, data: &str, mimetype: &str) -> Result<(), Self::Error>;
 
     fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, Self::Error>;
 

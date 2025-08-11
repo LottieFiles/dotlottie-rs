@@ -131,6 +131,10 @@ interface Event {
 
 interface DotLottiePlayer {
     constructor(Config config);
+
+    [Name=with_threads]
+    constructor(Config config, u32 threads);
+    
     boolean load_animation_data([ByRef] string animation_data, u32 width, u32 height);
     boolean load_animation_path([ByRef] string animation_path, u32 width, u32 height);
     boolean load_dotlottie_data([ByRef] bytes file_data, u32 width, u32 height);

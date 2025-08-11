@@ -1,8 +1,7 @@
 use std::{env, path::PathBuf};
 
 fn main() {
-    // Always re-run the build script
-    println!("cargo:rerun-if-changed=NULL");
+    println!("cargo:rerun-if-changed=src/dotlottie_player.udl");
 
     if cfg!(feature = "uniffi") {
         uniffi::generate_scaffolding("src/dotlottie_player.udl").unwrap();

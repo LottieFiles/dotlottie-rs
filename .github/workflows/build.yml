@@ -46,7 +46,7 @@ on:
         type: boolean
         description: "Enable SIMD"
         required: false
-        default: true
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.inputs.target }}

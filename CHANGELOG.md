@@ -1,3 +1,13 @@
+## 0.1.47 (2025-08-12)
+
+### Features
+
+#### update thorvg submodule to v1.0-pre25 (#367)
+
+#### add ThorVG multithreading support (#371)
+
+#### add ThorVG SIMD support (#374)
+
 ## 0.1.46 (2025-07-29)
 
 ### Features

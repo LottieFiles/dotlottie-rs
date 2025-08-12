@@ -74,9 +74,14 @@ impl WhitelistEntry {
             return text_path.is_empty();
         }
 
+        // Special case: if pattern path is "/*", it should match both root (empty path) and any path
+        if pattern_path == "/*" {
+            return true; // Match root and any path
+        }
+
         // If pattern has a path but text doesn't, it's a mismatch
-        // Exception: if pattern path is just "/" or "/*", it should match URLs with no path
-        if text_path.is_empty() && pattern_path != "/" && pattern_path != "/*" {
+        // Exception: if pattern path is just "/"
+        if text_path.is_empty() && pattern_path != "/" {
             return false;
         }
 
@@ -139,34 +144,90 @@ impl WhitelistEntry {
             return pattern == text;
         }
 
-        if let Some(star_pos) = pattern.find('*') {
-            let prefix = &pattern[..star_pos];
-            let suffix = &pattern[star_pos + 1..];
-
-            let (prefix_matches, effective_prefix_len) =
-                if prefix.ends_with('/') && !text.contains('/') {
-                    let prefix_without_slash = &prefix[..prefix.len() - 1];
-                    let matches = text.starts_with(prefix_without_slash)
-                        && (text.len() == prefix_without_slash.len()
-                            || text.starts_with(&format!("{prefix_without_slash}/")));
-                    (matches, prefix_without_slash.len())
-                } else {
-                    let matches = text.starts_with(prefix);
-                    (matches, prefix.len())
-                };
-
-            if !prefix_matches {
-                return false;
-            }
-
-            if text.len() < effective_prefix_len + suffix.len() {
-                return false;
-            }
-
-            suffix.is_empty() || text.ends_with(suffix)
-        } else {
-            pattern == text
+        // Special case: if pattern is "/*", it should match root ("/") and any path
+        if pattern == "/*" {
+            return true; // Match everything including empty/root path
         }
+
+        // Check if pattern ends with /*/ (exactly one segment) vs /* (anything)
+        let expects_single_segment = pattern.ends_with("/*/");
+
+        // Handle multiple wildcards by splitting the pattern at wildcards
+        let parts: Vec<&str> = pattern.split('*').collect();
+
+        // If pattern is just "*", match everything
+        if parts.len() == 1 && parts[0].is_empty() {
+            return true;
+        }
+
+        let mut text_pos = 0;
+
+        for (i, part) in parts.iter().enumerate() {
+            if part.is_empty() {
+                // Empty part means wildcard at beginning/end or consecutive wildcards
+                if i == 0 {
+                    // Leading wildcard - continue
+                    continue;
+                } else if i == parts.len() - 1 {
+                    // Trailing wildcard
+                    if expects_single_segment {
+                        // Pattern ends with /*/ - match exactly one segment
+                        // The previous part should have ended with /, and we need
+                        // to check that there's exactly one segment after it
+                        let remaining = &text[text_pos..];
+
+                        // Count slashes in the remaining text
+                        let slash_count = remaining.chars().filter(|c| *c == '/').count();
+
+                        // For exactly one segment with trailing slash, we expect:
+                        // - If remaining text has no slashes: it's one segment without trailing slash (invalid)
+                        // - If remaining text has one slash at the end: it's one segment with trailing slash (valid)
+                        // - If remaining text has more slashes: it's multiple segments (invalid)
+                        if slash_count == 1 && remaining.ends_with('/') {
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        // Pattern ends with /* - match rest of string
+                        return true;
+                    }
+                } else {
+                    // Consecutive wildcards or middle wildcard - continue
+                    continue;
+                }
+            }
+
+            // Special handling for "/" when it's the only non-wildcard part
+            // This handles cases like "/*" where parts = ["/", ""]
+            if *part == "/" && i == 0 && parts.len() == 2 && parts[1].is_empty() {
+                // This is the "/*" pattern - should match everything
+                return true;
+            }
+
+            // Find the next occurrence of this part in the remaining text
+            if let Some(found_pos) = text[text_pos..].find(part) {
+                let absolute_pos = text_pos + found_pos;
+
+                // If this is the first part, it must be at the beginning (unless pattern starts with *)
+                if i == 0 && found_pos != 0 {
+                    return false;
+                }
+
+                // If this is the last part, it must be at the end (unless pattern ends with *)
+                if i == parts.len() - 1 && absolute_pos + part.len() != text.len() {
+                    return false;
+                }
+
+                // Move position past this part
+                text_pos = absolute_pos + part.len();
+            } else {
+                // Part not found in remaining text
+                return false;
+            }
+        }
+
+        true
     }
 }
 
@@ -194,8 +255,10 @@ impl Whitelist {
             },
         };
 
-        let path = if path == "/" {
-            "/"
+        // Normalize path: remove trailing slashes except for root "/"
+        // Empty path and "/" both become empty (representing root)
+        let path = if path.is_empty() || path == "/" {
+            ""
         } else {
             path.trim_end_matches('/')
         };
@@ -214,9 +277,15 @@ impl Whitelist {
                 if let Some(slash_pos) = without_protocol.find('/') {
                     let host = &without_protocol[..slash_pos];
                     let path = &without_protocol[slash_pos..];
-                    // For patterns, preserve the slash if it's just "/" to distinguish from no path
+                    // For wildcard patterns, preserve meaningful paths and trailing slashes
                     let path = if path == "/" {
-                        "/"
+                        "" // Root path becomes empty
+                    } else if path == "/*" {
+                        "/*" // Preserve /* as it has special meaning
+                    } else if path.ends_with("/*/") {
+                        path // Preserve trailing /*/ pattern as-is
+                    } else if path.ends_with("/") && !path.ends_with("*/") {
+                        path // Preserve trailing slash for exact match patterns
                     } else {
                         path.trim_end_matches('/')
                     };
@@ -229,9 +298,15 @@ impl Whitelist {
                 if let Some(slash_pos) = pattern.find('/') {
                     let host = &pattern[..slash_pos];
                     let path = &pattern[slash_pos..];
-                    // For patterns, preserve the slash if it's just "/" to distinguish from no path
+                    // For wildcard patterns, preserve meaningful paths and trailing slashes
                     let path = if path == "/" {
-                        "/"
+                        "" // Root path becomes empty
+                    } else if path == "/*" {
+                        "/*" // Preserve /* as it has special meaning
+                    } else if path.ends_with("/*/") {
+                        path // Preserve trailing /*/ pattern as-is
+                    } else if path.ends_with("/") && !path.ends_with("*/") {
+                        path // Preserve trailing slash for exact match patterns
                     } else {
                         path.trim_end_matches('/')
                     };
@@ -357,7 +432,7 @@ mod tests {
     }
 
     #[test]
-    fn test_google_casewhitelist() {
+    fn test_trailing_wildcard() {
         let mut whitelist = Whitelist::new();
 
         // Add some patterns
@@ -376,6 +451,35 @@ mod tests {
         // Test non-matches
         assert!(!whitelist.is_allowed("other.com/path").unwrap());
         assert!(!whitelist.is_allowed("api.google.com").unwrap());
+    }
+
+    #[test]
+    fn test_wildcard_path_includes_root() {
+        let mut whitelist = Whitelist::new();
+
+        // Test that example.com/* allows both root and any subpath
+        whitelist.add("example.com/*").unwrap();
+
+        // Should allow root
+        assert!(whitelist.is_allowed("example.com").unwrap());
+        assert!(whitelist.is_allowed("example.com/").unwrap());
+        assert!(whitelist.is_allowed("https://example.com").unwrap());
+        assert!(whitelist.is_allowed("https://example.com/").unwrap());
+        assert!(whitelist.is_allowed("http://example.com").unwrap());
+        assert!(whitelist.is_allowed("http://example.com/").unwrap());
+
+        // Should also allow any subpath
+        assert!(whitelist.is_allowed("example.com/path").unwrap());
+        assert!(whitelist
+            .is_allowed("example.com/path/to/resource")
+            .unwrap());
+        assert!(whitelist
+            .is_allowed("https://example.com/anything")
+            .unwrap());
+
+        // Should not allow different domains
+        assert!(!whitelist.is_allowed("other.com").unwrap());
+        assert!(!whitelist.is_allowed("other.com/path").unwrap());
     }
 
     #[test]
@@ -437,28 +541,12 @@ mod tests {
 
         // Test matching domains (any path should work)
         assert!(whitelist.is_allowed("www.staging.google.com").unwrap());
-        
+        assert!(whitelist.is_allowed("www.dev.google.com/").unwrap());
+
         // Test non-matching domains
-        assert!(!whitelist.is_allowed("www.dev.google.com/").unwrap());
         assert!(!whitelist.is_allowed("www.test.google.com/test").unwrap());
         assert!(!whitelist.is_allowed("www.google.com/test").unwrap());
         assert!(!whitelist.is_allowed("api.test.google.com/test").unwrap());
-    }
-
-    #[test]
-    fn test_wildcard_allows_everything() {
-        let mut whitelist = Whitelist::new();
-
-        // Add wildcard pattern that allows everything
-        whitelist.add("*").unwrap();
-
-        // Test that any URL is allowed
-        assert!(whitelist.is_allowed("https://example.com").unwrap());
-        assert!(whitelist.is_allowed("http://test.com/path").unwrap());
-        assert!(whitelist.is_allowed("www.google.com/search").unwrap());
-        assert!(whitelist.is_allowed("api.domain.com/v1/users").unwrap());
-        assert!(whitelist.is_allowed("localhost:3000").unwrap());
-        assert!(whitelist.is_allowed("192.168.1.1").unwrap());
     }
 
     #[test]
@@ -495,8 +583,6 @@ mod tests {
             .is_allowed("api.v2.staging.lottiefiles.com")
             .unwrap());
         assert!(whitelist.is_allowed("a.b.c.d.lottiefiles.com").unwrap());
-
-        // Test exact match (no subdomain)
         assert!(whitelist.is_allowed("lottiefiles.com").unwrap());
 
         // Test that paths are NOT allowed with domain-only pattern
@@ -513,40 +599,11 @@ mod tests {
     }
 
     #[test]
-    fn test_prefix_wildcard_with_path() {
-        let mut whitelist = Whitelist::new();
-
-        // Add prefix wildcard pattern with path wildcard
-        whitelist.add("*.example.com/*").unwrap();
-
-        // Test matching with various subdomain levels
-        assert!(whitelist.is_allowed("www.example.com/test").unwrap());
-        assert!(whitelist.is_allowed("api.example.com/v1").unwrap());
-        assert!(whitelist
-            .is_allowed("dev.staging.example.com/deploy")
-            .unwrap());
-        assert!(whitelist
-            .is_allowed("a.b.c.example.com/path/to/resource")
-            .unwrap());
-
-        // Test root paths
-        assert!(whitelist.is_allowed("www.example.com/").unwrap());
-        assert!(whitelist.is_allowed("www.example.com").unwrap());
-        assert!(whitelist.is_allowed("example.com").unwrap());
-
-        // Test non-matches
-        assert!(!whitelist.is_allowed("example.org/test").unwrap());
-        assert!(!whitelist.is_allowed("notexample.com/test").unwrap());
-    }
-
-    #[test]
     fn test_prefix_wildcard_with_specific_path() {
         let mut whitelist = Whitelist::new();
 
-        // Add prefix wildcard pattern with specific path
         whitelist.add("*.api.com/v1/*").unwrap();
 
-        // Test matching
         assert!(whitelist.is_allowed("www.api.com/v1/users").unwrap());
         assert!(whitelist.is_allowed("staging.api.com/v1/data").unwrap());
         assert!(whitelist.is_allowed("dev.test.api.com/v1/info").unwrap());
@@ -560,7 +617,6 @@ mod tests {
     fn test_all_allowed() {
         let mut whitelist = Whitelist::new();
 
-        // Add wildcard that allows everything
         whitelist.add("*").unwrap();
 
         // Everything should be allowed when "*" is in the whitelist
@@ -575,5 +631,112 @@ mod tests {
         assert!(whitelist.is_allowed("anything.goes.here").unwrap());
         assert!(whitelist.is_allowed("192.168.1.1").unwrap());
         assert!(whitelist.is_allowed("localhost:3000").unwrap());
+    }
+
+    #[test]
+    fn test_domain_only_pattern() {
+        let mut whitelist = Whitelist::new();
+
+        // Test that domain-only pattern (without /*) only allows root
+        whitelist.add("example.com").unwrap();
+
+        // Should allow root only
+        assert!(whitelist.is_allowed("example.com").unwrap());
+        assert!(whitelist.is_allowed("https://example.com").unwrap());
+
+        // Should NOT allow paths
+        assert!(!whitelist.is_allowed("example.com/path").unwrap());
+        assert!(!whitelist.is_allowed("example.com/anything").unwrap());
+    }
+
+    #[test]
+    fn test_slash_vs_slash_star() {
+        let mut whitelist = Whitelist::new();
+
+        // Test the difference between "/" and "/*"
+        whitelist.add("test.com/").unwrap();
+        assert!(whitelist.is_allowed("test.com/").unwrap());
+        assert!(whitelist.is_allowed("test.com").unwrap()); // Normalized to match
+
+        assert!(!whitelist.is_allowed("test.com/path").unwrap());
+
+        let mut whitelist2 = Whitelist::new();
+        whitelist2.add("api.com/*").unwrap();
+
+        assert!(whitelist2.is_allowed("api.com").unwrap());
+        assert!(whitelist2.is_allowed("api.com/").unwrap());
+        assert!(whitelist2.is_allowed("api.com/v1").unwrap());
+        assert!(whitelist2.is_allowed("api.com/v1/users").unwrap());
+    }
+
+    #[test]
+    fn test_multiple_wildcards_in_path() {
+        let mut whitelist = Whitelist::new();
+
+        // Test the specific case with multiple wildcards in path
+        whitelist.add("example.com/path/*/another/*").unwrap();
+
+        assert!(whitelist
+            .is_allowed("example.com/path/foo/another/bar")
+            .unwrap());
+        assert!(whitelist
+            .is_allowed("example.com/path/segment/another/file.txt")
+            .unwrap());
+        assert!(whitelist
+            .is_allowed("example.com/path/x/another/y")
+            .unwrap());
+        assert!(whitelist
+            .is_allowed("example.com/path/anything/another/something")
+            .unwrap());
+
+        // Should also work with longer segments where wildcards are
+        assert!(whitelist
+            .is_allowed("example.com/path/very/long/segment/another/more/stuff")
+            .unwrap());
+
+        // Should not match if missing required path segments
+        assert!(!whitelist
+            .is_allowed("example.com/path/foo/another")
+            .unwrap()); // Missing final segment
+        assert!(!whitelist
+            .is_allowed("example.com/path/another/bar")
+            .unwrap()); // Missing middle segment
+        assert!(!whitelist
+            .is_allowed("example.com/path/foo/wrong/bar")
+            .unwrap()); // Wrong middle segment
+        assert!(!whitelist
+            .is_allowed("example.com/wrong/foo/another/bar")
+            .unwrap()); // Wrong first segment
+
+        // Test more complex patterns
+        whitelist.add("api.com/v*/users/*/profile").unwrap();
+        assert!(whitelist
+            .is_allowed("api.com/v1/users/123/profile")
+            .unwrap());
+        assert!(whitelist
+            .is_allowed("api.com/v2/users/john/profile")
+            .unwrap());
+        assert!(!whitelist
+            .is_allowed("api.com/v1/users/123/settings")
+            .unwrap());
+
+        // Test with leading/trailing wildcards
+        whitelist.add("cdn.com/*/assets/*").unwrap();
+        whitelist.add("*.*.cdn.com/*/assets/*").unwrap();
+        assert!(whitelist
+            .is_allowed("cdn.com/2024/assets/image.png")
+            .unwrap());
+        assert!(whitelist
+            .is_allowed("test.test.cdn.com/user/123/assets/doc.pdf")
+            .unwrap());
+
+        let mut whitelist2 = Whitelist::new();
+
+        // Test the specific case with multiple wildcards in path
+        whitelist2.add("cdn.com/*/assets/*/").unwrap();
+        assert!(!whitelist2
+            .is_allowed("cdn.com/test/assets/test/test")
+            .unwrap());
+
     }
 }

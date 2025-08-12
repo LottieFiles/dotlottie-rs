@@ -1,6 +1,6 @@
 use dotlottie_rs::actions::open_url_policy::{self, OpenUrlPolicy};
 use dotlottie_rs::events::Event;
-use dotlottie_rs::{Config, DotLottiePlayer, InternalStateMachineObserver, StateMachineObserver};
+use dotlottie_rs::{Config, DotLottiePlayer, StateMachineInternalObserver, StateMachineObserver};
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::fs::{self, File};
 use std::io::Read;
@@ -10,12 +10,13 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const STATE_MACHINE_NAME: &str = "sm-star-marked";
 pub const ANIMATION_NAME: &str = "star_marked";
+pub const STATE_MACHINE_NAME: &str = "sm-star-marked";
+// pub const STATE_MACHINE_NAME: &str = "pigeon_with_listeners";
+// pub const ANIMATION_NAME: &str = "pigeon";
 // pub const STATE_MACHINE_NAME: &str = "theming";
 // pub const ANIMATION_NAME: &str = "themed";
 // pub const STATE_MACHINE_NAME: &str = "rating";
-// pub const ANIMATION_NAME: &str = "star_marked";
 // pub const STATE_MACHINE_NAME: &str = "StateMachine1";
 // pub const ANIMATION_NAME: &str = "pig";
 
@@ -29,7 +30,7 @@ struct DummyObserver;
 
 struct DummyInternalObserver;
 
-impl InternalStateMachineObserver for DummyInternalObserver {
+impl StateMachineInternalObserver for DummyInternalObserver {
     fn on_message(&self, message: String) {
         println!("[state machine internal event] on_message: {}", message);
     }
@@ -140,7 +141,7 @@ fn main() {
     });
 
     let observer: Arc<dyn StateMachineObserver + 'static> = Arc::new(DummyObserver {});
-    let internal_observer: Arc<dyn InternalStateMachineObserver + 'static> =
+    let internal_observer: Arc<dyn StateMachineInternalObserver + 'static> =
         Arc::new(DummyInternalObserver {});
 
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
@@ -178,7 +179,7 @@ fn main() {
 
     println!("Load state machine data -> {}", r);
     let open_url = OpenUrlPolicy {
-        whitelist: [].to_vec(),
+        whitelist: ["example.com/path/*/another_path/*".to_string()].to_vec(),
         require_user_interaction: true,
     };
 
@@ -258,7 +259,7 @@ fn main() {
             let _m = p.state_machine_post_event(&event);
         } else {
             // println!("Sending pointer move {} {}", mx, my);
-            if (mx != 0.0 && my != 0.0) {
+            if mx != 0.0 && my != 0.0 {
                 let event = Event::PointerMove { x: mx, y: my };
                 let p = &mut *locked_player.write().unwrap();
                 let _m = p.state_machine_post_event(&event);

@@ -18,6 +18,7 @@ tvg-png = []
 tvg-webp = []
 tvg-ttf = []
 tvg-threads = []
+tvg-simd = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]

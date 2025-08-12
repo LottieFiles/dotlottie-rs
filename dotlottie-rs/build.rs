@@ -86,7 +86,8 @@ mod thorvg {
             writeln!(thorvg_config_h, "#define THORVG_THREAD_SUPPORT")?;
         }
 
-        if cfg!(feature = "tvg-sw") {
+        let tvg_sw_enabled = cfg!(feature = "tvg-sw");
+        if tvg_sw_enabled {
             writeln!(thorvg_config_h, "#define THORVG_SW_RASTER_SUPPORT")?;
             src.push("deps/thorvg/src/renderer/sw_engine");
         }
@@ -134,6 +135,34 @@ mod thorvg {
             src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/vm");
         }
 
+        // ThorVG SIMD feature (only when tvg-sw AND tvg-simd are enabled)
+        let tvg_simd_enabled = cfg!(feature = "tvg-simd");
+        let target_triple = env::var("TARGET").unwrap_or_default();
+
+        let mut simd_flags: Vec<&str> = Vec::new();
+        if tvg_sw_enabled && tvg_simd_enabled {
+            if target_triple.contains("x86_64")
+                || target_triple.contains("i686")
+                || target_triple.contains("i586")
+            {
+                // x86/x86_64 → AVX
+                writeln!(thorvg_config_h, "#define THORVG_AVX_VECTOR_SUPPORT")?;
+                simd_flags.push("-mavx");
+            } else if target_triple.contains("aarch64") {
+                // aarch64 → NEON baseline (no extra flag needed)
+                writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?;
+            } else if target_triple.contains("armv7") {
+                // armv7 → NEON
+                writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?;
+                simd_flags.push("-mfpu=neon");
+            } else if target_triple == "wasm32-unknown-emscripten" {
+                // Emscripten → use Wasm SIMD
+                // https://emscripten.org/docs/porting/simd.html
+                writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?; // maps to Wasm SIMD in ThorVG
+                simd_flags.push("-msimd128");
+            }
+        }
+
         thorvg_config_h.flush()?;
 
         let compiler = env::var("CXX").unwrap_or("clang++".to_string());
@@ -151,6 +180,10 @@ mod thorvg {
                     .collect::<Vec<_>>(),
             )
             .warnings(false);
+
+        for flag in simd_flags {
+            cc_build.flag(flag);
+        }
 
         if cfg!(feature = "tvg-threads") && std::env::var("CARGO_CFG_UNIX").is_ok() {
             let target = std::env::var("TARGET").unwrap_or_default();

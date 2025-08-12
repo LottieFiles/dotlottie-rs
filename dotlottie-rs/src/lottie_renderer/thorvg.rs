@@ -1,7 +1,12 @@
 #[cfg(feature = "tvg-v1")]
 use crate::time::Instant;
 
-use std::{error::Error, ffi::CString, fmt, ptr, result::Result};
+use std::{
+    error::Error,
+    ffi::{c_char, CString},
+    fmt, ptr,
+    result::Result,
+};
 
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
 
@@ -226,6 +231,7 @@ pub struct TvgAnimation {
     raw_paint: *mut tvg::Tvg_Paint,
     #[cfg(feature = "tvg-v1")]
     tween_state: Option<TweenState>,
+    data: Option<CString>,
 }
 
 impl Default for TvgAnimation {
@@ -238,6 +244,7 @@ impl Default for TvgAnimation {
             raw_paint,
             #[cfg(feature = "tvg-v1")]
             tween_state: None,
+            data: None,
         }
     }
 }
@@ -260,37 +267,62 @@ impl TvgAnimation {
             }
         }
     }
+
+    unsafe fn tvg_load_data_dispatch(
+        raw_paint: *mut tvg::Tvg_Paint,
+        data_ptr: *const c_char,
+        data_len: u32,
+        mimetype_ptr: *const c_char,
+    ) -> Result<(), TvgError> {
+        #[cfg(feature = "tvg-v1")]
+        {
+            tvg::tvg_picture_load_data(
+                raw_paint,
+                data_ptr,
+                data_len,
+                mimetype_ptr,
+                ptr::null(),
+                false,
+            )
+            .into_result()
+        }
+
+        #[cfg(feature = "tvg-v0")]
+        {
+            tvg::tvg_picture_load_data(raw_paint, data_ptr, data_len, mimetype_ptr, false)
+                .into_result()
+        }
+    }
 }
 
 impl Animation for TvgAnimation {
     type Error = TvgError;
 
     fn load_data(&mut self, data: &str, mimetype: &str) -> Result<(), TvgError> {
-        let mimetype_cstr = CString::new(mimetype).unwrap();
-        let data_cstr = CString::new(data).unwrap();
-        let data_len = data_cstr.as_bytes().len() as u32;
+        let mimetype_cstr = CString::new(mimetype).map_err(|_| TvgError::InvalidArgument)?;
+        let data_cstr = CString::new(data).map_err(|_| TvgError::InvalidArgument)?;
+        let data_len_u32 =
+            u32::try_from(data_cstr.as_bytes().len()).map_err(|_| TvgError::InvalidArgument)?;
 
-        #[cfg(feature = "tvg-v1")]
-        unsafe {
-            let data_ptr = data_cstr.as_ptr();
-            let mimetype_ptr = mimetype_cstr.as_ptr();
-            tvg::tvg_picture_load_data(
+        let result = unsafe {
+            TvgAnimation::tvg_load_data_dispatch(
                 self.raw_paint,
-                data_ptr,
-                data_len,
-                mimetype_ptr,
-                ptr::null(),
-                true,
+                data_cstr.as_ptr(),
+                data_len_u32,
+                mimetype_cstr.as_ptr(),
             )
-            .into_result()
-        }
+        };
 
-        #[cfg(feature = "tvg-v0")]
-        unsafe {
-            let data_ptr = data_cstr.as_ptr();
-            let mimetype_ptr = mimetype_cstr.as_ptr();
-            tvg::tvg_picture_load_data(self.raw_paint, data_ptr, data_len, mimetype_ptr, true)
-                .into_result()
+        match result {
+            Ok(()) => {
+                // Keep the payload alive for ThorVG
+                self.data = Some(data_cstr);
+                Ok(())
+            }
+            Err(e) => {
+                self.data = None;
+                Err(e)
+            }
         }
     }
 

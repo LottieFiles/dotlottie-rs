@@ -21,7 +21,7 @@ API_LEVEL ?= 21
 MIN_NDK_VERSION = 28
 
 # Default Rust features for Android builds
-FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
+FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
 DEFAULT_FEATURES = tvg-v1,tvg-sw,uniffi
 
 # UniFFI Bindings

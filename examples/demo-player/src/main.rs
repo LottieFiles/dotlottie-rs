@@ -14,11 +14,18 @@ struct Player {
 
 impl Player {
     fn new(animation_path: &str) -> Self {
-        let player = DotLottiePlayer::new(Config {
-            autoplay: true,
-            loop_animation: true,
-            ..Default::default()
-        });
+        let threads = std::thread::available_parallelism().unwrap().get() as u32;
+
+        println!("Using {} threads", threads);
+
+        let player = DotLottiePlayer::with_threads(
+            Config {
+                autoplay: true,
+                loop_animation: true,
+                ..Default::default()
+            },
+            threads,
+        );
 
         let is_dotlottie = animation_path.ends_with(".lottie");
 

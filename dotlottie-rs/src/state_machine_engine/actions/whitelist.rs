@@ -183,11 +183,7 @@ impl WhitelistEntry {
                         // - If remaining text has no slashes: it's one segment without trailing slash (invalid)
                         // - If remaining text has one slash at the end: it's one segment with trailing slash (valid)
                         // - If remaining text has more slashes: it's multiple segments (invalid)
-                        if slash_count == 1 && remaining.ends_with('/') {
-                            return true;
-                        } else {
-                            return false;
-                        }
+                        return slash_count == 1 && remaining.ends_with('/');
                     } else {
                         // Pattern ends with /* - match rest of string
                         return true;
@@ -282,10 +278,10 @@ impl Whitelist {
                         "" // Root path becomes empty
                     } else if path == "/*" {
                         "/*" // Preserve /* as it has special meaning
-                    } else if path.ends_with("/*/") {
+                    } else if path.ends_with("/*/")
+                        || (path.ends_with("/") && !path.ends_with("*/"))
+                    {
                         path // Preserve trailing /*/ pattern as-is
-                    } else if path.ends_with("/") && !path.ends_with("*/") {
-                        path // Preserve trailing slash for exact match patterns
                     } else {
                         path.trim_end_matches('/')
                     };
@@ -303,10 +299,10 @@ impl Whitelist {
                         "" // Root path becomes empty
                     } else if path == "/*" {
                         "/*" // Preserve /* as it has special meaning
-                    } else if path.ends_with("/*/") {
+                    } else if path.ends_with("/*/")
+                        || (path.ends_with("/") && !path.ends_with("*/"))
+                    {
                         path // Preserve trailing /*/ pattern as-is
-                    } else if path.ends_with("/") && !path.ends_with("*/") {
-                        path // Preserve trailing slash for exact match patterns
                     } else {
                         path.trim_end_matches('/')
                     };
@@ -737,6 +733,5 @@ mod tests {
         assert!(!whitelist2
             .is_allowed("cdn.com/test/assets/test/test")
             .unwrap());
-
     }
 }

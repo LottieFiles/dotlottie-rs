@@ -7,10 +7,10 @@ pub struct OpenUrlPolicy {
 
 impl Default for OpenUrlPolicy {
     fn default() -> Self {
-        return OpenUrlPolicy {
+        OpenUrlPolicy {
             whitelist: vec![],
             require_user_interaction: true,
-        };
+        }
     }
 }
 

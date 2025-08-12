@@ -27,6 +27,10 @@ COMMIT_HASH := $(shell git rev-parse --short HEAD)
 # Release directories
 WASM_RELEASE_DIR ?= release/wasm
 
+ifneq (,$(findstring tvg-simd,$(FEATURES)))
+  EMSIMD_FLAGS += -msimd128
+endif
+
 # WASM-specific phony targets
 .PHONY: wasm wasm-setup wasm-install-emsdk wasm-package wasm-clean
 
@@ -80,6 +84,7 @@ wasm-compile-cpp: wasm-cpp-bindings
 		export RANLIB=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emranlib && \
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 			-std=c++20 \
+			$(EMSIMD_FLAGS) \
 			-I$(CPP_BINDINGS_DIR) \
 			-Wshift-negative-value \
 			-flto \
@@ -90,6 +95,7 @@ wasm-compile-cpp: wasm-cpp-bindings
 			-o $(WASM_BUILD_DIR)/emscripten_bindings.o && \
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 			-std=c++20 \
+			$(EMSIMD_FLAGS) \
 			-I$(CPP_BINDINGS_DIR) \
 			-Wshift-negative-value \
 			-flto \
@@ -142,6 +148,7 @@ wasm-link-module: wasm-build-rust wasm-compile-cpp wasm-install-npm-deps
 		export RANLIB=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emranlib && \
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 			-std=c++20 \
+			$(EMSIMD_FLAGS) \
 			-o $(PWD)/$(WASM_BUILD_DIR)/$(WASM_MODULE).js \
 			$(PWD)/$(WASM_BUILD_DIR)/emscripten_bindings.o \
 			$(PWD)/$(WASM_BUILD_DIR)/dotlottie_player.o \

@@ -42,6 +42,11 @@ on:
         description: "Enable Lottie Expressions"
         required: false
         default: true
+      feature_simd:
+        type: boolean
+        description: "Enable SIMD"
+        required: false
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.inputs.target }}
@@ -125,6 +130,10 @@ jobs:
             features="${features}tvg-lottie-expressions,"
           fi
 
+          if [ "${{ github.event.inputs.feature_simd }}" = "true" ]; then
+            features="${features}tvg-simd,"
+          fi
+
           # Remove trailing comma if features exist
           if [ -n "$features" ]; then
             features="${features%,}"
@@ -196,6 +205,10 @@ jobs:
 
           if [ "${{ github.event.inputs.feature_expressions }}" = "true" ]; then
             features="${features}tvg-lottie-expressions,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_simd }}" = "true" ]; then
+            features="${features}tvg-simd,"
           fi
 
           # Remove trailing comma if features exist

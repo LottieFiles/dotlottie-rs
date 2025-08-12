@@ -30,6 +30,7 @@ tvg-jpg = ["dotlottie-rs/tvg-jpg"]
 tvg-ttf = ["dotlottie-rs/tvg-ttf"]
 tvg-threads = ["dotlottie-rs/tvg-threads"]
 tvg-lottie-expressions = ["dotlottie-rs/tvg-lottie-expressions"]
+tvg-simd = ["dotlottie-rs/tvg-simd"]
 ffi = []
 uniffi = []
 

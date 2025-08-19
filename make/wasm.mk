@@ -2,6 +2,8 @@ EMSDK_VERSION ?= 3.1.74
 UNIFFI_BINDGEN_CPP ?= uniffi-bindgen-cpp
 UNIFFI_BINDGEN_CPP_VERSION ?= v0.7.2+v0.28.3
 
+RUST_TOOLCHAIN ?= nightly-2025-08-01
+
 # Default Rust features for WASM builds
 FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
 DEFAULT_FEATURES = tvg-v1,tvg-sw,uniffi
@@ -118,7 +120,7 @@ wasm-build-rust: wasm-check-env wasm-cpp-bindings
 	CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
 	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot" \
 	RUSTFLAGS='-C link-arg=--no-entry' \
-	cargo +nightly build \
+	cargo +$(RUST_TOOLCHAIN) build \
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		-Z build-std=std,panic_abort \
 		-Z build-std-features=panic_immediate_abort \
@@ -227,9 +229,9 @@ wasm-check-env:
 # Install WASM Rust target and all dependencies
 wasm-setup: wasm-init-submodule wasm-install-emsdk
 	@echo "→ Installing Rust nightly toolchain and WASM target..."
-	@rustup toolchain install nightly >/dev/null
-	@rustup component add rust-src --toolchain nightly >/dev/null
-	@rustup target add --toolchain nightly $(WASM_TARGET) >/dev/null
+	@rustup toolchain install $(RUST_TOOLCHAIN) >/dev/null
+	@rustup component add rust-src --toolchain $(RUST_TOOLCHAIN) >/dev/null
+	@rustup target add --toolchain $(RUST_TOOLCHAIN) $(WASM_TARGET) >/dev/null
 	@echo "✓ WASM targets and nightly toolchain installed"
 	@echo "→ Installing uniffi-bindgen-cpp..."
 	@cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag $(UNIFFI_BINDGEN_CPP_VERSION) >/dev/null

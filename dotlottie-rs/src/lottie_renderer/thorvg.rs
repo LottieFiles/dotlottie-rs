@@ -260,7 +260,7 @@ impl TvgAnimation {
             let layer_paint = tvg::tvg_picture_get_paint(paint, layer_id);
 
             if !layer_paint.is_null() {
-                tvg::tvg_paint_get_obb(layer_paint, obb.as_mut_ptr());
+                tvg::tvg_paint_get_obb(layer_paint as *mut tvg::Tvg_Paint, obb.as_mut_ptr());
                 Ok(Some(obb))
             } else {
                 Ok(None)

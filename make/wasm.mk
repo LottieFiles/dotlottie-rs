@@ -5,8 +5,8 @@ UNIFFI_BINDGEN_CPP_VERSION ?= v0.7.2+v0.28.3
 RUST_TOOLCHAIN ?= nightly-2025-08-01
 
 # Default Rust features for WASM builds
-FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
-DEFAULT_FEATURES = tvg-v1,tvg-sw,uniffi
+FEATURES = tvg-sw,tvg-gl,tvg-simd,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
+DEFAULT_FEATURES = tvg-v1,uniffi
 
 # WASM/Emscripten configuration
 EMSDK := emsdk
@@ -33,6 +33,22 @@ ifneq (,$(findstring tvg-simd,$(FEATURES)))
   EMSIMD_FLAGS += -msimd128
 endif
 
+ifneq (,$(findstring tvg-wg,$(FEATURES)))
+  WEBGPU_RUSTFLAGS += -C link-arg=-sUSE_WEBGPU=1
+  WEBGPU_EMFLAGS += -sUSE_WEBGPU=1
+  WEBGPU_CPPFLAGS += -DUSE_WEBGPU
+endif
+
+ifneq (,$(findstring tvg-gl,$(FEATURES)))
+  WEBGL_RUSTFLAGS += -C link-arg=-sMAX_WEBGL_VERSION=2 -C link-arg=-sFULL_ES3
+  WEBGL_EMFLAGS += -sMAX_WEBGL_VERSION=2 -sFULL_ES3
+  WEBGL_CPPFLAGS += -DUSE_WEBGL
+
+endif
+
+
+
+
 # WASM-specific phony targets
 .PHONY: wasm wasm-setup wasm-install-emsdk wasm-package wasm-clean
 
@@ -56,6 +72,16 @@ wasm-install-emsdk: wasm-init-submodule
 # Generate C++ UniFFI bindings for WASM
 wasm-cpp-bindings:
 	@echo "→ Generating C++ UniFFI bindings..."
+	#   print the flags
+	@echo "FEATURES: $(FEATURES)"
+	@echo "WEBGPU_RUSTFLAGS: $(WEBGPU_RUSTFLAGS)"
+	@echo "WEBGPU_EMFLAGS: $(WEBGPU_EMFLAGS)"
+	@echo "WEBGPU_CPPFLAGS: $(WEBGPU_CPPFLAGS)"
+	@echo "WEBGL_RUSTFLAGS: $(WEBGL_RUSTFLAGS)"
+	@echo "WEBGL_EMFLAGS: $(WEBGL_EMFLAGS)"
+	@echo "WEBGL_CPPFLAGS: $(WEBGL_CPPFLAGS)"
+	@echo "EMSIMD_FLAGS: $(EMSIMD_FLAGS)"
+
 	@mkdir -p $(CPP_BINDINGS_DIR)
 	@rm -rf $(CPP_BINDINGS_DIR)/*
 	@$(UNIFFI_BINDGEN_CPP) \
@@ -87,6 +113,8 @@ wasm-compile-cpp: wasm-cpp-bindings
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 			-std=c++20 \
 			$(EMSIMD_FLAGS) \
+			$(WEBGPU_CPPFLAGS) \
+			$(WEBGL_CPPFLAGS) \
 			-I$(CPP_BINDINGS_DIR) \
 			-Wshift-negative-value \
 			-flto \
@@ -98,6 +126,8 @@ wasm-compile-cpp: wasm-cpp-bindings
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 			-std=c++20 \
 			$(EMSIMD_FLAGS) \
+			$(WEBGPU_CPPFLAGS) \
+			$(WEBGL_CPPFLAGS) \
 			-I$(CPP_BINDINGS_DIR) \
 			-Wshift-negative-value \
 			-flto \
@@ -119,7 +149,7 @@ wasm-build-rust: wasm-check-env wasm-cpp-bindings
 	CLANG_PATH=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
 	CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
 	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot" \
-	RUSTFLAGS='-C link-arg=--no-entry' \
+	RUSTFLAGS='-C link-arg=--no-entry $(WEBGPU_RUSTFLAGS) $(WEBGL_RUSTFLAGS)' \
 	cargo +$(RUST_TOOLCHAIN) build \
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		-Z build-std=std,panic_abort \
@@ -171,8 +201,12 @@ wasm-link-module: wasm-build-rust wasm-compile-cpp wasm-install-npm-deps
 			-sEXPORT_ES6=1 \
 			-sUSE_ES6_IMPORT_META=0 \
 			-sDYNAMIC_EXECUTION=0 \
-			-sENVIRONMENT=web \
+			-sENVIRONMENT=web,worker \
 			-sFILESYSTEM=0 \
+			-sWASM_BIGINT=1 \
+			$(WEBGPU_EMFLAGS) \
+			$(WEBGL_EMFLAGS) \
+			-sEXPORTED_FUNCTIONS=['_malloc','_free'] \
 			--no-entry \
 			--strip-all \
 			--closure=1"
@@ -245,4 +279,3 @@ wasm-clean:
 	@rm -rf $(WASM_BUILD_DIR)
 	@rm -rf $(WASM_RELEASE_DIR)
 	@echo "✓ WASM builds cleaned"
-

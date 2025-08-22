@@ -6,7 +6,7 @@ mod thorvg;
 
 pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
 #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
-pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
+pub use thorvg::{TvgAnimation, TvgError, TvgRenderer, TvgShape};
 
 use std::{error::Error, fmt};
 
@@ -33,6 +33,35 @@ fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {
 }
 
 pub trait LottieRenderer {
+    fn set_sw_target(
+        &mut self,
+        buffer: *mut u32,
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError>;
+
+    fn set_gl_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError>;
+
+    fn set_wg_target(
+        &mut self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> Result<(), LottieRendererError>;
+
     fn load_data(&mut self, data: &str, width: u32, height: u32)
         -> Result<(), LottieRendererError>;
 
@@ -50,10 +79,6 @@ pub trait LottieRenderer {
 
     fn current_frame(&self) -> f32;
 
-    fn buffer(&self) -> &[u32];
-
-    fn clear(&mut self);
-
     fn render(&mut self) -> Result<(), LottieRendererError>;
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), LottieRendererError>;
@@ -61,10 +86,6 @@ pub trait LottieRenderer {
     fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError>;
 
     fn resize(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError>;
-
-    fn buffer_ptr(&self) -> *const u32;
-
-    fn buffer_len(&self) -> usize;
 
     fn set_background_color(&mut self, hex_color: u32) -> Result<(), LottieRendererError>;
 
@@ -102,7 +123,6 @@ impl dyn LottieRenderer {
             picture_height: 0.0,
             current_frame: 0.0,
             background_color: 0,
-            buffer: vec![],
             layout: Layout::default(),
         })
     }
@@ -119,7 +139,6 @@ struct LottieRendererImpl<R: Renderer> {
     picture_height: f32,
     current_frame: f32,
     background_color: u32,
-    buffer: Vec<u32>,
     layout: Layout,
 }
 
@@ -131,48 +150,6 @@ impl<R: Renderer> LottieRendererImpl<R> {
             self.background_shape = None;
         }
         Ok(())
-    }
-
-    fn resize_buffer(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError> {
-        let buffer_size = (width as u64)
-            .checked_mul(height as u64)
-            .ok_or(LottieRendererError::InvalidArgument)? as usize;
-
-        if self.buffer.capacity() >= buffer_size {
-            self.buffer.clear();
-            self.buffer.resize(buffer_size, 0);
-        } else {
-            self.buffer = vec![0; buffer_size];
-        }
-
-        Ok(())
-    }
-
-    fn setup_buffer_and_target(
-        &mut self,
-        width: u32,
-        height: u32,
-    ) -> Result<(), LottieRendererError> {
-        if self.width == width && self.height == height && !self.buffer.is_empty() {
-            return Ok(());
-        }
-
-        self.picture_width = 0.0;
-        self.picture_height = 0.0;
-        self.width = width;
-        self.height = height;
-
-        self.resize_buffer(width, height)?;
-
-        self.renderer
-            .set_target(
-                &mut self.buffer,
-                self.width,
-                self.width,
-                self.height,
-                get_color_space_for_target(),
-            )
-            .map_err(into_lottie::<R>)
     }
 
     fn load_animation(&mut self, data: &str) -> Result<R::Animation, LottieRendererError> {
@@ -269,6 +246,47 @@ impl<R: Renderer> LottieRendererImpl<R> {
 }
 
 impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
+    fn set_sw_target(
+        &mut self,
+        buffer_ptr: *mut u32,
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.renderer
+            .set_sw_target(buffer_ptr, stride, width, height, color_space)
+            .map_err(into_lottie::<R>)
+    }
+
+    fn set_gl_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.renderer
+            .set_gl_target(context, id, width, height, color_space)
+            .map_err(into_lottie::<R>)
+    }
+
+    fn set_wg_target(
+        &mut self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> Result<(), LottieRendererError> {
+        self.renderer
+            .set_wg_target(device, instance, target, width, height, color_space, _type)
+            .map_err(into_lottie::<R>)
+    }
+
     fn load_data(
         &mut self,
         data: &str,
@@ -277,7 +295,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     ) -> Result<(), LottieRendererError> {
         self.clear()?;
 
-        self.setup_buffer_and_target(width, height)?;
+        self.width = width;
+        self.height = height;
 
         let animation = self.load_animation(data)?;
 
@@ -321,16 +340,6 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn current_frame(&self) -> f32 {
         self.current_frame
-    }
-
-    #[inline]
-    fn buffer(&self) -> &[u32] {
-        &self.buffer
-    }
-
-    #[inline]
-    fn clear(&mut self) {
-        self.buffer.clear()
     }
 
     fn render(&mut self) -> Result<(), LottieRendererError> {
@@ -385,18 +394,6 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.width = width;
         self.height = height;
 
-        self.resize_buffer(width, height)?;
-
-        self.renderer
-            .set_target(
-                &mut self.buffer,
-                self.width,
-                self.width,
-                self.height,
-                get_color_space_for_target(),
-            )
-            .map_err(into_lottie::<R>)?;
-
         if self.animation.is_some() {
             let width_f32 = self.width as f32;
             let height_f32 = self.height as f32;
@@ -426,16 +423,6 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         }
 
         Ok(())
-    }
-
-    #[inline]
-    fn buffer_ptr(&self) -> *const u32 {
-        self.buffer.as_ptr()
-    }
-
-    #[inline]
-    fn buffer_len(&self) -> usize {
-        self.buffer.len()
     }
 
     fn set_background_color(&mut self, hex_color: u32) -> Result<(), LottieRendererError> {
@@ -537,17 +524,4 @@ fn hex_to_rgba(hex_color: u32) -> (u8, u8, u8, u8) {
     let alpha = (hex_color & 0xFF) as u8;
 
     (red, green, blue, alpha)
-}
-
-#[inline]
-fn get_color_space_for_target() -> ColorSpace {
-    #[cfg(target_arch = "wasm32")]
-    {
-        ColorSpace::ABGR8888S
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        ColorSpace::ABGR8888
-    }
 }

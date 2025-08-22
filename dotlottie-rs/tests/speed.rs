@@ -1,11 +1,10 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     #[test]
@@ -77,6 +76,16 @@ mod tests {
 
         for (config, expected_speed) in configs {
             let player = DotLottiePlayer::new(config);
+
+            let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+
+            player.set_sw_target(
+                buffer.as_ptr() as u64,
+                WIDTH as u32,
+                WIDTH as u32,
+                HEIGHT as u32,
+                ColorSpace::ARGB8888,
+            );
 
             assert!(
                 player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),

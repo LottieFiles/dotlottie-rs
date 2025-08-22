@@ -6,6 +6,8 @@ use crate::test_utils::{HEIGHT, WIDTH};
 #[cfg(test)]
 mod tests {
 
+    use dotlottie_rs::ColorSpace;
+
     use super::*;
 
     #[test]
@@ -24,6 +26,16 @@ mod tests {
             autoplay: true,
             ..Config::default()
         });
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         assert!(
             player.markers().is_empty(),
@@ -83,6 +95,16 @@ mod tests {
             autoplay: true,
             ..Config::default()
         });
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         let marker_name = "Marker_3".to_string();
 

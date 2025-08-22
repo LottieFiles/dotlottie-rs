@@ -1,6 +1,6 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
-use std::{path::Path, time::Instant};
+use std::time::Instant;
 
 const WIDTH: usize = 600;
 const HEIGHT: usize = 600;
@@ -10,10 +10,13 @@ struct Player {
     player: DotLottiePlayer,
     current_marker: usize,
     last_update: Instant,
+    buffer: Vec<u32>,
 }
 
 impl Player {
     fn new(animation_path: &str) -> Self {
+        let buffer = vec![0u32; WIDTH * HEIGHT];
+
         let threads = std::thread::available_parallelism().unwrap().get() as u32;
 
         println!("Using {} threads", threads);
@@ -25,6 +28,14 @@ impl Player {
                 ..Default::default()
             },
             threads,
+        );
+
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
         );
 
         let is_dotlottie = animation_path.ends_with(".lottie");
@@ -50,6 +61,7 @@ impl Player {
             player,
             current_marker: 0,
             last_update: Instant::now(),
+            buffer,
         }
     }
 
@@ -86,8 +98,7 @@ impl Player {
     }
 
     fn frame_buffer(&self) -> &[u32] {
-        let (ptr, len) = (self.player.buffer_ptr(), self.player.buffer_len());
-        unsafe { std::slice::from_raw_parts(ptr as *const u32, len as usize) }
+        &self.buffer
     }
 }
 

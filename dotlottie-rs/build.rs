@@ -53,6 +53,8 @@ mod thorvg {
     }
 
     pub fn build() -> std::io::Result<()> {
+        let target_triple = env::var("TARGET").unwrap_or_default();
+
         get_cpp_standard_library()
             .iter()
             .for_each(|lib| println!("cargo:rustc-link-lib=dylib={lib}"));
@@ -90,6 +92,20 @@ mod thorvg {
         if tvg_sw_enabled {
             writeln!(thorvg_config_h, "#define THORVG_SW_RASTER_SUPPORT")?;
             src.push("deps/thorvg/src/renderer/sw_engine");
+        }
+
+        if cfg!(feature = "tvg-gl") {
+            writeln!(thorvg_config_h, "#define THORVG_GL_RASTER_SUPPORT")?;
+            src.push("deps/thorvg/src/renderer/gl_engine");
+
+            if target_triple == "wasm32-unknown-emscripten" {
+                writeln!(thorvg_config_h, "#define THORVG_GL_TARGET_GLES 1")?;
+            }
+        }
+
+        if cfg!(feature = "tvg-wg") {
+            writeln!(thorvg_config_h, "#define THORVG_WG_RASTER_SUPPORT")?;
+            src.push("deps/thorvg/src/renderer/wg_engine");
         }
 
         if cfg!(feature = "tvg-jpg") {
@@ -137,7 +153,6 @@ mod thorvg {
 
         // ThorVG SIMD feature (only when tvg-sw AND tvg-simd are enabled)
         let tvg_simd_enabled = cfg!(feature = "tvg-simd");
-        let target_triple = env::var("TARGET").unwrap_or_default();
 
         let mut simd_flags: Vec<&str> = Vec::new();
         if tvg_sw_enabled && tvg_simd_enabled {

@@ -4,7 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-minifb = "0.27"
-dotlottie-rs = { path = "../../dotlottie-rs", features = ["tvg-v1", "tvg-sw", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-threads", "tvg-lottie-expressions"] }
-sysinfo = "0.30"
-rand = "0.8"
+minifb = "0.28"
+dotlottie-rs = { path = "../../dotlottie-rs", features = ["tvg-v1", "tvg-sw", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-threads", "tvg-lottie-expressions", "tvg-gl", "tvg-wg"] }

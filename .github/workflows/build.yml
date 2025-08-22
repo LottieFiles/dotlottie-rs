@@ -12,6 +12,21 @@ on:
           - "android"
           - "wasm"
           - "all"
+      feature_software:
+        type: boolean
+        description: "Enable Software Renderer"
+        required: false
+        default: true
+      feature_open_gl:
+        type: boolean
+        description: "Enable OpenGL Support"
+        required: false
+        default: true
+      feature_wgpu:
+        type: boolean
+        description: "Enable WebGPU Support"
+        required: false
+        default: true
       feature_threads:
         type: boolean
         description: "Enable Threads (for thorvg)"
@@ -106,6 +121,18 @@ jobs:
         run: |
           features=""
 
+          if [ "${{ github.event.inputs.feature_software }}" = "true" ]; then
+            features="${features}tvg-sw,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_open_gl }}" = "true" ]; then
+            features="${features}tvg-gl,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_wgpu }}" = "true" ]; then
+            features="${features}tvg-wg,"
+          fi
+
           if [ "${{ github.event.inputs.feature_threads }}" = "true" ]; then
             features="${features}tvg-threads,"
           fi
@@ -187,6 +214,18 @@ jobs:
         run: |
           features=""
 
+          if [ "${{ github.event.inputs.feature_software }}" = "true" ]; then
+            features="${features}tvg-sw,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_open_gl }}" = "true" ]; then
+            features="${features}tvg-gl,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_wgpu }}" = "true" ]; then
+            features="${features}tvg-wg,"
+          fi
+
           if [ "${{ github.event.inputs.feature_threads }}" = "true" ]; then
             features="${features}tvg-threads,"
           fi
@@ -265,6 +304,18 @@ jobs:
         run: |
           features=""
 
+          if [ "${{ github.event.inputs.feature_software }}" = "true" ]; then
+            features="${features}tvg-sw,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_open_gl }}" = "true" ]; then
+            features="${features}tvg-gl,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_wgpu }}" = "true" ]; then
+            features="${features}tvg-wg,"
+          fi
+
           if [ "${{ github.event.inputs.feature_webp }}" = "true" ]; then
             features="${features}tvg-webp,"
           fi
@@ -283,6 +334,10 @@ jobs:
 
           if [ "${{ github.event.inputs.feature_expressions }}" = "true" ]; then
             features="${features}tvg-lottie-expressions,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_simd }}" = "true" ]; then
+            features="${features}tvg-simd,"
           fi
 
           # Remove trailing comma if features exist

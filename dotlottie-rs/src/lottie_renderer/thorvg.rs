@@ -68,43 +68,23 @@ impl From<ColorSpace> for tvg::Tvg_Colorspace {
     }
 }
 
-pub enum TvgEngine {
-    TvgEngineSw,
-    TvgEngineGl,
-}
-
-#[cfg(feature = "tvg-v0")]
-impl From<TvgEngine> for tvg::Tvg_Engine {
-    fn from(engine_method: TvgEngine) -> Self {
-        match engine_method {
-            TvgEngine::TvgEngineSw => tvg::Tvg_Engine_TVG_ENGINE_SW,
-            TvgEngine::TvgEngineGl => tvg::Tvg_Engine_TVG_ENGINE_GL,
-        }
-    }
-}
-
 static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
 
 pub struct TvgRenderer {
-    raw_canvas: *mut tvg::Tvg_Canvas,
-    #[cfg(feature = "tvg-v0")]
-    engine_method: tvg::Tvg_Engine,
+    raw_canvas: Option<*mut tvg::Tvg_Canvas>,
 }
 
 impl TvgRenderer {
-    pub fn new(
-        #[cfg_attr(not(feature = "tvg-v0"), allow(unused_variables))] engine_method: TvgEngine,
-        threads: u32,
-    ) -> Self {
+    pub fn new(threads: u32) -> Self {
         let mut count = RENDERERS_COUNT.lock().unwrap();
-
-        #[cfg(feature = "tvg-v0")]
-        let engine = engine_method.into();
 
         if *count == 0 {
             #[cfg(feature = "tvg-v0")]
             {
-                unsafe { tvg::tvg_engine_init(engine, threads).into_result() }.unwrap();
+                unsafe {
+                    tvg::tvg_engine_init(tvg::Tvg_Engine_TVG_ENGINE_SW, threads).into_result()
+                }
+                .unwrap();
             }
 
             #[cfg(feature = "tvg-v1")]
@@ -113,10 +93,58 @@ impl TvgRenderer {
 
         *count += 1;
 
-        TvgRenderer {
-            raw_canvas: unsafe { tvg::tvg_swcanvas_create() },
-            #[cfg(feature = "tvg-v0")]
-            engine_method: engine,
+        TvgRenderer { raw_canvas: None }
+    }
+
+    pub fn create_sw_canvas(&mut self) -> Result<(), TvgError> {
+        let canvas = unsafe { tvg::tvg_swcanvas_create() };
+
+        if canvas.is_null() {
+            return Err(TvgError::FailedAllocation);
+        }
+
+        self.raw_canvas = Some(canvas);
+
+        Ok(())
+    }
+
+    pub fn create_gl_canvas(&mut self) -> Result<(), TvgError> {
+        #[cfg(feature = "tvg-v1")]
+        {
+            let canvas = unsafe { tvg::tvg_glcanvas_create() };
+
+            if canvas.is_null() {
+                return Err(TvgError::FailedAllocation);
+            }
+
+            self.raw_canvas = Some(canvas);
+
+            return Ok(());
+        }
+
+        #[cfg(not(feature = "tvg-v1"))]
+        {
+            Err(TvgError::NotSupported)
+        }
+    }
+
+    pub fn create_wg_canvas(&mut self) -> Result<(), TvgError> {
+        #[cfg(feature = "tvg-v1")]
+        {
+            let canvas = unsafe { tvg::tvg_wgcanvas_create() };
+
+            if canvas.is_null() {
+                return Err(TvgError::FailedAllocation);
+            }
+
+            self.raw_canvas = Some(canvas);
+
+            Ok(())
+        }
+
+        #[cfg(not(feature = "tvg-v1"))]
+        {
+            Err(TvgError::NotSupported)
         }
     }
 }
@@ -127,69 +155,180 @@ impl Renderer for TvgRenderer {
     type Error = TvgError;
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_canvas_set_viewport(self.raw_canvas, x, y, w, h).into_result() }
+        if let Some(raw_canvas) = self.raw_canvas {
+            self.raw_canvas = Some(raw_canvas);
+            unsafe { tvg::tvg_canvas_set_viewport(raw_canvas, x, y, w, h).into_result() }
+        } else {
+            return Err(TvgError::InvalidArgument);
+        }
     }
 
-    fn set_target(
+    fn set_sw_target(
         &mut self,
-        buffer: &mut [u32],
+        frame_ptr: *mut u32,
         stride: u32,
         width: u32,
         height: u32,
         color_space: ColorSpace,
     ) -> Result<(), TvgError> {
-        unsafe {
-            tvg::tvg_swcanvas_set_target(
-                self.raw_canvas,
-                buffer.as_mut_ptr(),
-                stride,
-                width,
-                height,
-                color_space.into(),
-            )
-            .into_result()
+        if self.raw_canvas.is_none() {
+            self.create_sw_canvas()?;
+        }
+
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe {
+                tvg::tvg_swcanvas_set_target(
+                    raw_canvas,
+                    frame_ptr,
+                    stride,
+                    width,
+                    height,
+                    color_space.into(),
+                )
+                .into_result()
+            }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
+    }
+
+    fn set_gl_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), Self::Error> {
+        #[cfg(feature = "tvg-v1")]
+        {
+            if self.raw_canvas.is_none() {
+                self.create_gl_canvas()?;
+            }
+
+            if let Some(raw_canvas) = self.raw_canvas {
+                unsafe {
+                    tvg::tvg_glcanvas_set_target(
+                        raw_canvas,
+                        context,
+                        id,
+                        width,
+                        height,
+                        color_space.into(),
+                    )
+                    .into_result()
+                }
+            } else {
+                Err(TvgError::InvalidArgument)
+            }
+        }
+
+        #[cfg(not(feature = "tvg-v1"))]
+        {
+            Err(TvgError::NotSupported)
+        }
+    }
+
+    fn set_wg_target(
+        &mut self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> Result<(), Self::Error> {
+        #[cfg(feature = "tvg-v1")]
+        {
+            if self.raw_canvas.is_none() {
+                self.create_wg_canvas()?;
+            }
+
+            if let Some(raw_canvas) = self.raw_canvas {
+                unsafe {
+                    tvg::tvg_wgcanvas_set_target(
+                        raw_canvas,
+                        device,
+                        instance,
+                        target,
+                        width,
+                        height,
+                        color_space.into(),
+                        _type,
+                    )
+                    .into_result()
+                }
+            } else {
+                Err(TvgError::InvalidArgument)
+            }
+        }
+
+        #[cfg(not(feature = "tvg-v1"))]
+        {
+            Err(TvgError::NotSupported)
         }
     }
 
     fn clear(&self, _free: bool) -> Result<(), TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        unsafe {
-            tvg::tvg_canvas_remove(self.raw_canvas, ptr::null_mut::<tvg::Tvg_Paint>()).into_result()
-        }
+        if let Some(raw_canvas) = self.raw_canvas {
+            #[cfg(feature = "tvg-v1")]
+            unsafe {
+                tvg::tvg_canvas_remove(raw_canvas, ptr::null_mut::<tvg::Tvg_Paint>()).into_result()
+            }
 
-        #[cfg(feature = "tvg-v0")]
-        unsafe {
-            tvg::tvg_canvas_clear(self.raw_canvas, _free).into_result()
+            #[cfg(feature = "tvg-v0")]
+            unsafe {
+                tvg::tvg_canvas_clear(raw_canvas, _free).into_result()
+            }
+        } else {
+            Err(TvgError::InvalidArgument)
         }
     }
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), TvgError> {
-        let raw_paint = match drawable {
-            Drawable::Animation(animation) => animation.raw_paint,
-            Drawable::Shape(shape) => shape.raw_shape,
-        };
+        if let Some(raw_canvas) = self.raw_canvas {
+            let raw_paint = match drawable {
+                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Shape(shape) => shape.raw_shape,
+            };
 
-        unsafe { tvg::tvg_canvas_push(self.raw_canvas, raw_paint).into_result() }
+            unsafe { tvg::tvg_canvas_push(raw_canvas, raw_paint).into_result() }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
     }
 
     fn draw(&mut self, _clear_buffer: bool) -> Result<(), TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        unsafe {
-            tvg::tvg_canvas_draw(self.raw_canvas, _clear_buffer).into_result()
-        }
+        if let Some(raw_canvas) = self.raw_canvas {
+            #[cfg(feature = "tvg-v1")]
+            unsafe {
+                tvg::tvg_canvas_draw(raw_canvas, _clear_buffer).into_result()
+            }
 
-        #[cfg(feature = "tvg-v0")]
-        unsafe {
-            tvg::tvg_canvas_draw(self.raw_canvas).into_result()
+            #[cfg(feature = "tvg-v0")]
+            unsafe {
+                tvg::tvg_canvas_draw(raw_canvas).into_result()
+            }
+        } else {
+            Err(TvgError::InvalidArgument)
         }
     }
 
     fn sync(&mut self) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_canvas_sync(self.raw_canvas).into_result() }
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe { tvg::tvg_canvas_sync(raw_canvas).into_result() }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
     }
 
     fn update(&mut self) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_canvas_update(self.raw_canvas).into_result() }
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe { tvg::tvg_canvas_update(raw_canvas).into_result() }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
     }
 }
 
@@ -197,8 +336,10 @@ impl Drop for TvgRenderer {
     fn drop(&mut self) {
         let mut count = RENDERERS_COUNT.lock().unwrap();
 
-        unsafe {
-            tvg::tvg_canvas_destroy(self.raw_canvas);
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe {
+                tvg::tvg_canvas_destroy(raw_canvas);
+            }
         }
 
         *count = count.checked_sub(1).unwrap();
@@ -206,7 +347,7 @@ impl Drop for TvgRenderer {
         if *count == 0 {
             #[cfg(feature = "tvg-v0")]
             unsafe {
-                tvg::tvg_engine_term(self.engine_method)
+                tvg::tvg_engine_term(tvg::Tvg_Engine_TVG_ENGINE_SW)
             };
 
             #[cfg(feature = "tvg-v1")]
@@ -276,15 +417,16 @@ impl TvgAnimation {
     ) -> Result<(), TvgError> {
         #[cfg(feature = "tvg-v1")]
         {
-            tvg::tvg_picture_load_data(
+            let result = tvg::tvg_picture_load_data(
                 raw_paint,
                 data_ptr,
                 data_len,
                 mimetype_ptr,
                 ptr::null(),
                 false,
-            )
-            .into_result()
+            );
+
+            result.into_result()
         }
 
         #[cfg(feature = "tvg-v0")]
@@ -404,15 +546,19 @@ impl Animation for TvgAnimation {
     }
 
     fn set_size(&mut self, width: f32, height: f32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_picture_set_size(self.raw_paint, width, height).into_result() }
+        let result = unsafe { tvg::tvg_picture_set_size(self.raw_paint, width, height) };
+
+        result.into_result()
     }
 
     fn scale(&mut self, factor: f32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_paint_scale(self.raw_paint, factor).into_result() }
+        let result = unsafe { tvg::tvg_paint_scale(self.raw_paint, factor).into_result() };
+        result
     }
 
     fn translate(&mut self, tx: f32, ty: f32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_paint_translate(self.raw_paint, tx, ty).into_result() }
+        let result = unsafe { tvg::tvg_paint_translate(self.raw_paint, tx, ty).into_result() };
+        result
     }
 
     fn get_total_frame(&self) -> Result<f32, TvgError> {
@@ -734,7 +880,7 @@ mod tests {
             let handle = thread::spawn(move || {
                 barrier_clone.wait();
 
-                let renderer = TvgRenderer::new(TvgEngine::TvgEngineSw, 0);
+                let renderer = TvgRenderer::new(0);
                 drop(renderer);
             });
             handles.push(handle);

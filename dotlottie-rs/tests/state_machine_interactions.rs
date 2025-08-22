@@ -1,47 +1,54 @@
+mod test_utils;
+
+use crate::test_utils::{HEIGHT, WIDTH};
+
+use dotlottie_rs::{
+    actions::open_url_policy::OpenUrlPolicy, ColorSpace, Config, DotLottiePlayer, Event, Observer,
+};
+use std::sync::{Arc, Mutex};
+
+fn get_current_state_name(player: &DotLottiePlayer) -> String {
+    player.state_machine_current_state()
+}
+
+struct MockObserver {
+    events: Arc<Mutex<Vec<String>>>,
+}
+
+impl MockObserver {
+    fn new(events: Arc<Mutex<Vec<String>>>) -> Self {
+        MockObserver { events }
+    }
+}
+
+impl Observer for MockObserver {
+    fn on_load(&self) {}
+
+    fn on_load_error(&self) {}
+
+    fn on_play(&self) {}
+
+    fn on_pause(&self) {}
+
+    fn on_stop(&self) {}
+
+    fn on_frame(&self, _frame_no: f32) {}
+
+    fn on_render(&self, _frame_no: f32) {}
+
+    fn on_loop(&self, loop_count: u32) {
+        let mut events = self.events.lock().unwrap();
+
+        events.push(format!("on_loop {loop_count}"));
+    }
+
+    fn on_complete(&self) {}
+}
+
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event, Observer,
-    };
-    use std::sync::{Arc, Mutex};
 
-    fn get_current_state_name(player: &DotLottiePlayer) -> String {
-        player.state_machine_current_state()
-    }
-
-    struct MockObserver {
-        events: Arc<Mutex<Vec<String>>>,
-    }
-
-    impl MockObserver {
-        fn new(events: Arc<Mutex<Vec<String>>>) -> Self {
-            MockObserver { events }
-        }
-    }
-
-    impl Observer for MockObserver {
-        fn on_load(&self) {}
-
-        fn on_load_error(&self) {}
-
-        fn on_play(&self) {}
-
-        fn on_pause(&self) {}
-
-        fn on_stop(&self) {}
-
-        fn on_frame(&self, _frame_no: f32) {}
-
-        fn on_render(&self, _frame_no: f32) {}
-
-        fn on_loop(&self, loop_count: u32) {
-            let mut events = self.events.lock().unwrap();
-
-            events.push(format!("on_loop {loop_count}"));
-        }
-
-        fn on_complete(&self) {}
-    }
+    use super::*;
 
     #[test]
     pub fn pointer_down_up_test() {
@@ -50,6 +57,16 @@ mod tests {
             let global_state =
                 include_str!("fixtures/statemachines/interaction_tests/pointer_down_up.json");
             let player = DotLottiePlayer::new(Config::default());
+
+            let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+            player.set_sw_target(
+                buffer.as_ptr() as u64,
+                WIDTH as u32,
+                WIDTH as u32,
+                HEIGHT as u32,
+                ColorSpace::ARGB8888,
+            );
+
             player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
             let l = player.state_machine_load_data(global_state);
 
@@ -119,6 +136,16 @@ mod tests {
         let global_state =
             include_str!("fixtures/statemachines/interaction_tests/pointer_down.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
         let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -141,6 +168,16 @@ mod tests {
             let global_state =
                 include_str!("fixtures/statemachines/interaction_tests/pointer_enter.json");
             let player = DotLottiePlayer::new(Config::default());
+
+            let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+            player.set_sw_target(
+                buffer.as_ptr() as u64,
+                WIDTH as u32,
+                WIDTH as u32,
+                HEIGHT as u32,
+                ColorSpace::ARGB8888,
+            );
+
             player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
             let l = player.state_machine_load_data(global_state);
             let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -180,6 +217,16 @@ mod tests {
             let global_state =
                 include_str!("fixtures/statemachines/interaction_tests/pointer_enter.json");
             let player = DotLottiePlayer::new(Config::default());
+
+            let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+            player.set_sw_target(
+                buffer.as_ptr() as u64,
+                WIDTH as u32,
+                WIDTH as u32,
+                HEIGHT as u32,
+                ColorSpace::ARGB8888,
+            );
+
             player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
             let l = player.state_machine_load_data(global_state);
             let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -219,6 +266,16 @@ mod tests {
             let global_state =
                 include_str!("fixtures/statemachines/interaction_tests/pointer_exit.json");
             let player = DotLottiePlayer::new(Config::default());
+
+            let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+            player.set_sw_target(
+                buffer.as_ptr() as u64,
+                WIDTH as u32,
+                WIDTH as u32,
+                HEIGHT as u32,
+                ColorSpace::ARGB8888,
+            );
+
             player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
             let l = player.state_machine_load_data(global_state);
             let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -245,6 +302,16 @@ mod tests {
             let global_state =
                 include_str!("fixtures/statemachines/interaction_tests/pointer_exit.json");
             let player = DotLottiePlayer::new(Config::default());
+
+            let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+            player.set_sw_target(
+                buffer.as_ptr() as u64,
+                WIDTH as u32,
+                WIDTH as u32,
+                HEIGHT as u32,
+                ColorSpace::ARGB8888,
+            );
+
             player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
             let l = player.state_machine_load_data(global_state);
             let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -297,6 +364,16 @@ mod tests {
         let global_state =
             include_str!("fixtures/statemachines/interaction_tests/pointer_move.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
         let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -326,6 +403,16 @@ mod tests {
         let global_state =
             include_str!("fixtures/statemachines/interaction_tests/on_complete.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
         let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -354,6 +441,15 @@ mod tests {
     pub fn on_complete_player_test() {
         let global_state = include_str!("fixtures/statemachines/interaction_tests/pigeon_fsm.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         player.load_dotlottie_data(include_bytes!("fixtures/pigeon.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -386,6 +482,15 @@ mod tests {
         let global_state =
             include_str!("fixtures/statemachines/interaction_tests/on_loop_complete.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         player.load_dotlottie_data(include_bytes!("fixtures/pigeon.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);

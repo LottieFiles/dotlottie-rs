@@ -11,7 +11,8 @@ use crate::{
     Marker, MarkersMap, StateMachineEngine,
 };
 use crate::{
-    transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer, StateMachineEngineError,
+    transform_theme_to_lottie_slots, ColorSpace, DotLottieManager, Manifest, Renderer,
+    StateMachineEngineError,
 };
 
 use crate::StateMachineInternalObserver;
@@ -150,10 +151,45 @@ struct DotLottieRuntime {
 impl DotLottieRuntime {
     #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
     pub fn new(config: Config, threads: u32) -> Self {
-        Self::with_renderer(
-            config,
-            crate::TvgRenderer::new(crate::TvgEngine::TvgEngineSw, threads),
-        )
+        Self::with_renderer(config, crate::TvgRenderer::new(threads))
+    }
+
+    pub fn set_sw_target(
+        &mut self,
+        buffer_ptr: *mut u32,
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.renderer
+            .set_sw_target(buffer_ptr, stride, width, height, color_space)
+    }
+
+    pub fn set_gl_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.renderer
+            .set_gl_target(context, id, width, height, color_space)
+    }
+
+    pub fn set_wg_target(
+        &mut self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> Result<(), LottieRendererError> {
+        self.renderer
+            .set_wg_target(device, instance, target, width, height, color_space, _type)
     }
 
     pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
@@ -604,14 +640,6 @@ impl DotLottieRuntime {
         self.config.speed
     }
 
-    pub fn buffer(&self) -> &[u32] {
-        self.renderer.buffer()
-    }
-
-    pub fn clear(&mut self) {
-        self.renderer.clear()
-    }
-
     // Notes: Runtime doesn't have the state machine
     // Therefor the state machine can't be loaded here, user must use the load methods.
     pub fn set_config(&mut self, new_config: Config) {
@@ -707,7 +735,6 @@ impl DotLottieRuntime {
     where
         F: FnOnce(&mut dyn LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
     {
-        self.clear();
         self.playback_state = PlaybackState::Stopped;
         self.start_time = Instant::now();
         self.loop_count = 0;
@@ -1015,6 +1042,55 @@ impl DotLottiePlayerContainer {
         }
     }
 
+    pub fn set_sw_target(
+        &self,
+        buffer_ptr: *mut u32,
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_sw_target(buffer_ptr, stride, width, height, color_space)
+    }
+
+    pub fn set_gl_target(
+        &self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_gl_target(context, id, width, height, color_space)
+    }
+
+    pub fn set_wg_target(
+        &self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> Result<(), LottieRendererError> {
+        self.runtime.write().unwrap().set_wg_target(
+            device,
+            instance,
+            target,
+            width,
+            height,
+            color_space,
+            _type,
+        )
+    }
+
     pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
         DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::with_renderer(config, renderer)),
@@ -1178,22 +1254,6 @@ impl DotLottiePlayerContainer {
             .read()
             .ok()
             .and_then(|runtime| runtime.manifest().cloned())
-    }
-
-    pub fn buffer(&self) -> *const u32 {
-        self.runtime.read().unwrap().buffer().as_ptr()
-    }
-
-    pub fn buffer_ptr(&self) -> u64 {
-        self.runtime.read().unwrap().buffer().as_ptr().cast::<u32>() as u64
-    }
-
-    pub fn buffer_len(&self) -> u64 {
-        self.runtime.read().unwrap().buffer().len() as u64
-    }
-
-    pub fn clear(&self) {
-        self.runtime.write().unwrap().clear();
     }
 
     pub fn set_config(&self, config: Config) {
@@ -1531,6 +1591,67 @@ impl DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config, 0))),
             state_machine: Rc::new(RwLock::new(None)),
         }
+    }
+
+    pub fn set_sw_target(
+        &self,
+        buffer_ptr: u64,
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_sw_target(buffer_ptr as *mut u32, stride, width, height, color_space)
+            .is_ok()
+    }
+
+    pub fn set_gl_target(
+        &self,
+        context: u64,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_gl_target(
+                context as *mut std::ffi::c_void,
+                id,
+                width,
+                height,
+                color_space,
+            )
+            .is_ok()
+    }
+
+    pub fn set_wg_target(
+        &self,
+        device: u64,
+        instance: u64,
+        target: u64,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_wg_target(
+                device as *mut std::ffi::c_void,
+                instance as *mut std::ffi::c_void,
+                target as *mut std::ffi::c_void,
+                width,
+                height,
+                color_space,
+                _type,
+            )
+            .is_ok()
     }
 
     #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
@@ -1890,22 +2011,6 @@ impl DotLottiePlayer {
 
     pub fn manifest(&self) -> Option<Manifest> {
         self.player.read().unwrap().manifest()
-    }
-
-    pub fn buffer(&self) -> *const u32 {
-        self.player.read().unwrap().buffer()
-    }
-
-    pub fn buffer_ptr(&self) -> u64 {
-        self.player.read().unwrap().buffer_ptr()
-    }
-
-    pub fn buffer_len(&self) -> u64 {
-        self.player.read().unwrap().buffer_len()
-    }
-
-    pub fn clear(&self) {
-        self.player.write().unwrap().clear()
     }
 
     pub fn set_config(&self, config: Config) {

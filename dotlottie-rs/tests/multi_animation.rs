@@ -5,16 +5,28 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 #[cfg(test)]
 mod tests {
+    use dotlottie_rs::ColorSpace;
+
     use super::*;
 
     #[test]
     pub fn test_load_animation_with_animation_id() {
         let animation_id = "crying".to_string();
-        
+
         let player = DotLottiePlayer::new(Config {
             animation_id: animation_id.clone(),
             ..Config::default()
         });
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
 
@@ -24,6 +36,17 @@ mod tests {
     #[test]
     pub fn test_load_animation() {
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
 
         let manifest = player.manifest();

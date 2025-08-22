@@ -5,11 +5,23 @@ use dotlottie_rs::{Config, DotLottiePlayer};
 
 #[cfg(test)]
 mod tests {
+    use dotlottie_rs::ColorSpace;
+
     use super::*;
 
     #[test]
     fn test_play_fail_when_animation_is_not_loaded() {
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         assert!(
             !player.play(),
@@ -28,6 +40,16 @@ mod tests {
     fn test_play_while_playing() {
         let player = DotLottiePlayer::new(Config::default());
 
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 
         assert!(player.play());
@@ -43,6 +65,16 @@ mod tests {
             use_frame_interpolation: false,
             ..Config::default()
         });
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 
@@ -89,6 +121,16 @@ mod tests {
             ..Config::default()
         });
 
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 
         assert!(player.play());
@@ -125,6 +167,16 @@ mod tests {
             use_frame_interpolation: false,
             ..Config::default()
         });
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 

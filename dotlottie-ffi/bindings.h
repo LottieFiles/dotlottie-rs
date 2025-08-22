@@ -27,6 +27,13 @@
 
 #define LISTENER_TYPE_UNSET 0
 
+typedef enum ColorSpace {
+  ABGR8888,
+  ABGR8888S,
+  ARGB8888,
+  ARGB8888S,
+} ColorSpace;
+
 typedef enum DotLottieFit {
   Contain,
   Fill,
@@ -236,12 +243,6 @@ int32_t dotlottie_active_theme_id(struct DotLottiePlayer *ptr, char *result);
 
 int32_t dotlottie_animation_size(struct DotLottiePlayer *ptr, float *width, float *height);
 
-int32_t dotlottie_buffer_len(struct DotLottiePlayer *ptr, uint64_t *result);
-
-int32_t dotlottie_buffer_ptr(struct DotLottiePlayer *ptr, const uint32_t **result);
-
-int32_t dotlottie_clear(struct DotLottiePlayer *ptr);
-
 int32_t dotlottie_config(struct DotLottiePlayer *ptr, struct DotLottieConfig *result);
 
 int32_t dotlottie_current_frame(struct DotLottiePlayer *ptr, float *result);
@@ -327,6 +328,20 @@ int32_t dotlottie_segment_duration(struct DotLottiePlayer *ptr, float *result);
 
 int32_t dotlottie_set_frame(struct DotLottiePlayer *ptr, float no);
 
+int32_t dotlottie_set_gl_target(struct DotLottiePlayer *ptr,
+                                void *context,
+                                int32_t id,
+                                uint32_t width,
+                                uint32_t height,
+                                enum ColorSpace color_space);
+
+int32_t dotlottie_set_sw_target(struct DotLottiePlayer *ptr,
+                                const uint32_t *buffer,
+                                uint32_t stride,
+                                uint32_t width,
+                                uint32_t height,
+                                enum ColorSpace color_space);
+
 int32_t dotlottie_set_theme(struct DotLottiePlayer *ptr, const char *theme_id);
 
 int32_t dotlottie_set_theme_data(struct DotLottiePlayer *ptr, const char *theme_data);
@@ -336,6 +351,15 @@ int32_t dotlottie_set_viewport(struct DotLottiePlayer *ptr,
                                int32_t y,
                                int32_t w,
                                int32_t h);
+
+int32_t dotlottie_set_wg_target(struct DotLottiePlayer *ptr,
+                                void *device,
+                                void *instance,
+                                void *target,
+                                uint32_t width,
+                                uint32_t height,
+                                enum ColorSpace color_space,
+                                int32_t _type);
 
 int32_t dotlottie_state_machine_current_state(struct DotLottiePlayer *ptr, char *result);
 

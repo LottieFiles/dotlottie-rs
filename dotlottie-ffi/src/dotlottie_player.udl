@@ -129,20 +129,29 @@ interface Event {
     OnLoopComplete();
 };
 
+enum ColorSpace {
+    "ABGR8888",
+    "ABGR8888S",
+    "ARGB8888",
+    "ARGB8888S",
+};
+
 interface DotLottiePlayer {
     constructor(Config config);
 
     [Name=with_threads]
     constructor(Config config, u32 threads);
-    
+
+    boolean set_sw_target(u64 frame_buffer, u32 stride, u32 width, u32 height, ColorSpace color_space);
+    boolean set_gl_target(u64 context, i32 id, u32 width, u32 height, ColorSpace color_space);
+    boolean set_wg_target(u64 device, u64 instance, u64 target, u32 width, u32 height, ColorSpace color_space, i32 _type);
+
     boolean load_animation_data([ByRef] string animation_data, u32 width, u32 height);
     boolean load_animation_path([ByRef] string animation_path, u32 width, u32 height);
     boolean load_dotlottie_data([ByRef] bytes file_data, u32 width, u32 height);
     boolean load_animation([ByRef] string animation_id, u32 width, u32 height);
     Manifest? manifest();
     string manifest_string();
-    u64 buffer_ptr();
-    u64 buffer_len();
     void set_config(Config config);
     Config config();
     f32 total_frames();
@@ -161,7 +170,6 @@ interface DotLottiePlayer {
     boolean seek(f32 no);
     boolean render();
     boolean resize(u32 width, u32 height);
-    void clear();
     void subscribe(Observer observer);
     void unsubscribe([ByRef] Observer observer);
     boolean is_complete();

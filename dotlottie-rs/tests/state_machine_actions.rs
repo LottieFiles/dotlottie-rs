@@ -1,6 +1,8 @@
-use std::sync::{Arc, Mutex};
-
+mod test_utils;
 use dotlottie_rs::StateMachineObserver;
+use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, ColorSpace, Config, DotLottiePlayer};
+use std::sync::{Arc, Mutex};
+use test_utils::{HEIGHT, WIDTH};
 
 struct MockObserver {
     events: Arc<Mutex<Vec<String>>>,
@@ -73,11 +75,8 @@ impl StateMachineObserver for MockObserver {
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
 
-    use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, StateMachineObserver,
-    };
+    use super::*;
 
     fn get_current_state_name(player: &DotLottiePlayer) -> String {
         player.state_machine_current_state()
@@ -87,6 +86,16 @@ mod tests {
     fn increment() {
         let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
         let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -122,6 +131,16 @@ mod tests {
     fn decrement() {
         let global_state = include_str!("fixtures/statemachines/action_tests/decr_rating.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
         let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -157,6 +176,16 @@ mod tests {
     fn toggle() {
         let global_state = include_str!("fixtures/statemachines/action_tests/toggle.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
         let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -185,6 +214,16 @@ mod tests {
     fn set_boolean() {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
         let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -207,6 +246,16 @@ mod tests {
     fn set_numeric() {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
         let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -229,6 +278,16 @@ mod tests {
     fn set_string() {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
         let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -251,6 +310,16 @@ mod tests {
     fn fire() {
         let global_state = include_str!("fixtures/statemachines/action_tests/fire.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
         let s = player.state_machine_start(OpenUrlPolicy::default());
@@ -272,6 +341,16 @@ mod tests {
     fn set_frame() {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_frame.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
 
         assert_eq!(player.current_frame(), 0.0);
@@ -302,6 +381,16 @@ mod tests {
     fn set_progress() {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_progress.json");
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
 
         assert_eq!(player.current_frame(), 0.0);

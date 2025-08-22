@@ -1,17 +1,23 @@
 #include "dotlottie_player.hpp"
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
+#ifdef USE_WEBGPU
+#include <emscripten/html5_webgpu.h>
+#endif
+#ifdef USE_WEBGL
+#include <emscripten/html5_webgl.h>
+#endif
 #include <optional>
 #include <functional>
 
 using namespace emscripten;
 using namespace dotlottie_player;
 
-val buffer(DotLottiePlayer &player)
+bool load_dotlottie_data(DotLottiePlayer &player, std::string data, uint32_t width, uint32_t height)
 {
-    auto buffer_ptr = (uint32_t *)player.buffer_ptr();
-    auto buffer_len = player.buffer_len() * sizeof(uint32_t);
-    return val(typed_memory_view(buffer_len, reinterpret_cast<uint8_t *>(buffer_ptr)));
+    std::vector<char> data_vector(data.begin(), data.end());
+
+    return player.load_dotlottie_data(data_vector, width, height);
 }
 
 struct ObserverCallbacks
@@ -29,8 +35,14 @@ struct ObserverCallbacks
 
 class CallbackObserver : public Observer
 {
+class CallbackObserver : public Observer
+{
 public:
     CallbackObserver() = default;
+    void setOnComplete(val cb)
+    {
+        callbacks_.on_complete = [cb]()
+        { if (cb != val::undefined()) cb(); };
     void setOnComplete(val cb)
     {
         callbacks_.on_complete = [cb]()
@@ -40,7 +52,15 @@ public:
     {
         callbacks_.on_load = [cb]()
         { if (cb != val::undefined()) cb(); };
+    void setOnLoad(val cb)
+    {
+        callbacks_.on_load = [cb]()
+        { if (cb != val::undefined()) cb(); };
     }
+    void setOnLoadError(val cb)
+    {
+        callbacks_.on_load_error = [cb]()
+        { if (cb != val::undefined()) cb(); };
     void setOnLoadError(val cb)
     {
         callbacks_.on_load_error = [cb]()
@@ -50,7 +70,15 @@ public:
     {
         callbacks_.on_play = [cb]()
         { if (cb != val::undefined()) cb(); };
+    void setOnPlay(val cb)
+    {
+        callbacks_.on_play = [cb]()
+        { if (cb != val::undefined()) cb(); };
     }
+    void setOnPause(val cb)
+    {
+        callbacks_.on_pause = [cb]()
+        { if (cb != val::undefined()) cb(); };
     void setOnPause(val cb)
     {
         callbacks_.on_pause = [cb]()
@@ -65,7 +93,15 @@ public:
     {
         callbacks_.on_frame = [cb](float frame_no)
         { if (cb != val::undefined()) cb(frame_no); };
+    void setOnFrame(val cb)
+    {
+        callbacks_.on_frame = [cb](float frame_no)
+        { if (cb != val::undefined()) cb(frame_no); };
     }
+    void setOnRender(val cb)
+    {
+        callbacks_.on_render = [cb](float frame_no)
+        { if (cb != val::undefined()) cb(frame_no); };
     void setOnRender(val cb)
     {
         callbacks_.on_render = [cb](float frame_no)
@@ -75,6 +111,56 @@ public:
     {
         callbacks_.on_loop = [cb](uint32_t loop_count)
         { if (cb != val::undefined()) cb(loop_count); };
+    void setOnLoop(val cb)
+    {
+        callbacks_.on_loop = [cb](uint32_t loop_count)
+        { if (cb != val::undefined()) cb(loop_count); };
+    }
+
+    void on_complete() override
+    {
+        if (callbacks_.on_complete)
+            callbacks_.on_complete();
+    }
+    void on_load() override
+    {
+        if (callbacks_.on_load)
+            callbacks_.on_load();
+    }
+    void on_load_error() override
+    {
+        if (callbacks_.on_load_error)
+            callbacks_.on_load_error();
+    }
+    void on_play() override
+    {
+        if (callbacks_.on_play)
+            callbacks_.on_play();
+    }
+    void on_pause() override
+    {
+        if (callbacks_.on_pause)
+            callbacks_.on_pause();
+    }
+    void on_stop() override
+    {
+        if (callbacks_.on_stop)
+            callbacks_.on_stop();
+    }
+    void on_frame(float frame_no) override
+    {
+        if (callbacks_.on_frame)
+            callbacks_.on_frame(frame_no);
+    }
+    void on_render(float frame_no) override
+    {
+        if (callbacks_.on_render)
+            callbacks_.on_render(frame_no);
+    }
+    void on_loop(uint32_t loop_count) override
+    {
+        if (callbacks_.on_loop)
+            callbacks_.on_loop(loop_count);
     }
 
     void on_complete() override
@@ -130,13 +216,24 @@ private:
 struct StateMachineInternalObserverCallbacks
 {
     std::function<void(const std::string &)> on_message;
+struct StateMachineInternalObserverCallbacks
+{
+    std::function<void(const std::string &)> on_message;
 };
 
+class CallbackStateMachineInternalObserver : public StateMachineInternalObserver
+{
 class CallbackStateMachineInternalObserver : public StateMachineInternalObserver
 {
 public:
     CallbackStateMachineInternalObserver() = default;
 
+    void setOnMessage(val cb)
+    {
+        callbacks_.on_message = [cb](const std::string &message)
+        {
+            if (cb != val::undefined())
+                cb(message);
     void setOnMessage(val cb)
     {
         callbacks_.on_message = [cb](const std::string &message)
@@ -152,10 +249,18 @@ public:
             callbacks_.on_message(message);
     }
 
+    void on_message(const std::string &message) override
+    {
+        if (callbacks_.on_message)
+            callbacks_.on_message(message);
+    }
+
 private:
     StateMachineInternalObserverCallbacks callbacks_;
 };
 
+struct StateMachineObserverCallbacks
+{
 struct StateMachineObserverCallbacks
 {
     std::function<void()> on_start;
@@ -169,12 +274,28 @@ struct StateMachineObserverCallbacks
     std::function<void(const std::string &, bool, bool)> on_boolean_input_value_change;
     std::function<void(const std::string &)> on_input_fired;
     std::function<void(const std::string &)> on_error;
+    std::function<void(const std::string &, const std::string &)> on_transition;
+    std::function<void(const std::string &)> on_state_entered;
+    std::function<void(const std::string &)> on_state_exit;
+    std::function<void(const std::string &)> on_custom_event;
+    std::function<void(const std::string &, const std::string &, const std::string &)> on_string_input_value_change;
+    std::function<void(const std::string &, float, float)> on_numeric_input_value_change;
+    std::function<void(const std::string &, bool, bool)> on_boolean_input_value_change;
+    std::function<void(const std::string &)> on_input_fired;
+    std::function<void(const std::string &)> on_error;
 };
 
 class CallbackStateMachineObserver : public StateMachineObserver
 {
+class CallbackStateMachineObserver : public StateMachineObserver
+{
 public:
     CallbackStateMachineObserver() = default;
+
+    void setOnStart(val cb)
+    {
+        callbacks_.on_start = [cb]()
+        { if (cb != val::undefined()) cb(); };
 
     void setOnStart(val cb)
     {
@@ -185,7 +306,17 @@ public:
     {
         callbacks_.on_stop = [cb]()
         { if (cb != val::undefined()) cb(); };
+    void setOnStop(val cb)
+    {
+        callbacks_.on_stop = [cb]()
+        { if (cb != val::undefined()) cb(); };
     }
+    void setOnTransition(val cb)
+    {
+        callbacks_.on_transition = [cb](const std::string &prev, const std::string &next)
+        {
+            if (cb != val::undefined())
+                cb(prev, next);
     void setOnTransition(val cb)
     {
         callbacks_.on_transition = [cb](const std::string &prev, const std::string &next)
@@ -200,8 +331,20 @@ public:
         {
             if (cb != val::undefined())
                 cb(state);
+    void setOnStateEntered(val cb)
+    {
+        callbacks_.on_state_entered = [cb](const std::string &state)
+        {
+            if (cb != val::undefined())
+                cb(state);
         };
     }
+    void setOnStateExit(val cb)
+    {
+        callbacks_.on_state_exit = [cb](const std::string &state)
+        {
+            if (cb != val::undefined())
+                cb(state);
     void setOnStateExit(val cb)
     {
         callbacks_.on_state_exit = [cb](const std::string &state)
@@ -216,8 +359,20 @@ public:
         {
             if (cb != val::undefined())
                 cb(event);
+    void setOnCustomEvent(val cb)
+    {
+        callbacks_.on_custom_event = [cb](const std::string &event)
+        {
+            if (cb != val::undefined())
+                cb(event);
         };
     }
+    void setOnStringInputValueChange(val cb)
+    {
+        callbacks_.on_string_input_value_change = [cb](const std::string &input, const std::string &oldv, const std::string &newv)
+        {
+            if (cb != val::undefined())
+                cb(input, oldv, newv);
     void setOnStringInputValueChange(val cb)
     {
         callbacks_.on_string_input_value_change = [cb](const std::string &input, const std::string &oldv, const std::string &newv)
@@ -232,8 +387,20 @@ public:
         {
             if (cb != val::undefined())
                 cb(input, oldv, newv);
+    void setOnNumericInputValueChange(val cb)
+    {
+        callbacks_.on_numeric_input_value_change = [cb](const std::string &input, float oldv, float newv)
+        {
+            if (cb != val::undefined())
+                cb(input, oldv, newv);
         };
     }
+    void setOnBooleanInputValueChange(val cb)
+    {
+        callbacks_.on_boolean_input_value_change = [cb](const std::string &input, bool oldv, bool newv)
+        {
+            if (cb != val::undefined())
+                cb(input, oldv, newv);
     void setOnBooleanInputValueChange(val cb)
     {
         callbacks_.on_boolean_input_value_change = [cb](const std::string &input, bool oldv, bool newv)
@@ -248,8 +415,20 @@ public:
         {
             if (cb != val::undefined())
                 cb(input);
+    void setOnInputFired(val cb)
+    {
+        callbacks_.on_input_fired = [cb](const std::string &input)
+        {
+            if (cb != val::undefined())
+                cb(input);
         };
     }
+    void setOnError(val cb)
+    {
+        callbacks_.on_error = [cb](const std::string &err)
+        {
+            if (cb != val::undefined())
+                cb(err);
     void setOnError(val cb)
     {
         callbacks_.on_error = [cb](const std::string &err)
@@ -315,13 +494,71 @@ public:
             callbacks_.on_error(err);
     }
 
+    void on_start() override
+    {
+        if (callbacks_.on_start)
+            callbacks_.on_start();
+    }
+    void on_stop() override
+    {
+        if (callbacks_.on_stop)
+            callbacks_.on_stop();
+    }
+    void on_transition(const std::string &prev, const std::string &next) override
+    {
+        if (callbacks_.on_transition)
+            callbacks_.on_transition(prev, next);
+    }
+    void on_state_entered(const std::string &state) override
+    {
+        if (callbacks_.on_state_entered)
+            callbacks_.on_state_entered(state);
+    }
+    void on_state_exit(const std::string &state) override
+    {
+        if (callbacks_.on_state_exit)
+            callbacks_.on_state_exit(state);
+    }
+    void on_custom_event(const std::string &event) override
+    {
+        if (callbacks_.on_custom_event)
+            callbacks_.on_custom_event(event);
+    }
+    void on_string_input_value_change(const std::string &input, const std::string &oldv, const std::string &newv) override
+    {
+        if (callbacks_.on_string_input_value_change)
+            callbacks_.on_string_input_value_change(input, oldv, newv);
+    }
+    void on_numeric_input_value_change(const std::string &input, float oldv, float newv) override
+    {
+        if (callbacks_.on_numeric_input_value_change)
+            callbacks_.on_numeric_input_value_change(input, oldv, newv);
+    }
+    void on_boolean_input_value_change(const std::string &input, bool oldv, bool newv) override
+    {
+        if (callbacks_.on_boolean_input_value_change)
+            callbacks_.on_boolean_input_value_change(input, oldv, newv);
+    }
+    void on_input_fired(const std::string &input) override
+    {
+        if (callbacks_.on_input_fired)
+            callbacks_.on_input_fired(input);
+    }
+    void on_error(const std::string &err) override
+    {
+        if (callbacks_.on_error)
+            callbacks_.on_error(err);
+    }
+
 private:
     StateMachineObserverCallbacks callbacks_;
 };
 
 std::shared_ptr<Observer> subscribe(DotLottiePlayer &player, Observer *observer)
+std::shared_ptr<Observer> subscribe(DotLottiePlayer &player, Observer *observer)
 {
     // Create shared_ptr from raw pointer (without taking ownership)
+    std::shared_ptr<Observer> shared_observer(observer, [](Observer *) {});
     std::shared_ptr<Observer> shared_observer(observer, [](Observer *) {});
     player.subscribe(shared_observer);
     return shared_observer;
@@ -333,8 +570,10 @@ void unsubscribe(DotLottiePlayer &player, std::shared_ptr<Observer> observer)
 }
 
 std::shared_ptr<StateMachineObserver> stateMachineSubscribe(DotLottiePlayer &player, StateMachineObserver *observer)
+std::shared_ptr<StateMachineObserver> stateMachineSubscribe(DotLottiePlayer &player, StateMachineObserver *observer)
 {
     // Create shared_ptr from raw pointer (without taking ownership)
+    std::shared_ptr<StateMachineObserver> shared_observer(observer, [](StateMachineObserver *) {});
     std::shared_ptr<StateMachineObserver> shared_observer(observer, [](StateMachineObserver *) {});
     player.state_machine_subscribe(shared_observer);
     return shared_observer;
@@ -346,8 +585,10 @@ void stateMachineUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachi
 }
 
 std::shared_ptr<StateMachineInternalObserver> stateMachineInternalSubscribe(DotLottiePlayer &player, StateMachineInternalObserver *observer)
+std::shared_ptr<StateMachineInternalObserver> stateMachineInternalSubscribe(DotLottiePlayer &player, StateMachineInternalObserver *observer)
 {
     // Create shared_ptr from raw pointer (without taking ownership)
+    std::shared_ptr<StateMachineInternalObserver> shared_observer(observer, [](StateMachineInternalObserver *) {});
     std::shared_ptr<StateMachineInternalObserver> shared_observer(observer, [](StateMachineInternalObserver *) {});
     player.state_machine_internal_subscribe(shared_observer);
     return shared_observer;
@@ -357,6 +598,96 @@ void stateMachineInternalUnsubscribe(DotLottiePlayer &player, std::shared_ptr<St
 {
     player.state_machine_internal_unsubscribe(observer);
 }
+
+#ifdef USE_WEBGPU
+static WGPUDevice g_webgpu_device = nullptr;
+static WGPUInstance g_webgpu_instance = nullptr;
+
+uintptr_t webgpu_get_device()
+{
+    if (!g_webgpu_device)
+    {
+        g_webgpu_device = emscripten_webgpu_get_device();
+    }
+    return reinterpret_cast<uintptr_t>(g_webgpu_device);
+}
+
+uintptr_t webgpu_get_instance()
+{
+    if (!g_webgpu_instance)
+    {
+        g_webgpu_instance = wgpuCreateInstance(nullptr);
+    }
+    return reinterpret_cast<uintptr_t>(g_webgpu_instance);
+}
+
+uintptr_t webgpu_get_surface(const std::string &canvas_selector)
+{
+    if (!g_webgpu_instance)
+    {
+        webgpu_get_instance();
+    }
+
+    WGPUSurfaceDescriptorFromCanvasHTMLSelector canvasDesc{};
+    canvasDesc.chain.next = nullptr;
+    canvasDesc.chain.sType = WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector;
+    canvasDesc.selector = canvas_selector.c_str();
+
+    WGPUSurfaceDescriptor surfaceDesc{};
+    surfaceDesc.nextInChain = &canvasDesc.chain;
+
+    WGPUSurface nativeSurface =
+        wgpuInstanceCreateSurface(g_webgpu_instance, &surfaceDesc);
+
+    return reinterpret_cast<uintptr_t>(nativeSurface);
+}
+
+void wgpu_instance_release(uintptr_t instance)
+{
+
+    wgpuInstanceRelease(reinterpret_cast<WGPUInstance>(instance));
+}
+
+void wgpu_device_release(uintptr_t device)
+{
+
+    wgpuDeviceRelease(reinterpret_cast<WGPUDevice>(device));
+}
+#endif
+
+#ifdef USE_WEBGL
+uintptr_t webgl_context_create(const std::string &selector)
+{
+    EmscriptenWebGLContextAttributes attrs{};
+    attrs.alpha = true;
+    attrs.depth = false;
+    attrs.stencil = false;
+    attrs.premultipliedAlpha = true;
+    attrs.failIfMajorPerformanceCaveat = false;
+    attrs.majorVersion = 2;
+    attrs.minorVersion = 0;
+    attrs.enableExtensionsByDefault = true;
+
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context(selector.c_str(), &attrs);
+
+    return reinterpret_cast<uintptr_t>(context);
+}
+
+int webgl_context_make_current(uintptr_t context)
+{
+    return emscripten_webgl_make_context_current(context);
+}
+
+bool is_webgl_context_lost(uintptr_t context)
+{
+    return emscripten_is_webgl_context_lost(context);
+}
+
+void webgl_context_destroy(uintptr_t context)
+{
+    emscripten_webgl_destroy_context(context);
+}
+#endif
 
 EMSCRIPTEN_BINDINGS(observer_callbacks)
 {
@@ -375,11 +706,15 @@ EMSCRIPTEN_BINDINGS(observer_callbacks)
 
 EMSCRIPTEN_BINDINGS(state_machine_internal_observer_callbacks)
 {
+EMSCRIPTEN_BINDINGS(state_machine_internal_observer_callbacks)
+{
     class_<CallbackStateMachineInternalObserver, base<StateMachineInternalObserver>>("CallbackStateMachineInternalObserver")
         .constructor<>()
         .function("setOnMessage", &CallbackStateMachineInternalObserver::setOnMessage);
 }
 
+EMSCRIPTEN_BINDINGS(state_machine_observer_callbacks)
+{
 EMSCRIPTEN_BINDINGS(state_machine_observer_callbacks)
 {
     class_<CallbackStateMachineObserver, base<StateMachineObserver>>("CallbackStateMachineObserver")
@@ -404,6 +739,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     register_vector<Marker>("VectorMarker");
     register_vector<char>("VectorChar");
 
+
     register_optional<std::vector<float>>();
     register_optional<std::string>();
     register_optional<Layout>();
@@ -425,6 +761,12 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .value("FitWidth", Fit::kFitWidth)
         .value("FitHeight", Fit::kFitHeight)
         .value("None", Fit::kNone);
+
+    enum_<ColorSpace>("ColorSpace")
+        .value("ABGR8888", ColorSpace::kAbgr8888)
+        .value("ABGR8888S", ColorSpace::kAbgr8888s)
+        .value("ARGB8888", ColorSpace::kArgb8888)
+        .value("ARGB8888S", ColorSpace::kArgb8888s);
 
     value_object<Layout>("Layout")
         .field("fit", &Layout::fit)
@@ -462,6 +804,23 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     function("transformThemeToLottieSlots", &transform_theme_to_lottie_slots);
     function("registerFont", &register_font);
 
+#ifdef USE_WEBGPU
+    // WebGPU helper functions
+    function("webgpu_get_device", &webgpu_get_device, allow_raw_pointers());
+    function("webgpu_get_instance", &webgpu_get_instance, allow_raw_pointers());
+    function("webgpu_get_surface", &webgpu_get_surface, allow_raw_pointers());
+    function("wgpu_instance_release", &wgpu_instance_release, allow_raw_pointers());
+    function("wgpu_device_release", &wgpu_device_release, allow_raw_pointers());
+#endif
+
+#ifdef USE_WEBGL
+    // WebGL helper functions
+    function("webgl_context_create", &webgl_context_create, allow_raw_pointers());
+    function("webgl_context_make_current", &webgl_context_make_current, allow_raw_pointers());
+    function("is_webgl_context_lost", &is_webgl_context_lost, allow_raw_pointers());
+    function("webgl_context_destroy", &webgl_context_destroy, allow_raw_pointers());
+#endif
+
     class_<Observer>("Observer")
         .smart_ptr<std::shared_ptr<Observer>>("Observer")
         .function("on_load", &Observer::on_load, pure_virtual())
@@ -495,8 +854,6 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     class_<DotLottiePlayer>("DotLottiePlayer")
         .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
         .constructor(&DotLottiePlayer::init)
-        .function("buffer", &buffer)
-        .function("clear", &DotLottiePlayer::clear)
         .function("config", &DotLottiePlayer::config)
         .function("currentFrame", &DotLottiePlayer::current_frame)
         .function("duration", &DotLottiePlayer::duration)
@@ -533,6 +890,9 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("setViewport", &DotLottiePlayer::set_viewport)
         .function("segmentDuration", &DotLottiePlayer::segment_duration)
         .function("animationSize", &DotLottiePlayer::animation_size)
+        .function("setSwTarget", &DotLottiePlayer::set_sw_target)
+        .function("setGlTarget", &DotLottiePlayer::set_gl_target)
+        .function("setWgTarget", &DotLottiePlayer::set_wg_target)
         .function("subscribe", &subscribe, allow_raw_pointers())
         .function("unsubscribe", &unsubscribe)
 

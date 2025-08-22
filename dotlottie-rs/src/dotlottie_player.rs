@@ -10,7 +10,7 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap, StateMachineEngine,
 };
-use crate::{DotLottieManager, Manifest, Renderer, StateMachineEngineError};
+use crate::{ColorSpace, DotLottieManager, Manifest, Renderer, StateMachineEngineError};
 
 use crate::StateMachineInternalObserver;
 use crate::StateMachineObserver;
@@ -150,6 +150,45 @@ struct DotLottieRuntime {
 impl DotLottieRuntime {
     #[cfg(feature = "tvg")]
     pub fn new(config: Config, threads: u32) -> Self {
+        Self::with_renderer(config, crate::TvgRenderer::new(threads))
+    }
+
+    pub fn set_sw_target(
+        &mut self,
+        buffer_ptr: *mut u32,
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.renderer
+            .set_sw_target(buffer_ptr, stride, width, height, color_space)
+    }
+
+    pub fn set_gl_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.renderer
+            .set_gl_target(context, id, width, height, color_space)
+    }
+
+    pub fn set_wg_target(
+        &mut self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> Result<(), LottieRendererError> {
+        self.renderer
+            .set_wg_target(device, instance, target, width, height, color_space, _type)
         Self::with_renderer(config, crate::TvgRenderer::new(threads))
     }
 
@@ -625,14 +664,6 @@ impl DotLottieRuntime {
         self.config.speed
     }
 
-    pub fn buffer(&self) -> &[u32] {
-        self.renderer.buffer()
-    }
-
-    pub fn clear(&mut self) {
-        self.renderer.clear()
-    }
-
     // Notes: Runtime doesn't have the state machine
     // Therefor the state machine can't be loaded here, user must use the load methods.
     pub fn set_config(&mut self, new_config: Config) {
@@ -744,7 +775,6 @@ impl DotLottieRuntime {
     where
         F: FnOnce(&mut dyn LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
     {
-        self.clear();
         self.playback_state = PlaybackState::Stopped;
         self.start_time = Instant::now();
         self.loop_count = 0;
@@ -1003,7 +1033,10 @@ impl DotLottieRuntime {
         }
     }
 
-    fn apply_slot_types(&mut self, slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>) -> bool {
+    fn apply_slot_types(
+        &mut self,
+        slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
+    ) -> bool {
         use crate::lottie_renderer::SlotType;
 
         for (slot_id, slot_type) in slots {
@@ -1029,15 +1062,27 @@ impl DotLottieRuntime {
         self.renderer.set_quality(quality).is_ok()
     }
 
-    pub fn set_color_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::ColorSlot) -> bool {
+    pub fn set_color_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::ColorSlot,
+    ) -> bool {
         self.renderer.set_color_slot(slot_id, slot).is_ok()
     }
 
-    pub fn set_gradient_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::GradientSlot) -> bool {
+    pub fn set_gradient_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::GradientSlot,
+    ) -> bool {
         self.renderer.set_gradient_slot(slot_id, slot).is_ok()
     }
 
-    pub fn set_image_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::ImageSlot) -> bool {
+    pub fn set_image_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::ImageSlot,
+    ) -> bool {
         self.renderer.set_image_slot(slot_id, slot).is_ok()
     }
 
@@ -1045,15 +1090,27 @@ impl DotLottieRuntime {
         self.renderer.set_text_slot(slot_id, slot).is_ok()
     }
 
-    pub fn set_scalar_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::ScalarSlot) -> bool {
+    pub fn set_scalar_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::ScalarSlot,
+    ) -> bool {
         self.renderer.set_scalar_slot(slot_id, slot).is_ok()
     }
 
-    pub fn set_vector_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::VectorSlot) -> bool {
+    pub fn set_vector_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::VectorSlot,
+    ) -> bool {
         self.renderer.set_vector_slot(slot_id, slot).is_ok()
     }
 
-    pub fn set_position_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::PositionSlot) -> bool {
+    pub fn set_position_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::PositionSlot,
+    ) -> bool {
         self.renderer.set_position_slot(slot_id, slot).is_ok()
     }
 
@@ -1065,7 +1122,10 @@ impl DotLottieRuntime {
         self.renderer.clear_slot(slot_id).is_ok()
     }
 
-    pub fn set_slots(&mut self, slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>) -> bool {
+    pub fn set_slots(
+        &mut self,
+        slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
+    ) -> bool {
         self.renderer.set_slots(slots).is_ok()
     }
 
@@ -1194,6 +1254,55 @@ impl DotLottiePlayerContainer {
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
         }
+    }
+
+    pub fn set_sw_target(
+        &self,
+        buffer_ptr: *mut u32,
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_sw_target(buffer_ptr, stride, width, height, color_space)
+    }
+
+    pub fn set_gl_target(
+        &self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_gl_target(context, id, width, height, color_space)
+    }
+
+    pub fn set_wg_target(
+        &self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> Result<(), LottieRendererError> {
+        self.runtime.write().unwrap().set_wg_target(
+            device,
+            instance,
+            target,
+            width,
+            height,
+            color_space,
+            _type,
+        )
     }
 
     pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
@@ -1359,22 +1468,6 @@ impl DotLottiePlayerContainer {
             .read()
             .ok()
             .and_then(|runtime| runtime.manifest().cloned())
-    }
-
-    pub fn buffer(&self) -> *const u32 {
-        self.runtime.read().unwrap().buffer().as_ptr()
-    }
-
-    pub fn buffer_ptr(&self) -> u64 {
-        self.runtime.read().unwrap().buffer().as_ptr().cast::<u32>() as u64
-    }
-
-    pub fn buffer_len(&self) -> u64 {
-        self.runtime.read().unwrap().buffer().len() as u64
-    }
-
-    pub fn clear(&self) {
-        self.runtime.write().unwrap().clear();
     }
 
     pub fn set_config(&self, config: Config) {
@@ -1573,8 +1666,15 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().set_color_slot(slot_id, slot)
     }
 
-    pub fn set_gradient_slot(&self, slot_id: &str, slot: crate::lottie_renderer::GradientSlot) -> bool {
-        self.runtime.write().unwrap().set_gradient_slot(slot_id, slot)
+    pub fn set_gradient_slot(
+        &self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::GradientSlot,
+    ) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_gradient_slot(slot_id, slot)
     }
 
     pub fn set_image_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ImageSlot) -> bool {
@@ -1593,8 +1693,15 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().set_vector_slot(slot_id, slot)
     }
 
-    pub fn set_position_slot(&self, slot_id: &str, slot: crate::lottie_renderer::PositionSlot) -> bool {
-        self.runtime.write().unwrap().set_position_slot(slot_id, slot)
+    pub fn set_position_slot(
+        &self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::PositionSlot,
+    ) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_position_slot(slot_id, slot)
     }
 
     pub fn clear_slots(&self) -> bool {
@@ -1605,7 +1712,10 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().clear_slot(slot_id)
     }
 
-    pub fn set_slots(&self, slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>) -> bool {
+    pub fn set_slots(
+        &self,
+        slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
+    ) -> bool {
         self.runtime.write().unwrap().set_slots(slots)
     }
 
@@ -1781,6 +1891,128 @@ impl DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config, 0))),
             state_machine: Rc::new(RwLock::new(None)),
         }
+    }
+
+    pub fn set_sw_target(
+        &self,
+        buffer_ptr: u64,
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_sw_target(buffer_ptr as *mut u32, stride, width, height, color_space)
+            .is_ok()
+    }
+
+    pub fn set_gl_target(
+        &self,
+        context: u64,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_gl_target(
+                context as *mut std::ffi::c_void,
+                id,
+                width,
+                height,
+                color_space,
+            )
+            .is_ok()
+    }
+
+    pub fn set_wg_target(
+        &self,
+        device: u64,
+        instance: u64,
+        target: u64,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_wg_target(
+                device as *mut std::ffi::c_void,
+                instance as *mut std::ffi::c_void,
+                target as *mut std::ffi::c_void,
+                width,
+                height,
+                color_space,
+                _type,
+            )
+            .is_ok()
+    }
+
+    pub fn set_sw_target(
+        &self,
+        buffer_ptr: u64,
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_sw_target(buffer_ptr as *mut u32, stride, width, height, color_space)
+            .is_ok()
+    }
+
+    pub fn set_gl_target(
+        &self,
+        context: u64,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_gl_target(
+                context as *mut std::ffi::c_void,
+                id,
+                width,
+                height,
+                color_space,
+            )
+            .is_ok()
+    }
+
+    pub fn set_wg_target(
+        &self,
+        device: u64,
+        instance: u64,
+        target: u64,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_wg_target(
+                device as *mut std::ffi::c_void,
+                instance as *mut std::ffi::c_void,
+                target as *mut std::ffi::c_void,
+                width,
+                height,
+                color_space,
+                _type,
+            )
+            .is_ok()
     }
 
     #[cfg(feature = "tvg")]
@@ -2169,22 +2401,6 @@ impl DotLottiePlayer {
         self.player.read().unwrap().manifest()
     }
 
-    pub fn buffer(&self) -> *const u32 {
-        self.player.read().unwrap().buffer()
-    }
-
-    pub fn buffer_ptr(&self) -> u64 {
-        self.player.read().unwrap().buffer_ptr()
-    }
-
-    pub fn buffer_len(&self) -> u64 {
-        self.player.read().unwrap().buffer_len()
-    }
-
-    pub fn clear(&self) {
-        self.player.write().unwrap().clear()
-    }
-
     pub fn set_config(&self, config: Config) {
         self.player.write().unwrap().set_config(config)
     }
@@ -2504,8 +2720,15 @@ impl DotLottiePlayer {
         self.player.write().unwrap().set_color_slot(slot_id, slot)
     }
 
-    pub fn set_gradient_slot(&self, slot_id: &str, slot: crate::lottie_renderer::GradientSlot) -> bool {
-        self.player.write().unwrap().set_gradient_slot(slot_id, slot)
+    pub fn set_gradient_slot(
+        &self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::GradientSlot,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_gradient_slot(slot_id, slot)
     }
 
     pub fn set_image_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ImageSlot) -> bool {
@@ -2524,8 +2747,15 @@ impl DotLottiePlayer {
         self.player.write().unwrap().set_vector_slot(slot_id, slot)
     }
 
-    pub fn set_position_slot(&self, slot_id: &str, slot: crate::lottie_renderer::PositionSlot) -> bool {
-        self.player.write().unwrap().set_position_slot(slot_id, slot)
+    pub fn set_position_slot(
+        &self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::PositionSlot,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_position_slot(slot_id, slot)
     }
 
     pub fn clear_slots(&self) -> bool {
@@ -2536,7 +2766,10 @@ impl DotLottiePlayer {
         self.player.write().unwrap().clear_slot(slot_id)
     }
 
-    pub fn set_slots(&self, slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>) -> bool {
+    pub fn set_slots(
+        &self,
+        slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
+    ) -> bool {
         self.player.write().unwrap().set_slots(slots)
     }
 

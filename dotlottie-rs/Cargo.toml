@@ -12,6 +12,8 @@ dev = ["tvg", "tvg-sw", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg
 tvg = []
 tvg-log = []
 tvg-sw = []
+tvg-gl = []
+tvg-wg = []
 tvg-lottie-expressions = []
 tvg-jpg = []
 tvg-png = []
@@ -30,9 +32,11 @@ zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
 bindgen = "0.72.0"
 lazy_static = "1.4"
 cc = "1.2"
+zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
+reqwest = { version = "0.12", features = ["blocking"] }
 
 [dev-dependencies]
-criterion = "0.5.1"
+criterion = "0.7.0"
 # This is a workaround to enable this feature only on dev.
 dotlottie-rs = { path = ".", features = ["dev"] }
 

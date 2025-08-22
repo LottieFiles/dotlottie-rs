@@ -1,6 +1,6 @@
 use std::{ffi::c_char, slice};
 
-use dotlottie_rs::{Config, DotLottiePlayer, LayerBoundingBox};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, LayerBoundingBox};
 
 use types::*;
 
@@ -46,6 +46,70 @@ pub unsafe extern "C" fn dotlottie_destroy(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         std::mem::drop(std::ptr::read(dotlottie_player));
         DOTLOTTIE_SUCCESS
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_sw_target(
+    ptr: *mut DotLottiePlayer,
+    buffer: *const u32,
+    stride: u32,
+    width: u32,
+    height: u32,
+    color_space: ColorSpace,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        to_exit_status(dotlottie_player.set_sw_target(
+            buffer as u64,
+            stride,
+            width,
+            height,
+            color_space,
+        ))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_gl_target(
+    ptr: *mut DotLottiePlayer,
+    context: *mut std::ffi::c_void,
+    id: i32,
+    width: u32,
+    height: u32,
+    color_space: ColorSpace,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        to_exit_status(dotlottie_player.set_gl_target(
+            context as u64,
+            id,
+            width,
+            height,
+            color_space,
+        ))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_wg_target(
+    ptr: *mut DotLottiePlayer,
+    device: *mut std::ffi::c_void,
+    instance: *mut std::ffi::c_void,
+    target: *mut std::ffi::c_void,
+    width: u32,
+    height: u32,
+    color_space: ColorSpace,
+    _type: i32,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        to_exit_status(dotlottie_player.set_wg_target(
+            device as u64,
+            instance as u64,
+            target as u64,
+            width,
+            height,
+            color_space,
+            _type,
+        ))
     })
 }
 
@@ -209,33 +273,6 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_event(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_buffer_ptr(
-    ptr: *mut DotLottiePlayer,
-    result: *mut *const u32,
-) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        if !result.is_null() {
-            *result = dotlottie_player.buffer();
-            DOTLOTTIE_SUCCESS
-        } else {
-            DOTLOTTIE_INVALID_PARAMETER
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_buffer_len(ptr: *mut DotLottiePlayer, result: *mut u64) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        if !result.is_null() {
-            *result = dotlottie_player.buffer_len();
-            DOTLOTTIE_SUCCESS
-        } else {
-            DOTLOTTIE_INVALID_PARAMETER
-        }
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn dotlottie_config(
     ptr: *mut DotLottiePlayer,
     result: *mut DotLottieConfig,
@@ -392,14 +429,6 @@ pub unsafe extern "C" fn dotlottie_resize(
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_exit_status(dotlottie_player.resize(width, height))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_clear(ptr: *mut DotLottiePlayer) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        dotlottie_player.clear();
-        DOTLOTTIE_SUCCESS
     })
 }
 

@@ -1,10 +1,19 @@
+mod test_utils;
+
+use crate::test_utils::{HEIGHT, WIDTH};
+
+use core::assert_eq;
+use std::fs::{self, File};
+
+use dotlottie_rs::{
+    actions::open_url_policy::OpenUrlPolicy, ColorSpace, Config, DotLottiePlayer, Event,
+};
+use std::io::Read;
+
 #[cfg(test)]
 mod tests {
-    use core::assert_eq;
-    use std::fs::{self, File};
 
-    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event};
-    use std::io::Read;
+    use super::*;
 
     #[test]
     fn get_state_machine() {
@@ -13,6 +22,15 @@ mod tests {
             ..Config::default()
         };
         let player = DotLottiePlayer::new(config);
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         let mut markers =
             File::open("tests/fixtures/statemachines/normal_usecases/sm_exploding_pigeon.lottie")
@@ -48,6 +66,15 @@ mod tests {
     fn state_machine_start() {
         let player = DotLottiePlayer::new(Config::default());
 
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.state_machine_load_data("bad_data");
 
         let r = player.state_machine_start(OpenUrlPolicy::default());
@@ -65,6 +92,15 @@ mod tests {
     #[test]
     fn state_machine_stop() {
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         player.state_machine_load_data("bad_data");
 
@@ -89,6 +125,15 @@ mod tests {
         let pointer_down =
             include_str!("fixtures/statemachines/interaction_tests/interaction_array.json");
 
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         player.state_machine_load_data(pointer_down);
 
         let r = player.state_machine_start(OpenUrlPolicy::default());
@@ -109,6 +154,15 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         let pointer_down =
             include_str!("fixtures/statemachines/interaction_tests/all_interaction_events.json");
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         player.state_machine_load_data(pointer_down);
 
@@ -143,8 +197,17 @@ mod tests {
     #[test]
     fn state_machine_set_get_numeric_input() {
         let player = DotLottiePlayer::new(Config::default());
-        let rating = include_str!("fixtures/statemachines/normal_usecases/rating.json");
 
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
+        let rating = include_str!("fixtures/statemachines/normal_usecases/rating.json");
         player.state_machine_load_data(rating);
 
         let r = player.state_machine_start(OpenUrlPolicy::default());
@@ -165,6 +228,15 @@ mod tests {
     #[test]
     fn state_machine_set_get_boolean_input() {
         let player = DotLottiePlayer::new(Config::default());
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         let sm = include_str!("fixtures/statemachines/normal_usecases/toggle.json");
 
         player.state_machine_load_data(sm);
@@ -187,6 +259,16 @@ mod tests {
     #[test]
     fn state_machine_set_get_string_input() {
         let player = DotLottiePlayer::new(Config::default());
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
+
         let sm = include_str!("fixtures/statemachines/normal_usecases/password.json");
 
         player.state_machine_load_data(sm);
@@ -218,6 +300,14 @@ mod tests {
     #[test]
     fn state_machine_fire_event() {
         let player = DotLottiePlayer::new(Config::default());
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
         let sm = include_str!("fixtures/statemachines/normal_usecases/password_with_events.json");
 
         player.state_machine_load_data(sm);
@@ -235,6 +325,14 @@ mod tests {
     #[test]
     fn final_state() {
         let player = DotLottiePlayer::new(Config::default());
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
         let sm = include_str!("fixtures/statemachines/normal_usecases/final_state.json");
 
         player.state_machine_load_data(sm);
@@ -257,6 +355,14 @@ mod tests {
     #[test]
     fn state_machine_current_state() {
         let player = DotLottiePlayer::new(Config::default());
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
         let pointer_down =
             include_str!("fixtures/statemachines/interaction_tests/all_interaction_events.json");
 

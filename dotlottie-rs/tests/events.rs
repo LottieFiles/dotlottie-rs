@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use dotlottie_rs::{Config, DotLottiePlayer, Observer};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, Observer};
 
 mod test_utils;
 
@@ -75,6 +75,16 @@ mod tests {
             loop_animation: true,
             ..Config::default()
         });
+
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
         let events = Arc::new(Mutex::new(vec![]));
         let observer_events = Arc::clone(&events);

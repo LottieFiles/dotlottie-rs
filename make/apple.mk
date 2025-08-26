@@ -95,9 +95,6 @@ define create_framework_structure
 		$(1)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(INFO_PLIST)
 endef
 
-debug2:
-	@echo "Version2 is: '$(CRATE_VERSION)'"
-
 # Apple SDK paths
 MACOS_SDK = $(XCODE_PATH)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
 IOS_SDK = $(XCODE_PATH)/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk

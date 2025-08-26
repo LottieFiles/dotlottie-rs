@@ -23,7 +23,7 @@ CPP_BINDINGS_DIR ?= $(BINDINGS_DIR)/cpp
 WASM_BUILD_DIR := dotlottie-ffi/build/wasm
 
 # Get version information
-CRATE_VERSION := $(shell grep -m 1 version dotlottie-ffi/Cargo.toml | sed 's/.*"\([0-9.]\+\)"/\1/')
+CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-ffi/Cargo.toml | grep -o '[0-9][0-9.]*')
 COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
 # Release directories

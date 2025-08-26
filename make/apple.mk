@@ -44,7 +44,8 @@ CODESIGN := codesign
 # Set KEYCHAIN_PASSWORD if using a custom keychain (used in CI environments)
 
 # Get version information
-CRATE_VERSION := $(shell grep -m 1 version dotlottie-ffi/Cargo.toml | sed 's/.*"\([0-9.]\+\)"/\1/')
+CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-ffi/Cargo.toml | grep -o '[0-9][0-9.]*')
+
 COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
 # Apple module map template
@@ -93,6 +94,9 @@ define create_framework_structure
 		-c "Add :CFBundleSupportedPlatforms:0 string $(3)" \
 		$(1)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(INFO_PLIST)
 endef
+
+debug2:
+	@echo "Version2 is: '$(CRATE_VERSION)'"
 
 # Apple SDK paths
 MACOS_SDK = $(XCODE_PATH)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk

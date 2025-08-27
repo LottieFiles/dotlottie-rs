@@ -1,3 +1,4 @@
+use crate::scripting::ScriptingEngine;
 use crate::time::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
@@ -18,14 +19,6 @@ use crate::StateMachineInternalObserver;
 use crate::StateMachineObserver;
 
 use crate::StateMachineEngineStatus;
-
-#[expect(non_upper_case_globals)]
-#[allow(non_snake_case)]
-#[expect(non_camel_case_types)]
-#[expect(dead_code)]
-mod jerry {
-    include!(concat!(env!("OUT_DIR"), "/jerry_script_bindings.rs"));
-}
 
 pub trait Observer: Send + Sync {
     fn on_load(&self);
@@ -155,117 +148,116 @@ struct DotLottieRuntime {
     active_state_machine_id: String,
 }
 
-unsafe extern "C" fn print_handler(
-    _call_info_p: *const jerry::jerry_call_info_t,
-    arguments: *const jerry::jerry_value_t,
-    argument_count: jerry::jerry_length_t,
-) -> jerry::jerry_value_t {
-    // Print the arguments if any are provided
-    if argument_count > 0 {
-        unsafe {
-            // Convert the first argument to string and print it
-            let arg_as_string = jerry::jerry_value_to_string(*arguments);
-            let string_length = jerry::jerry_string_length(arg_as_string);
+// unsafe extern "C" fn print_handler(
+//     _call_info_p: *const jerry::jerry_call_info_t,
+//     arguments: *const jerry::jerry_value_t,
+//     argument_count: jerry::jerry_length_t,
+// ) -> jerry::jerry_value_t {
+//     // Print the arguments if any are provided
+//     if argument_count > 0 {
+//         unsafe {
+//             // Convert the first argument to string and print it
+//             let arg_as_string = jerry::jerry_value_to_string(*arguments);
+//             let string_length = jerry::jerry_string_length(arg_as_string);
 
-            if string_length > 0 {
-                let mut buffer = vec![0u8; string_length as usize + 1];
-                jerry::jerry_string_to_buffer(
-                    arg_as_string,
-                    jerry::jerry_encoding_t_JERRY_ENCODING_UTF8,
-                    buffer.as_mut_ptr(),
-                    string_length,
-                );
+//             if string_length > 0 {
+//                 let mut buffer = vec![0u8; string_length as usize + 1];
+//                 jerry::jerry_string_to_buffer(
+//                     arg_as_string,
+//                     jerry::jerry_encoding_t_JERRY_ENCODING_UTF8,
+//                     buffer.as_mut_ptr(),
+//                     string_length,
+//                 );
 
-                // Convert to Rust string and print
-                if let Ok(rust_string) =
-                    String::from_utf8(buffer[..string_length as usize].to_vec())
-                {
-                    println!("JS print: {}", rust_string);
-                } else {
-                    println!("JS print: [invalid UTF-8]");
-                }
-            }
+//                 // Convert to Rust string and print
+//                 if let Ok(rust_string) =
+//                     String::from_utf8(buffer[..string_length as usize].to_vec())
+//                 {
+//                     println!("JS print: {}", rust_string);
+//                 } else {
+//                     println!("JS print: [invalid UTF-8]");
+//                 }
+//             }
 
-            jerry::jerry_value_free(arg_as_string);
-        }
-    } else {
-        println!("Print handler was called with no arguments");
-    }
+//             jerry::jerry_value_free(arg_as_string);
+//         }
+//     } else {
+//         println!("Print handler was called with no arguments");
+//     }
 
-    // Return an "undefined" value to the JavaScript engine
-    jerry::jerry_undefined()
-}
+//     // Return an "undefined" value to the JavaScript engine
+//     jerry::jerry_undefined()
+// }
 
 impl DotLottieRuntime {
     #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
     pub fn new(config: Config, threads: u32) -> Self {
-        unsafe {
-            let script = "var str = 'Hello dev tooling team from javascript inside rust!!!'; print(str);";
+        // unsafe {
+        //     let script = "var str = 'Hello dev tooling team from javascript inside rust!!!'; print(str);";
 
-            // Convert the script to bytes for JerryScript
-            let script_bytes = script.as_bytes();
-            let script_ptr = script_bytes.as_ptr();
-            let script_size = script_bytes.len();
+        //     // Convert the script to bytes for JerryScript
+        //     let script_bytes = script.as_bytes();
+        //     let script_ptr = script_bytes.as_ptr();
+        //     let script_size = script_bytes.len();
 
-            // Initialize engine
-            jerry::jerry_init(0);
+        //     // Initialize engine
+        //     jerry::jerry_init(0);
 
-            // Add the "print" method for the JavaScript global object
-            {
-                // Get the "global" object
+        //     // Add the "print" method for the JavaScript global object
+        //     {
+        //         // Get the "global" object
+        //         use std::ffi::c_char;
+        //         let global_object = jerry::jerry_current_realm();
 
-                use std::ffi::c_char;
-                let global_object = jerry::jerry_current_realm();
+        //         // Create a "print" JS string
+        //         let property_name_print =
+        //             jerry::jerry_string_sz(b"print\0".as_ptr() as *const c_char);
 
-                // Create a "print" JS string
-                let property_name_print =
-                    jerry::jerry_string_sz(b"print\0".as_ptr() as *const c_char);
+        //         // Create a function from a native C method
+        //         let property_value_func = jerry::jerry_function_external(Some(print_handler));
 
-                // Create a function from a native C method
-                let property_value_func = jerry::jerry_function_external(Some(print_handler));
+        //         // Add the "print" property with the function value to the "global" object
+        //         let set_result = jerry::jerry_object_set(
+        //             global_object,
+        //             property_name_print,
+        //             property_value_func,
+        //         );
 
-                // Add the "print" property with the function value to the "global" object
-                let set_result = jerry::jerry_object_set(
-                    global_object,
-                    property_name_print,
-                    property_value_func,
-                );
+        //         // Check if there was no error when adding the property
+        //         if jerry::jerry_value_is_exception(set_result) {
+        //             eprintln!("Failed to add the 'print' property");
+        //         }
 
-                // Check if there was no error when adding the property
-                if jerry::jerry_value_is_exception(set_result) {
-                    eprintln!("Failed to add the 'print' property");
-                }
+        //         // Release all jerry_value_t-s
+        //         jerry::jerry_value_free(set_result);
+        //         jerry::jerry_value_free(property_value_func);
+        //         jerry::jerry_value_free(property_name_print);
+        //         jerry::jerry_value_free(global_object);
+        //     }
 
-                // Release all jerry_value_t-s
-                jerry::jerry_value_free(set_result);
-                jerry::jerry_value_free(property_value_func);
-                jerry::jerry_value_free(property_name_print);
-                jerry::jerry_value_free(global_object);
-            }
+        //     // Run the demo script with 'eval'
+        //     let eval_ret = jerry::jerry_eval(
+        //         script_ptr,
+        //         script_size,
+        //         jerry::jerry_parse_option_enable_feature_t_JERRY_PARSE_NO_OPTS,
+        //     );
 
-            // Run the demo script with 'eval'
-            let eval_ret = jerry::jerry_eval(
-                script_ptr,
-                script_size,
-                jerry::jerry_parse_option_enable_feature_t_JERRY_PARSE_NO_OPTS,
-            );
+        //     // Check if there was any error (syntax or runtime)
+        //     let run_ok = !jerry::jerry_value_is_exception(eval_ret);
 
-            // Check if there was any error (syntax or runtime)
-            let run_ok = !jerry::jerry_value_is_exception(eval_ret);
+        //     // Parsed source code must be freed
+        //     jerry::jerry_value_free(eval_ret);
 
-            // Parsed source code must be freed
-            jerry::jerry_value_free(eval_ret);
+        //     // Cleanup engine
+        //     jerry::jerry_cleanup();
 
-            // Cleanup engine
-            jerry::jerry_cleanup();
-
-            if run_ok {
-                println!("Script executed successfully!");
-            } else {
-                eprintln!("Script execution failed!");
-                std::process::exit(1);
-            }
-        }
+        //     if run_ok {
+        //         println!("Script executed successfully!");
+        //     } else {
+        //         eprintln!("Script execution failed!");
+        //         std::process::exit(1);
+        //     }
+        // }
 
         Self::with_renderer(
             config,
@@ -993,6 +985,8 @@ impl DotLottieRuntime {
         }
     }
 
+    pub fn eval(&self, script: &str) {}
+
     pub fn set_theme(&mut self, theme_id: &str) -> bool {
         if self.active_theme_id == theme_id {
             return true;
@@ -1643,6 +1637,7 @@ impl DotLottiePlayerContainer {
 pub struct DotLottiePlayer {
     player: Rc<RwLock<DotLottiePlayerContainer>>,
     state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
+    scripting_engine: Rc<RwLock<Option<ScriptingEngine>>>,
 }
 
 impl DotLottiePlayer {
@@ -1651,6 +1646,7 @@ impl DotLottiePlayer {
         DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config, 0))),
             state_machine: Rc::new(RwLock::new(None)),
+            scripting_engine: Rc::new(RwLock::new(None)),
         }
     }
 
@@ -1659,6 +1655,7 @@ impl DotLottiePlayer {
         DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config, threads))),
             state_machine: Rc::new(RwLock::new(None)),
+            scripting_engine: Rc::new(RwLock::new(None)),
         }
     }
 
@@ -1668,6 +1665,7 @@ impl DotLottiePlayer {
                 config, renderer,
             ))),
             state_machine: Rc::new(RwLock::new(None)),
+            scripting_engine: Rc::new(RwLock::new(None)),
         }
     }
 
@@ -2279,6 +2277,32 @@ impl DotLottiePlayer {
         }
 
         true
+    }
+
+    pub fn run_javascript(&self, script: &str) {
+        println!("eval");
+        if let Ok(mut scripting_engine) = self.scripting_engine.try_write() {
+            println!("try write");
+            // We've called subscribe before loading a state machine
+            if (*scripting_engine).is_some() {
+                println!("1) Evaluting..");
+
+                let s_e = scripting_engine.as_ref().unwrap();
+                s_e.eval("var theme = 'earth'; setTheme(theme);");
+            } else {
+                println!("2) Evaluting..");
+
+                let s_e = ScriptingEngine::new(self.player.clone());
+
+                scripting_engine.replace(s_e);
+
+                let s_e = scripting_engine.as_ref().unwrap();
+
+                s_e.eval("var theme = 'earth'; setTheme(theme);");
+            }
+        } else {
+            println!("try write failed");
+        }
     }
 
     pub fn state_machine_load(&self, state_machine_id: &str) -> bool {

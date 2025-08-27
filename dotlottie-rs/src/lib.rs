@@ -3,6 +3,7 @@ mod fms;
 mod layout;
 mod lottie_renderer;
 mod markers;
+mod scripting;
 mod state_machine_engine;
 mod theming;
 pub(crate) mod time;

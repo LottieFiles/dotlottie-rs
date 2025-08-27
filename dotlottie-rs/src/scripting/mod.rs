@@ -57,11 +57,11 @@ impl ScriptingEngine {
             // Use the static info structure
             jerry::jerry_object_set_native_ptr(
                 global_object,
-                &ENGINE_NATIVE_INFO, // Use the static reference
+                &ENGINE_NATIVE_INFO,
                 self as *const Self as *mut std::os::raw::c_void,
             );
 
-            // Register the set_theme function
+            // Register setTheme function
             let property_name =
                 jerry::jerry_string_sz(b"setTheme\0".as_ptr() as *const std::os::raw::c_char);
             let property_value_func = jerry::jerry_function_external(Some(Self::jerry_set_theme));
@@ -74,12 +74,180 @@ impl ScriptingEngine {
                 println!("Successfully added the 'setTheme' property");
             }
 
+            // Register play function
+            let play_name =
+                jerry::jerry_string_sz(b"play\0".as_ptr() as *const std::os::raw::c_char);
+            let play_func = jerry::jerry_function_external(Some(Self::jerry_play));
+            let play_result = jerry::jerry_object_set(global_object, play_name, play_func);
+
+            if jerry::jerry_value_is_exception(play_result) {
+                eprintln!("Failed to add the 'play' property");
+            } else {
+                println!("Successfully added the 'play' property");
+            }
+
+            // Register pause function
+            let pause_name =
+                jerry::jerry_string_sz(b"pause\0".as_ptr() as *const std::os::raw::c_char);
+            let pause_func = jerry::jerry_function_external(Some(Self::jerry_pause));
+            let pause_result = jerry::jerry_object_set(global_object, pause_name, pause_func);
+
+            if jerry::jerry_value_is_exception(pause_result) {
+                eprintln!("Failed to add the 'pause' property");
+            } else {
+                println!("Successfully added the 'pause' property");
+            }
+
+            // Register stop function
+            let stop_name =
+                jerry::jerry_string_sz(b"stop\0".as_ptr() as *const std::os::raw::c_char);
+            let stop_func = jerry::jerry_function_external(Some(Self::jerry_stop));
+            let stop_result = jerry::jerry_object_set(global_object, stop_name, stop_func);
+
+            if jerry::jerry_value_is_exception(stop_result) {
+                eprintln!("Failed to add the 'stop' property");
+            } else {
+                println!("Successfully added the 'stop' property");
+            }
+
+            // Register setFrame function
+            let set_frame_name =
+                jerry::jerry_string_sz(b"setFrame\0".as_ptr() as *const std::os::raw::c_char);
+            let set_frame_func = jerry::jerry_function_external(Some(Self::jerry_set_frame));
+            let set_frame_result =
+                jerry::jerry_object_set(global_object, set_frame_name, set_frame_func);
+
+            if jerry::jerry_value_is_exception(set_frame_result) {
+                eprintln!("Failed to add the 'setFrame' property");
+            } else {
+                println!("Successfully added the 'setFrame' property");
+            }
+
             // Cleanup
             jerry::jerry_value_free(set_result);
             jerry::jerry_value_free(property_value_func);
             jerry::jerry_value_free(property_name);
+            jerry::jerry_value_free(play_result);
+            jerry::jerry_value_free(play_func);
+            jerry::jerry_value_free(play_name);
+            jerry::jerry_value_free(pause_result);
+            jerry::jerry_value_free(pause_func);
+            jerry::jerry_value_free(pause_name);
+            jerry::jerry_value_free(stop_result);
+            jerry::jerry_value_free(stop_func);
+            jerry::jerry_value_free(stop_name);
+            jerry::jerry_value_free(set_frame_result);
+            jerry::jerry_value_free(set_frame_func);
+            jerry::jerry_value_free(set_frame_name);
             jerry::jerry_value_free(global_object);
         }
+    }
+
+    // Jerry callback functions
+    unsafe extern "C" fn jerry_play(
+        _call_info_p: *const jerry::jerry_call_info_t,
+        _arguments: *const jerry::jerry_value_t,
+        _argument_count: jerry::jerry_length_t,
+    ) -> jerry::jerry_value_t {
+        println!("jerry_play called");
+
+        unsafe {
+            let global_object = jerry::jerry_current_realm();
+            let engine_ptr = jerry::jerry_object_get_native_ptr(global_object, &ENGINE_NATIVE_INFO);
+            jerry::jerry_value_free(global_object);
+
+            if !engine_ptr.is_null() {
+                let engine = &*(engine_ptr as *const ScriptingEngine);
+                let success = engine.play();
+                return jerry::jerry_boolean(success);
+            } else {
+                println!("Engine pointer is null in jerry_play!");
+            }
+        }
+
+        jerry::jerry_boolean(false)
+    }
+
+    unsafe extern "C" fn jerry_set_frame(
+        _call_info_p: *const jerry::jerry_call_info_t,
+        arguments: *const jerry::jerry_value_t,
+        argument_count: jerry::jerry_length_t,
+    ) -> jerry::jerry_value_t {
+        println!("jerry_set_frame called with {} arguments", argument_count);
+
+        if argument_count > 0 {
+            unsafe {
+                let global_object = jerry::jerry_current_realm();
+                let engine_ptr =
+                    jerry::jerry_object_get_native_ptr(global_object, &ENGINE_NATIVE_INFO);
+                jerry::jerry_value_free(global_object);
+
+                if !engine_ptr.is_null() {
+                    let engine = &*(engine_ptr as *const ScriptingEngine);
+
+                    // Convert the first argument to a number (f32)
+                    let frame_number = jerry::jerry_value_as_number(*arguments);
+
+                    println!("Calling set_frame with: {}", frame_number);
+                    let success = engine.set_frame(frame_number);
+                    return jerry::jerry_boolean(success);
+                } else {
+                    println!("Engine pointer is null in jerry_set_frame!");
+                }
+            }
+        } else {
+            println!("jerry_set_frame called with no arguments!");
+        }
+
+        jerry::jerry_boolean(false)
+    }
+
+    unsafe extern "C" fn jerry_pause(
+        _call_info_p: *const jerry::jerry_call_info_t,
+        _arguments: *const jerry::jerry_value_t,
+        _argument_count: jerry::jerry_length_t,
+    ) -> jerry::jerry_value_t {
+        println!("jerry_pause called");
+
+        unsafe {
+            let global_object = jerry::jerry_current_realm();
+            let engine_ptr = jerry::jerry_object_get_native_ptr(global_object, &ENGINE_NATIVE_INFO);
+            jerry::jerry_value_free(global_object);
+
+            if !engine_ptr.is_null() {
+                let engine = &*(engine_ptr as *const ScriptingEngine);
+                let success = engine.pause();
+                return jerry::jerry_boolean(success);
+            } else {
+                println!("Engine pointer is null in jerry_pause!");
+            }
+        }
+
+        jerry::jerry_boolean(false)
+    }
+
+    unsafe extern "C" fn jerry_stop(
+        _call_info_p: *const jerry::jerry_call_info_t,
+        _arguments: *const jerry::jerry_value_t,
+        _argument_count: jerry::jerry_length_t,
+    ) -> jerry::jerry_value_t {
+        println!("jerry_stop called");
+
+        unsafe {
+            let global_object = jerry::jerry_current_realm();
+            let engine_ptr = jerry::jerry_object_get_native_ptr(global_object, &ENGINE_NATIVE_INFO);
+            jerry::jerry_value_free(global_object);
+
+            if !engine_ptr.is_null() {
+                let engine = &*(engine_ptr as *const ScriptingEngine);
+                let success = engine.stop();
+                return jerry::jerry_boolean(success);
+            } else {
+                println!("Engine pointer is null in jerry_stop!");
+            }
+        }
+
+        jerry::jerry_boolean(false)
     }
 
     unsafe extern "C" fn jerry_set_theme(
@@ -96,7 +264,6 @@ impl ScriptingEngine {
                 // Use the same static reference
                 let engine_ptr =
                     jerry::jerry_object_get_native_ptr(global_object, &ENGINE_NATIVE_INFO);
-                println!("Engine pointer: {:p}", engine_ptr);
                 jerry::jerry_value_free(global_object);
 
                 if !engine_ptr.is_null() {
@@ -188,16 +355,94 @@ impl ScriptingEngine {
         );
 
         if let Some(player) = &self.player {
-            // println!("Strong count: {}", Rc::strong_count(player));
             match player.read() {
                 Ok(player_guard) => {
-                    println!("Successfully acquired player lock");
                     return player_guard.set_theme(theme_id);
                 }
                 Err(poison_error) => {
                     println!("Lock was poisoned, attempting recovery");
                     let player_guard = poison_error.into_inner();
                     return player_guard.set_theme(theme_id);
+                }
+            }
+        }
+
+        false
+    }
+
+    // Rust methods that interact with the player
+    pub fn play(&self) -> bool {
+        println!("Jerry script successfully called play");
+
+        if let Some(player) = &self.player {
+            match player.read() {
+                Ok(player_guard) => {
+                    return player_guard.play();
+                }
+                Err(poison_error) => {
+                    println!("Lock was poisoned in play, attempting recovery");
+                    let player_guard = poison_error.into_inner();
+                    return player_guard.play();
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn pause(&self) -> bool {
+        println!("Jerry script successfully called pause");
+
+        if let Some(player) = &self.player {
+            match player.read() {
+                Ok(player_guard) => {
+                    return player_guard.pause();
+                }
+                Err(poison_error) => {
+                    println!("Lock was poisoned in pause, attempting recovery");
+                    let player_guard = poison_error.into_inner();
+                    return player_guard.pause();
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn stop(&self) -> bool {
+        println!("Jerry script successfully called stop");
+
+        if let Some(player) = &self.player {
+            match player.read() {
+                Ok(player_guard) => {
+                    return player_guard.stop();
+                }
+                Err(poison_error) => {
+                    println!("Lock was poisoned in stop, attempting recovery");
+                    let player_guard = poison_error.into_inner();
+                    return player_guard.stop();
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn set_frame(&self, frame_no: f32) -> bool {
+        println!(
+            "Jerry script successfully called set_frame with: {}",
+            frame_no
+        );
+
+        if let Some(player) = &self.player {
+            match player.read() {
+                Ok(player_guard) => {
+                    return player_guard.set_frame(frame_no);
+                }
+                Err(poison_error) => {
+                    println!("Lock was poisoned in set_frame, attempting recovery");
+                    let player_guard = poison_error.into_inner();
+                    return player_guard.set_frame(frame_no);
                 }
             }
         }

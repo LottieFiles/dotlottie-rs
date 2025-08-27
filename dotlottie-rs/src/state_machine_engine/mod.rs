@@ -391,8 +391,6 @@ impl StateMachineEngine {
 
         match parsed_state_machine {
             Ok(parsed_state_machine) => {
-                let initial_state_index = parsed_state_machine.initial.clone();
-
                 /* Build all input variables into hashmaps for easier use */
                 if let Some(inputs) = &parsed_state_machine.inputs {
                     for input in inputs {
@@ -451,18 +449,6 @@ impl StateMachineEngine {
                     }
                 }
 
-                let err = new_state_machine.set_current_state(&initial_state_index, None, false);
-                match err {
-                    Ok(_) => {}
-                    Err(error) => {
-                        let message = format!("Load: {error:?}");
-
-                        self.observe_on_error(message.as_str());
-
-                        return Err(StateMachineEngineError::CreationError);
-                    }
-                }
-
                 Ok(new_state_machine)
             }
             Err(_error) => Err(StateMachineEngineError::CreationError),
@@ -490,6 +476,20 @@ impl StateMachineEngine {
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
             return false;
+        }
+
+        let initial = &self.state_machine.initial.clone();
+
+        let err = self.set_current_state(initial, None, false);
+        match err {
+            Ok(_) => {}
+            Err(error) => {
+                let message = format!("Error setting initial state: {error:?}");
+
+                self.observe_on_error(message.as_str());
+
+                return false;
+            }
         }
 
         if self.status == StateMachineEngineStatus::Running {

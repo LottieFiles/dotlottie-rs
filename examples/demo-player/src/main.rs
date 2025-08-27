@@ -100,23 +100,34 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = Player::new("src/emoji.json");
+    let mut player = Player::new("src/themed.lottie");
 
+    let mut ran = false;
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if window.is_key_pressed(Key::S, KeyRepeat::No) {
-            player.player.stop();
+            player.player.eval(&"stop();".to_string());
         }
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
-            player.player.play();
+            player.player.eval(&"play();".to_string());
+        }
+        if window.is_key_pressed(Key::T, KeyRepeat::No) {
+            if !ran {
+                player
+                    .player
+                    .eval(&"var theme = 'Water'; setTheme(theme); setFrame(0);".to_string());
+
+                ran = true;
+            }
         }
         if window.is_key_pressed(Key::Right, KeyRepeat::No) {
             player.next_marker();
         }
 
-        if player.update() {
-            window
-                .update_with_buffer(player.frame_buffer(), WIDTH, HEIGHT)
-                .expect("Failed to update window");
-        }
+        // if player.update() {
+        player.update();
+        window
+            .update_with_buffer(player.frame_buffer(), WIDTH, HEIGHT)
+            .expect("Failed to update window");
+        // }
     }
 }

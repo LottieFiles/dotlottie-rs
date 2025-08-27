@@ -2279,18 +2279,12 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn run_javascript(&self, script: &str) {
-        println!("eval");
+    pub fn eval(&self, script: &str) {
         if let Ok(mut scripting_engine) = self.scripting_engine.try_write() {
-            println!("try write");
-
             if (*scripting_engine).is_some() {
-                println!("1) Evaluating..");
                 let s_e = scripting_engine.as_ref().unwrap();
-                s_e.eval("var theme = 'Water'; setTheme(theme);");
+                s_e.eval(script);
             } else {
-                println!("2) Evaluating..");
-
                 // Create without registering functions first
                 let s_e = ScriptingEngine::new(self.player.clone());
                 scripting_engine.replace(s_e);
@@ -2299,7 +2293,7 @@ impl DotLottiePlayer {
                 let s_e = scripting_engine.as_ref().unwrap();
 
                 s_e.register_functions(); // Register after the object is in its final location
-                s_e.eval("var theme = 'Water'; setTheme(theme);");
+                s_e.eval(script);
             }
         }
     }

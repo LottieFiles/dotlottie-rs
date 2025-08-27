@@ -25,18 +25,27 @@ pub struct ScriptingEngine {
     /// Evaluates a JavaScript source string and returns a result as a string, or an error.
     // fn eval(&mut self, source: &str) -> Result<String, ScriptingError>;
     pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
+    has_registered_functions: bool,
 }
 
 impl ScriptingEngine {
     pub fn new(player: Rc<RwLock<DotLottiePlayerContainer>>) -> ScriptingEngine {
-        let engine = ScriptingEngine {
+        ScriptingEngine {
             player: Some(player),
-        };
-
-        engine.register_functions();
-
-        engine
+            // Todo: Self register inside eval
+            has_registered_functions: false,
+        }
     }
+
+    // pub fn new(player: Rc<RwLock<DotLottiePlayerContainer>>) -> ScriptingEngine {
+    //     let engine = ScriptingEngine {
+    //         player: Some(player),
+    //     };
+
+    //     engine.register_functions();
+
+    //     engine
+    // }
 
     pub fn register_functions(&self) {
         unsafe {
@@ -179,19 +188,18 @@ impl ScriptingEngine {
         );
 
         if let Some(player) = &self.player {
-            println!("Strong count: {}", Rc::strong_count(player));
-
-            // match player.read() {
-            //     Ok(player_guard) => {
-            //         println!("Successfully acquired player lock");
-            //         return player_guard.set_theme(theme_id);
-            //     }
-            //     Err(poison_error) => {
-            //         println!("Lock was poisoned, attempting recovery");
-            //         let player_guard = poison_error.into_inner();
-            //         return player_guard.set_theme(theme_id);
-            //     }
-            // }
+            // println!("Strong count: {}", Rc::strong_count(player));
+            match player.read() {
+                Ok(player_guard) => {
+                    println!("Successfully acquired player lock");
+                    return player_guard.set_theme(theme_id);
+                }
+                Err(poison_error) => {
+                    println!("Lock was poisoned, attempting recovery");
+                    let player_guard = poison_error.into_inner();
+                    return player_guard.set_theme(theme_id);
+                }
+            }
         }
 
         false

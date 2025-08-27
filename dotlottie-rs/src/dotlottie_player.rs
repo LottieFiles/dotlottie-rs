@@ -2283,25 +2283,24 @@ impl DotLottiePlayer {
         println!("eval");
         if let Ok(mut scripting_engine) = self.scripting_engine.try_write() {
             println!("try write");
-            // We've called subscribe before loading a state machine
+
             if (*scripting_engine).is_some() {
-                println!("1) Evaluting..");
-
+                println!("1) Evaluating..");
                 let s_e = scripting_engine.as_ref().unwrap();
-                s_e.eval("var theme = 'earth'; setTheme(theme);");
+                s_e.eval("var theme = 'Water'; setTheme(theme);");
             } else {
-                println!("2) Evaluting..");
+                println!("2) Evaluating..");
 
+                // Create without registering functions first
                 let s_e = ScriptingEngine::new(self.player.clone());
-
                 scripting_engine.replace(s_e);
 
+                // Now register functions with the stable pointer
                 let s_e = scripting_engine.as_ref().unwrap();
 
-                s_e.eval("var theme = 'earth'; setTheme(theme);");
+                s_e.register_functions(); // Register after the object is in its final location
+                s_e.eval("var theme = 'Water'; setTheme(theme);");
             }
-        } else {
-            println!("try write failed");
         }
     }
 

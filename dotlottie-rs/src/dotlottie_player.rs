@@ -629,6 +629,10 @@ impl DotLottieRuntime {
         self.config.autoplay = new_config.autoplay;
         self.config.theme_id = new_config.theme_id;
         self.config.animation_id = new_config.animation_id;
+
+        if new_config.autoplay {
+            self.play();
+        }
     }
 
     pub fn update_marker(&mut self, marker: &String) {

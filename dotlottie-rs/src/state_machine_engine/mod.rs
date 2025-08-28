@@ -25,8 +25,8 @@ use transitions::{Transition, TransitionTrait};
 use crate::actions::whitelist::Whitelist;
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, DotLottiePlayerContainer, EventName,
-    PointerEvent, StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, Config, DotLottiePlayerContainer,
+    EventName, PointerEvent, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -95,6 +95,9 @@ impl Default for PointerData {
 }
 
 pub struct StateMachineEngine {
+    // For resetting the player config after state machine is stopped
+    cached_player_config: Config,
+
     /* We keep references to the StateMachine's States. */
     /* This prevents duplicating the data inside the engine. */
     pub global_state: Option<State>,
@@ -131,6 +134,7 @@ pub struct StateMachineEngine {
 impl Default for StateMachineEngine {
     fn default() -> StateMachineEngine {
         StateMachineEngine {
+            cached_player_config: Config::default(),
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
@@ -159,7 +163,9 @@ impl StateMachineEngine {
         player: Rc<RwLock<DotLottiePlayerContainer>>,
         max_cycle_count: Option<usize>,
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
+        // Create an empty state machine object that we'll use to boot up the parser from
         let mut state_machine = StateMachineEngine {
+            cached_player_config: Config::default(),
             global_state: None,
             state_machine: StateMachine::default(),
             current_state: None,
@@ -385,8 +391,6 @@ impl StateMachineEngine {
 
         match parsed_state_machine {
             Ok(parsed_state_machine) => {
-                let initial_state_index = parsed_state_machine.initial.clone();
-
                 /* Build all input variables into hashmaps for easier use */
                 if let Some(inputs) = &parsed_state_machine.inputs {
                     for input in inputs {
@@ -424,24 +428,17 @@ impl StateMachineEngine {
                 new_state_machine.player = Some(player.clone());
                 new_state_machine.state_machine = parsed_state_machine;
 
+                let try_read_lock = &player.try_read();
+                if let Ok(player) = try_read_lock {
+                    new_state_machine.cached_player_config = player.config();
+                }
+
                 new_state_machine.init_listened_layers();
 
                 // Run the security check pipeline
                 let check_report = self.security_check_pipeline(&new_state_machine);
 
                 match check_report {
-                    Ok(_) => {}
-                    Err(error) => {
-                        let message = format!("Load: {error:?}");
-
-                        self.observe_on_error(message.as_str());
-
-                        return Err(StateMachineEngineError::CreationError);
-                    }
-                }
-
-                let err = new_state_machine.set_current_state(&initial_state_index, None, false);
-                match err {
                     Ok(_) => {}
                     Err(error) => {
                         let message = format!("Load: {error:?}");
@@ -466,9 +463,33 @@ impl StateMachineEngine {
     }
 
     pub fn start(&mut self, open_url: &OpenUrlPolicy) -> bool {
+        if let Some(player) = &self.player {
+            let try_read_lock = &player.try_read();
+            if let Ok(player) = try_read_lock {
+                // Reset to first frame
+                player.stop();
+                // Remove all playback settings
+                player.set_config(Config::default());
+            }
+        }
+
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
             return false;
+        }
+
+        let initial = &self.state_machine.initial.clone();
+
+        let err = self.set_current_state(initial, None, false);
+        match err {
+            Ok(_) => {}
+            Err(error) => {
+                let message = format!("Error setting initial state: {error:?}");
+
+                self.observe_on_error(message.as_str());
+
+                return false;
+            }
         }
 
         if self.status == StateMachineEngineStatus::Running {
@@ -501,6 +522,13 @@ impl StateMachineEngine {
         self.status = StateMachineEngineStatus::Stopped;
 
         self.observe_on_stop();
+
+        if let Some(player) = &self.player {
+            let try_read_lock = &player.try_read();
+            if let Ok(player) = try_read_lock {
+                player.set_config(self.cached_player_config.clone());
+            }
+        }
     }
 
     pub fn status(&self) -> String {

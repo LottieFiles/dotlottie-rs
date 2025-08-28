@@ -146,7 +146,6 @@ impl StateTrait for State {
 
                     if let Some(autoplay) = autoplay {
                         if *autoplay {
-                            player_read.play();
                             return 2;
                         } else {
                             player_read.pause();

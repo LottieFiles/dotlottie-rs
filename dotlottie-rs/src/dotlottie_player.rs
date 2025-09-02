@@ -262,7 +262,6 @@ impl DotLottieRuntime {
 
     pub fn play(&mut self) -> bool {
         if !self.is_loaded || self.is_playing() {
-            println!(">> Already playing");
             return false;
         }
 
@@ -290,7 +289,6 @@ impl DotLottieRuntime {
     pub fn pause(&mut self) -> bool {
         if self.is_loaded && self.is_playing() {
             self.playback_state = PlaybackState::Paused;
-            println!(">> PAUSING");
             true
         } else {
             false
@@ -409,7 +407,6 @@ impl DotLottieRuntime {
     }
 
     fn handle_forward_mode(&mut self, next_frame: f32, end_frame: f32) -> f32 {
-        // println!("{}", self.loop_count_disabled());
         if next_frame >= end_frame {
             if self.config.loop_animation && self.loop_count_disabled() {
                 self.loop_count += 1;

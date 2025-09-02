@@ -11,6 +11,7 @@ pub mod whitelist;
 #[derive(Debug)]
 pub enum StateMachineActionError {
     ExecuteError,
+    ParsingError,
 }
 
 pub trait ActionTrait {

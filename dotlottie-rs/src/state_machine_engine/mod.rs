@@ -751,7 +751,7 @@ impl StateMachineEngine {
             // Now use the extracted information
             if let (Some(state), Some(player)) = (state, player) {
                 // Enter the state
-                state.enter(self, &player);
+                let _ = state.enter(self, &player);
                 // Don't forget to put things back
                 // new_state becomes the current state
                 self.current_state = Some(state);

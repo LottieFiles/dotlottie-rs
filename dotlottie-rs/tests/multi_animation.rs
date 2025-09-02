@@ -22,7 +22,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "regression"]
     pub fn test_load_animation() {
         let player = DotLottiePlayer::new(Config::default());
         assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));

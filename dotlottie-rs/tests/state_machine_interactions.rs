@@ -44,10 +44,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "regression"]
     pub fn pointer_down_up_test() {
         let global_state =
             include_str!("fixtures/statemachines/interaction_tests/pointer_down_up.json");
+
         let player = DotLottiePlayer::new(Config::default());
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
         let l = player.state_machine_load_data(global_state);
@@ -60,7 +60,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "global");
 
-        let star_1_box = player.get_layer_bounds("star_1");
+        let star_1_box = player.get_layer_bounds("star1");
 
         player.state_machine_post_event(&Event::PointerDown {
             x: star_1_box[0],
@@ -69,7 +69,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_1");
 
-        let star_2_box = player.get_layer_bounds("star_2");
+        let star_2_box = player.get_layer_bounds("star2");
 
         player.state_machine_post_event(&Event::PointerDown {
             x: star_2_box[0],
@@ -78,7 +78,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_2");
 
-        let star_3_box = player.get_layer_bounds("star_3");
+        let star_3_box = player.get_layer_bounds("star3");
         player.state_machine_post_event(&Event::PointerDown {
             x: star_3_box[0],
             y: star_3_box[1],
@@ -86,7 +86,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_3");
 
-        let star_4_box = player.get_layer_bounds("star_4");
+        let star_4_box = player.get_layer_bounds("star4");
         player.state_machine_post_event(&Event::PointerDown {
             x: star_4_box[0],
             y: star_4_box[1],
@@ -94,7 +94,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_4");
 
-        let star_5_box = player.get_layer_bounds("star_5");
+        let star_5_box = player.get_layer_bounds("star5");
         player.state_machine_post_event(&Event::PointerDown {
             x: star_5_box[0],
             y: star_5_box[1],
@@ -102,7 +102,7 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "star_5");
 
-        let star_6_box = player.get_layer_bounds("star_6");
+        let star_6_box = player.get_layer_bounds("star 6");
         // Test that pointerUp anywhere on the canvas sets us back to global
         player.state_machine_post_event(&Event::PointerUp {
             x: star_6_box[0],

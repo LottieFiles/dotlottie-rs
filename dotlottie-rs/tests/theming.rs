@@ -83,7 +83,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "regression"]
     fn test_clear_active_theme_id_after_new_animation_data_is_loaded() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
@@ -111,7 +110,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "regression"]
     fn test_clear_active_theme_id_after_new_animation_path_is_loaded() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,
@@ -137,7 +135,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "regression"]
     fn test_clear_active_theme_id_after_new_dotlottie_is_loaded() {
         let player = DotLottiePlayer::new(Config {
             autoplay: true,

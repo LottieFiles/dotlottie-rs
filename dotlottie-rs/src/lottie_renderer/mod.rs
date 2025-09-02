@@ -157,6 +157,8 @@ impl<R: Renderer> LottieRendererImpl<R> {
             return Ok(());
         }
 
+        let _ = self.renderer.sync();
+
         self.picture_width = 0.0;
         self.picture_height = 0.0;
         self.width = width;

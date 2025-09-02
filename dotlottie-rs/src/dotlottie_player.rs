@@ -388,7 +388,7 @@ impl DotLottieRuntime {
         next_frame
     }
 
-    pub fn loop_count_disabled(&mut self) -> bool {
+    pub fn loop_count_disabled(&self) -> bool {
         // If loop animation is false, loop_count is considered disabled
         if !self.config().loop_animation {
             return true;
@@ -397,9 +397,7 @@ impl DotLottieRuntime {
         // If loop_count is 0, its considered disabled
         if self.config().loop_count == 0 {
             return true;
-        } else if self.config().loop_count > 0 && self.config().loop_count - 1 <= self.loop_count()
-        {
-            self.loop_count += 1;
+        } else if self.config().loop_count > 0 && self.config().loop_count <= self.loop_count() {
             return false;
         }
 
@@ -1355,11 +1353,18 @@ impl DotLottiePlayerContainer {
 
             if self.is_complete() {
                 if self.config().loop_animation {
+                    let count_complete = self.loop_count() == self.config().loop_count;
+
+                    if count_complete {
+                        // Put the animation in a paused state, otherwise we can keep looping if we call tick()
+                        // Do it before emiting complete, otherwise it will pause the animation at the wrong stages in state machines
+                        self.pause();
+                    }
+
                     self.emit_on_loop(self.loop_count());
 
-                    if self.loop_count() == self.config().loop_count {
+                    if count_complete {
                         // Put the animation in a paused state, otherwise we can keep looping if we call tick()
-                        self.pause();
                         self.emit_on_complete();
                     }
                 } else if !self.config().loop_animation {

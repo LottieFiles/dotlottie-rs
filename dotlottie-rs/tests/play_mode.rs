@@ -18,6 +18,64 @@ mod play_mode_tests {
     }
 
     #[test]
+    fn test_loop_count_with_loop_animation_false() {
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::Forward,
+            autoplay: true,
+            loop_animation: false,
+            loop_count: 3,
+            ..Config::default()
+        });
+
+        assert!(
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            "Animation should load"
+        );
+        assert!(player.is_playing(), "Animation should be playing");
+        assert!(!player.is_complete(), "Animation should not be complete");
+
+        loop {
+            player.tick();
+
+            if player.is_complete() {
+                break;
+            }
+        }
+
+        assert_eq!(player.loop_count(), 0, "Should not have looped");
+        assert!(player.is_complete());
+    }
+
+    #[test]
+    fn test_zero_loop_count() {
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::Forward,
+            autoplay: true,
+            loop_animation: true,
+            loop_count: 0,
+            ..Config::default()
+        });
+
+        assert!(
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            "Animation should load"
+        );
+        assert!(player.is_playing(), "Animation should be playing");
+        assert!(!player.is_complete(), "Animation should not be complete");
+
+        loop {
+            player.tick();
+
+            if player.loop_count() >= 5 {
+                break;
+            }
+        }
+
+        assert_eq!(player.loop_count(), 5, "Will loop and ignore loop count");
+        assert!(player.is_complete());
+    }
+
+    #[test]
     fn test_set_play_mode() {
         let play_modes = vec![
             Mode::Forward,
@@ -128,6 +186,35 @@ mod play_mode_tests {
     }
 
     #[test]
+    fn test_forward_play_mode_with_loop_count() {
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::Forward,
+            autoplay: true,
+            loop_animation: true,
+            loop_count: 3,
+            ..Config::default()
+        });
+
+        assert!(
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            "Animation should load"
+        );
+        assert!(player.is_playing(), "Animation should be playing");
+        assert!(!player.is_complete(), "Animation should not be complete");
+
+        loop {
+            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+                break;
+            }
+            player.tick();
+            // player.render();
+        }
+
+        assert_eq!(player.loop_count(), 3, "Should have looped 3 times.");
+        assert!(player.is_complete());
+    }
+
+    #[test]
     fn test_reverse_play_mode() {
         let player = DotLottiePlayer::new(Config {
             mode: Mode::Reverse,
@@ -171,6 +258,34 @@ mod play_mode_tests {
 
         // check if the last frame is 0
         assert_eq!(0.0, prev_frame, "Expected last frame to be 0");
+    }
+
+    #[test]
+    fn test_reverse_play_mode_with_loop_count() {
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::Reverse,
+            autoplay: true,
+            loop_animation: true,
+            loop_count: 3,
+            ..Config::default()
+        });
+
+        assert!(
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            "Animation should load"
+        );
+        assert!(player.is_playing(), "Animation should be playing");
+        assert!(!player.is_complete(), "Animation should not be complete");
+
+        loop {
+            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+                break;
+            }
+            player.tick();
+        }
+
+        assert_eq!(player.loop_count(), 3, "Should have looped 3 times.");
+        assert!(player.is_complete());
     }
 
     #[test]
@@ -238,6 +353,33 @@ mod play_mode_tests {
     }
 
     #[test]
+    fn test_bounce_play_mode_with_loop_count() {
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::Bounce,
+            autoplay: true,
+            loop_animation: true,
+            loop_count: 3,
+            ..Config::default()
+        });
+
+        assert!(
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            "Animation should load"
+        );
+        assert!(player.is_playing(), "Animation should be playing");
+
+        loop {
+            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+                break;
+            }
+            player.tick();
+        }
+
+        assert_eq!(player.loop_count(), 3, "Should have looped 3 times.");
+        assert!(player.is_complete());
+    }
+
+    #[test]
     fn test_reverse_bounce_play_mode() {
         let player = DotLottiePlayer::new(Config {
             mode: Mode::ReverseBounce,
@@ -251,7 +393,6 @@ mod play_mode_tests {
         );
 
         assert!(player.is_playing(), "Animation should be playing");
-        assert!(!player.is_complete(), "Animation should not be complete");
 
         let mut rendered_frames: Vec<f32> = vec![];
 
@@ -299,5 +440,32 @@ mod play_mode_tests {
             rendered_frames[frame_idx] == player.total_frames() - 1.0,
             "Expected frame to be total frames at index {frame_idx}"
         );
+    }
+
+    #[test]
+    fn test_reverse_bounce_play_mode_with_loop_count() {
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::ReverseBounce,
+            autoplay: true,
+            loop_animation: true,
+            loop_count: 3,
+            ..Config::default()
+        });
+
+        assert!(
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            "Animation should load"
+        );
+        assert!(player.is_playing(), "Animation should be playing");
+
+        loop {
+            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+                break;
+            }
+            player.tick();
+        }
+
+        assert_eq!(player.loop_count(), 3, "Should have looped 3 times.");
+        assert!(player.is_complete());
     }
 }

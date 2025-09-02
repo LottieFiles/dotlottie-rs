@@ -346,7 +346,7 @@ impl Animation for TvgAnimation {
                 let v = (o.x * e2.x + o.y * e2.y) / (e2.x * e2.x + e2.y * e2.y);
 
                 // Check if point is inside the OBB
-                Ok(u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0)
+                Ok((0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v))
             } else {
                 Ok(false)
             }
@@ -363,9 +363,9 @@ impl Animation for TvgAnimation {
                 // Return the 8 points out of obb
                 let mut point_vec: Vec<f32> = Vec::with_capacity(8);
 
-                for i in 0..4 {
-                    point_vec.push(obb[i].x);
-                    point_vec.push(obb[i].y);
+                for item in &obb {
+                    point_vec.push(item.x);
+                    point_vec.push(item.y);
                 }
 
                 Ok([
@@ -477,7 +477,7 @@ impl Animation for TvgAnimation {
             if _duration.is_some() && _duration.unwrap() <= 0.0 {
                 return Err(TvgError::InvalidArgument);
             }
-            if _easing.is_some() && _easing.unwrap().iter().any(|&x| x < 0.0 || x > 1.0) {
+            if _easing.is_some() && _easing.unwrap().iter().any(|&x| !(0.0..=1.0).contains(&x)) {
                 return Err(TvgError::InvalidArgument);
             }
 
@@ -534,8 +534,8 @@ impl Animation for TvgAnimation {
                 unsafe {
                     tvg::tvg_lottie_animation_tween(
                         self.raw_animation,
-                        self.tween_state.as_ref().unwrap().from.clone(),
-                        self.tween_state.as_ref().unwrap().to.clone(),
+                        self.tween_state.as_ref().unwrap().from,
+                        self.tween_state.as_ref().unwrap().to,
                         _given_progress.unwrap(),
                     );
                 };

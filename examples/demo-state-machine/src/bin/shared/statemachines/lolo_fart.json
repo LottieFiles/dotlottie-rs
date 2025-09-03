@@ -1,0 +1,78 @@
+{
+  "id": "StateMachine1",
+  "initial": "slap",
+  "states": [
+    {
+      "id": "ZH0qh5sNMn45dePGenTRZ",
+      "name": "fart",
+      "animation": "",
+      "type": "PlaybackState",
+      "entryActions": [],
+      "exitActions": [
+        { "type": "SetNumeric", "value": 0, "inputName": "fart_count" }
+      ],
+      "segment": "fart",
+      "autoplay": true,
+      "loop": true,
+      "speed": 1,
+      "transitions": [
+        {
+          "toState": "slap",
+          "type": "Transition",
+          "guards": [
+            {
+              "inputName": "fart_count",
+              "type": "Numeric",
+              "compareTo": 3,
+              "conditionType": "Equal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "QSOY5D4BsBemJyk2LxVOq",
+      "name": "slap",
+      "animation": "",
+      "type": "PlaybackState",
+      "transitions": [
+        {
+          "guards": [
+            {
+              "inputName": "hovered",
+              "type": "Boolean",
+              "compareTo": true,
+              "conditionType": "Equal"
+            }
+          ],
+          "toState": "fart",
+          "type": "Transition"
+        }
+      ],
+      "entryActions": [],
+      "exitActions": [{ "type": "Reset", "inputName": "hovered" }],
+      "segment": "slap",
+      "autoplay": true,
+      "speed": 1,
+      "final": false,
+      "loop": true
+    }
+  ],
+  "interactions": [
+    {
+      "type": "PointerEnter",
+      "actions": [
+        { "type": "SetBoolean", "value": true, "inputName": "hovered" }
+      ]
+    },
+    {
+      "type": "OnLoopComplete",
+      "stateName": "fart",
+      "actions": [{ "type": "Increment", "inputName": "fart_count" }]
+    }
+  ],
+  "inputs": [
+    { "name": "hovered", "type": "Boolean", "value": false },
+    { "name": "fart_count", "type": "Numeric", "value": 0 }
+  ]
+}

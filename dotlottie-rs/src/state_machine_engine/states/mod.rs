@@ -18,7 +18,7 @@ pub trait StateTrait {
         &self,
         engine: &mut StateMachineEngine,
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
-    ) -> i32;
+    ) -> Result<(), StateMachineActionError>;
     fn exit(
         &self,
         engine: &mut StateMachineEngine,
@@ -41,6 +41,7 @@ pub enum State {
         transitions: Vec<Transition>,
         animation: String,
         r#loop: Option<bool>,
+        loop_count: Option<u32>,
         r#final: Option<bool>,
         autoplay: Option<bool>,
         mode: Option<String>,
@@ -60,21 +61,16 @@ pub enum State {
 }
 
 impl StateTrait for State {
-    // Return codes
-    // 0: Success
-    // 1: Failure
-    // 2: Play animation
-    // 3: Pause animation
-    // 4: Request and draw a new single frame of the animation (needed for sync state)
     fn enter(
         &self,
         engine: &mut StateMachineEngine,
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
-    ) -> i32 {
+    ) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState {
                 animation,
                 r#loop,
+                loop_count,
                 r#final,
                 autoplay,
                 mode,
@@ -94,7 +90,7 @@ impl StateTrait for State {
                         "Reverse" => defined_mode = Mode::Reverse,
                         "Bounce" => defined_mode = Mode::Bounce,
                         "ReverseBounce" => defined_mode = Mode::ReverseBounce,
-                        _ => return 1,
+                        _ => return Err(StateMachineActionError::ParsingError),
                     }
                 }
 
@@ -109,6 +105,7 @@ impl StateTrait for State {
                     let playback_config = Config {
                         mode: defined_mode,
                         loop_animation: r#loop.unwrap_or(default_config.loop_animation),
+                        loop_count: loop_count.unwrap_or(default_config.loop_count),
                         speed: speed.unwrap_or(default_config.speed),
                         use_frame_interpolation: uses_frame_interpolation,
                         autoplay: autoplay.unwrap_or(default_config.autoplay),
@@ -143,17 +140,6 @@ impl StateTrait for State {
                             engine.stop();
                         }
                     }
-
-                    if let Some(autoplay) = autoplay {
-                        if *autoplay {
-                            return 2;
-                        } else {
-                            player_read.pause();
-                            return 3;
-                        }
-                    } else {
-                        return 1;
-                    }
                 }
             }
             State::GlobalState {
@@ -180,7 +166,7 @@ impl StateTrait for State {
             }
         }
 
-        0
+        Ok(())
     }
 
     fn animation(&self) -> &str {

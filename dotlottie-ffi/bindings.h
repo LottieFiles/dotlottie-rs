@@ -58,6 +58,7 @@ typedef struct DotLottieString {
 typedef struct DotLottieConfig {
   enum Mode mode;
   bool loop_animation;
+  uint32_t loop_count;
   float speed;
   bool use_frame_interpolation;
   bool autoplay;

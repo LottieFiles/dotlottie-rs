@@ -67,6 +67,7 @@ dictionary OpenUrlPolicy {
 dictionary Config {
     boolean autoplay;
     boolean loop_animation;
+    u32 loop_count;
     Mode mode;
     f32 speed;
     boolean use_frame_interpolation;

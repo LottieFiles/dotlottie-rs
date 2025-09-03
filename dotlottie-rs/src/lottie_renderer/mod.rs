@@ -157,6 +157,8 @@ impl<R: Renderer> LottieRendererImpl<R> {
             return Ok(());
         }
 
+        let _ = self.renderer.sync();
+
         self.picture_width = 0.0;
         self.picture_height = 0.0;
         self.width = width;
@@ -178,8 +180,14 @@ impl<R: Renderer> LottieRendererImpl<R> {
     fn load_animation(&mut self, data: &str) -> Result<R::Animation, LottieRendererError> {
         let mut animation = R::Animation::default();
 
+        #[cfg(feature = "tvg-v0")]
         animation
             .load_data(data, "lottie")
+            .map_err(into_lottie::<R>)?;
+
+        #[cfg(feature = "tvg-v1")]
+        animation
+            .load_data(data, "lottie+json")
             .map_err(into_lottie::<R>)?;
 
         let (pw, ph) = animation.get_size().map_err(into_lottie::<R>)?;

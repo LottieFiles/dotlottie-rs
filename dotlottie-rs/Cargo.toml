@@ -8,6 +8,7 @@ links = "thorvg"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
+dev = ["tvg-v1", "tvg-sw", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-ttf"]
 tvg-v0 = []
 tvg-v1 = []
 tvg-log = []
@@ -35,7 +36,7 @@ cc = "1.2"
 [dev-dependencies]
 criterion = "0.5.1"
 # This is a workaround to enable this feature only on dev.
-dotlottie-rs = { path = ".", features = ["tvg-v0"] }
+dotlottie-rs = { path = ".", features = ["dev"] }
 
 [[bench]]
 name = "benchmarks"

@@ -737,6 +737,11 @@ impl DotLottieRuntime {
         self.config.segment = new_config.segment;
         self.config.autoplay = new_config.autoplay;
         self.config.theme_id = new_config.theme_id;
+
+        if let aid = new_config.animation_id.clone() {
+            self.load_animation(&aid, self.renderer.width(), self.renderer.height());
+        }
+
         self.config.animation_id = new_config.animation_id;
 
         if new_config.autoplay {
@@ -2279,11 +2284,11 @@ impl DotLottiePlayer {
         true
     }
 
-    pub fn eval(&self, script: &str) {
+    pub fn eval(&self, script: &str, force_global: bool) {
         if let Ok(mut scripting_engine) = self.scripting_engine.try_write() {
             if (*scripting_engine).is_some() {
                 let s_e = scripting_engine.as_ref().unwrap();
-                s_e.eval(script);
+                s_e.eval(script, force_global);
             } else {
                 // Create without registering functions first
                 let s_e = ScriptingEngine::new(self.player.clone());
@@ -2293,7 +2298,7 @@ impl DotLottiePlayer {
                 let s_e = scripting_engine.as_ref().unwrap();
 
                 s_e.register_functions(); // Register after the object is in its final location
-                s_e.eval(script);
+                s_e.eval(script, force_global);
             }
         }
     }

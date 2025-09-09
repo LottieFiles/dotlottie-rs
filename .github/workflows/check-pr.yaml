@@ -14,8 +14,24 @@ jobs:
   check-pr:
     if: github.head_ref != 'release'
     runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+      AR: llvm-ar
+      RANLIB: llvm-ranlib
+      CFLAGS: -O2
+      CXXFLAGS: -O2
+      BINDGEN_EXTRA_CLANG_ARGS: "-I/usr/include"
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang llvm-dev libclang-dev
 
       - name: Setup Rust
         uses: ningenMe/setup-rustup@v1.1.0
@@ -25,17 +41,17 @@ jobs:
 
       - name: Build
         run: |
-          cargo build --manifest-path=./dotlottie-rs/Cargo.toml --release
-          cargo build --manifest-path=./dotlottie-ffi/Cargo.toml --release
+          cargo build --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
+          cargo build --manifest-path=./dotlottie-ffi/Cargo.toml
 
       - name: Test
         run: |
-          cargo test --manifest-path=./dotlottie-rs/Cargo.toml --release -- --test-threads=1 
-          cargo test --manifest-path=./dotlottie-ffi/Cargo.toml --release -- --test-threads=1
+          cargo test --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" -- --test-threads=1
+          cargo test --manifest-path=./dotlottie-ffi/Cargo.toml -- --test-threads=1
 
       - name: Lint
         run: |
-          cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --all-targets -- -D clippy::print_stdout
+          cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml  --features="dev" --all-targets -- -D clippy::print_stdout
           cargo clippy --manifest-path=./dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
         env:
           RUSTFLAGS: "-Dwarnings"

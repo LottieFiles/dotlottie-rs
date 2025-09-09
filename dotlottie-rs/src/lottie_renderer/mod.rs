@@ -138,12 +138,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
             .checked_mul(height as u64)
             .ok_or(LottieRendererError::InvalidArgument)? as usize;
 
-        if self.buffer.capacity() >= buffer_size {
-            self.buffer.clear();
-            self.buffer.resize(buffer_size, 0);
-        } else {
-            self.buffer = vec![0; buffer_size];
-        }
+        self.buffer = vec![0; buffer_size];
 
         Ok(())
     }
@@ -156,6 +151,8 @@ impl<R: Renderer> LottieRendererImpl<R> {
         if self.width == width && self.height == height && !self.buffer.is_empty() {
             return Ok(());
         }
+
+        let _ = self.renderer.sync();
 
         self.picture_width = 0.0;
         self.picture_height = 0.0;
@@ -178,8 +175,14 @@ impl<R: Renderer> LottieRendererImpl<R> {
     fn load_animation(&mut self, data: &str) -> Result<R::Animation, LottieRendererError> {
         let mut animation = R::Animation::default();
 
+        #[cfg(feature = "tvg-v0")]
         animation
             .load_data(data, "lottie")
+            .map_err(into_lottie::<R>)?;
+
+        #[cfg(feature = "tvg-v1")]
+        animation
+            .load_data(data, "lottie+json")
             .map_err(into_lottie::<R>)?;
 
         let (pw, ph) = animation.get_size().map_err(into_lottie::<R>)?;
@@ -349,14 +352,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError> {
-        if no == self.current_frame {
-            return Err(LottieRendererError::InvalidArgument);
-        }
-
-        let total_frames = self
-            .get_animation()?
-            .get_total_frame()
-            .map_err(into_lottie::<R>)?;
+        let total_frames = self.total_frames()?;
 
         if no < 0.0 || no >= total_frames {
             return Err(LottieRendererError::InvalidArgument);
@@ -424,6 +420,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
                 .append_rect(0.0, 0.0, current_width, current_height, 0.0, 0.0)
                 .map_err(into_lottie::<R>)?;
         }
+
+        self.render()?;
 
         Ok(())
     }

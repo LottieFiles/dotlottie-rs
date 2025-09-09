@@ -10,7 +10,7 @@ mod tests {
     #[test]
     pub fn test_load_animation_with_animation_id() {
         let animation_id = "crying".to_string();
-        
+
         let player = DotLottiePlayer::new(Config {
             animation_id: animation_id.clone(),
             ..Config::default()

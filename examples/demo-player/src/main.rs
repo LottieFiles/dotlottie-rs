@@ -100,24 +100,128 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = Player::new("src/themed.lottie");
+    let mut player = Player::new("src/sm_theme_action.lottie");
+    // let mut player = Player::new("src/emoji.lottie");
 
     let mut ran = false;
+
+    let mut i = 0;
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        if !ran {
+            player.player.eval(
+                "
+                // State machine configuration
+                var themes = ['Water', 'air', 'earth'];
+                var currentThemeIndex = 0;
+                var frameCount = 0;
+                var autoMode = true;
+                var framesPerTheme = 60; // Change theme every 60 frames in auto mode
+                var animationSpeed = 1;
+
+                // State machine functions (without 'var' to make them global)
+                switchToTheme = function(newTheme) {
+                    var themeIndex = themes.indexOf(newTheme);
+                    if (themeIndex != -1 && themeIndex != currentThemeIndex) {
+                        currentThemeIndex = themeIndex;
+                        setTheme(themes[currentThemeIndex]);
+                        frameCount = 0; // Reset frame counter when manually switching
+                    }
+                };
+
+                nextTheme = function() {
+                    currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+                    setTheme(themes[currentThemeIndex]);
+                    frameCount = 0;
+                };
+
+                toggleAutoMode = function() {
+                    autoMode = !autoMode;
+                    frameCount = 0; // Reset counter when toggling mode
+                };
+
+                updateStateMachine = function() {
+                    frameCount = frameCount + animationSpeed;
+
+                    // Auto-cycle themes if in auto mode
+                    if (autoMode && frameCount >= framesPerTheme) {
+                        nextTheme();
+                    }
+
+                    // Always update animation frame
+                    setFrame(frameCount);
+                };
+
+                setSpeed = function(speed) {
+                    animationSpeed = speed;
+                };
+
+                // Initialize
+                switchToTheme('Water');
+                ", 
+                true,
+            );
+            ran = true;
+        }
+
+        // Manual theme switching
+        if window.is_key_pressed(Key::Key1, KeyRepeat::No) {
+            player.player.eval("switchToTheme('Water');", true);
+        }
+        if window.is_key_pressed(Key::Key2, KeyRepeat::No) {
+            player.player.eval("switchToTheme('Air');", true);
+        }
+        if window.is_key_pressed(Key::Key3, KeyRepeat::No) {
+            player.player.eval("switchToTheme('Earth');", true);
+        }
+        if window.is_key_pressed(Key::Key4, KeyRepeat::No) {
+            player.player.eval(
+                "setConfig({
+                        loop_animation: true,
+                        speed: 3,
+                        segment: [10, 50],
+                        autoplay: true,
+                        animation_id: 'blush',
+                        });",
+                true,
+            );
+        }
+
+        // State machine controls
+        if window.is_key_pressed(Key::A, KeyRepeat::No) {
+            // Toggle auto-cycling mode
+            player.player.eval("toggleAutoMode();", true);
+        }
+
+        if window.is_key_pressed(Key::Key1, KeyRepeat::No) {
+            player.player.eval("switchToTheme('Water');", true);
+        }
+        if window.is_key_pressed(Key::Key2, KeyRepeat::No) {
+            player.player.eval("switchToTheme('air');", true);
+        }
+        if window.is_key_pressed(Key::Key3, KeyRepeat::No) {
+            player.player.eval("switchToTheme('earth');", true);
+        }
+
+        // Update the state machine every frame
+        player.player.eval("updateStateMachine();", true);
+
         if window.is_key_pressed(Key::S, KeyRepeat::No) {
-            player.player.eval(&"stop();".to_string());
+            player.player.eval(&"stop();".to_string(), false);
         }
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
-            player.player.eval(&"play();".to_string());
+            player.player.eval(&"play();".to_string(), false);
         }
         if window.is_key_pressed(Key::T, KeyRepeat::No) {
             if !ran {
-                player
-                    .player
-                    .eval(&"var theme = 'Water'; setTheme(theme); setFrame(0);".to_string());
-
-                ran = true;
+                player.player.eval("this.theme = 'Water'; i = 0;", true);
             }
+
+            player
+                .player
+                .eval("i += 1; setTheme(this.theme); setFrame(i);", true);
+
+            ran = true;
         }
         if window.is_key_pressed(Key::Right, KeyRepeat::No) {
             player.next_marker();

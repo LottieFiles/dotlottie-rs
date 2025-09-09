@@ -27,9 +27,9 @@ impl Observer for LoopObserver {
 
     fn on_stop(&self) {}
 
-    fn on_frame(&self, frame_no: f32) {}
+    fn on_frame(&self, _: f32) {}
 
-    fn on_render(&self, frame_no: f32) {}
+    fn on_render(&self, _: f32) {}
 
     fn on_complete(&self) {
         let mut completed = self.completed.lock().unwrap();

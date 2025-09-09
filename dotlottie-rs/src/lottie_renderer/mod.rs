@@ -138,12 +138,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
             .checked_mul(height as u64)
             .ok_or(LottieRendererError::InvalidArgument)? as usize;
 
-        if self.buffer.capacity() >= buffer_size {
-            self.buffer.clear();
-            self.buffer.resize(buffer_size, 0);
-        } else {
-            self.buffer = vec![0; buffer_size];
-        }
+        self.buffer = vec![0; buffer_size];
 
         Ok(())
     }
@@ -357,14 +352,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError> {
-        if no == self.current_frame {
-            return Err(LottieRendererError::InvalidArgument);
-        }
-
-        let total_frames = self
-            .get_animation()?
-            .get_total_frame()
-            .map_err(into_lottie::<R>)?;
+        let total_frames = self.total_frames()?;
 
         if no < 0.0 || no >= total_frames {
             return Err(LottieRendererError::InvalidArgument);
@@ -432,6 +420,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
                 .append_rect(0.0, 0.0, current_width, current_height, 0.0, 0.0)
                 .map_err(into_lottie::<R>)?;
         }
+
+        self.render()?;
 
         Ok(())
     }

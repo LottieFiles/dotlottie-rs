@@ -151,6 +151,32 @@ impl ScriptingEngine {
                 println!("Successfully added the 'setConfig' property");
             }
 
+            // Register layersCollide function
+            let layers_collide_name =
+                jerry::jerry_string_sz(b"layersCollide\0".as_ptr() as *const std::os::raw::c_char);
+            let layers_collide_func =
+                jerry::jerry_function_external(Some(Self::jerry_layers_collide));
+            let layers_collide_result =
+                jerry::jerry_object_set(global_object, layers_collide_name, layers_collide_func);
+
+            if jerry::jerry_value_is_exception(layers_collide_result) {
+                eprintln!("Failed to add the 'layersCollide' property");
+            } else {
+                println!("Successfully added the 'layersCollide' property");
+            }
+
+            // Register jerry_print function
+            let print_name =
+                jerry::jerry_string_sz(b"print\0".as_ptr() as *const std::os::raw::c_char);
+            let print_func = jerry::jerry_function_external(Some(Self::jerry_print));
+            let print_result = jerry::jerry_object_set(global_object, print_name, print_func);
+
+            if jerry::jerry_value_is_exception(print_result) {
+                eprintln!("Failed to add the 'print' property");
+            } else {
+                println!("Successfully added the 'print' property");
+            }
+
             // Cleanup
             jerry::jerry_value_free(set_result);
             jerry::jerry_value_free(property_value_func);
@@ -170,8 +196,73 @@ impl ScriptingEngine {
             jerry::jerry_value_free(set_config_result);
             jerry::jerry_value_free(set_config_func);
             jerry::jerry_value_free(set_config_name);
+            jerry::jerry_value_free(print_result);
+            jerry::jerry_value_free(print_name);
+            jerry::jerry_value_free(print_result);
+            jerry::jerry_value_free(layers_collide_name);
+            jerry::jerry_value_free(layers_collide_result);
+            jerry::jerry_value_free(layers_collide_func);
+            jerry::jerry_value_free(layers_collide_name);
             jerry::jerry_value_free(global_object);
         }
+    }
+
+    unsafe extern "C" fn jerry_print(
+        _call_info_p: *const jerry::jerry_call_info_t,
+        arguments: *const jerry::jerry_value_t,
+        argument_count: jerry::jerry_length_t,
+    ) -> jerry::jerry_value_t {
+        println!("jerry_print called with {} arguments", argument_count);
+
+        if argument_count > 0 {
+            let mut output_parts = Vec::new();
+
+            // Process all arguments
+            for i in 0..argument_count {
+                unsafe {
+                    let arg = *arguments.offset(i as isize);
+
+                    // Convert argument to string representation
+                    let arg_as_string = if jerry::jerry_value_is_string(arg) {
+                        arg
+                    } else {
+                        jerry::jerry_value_to_string(arg)
+                    };
+
+                    let string_length = jerry::jerry_string_length(arg_as_string);
+
+                    if string_length > 0 {
+                        let mut buffer = vec![0u8; string_length as usize + 1];
+                        jerry::jerry_string_to_buffer(
+                            arg_as_string,
+                            jerry::jerry_encoding_t_JERRY_ENCODING_UTF8,
+                            buffer.as_mut_ptr(),
+                            string_length,
+                        );
+
+                        if let Ok(string_value) =
+                            String::from_utf8(buffer[..string_length as usize].to_vec())
+                        {
+                            output_parts.push(string_value);
+                        }
+                    }
+
+                    // Only free if we created a new string representation
+                    if !jerry::jerry_value_is_string(arg) {
+                        jerry::jerry_value_free(arg_as_string);
+                    }
+                }
+            }
+
+            // Print all arguments separated by spaces (like console.log)
+            if !output_parts.is_empty() {
+                println!("[JS] {}", output_parts.join(" "));
+            }
+        } else {
+            println!("[JS] ");
+        }
+
+        jerry::jerry_undefined()
     }
 
     // Jerry callback functions
@@ -364,6 +455,85 @@ impl ScriptingEngine {
             }
         } else {
             println!("jerry_set_config called with no arguments!");
+        }
+
+        jerry::jerry_boolean(false)
+    }
+
+    unsafe extern "C" fn jerry_layers_collide(
+        _call_info_p: *const jerry::jerry_call_info_t,
+        arguments: *const jerry::jerry_value_t,
+        argument_count: jerry::jerry_length_t,
+    ) -> jerry::jerry_value_t {
+        println!(
+            "jerry_layers_collide called with {} arguments",
+            argument_count
+        );
+
+        if argument_count >= 2 {
+            unsafe {
+                let global_object = jerry::jerry_current_realm();
+                let engine_ptr =
+                    jerry::jerry_object_get_native_ptr(global_object, &ENGINE_NATIVE_INFO);
+                jerry::jerry_value_free(global_object);
+
+                if !engine_ptr.is_null() {
+                    let engine = &*(engine_ptr as *const ScriptingEngine);
+
+                    // Convert the first argument to string (layer1_name)
+                    let arg1_as_string = jerry::jerry_value_to_string(*arguments);
+                    let string1_length = jerry::jerry_string_length(arg1_as_string);
+
+                    // Convert the second argument to string (layer2_name)
+                    let arg2_as_string = jerry::jerry_value_to_string(*arguments.offset(1));
+                    let string2_length = jerry::jerry_string_length(arg2_as_string);
+
+                    if string1_length > 0 && string2_length > 0 {
+                        let mut buffer1 = vec![0u8; string1_length as usize + 1];
+                        jerry::jerry_string_to_buffer(
+                            arg1_as_string,
+                            jerry::jerry_encoding_t_JERRY_ENCODING_UTF8,
+                            buffer1.as_mut_ptr(),
+                            string1_length,
+                        );
+
+                        let mut buffer2 = vec![0u8; string2_length as usize + 1];
+                        jerry::jerry_string_to_buffer(
+                            arg2_as_string,
+                            jerry::jerry_encoding_t_JERRY_ENCODING_UTF8,
+                            buffer2.as_mut_ptr(),
+                            string2_length,
+                        );
+
+                        if let (Ok(layer1_name), Ok(layer2_name)) = (
+                            String::from_utf8(buffer1[..string1_length as usize].to_vec()),
+                            String::from_utf8(buffer2[..string2_length as usize].to_vec()),
+                        ) {
+                            println!(
+                                "Calling layers_collide with: '{}' and '{}'",
+                                layer1_name, layer2_name
+                            );
+                            let collision_result =
+                                engine.layers_collide(&layer1_name, &layer2_name);
+
+                            jerry::jerry_value_free(arg1_as_string);
+                            jerry::jerry_value_free(arg2_as_string);
+
+                            return jerry::jerry_boolean(collision_result);
+                        }
+                    }
+
+                    jerry::jerry_value_free(arg1_as_string);
+                    jerry::jerry_value_free(arg2_as_string);
+                } else {
+                    println!("Engine pointer is null in jerry_layers_collide!");
+                }
+            }
+        } else {
+            println!(
+                "jerry_layers_collide called with insufficient arguments! Expected 2, got {}",
+                argument_count
+            );
         }
 
         jerry::jerry_boolean(false)
@@ -731,6 +901,27 @@ impl ScriptingEngine {
                 }
                 Err(_) => {
                     println!("Could not acquire write lock in set_config - possible deadlock!");
+                    return false;
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn layers_collide(&self, layer1_name: &str, layer2_name: &str) -> bool {
+        println!(
+            "Jerry script successfully called layers_collide with: '{}' and '{}'",
+            layer1_name, layer2_name
+        );
+
+        if let Some(player) = &self.player {
+            match player.try_read() {
+                Ok(player_guard) => {
+                    return player_guard.layers_collide(layer1_name, layer2_name);
+                }
+                Err(_) => {
+                    println!("Could not acquire read lock in layers_collide - possible deadlock!");
                     return false;
                 }
             }

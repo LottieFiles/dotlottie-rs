@@ -332,6 +332,12 @@ impl DotLottieRuntime {
         self.renderer.intersect(x, y, layer_name).unwrap_or(false)
     }
 
+    fn layers_collide(&self, layer1_name: &str, layer2_name: &str) -> bool {
+        self.renderer
+            .layers_collide(layer1_name, layer2_name)
+            .unwrap_or(false)
+    }
+
     pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
         let bbox = self.renderer.get_layer_bounds(layer_name);
 
@@ -1508,6 +1514,13 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().intersect(x, y, layer_name)
     }
 
+    pub fn layers_collide(&self, layer1_name: &str, layer2_name: &str) -> bool {
+        self.runtime
+            .read()
+            .unwrap()
+            .layers_collide(layer1_name, layer2_name)
+    }
+
     pub fn markers(&self) -> Vec<Marker> {
         self.runtime.read().unwrap().markers()
     }
@@ -1695,6 +1708,13 @@ impl DotLottiePlayer {
 
     pub fn intersect(&self, x: f32, y: f32, layer_name: &str) -> bool {
         self.player.read().unwrap().intersect(x, y, layer_name)
+    }
+
+    pub fn layers_collide(&self, layer1_name: &str, layer2_name: &str) -> bool {
+        self.player
+            .read()
+            .unwrap()
+            .layers_collide(layer1_name, layer2_name)
     }
 
     pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {

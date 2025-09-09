@@ -76,6 +76,12 @@ pub trait LottieRenderer {
 
     fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, LottieRendererError>;
 
+    fn layers_collide(
+        &self,
+        layer1_name: &str,
+        layer2_name: &str,
+    ) -> Result<bool, LottieRendererError>;
+
     fn updated(&self) -> bool;
 
     fn tween(
@@ -553,6 +559,16 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, LottieRendererError> {
         self.get_animation()?
             .intersect(x, y, layer_name)
+            .map_err(into_lottie::<R>)
+    }
+
+    fn layers_collide(
+        &self,
+        layer1_name: &str,
+        layer2_name: &str,
+    ) -> Result<bool, LottieRendererError> {
+        self.get_animation()?
+            .layers_collide(layer1_name, layer2_name)
             .map_err(into_lottie::<R>)
     }
 }

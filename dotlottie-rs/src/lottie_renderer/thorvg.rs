@@ -372,6 +372,104 @@ impl Animation for TvgAnimation {
         Err(TvgError::NotSupported)
     }
 
+    fn layers_collide(&self, layer1_name: &str, layer2_name: &str) -> Result<bool, TvgError> {
+        #[cfg(feature = "tvg-v1")]
+        {
+            let obb1 = match self.get_layer_obb(layer1_name)? {
+                Some(obb) => obb,
+                None => return Ok(false),
+            };
+
+            let obb2 = match self.get_layer_obb(layer2_name)? {
+                Some(obb) => obb,
+                None => return Ok(false),
+            };
+
+            // Helper function to project OBB onto an axis
+            let project_obb = |obb: &[tvg::Tvg_Point], axis: &tvg::Tvg_Point| -> (f32, f32) {
+                let mut min = f32::INFINITY;
+                let mut max = f32::NEG_INFINITY;
+
+                for vertex in obb {
+                    let projection = vertex.x * axis.x + vertex.y * axis.y;
+                    min = min.min(projection);
+                    max = max.max(projection);
+                }
+
+                (min, max)
+            };
+
+            // Helper function to normalize a vector
+            let normalize = |v: &tvg::Tvg_Point| -> tvg::Tvg_Point {
+                let length = (v.x * v.x + v.y * v.y).sqrt();
+                if length > 0.0 {
+                    tvg::Tvg_Point {
+                        x: v.x / length,
+                        y: v.y / length,
+                    }
+                } else {
+                    tvg::Tvg_Point { x: 0.0, y: 0.0 }
+                }
+            };
+
+            // Get the axes to test (normals to the edges of both OBBs)
+            let mut axes = Vec::new();
+
+            // Axes from OBB1 (perpendicular to edges)
+            for i in 0..4 {
+                let next = (i + 1) % 4;
+                let edge = tvg::Tvg_Point {
+                    x: obb1[next].x - obb1[i].x,
+                    y: obb1[next].y - obb1[i].y,
+                };
+                // Get perpendicular (normal) to the edge
+                let normal = tvg::Tvg_Point {
+                    x: -edge.y,
+                    y: edge.x,
+                };
+                axes.push(normalize(&normal));
+            }
+
+            // Axes from OBB2 (perpendicular to edges)
+            for i in 0..4 {
+                let next = (i + 1) % 4;
+                let edge = tvg::Tvg_Point {
+                    x: obb2[next].x - obb2[i].x,
+                    y: obb2[next].y - obb2[i].y,
+                };
+                // Get perpendicular (normal) to the edge
+                let normal = tvg::Tvg_Point {
+                    x: -edge.y,
+                    y: edge.x,
+                };
+                axes.push(normalize(&normal));
+            }
+
+            // Test each axis for separation
+            for axis in &axes {
+                // Skip zero-length axes
+                if axis.x == 0.0 && axis.y == 0.0 {
+                    continue;
+                }
+
+                let (min1, max1) = project_obb(&obb1, axis);
+                let (min2, max2) = project_obb(&obb2, axis);
+
+                // Check if projections are separated
+                if max1 < min2 || max2 < min1 {
+                    // Found a separating axis, no collision
+                    return Ok(false);
+                }
+            }
+
+            // No separating axis found, collision detected
+            Ok(true)
+        }
+
+        #[cfg(not(feature = "tvg-v1"))]
+        Err(TvgError::NotSupported)
+    }
+
     fn get_layer_bounds(&self, _layer_name: &str) -> Result<[f32; 8], TvgError> {
         #[cfg(feature = "tvg-v1")]
         {

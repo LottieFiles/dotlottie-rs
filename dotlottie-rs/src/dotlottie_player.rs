@@ -617,6 +617,10 @@ impl DotLottieRuntime {
         self.loop_count
     }
 
+    pub fn reset_loop_count(&mut self) {
+        self.loop_count = 0;
+    }
+
     pub fn speed(&self) -> f32 {
         self.config.speed
     }
@@ -1343,6 +1347,10 @@ impl DotLottiePlayerContainer {
         ok
     }
 
+    pub fn reset_loop_count(&self) {
+        self.runtime.write().unwrap().reset_loop_count();
+    }
+
     pub fn render(&self) -> bool {
         let ok = self.runtime.write().unwrap().render();
 
@@ -1358,14 +1366,14 @@ impl DotLottiePlayerContainer {
                     if count_complete {
                         // Put the animation in a paused state, otherwise we can keep looping if we call tick()
                         // Do it before emiting complete, otherwise it will pause the animation at the wrong stages in state machines
-                        self.pause();
+                        self.stop();
                     }
 
                     self.emit_on_loop(self.loop_count());
 
                     if count_complete {
-                        // Put the animation in a paused state, otherwise we can keep looping if we call tick()
                         self.emit_on_complete();
+                        self.reset_loop_count();
                     }
                 } else if !self.config().loop_animation {
                     self.emit_on_complete();

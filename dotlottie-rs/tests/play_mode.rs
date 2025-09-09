@@ -1,8 +1,41 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use std::sync::{Arc, Mutex};
+
+use dotlottie_rs::{Config, DotLottiePlayer, Observer};
 
 mod test_utils;
 
 use crate::test_utils::{HEIGHT, WIDTH};
+
+struct LoopObserver {
+    loop_count: Arc<Mutex<u32>>,
+    completed: Arc<Mutex<bool>>,
+}
+
+impl Observer for LoopObserver {
+    fn on_loop(&self, _count: u32) {
+        let mut count = self.loop_count.lock().unwrap();
+        *count += 1;
+    }
+
+    fn on_load(&self) {}
+
+    fn on_load_error(&self) {}
+
+    fn on_play(&self) {}
+
+    fn on_pause(&self) {}
+
+    fn on_stop(&self) {}
+
+    fn on_frame(&self, frame_no: f32) {}
+
+    fn on_render(&self, frame_no: f32) {}
+
+    fn on_complete(&self) {
+        let mut completed = self.completed.lock().unwrap();
+        *completed = true;
+    }
+}
 
 #[cfg(test)]
 mod play_mode_tests {
@@ -27,6 +60,15 @@ mod play_mode_tests {
             ..Config::default()
         });
 
+        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_completed = Arc::new(Mutex::new(false));
+        let observer = Arc::new(LoopObserver {
+            loop_count: Arc::clone(&observed_loops),
+            completed: Arc::clone(&observed_completed),
+        });
+
+        player.subscribe(observer);
+
         assert!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Animation should load"
@@ -35,14 +77,15 @@ mod play_mode_tests {
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            player.tick();
-
-            if player.is_complete() {
+            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
                 break;
             }
+            player.tick();
         }
 
-        assert_eq!(player.loop_count(), 0, "Should not have looped");
+        let loops = *observed_loops.lock().unwrap();
+        assert_eq!(loops, 0, "Should not have looped");
+
         assert!(player.is_complete());
     }
 
@@ -56,6 +99,15 @@ mod play_mode_tests {
             ..Config::default()
         });
 
+        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_completed = Arc::new(Mutex::new(false));
+        let observer = Arc::new(LoopObserver {
+            loop_count: Arc::clone(&observed_loops),
+            completed: Arc::clone(&observed_completed),
+        });
+
+        player.subscribe(observer);
+
         assert!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Animation should load"
@@ -64,15 +116,122 @@ mod play_mode_tests {
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            player.tick();
-
-            if player.loop_count() >= 5 {
+            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
                 break;
             }
+            player.tick();
         }
 
-        assert_eq!(player.loop_count(), 5, "Will loop and ignore loop count");
+        let loops = *observed_loops.lock().unwrap();
+        assert_eq!(loops, 6, "Will loop and ignore loop count");
+
         assert!(player.is_complete());
+    }
+
+    #[test]
+    fn test_playing_after_loop_has_completed() {
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::Forward,
+            autoplay: true,
+            loop_animation: true,
+            loop_count: 3,
+            ..Config::default()
+        });
+
+        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_completed = Arc::new(Mutex::new(false));
+        let observer = Arc::new(LoopObserver {
+            loop_count: Arc::clone(&observed_loops),
+            completed: Arc::clone(&observed_completed),
+        });
+
+        player.subscribe(observer);
+
+        assert!(
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            "Animation should load"
+        );
+        assert!(player.is_playing(), "Animation should be playing");
+        assert!(!player.is_complete(), "Animation should not be complete");
+
+        loop {
+            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+                break;
+            }
+            player.tick();
+        }
+
+        let loops = *observed_loops.lock().unwrap();
+        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+
+        let completed = *observed_completed.lock().unwrap();
+        assert!(completed);
+
+        // Restart the player
+        player.play();
+
+        loop {
+            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+                break;
+            }
+            player.tick();
+        }
+
+        let loops = *observed_loops.lock().unwrap();
+        assert_eq!(loops, 6, "Should have looped 6 times, got {}", loops);
+    }
+
+    #[test]
+    fn test_loop_count_paused_mid_play() {
+        let player = DotLottiePlayer::new(Config {
+            mode: Mode::Forward,
+            autoplay: true,
+            loop_animation: true,
+            loop_count: 5,
+            ..Config::default()
+        });
+
+        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_completed = Arc::new(Mutex::new(false));
+        let observer = Arc::new(LoopObserver {
+            loop_count: Arc::clone(&observed_loops),
+            completed: Arc::clone(&observed_completed),
+        });
+
+        player.subscribe(observer);
+
+        assert!(
+            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            "Animation should load"
+        );
+        assert!(player.is_playing(), "Animation should be playing");
+        assert!(!player.is_complete(), "Animation should not be complete");
+
+        loop {
+            if player.is_paused() || player.is_stopped() || player.loop_count() >= 3 {
+                break;
+            }
+            player.tick();
+        }
+
+        let loops = *observed_loops.lock().unwrap();
+        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+
+        // Restart the player
+        player.play();
+
+        loop {
+            if player.is_paused() || player.is_stopped() || player.loop_count() > 10 {
+                break;
+            }
+            player.tick();
+        }
+
+        let loops = *observed_loops.lock().unwrap();
+        assert_eq!(loops, 5, "Should have looped 5 times, got {}", loops);
+
+        let completed = *observed_completed.lock().unwrap();
+        assert!(completed);
     }
 
     #[test]
@@ -195,6 +354,15 @@ mod play_mode_tests {
             ..Config::default()
         });
 
+        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_completed = Arc::new(Mutex::new(false));
+        let observer = Arc::new(LoopObserver {
+            loop_count: Arc::clone(&observed_loops),
+            completed: Arc::clone(&observed_completed),
+        });
+
+        player.subscribe(observer);
+
         assert!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Animation should load"
@@ -207,11 +375,13 @@ mod play_mode_tests {
                 break;
             }
             player.tick();
-            // player.render();
         }
 
-        assert_eq!(player.loop_count(), 3, "Should have looped 3 times.");
-        assert!(player.is_complete());
+        let loops = *observed_loops.lock().unwrap();
+        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+
+        let completed = *observed_completed.lock().unwrap();
+        assert!(completed);
     }
 
     #[test]
@@ -262,6 +432,8 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_play_mode_with_loop_count() {
+        use std::sync::{Arc, Mutex};
+
         let player = DotLottiePlayer::new(Config {
             mode: Mode::Reverse,
             autoplay: true,
@@ -269,6 +441,15 @@ mod play_mode_tests {
             loop_count: 3,
             ..Config::default()
         });
+
+        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_completed = Arc::new(Mutex::new(false));
+        let observer = Arc::new(LoopObserver {
+            loop_count: Arc::clone(&observed_loops),
+            completed: Arc::clone(&observed_completed),
+        });
+
+        player.subscribe(observer);
 
         assert!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
@@ -284,8 +465,11 @@ mod play_mode_tests {
             player.tick();
         }
 
-        assert_eq!(player.loop_count(), 3, "Should have looped 3 times.");
-        assert!(player.is_complete());
+        let loops = *observed_loops.lock().unwrap();
+        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+
+        let completed = *observed_completed.lock().unwrap();
+        assert!(completed);
     }
 
     #[test]
@@ -362,6 +546,15 @@ mod play_mode_tests {
             ..Config::default()
         });
 
+        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_completed = Arc::new(Mutex::new(false));
+        let observer = Arc::new(LoopObserver {
+            loop_count: Arc::clone(&observed_loops),
+            completed: Arc::clone(&observed_completed),
+        });
+
+        player.subscribe(observer);
+
         assert!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Animation should load"
@@ -375,8 +568,11 @@ mod play_mode_tests {
             player.tick();
         }
 
-        assert_eq!(player.loop_count(), 3, "Should have looped 3 times.");
-        assert!(player.is_complete());
+        let loops = *observed_loops.lock().unwrap();
+        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+
+        let completed = *observed_completed.lock().unwrap();
+        assert!(completed);
     }
 
     #[test]
@@ -452,6 +648,15 @@ mod play_mode_tests {
             ..Config::default()
         });
 
+        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_completed = Arc::new(Mutex::new(false));
+        let observer = Arc::new(LoopObserver {
+            loop_count: Arc::clone(&observed_loops),
+            completed: Arc::clone(&observed_completed),
+        });
+
+        player.subscribe(observer);
+
         assert!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
             "Animation should load"
@@ -465,7 +670,10 @@ mod play_mode_tests {
             player.tick();
         }
 
-        assert_eq!(player.loop_count(), 3, "Should have looped 3 times.");
-        assert!(player.is_complete());
+        let loops = *observed_loops.lock().unwrap();
+        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+
+        let completed = *observed_completed.lock().unwrap();
+        assert!(completed);
     }
 }

@@ -1511,6 +1511,11 @@ impl DotLottiePlayerContainer {
             self.tween_update(None) && self.render()
         } else {
             let next_frame = self.request_frame();
+
+            if next_frame == self.current_frame() {
+                return false;
+            }
+
             let sf = self.set_frame(next_frame);
 
             let mut is_sm_still_tweening = false;

@@ -87,7 +87,10 @@ impl From<TvgEngine> for tvg::Tvg_Engine {
 static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
 
 pub struct TvgRenderer {
+    #[cfg(feature = "tvg-v0")]
     raw_canvas: *mut tvg::Tvg_Canvas,
+    #[cfg(feature = "tvg-v1")]
+    raw_canvas: tvg::Tvg_Canvas,
     #[cfg(feature = "tvg-v0")]
     engine_method: tvg::Tvg_Engine,
 }
@@ -158,7 +161,7 @@ impl Renderer for TvgRenderer {
     fn clear(&self, _free: bool) -> Result<(), TvgError> {
         #[cfg(feature = "tvg-v1")]
         unsafe {
-            tvg::tvg_canvas_remove(self.raw_canvas, ptr::null_mut::<tvg::Tvg_Paint>()).into_result()
+            tvg::tvg_canvas_remove(self.raw_canvas, ptr::null_mut()).into_result()
         }
 
         #[cfg(feature = "tvg-v0")]
@@ -231,8 +234,14 @@ struct TweenState {
 }
 
 pub struct TvgAnimation {
+    #[cfg(feature = "tvg-v0")]
     raw_animation: *mut tvg::Tvg_Animation,
+    #[cfg(feature = "tvg-v1")]
+    raw_animation: tvg::Tvg_Animation,
+    #[cfg(feature = "tvg-v0")]
     raw_paint: *mut tvg::Tvg_Paint,
+    #[cfg(feature = "tvg-v1")]
+    raw_paint: tvg::Tvg_Paint,
     #[cfg(feature = "tvg-v1")]
     tween_state: Option<TweenState>,
     data: Option<CString>,
@@ -264,7 +273,7 @@ impl TvgAnimation {
             let layer_paint = tvg::tvg_picture_get_paint(paint, layer_id);
 
             if !layer_paint.is_null() {
-                tvg::tvg_paint_get_obb(layer_paint as *mut tvg::Tvg_Paint, obb.as_mut_ptr());
+                tvg::tvg_paint_get_obb(layer_paint as tvg::Tvg_Paint, obb.as_mut_ptr());
                 Ok(Some(obb))
             } else {
                 Ok(None)
@@ -273,7 +282,10 @@ impl TvgAnimation {
     }
 
     unsafe fn tvg_load_data_dispatch(
+        #[cfg(feature = "tvg-v0")]
         raw_paint: *mut tvg::Tvg_Paint,
+        #[cfg(feature = "tvg-v1")]
+        raw_paint: tvg::Tvg_Paint,
         data_ptr: *const c_char,
         data_len: u32,
         mimetype_ptr: *const c_char,
@@ -607,7 +619,10 @@ impl Drop for TvgAnimation {
 }
 
 pub struct TvgShape {
+    #[cfg(feature = "tvg-v0")]
     raw_shape: *mut tvg::Tvg_Paint,
+    #[cfg(feature = "tvg-v1")]
+    raw_shape: tvg::Tvg_Paint,
 }
 
 impl Default for TvgShape {

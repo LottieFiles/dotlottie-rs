@@ -115,6 +115,9 @@ impl TvgRenderer {
         *count += 1;
 
         TvgRenderer {
+            #[cfg(feature = "tvg-v1")]
+            raw_canvas: unsafe { tvg::tvg_swcanvas_create(tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_NONE) },
+            #[cfg(feature = "tvg-v0")]
             raw_canvas: unsafe { tvg::tvg_swcanvas_create() },
             #[cfg(feature = "tvg-v0")]
             engine_method: engine,

@@ -364,6 +364,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
         self.current_frame = no;
 
+        let _ = self.render();
+
         Ok(())
     }
 

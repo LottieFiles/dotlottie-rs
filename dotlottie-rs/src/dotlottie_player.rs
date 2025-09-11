@@ -392,25 +392,23 @@ impl DotLottieRuntime {
         next_frame
     }
 
-    pub fn loop_count_disabled(&self) -> bool {
-        // If loop animation is false, loop_count is considered disabled
-        if !self.config().loop_animation {
-            return true;
-        }
-
-        // If loop_count is 0, its considered disabled
-        if self.config().loop_count == 0 {
-            return true;
-        } else if self.config().loop_count > 0 && self.config().loop_count <= self.loop_count() {
+    fn should_increment_loop(&self) -> bool {
+        if !self.config.loop_animation {
             return false;
         }
 
-        true
+        // Unlimited looping: always increment
+        if self.config.loop_count == 0 {
+            return true;
+        }
+
+        // Counted looping: increment until reaching the configured count
+        self.loop_count < self.config.loop_count
     }
 
     fn handle_forward_mode(&mut self, next_frame: f32, end_frame: f32) -> f32 {
         if next_frame >= end_frame {
-            if self.config.loop_animation && self.loop_count_disabled() {
+            if self.should_increment_loop() {
                 self.loop_count += 1;
                 self.start_time = Instant::now();
             }
@@ -423,7 +421,7 @@ impl DotLottieRuntime {
 
     fn handle_reverse_mode(&mut self, next_frame: f32, start_frame: f32) -> f32 {
         if next_frame <= start_frame {
-            if self.config.loop_animation && self.loop_count_disabled() {
+            if self.should_increment_loop() {
                 self.loop_count += 1;
                 self.start_time = Instant::now();
             }
@@ -448,7 +446,7 @@ impl DotLottieRuntime {
             }
             Direction::Reverse => {
                 if next_frame <= start_frame {
-                    if self.config.loop_animation && self.loop_count_disabled() {
+                    if self.should_increment_loop() {
                         self.loop_count += 1;
                         self.direction = Direction::Forward;
                         self.start_time = Instant::now();
@@ -480,7 +478,7 @@ impl DotLottieRuntime {
             }
             Direction::Forward => {
                 if next_frame >= end_frame {
-                    if self.config.loop_animation && self.loop_count_disabled() {
+                    if self.should_increment_loop() {
                         self.loop_count += 1;
                         self.direction = Direction::Reverse;
                         self.start_time = Instant::now();
@@ -1361,10 +1359,6 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().reset_loop_count();
     }
 
-    pub fn loop_count_disabled(&self) -> bool {
-        self.runtime.read().unwrap().loop_count_disabled()
-    }
-
     pub fn render(&self) -> bool {
         let ok = self.runtime.write().unwrap().render();
 
@@ -1375,8 +1369,8 @@ impl DotLottiePlayerContainer {
 
             if self.is_complete() {
                 if self.config().loop_animation {
-                    let count_complete = (self.loop_count() >= self.config().loop_count)
-                        && !self.loop_count_disabled();
+                    let count_complete = self.config().loop_count > 0
+                        && self.loop_count() >= self.config().loop_count;
 
                     if count_complete {
                         // Put the animation in a paused state, otherwise we can keep looping if we call tick()

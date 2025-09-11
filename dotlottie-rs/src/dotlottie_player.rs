@@ -1332,6 +1332,7 @@ impl DotLottiePlayerContainer {
 
         if ok {
             self.emit_on_frame(no);
+            self.render();
         }
 
         ok
@@ -1510,8 +1511,7 @@ impl DotLottiePlayerContainer {
             self.tween_update(None) && self.render()
         } else {
             let next_frame = self.request_frame();
-            let _ = self.set_frame(next_frame);
-            let sf = self.render();
+            let sf = self.set_frame(next_frame);
 
             let mut is_sm_still_tweening = false;
 

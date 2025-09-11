@@ -60,7 +60,7 @@ mod play_mode_tests {
             ..Config::default()
         });
 
-        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_loops = Arc::new(Mutex::new(0));
         let observed_completed = Arc::new(Mutex::new(false));
         let observer = Arc::new(LoopObserver {
             loop_count: Arc::clone(&observed_loops),
@@ -99,7 +99,7 @@ mod play_mode_tests {
             ..Config::default()
         });
 
-        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_loops = Arc::new(Mutex::new(0));
         let observed_completed = Arc::new(Mutex::new(false));
         let observer = Arc::new(LoopObserver {
             loop_count: Arc::clone(&observed_loops),
@@ -138,7 +138,7 @@ mod play_mode_tests {
             ..Config::default()
         });
 
-        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_loops = Arc::new(Mutex::new(0));
         let observed_completed = Arc::new(Mutex::new(false));
         let observer = Arc::new(LoopObserver {
             loop_count: Arc::clone(&observed_loops),
@@ -191,7 +191,7 @@ mod play_mode_tests {
             ..Config::default()
         });
 
-        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_loops = Arc::new(Mutex::new(0));
         let observed_completed = Arc::new(Mutex::new(false));
         let observer = Arc::new(LoopObserver {
             loop_count: Arc::clone(&observed_loops),
@@ -354,7 +354,7 @@ mod play_mode_tests {
             ..Config::default()
         });
 
-        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_loops = Arc::new(Mutex::new(0));
         let observed_completed = Arc::new(Mutex::new(false));
         let observer = Arc::new(LoopObserver {
             loop_count: Arc::clone(&observed_loops),
@@ -442,7 +442,7 @@ mod play_mode_tests {
             ..Config::default()
         });
 
-        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_loops = Arc::new(Mutex::new(0));
         let observed_completed = Arc::new(Mutex::new(false));
         let observer = Arc::new(LoopObserver {
             loop_count: Arc::clone(&observed_loops),
@@ -546,7 +546,7 @@ mod play_mode_tests {
             ..Config::default()
         });
 
-        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_loops = Arc::new(Mutex::new(0));
         let observed_completed = Arc::new(Mutex::new(false));
         let observer = Arc::new(LoopObserver {
             loop_count: Arc::clone(&observed_loops),
@@ -648,7 +648,7 @@ mod play_mode_tests {
             ..Config::default()
         });
 
-        let observed_loops = Arc::new(Mutex::new(0u32));
+        let observed_loops = Arc::new(Mutex::new(0));
         let observed_completed = Arc::new(Mutex::new(false));
         let observer = Arc::new(LoopObserver {
             loop_count: Arc::clone(&observed_loops),

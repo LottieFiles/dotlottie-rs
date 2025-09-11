@@ -1329,6 +1329,9 @@ impl StateMachineEngine {
         old_value: &str,
         new_value: &str,
     ) {
+        if old_value == new_value {
+            return;
+        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_string_input_value_change(
@@ -1346,6 +1349,9 @@ impl StateMachineEngine {
         old_value: f32,
         new_value: f32,
     ) {
+        if old_value == new_value {
+            return;
+        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_numeric_input_value_change(
@@ -1363,6 +1369,9 @@ impl StateMachineEngine {
         old_value: bool,
         new_value: bool,
     ) {
+        if old_value == new_value {
+            return;
+        }
         if let Ok(observers) = self.observers.try_read() {
             for observer in observers.iter() {
                 observer.on_boolean_input_value_change(

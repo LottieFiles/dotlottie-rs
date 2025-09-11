@@ -76,6 +76,8 @@ pub trait LottieRenderer {
 
     fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, LottieRendererError>;
 
+    fn frame_was_updated(&self) -> bool;
+
     fn tween(
         &mut self,
         to: f32,
@@ -101,7 +103,7 @@ impl dyn LottieRenderer {
             picture_width: 0.0,
             picture_height: 0.0,
             current_frame: 0.0,
-            frame_updated: false,
+            frame_was_updated: false,
             background_color: 0,
             buffer: vec![],
             layout: Layout::default(),
@@ -119,7 +121,7 @@ struct LottieRendererImpl<R: Renderer> {
     picture_width: f32,
     picture_height: f32,
     current_frame: f32,
-    frame_updated: bool,
+    frame_was_updated: bool,
     background_color: u32,
     buffer: Vec<u32>,
     layout: Layout,
@@ -339,11 +341,11 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn render(&mut self) -> Result<(), LottieRendererError> {
-        if self.frame_updated || self.is_tweening() {
+        if self.frame_was_updated || self.is_tweening() {
             self.renderer.update().map_err(into_lottie::<R>)?;
             self.renderer.draw(true).map_err(into_lottie::<R>)?;
             self.renderer.sync().map_err(into_lottie::<R>)?;
-            self.frame_updated = false;
+            self.frame_was_updated = false;
         }
 
         Ok(())
@@ -367,7 +369,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .set_frame(no)
             .map_err(into_lottie::<R>)?;
 
-        self.frame_updated = true;
+        self.frame_was_updated = true;
 
         self.current_frame = no;
 
@@ -428,7 +430,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
                 .map_err(into_lottie::<R>)?;
         }
 
-        self.frame_updated = true;
+        self.frame_was_updated = true;
 
         self.render()?;
 
@@ -454,7 +456,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
         let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
 
-        self.frame_updated = true;
+        self.frame_was_updated = true;
 
         self.get_background_shape_mut()?
             .fill((red, green, blue, alpha))
@@ -465,6 +467,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.get_animation_mut()?
             .set_slots(slots)
             .map_err(into_lottie::<R>)
+    }
+
+    fn frame_was_updated(&self) -> bool {
+        self.frame_was_updated
     }
 
     fn tween(
@@ -521,7 +527,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
                 .translate(shift_x, shift_y)
                 .map_err(into_lottie::<R>)?;
 
-            self.frame_updated = true;
+            self.frame_was_updated = true;
         }
 
         Ok(())

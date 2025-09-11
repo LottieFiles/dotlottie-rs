@@ -333,6 +333,10 @@ impl DotLottieRuntime {
             .and_then(|manager| manager.get_state_machine(state_machine_id).ok())
     }
 
+    pub fn frame_was_updated(&self) -> bool {
+        self.renderer.frame_was_updated()
+    }
+
     pub fn request_frame(&mut self) -> f32 {
         if !self.is_loaded || !self.is_playing() {
             return self.current_frame();
@@ -900,9 +904,10 @@ impl DotLottieRuntime {
             Mode::Forward => self.current_frame() >= self.end_frame(),
             Mode::Reverse => self.current_frame() <= self.start_frame(),
             Mode::Bounce => {
-                // Enables firing loop_complete if loop_count is enabled
+                // Enables firing loop_complete if loop_count is enabled.
+                // Avoid firing at initial start frame before any loop has completed.
                 if self.config().loop_animation && self.config().loop_count > 0 {
-                    self.current_frame() <= self.start_frame()
+                    self.loop_count() > 0 && self.current_frame() <= self.start_frame()
                 } else {
                     // Enables firing complete if loop_animation = false
                     self.current_frame() <= self.start_frame()
@@ -910,9 +915,10 @@ impl DotLottieRuntime {
                 }
             }
             Mode::ReverseBounce => {
-                // Enables firing loop_complete if loop_count is enabled
+                // Enables firing loop_complete if loop_count is enabled.
+                // Avoid firing at initial end frame before any loop has completed.
                 if self.config().loop_animation && self.config().loop_count > 0 {
-                    self.current_frame() >= self.end_frame()
+                    self.loop_count() > 0 && self.current_frame() >= self.end_frame()
                 } else {
                     // Enables firing complete if loop_animation = false
                     self.current_frame() >= self.end_frame() && self.direction == Direction::Forward
@@ -1327,12 +1333,15 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().request_frame()
     }
 
+    pub fn frame_was_updated(&self) -> bool {
+        self.runtime.write().unwrap().frame_was_updated()
+    }
+
     pub fn set_frame(&self, no: f32) -> bool {
         let ok = self.runtime.write().unwrap().set_frame(no);
 
         if ok {
             self.emit_on_frame(no);
-            self.render();
         }
 
         ok
@@ -1352,6 +1361,10 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().reset_loop_count();
     }
 
+    pub fn loop_count_disabled(&self) -> bool {
+        self.runtime.read().unwrap().loop_count_disabled()
+    }
+
     pub fn render(&self) -> bool {
         let ok = self.runtime.write().unwrap().render();
 
@@ -1362,7 +1375,8 @@ impl DotLottiePlayerContainer {
 
             if self.is_complete() {
                 if self.config().loop_animation {
-                    let count_complete = self.loop_count() == self.config().loop_count;
+                    let count_complete = (self.loop_count() >= self.config().loop_count)
+                        && !self.loop_count_disabled();
 
                     if count_complete {
                         // Put the animation in a paused state, otherwise we can keep looping if we call tick()
@@ -1507,16 +1521,19 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn tick(&self) -> bool {
+        let mut frame_was_updated = true;
+
         if self.is_tweening() {
             self.tween_update(None) && self.render()
         } else {
             let next_frame = self.request_frame();
 
-            if next_frame == self.current_frame() {
-                return false;
-            }
+            let _ = self.set_frame(next_frame);
 
-            let sf = self.set_frame(next_frame);
+            if self.frame_was_updated() {
+                frame_was_updated = true;
+                self.render();
+            }
 
             let mut is_sm_still_tweening = false;
 
@@ -1540,7 +1557,7 @@ impl DotLottiePlayerContainer {
                 }
             }
 
-            sf
+            frame_was_updated
         }
     }
 

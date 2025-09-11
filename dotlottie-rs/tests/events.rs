@@ -104,19 +104,21 @@ mod tests {
             let next_frame = player.request_frame();
             if player.set_frame(next_frame) {
                 expected_events.push(format!("on_frame: {}", player.current_frame()));
-                expected_events.push(format!("on_render: {}", player.current_frame()));
-                if player.is_complete() {
-                    if player.config().loop_animation {
-                        let loop_count = player.loop_count();
-                        expected_events.push(format!("on_loop: {loop_count}"));
+                if player.render() {
+                    expected_events.push(format!("on_render: {}", player.current_frame()));
+                    if player.is_complete() {
+                        if player.config().loop_animation {
+                            let loop_count = player.loop_count();
+                            expected_events.push(format!("on_loop: {loop_count}"));
 
-                        if loop_count == 1 {
-                            player.pause();
+                            if loop_count == 1 {
+                                player.pause();
+                                break;
+                            }
+                        } else {
+                            expected_events.push("on_complete".to_string());
                             break;
                         }
-                    } else {
-                        expected_events.push("on_complete".to_string());
-                        break;
                     }
                 }
             }

@@ -382,7 +382,9 @@ impl ActionTrait for Action {
                             let value = value.trim_start_matches('$');
                             let frame = engine.get_numeric_input(value);
                             if let Some(frame) = frame {
-                                player.set_frame(frame);
+                                let clamped_frame = frame.clamp(0.0, player.total_frames() - 1.0);
+
+                                player.set_frame(clamped_frame);
                             } else {
                                 return Err(StateMachineActionError::ExecuteError);
                             }
@@ -393,7 +395,9 @@ impl ActionTrait for Action {
                     }
                     StringNumber::F32(value) => {
                         if let Ok(player) = read_lock {
-                            player.set_frame(*value);
+                            let clamped_frame = value.clamp(0.0, player.total_frames() - 1.0);
+
+                            player.set_frame(clamped_frame);
                         } else {
                             return Err(StateMachineActionError::ExecuteError);
                         }
@@ -413,16 +417,20 @@ impl ActionTrait for Action {
                                 let value = value.trim_start_matches('$');
                                 let percentage = engine.get_numeric_input(value);
                                 if let Some(percentage) = percentage {
-                                    let new_perc = percentage / 100.0;
+                                    let clamped_value = percentage.clamp(0.0, 100.0);
+                                    let new_perc = clamped_value / 100.0;
                                     let frame = (player.total_frames() - 1.0) * new_perc;
+
                                     player.set_frame(frame);
                                 }
 
                                 return Ok(());
                             }
                             StringNumber::F32(value) => {
-                                let new_perc = value / 100.0;
+                                let clamped_value = value.clamp(0.0, 100.0);
+                                let new_perc = clamped_value / 100.0;
                                 let frame = (player.total_frames() - 1.0) * new_perc;
+
                                 player.set_frame(frame);
                             }
                         }

@@ -334,7 +334,7 @@ impl DotLottieRuntime {
     }
 
     pub fn frame_was_updated(&self) -> bool {
-        self.renderer.frame_was_updated()
+        self.renderer.updated()
     }
 
     pub fn request_frame(&mut self) -> f32 {
@@ -1373,7 +1373,7 @@ impl DotLottiePlayerContainer {
                         && self.loop_count() >= self.config().loop_count;
 
                     if count_complete {
-                        // Put the animation in a paused state, otherwise we can keep looping if we call tick()
+                        // Put the animation in a stop state, otherwise we can keep looping if we call tick()
                         // Do it before emiting complete, otherwise it will pause the animation at the wrong stages in state machines
                         self.stop();
                     }
@@ -1515,8 +1515,6 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn tick(&self) -> bool {
-        let mut frame_was_updated = false;
-
         if self.is_tweening() {
             self.tween_update(None) && self.render()
         } else {
@@ -1524,10 +1522,7 @@ impl DotLottiePlayerContainer {
 
             let _ = self.set_frame(next_frame);
 
-            if self.frame_was_updated() {
-                frame_was_updated = true;
-                self.render();
-            }
+            let rendered = self.render();
 
             let mut is_sm_still_tweening = false;
 
@@ -1551,7 +1546,7 @@ impl DotLottiePlayerContainer {
                 }
             }
 
-            frame_was_updated
+            rendered
         }
     }
 

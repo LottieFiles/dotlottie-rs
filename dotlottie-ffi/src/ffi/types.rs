@@ -249,6 +249,7 @@ impl<T: Sized + Default + Copy> Transferable<Option<T>> for DotLottieOption<T> {
 pub struct DotLottieConfig {
     pub mode: Mode,
     pub loop_animation: bool,
+    pub loop_count: u32,
     pub speed: f32,
     pub use_frame_interpolation: bool,
     pub autoplay: bool,
@@ -271,6 +272,7 @@ impl Transferable<Config> for DotLottieConfig {
         Ok(DotLottieConfig {
             mode: config.mode,
             loop_animation: config.loop_animation,
+            loop_count: config.loop_count,
             speed: config.speed,
             use_frame_interpolation: config.use_frame_interpolation,
             autoplay: config.autoplay,
@@ -291,6 +293,7 @@ impl DotLottieConfig {
         Ok(Config {
             mode: self.mode,
             loop_animation: self.loop_animation,
+            loop_count: self.loop_count,
             speed: self.speed,
             use_frame_interpolation: self.use_frame_interpolation,
             autoplay: self.autoplay,

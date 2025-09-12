@@ -1515,7 +1515,7 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn tick(&self) -> bool {
-        let mut frame_was_updated = true;
+        let mut frame_was_updated = false;
 
         if self.is_tweening() {
             self.tween_update(None) && self.render()

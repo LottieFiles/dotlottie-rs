@@ -341,7 +341,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn render(&mut self) -> Result<(), LottieRendererError> {
-        if self.frame_was_updated || self.is_tweening() {
+        if self.frame_was_updated {
             self.renderer.update().map_err(into_lottie::<R>)?;
             self.renderer.draw(true).map_err(into_lottie::<R>)?;
             self.renderer.sync().map_err(into_lottie::<R>)?;
@@ -491,6 +491,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, LottieRendererError> {
+        self.frame_was_updated = true;
         self.get_animation_mut()?
             .tween_update(progress)
             .map_err(into_lottie::<R>)

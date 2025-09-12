@@ -351,7 +351,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             return Ok(());
         }
 
-        return Err(LottieRendererError::RendererError);
+        Err(LottieRendererError::RendererError)
     }
 
     #[inline]

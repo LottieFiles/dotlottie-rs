@@ -3,7 +3,10 @@ use std::{rc::Rc, sync::RwLock};
 
 use crate::{state_machine::StringBool, DotLottiePlayerContainer, Event};
 
-use super::{state_machine::StringNumber, StateMachineEngine};
+use super::{
+    state_machine::{StringNumber, StringString},
+    StateMachineEngine,
+};
 
 pub mod open_url_policy;
 pub mod whitelist;
@@ -29,7 +32,7 @@ pub trait ActionTrait {
 #[serde(tag = "type")]
 pub enum Action {
     OpenUrl {
-        url: String,
+        url: StringString,
         target: String,
     },
     Increment {
@@ -68,7 +71,7 @@ pub enum Action {
         value: f32,
     },
     SetTheme {
-        value: String,
+        value: StringString,
     },
     SetFrame {
         value: StringNumber,
@@ -302,11 +305,22 @@ impl ActionTrait for Action {
                 let read_lock = player.try_read();
 
                 match read_lock {
-                    Ok(player) => {
-                        if !player.set_theme(value) {
-                            return Err(StateMachineActionError::ExecuteError);
+                    Ok(player) => match value {
+                        StringString::String(value) => {
+                            let resolved_value = if value.starts_with('$') {
+                                let trimmed_value = value.trim_start_matches('$');
+                                engine
+                                    .get_string_input(trimmed_value)
+                                    .unwrap_or_else(|| value.clone())
+                            } else {
+                                value.clone()
+                            };
+
+                            if !player.set_theme(&resolved_value) {
+                                return Err(StateMachineActionError::ExecuteError);
+                            }
                         }
-                    }
+                    },
                     Err(_) => {
                         return Err(StateMachineActionError::ExecuteError);
                     }
@@ -339,16 +353,29 @@ impl ActionTrait for Action {
                 let whitelist = &engine.open_url_whitelist;
                 let user_interaction_required = &engine.open_url_requires_user_interaction;
 
+                let resolved_url = match url {
+                    StringString::String(url) => {
+                        if url.starts_with('$') {
+                            let trimmed_value = url.trim_start_matches('$');
+                            engine
+                                .get_string_input(trimmed_value)
+                                .unwrap_or_else(|| url.clone())
+                        } else {
+                            url.clone()
+                        }
+                    }
+                };
+
                 // Urls are only opened if they are strictly inside the whitelist
-                if let Ok(false) | Err(_) = whitelist.is_allowed(url) {
+                if let Ok(false) | Err(_) = whitelist.is_allowed(&resolved_url) {
                     return Err(StateMachineActionError::ExecuteError);
                 }
 
                 let _ = target.to_lowercase();
                 let command = if target.is_empty() {
-                    format!("OpenUrl: {url}")
+                    format!("OpenUrl: {resolved_url}")
                 } else {
-                    format!("OpenUrl: {url} | Target: {target}")
+                    format!("OpenUrl: {resolved_url} | Target: {target}")
                 };
 
                 // User has configured the player to only open urls based on click or pointer down events

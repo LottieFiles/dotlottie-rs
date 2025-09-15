@@ -333,10 +333,6 @@ impl DotLottieRuntime {
             .and_then(|manager| manager.get_state_machine(state_machine_id).ok())
     }
 
-    pub fn frame_was_updated(&self) -> bool {
-        self.renderer.updated()
-    }
-
     pub fn request_frame(&mut self) -> f32 {
         if !self.is_loaded || !self.is_playing() {
             return self.current_frame();
@@ -1329,10 +1325,6 @@ impl DotLottiePlayerContainer {
 
     pub fn request_frame(&self) -> f32 {
         self.runtime.write().unwrap().request_frame()
-    }
-
-    pub fn frame_was_updated(&self) -> bool {
-        self.runtime.write().unwrap().frame_was_updated()
     }
 
     pub fn set_frame(&self, no: f32) -> bool {

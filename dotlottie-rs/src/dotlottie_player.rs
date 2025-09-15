@@ -148,117 +148,9 @@ struct DotLottieRuntime {
     active_state_machine_id: String,
 }
 
-// unsafe extern "C" fn print_handler(
-//     _call_info_p: *const jerry::jerry_call_info_t,
-//     arguments: *const jerry::jerry_value_t,
-//     argument_count: jerry::jerry_length_t,
-// ) -> jerry::jerry_value_t {
-//     // Print the arguments if any are provided
-//     if argument_count > 0 {
-//         unsafe {
-//             // Convert the first argument to string and print it
-//             let arg_as_string = jerry::jerry_value_to_string(*arguments);
-//             let string_length = jerry::jerry_string_length(arg_as_string);
-
-//             if string_length > 0 {
-//                 let mut buffer = vec![0u8; string_length as usize + 1];
-//                 jerry::jerry_string_to_buffer(
-//                     arg_as_string,
-//                     jerry::jerry_encoding_t_JERRY_ENCODING_UTF8,
-//                     buffer.as_mut_ptr(),
-//                     string_length,
-//                 );
-
-//                 // Convert to Rust string and print
-//                 if let Ok(rust_string) =
-//                     String::from_utf8(buffer[..string_length as usize].to_vec())
-//                 {
-//                     println!("JS print: {}", rust_string);
-//                 } else {
-//                     println!("JS print: [invalid UTF-8]");
-//                 }
-//             }
-
-//             jerry::jerry_value_free(arg_as_string);
-//         }
-//     } else {
-//         println!("Print handler was called with no arguments");
-//     }
-
-//     // Return an "undefined" value to the JavaScript engine
-//     jerry::jerry_undefined()
-// }
-
 impl DotLottieRuntime {
     #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
     pub fn new(config: Config, threads: u32) -> Self {
-        // unsafe {
-        //     let script = "var str = 'Hello dev tooling team from javascript inside rust!!!'; print(str);";
-
-        //     // Convert the script to bytes for JerryScript
-        //     let script_bytes = script.as_bytes();
-        //     let script_ptr = script_bytes.as_ptr();
-        //     let script_size = script_bytes.len();
-
-        //     // Initialize engine
-        //     jerry::jerry_init(0);
-
-        //     // Add the "print" method for the JavaScript global object
-        //     {
-        //         // Get the "global" object
-        //         use std::ffi::c_char;
-        //         let global_object = jerry::jerry_current_realm();
-
-        //         // Create a "print" JS string
-        //         let property_name_print =
-        //             jerry::jerry_string_sz(b"print\0".as_ptr() as *const c_char);
-
-        //         // Create a function from a native C method
-        //         let property_value_func = jerry::jerry_function_external(Some(print_handler));
-
-        //         // Add the "print" property with the function value to the "global" object
-        //         let set_result = jerry::jerry_object_set(
-        //             global_object,
-        //             property_name_print,
-        //             property_value_func,
-        //         );
-
-        //         // Check if there was no error when adding the property
-        //         if jerry::jerry_value_is_exception(set_result) {
-        //             eprintln!("Failed to add the 'print' property");
-        //         }
-
-        //         // Release all jerry_value_t-s
-        //         jerry::jerry_value_free(set_result);
-        //         jerry::jerry_value_free(property_value_func);
-        //         jerry::jerry_value_free(property_name_print);
-        //         jerry::jerry_value_free(global_object);
-        //     }
-
-        //     // Run the demo script with 'eval'
-        //     let eval_ret = jerry::jerry_eval(
-        //         script_ptr,
-        //         script_size,
-        //         jerry::jerry_parse_option_enable_feature_t_JERRY_PARSE_NO_OPTS,
-        //     );
-
-        //     // Check if there was any error (syntax or runtime)
-        //     let run_ok = !jerry::jerry_value_is_exception(eval_ret);
-
-        //     // Parsed source code must be freed
-        //     jerry::jerry_value_free(eval_ret);
-
-        //     // Cleanup engine
-        //     jerry::jerry_cleanup();
-
-        //     if run_ok {
-        //         println!("Script executed successfully!");
-        //     } else {
-        //         eprintln!("Script execution failed!");
-        //         std::process::exit(1);
-        //     }
-        // }
-
         Self::with_renderer(
             config,
             crate::TvgRenderer::new(crate::TvgEngine::TvgEngineSw, threads),
@@ -831,7 +723,7 @@ impl DotLottieRuntime {
     where
         F: FnOnce(&mut dyn LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
     {
-        self.clear();
+        // self.clear();
         self.playback_state = PlaybackState::Stopped;
         self.start_time = Instant::now();
         self.loop_count = 0;
@@ -842,9 +734,9 @@ impl DotLottieRuntime {
                 .set_background_color(self.config.background_color)
                 .is_ok();
 
-        if self.renderer.set_layout(&self.config.layout).is_err() {
-            return false;
-        }
+        // if self.renderer.set_layout(&self.config.layout).is_err() {
+        //     return false;
+        // }
 
         self.is_loaded = loaded;
 
@@ -888,6 +780,25 @@ impl DotLottieRuntime {
                 self.set_theme(&theme_id);
             }
         }
+
+        animation_loaded
+    }
+
+    pub fn load_extra_animation_data(
+        &mut self,
+        animation_data: &str,
+        width: u32,
+        height: u32,
+        x: f32,
+        y: f32,
+    ) -> bool {
+        let animation_loaded = self.load_animation_common(
+            |renderer, w, h| renderer.load_extra_data(animation_data, w, h, x, y),
+            width,
+            height,
+        );
+
+        println!("Animation loaded: {}", animation_loaded);
 
         animation_loaded
     }
@@ -1228,6 +1139,38 @@ impl DotLottiePlayerContainer {
                 self.play();
             }
         } else {
+            self.emit_on_load_error();
+
+            return false;
+        }
+
+        is_ok
+    }
+
+    pub fn load_extra_animation_data(
+        &self,
+        animation_data: &str,
+        width: u32,
+        height: u32,
+        x: f32,
+        y: f32,
+    ) -> bool {
+        let is_ok = match self.runtime.try_write() {
+            Ok(mut runtime) => {
+                println!(">> called load extra animation data");
+                runtime.load_extra_animation_data(animation_data, width, height, x, y)
+            }
+            Err(_) => false,
+        };
+
+        if is_ok {
+            self.emit_on_load();
+
+            if self.config().autoplay {
+                self.play();
+            }
+        } else {
+            println!(">> Load error");
             self.emit_on_load_error();
 
             return false;
@@ -1691,6 +1634,19 @@ impl DotLottiePlayer {
         self.player
             .write()
             .is_ok_and(|runtime| runtime.load_animation_data(animation_data, width, height))
+    }
+
+    pub fn load_extra_animation_data(
+        &self,
+        animation_data: &str,
+        width: u32,
+        height: u32,
+        x: f32,
+        y: f32,
+    ) -> bool {
+        self.player.write().is_ok_and(|runtime| {
+            runtime.load_extra_animation_data(animation_data, width, height, x, y)
+        })
     }
 
     pub fn get_state_machine(&self, state_machine_id: &str) -> String {

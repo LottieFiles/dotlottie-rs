@@ -233,16 +233,16 @@ impl StateMachineEngine {
 
         let ret = self.inputs.set_numeric(key, value);
 
+        if let Some(InputValue::Numeric(old_value)) = &ret {
+            self.observe_numeric_input_value_change(key, *old_value, value);
+        }
+
         if called_from_action {
             self.action_mutated_inputs = true;
         }
 
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
-        }
-
-        if let Some(InputValue::Numeric(old_value)) = &ret {
-            self.observe_numeric_input_value_change(key, *old_value, value);
         }
 
         ret
@@ -266,15 +266,15 @@ impl StateMachineEngine {
 
         let ret = self.inputs.set_string(key, value.to_string());
 
+        if let Some(InputValue::String(old_value)) = ret.clone() {
+            self.observe_string_input_value_change(key, &old_value, value);
+        }
+
         if called_from_action {
             self.action_mutated_inputs = true;
         }
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
-        }
-
-        if let Some(InputValue::String(old_value)) = ret.clone() {
-            self.observe_string_input_value_change(key, &old_value, value);
         }
 
         ret
@@ -298,15 +298,15 @@ impl StateMachineEngine {
 
         let ret = self.inputs.set_boolean(key, value);
 
+        if let Some(InputValue::Boolean(old_value)) = ret.clone() {
+            self.observe_boolean_input_value_change(key, old_value, value);
+        }
+
         if called_from_action {
             self.action_mutated_inputs = true;
         }
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
-        }
-
-        if let Some(InputValue::Boolean(old_value)) = ret.clone() {
-            self.observe_boolean_input_value_change(key, old_value, value);
         }
 
         ret
@@ -644,7 +644,7 @@ impl StateMachineEngine {
             // Now use the extracted information
             if let (Some(state), Some(player)) = (state, player) {
                 // Enter the state
-                state.enter(self, &player);
+                let _ = state.enter(self, &player);
 
                 // If autoplay on the state is false and we've used tweening,
                 // The hit check will start failing. Render fixes this bug.
@@ -751,7 +751,7 @@ impl StateMachineEngine {
             // Now use the extracted information
             if let (Some(state), Some(player)) = (state, player) {
                 // Enter the state
-                state.enter(self, &player);
+                let _ = state.enter(self, &player);
                 // Don't forget to put things back
                 // new_state becomes the current state
                 self.current_state = Some(state);

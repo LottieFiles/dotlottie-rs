@@ -351,20 +351,18 @@ mod tests {
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "PigeonRunning");
 
-        player.state_machine_post_event(&Event::PointerDown { x: 0.0, y: 0.0 });
-
+        player.state_machine_post_event(&Event::PointerDown { x: 10.0, y: 10.0 });
         let curr_state_name = get_current_state_name(&player);
         assert_eq!(curr_state_name, "Explosion");
-
-        while !player.is_complete() {
-            let next_frame = player.request_frame();
-            if player.set_frame(next_frame) {
-                player.render();
+        loop {
+            player.tick();
+            if player.is_complete() {
+                break;
             }
         }
 
-        // let curr_state_name = get_current_state_name(&player);
-        // assert_eq!(curr_state_name, "Feathers falling");
+        let curr_state_name = get_current_state_name(&player);
+        assert_eq!(curr_state_name, "Feathers falling");
     }
 
     #[test]
@@ -386,16 +384,10 @@ mod tests {
         assert!(l);
         assert!(s);
 
-        let mut count = 0;
-        while count < 4 {
-            let next_frame = player.request_frame();
-
-            if player.set_frame(next_frame) {
-                player.render();
-            }
-
-            if player.is_complete() {
-                count += 1;
+        loop {
+            player.tick();
+            if player.loop_count() >= 4 {
+                break;
             }
         }
 

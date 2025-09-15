@@ -66,6 +66,7 @@ impl Direction {
 pub struct Config {
     pub mode: Mode,
     pub loop_animation: bool,
+    pub loop_count: u32,
     pub speed: f32,
     pub use_frame_interpolation: bool,
     pub autoplay: bool,
@@ -83,6 +84,7 @@ impl Default for Config {
         Config {
             mode: Mode::Forward,
             loop_animation: false,
+            loop_count: 0,
             speed: 1.0,
             use_frame_interpolation: true,
             autoplay: false,
@@ -287,7 +289,6 @@ impl DotLottieRuntime {
     pub fn pause(&mut self) -> bool {
         if self.is_loaded && self.is_playing() {
             self.playback_state = PlaybackState::Paused;
-
             true
         } else {
             false
@@ -387,9 +388,23 @@ impl DotLottieRuntime {
         next_frame
     }
 
+    fn should_increment_loop(&self) -> bool {
+        if !self.config.loop_animation {
+            return false;
+        }
+
+        // Unlimited looping: always increment
+        if self.config.loop_count == 0 {
+            return true;
+        }
+
+        // Counted looping: increment until reaching the configured count
+        self.loop_count < self.config.loop_count
+    }
+
     fn handle_forward_mode(&mut self, next_frame: f32, end_frame: f32) -> f32 {
         if next_frame >= end_frame {
-            if self.config.loop_animation {
+            if self.should_increment_loop() {
                 self.loop_count += 1;
                 self.start_time = Instant::now();
             }
@@ -402,7 +417,7 @@ impl DotLottieRuntime {
 
     fn handle_reverse_mode(&mut self, next_frame: f32, start_frame: f32) -> f32 {
         if next_frame <= start_frame {
-            if self.config.loop_animation {
+            if self.should_increment_loop() {
                 self.loop_count += 1;
                 self.start_time = Instant::now();
             }
@@ -427,7 +442,7 @@ impl DotLottieRuntime {
             }
             Direction::Reverse => {
                 if next_frame <= start_frame {
-                    if self.config.loop_animation {
+                    if self.should_increment_loop() {
                         self.loop_count += 1;
                         self.direction = Direction::Forward;
                         self.start_time = Instant::now();
@@ -459,7 +474,7 @@ impl DotLottieRuntime {
             }
             Direction::Forward => {
                 if next_frame >= end_frame {
-                    if self.config.loop_animation {
+                    if self.should_increment_loop() {
                         self.loop_count += 1;
                         self.direction = Direction::Reverse;
                         self.start_time = Instant::now();
@@ -600,6 +615,10 @@ impl DotLottieRuntime {
         self.loop_count
     }
 
+    pub fn reset_loop_count(&mut self) {
+        self.loop_count = 0;
+    }
+
     pub fn speed(&self) -> f32 {
         self.config.speed
     }
@@ -619,6 +638,7 @@ impl DotLottieRuntime {
         self.update_background_color(&new_config);
         self.update_speed(&new_config);
         self.update_loop_animation(&new_config);
+        self.update_loop_count(&new_config);
         self.update_marker(&new_config.marker);
         self.update_layout(&new_config.layout);
         self.set_theme(&new_config.theme_id);
@@ -632,6 +652,8 @@ impl DotLottieRuntime {
 
         if new_config.autoplay {
             self.play();
+        } else {
+            self.pause();
         }
     }
 
@@ -704,6 +726,13 @@ impl DotLottieRuntime {
         if self.config.loop_animation != new_config.loop_animation {
             self.loop_count = 0;
             self.config.loop_animation = new_config.loop_animation;
+        }
+    }
+
+    fn update_loop_count(&mut self, new_config: &Config) {
+        if self.config.loop_count != new_config.loop_count {
+            self.loop_count = 0;
+            self.config.loop_count = new_config.loop_count;
         }
     }
 
@@ -864,14 +893,30 @@ impl DotLottieRuntime {
         if !self.is_loaded() {
             return false;
         }
+
         match self.config.mode {
             Mode::Forward => self.current_frame() >= self.end_frame(),
             Mode::Reverse => self.current_frame() <= self.start_frame(),
             Mode::Bounce => {
-                self.current_frame() <= self.start_frame() && self.direction == Direction::Reverse
+                // Enables firing loop_complete if loop_count is enabled.
+                // Avoid firing at initial start frame before any loop has completed.
+                if self.config().loop_animation && self.config().loop_count > 0 {
+                    self.loop_count() > 0 && self.current_frame() <= self.start_frame()
+                } else {
+                    // Enables firing complete if loop_animation = false
+                    self.current_frame() <= self.start_frame()
+                        && self.direction == Direction::Reverse
+                }
             }
             Mode::ReverseBounce => {
-                self.current_frame() >= self.end_frame() && self.direction == Direction::Forward
+                // Enables firing loop_complete if loop_count is enabled.
+                // Avoid firing at initial end frame before any loop has completed.
+                if self.config().loop_animation && self.config().loop_count > 0 {
+                    self.loop_count() > 0 && self.current_frame() >= self.end_frame()
+                } else {
+                    // Enables firing complete if loop_animation = false
+                    self.current_frame() >= self.end_frame() && self.direction == Direction::Forward
+                }
             }
         }
     }
@@ -1302,6 +1347,10 @@ impl DotLottiePlayerContainer {
         ok
     }
 
+    pub fn reset_loop_count(&self) {
+        self.runtime.write().unwrap().reset_loop_count();
+    }
+
     pub fn render(&self) -> bool {
         let ok = self.runtime.write().unwrap().render();
 
@@ -1312,8 +1361,22 @@ impl DotLottiePlayerContainer {
 
             if self.is_complete() {
                 if self.config().loop_animation {
+                    let count_complete = self.config().loop_count > 0
+                        && self.loop_count() >= self.config().loop_count;
+
+                    if count_complete {
+                        // Put the animation in a stop state, otherwise we can keep looping if we call tick()
+                        // Do it before emiting complete, otherwise it will pause the animation at the wrong stages in state machines
+                        self.stop();
+                    }
+
                     self.emit_on_loop(self.loop_count());
-                } else {
+
+                    if count_complete {
+                        self.emit_on_complete();
+                        self.reset_loop_count();
+                    }
+                } else if !self.config().loop_animation {
                     self.emit_on_complete();
                 }
             }
@@ -1448,7 +1511,10 @@ impl DotLottiePlayerContainer {
             self.tween_update(None) && self.render()
         } else {
             let next_frame = self.request_frame();
-            let sf = self.set_frame(next_frame) && self.render();
+
+            let _ = self.set_frame(next_frame);
+
+            let rendered = self.render();
 
             let mut is_sm_still_tweening = false;
 
@@ -1472,7 +1538,7 @@ impl DotLottiePlayerContainer {
                 }
             }
 
-            sf
+            rendered
         }
     }
 

@@ -76,6 +76,8 @@ pub trait LottieRenderer {
 
     fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, LottieRendererError>;
 
+    fn updated(&self) -> bool;
+
     fn tween(
         &mut self,
         to: f32,
@@ -101,6 +103,7 @@ impl dyn LottieRenderer {
             picture_width: 0.0,
             picture_height: 0.0,
             current_frame: 0.0,
+            updated: false,
             background_color: 0,
             buffer: vec![],
             layout: Layout::default(),
@@ -118,6 +121,7 @@ struct LottieRendererImpl<R: Renderer> {
     picture_width: f32,
     picture_height: f32,
     current_frame: f32,
+    updated: bool,
     background_color: u32,
     buffer: Vec<u32>,
     layout: Layout,
@@ -290,6 +294,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
         self.animation = Some(animation);
         self.background_shape = Some(background_shape);
+        self.updated = true;
 
         Ok(())
     }
@@ -337,11 +342,16 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn render(&mut self) -> Result<(), LottieRendererError> {
-        self.renderer.update().map_err(into_lottie::<R>)?;
-        self.renderer.draw(true).map_err(into_lottie::<R>)?;
-        self.renderer.sync().map_err(into_lottie::<R>)?;
+        if self.updated {
+            self.renderer.update().map_err(into_lottie::<R>)?;
+            self.renderer.draw(true).map_err(into_lottie::<R>)?;
+            self.renderer.sync().map_err(into_lottie::<R>)?;
+            self.updated = false;
 
-        Ok(())
+            return Ok(());
+        }
+
+        Err(LottieRendererError::RendererError)
     }
 
     #[inline]
@@ -361,6 +371,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.get_animation_mut()?
             .set_frame(no)
             .map_err(into_lottie::<R>)?;
+
+        self.updated = true;
 
         self.current_frame = no;
 
@@ -421,6 +433,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
                 .map_err(into_lottie::<R>)?;
         }
 
+        self.updated = true;
+
         self.render()?;
 
         Ok(())
@@ -445,15 +459,24 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
         let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
 
-        self.get_background_shape_mut()?
+        let set_background = self
+            .get_background_shape_mut()?
             .fill((red, green, blue, alpha))
-            .map_err(into_lottie::<R>)
+            .map_err(into_lottie::<R>);
+
+        self.updated = true;
+
+        set_background
     }
 
     fn set_slots(&mut self, slots: &str) -> Result<(), LottieRendererError> {
         self.get_animation_mut()?
             .set_slots(slots)
             .map_err(into_lottie::<R>)
+    }
+
+    fn updated(&self) -> bool {
+        self.updated
     }
 
     fn tween(
@@ -474,9 +497,14 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, LottieRendererError> {
-        self.get_animation_mut()?
+        let updated_tween = self
+            .get_animation_mut()?
             .tween_update(progress)
-            .map_err(into_lottie::<R>)
+            .map_err(into_lottie::<R>);
+
+        self.updated = true;
+
+        updated_tween
     }
 
     fn tween_stop(&mut self) -> Result<(), LottieRendererError> {
@@ -509,6 +537,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             animation
                 .translate(shift_x, shift_y)
                 .map_err(into_lottie::<R>)?;
+
+            self.updated = true;
         }
 
         Ok(())

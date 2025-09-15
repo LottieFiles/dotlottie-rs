@@ -177,32 +177,61 @@ impl ScriptingEngine {
                 println!("Successfully added the 'print' property");
             }
 
+            // Register jerry_load_extra_animation_data function
+            let load_extra_animation_data_name = jerry::jerry_string_sz(
+                b"load_extra_animation_data\0".as_ptr() as *const std::os::raw::c_char,
+            );
+            let load_extra_animation_data_func =
+                jerry::jerry_function_external(Some(Self::jerry_load_extra_animation_data_func));
+            let load_extra_animation_data_result = jerry::jerry_object_set(
+                global_object,
+                load_extra_animation_data_name,
+                load_extra_animation_data_func,
+            );
+
+            if jerry::jerry_value_is_exception(load_extra_animation_data_result) {
+                eprintln!("Failed to add the 'print' property");
+            } else {
+                println!("Successfully added the 'print' property");
+            }
+
             // Cleanup
             jerry::jerry_value_free(set_result);
             jerry::jerry_value_free(property_value_func);
             jerry::jerry_value_free(property_name);
+
             jerry::jerry_value_free(play_result);
             jerry::jerry_value_free(play_func);
             jerry::jerry_value_free(play_name);
+
             jerry::jerry_value_free(pause_result);
             jerry::jerry_value_free(pause_func);
             jerry::jerry_value_free(pause_name);
+
             jerry::jerry_value_free(stop_result);
             jerry::jerry_value_free(stop_func);
             jerry::jerry_value_free(stop_name);
+
             jerry::jerry_value_free(set_frame_result);
             jerry::jerry_value_free(set_frame_func);
             jerry::jerry_value_free(set_frame_name);
+
             jerry::jerry_value_free(set_config_result);
             jerry::jerry_value_free(set_config_func);
             jerry::jerry_value_free(set_config_name);
+
             jerry::jerry_value_free(print_result);
+            jerry::jerry_value_free(print_func);
             jerry::jerry_value_free(print_name);
-            jerry::jerry_value_free(print_result);
-            jerry::jerry_value_free(layers_collide_name);
+
             jerry::jerry_value_free(layers_collide_result);
             jerry::jerry_value_free(layers_collide_func);
             jerry::jerry_value_free(layers_collide_name);
+
+            jerry::jerry_value_free(load_extra_animation_data_result);
+            jerry::jerry_value_free(load_extra_animation_data_func);
+            jerry::jerry_value_free(load_extra_animation_data_name);
+
             jerry::jerry_value_free(global_object);
         }
     }
@@ -212,7 +241,7 @@ impl ScriptingEngine {
         arguments: *const jerry::jerry_value_t,
         argument_count: jerry::jerry_length_t,
     ) -> jerry::jerry_value_t {
-        println!("jerry_print called with {} arguments", argument_count);
+        // println!("jerry_print called with {} arguments", argument_count);
 
         if argument_count > 0 {
             let mut output_parts = Vec::new();
@@ -465,10 +494,10 @@ impl ScriptingEngine {
         arguments: *const jerry::jerry_value_t,
         argument_count: jerry::jerry_length_t,
     ) -> jerry::jerry_value_t {
-        println!(
-            "jerry_layers_collide called with {} arguments",
-            argument_count
-        );
+        // println!(
+        //     "jerry_layers_collide called with {} arguments",
+        //     argument_count
+        // );
 
         if argument_count >= 2 {
             unsafe {
@@ -509,10 +538,10 @@ impl ScriptingEngine {
                             String::from_utf8(buffer1[..string1_length as usize].to_vec()),
                             String::from_utf8(buffer2[..string2_length as usize].to_vec()),
                         ) {
-                            println!(
-                                "Calling layers_collide with: '{}' and '{}'",
-                                layer1_name, layer2_name
-                            );
+                            // println!(
+                            //     "Calling layers_collide with: '{}' and '{}'",
+                            //     layer1_name, layer2_name
+                            // );
                             let collision_result =
                                 engine.layers_collide(&layer1_name, &layer2_name);
 
@@ -532,6 +561,81 @@ impl ScriptingEngine {
         } else {
             println!(
                 "jerry_layers_collide called with insufficient arguments! Expected 2, got {}",
+                argument_count
+            );
+        }
+
+        jerry::jerry_boolean(false)
+    }
+
+    unsafe extern "C" fn jerry_load_extra_animation_data_func(
+        _call_info_p: *const jerry::jerry_call_info_t,
+        arguments: *const jerry::jerry_value_t,
+        argument_count: jerry::jerry_length_t,
+    ) -> jerry::jerry_value_t {
+        println!(
+            "jerry_load_extra_animation_data called with {} arguments",
+            argument_count
+        );
+
+        if argument_count >= 5 {
+            unsafe {
+                let global_object = jerry::jerry_current_realm();
+                let engine_ptr =
+                    jerry::jerry_object_get_native_ptr(global_object, &ENGINE_NATIVE_INFO);
+                jerry::jerry_value_free(global_object);
+
+                if !engine_ptr.is_null() {
+                    let engine = &*(engine_ptr as *const ScriptingEngine);
+
+                    // Convert the first argument to string (animation_data)
+                    let arg1_as_string = jerry::jerry_value_to_string(*arguments);
+                    let string_length = jerry::jerry_string_length(arg1_as_string);
+
+                    if string_length > 0 {
+                        let mut buffer = vec![0u8; string_length as usize + 1];
+                        jerry::jerry_string_to_buffer(
+                            arg1_as_string,
+                            jerry::jerry_encoding_t_JERRY_ENCODING_UTF8,
+                            buffer.as_mut_ptr(),
+                            string_length,
+                        );
+
+                        if let Ok(animation_data) =
+                            String::from_utf8(buffer[..string_length as usize].to_vec())
+                        {
+                            // Convert remaining arguments to numbers
+                            let width = jerry::jerry_value_as_number(*arguments.offset(1)) as u32;
+                            let height = jerry::jerry_value_as_number(*arguments.offset(2)) as u32;
+                            let x = jerry::jerry_value_as_number(*arguments.offset(3));
+                            let y = jerry::jerry_value_as_number(*arguments.offset(4));
+
+                            println!(
+                                "Calling load_extra_animation_data with: animation data = {} width={}, height={}, x={}, y={}",
+                                animation_data, width, height, x, y
+                            );
+
+                            let success = engine.load_extra_animation_data(
+                                &animation_data,
+                                width,
+                                height,
+                                x,
+                                y,
+                            );
+
+                            jerry::jerry_value_free(arg1_as_string);
+                            return jerry::jerry_boolean(success);
+                        }
+                    }
+
+                    jerry::jerry_value_free(arg1_as_string);
+                } else {
+                    println!("Engine pointer is null in jerry_load_extra_animation_data!");
+                }
+            }
+        } else {
+            println!(
+                "jerry_load_extra_animation_data called with insufficient arguments! Expected 5, got {}",
                 argument_count
             );
         }
@@ -741,7 +845,7 @@ impl ScriptingEngine {
             jerry::jerry_value_free(eval_ret);
 
             if run_ok {
-                println!("Script executed successfully!");
+                // println!("Script executed successfully!");
                 true
             } else {
                 eprintln!("Script execution failed!");
@@ -910,10 +1014,10 @@ impl ScriptingEngine {
     }
 
     pub fn layers_collide(&self, layer1_name: &str, layer2_name: &str) -> bool {
-        println!(
-            "Jerry script successfully called layers_collide with: '{}' and '{}'",
-            layer1_name, layer2_name
-        );
+        // println!(
+        //     "Jerry script successfully called layers_collide with: '{}' and '{}'",
+        //     layer1_name, layer2_name
+        // );
 
         if let Some(player) = &self.player {
             match player.try_read() {
@@ -922,6 +1026,42 @@ impl ScriptingEngine {
                 }
                 Err(_) => {
                     println!("Could not acquire read lock in layers_collide - possible deadlock!");
+                    return false;
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn load_extra_animation_data(
+        &self,
+        animation_data: &str,
+        width: u32,
+        height: u32,
+        x: f32,
+        y: f32,
+    ) -> bool {
+        println!(
+            "Jerry script successfully called load_extra_animation_data with: width={}, height={}, x={}, y={}",
+            width, height, x, y
+        );
+
+        if let Some(player) = &self.player {
+            match player.try_write() {
+                Ok(player_guard) => {
+                    println!(">> Got guard");
+                    println!("Animation data: {}", animation_data);
+                    return player_guard.load_extra_animation_data(
+                        animation_data,
+                        width,
+                        height,
+                        x,
+                        y,
+                    );
+                }
+                Err(_) => {
+                    println!("Could not acquire write lock in load_extra_animation_data - possible deadlock!");
                     return false;
                 }
             }

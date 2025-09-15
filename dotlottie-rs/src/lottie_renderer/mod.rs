@@ -6,7 +6,9 @@ mod thorvg;
 
 pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
 #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
-pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
+pub use thorvg::{
+    TvgAnimation, TvgBlendMethod, TvgEngine, TvgError, TvgMatrix, TvgRenderer, TvgShape,
+};
 
 use std::{error::Error, fmt};
 
@@ -35,6 +37,15 @@ fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {
 pub trait LottieRenderer {
     fn load_data(&mut self, data: &str, width: u32, height: u32)
         -> Result<(), LottieRendererError>;
+
+    fn load_extra_data(
+        &mut self,
+        data: &str,
+        width: u32,
+        height: u32,
+        x: f32,
+        y: f32,
+    ) -> Result<(), LottieRendererError>;
 
     fn picture_width(&self) -> f32;
 
@@ -102,6 +113,7 @@ impl dyn LottieRenderer {
     pub fn new<R: Renderer>(renderer: R) -> Box<Self> {
         Box::new(LottieRendererImpl {
             animation: None,
+            extra_animation: None,
             background_shape: None,
             renderer,
             width: 0,
@@ -120,6 +132,7 @@ impl dyn LottieRenderer {
 #[derive(Default)]
 struct LottieRendererImpl<R: Renderer> {
     animation: Option<R::Animation>,
+    extra_animation: Option<R::Animation>,
     background_shape: Option<R::Shape>,
     renderer: R,
     width: u32,
@@ -274,6 +287,20 @@ impl<R: Renderer> LottieRendererImpl<R> {
     }
 
     #[inline]
+    fn get_extra_animation(&self) -> Result<&R::Animation, LottieRendererError> {
+        self.extra_animation
+            .as_ref()
+            .ok_or(LottieRendererError::AnimationNotLoaded)
+    }
+
+    #[inline]
+    fn get_extra_animation_mut(&mut self) -> Result<&mut R::Animation, LottieRendererError> {
+        self.extra_animation
+            .as_mut()
+            .ok_or(LottieRendererError::AnimationNotLoaded)
+    }
+
+    #[inline]
     fn get_background_shape_mut(&mut self) -> Result<&mut R::Shape, LottieRendererError> {
         self.background_shape
             .as_mut()
@@ -305,6 +332,34 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
+    fn load_extra_data(
+        &mut self,
+        data: &str,
+        width: u32,
+        height: u32,
+        x: f32,
+        y: f32,
+    ) -> Result<(), LottieRendererError> {
+        // let mut animation = self.load_animation(data)?;
+        let mut animation = R::Animation::default();
+
+        println!(">> Loading data: {}", data);
+
+        animation
+            .load_data(data, "lottie")
+            .map_err(into_lottie::<R>)?;
+
+        let background_shape = self.create_background_shape()?;
+
+        // let _ = animation.scale(0.5);
+        let _ = animation.translate(x, y);
+
+        self.setup_drawables(&background_shape, &animation)?;
+
+        self.extra_animation = Some(animation);
+
+        Ok(())
+    }
     fn picture_width(&self) -> f32 {
         self.picture_width
     }
@@ -380,6 +435,21 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
         self.updated = true;
 
+        // todo - set frame needs to be per animation
+        if self.get_extra_animation().is_ok() {
+            let total_frames = self
+                .get_extra_animation()?
+                .get_total_frame()
+                .map_err(into_lottie::<R>)?;
+
+            if no < 0.0 || no >= total_frames {
+                return Err(LottieRendererError::InvalidArgument);
+            }
+
+            self.get_extra_animation_mut()?
+                .set_frame(no)
+                .map_err(into_lottie::<R>)?;
+        }
         self.current_frame = no;
 
         Ok(())

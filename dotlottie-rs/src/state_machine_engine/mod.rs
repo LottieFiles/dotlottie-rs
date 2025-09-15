@@ -15,7 +15,7 @@ pub mod transitions;
 
 use actions::open_url_policy::OpenUrlPolicy;
 use actions::{Action, ActionTrait};
-use inputs::{Input, InputManager, InputTrait, InputValue};
+use inputs::{Input, InputManager, InputValue};
 use interactions::InteractionTrait;
 use state_machine::StateMachine;
 use states::StateTrait;
@@ -128,6 +128,18 @@ pub struct StateMachineEngine {
 
     // The state to target once blending has finished
     tween_transition_target_state: Option<State>,
+
+    #[cfg(feature = "tvg-lottie-expressions")]
+    // Persistent JerryScript context for Eval actions
+    js_context: Option<crate::jerryscript::Context>,
+}
+
+#[cfg(feature = "tvg-lottie-expressions")]
+/// Helper enum for collecting input updates to avoid borrowing issues
+enum InputUpdateType {
+    Numeric(f32),
+    Boolean(bool),
+    String(String),
 }
 
 impl Default for StateMachineEngine {
@@ -151,6 +163,8 @@ impl Default for StateMachineEngine {
             current_cycle_count: 0,
             action_mutated_inputs: false,
             tween_transition_target_state: None,
+            #[cfg(feature = "tvg-lottie-expressions")]
+            js_context: None,
         }
     }
 }
@@ -181,6 +195,8 @@ impl StateMachineEngine {
             current_cycle_count: 0,
             action_mutated_inputs: false,
             tween_transition_target_state: None,
+            #[cfg(feature = "tvg-lottie-expressions")]
+            js_context: None,
         };
 
         state_machine.create_state_machine(state_machine_definition, &player)
@@ -312,6 +328,66 @@ impl StateMachineEngine {
     pub fn get_boolean_input(&self, key: &str) -> Option<bool> {
         self.inputs.get_boolean(key)
     }
+
+    pub fn get_all_input_names(&self) -> Vec<String> {
+        self.inputs.get_all_input_names()
+    }
+
+    pub fn get_input(&self, key: &str) -> Result<&InputValue, &'static str> {
+        self.inputs.get(key)
+    }
+
+    #[cfg(feature = "tvg-lottie-expressions")]
+    /// Get or initialize the JerryScript context, updating it with current input values
+    pub fn get_js_context(&mut self) -> Result<&mut crate::jerryscript::Context, &'static str> {
+        // Initialize context if it doesn't exist
+        if self.js_context.is_none() {
+            match crate::jerryscript::Context::new() {
+                Ok(ctx) => self.js_context = Some(ctx),
+                Err(_) => return Err("Failed to initialize JerryScript context"),
+            }
+        }
+
+        // Update the context with current input values
+        if let Some(ref mut ctx) = self.js_context {
+            // We need to collect input data before borrowing the context mutably
+            let mut input_updates = Vec::new();
+            for input_name in self.inputs.get_all_input_names() {
+                let var_name = format!("${}", input_name);
+
+                if let Some(value) = self.inputs.get_numeric(&input_name) {
+                    input_updates.push((var_name, InputUpdateType::Numeric(value)));
+                } else if let Some(value) = self.inputs.get_boolean(&input_name) {
+                    input_updates.push((var_name, InputUpdateType::Boolean(value)));
+                } else if let Some(value) = self.inputs.get_string(&input_name) {
+                    input_updates.push((var_name, InputUpdateType::String(value)));
+                }
+            }
+
+            // Now apply the updates to the context
+            for (var_name, update) in input_updates {
+                match update {
+                    InputUpdateType::Numeric(val) => {
+                        ctx.set_global_number(&var_name, val)
+                            .map_err(|_| "Failed to set numeric variable")?;
+                    }
+                    InputUpdateType::Boolean(val) => {
+                        ctx.set_global_boolean(&var_name, val)
+                            .map_err(|_| "Failed to set boolean variable")?;
+                    }
+                    InputUpdateType::String(val) => {
+                        ctx.set_global_string(&var_name, &val)
+                            .map_err(|_| "Failed to set string variable")?;
+                    }
+                }
+            }
+
+            Ok(ctx)
+        } else {
+            Err("JerryScript context not available")
+        }
+    }
+
 
     pub fn reset_input(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
         // Modifying triggers whilst tweening isn't allowed

@@ -1,5 +1,6 @@
 mod dotlottie_player;
 mod fms;
+pub(crate) mod jerryscript;
 mod layout;
 mod lottie_renderer;
 mod markers;

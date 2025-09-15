@@ -196,12 +196,27 @@ mod thorvg {
 
         cc_build.compile("thorvg");
 
-        let bindings = bindgen::Builder::default()
+        let thorvg_bindings = bindgen::Builder::default()
             .header("deps/thorvg/src/bindings/capi/thorvg_capi.h")
             .generate()
             .expect("Failed to generate bindings");
 
-        bindings.write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
+        thorvg_bindings
+            .write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
+
+        let jerryscript_bindings = bindgen::Builder::default()
+            .header("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/include/jerryscript.h")
+            .generate()
+            .expect("Failed to generate jerryscript bindings");
+
+        jerryscript_bindings.write_to_file(
+            PathBuf::from(env::var("OUT_DIR").unwrap()).join("jerryscript_bindings.rs"),
+        )?;
+
+        println!(
+            "cargo:warning=jerryscript_bindings path {:#?}",
+            out_dir.join("jerryscript_bindings.rs")
+        );
 
         Ok(())
     }

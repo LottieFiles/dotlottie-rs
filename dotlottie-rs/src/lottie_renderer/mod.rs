@@ -107,6 +107,14 @@ pub trait LottieRenderer {
     fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, LottieRendererError>;
 
     fn tween_stop(&mut self) -> Result<(), LottieRendererError>;
+
+    fn assign(
+        &self,
+        layer: &str,
+        ix: u32,
+        variable_name: &str,
+        value: f32,
+    ) -> Result<(), LottieRendererError>;
 }
 
 impl dyn LottieRenderer {
@@ -639,6 +647,18 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     ) -> Result<bool, LottieRendererError> {
         self.get_animation()?
             .layers_collide(layer1_name, layer2_name)
+            .map_err(into_lottie::<R>)
+    }
+
+    fn assign(
+        &self,
+        layer: &str,
+        ix: u32,
+        variable_name: &str,
+        value: f32,
+    ) -> Result<(), LottieRendererError> {
+        self.get_animation()?
+            .assign(layer, ix, variable_name, value)
             .map_err(into_lottie::<R>)
     }
 }

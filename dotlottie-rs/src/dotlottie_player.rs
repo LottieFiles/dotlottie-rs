@@ -554,6 +554,10 @@ impl DotLottieRuntime {
         self.renderer.set_frame(no).is_ok()
     }
 
+    pub fn assign(&self, layer: &str, ix: u32, variable_name: &str, value: f32) {
+        self.renderer.assign(layer, ix, variable_name, value);
+    }
+
     /// Seek to a specific frame number.
     ///
     /// # Arguments
@@ -1402,6 +1406,15 @@ impl DotLottiePlayerContainer {
         ok
     }
 
+    pub fn assign(&self, layer: &str, ix: u32, variable_name: &str, value: f32) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .assign(layer, ix, variable_name, value);
+
+        true
+    }
+
     pub fn seek(&self, no: f32) -> bool {
         let ok = self.runtime.write().unwrap().seek(no);
 
@@ -2140,6 +2153,13 @@ impl DotLottiePlayer {
 
     pub fn set_frame(&self, no: f32) -> bool {
         self.player.write().unwrap().set_frame(no)
+    }
+
+    pub fn assign(&self, layer: &str, ix: u32, variable_name: &str, value: f32) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .assign(layer, ix, variable_name, value)
     }
 
     pub fn seek(&self, no: f32) -> bool {

@@ -71,6 +71,14 @@ pub trait Animation: Default {
     fn tween_stop(&mut self) -> Result<(), Self::Error>;
 
     fn is_tweening(&self) -> bool;
+
+    fn assign(
+        &self,
+        layer: &str,
+        ix: u32,
+        variable_name: &str,
+        value: f32,
+    ) -> Result<(), Self::Error>;
 }
 
 pub trait Renderer: Sized + 'static {

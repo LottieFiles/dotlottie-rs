@@ -1,4 +1,4 @@
-use dotlottie_rs::actions::open_url::OpenUrl;
+use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy as OpenUrl;
 use dotlottie_rs::events::Event;
 use dotlottie_rs::{Config, DotLottiePlayer, StateMachineObserver};
 use minifb::{Key, MouseButton, Window, WindowOptions};

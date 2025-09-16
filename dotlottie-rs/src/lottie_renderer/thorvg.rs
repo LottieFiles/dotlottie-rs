@@ -806,6 +806,30 @@ impl Animation for TvgAnimation {
         #[cfg(not(feature = "tvg-v1"))]
         Err(TvgError::NotSupported)
     }
+
+    fn assign(
+        &self,
+        layer: &str,
+        ix: u32,
+        variable_name: &str,
+        value: f32,
+    ) -> Result<(), TvgError> {
+        // unsafe { tvg::tvg_lottie_animation_override(self.raw_animation, ptr::null()) }
+        let layer_name_cstr = CString::new(layer).expect("Failed to create CString");
+        let variable_name_cstr = CString::new(variable_name).expect("Failed to create CString");
+
+        unsafe {
+            tvg::tvg_lottie_animation_assign(
+                self.raw_animation,
+                layer_name_cstr.as_ptr(),
+                ix,
+                variable_name_cstr.as_ptr(),
+                value,
+            );
+
+            Ok(())
+        }
+    }
 }
 
 impl Drop for TvgAnimation {

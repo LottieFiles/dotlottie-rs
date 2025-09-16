@@ -478,6 +478,19 @@ impl StateMachineEngine {
             return false;
         }
 
+        self.open_url_requires_user_interaction = open_url.require_user_interaction;
+
+        if !open_url.whitelist.is_empty() {
+            let mut whitelist = Whitelist::new();
+
+            // Add patterns to whitelist
+            for entry in &open_url.whitelist {
+                let _ = whitelist.add(entry);
+            }
+
+            self.open_url_whitelist = whitelist;
+        }
+
         let initial = &self.state_machine.initial.clone();
 
         let err = self.set_current_state(initial, None, false);
@@ -494,19 +507,6 @@ impl StateMachineEngine {
 
         if self.status == StateMachineEngineStatus::Running {
             return true;
-        }
-
-        self.open_url_requires_user_interaction = open_url.require_user_interaction;
-
-        if !open_url.whitelist.is_empty() {
-            let mut whitelist = Whitelist::new();
-
-            // Add patterns to whitelist
-            for entry in &open_url.whitelist {
-                let _ = whitelist.add(entry);
-            }
-
-            self.open_url_whitelist = whitelist;
         }
 
         self.observe_on_start();

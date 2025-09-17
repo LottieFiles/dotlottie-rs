@@ -713,17 +713,14 @@ impl StateMachineEngine {
                                         self.tween_transition_target_state =
                                             Some(new_state.clone());
                                         // Tweening is activated and the state machine has been paused whilst it transitions
-                                        let markers = player.markers();
-                                        if let Some(marker) =
-                                            markers.iter().find(|m| m.name == target_segment)
-                                        {
-                                            self.status = StateMachineEngineStatus::Tweening;
-                                            player.tween(
-                                                marker.time,
-                                                Some(causing_transition.duration()),
-                                                Some(causing_transition.easing().to_vec()),
-                                            );
-                                        }
+                                        self.status = StateMachineEngineStatus::Tweening;
+
+                                        player.tween_to_marker(
+                                            &target_segment,
+                                            Some(causing_transition.duration()),
+                                            Some(causing_transition.easing().to_vec()),
+                                        );
+
                                         return Ok(());
                                     }
                                 }

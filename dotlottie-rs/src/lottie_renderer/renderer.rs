@@ -69,6 +69,10 @@ pub trait Animation: Default {
     fn tween_stop(&mut self) -> Result<(), Self::Error>;
 
     fn is_tweening(&self) -> bool;
+
+    fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), Self::Error>;
+
+    fn get_transform(&self) -> Result<[f32; 9], Self::Error>;
 }
 
 pub trait Renderer: Sized + 'static {

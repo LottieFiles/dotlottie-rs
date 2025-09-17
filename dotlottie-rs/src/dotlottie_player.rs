@@ -1046,6 +1046,25 @@ impl DotLottieRuntime {
         }
         ok
     }
+
+    pub fn get_transform(&self) -> Vec<f32> {
+        self.renderer
+            .get_transform()
+            .unwrap_or([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+            .to_vec()
+    }
+
+    pub fn set_transform(&mut self, transform: Vec<f32>) -> bool {
+        if transform.len() != 9 {
+            return false;
+        }
+        let transform_array: [f32; 9] = [
+            transform[0], transform[1], transform[2],
+            transform[3], transform[4], transform[5],
+            transform[6], transform[7], transform[8],
+        ];
+        self.renderer.set_transform(&transform_array).is_ok()
+    }
 }
 
 pub struct DotLottiePlayerContainer {
@@ -1582,6 +1601,14 @@ impl DotLottiePlayerContainer {
 
     pub fn tween_update(&self, progress: Option<f32>) -> bool {
         self.runtime.write().unwrap().tween_update(progress)
+    }
+
+    pub fn get_transform(&self) -> Vec<f32> {
+        self.runtime.read().unwrap().get_transform()
+    }
+
+    pub fn set_transform(&self, transform: Vec<f32>) -> bool {
+        self.runtime.write().unwrap().set_transform(transform)
     }
 }
 
@@ -2369,6 +2396,14 @@ impl DotLottiePlayer {
             .read()
             .unwrap()
             .tween_to_marker(marker_name, duration, easing)
+    }
+
+    pub fn get_transform(&self) -> Vec<f32> {
+        self.player.read().unwrap().get_transform()
+    }
+
+    pub fn set_transform(&self, transform: Vec<f32>) -> bool {
+        self.player.read().unwrap().set_transform(transform)
     }
 }
 

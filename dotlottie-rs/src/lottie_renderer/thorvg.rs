@@ -608,6 +608,36 @@ impl Animation for TvgAnimation {
         #[cfg(not(feature = "tvg-v1"))]
         Err(TvgError::NotSupported)
     }
+
+    fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), TvgError> {
+        let tvg_matrix = tvg::Tvg_Matrix {
+            e11: matrix[0], e12: matrix[1], e13: matrix[2],
+            e21: matrix[3], e22: matrix[4], e23: matrix[5],
+            e31: matrix[6], e32: matrix[7], e33: matrix[8],
+        };
+
+        unsafe {
+            tvg::tvg_paint_set_transform(self.raw_paint, &tvg_matrix).into_result()
+        }
+    }
+
+    fn get_transform(&self) -> Result<[f32; 9], TvgError> {
+        let mut tvg_matrix = tvg::Tvg_Matrix {
+            e11: 1.0, e12: 0.0, e13: 0.0,
+            e21: 0.0, e22: 1.0, e23: 0.0,
+            e31: 0.0, e32: 0.0, e33: 1.0,
+        };
+
+        unsafe {
+            tvg::tvg_paint_get_transform(self.raw_paint, &mut tvg_matrix).into_result()?;
+        }
+
+        Ok([
+            tvg_matrix.e11, tvg_matrix.e12, tvg_matrix.e13,
+            tvg_matrix.e21, tvg_matrix.e22, tvg_matrix.e23,
+            tvg_matrix.e31, tvg_matrix.e32, tvg_matrix.e33,
+        ])
+    }
 }
 
 impl Drop for TvgAnimation {

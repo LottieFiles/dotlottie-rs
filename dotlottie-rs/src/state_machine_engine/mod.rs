@@ -539,10 +539,6 @@ impl StateMachineEngine {
         }
     }
 
-    pub fn is_tweening(&self) -> bool {
-        self.status == StateMachineEngineStatus::Tweening
-    }
-
     pub fn get_current_state(&self) -> Option<State> {
         self.current_state.clone()
     }

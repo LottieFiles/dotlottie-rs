@@ -1232,10 +1232,6 @@ impl StateMachineEngine {
     }
 
     pub fn post_event(&mut self, event: &Event) {
-        if self.status == StateMachineEngineStatus::Tweening {
-            return;
-        }
-
         self.pointer_management.most_recent_event = Some(event.clone());
 
         if event.type_name().contains("Pointer") || event.type_name().contains("Click") {

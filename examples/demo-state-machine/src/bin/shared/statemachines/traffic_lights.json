@@ -1,0 +1,112 @@
+{
+  "initial": "Green",
+  "states": [
+    {
+      "name": "Red",
+      "animation": "",
+      "type": "PlaybackState",
+      "transitions": [
+        {
+          "guards": [
+            {
+              "inputName": "lightCount",
+              "type": "Numeric",
+              "compareTo": 13,
+              "conditionType": "Equal"
+            }
+          ],
+          "speed": 3,
+          "toState": "Green",
+          "type": "Tweened",
+          "duration": 3.0,
+          "easing": [0, 0, 0.58, 1]
+        }
+      ],
+      "entryActions": [
+        { "type": "SetNumeric", "value": 0, "inputName": "lightCount" }
+      ],
+      "segment": "Red",
+      "autoplay": true,
+      "loop": true
+    },
+    {
+      "name": "Green",
+      "animation": "",
+      "type": "PlaybackState",
+      "transitions": [
+        {
+          "guards": [
+            {
+              "inputName": "lightCount",
+              "type": "Numeric",
+              "compareTo": 3,
+              "conditionType": "Equal"
+            }
+          ],
+          "toState": "Yellow",
+          "speed": 4,
+          "type": "Tweened",
+          "duration": 3.0,
+          "easing": [0, 0, 1, 1]
+        }
+      ],
+      "entryActions": [
+        { "type": "SetNumeric", "value": 0, "inputName": "lightCount" }
+      ],
+      "segment": "Green",
+      "autoplay": true,
+      "loop": true
+    },
+    {
+      "name": "Yellow",
+      "animation": "",
+      "type": "PlaybackState",
+      "transitions": [
+        {
+          "guards": [
+            {
+              "inputName": "lightCount",
+              "type": "Numeric",
+              "compareTo": 3,
+              "conditionType": "Equal"
+            }
+          ],
+          "toState": "Red",
+          "type": "Tweened",
+          "duration": 3.0,
+          "easing": [0, 0, 1, 1]
+        }
+      ],
+      "entryActions": [
+        { "type": "SetNumeric", "value": 0, "inputName": "lightCount" }
+      ],
+      "segment": "Yellow",
+      "autoplay": true,
+      "loop": true
+    }
+  ],
+  "inputs": [{ "name": "lightCount", "type": "Numeric", "value": 0 }],
+  "interactions": [
+    {
+      "type": "OnLoopComplete",
+      "stateName": "Green",
+      "actions": [
+        { "type": "Increment", "value": 1, "inputName": "lightCount" }
+      ]
+    },
+    {
+      "type": "OnLoopComplete",
+      "stateName": "Red",
+      "actions": [
+        { "type": "Increment", "value": 1, "inputName": "lightCount" }
+      ]
+    },
+    {
+      "type": "OnLoopComplete",
+      "stateName": "Yellow",
+      "actions": [
+        { "type": "Increment", "value": 1, "inputName": "lightCount" }
+      ]
+    }
+  ]
+}

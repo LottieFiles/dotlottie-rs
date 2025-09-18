@@ -10,8 +10,12 @@ use std::time::Instant;
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
-pub const ANIMATION_NAME: &str = "star_marked";
-pub const STATE_MACHINE_NAME: &str = "sm-star-marked";
+// pub const ANIMATION_NAME: &str = "smiley_slider";
+// pub const STATE_MACHINE_NAME: &str = "smiley-slider-state";
+
+pub const ANIMATION_NAME: &str = "traffic_lights";
+pub const STATE_MACHINE_NAME: &str = "traffic_lights";
+
 // pub const STATE_MACHINE_NAME: &str = "pigeon_with_listeners";
 // pub const ANIMATION_NAME: &str = "pigeon";
 // pub const STATE_MACHINE_NAME: &str = "theming";

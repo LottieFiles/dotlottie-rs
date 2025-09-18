@@ -1516,21 +1516,17 @@ impl DotLottiePlayerContainer {
 
             let rendered = self.render();
 
-            let mut is_sm_still_tweening = false;
-
             if let Ok(state_machine) = self.state_machine.try_read() {
-                let sm = &*state_machine;
+                let needs_resume = state_machine
+                    .as_ref()
+                    .is_some_and(|sm| sm.status == StateMachineEngineStatus::Tweening)
+                    && !self.is_tweening();
 
-                if let Some(sm) = sm {
-                    if sm.status == StateMachineEngineStatus::Tweening {
-                        is_sm_still_tweening = true;
-                    }
-                }
-            }
+                if needs_resume {
+                    // release read lock before acquiring write lock
+                    drop(state_machine);
 
-            if is_sm_still_tweening {
-                if let Ok(mut state_machine) = self.state_machine.try_write() {
-                    {
+                    if let Ok(mut state_machine) = self.state_machine.try_write() {
                         if let Some(sm) = state_machine.as_mut() {
                             sm.resume_from_tweening();
                         }

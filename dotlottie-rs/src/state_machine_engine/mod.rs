@@ -646,17 +646,6 @@ impl StateMachineEngine {
                 // Enter the state
                 let _ = state.enter(self, &player);
 
-                // If autoplay on the state is false and we've used tweening,
-                // The hit check will start failing. Render fixes this bug.
-                if let State::PlaybackState { autoplay, .. } = state {
-                    if !autoplay.unwrap_or(false) {
-                        let try_read_lock = &player.try_read();
-                        if let Ok(player) = try_read_lock {
-                            player.render();
-                        }
-                    }
-                }
-
                 // Don't forget to put things back
                 // new_state becomes the current state
                 self.current_state = Some(state);
@@ -698,8 +687,8 @@ impl StateMachineEngine {
             self.observe_on_state_exit(&self.get_current_state_name());
 
             // Since the blended transition will take time
-            // We have to save the target state and do the final transition when blending has completed
-            // The state machine is alerted of blending finishing because the player calls the blend_finished() method
+            // We have to save the target state and do the final transition when tweening has completed
+            // The state machine is alerted of tweening finishing because the player calls the resume_from_tweening() method
             //  Note: If the tweened transition targets a State without a segment, it will not tween and the target state is treated it usually would.
             if let Some(causing_transition) = causing_transition {
                 // If we dealing with a tweened transition
@@ -717,15 +706,17 @@ impl StateMachineEngine {
                                 // If we're transitioning to a PlaybackState, grab the start segment
                                 State::PlaybackState { .. } => {
                                     if let Some(target_segment) = segment_clone {
-                                        self.status = StateMachineEngineStatus::Tweening;
                                         self.tween_transition_target_state =
                                             Some(new_state.clone());
                                         // Tweening is activated and the state machine has been paused whilst it transitions
+                                        self.status = StateMachineEngineStatus::Tweening;
+
                                         player.tween_to_marker(
-                                            target_segment.as_str(),
+                                            &target_segment,
                                             Some(causing_transition.duration()),
                                             Some(causing_transition.easing().to_vec()),
                                         );
+
                                         return Ok(());
                                     }
                                 }

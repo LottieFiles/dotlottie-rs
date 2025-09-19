@@ -90,6 +90,10 @@ pub trait LottieRenderer {
     fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, LottieRendererError>;
 
     fn tween_stop(&mut self) -> Result<(), LottieRendererError>;
+
+    fn get_transform(&self) -> Result<[f32; 9], LottieRendererError>;
+
+    fn set_transform(&mut self, transform: &[f32; 9]) -> Result<(), LottieRendererError>;
 }
 
 impl dyn LottieRenderer {
@@ -107,6 +111,7 @@ impl dyn LottieRenderer {
             background_color: 0,
             buffer: vec![],
             layout: Layout::default(),
+            user_transform: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
         })
     }
 }
@@ -125,6 +130,7 @@ struct LottieRendererImpl<R: Renderer> {
     background_color: u32,
     buffer: Vec<u32>,
     layout: Layout,
+    user_transform: [f32; 9],
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -200,24 +206,28 @@ impl<R: Renderer> LottieRendererImpl<R> {
 
     #[inline]
     fn apply_layout_transform(
-        &self,
+        &mut self,
         animation: &mut R::Animation,
     ) -> Result<(), LottieRendererError> {
-        let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) =
-            self.layout.compute_layout_transform(
-                self.width as f32,
-                self.height as f32,
-                self.picture_width,
-                self.picture_height,
-            );
-
+        // Set animation to its original size
         animation
-            .set_size(scaled_picture_width, scaled_picture_height)
+            .set_size(self.picture_width, self.picture_height)
             .map_err(into_lottie::<R>)?;
 
+        let layout_matrix = self.layout.to_transform_matrix(
+            self.width as f32,
+            self.height as f32,
+            self.picture_width,
+            self.picture_height,
+        );
+
+        let combined_matrix = multiply_matrices(&self.user_transform, &layout_matrix);
+
         animation
-            .translate(shift_x, shift_y)
+            .set_transform(&combined_matrix)
             .map_err(into_lottie::<R>)?;
+
+        self.updated = true;
 
         Ok(())
     }
@@ -272,6 +282,28 @@ impl<R: Renderer> LottieRendererImpl<R> {
         self.background_shape
             .as_mut()
             .ok_or(LottieRendererError::BackgroundShapeNotInitialized)
+    }
+
+    fn apply_user_transform(&mut self) -> Result<(), LottieRendererError> {
+        if self.animation.is_none() {
+            return Ok(());
+        }
+
+        let layout_matrix = self.layout.to_transform_matrix(
+            self.width as f32,
+            self.height as f32,
+            self.picture_width,
+            self.picture_height,
+        );
+
+        let combined_matrix = multiply_matrices(&self.user_transform, &layout_matrix);
+
+        self.get_animation_mut()?
+            .set_transform(&combined_matrix)
+            .map_err(into_lottie::<R>)?;
+
+        self.updated = true;
+        Ok(())
     }
 }
 
@@ -406,22 +438,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)?;
 
         if self.animation.is_some() {
-            let width_f32 = self.width as f32;
-            let height_f32 = self.height as f32;
-            let picture_width = self.picture_width;
-            let picture_height = self.picture_height;
-
-            let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) = self
-                .layout
-                .compute_layout_transform(width_f32, height_f32, picture_width, picture_height);
-
-            let animation = self.get_animation_mut()?;
-            animation
-                .set_size(scaled_picture_width, scaled_picture_height)
-                .map_err(into_lottie::<R>)?;
-            animation
-                .translate(shift_x, shift_y)
-                .map_err(into_lottie::<R>)?;
+            self.apply_user_transform()?;
         }
 
         if self.background_shape.is_some() {
@@ -521,24 +538,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.layout = layout.clone();
 
         if self.animation.is_some() {
-            let width_f32 = self.width as f32;
-            let height_f32 = self.height as f32;
-            let picture_width = self.picture_width;
-            let picture_height = self.picture_height;
-
-            let (scaled_picture_width, scaled_picture_height, shift_x, shift_y) = self
-                .layout
-                .compute_layout_transform(width_f32, height_f32, picture_width, picture_height);
-
-            let animation = self.get_animation_mut()?;
-            animation
-                .set_size(scaled_picture_width, scaled_picture_height)
-                .map_err(into_lottie::<R>)?;
-            animation
-                .translate(shift_x, shift_y)
-                .map_err(into_lottie::<R>)?;
-
-            self.updated = true;
+            self.apply_user_transform()?;
         }
 
         Ok(())
@@ -554,6 +554,20 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.get_animation()?
             .intersect(x, y, layer_name)
             .map_err(into_lottie::<R>)
+    }
+
+    fn get_transform(&self) -> Result<[f32; 9], LottieRendererError> {
+        Ok(self.user_transform)
+    }
+
+    fn set_transform(&mut self, transform: &[f32; 9]) -> Result<(), LottieRendererError> {
+        self.user_transform = *transform;
+
+        if self.animation.is_some() {
+            self.apply_user_transform()?;
+        }
+
+        Ok(())
     }
 }
 
@@ -578,4 +592,18 @@ fn get_color_space_for_target() -> ColorSpace {
     {
         ColorSpace::ABGR8888
     }
+}
+
+fn multiply_matrices(a: &[f32; 9], b: &[f32; 9]) -> [f32; 9] {
+    [
+        a[0] * b[0] + a[1] * b[3] + a[2] * b[6], // e11
+        a[0] * b[1] + a[1] * b[4] + a[2] * b[7], // e12
+        a[0] * b[2] + a[1] * b[5] + a[2] * b[8], // e13
+        a[3] * b[0] + a[4] * b[3] + a[5] * b[6], // e21
+        a[3] * b[1] + a[4] * b[4] + a[5] * b[7], // e22
+        a[3] * b[2] + a[4] * b[5] + a[5] * b[8], // e23
+        a[6] * b[0] + a[7] * b[3] + a[8] * b[6], // e31
+        a[6] * b[1] + a[7] * b[4] + a[8] * b[7], // e32
+        a[6] * b[2] + a[7] * b[5] + a[8] * b[8], // e33
+    ]
 }

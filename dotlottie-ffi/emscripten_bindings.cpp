@@ -414,6 +414,9 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("isTweening", &DotLottiePlayer::is_tweening)
         .function("tweenUpdate", &DotLottiePlayer::tween_update)
 
+        .function("getTransform", &DotLottiePlayer::get_transform)
+        .function("setTransform", &DotLottiePlayer::set_transform)
+
         .function("getStateMachine", &DotLottiePlayer::get_state_machine)
         .function("activeStateMachineId", &DotLottiePlayer::active_state_machine_id)
         .function("stateMachineCurrentState", &DotLottiePlayer::state_machine_current_state)

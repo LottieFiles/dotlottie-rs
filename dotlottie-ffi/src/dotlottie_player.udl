@@ -185,6 +185,9 @@ interface DotLottiePlayer {
     boolean is_tweening();
     boolean tween_update(f32? progress);
 
+    sequence<f32> get_transform();
+    boolean set_transform(sequence<f32> transform);
+
     boolean state_machine_load([ByRef] string state_machine_id);
     boolean state_machine_load_data([ByRef] string state_machine);
     boolean state_machine_start(OpenUrlPolicy open_url_policy);

@@ -788,6 +788,7 @@ impl ScriptingEngine {
             theme_id,
             animation_id,
             state_machine_id,
+            loop_count: 0,
         })
     }
 

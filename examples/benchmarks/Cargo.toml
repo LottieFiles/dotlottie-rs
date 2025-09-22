@@ -1,0 +1,16 @@
+[package]
+name = "benchmarks"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+minifb = "0.27"
+dotlottie-rs = { path = "../../dotlottie-rs", features = ["dev"] }
+
+[[bin]]
+name = "no_script"
+path = "src/bin/no_script/no_script.rs"
+
+[[bin]]
+name = "with_script"
+path = "src/bin/with_script/with_script.rs"

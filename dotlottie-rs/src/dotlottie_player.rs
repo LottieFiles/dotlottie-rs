@@ -664,6 +664,7 @@ impl DotLottieRuntime {
             self.load_animation(&aid, self.renderer.width(), self.renderer.height());
         }
 
+
         self.config.animation_id = new_config.animation_id;
 
         if new_config.autoplay {

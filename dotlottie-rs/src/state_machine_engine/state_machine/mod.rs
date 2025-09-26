@@ -30,6 +30,12 @@ pub enum StringNumber {
     F32(f32),
 }
 
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum StringString {
+    String(String),
+}
+
 #[derive(Deserialize, Debug)]
 pub struct StateMachine {
     pub initial: String,

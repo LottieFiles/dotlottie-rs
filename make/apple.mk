@@ -82,7 +82,8 @@ define create_framework_structure
 	@mkdir -p $(1)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_HEADERS)
 	@mkdir -p $(1)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_MODULES)
 	@echo "Creating Info.plist for $(1)..."
-	@$(PLISTBUDDY_EXEC) -c "Add :CFBundleIdentifier string com.dotlottie.$(DOTLOTTIE_PLAYER_MODULE)" \
+	@$(PLISTBUDDY_EXEC) \
+		-c "Add :CFBundleIdentifier string com.dotlottie.$(DOTLOTTIE_PLAYER_MODULE)" \
 		-c "Add :CFBundleName string $(DOTLOTTIE_PLAYER_MODULE)" \
 		-c "Add :CFBundleDisplayName string $(DOTLOTTIE_PLAYER_MODULE)" \
 		-c "Add :CFBundleVersion string $(CRATE_VERSION)" \
@@ -590,10 +591,15 @@ apple-package: apple-frameworks
 		-framework $(TVOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
 		-framework $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) \
 		-output $(APPLE_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK) >/dev/null
+
+	@echo "→ Adding CFBundleIdentifier to XCFramework Info.plist..."
+	@$(PLISTBUDDY_EXEC) -c "Add :CFBundleIdentifier string com.dotlottie.$(DOTLOTTIE_PLAYER_MODULE)" $(APPLE_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK)/Info.plist
+
 	@if [ -f "$(SWIFT_BINDINGS_DIR)/dotlottie_player.swift" ]; then \
 		cp $(SWIFT_BINDINGS_DIR)/dotlottie_player.swift $(APPLE_RELEASE_DIR)/; \
 	fi
-
+	
+	
 	@for framework_dir in $$(find $(APPLE_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK) -path "*macos*" -name "DotLottiePlayer.framework"); do \
 		echo "Processing framework: $$framework_dir"; \
 		(cd "$$framework_dir" && \

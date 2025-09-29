@@ -494,7 +494,10 @@ impl Animation for TvgAnimation {
         Err(TvgError::NotSupported)
     }
 
-    fn set_quality(&mut self, quality: u8) -> Result<(), TvgError> {
+    fn set_quality(
+        &mut self,
+        #[cfg_attr(not(feature = "tvg-v1"), allow(unused_variables))] quality: u8,
+    ) -> Result<(), TvgError> {
         #[cfg(feature = "tvg-v1")]
         unsafe {
             tvg::tvg_lottie_animation_set_quality(self.raw_animation, quality).into_result()

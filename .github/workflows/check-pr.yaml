@@ -103,9 +103,9 @@ jobs:
         run: |
           cargo build --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" --release
 
-          - name: Run benchmarks on base branch
-          run: |
-            cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
+      - name: Run benchmarks on base branch
+        run: |
+          cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
 
       - name: Save baseline results
         run: |

@@ -103,15 +103,29 @@ jobs:
         run: |
           cargo build --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" --release
 
-      - name: Run benchmarks on base branch
+          - name: Run benchmarks on base branch
+          run: |
+            cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
+
+      - name: Save baseline results
         run: |
-          cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
+          mkdir -p /tmp/criterion-base
+          cp -r dotlottie-rs/target/criterion /tmp/criterion-base/
 
       - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
-          clean: false
+          clean: true
           submodules: true
+
+      - name: Restore baseline
+        run: |
+          mkdir -p dotlottie-rs/target/criterion
+          cp -r /tmp/criterion-base/criterion/* dotlottie-rs/target/criterion/
+
+      - name: Run benchmarks on PR branch
+        run: |
+          cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
 
       - name: Cache cargo (PR)
         uses: actions/cache@v3

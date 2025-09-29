@@ -105,7 +105,7 @@ jobs:
 
       - name: Run benchmarks on base branch
         run: |
-          cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" -- --save-baseline base
+          cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
 
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -129,7 +129,7 @@ jobs:
 
       - name: Run benchmarks on PR branch
         run: |
-          cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" -- --baseline base
+          cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
 
       - name: Generate comparison report
         id: report

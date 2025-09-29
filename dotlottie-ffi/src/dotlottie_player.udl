@@ -170,6 +170,7 @@ interface DotLottiePlayer {
     boolean set_theme_data([ByRef] string theme_data);
     boolean reset_theme();
     boolean set_slots([ByRef] string slots);
+    boolean set_quality(u8 quality);
     sequence<Marker> markers();
     string active_animation_id();
     string active_theme_id();

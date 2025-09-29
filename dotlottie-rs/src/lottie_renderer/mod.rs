@@ -70,6 +70,8 @@ pub trait LottieRenderer {
 
     fn set_slots(&mut self, slots: &str) -> Result<(), LottieRendererError>;
 
+    fn set_quality(&mut self, quality: u8) -> Result<(), LottieRendererError>;
+
     fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError>;
 
     fn get_layer_bounds(&self, layer_name: &str) -> Result<[f32; 8], LottieRendererError>;
@@ -489,6 +491,12 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     fn set_slots(&mut self, slots: &str) -> Result<(), LottieRendererError> {
         self.get_animation_mut()?
             .set_slots(slots)
+            .map_err(into_lottie::<R>)
+    }
+
+    fn set_quality(&mut self, quality: u8) -> Result<(), LottieRendererError> {
+        self.get_animation_mut()?
+            .set_quality(quality)
             .map_err(into_lottie::<R>)
     }
 

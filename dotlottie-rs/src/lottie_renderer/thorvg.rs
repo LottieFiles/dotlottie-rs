@@ -119,7 +119,9 @@ impl TvgRenderer {
 
         TvgRenderer {
             #[cfg(feature = "tvg-v1")]
-            raw_canvas: unsafe { tvg::tvg_swcanvas_create(tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_NONE) },
+            raw_canvas: unsafe {
+                tvg::tvg_swcanvas_create(tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_NONE)
+            },
             #[cfg(feature = "tvg-v0")]
             raw_canvas: unsafe { tvg::tvg_swcanvas_create() },
             #[cfg(feature = "tvg-v0")]
@@ -282,10 +284,8 @@ impl TvgAnimation {
     }
 
     unsafe fn tvg_load_data_dispatch(
-        #[cfg(feature = "tvg-v0")]
-        raw_paint: *mut tvg::Tvg_Paint,
-        #[cfg(feature = "tvg-v1")]
-        raw_paint: tvg::Tvg_Paint,
+        #[cfg(feature = "tvg-v0")] raw_paint: *mut tvg::Tvg_Paint,
+        #[cfg(feature = "tvg-v1")] raw_paint: tvg::Tvg_Paint,
         data_ptr: *const c_char,
         data_len: u32,
         mimetype_ptr: *const c_char,
@@ -470,8 +470,7 @@ impl Animation for TvgAnimation {
 
     fn set_slots(
         &mut self,
-        #[cfg_attr(not(feature = "tvg-v1"), allow(unused_variables))]
-        slots: &str,
+        #[cfg_attr(not(feature = "tvg-v1"), allow(unused_variables))] slots: &str,
     ) -> Result<(), TvgError> {
         #[cfg(feature = "tvg-v1")]
         {
@@ -479,7 +478,9 @@ impl Animation for TvgAnimation {
                 unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, 0) }
             } else {
                 let slots_cstr = CString::new(slots).expect("Failed to create CString");
-                let slot_id = unsafe { tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slots_cstr.as_ptr()) };
+                let slot_id = unsafe {
+                    tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slots_cstr.as_ptr())
+                };
                 if slot_id == 0 {
                     return Err(TvgError::InvalidArgument);
                 }
@@ -487,6 +488,16 @@ impl Animation for TvgAnimation {
             };
 
             result.into_result()
+        }
+
+        #[cfg(not(feature = "tvg-v1"))]
+        Err(TvgError::NotSupported)
+    }
+
+    fn set_quality(&mut self, quality: u8) -> Result<(), TvgError> {
+        #[cfg(feature = "tvg-v1")]
+        unsafe {
+            tvg::tvg_lottie_animation_set_quality(self.raw_animation, quality).into_result()
         }
 
         #[cfg(not(feature = "tvg-v1"))]
@@ -611,21 +622,31 @@ impl Animation for TvgAnimation {
 
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), TvgError> {
         let tvg_matrix = tvg::Tvg_Matrix {
-            e11: matrix[0], e12: matrix[1], e13: matrix[2],
-            e21: matrix[3], e22: matrix[4], e23: matrix[5],
-            e31: matrix[6], e32: matrix[7], e33: matrix[8],
+            e11: matrix[0],
+            e12: matrix[1],
+            e13: matrix[2],
+            e21: matrix[3],
+            e22: matrix[4],
+            e23: matrix[5],
+            e31: matrix[6],
+            e32: matrix[7],
+            e33: matrix[8],
         };
 
-        unsafe {
-            tvg::tvg_paint_set_transform(self.raw_paint, &tvg_matrix).into_result()
-        }
+        unsafe { tvg::tvg_paint_set_transform(self.raw_paint, &tvg_matrix).into_result() }
     }
 
     fn get_transform(&self) -> Result<[f32; 9], TvgError> {
         let mut tvg_matrix = tvg::Tvg_Matrix {
-            e11: 1.0, e12: 0.0, e13: 0.0,
-            e21: 0.0, e22: 1.0, e23: 0.0,
-            e31: 0.0, e32: 0.0, e33: 1.0,
+            e11: 1.0,
+            e12: 0.0,
+            e13: 0.0,
+            e21: 0.0,
+            e22: 1.0,
+            e23: 0.0,
+            e31: 0.0,
+            e32: 0.0,
+            e33: 1.0,
         };
 
         unsafe {
@@ -633,9 +654,15 @@ impl Animation for TvgAnimation {
         }
 
         Ok([
-            tvg_matrix.e11, tvg_matrix.e12, tvg_matrix.e13,
-            tvg_matrix.e21, tvg_matrix.e22, tvg_matrix.e23,
-            tvg_matrix.e31, tvg_matrix.e32, tvg_matrix.e33,
+            tvg_matrix.e11,
+            tvg_matrix.e12,
+            tvg_matrix.e13,
+            tvg_matrix.e21,
+            tvg_matrix.e22,
+            tvg_matrix.e23,
+            tvg_matrix.e31,
+            tvg_matrix.e32,
+            tvg_matrix.e33,
         ])
     }
 }

@@ -1,3 +1,39 @@
+## 0.1.48 (2025-09-29)
+
+### Features
+
+#### update thorvg to v1.0-pre26 (#377)
+
+#### added loop count (#383)
+
+#### input referencing for SetTheme and OpenUrl actions (#389)
+
+#### control animation transform on the canvas (#390)
+
+#### upgrade to thorvg v1.0-pre29 (#398)
+
+#### add set_quality API to balance Lottie effect performance and quality (#399)
+
+### Fixes
+
+#### create version in makefile
+
+#### reset playback config when state machine is stopped (#380)
+
+#### framework sym links for macos (#381)
+
+#### render current frame after resize (#385)
+
+#### added clamps to setFrame and setProgress actions (#387)
+
+#### dont fire value change event if value is the same (#388)
+
+#### pause state machine during tweening to prevent invalid transitions (#393)
+
+#### create open url config before entering first state (#391)
+
+#### added bundle identifier to root info.plist (#397)
+
 ## 0.1.47 (2025-08-12)
 
 ### Features

@@ -232,9 +232,11 @@ jobs:
 
       - name: Comment PR with results
         uses: actions/github-script@v7
+        env:
+          COMMENT_BODY: ${{ steps.report.outputs.comment }}
         with:
           script: |
-            const comment = `${{ steps.report.outputs.comment }}`;
+            const comment = process.env.COMMENT_BODY;
 
             // Find existing benchmark comment
             const { data: comments } = await github.rest.issues.listComments({

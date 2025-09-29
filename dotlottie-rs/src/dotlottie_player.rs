@@ -994,6 +994,10 @@ impl DotLottieRuntime {
         self.renderer.set_slots(slots).is_ok()
     }
 
+    pub fn set_quality(&mut self, quality: u8) -> bool {
+        self.renderer.set_quality(quality).is_ok()
+    }
+
     pub fn active_animation_id(&self) -> &str {
         &self.active_animation_id
     }
@@ -1059,9 +1063,15 @@ impl DotLottieRuntime {
             return false;
         }
         let transform_array: [f32; 9] = [
-            transform[0], transform[1], transform[2],
-            transform[3], transform[4], transform[5],
-            transform[6], transform[7], transform[8],
+            transform[0],
+            transform[1],
+            transform[2],
+            transform[3],
+            transform[4],
+            transform[5],
+            transform[6],
+            transform[7],
+            transform[8],
         ];
         self.renderer.set_transform(&transform_array).is_ok()
     }
@@ -1458,6 +1468,10 @@ impl DotLottiePlayerContainer {
 
     pub fn set_slots(&self, slots: &str) -> bool {
         self.runtime.write().unwrap().set_slots(slots)
+    }
+
+    pub fn set_quality(&self, quality: u8) -> bool {
+        self.runtime.write().unwrap().set_quality(quality)
     }
 
     pub fn animation_size(&self) -> Vec<f32> {
@@ -2318,6 +2332,10 @@ impl DotLottiePlayer {
 
     pub fn set_slots(&self, slots: &str) -> bool {
         self.player.write().unwrap().set_slots(slots)
+    }
+
+    pub fn set_quality(&self, quality: u8) -> bool {
+        self.player.write().unwrap().set_quality(quality)
     }
 
     pub fn markers(&self) -> Vec<Marker> {

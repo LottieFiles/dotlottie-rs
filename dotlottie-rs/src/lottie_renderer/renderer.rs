@@ -57,6 +57,8 @@ pub trait Animation: Default {
 
     fn set_slots(&mut self, slots: &str) -> Result<(), Self::Error>;
 
+    fn set_quality(&mut self, quality: u8) -> Result<(), Self::Error>;
+
     fn tween(
         &mut self,
         to: f32,

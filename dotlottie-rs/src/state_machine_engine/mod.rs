@@ -1,6 +1,5 @@
 use core::result::Result::Ok;
-use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 
 pub mod actions;
@@ -25,8 +24,8 @@ use transitions::{Transition, TransitionTrait};
 use crate::actions::whitelist::Whitelist;
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, Config, DotLottiePlayerContainer,
-    EventName, PointerEvent, StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, Config, DotLottiePlayer, EventName,
+    Observer, PointerEvent, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -74,12 +73,66 @@ pub enum StateMachineEngineError {
     SecurityCheckErrorDuplicateStateName,
 }
 
+use std::fmt::{self, Display, Formatter};
+
+impl Display for StateMachineEngineError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            StateMachineEngineError::ParsingError(err) => write!(f, "Parsing error: {}", err),
+            StateMachineEngineError::CreationError => write!(f, "Creation error"),
+            StateMachineEngineError::FireEventError => write!(f, "Fire event error"),
+            StateMachineEngineError::InfiniteLoopError => write!(f, "Infinite loop error"),
+            StateMachineEngineError::NotRunningError => write!(f, "Not running error"),
+            StateMachineEngineError::SetStateError => write!(f, "Set state error"),
+            StateMachineEngineError::SecurityCheckErrorMultipleGuardlessTransitions => {
+                write!(f, "Security check error: multiple guardless transitions")
+            }
+            StateMachineEngineError::SecurityCheckErrorDuplicateStateName => {
+                write!(f, "Security check error: duplicate state name")
+            }
+        }
+    }
+}
+
 struct PointerData {
     curr_entered_layer: String,
     listened_layers: Vec<(String, String)>,
     most_recent_event: Option<Event>,
     pointer_x: f32,
     pointer_y: f32,
+}
+
+struct PlayerObserver {
+    event_queue: Arc<RwLock<VecDeque<Event>>>,
+}
+
+impl PlayerObserver {
+    fn new(event_queue: Arc<RwLock<VecDeque<Event>>>) -> Self {
+        PlayerObserver { event_queue }
+    }
+}
+
+unsafe impl Send for PlayerObserver {}
+unsafe impl Sync for PlayerObserver {}
+
+impl Observer for PlayerObserver {
+    fn on_load(&self) {}
+    fn on_load_error(&self) {}
+    fn on_play(&self) {}
+    fn on_pause(&self) {}
+    fn on_stop(&self) {}
+    fn on_frame(&self, _: f32) {}
+    fn on_render(&self, _: f32) {}
+    fn on_loop(&self, _: u32) {}
+    fn on_complete(&self) {
+        println!("Observer queue Arc pointer: {:p}", &*self.event_queue);
+
+        if let Ok(mut queue) = self.event_queue.write() {
+            println!("Queue length before push: {}", queue.len());
+            queue.push_back(Event::OnComplete);
+            println!("Queue length after push: {}", queue.len());
+        }
+    }
 }
 
 impl Default for PointerData {
@@ -103,7 +156,7 @@ pub struct StateMachineEngine {
     pub global_state: Option<State>,
     pub current_state: Option<State>,
 
-    pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
+    pub player: Option<Arc<RwLock<DotLottiePlayer>>>,
     pub status: StateMachineEngineStatus,
 
     // Open url policy configurations
@@ -119,6 +172,8 @@ pub struct StateMachineEngine {
 
     pub observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
     pub internal_observer: RwLock<Option<Arc<dyn StateMachineInternalObserver>>>,
+    player_observer: Option<Arc<dyn Observer>>,
+    event_queue: Arc<RwLock<VecDeque<Event>>>,
 
     state_machine: StateMachine,
 
@@ -148,6 +203,8 @@ impl Default for StateMachineEngine {
             status: StateMachineEngineStatus::Stopped,
             observers: RwLock::new(Vec::new()),
             internal_observer: RwLock::new(None),
+            player_observer: None,
+            event_queue: Arc::new(RwLock::new(VecDeque::new())),
             state_history: Vec::new(),
             max_cycle_count: 20,
             current_cycle_count: 0,
@@ -160,33 +217,30 @@ impl Default for StateMachineEngine {
 impl StateMachineEngine {
     pub fn new(
         state_machine_definition: &str,
-        player: Rc<RwLock<DotLottiePlayerContainer>>,
+        player: Arc<RwLock<DotLottiePlayer>>,
         max_cycle_count: Option<usize>,
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
-        // Create an empty state machine object that we'll use to boot up the parser from
-        let mut state_machine = StateMachineEngine {
-            cached_player_config: Config::default(),
-            global_state: None,
-            state_machine: StateMachine::default(),
-            current_state: None,
-            open_url_requires_user_interaction: false,
-            open_url_whitelist: Whitelist::new(),
-            player: Some(player.clone()),
-            inputs: InputManager::new(),
-            event_input: HashMap::new(),
-            curr_event: None,
-            pointer_management: PointerData::default(),
-            status: StateMachineEngineStatus::Stopped,
-            observers: RwLock::new(Vec::new()),
-            internal_observer: RwLock::new(None),
-            state_history: Vec::new(),
-            max_cycle_count: max_cycle_count.unwrap_or(20),
-            current_cycle_count: 0,
-            action_mutated_inputs: false,
-            tween_transition_target_state: None,
-        };
+        let event_queue = Arc::new(RwLock::new(VecDeque::new()));
 
-        state_machine.create_state_machine(state_machine_definition, &player)
+        // Create an empty state machine object that we'll use to boot up the parser from
+        let mut state_machine = StateMachineEngine::default();
+
+        if let Some(mcc) = max_cycle_count {
+            state_machine.max_cycle_count = mcc;
+        }
+
+        state_machine = state_machine.create_state_machine(state_machine_definition, &player)?;
+
+        state_machine.event_queue = event_queue.clone();
+
+        // Create observer with the shared queue
+        let observer: Arc<dyn Observer> = Arc::new(PlayerObserver::new(event_queue.clone()));
+        state_machine.player_observer = Some(observer.clone());
+
+        // Register observer with player
+        player.write().unwrap().subscribe(observer);
+
+        Ok(state_machine)
     }
 
     pub fn subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
@@ -374,7 +428,7 @@ impl StateMachineEngine {
     pub fn create_state_machine(
         &mut self,
         sm_definition: &str,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        player: &Arc<RwLock<DotLottiePlayer>>,
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine::default();
@@ -464,8 +518,7 @@ impl StateMachineEngine {
 
     pub fn start(&mut self, open_url: &OpenUrlPolicy) -> bool {
         if let Some(player) = &self.player {
-            let try_read_lock = &player.try_read();
-            if let Ok(player) = try_read_lock {
+            if let Ok(player) = player.try_write() {
                 // Reset to first frame
                 player.stop();
                 // Remove all playback settings
@@ -524,9 +577,11 @@ impl StateMachineEngine {
         self.observe_on_stop();
 
         if let Some(player) = &self.player {
-            let try_read_lock = &player.try_read();
-            if let Ok(player) = try_read_lock {
-                player.set_config(self.cached_player_config.clone());
+            if let Ok(player) = player.try_write() {
+                // Reset to first frame
+                player.stop();
+                // Remove all playback settings
+                player.set_config(Config::default());
             }
         }
     }
@@ -694,10 +749,7 @@ impl StateMachineEngine {
                 // If we dealing with a tweened transition
                 if let Transition::Tweened { .. } = causing_transition {
                     if let Some(unwrapped_player) = &self.player {
-                        let read_lock = &unwrapped_player.try_read();
-
-                        if let Ok(player) = read_lock {
-                            // Clone segment before match to avoid partial move
+                        if let Ok(player) = unwrapped_player.try_write() {
                             let segment_clone = match &new_state {
                                 State::PlaybackState { segment, .. } => segment.clone(),
                                 _ => None,
@@ -727,6 +779,41 @@ impl StateMachineEngine {
                             }
                         }
                     }
+
+                    // if let Some(unwrapped_player) = &self.player {
+                    //     let read_lock = &unwrapped_player.try_read();
+
+                    //     if let Ok(player) = read_lock {
+                    //         // Clone segment before match to avoid partial move
+                    //         let segment_clone = match &new_state {
+                    //             State::PlaybackState { segment, .. } => segment.clone(),
+                    //             _ => None,
+                    //         };
+                    //         match &new_state {
+                    //             // If we're transitioning to a PlaybackState, grab the start segment
+                    //             State::PlaybackState { .. } => {
+                    //                 if let Some(target_segment) = segment_clone {
+                    //                     self.tween_transition_target_state =
+                    //                         Some(new_state.clone());
+                    //                     // Tweening is activated and the state machine has been paused whilst it transitions
+                    //                     self.status = StateMachineEngineStatus::Tweening;
+
+                    //                     player.tween_to_marker(
+                    //                         &target_segment,
+                    //                         Some(causing_transition.duration()),
+                    //                         Some(causing_transition.easing()),
+                    //                     );
+
+                    //                     return Ok(());
+                    //                 }
+                    //             }
+                    //             // If we're transitioning to a GlobalState, do nothing
+                    //             State::GlobalState { .. } => {
+                    //                 return Ok(());
+                    //             }
+                    //         }
+                    //     }
+                    // }
                 }
             }
 
@@ -856,6 +943,26 @@ impl StateMachineEngine {
             }
         }
         false
+    }
+
+    pub fn process_queued_events(&mut self) {
+        // Collect all events and release the lock
+        let events: Vec<Event> = {
+            if let Ok(mut queue) = self.event_queue.write() {
+                queue.drain(..).collect()
+            } else {
+                Vec::new()
+            }
+        };
+
+        // Now process the events without holding the lock
+        for event in events {
+            self.post_event(&event);
+        }
+    }
+
+    pub fn tick(&mut self) {
+        self.process_queued_events();
     }
 
     pub fn run_current_state_pipeline(&mut self) -> Result<(), StateMachineEngineError> {
@@ -1030,6 +1137,7 @@ impl StateMachineEngine {
                                     actions_to_execute.extend(interaction.get_actions().clone());
                                 }
                             } else {
+                                println!("Hit check positive");
                                 // Hit check will return true if the layer was hit
                                 if player_container.intersect(x, y, &layer) {
                                     entered_layer = layer.clone();

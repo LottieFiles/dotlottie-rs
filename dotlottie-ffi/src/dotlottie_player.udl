@@ -189,32 +189,114 @@ interface DotLottiePlayer {
     sequence<f32> get_transform();
     boolean set_transform(sequence<f32> transform);
 
-    boolean state_machine_load([ByRef] string state_machine_id);
-    boolean state_machine_load_data([ByRef] string state_machine);
-    boolean state_machine_start(OpenUrlPolicy open_url_policy);
-    boolean state_machine_stop();
-    string active_state_machine_id();
-    sequence<string> state_machine_framework_setup();
-    void state_machine_post_event([ByRef] Event event);
-    void state_machine_post_click_event(f32 x, f32 y);
-    void state_machine_post_pointer_down_event(f32 x, f32 y);
-    void state_machine_post_pointer_up_event(f32 x, f32 y);
-    void state_machine_post_pointer_move_event(f32 x, f32 y);
-    void state_machine_post_pointer_enter_event(f32 x, f32 y);
-    void state_machine_post_pointer_exit_event(f32 x, f32 y);
-    void state_machine_fire_event([ByRef] string event);
-    boolean state_machine_set_boolean_input([ByRef] string key, boolean value);
-    boolean state_machine_set_string_input([ByRef] string key, [ByRef] string value);
-    boolean state_machine_set_numeric_input([ByRef] string key, f32 value);
-    string get_state_machine([ByRef] string state_machine_id);
-    f32 state_machine_get_numeric_input([ByRef] string key);
-    string state_machine_get_string_input([ByRef] string key);
-    boolean state_machine_get_boolean_input([ByRef] string key);
-    string state_machine_current_state();
-    boolean state_machine_subscribe(StateMachineObserver observer);
-    boolean state_machine_unsubscribe([ByRef] StateMachineObserver observer);
-    boolean state_machine_internal_subscribe(StateMachineInternalObserver observer);
-    boolean state_machine_internal_unsubscribe([ByRef] StateMachineInternalObserver observer);
-    boolean state_machine_override_current_state([ByRef] string state_name, boolean do_tick);
-    string state_machine_status();
+    //boolean state_machine_load([ByRef] string state_machine_id);
+    //boolean state_machine_load_data([ByRef] string state_machine);
+    //boolean state_machine_start(OpenUrlPolicy open_url_policy);
+    //boolean state_machine_stop();
+    //string active_state_machine_id();
+    //sequence<string> state_machine_framework_setup();
+    //void state_machine_post_event([ByRef] Event event);
+    //void state_machine_post_click_event(f32 x, f32 y);
+    //void state_machine_post_pointer_down_event(f32 x, f32 y);
+    //void state_machine_post_pointer_up_event(f32 x, f32 y);
+    //void state_machine_post_pointer_move_event(f32 x, f32 y);
+    //void state_machine_post_pointer_enter_event(f32 x, f32 y);
+    //void state_machine_post_pointer_exit_event(f32 x, f32 y);
+    //void state_machine_fire_event([ByRef] string event);
+    //boolean state_machine_set_boolean_input([ByRef] string key, boolean value);
+    //boolean state_machine_set_string_input([ByRef] string key, [ByRef] string value);
+    //boolean state_machine_set_numeric_input([ByRef] string key, f32 value);
+    //string get_state_machine([ByRef] string state_machine_id);
+    //f32 state_machine_get_numeric_input([ByRef] string key);
+    //string state_machine_get_string_input([ByRef] string key);
+    //boolean state_machine_get_boolean_input([ByRef] string key);
+    //string state_machine_current_state();
+    //boolean state_machine_subscribe(StateMachineObserver observer);
+    //boolean state_machine_unsubscribe([ByRef] StateMachineObserver observer);
+    //boolean state_machine_internal_subscribe(StateMachineInternalObserver observer);
+    //boolean state_machine_internal_unsubscribe([ByRef] StateMachineInternalObserver observer);
+    //boolean state_machine_override_current_state([ByRef] string state_name, boolean do_tick);
+    //string state_machine_status();
+};
+
+enum StateMachineEngineStatus {
+    "Running",
+    "Tweening",
+    "Stopped",
+};
+
+[Error]
+enum StateMachineEngineError {
+    "ParsingError",
+    "CreationError",
+    "FireEventError",
+    "InfiniteLoopError",
+    "NotRunningError",
+    "SetStateError",
+    "SecurityCheckErrorMultipleGuardlessTransitions",
+    "SecurityCheckErrorDuplicateStateName",
+};
+
+//dictionary OpenUrlPolicy {
+//    boolean require_user_interaction;
+//    sequence<string> whitelist;
+//};
+
+//callback interface StateMachineObserver {
+//    void on_start();
+//    void on_stop();
+//    void on_transition(string previous_state, string new_state);
+//    void on_state_entered(string entering_state);
+//    void on_state_exit(string leaving_state);
+//    void on_custom_event(string message);
+//    void on_string_input_value_change(string input_name, string old_value, string new_value);
+//    void on_numeric_input_value_change(string input_name, f32 old_value, f32 new_value);
+//    void on_boolean_input_value_change(string input_name, boolean old_value, boolean new_value);
+//    void on_input_fired(string input_name);
+//    void on_error(string error);
+//};
+
+//callback interface StateMachineInternalObserver {
+//    void on_message(string message);
+//};
+
+interface StateMachineEngine {
+    constructor([ByRef] string state_machine_definition, DotLottiePlayer player, u64? max_cycle_count);
+    
+    void subscribe(StateMachineObserver observer);
+    void unsubscribe([ByRef] StateMachineObserver observer);
+    void internal_subscribe(StateMachineInternalObserver observer);
+    void internal_unsubscribe([ByRef] StateMachineInternalObserver observer);
+    
+    f32? set_numeric_input([ByRef] string key, f32 value, boolean run_pipeline, boolean called_from_action);
+    f32? get_numeric_input([ByRef] string key);
+    
+    string? set_string_input([ByRef] string key, [ByRef] string value, boolean run_pipeline, boolean called_from_action);
+    string? get_string_input([ByRef] string key);
+    
+    boolean? set_boolean_input([ByRef] string key, boolean value, boolean run_pipeline, boolean called_from_action);
+    boolean? get_boolean_input([ByRef] string key);
+    
+    void reset_input([ByRef] string key, boolean run_pipeline, boolean called_from_action);
+    
+    [Throws=StateMachineEngineError]
+    void fire([ByRef] string event, boolean run_pipeline);
+    
+    boolean start([ByRef] OpenUrlPolicy open_url);
+    void stop();
+    string status();
+    
+    void resume_from_tweening();
+    
+    void process_queued_events();
+    void tick();
+    
+    void post_event([ByRef] Event event);
+    
+    boolean override_current_state([ByRef] string state_name, boolean do_tick);
+    
+    string get_current_state_name();
+    
+    void observe_internal_event([ByRef] string message);
+    void observe_custom_event([ByRef] string message);
 };

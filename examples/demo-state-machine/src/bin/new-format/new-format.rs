@@ -1,9 +1,13 @@
 use dotlottie_rs::actions::open_url_policy::{self, OpenUrlPolicy};
 use dotlottie_rs::events::Event;
-use dotlottie_rs::{Config, DotLottiePlayer, StateMachineInternalObserver, StateMachineObserver};
+use dotlottie_rs::{
+    Config, DotLottiePlayer, StateMachineEngine, StateMachineInternalObserver, StateMachineObserver,
+};
 use minifb::{Key, MouseButton, Window, WindowOptions};
+use std::cell::RefCell;
 use std::fs::{self, File};
 use std::io::Read;
+use std::rc::{self, Rc};
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
@@ -13,13 +17,15 @@ pub const HEIGHT: usize = 500;
 // pub const ANIMATION_NAME: &str = "smiley_slider";
 // pub const STATE_MACHINE_NAME: &str = "smiley-slider-state";
 
-pub const ANIMATION_NAME: &str = "traffic_lights";
-pub const STATE_MACHINE_NAME: &str = "traffic_lights";
+// pub const ANIMATION_NAME: &str = "traffic_lights";
+// pub const STATE_MACHINE_NAME: &str = "traffic_lights";
 
-// pub const STATE_MACHINE_NAME: &str = "pigeon_with_listeners";
-// pub const ANIMATION_NAME: &str = "pigeon";
+pub const STATE_MACHINE_NAME: &str = "pigeon_with_listeners";
+pub const ANIMATION_NAME: &str = "pigeon";
+
 // pub const STATE_MACHINE_NAME: &str = "theming";
 // pub const ANIMATION_NAME: &str = "themed";
+
 // pub const STATE_MACHINE_NAME: &str = "rating";
 // pub const STATE_MACHINE_NAME: &str = "StateMachine1";
 // pub const ANIMATION_NAME: &str = "pig";
@@ -119,7 +125,6 @@ impl Timer {
         // animation.set_frame(next_frame);
 
         if updated || !self.first {
-            animation.render();
             self.first = true;
 
             return updated;
@@ -176,26 +181,35 @@ fn main() {
     ))
     .unwrap();
 
-    lottie_player.state_machine_subscribe(observer.clone());
-    lottie_player.state_machine_internal_subscribe(internal_observer.clone());
+    // lottie_player.state_machine_subscribe(observer.clone());
+    // lottie_player.state_machine_internal_subscribe(internal_observer.clone());
 
-    let r = lottie_player.state_machine_load_data(&state_machine);
+    // let r = lottie_player.state_machine_load_data(&state_machine);
 
-    println!("Load state machine data -> {}", r);
+    // println!("Load state machine data -> {}", r);
     let open_url = OpenUrlPolicy {
         whitelist: ["example.com/path/*/another_path/*".to_string()].to_vec(),
         require_user_interaction: true,
     };
 
-    let s = lottie_player.state_machine_start(open_url);
+    // let s = lottie_player.state_machine_start(open_url);
 
-    println!("Start state machine -> {}", s);
+    // println!("Start state machine -> {}", s);
 
-    println!("is_playing: {}", lottie_player.is_playing());
+    // println!("is_playing: {}", lottie_player.is_playing());
 
-    lottie_player.render();
+    // lottie_player.render();
 
-    let locked_player = Arc::new(RwLock::new(lottie_player));
+    // let locked_player = Arc::new(RwLock::new(lottie_player));
+    let rw_lock_player = RwLock::new(lottie_player);
+    let rc_player: Arc<RwLock<DotLottiePlayer>> = Arc::new(rw_lock_player);
+    let state_machine_obj = StateMachineEngine::new(&state_machine, rc_player.clone(), Some(10))
+        .ok()
+        .map(|sm| Rc::new(RefCell::new(sm)));
+
+    if let Some(sm) = &state_machine_obj {
+        sm.borrow_mut().start(&open_url);
+    }
 
     let mut progress = 0.0;
     let mut rating = 1.0;
@@ -219,27 +233,26 @@ fn main() {
             }
 
             if mx >= 0.0 && mx <= WIDTH as f32 && my >= 0.0 && my <= HEIGHT as f32 {
-                // println!("Sending pointer enter");
                 if !entered {
                     let event = Event::PointerEnter {
                         x: mx * 2.0,
                         y: my * 2.0,
                     };
 
-                    let p = &mut *locked_player.write().unwrap();
-                    let _m = p.state_machine_post_event(&event);
+                    if let Some(sm) = &state_machine_obj {
+                        sm.borrow_mut().post_event(&event);
+                    }
+
+                    entered = true;
                 }
-                entered = true;
             } else {
-                // println!("Sending pointer Exit");
                 if entered {
                     let event = Event::PointerExit { x: mx, y: my };
-
-                    let p = &mut *locked_player.write().unwrap();
-                    let _m = p.state_machine_post_event(&event);
+                    if let Some(sm) = &state_machine_obj {
+                        sm.borrow_mut().post_event(&event);
+                    }
+                    entered = false;
                 }
-
-                entered = false;
             }
         });
 
@@ -248,8 +261,13 @@ fn main() {
             let event = Event::Click { x: mx, y: my };
 
             // println!("Sending pointer up");
-            let p = &mut *locked_player.write().unwrap();
-            let _m = p.state_machine_post_event(&event);
+            // let p = &mut *rc_player.write().unwrap();
+            // let _m = p.state_machine_post_event(&event);
+            if let Some(sm) = &state_machine_obj {
+                sm.borrow_mut().post_event(&event);
+            } else {
+                println!("Click failed")
+            }
         }
 
         left_down = tmp;
@@ -259,20 +277,26 @@ fn main() {
             let event = Event::PointerDown { x: mx, y: my };
 
             // println!("Sending pointer down");
-            let p = &mut *locked_player.write().unwrap();
-            let _m = p.state_machine_post_event(&event);
+            // let p = &mut *rc_player.write().unwrap();
+            // let _m = p.state_machine_post_event(&event);
+            if let Some(sm) = &state_machine_obj {
+                sm.borrow_mut().post_event(&event);
+            }
         } else {
             // println!("Sending pointer move {} {}", mx, my);
             if mx != 0.0 && my != 0.0 {
                 let event = Event::PointerMove { x: mx, y: my };
-                let p = &mut *locked_player.write().unwrap();
-                let _m = p.state_machine_post_event(&event);
+                // let p = &mut *rc_player.write().unwrap();
+                // let _m = p.state_machine_post_event(&event);
+                if let Some(sm) = &state_machine_obj {
+                    sm.borrow_mut().post_event(&event);
+                }
             }
         }
 
         // Send event on key press
         // if window.is_key_pressed(Key::Space, minifb::KeyRepeat::Yes) {
-        //     let p = &mut *locked_player.write().unwrap();
+        //     let p = &mut *rc_player.write().unwrap();
 
         //     progress += 0.01;
 
@@ -281,7 +305,7 @@ fn main() {
         //     p.state_machine_set_numeric_input("Progress", progress);
         // }
         // if window.is_key_pressed(Key::Up, minifb::KeyRepeat::Yes) {
-        //     let p = &mut *locked_player.write().unwrap();
+        //     let p = &mut *rc_player.write().unwrap();
 
         //     progress -= 0.01;
 
@@ -291,7 +315,7 @@ fn main() {
         // }
 
         // if window.is_key_pressed(Key::Enter, minifb::KeyRepeat::No) {
-        //     let p = &mut *locked_player.write().unwrap();
+        //     let p = &mut *rc_player.write().unwrap();
 
         //     // oo = !oo;
         //     // p.state_machine_set_boolean_input("OnOffSwitch", oo);
@@ -301,7 +325,7 @@ fn main() {
         //     // p.state_machine_set_numeric_input("rating", rating);
         // }
         // if window.is_key_pressed(Key::Delete, minifb::KeyRepeat::No) {
-        //     let p = &mut *locked_player.write().unwrap();
+        //     let p = &mut *rc_player.write().unwrap();
 
         //     // oo = !oo;
         //     // p.state_machine_set_boolean_input("OnOffSwitch", oo);
@@ -311,10 +335,13 @@ fn main() {
         //     p.state_machine_set_numeric_input("rating", rating);
         // }
 
-        let updated = timer.tick(&*locked_player.read().unwrap());
+        let updated = timer.tick(&*rc_player.read().unwrap());
+        if let Some(sm) = &state_machine_obj {
+            sm.borrow_mut().tick();
+        }
 
         if updated {
-            let p = &mut *locked_player.write().unwrap();
+            let p = &mut *rc_player.write().unwrap();
 
             let (buffer_ptr, buffer_len) = (p.buffer_ptr(), p.buffer_len());
 

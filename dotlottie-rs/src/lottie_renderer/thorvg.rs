@@ -11,6 +11,7 @@ use std::{
 
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape, AssetResolverFn};
 
+#[cfg(feature = "tvg-v1")]
 const DEFAULT_EXT: &str = "png";
 
 #[expect(non_upper_case_globals)]

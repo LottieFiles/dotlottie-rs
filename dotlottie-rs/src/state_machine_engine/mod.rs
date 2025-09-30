@@ -468,8 +468,12 @@ impl StateMachineEngine {
             if let Ok(player) = try_read_lock {
                 // Reset to first frame
                 player.stop();
-                // Remove all playback settings
-                player.set_config(Config::default());
+                // Remove all playback settings but preserve use_frame_interpolation and layout
+                let current_config = player.config();
+                let mut reset_config = Config::default();
+                reset_config.use_frame_interpolation = current_config.use_frame_interpolation;
+                reset_config.layout = current_config.layout;
+                player.set_config(reset_config);
             }
         }
 

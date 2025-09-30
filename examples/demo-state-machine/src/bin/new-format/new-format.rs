@@ -201,15 +201,13 @@ fn main() {
     // lottie_player.render();
 
     // let locked_player = Arc::new(RwLock::new(lottie_player));
-    let rw_lock_player = RwLock::new(lottie_player);
-    let rc_player: Arc<RwLock<DotLottiePlayer>> = Arc::new(rw_lock_player);
-    let state_machine_obj = StateMachineEngine::new(&state_machine, rc_player.clone(), Some(10))
-        .ok()
-        .map(|sm| Rc::new(RefCell::new(sm)));
+    // let rw_lock_player = RwLock::new(lottie_player);
+    let rc_player: Arc<DotLottiePlayer> = Arc::new(lottie_player);
+    let mut state_machine_obj = StateMachineEngine::new(&state_machine, rc_player.clone(), Some(10));
 
-    if let Some(sm) = &state_machine_obj {
-        sm.borrow_mut().start(&open_url);
-    }
+    // if let Some(sm) = &state_machine_obj {
+    state_machine_obj.start(&open_url);
+    // }
 
     let mut progress = 0.0;
     let mut rating = 1.0;
@@ -239,18 +237,14 @@ fn main() {
                         y: my * 2.0,
                     };
 
-                    if let Some(sm) = &state_machine_obj {
-                        sm.borrow_mut().post_event(&event);
-                    }
+                    state_machine_obj.post_event(&event);
 
                     entered = true;
                 }
             } else {
                 if entered {
                     let event = Event::PointerExit { x: mx, y: my };
-                    if let Some(sm) = &state_machine_obj {
-                        sm.borrow_mut().post_event(&event);
-                    }
+                    state_machine_obj.post_event(&event);
                     entered = false;
                 }
             }
@@ -263,11 +257,7 @@ fn main() {
             // println!("Sending pointer up");
             // let p = &mut *rc_player.write().unwrap();
             // let _m = p.state_machine_post_event(&event);
-            if let Some(sm) = &state_machine_obj {
-                sm.borrow_mut().post_event(&event);
-            } else {
-                println!("Click failed")
-            }
+            state_machine_obj.post_event(&event);
         }
 
         left_down = tmp;
@@ -279,18 +269,14 @@ fn main() {
             // println!("Sending pointer down");
             // let p = &mut *rc_player.write().unwrap();
             // let _m = p.state_machine_post_event(&event);
-            if let Some(sm) = &state_machine_obj {
-                sm.borrow_mut().post_event(&event);
-            }
+            state_machine_obj.post_event(&event);
         } else {
             // println!("Sending pointer move {} {}", mx, my);
             if mx != 0.0 && my != 0.0 {
                 let event = Event::PointerMove { x: mx, y: my };
                 // let p = &mut *rc_player.write().unwrap();
                 // let _m = p.state_machine_post_event(&event);
-                if let Some(sm) = &state_machine_obj {
-                    sm.borrow_mut().post_event(&event);
-                }
+                state_machine_obj.post_event(&event);
             }
         }
 
@@ -335,15 +321,13 @@ fn main() {
         //     p.state_machine_set_numeric_input("rating", rating);
         // }
 
-        let updated = timer.tick(&*rc_player.read().unwrap());
-        if let Some(sm) = &state_machine_obj {
-            sm.borrow_mut().tick();
-        }
+        let updated = timer.tick(&*rc_player);
+        state_machine_obj.tick();
 
         if updated {
-            let p = &mut *rc_player.write().unwrap();
+            // let p = &mut *rc_player.write().unwrap();
 
-            let (buffer_ptr, buffer_len) = (p.buffer_ptr(), p.buffer_len());
+            let (buffer_ptr, buffer_len) = (rc_player.buffer_ptr(), rc_player.buffer_len());
 
             let buffer = unsafe {
                 std::slice::from_raw_parts(buffer_ptr as *const u32, buffer_len as usize)

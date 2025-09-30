@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use crate::{state_machine::StringBool, DotLottiePlayer, Event};
 
@@ -299,33 +299,29 @@ impl ActionTrait for Action {
                 // Ok(())
             }
             Action::SetTheme { value } => {
-                if let Ok(player) = player.try_write() {
-                    let resolved_value = if value.starts_with('$') {
-                        let trimmed_value = value.trim_start_matches('$');
-                        engine
-                            .get_string_input(trimmed_value)
-                            .unwrap_or_else(|| value.clone())
-                    } else {
-                        value.clone()
-                    };
+                let resolved_value = if value.starts_with('$') {
+                    let trimmed_value = value.trim_start_matches('$');
+                    engine
+                        .get_string_input(trimmed_value)
+                        .unwrap_or_else(|| value.clone())
+                } else {
+                    value.clone()
+                };
 
-                    if player.set_theme(&resolved_value) {
-                        return Ok(());
-                    }
+                if player.set_theme(&resolved_value) {
+                    return Ok(());
                 }
                 return Err(StateMachineActionError::ExecuteError);
             }
             Action::SetThemeData { value } => {
-                if let Ok(player) = player.try_write() {
-                    // If there is a $x inside value, replace with the value of x
-                    // If there is a $y inside value, replace with the value of x
-                    let value = value
-                        .replace("$x", &engine.pointer_management.pointer_x.to_string())
-                        .replace("$y", &engine.pointer_management.pointer_y.to_string());
+                // If there is a $x inside value, replace with the value of x
+                // If there is a $y inside value, replace with the value of x
+                let value = value
+                    .replace("$x", &engine.pointer_management.pointer_x.to_string())
+                    .replace("$y", &engine.pointer_management.pointer_y.to_string());
 
-                    if player.set_slots(&value) {
-                        return Ok(());
-                    }
+                if player.set_slots(&value) {
+                    return Ok(());
                 }
                 return Err(StateMachineActionError::ExecuteError);
             }
@@ -378,61 +374,52 @@ impl ActionTrait for Action {
             Action::SetFrame { value } => {
                 match value {
                     StringNumber::String(value) => {
-                        if let Ok(player) = player.try_write() {
-                            // Get the frame number from the input
-                            // Remove the "$" prefix from the value
-                            let value = value.trim_start_matches('$');
-                            let frame = engine.get_numeric_input(value);
-                            if let Some(frame) = frame {
-                                let clamped_frame = frame.clamp(0.0, player.total_frames() - 1.0);
-
-                                player.set_frame(clamped_frame);
-                                return Ok(());
-                            }
-                        }
-                        return Err(StateMachineActionError::ExecuteError);
-                    }
-                    StringNumber::F32(value) => {
-                        if let Ok(player) = player.try_write() {
-                            let clamped_frame = value.clamp(0.0, player.total_frames() - 1.0);
+                        // Get the frame number from the input
+                        // Remove the "$" prefix from the value
+                        let value = value.trim_start_matches('$');
+                        let frame = engine.get_numeric_input(value);
+                        if let Some(frame) = frame {
+                            let clamped_frame = frame.clamp(0.0, player.total_frames() - 1.0);
 
                             player.set_frame(clamped_frame);
                             return Ok(());
                         }
-
                         return Err(StateMachineActionError::ExecuteError);
+                    }
+                    StringNumber::F32(value) => {
+                        let clamped_frame = value.clamp(0.0, player.total_frames() - 1.0);
+
+                        player.set_frame(clamped_frame);
+                        return Ok(());
                     }
                 }
             }
             Action::SetProgress { value } => {
-                if let Ok(player) = player.try_write() {
-                    match value {
-                        StringNumber::String(value) => {
-                            // Get the frame number from the input
-                            // Remove the "$" prefix from the value
-                            let value = value.trim_start_matches('$');
-                            let percentage = engine.get_numeric_input(value);
-                            if let Some(percentage) = percentage {
-                                let clamped_value = percentage.clamp(0.0, 100.0);
-                                let new_perc = clamped_value / 100.0;
-                                let frame = (player.total_frames() - 1.0) * new_perc;
-
-                                player.set_frame(frame);
-                            }
-
-                            return Ok(());
-                        }
-                        StringNumber::F32(value) => {
-                            let clamped_value = value.clamp(0.0, 100.0);
+                match value {
+                    StringNumber::String(value) => {
+                        // Get the frame number from the input
+                        // Remove the "$" prefix from the value
+                        let value = value.trim_start_matches('$');
+                        let percentage = engine.get_numeric_input(value);
+                        if let Some(percentage) = percentage {
+                            let clamped_value = percentage.clamp(0.0, 100.0);
                             let new_perc = clamped_value / 100.0;
                             let frame = (player.total_frames() - 1.0) * new_perc;
 
                             player.set_frame(frame);
-                            return Ok(());
                         }
+
+                        return Ok(());
+                    }
+                    StringNumber::F32(value) => {
+                        let clamped_value = value.clamp(0.0, 100.0);
+                        let new_perc = clamped_value / 100.0;
+                        let frame = (player.total_frames() - 1.0) * new_perc;
+
+                        player.set_frame(frame);
+                        return Ok(());
                     }
                 }
-                return Err(StateMachineActionError::ExecuteError);
             }
         }
     }

@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::{rc::Rc, sync::RwLock};
 
 use serde::Deserialize;
 
@@ -19,12 +18,12 @@ pub trait StateTrait {
     fn enter(
         &self,
         engine: &mut StateMachineEngine,
-        player: &Arc<RwLock<DotLottiePlayer>>,
+        player: &Arc<DotLottiePlayer>,
     ) -> Result<(), StateMachineActionError>;
     fn exit(
         &self,
         engine: &mut StateMachineEngine,
-        player: &Arc<RwLock<DotLottiePlayer>>,
+        player: &Arc<DotLottiePlayer>,
     ) -> Result<(), StateMachineActionError>;
     fn animation(&self) -> &str;
     fn transitions(&self) -> &Vec<Transition>;
@@ -66,7 +65,7 @@ impl StateTrait for State {
     fn enter(
         &self,
         engine: &mut StateMachineEngine,
-        player: &Arc<RwLock<DotLottiePlayer>>,
+        player: &Arc<DotLottiePlayer>,
     ) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState {
@@ -100,13 +99,8 @@ impl StateTrait for State {
                     defined_segment = new_segment.clone();
                 }
 
-                let mut size = (0, 0);
-                let mut uses_frame_interpolation = false;
-
-                if let Ok(player_read) = player.try_read() {
-                    size = player_read.size();
-                    uses_frame_interpolation = player_read.config().use_frame_interpolation;
-                }
+                let size = player.size();
+                let uses_frame_interpolation = player.config().use_frame_interpolation;
 
                 let playback_config = Config {
                     mode: defined_mode,
@@ -123,17 +117,13 @@ impl StateTrait for State {
                     state_machine_id: "".to_string(),
                     animation_id: "".to_string(),
                 };
-                if let Ok(player) = player.try_write() {
-                    if !animation.is_empty() && player.active_animation_id() != *animation {
-                        player.load_animation(animation, size.0, size.1);
-                    }
-
-                    println!("Setting config..");
-                    player.set_config(playback_config);
-                    println!("Set config..");
-                } else {
-                    println!("Player write error..");
+                if !animation.is_empty() && player.active_animation_id() != *animation {
+                    player.load_animation(animation, size.0, size.1);
                 }
+
+                println!("Setting config..");
+                player.set_config(playback_config);
+                println!("Set config..");
 
                 /* Perform entry actions */
                 if let Some(actions) = entry_actions {
@@ -156,13 +146,11 @@ impl StateTrait for State {
                 entry_actions,
                 ..
             } => {
-                if let Ok(player) = player.try_write() {
-                    let size = player.size();
+                let size = player.size();
 
-                    if let Some(animation) = animation {
-                        if player.active_animation_id() != *animation {
-                            player.load_animation(animation, size.0, size.1);
-                        }
+                if let Some(animation) = animation {
+                    if player.active_animation_id() != *animation {
+                        player.load_animation(animation, size.0, size.1);
                     }
                 }
 
@@ -209,7 +197,7 @@ impl StateTrait for State {
     fn exit(
         &self,
         engine: &mut StateMachineEngine,
-        player: &Arc<RwLock<DotLottiePlayer>>,
+        player: &Arc<DotLottiePlayer>,
     ) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState { exit_actions, .. } => {

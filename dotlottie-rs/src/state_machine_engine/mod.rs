@@ -156,7 +156,7 @@ pub struct StateMachineEngine {
     pub global_state: Option<State>,
     pub current_state: Option<State>,
 
-    pub player: Option<Arc<RwLock<DotLottiePlayer>>>,
+    pub player: Option<Arc<DotLottiePlayer>>,
     pub status: StateMachineEngineStatus,
 
     // Open url policy configurations
@@ -217,19 +217,26 @@ impl Default for StateMachineEngine {
 impl StateMachineEngine {
     pub fn new(
         state_machine_definition: &str,
-        player: Arc<RwLock<DotLottiePlayer>>,
-        max_cycle_count: Option<usize>,
-    ) -> Result<StateMachineEngine, StateMachineEngineError> {
+        player: Arc<DotLottiePlayer>,
+        _: Option<u64>,
+    ) -> StateMachineEngine {
         let event_queue = Arc::new(RwLock::new(VecDeque::new()));
 
         // Create an empty state machine object that we'll use to boot up the parser from
         let mut state_machine = StateMachineEngine::default();
 
-        if let Some(mcc) = max_cycle_count {
-            state_machine.max_cycle_count = mcc;
-        }
+        // if let Some(mcc) = max_cycle_count {
+        state_machine.max_cycle_count = 10;
+        // }
 
-        state_machine = state_machine.create_state_machine(state_machine_definition, &player)?;
+        state_machine = match state_machine.create_state_machine(state_machine_definition, &player)
+        {
+            Ok(sm) => sm,
+            Err(e) => {
+                // You may want to handle the error differently, e.g., panic or return a Result
+                panic!("Failed to create state machine: {:?}", e);
+            }
+        };
 
         state_machine.event_queue = event_queue.clone();
 
@@ -238,9 +245,9 @@ impl StateMachineEngine {
         state_machine.player_observer = Some(observer.clone());
 
         // Register observer with player
-        player.write().unwrap().subscribe(observer);
+        player.subscribe(observer);
 
-        Ok(state_machine)
+        state_machine
     }
 
     pub fn subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
@@ -279,10 +286,10 @@ impl StateMachineEngine {
         value: f32,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<InputValue> {
+    ) {
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
-            return None;
+            return;
         }
 
         let ret = self.inputs.set_numeric(key, value);
@@ -298,8 +305,6 @@ impl StateMachineEngine {
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
         }
-
-        ret
     }
 
     pub fn get_numeric_input(&self, key: &str) -> Option<f32> {
@@ -312,10 +317,10 @@ impl StateMachineEngine {
         value: &str,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<InputValue> {
+    ) {
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
-            return None;
+            return;
         }
 
         let ret = self.inputs.set_string(key, value.to_string());
@@ -331,7 +336,7 @@ impl StateMachineEngine {
             let _ = self.run_current_state_pipeline();
         }
 
-        ret
+        // ret
     }
 
     pub fn get_string_input(&self, key: &str) -> Option<String> {
@@ -344,10 +349,10 @@ impl StateMachineEngine {
         value: bool,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<InputValue> {
+    ) {
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
-            return None;
+            return;
         }
 
         let ret = self.inputs.set_boolean(key, value);
@@ -363,7 +368,7 @@ impl StateMachineEngine {
             let _ = self.run_current_state_pipeline();
         }
 
-        ret
+        // ret
     }
 
     pub fn get_boolean_input(&self, key: &str) -> Option<bool> {
@@ -428,7 +433,7 @@ impl StateMachineEngine {
     pub fn create_state_machine(
         &mut self,
         sm_definition: &str,
-        player: &Arc<RwLock<DotLottiePlayer>>,
+        player: &Arc<DotLottiePlayer>,
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine::default();
@@ -482,10 +487,7 @@ impl StateMachineEngine {
                 new_state_machine.player = Some(player.clone());
                 new_state_machine.state_machine = parsed_state_machine;
 
-                let try_read_lock = &player.try_read();
-                if let Ok(player) = try_read_lock {
-                    new_state_machine.cached_player_config = player.config();
-                }
+                new_state_machine.cached_player_config = player.config();
 
                 new_state_machine.init_listened_layers();
 
@@ -518,12 +520,10 @@ impl StateMachineEngine {
 
     pub fn start(&mut self, open_url: &OpenUrlPolicy) -> bool {
         if let Some(player) = &self.player {
-            if let Ok(player) = player.try_write() {
-                // Reset to first frame
-                player.stop();
-                // Remove all playback settings
-                player.set_config(Config::default());
-            }
+            // Reset to first frame
+            player.stop();
+            // Remove all playback settings
+            player.set_config(Config::default());
         }
 
         // Start can still be called even if load failed. If load failed initial and states will be empty.
@@ -577,12 +577,10 @@ impl StateMachineEngine {
         self.observe_on_stop();
 
         if let Some(player) = &self.player {
-            if let Ok(player) = player.try_write() {
-                // Reset to first frame
-                player.stop();
-                // Remove all playback settings
-                player.set_config(Config::default());
-            }
+            // Reset to first frame
+            player.stop();
+            // Remove all playback settings
+            player.set_config(Config::default());
         }
     }
 
@@ -749,33 +747,30 @@ impl StateMachineEngine {
                 // If we dealing with a tweened transition
                 if let Transition::Tweened { .. } = causing_transition {
                     if let Some(unwrapped_player) = &self.player {
-                        if let Ok(player) = unwrapped_player.try_write() {
-                            let segment_clone = match &new_state {
-                                State::PlaybackState { segment, .. } => segment.clone(),
-                                _ => None,
-                            };
-                            match &new_state {
-                                // If we're transitioning to a PlaybackState, grab the start segment
-                                State::PlaybackState { .. } => {
-                                    if let Some(target_segment) = segment_clone {
-                                        self.tween_transition_target_state =
-                                            Some(new_state.clone());
-                                        // Tweening is activated and the state machine has been paused whilst it transitions
-                                        self.status = StateMachineEngineStatus::Tweening;
+                        let segment_clone = match &new_state {
+                            State::PlaybackState { segment, .. } => segment.clone(),
+                            _ => None,
+                        };
+                        match &new_state {
+                            // If we're transitioning to a PlaybackState, grab the start segment
+                            State::PlaybackState { .. } => {
+                                if let Some(target_segment) = segment_clone {
+                                    self.tween_transition_target_state = Some(new_state.clone());
+                                    // Tweening is activated and the state machine has been paused whilst it transitions
+                                    self.status = StateMachineEngineStatus::Tweening;
 
-                                        player.tween_to_marker(
-                                            &target_segment,
-                                            Some(causing_transition.duration()),
-                                            Some(causing_transition.easing().to_vec()),
-                                        );
+                                    unwrapped_player.tween_to_marker(
+                                        &target_segment,
+                                        Some(causing_transition.duration()),
+                                        Some(causing_transition.easing().to_vec()),
+                                    );
 
-                                        return Ok(());
-                                    }
-                                }
-                                // If we're transitioning to a GlobalState, do nothing
-                                State::GlobalState { .. } => {
                                     return Ok(());
                                 }
+                            }
+                            // If we're transitioning to a GlobalState, do nothing
+                            State::GlobalState { .. } => {
+                                return Ok(());
                             }
                         }
                     }
@@ -1125,24 +1120,20 @@ impl StateMachineEngine {
                 if let Some(layer) = interaction.get_layer_name() {
                     // Check if the layer was hit, otherwise we ignore this interaction
                     if let Some(rc_player) = &self.player {
-                        let try_read_lock = rc_player.try_read();
-
-                        if let Ok(player_container) = try_read_lock {
-                            // If we have a pointer down event, we need to check if the pointer is outside of the layer
-                            if let Event::PointerExit { x, y } = event {
-                                if self.pointer_management.curr_entered_layer == *layer
-                                    && !player_container.intersect(*x, *y, &layer)
-                                {
-                                    entered_layer = "".to_string();
-                                    actions_to_execute.extend(interaction.get_actions().clone());
-                                }
-                            } else {
-                                println!("Hit check positive");
-                                // Hit check will return true if the layer was hit
-                                if player_container.intersect(x, y, &layer) {
-                                    entered_layer = layer.clone();
-                                    actions_to_execute.extend(interaction.get_actions().clone());
-                                }
+                        // If we have a pointer down event, we need to check if the pointer is outside of the layer
+                        if let Event::PointerExit { x, y } = event {
+                            if self.pointer_management.curr_entered_layer == *layer
+                                && !rc_player.intersect(*x, *y, &layer)
+                            {
+                                entered_layer = "".to_string();
+                                actions_to_execute.extend(interaction.get_actions().clone());
+                            }
+                        } else {
+                            println!("Hit check positive");
+                            // Hit check will return true if the layer was hit
+                            if rc_player.intersect(x, y, &layer) {
+                                entered_layer = layer.clone();
+                                actions_to_execute.extend(interaction.get_actions().clone());
                             }
                         }
                     }
@@ -1182,40 +1173,35 @@ impl StateMachineEngine {
         // If we've changed layers, perform exit actions
         // If we don't hit any layers, perform exit actions
         if let Some(rc_player) = &self.player {
-            let try_read_lock = rc_player.try_read();
+            let mut hit = false;
+            let old_layer = self.pointer_management.curr_entered_layer.clone();
 
-            if let Ok(player_container) = try_read_lock {
-                let mut hit = false;
-                let old_layer = self.pointer_management.curr_entered_layer.clone();
+            // Loop through all layers we're listening to
+            for (layer, event_name) in &self.pointer_management.listened_layers {
+                // We're only interested in the listened layers that need enter / exit event
+                if (event_name == event_type_name!(PointerEnter)
+                    || event_name == event_type_name!(PointerExit))
+                    && rc_player.intersect(x, y, layer)
+                {
+                    hit = true;
 
-                // Loop through all layers we're listening to
-                for (layer, event_name) in &self.pointer_management.listened_layers {
-                    // We're only interested in the listened layers that need enter / exit event
-                    if (event_name == event_type_name!(PointerEnter)
-                        || event_name == event_type_name!(PointerExit))
-                        && player_container.intersect(x, y, layer)
-                    {
-                        hit = true;
+                    // If it's that same current layer, do nothing
+                    if self.pointer_management.curr_entered_layer == *layer {
+                        break;
+                    }
 
-                        // If it's that same current layer, do nothing
-                        if self.pointer_management.curr_entered_layer == *layer {
-                            break;
-                        }
+                    self.pointer_management.curr_entered_layer = layer.to_string();
 
-                        self.pointer_management.curr_entered_layer = layer.to_string();
+                    // Get all pointer_enter interactions
+                    let pointer_enter_interactions =
+                        self.interactions(Some(event_type_name!(PointerEnter).to_string()));
 
-                        // Get all pointer_enter interactions
-                        let pointer_enter_interactions =
-                            self.interactions(Some(event_type_name!(PointerEnter).to_string()));
-
-                        // Add their actions if their layer name matches the current layer name in loop
-                        for interaction in pointer_enter_interactions {
-                            if let Some(interaction_layer_name) = interaction.get_layer_name() {
-                                if *interaction_layer_name
-                                    == self.pointer_management.curr_entered_layer
-                                {
-                                    actions_to_execute.extend(interaction.get_actions().clone());
-                                }
+                    // Add their actions if their layer name matches the current layer name in loop
+                    for interaction in pointer_enter_interactions {
+                        if let Some(interaction_layer_name) = interaction.get_layer_name() {
+                            if *interaction_layer_name == self.pointer_management.curr_entered_layer
+                            {
+                                actions_to_execute.extend(interaction.get_actions().clone());
                             }
                         }
                     }

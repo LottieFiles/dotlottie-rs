@@ -237,6 +237,13 @@ enum StateMachineEngineError {
     "SecurityCheckErrorDuplicateStateName",
 };
 
+//[Enum]
+//interface InputValue {
+//    Numeric(f32 value);
+//    String(string value);
+//    Boolean(boolean value);
+//};
+
 //dictionary OpenUrlPolicy {
 //    boolean require_user_interaction;
 //    sequence<string> whitelist;
@@ -268,13 +275,13 @@ interface StateMachineEngine {
     void internal_subscribe(StateMachineInternalObserver observer);
     void internal_unsubscribe([ByRef] StateMachineInternalObserver observer);
     
-    f32? set_numeric_input([ByRef] string key, f32 value, boolean run_pipeline, boolean called_from_action);
+    void set_numeric_input([ByRef] string key, f32 value, boolean run_pipeline, boolean called_from_action);
     f32? get_numeric_input([ByRef] string key);
     
-    string? set_string_input([ByRef] string key, [ByRef] string value, boolean run_pipeline, boolean called_from_action);
+    void set_string_input([ByRef] string key, [ByRef] string value, boolean run_pipeline, boolean called_from_action);
     string? get_string_input([ByRef] string key);
     
-    boolean? set_boolean_input([ByRef] string key, boolean value, boolean run_pipeline, boolean called_from_action);
+    void set_boolean_input([ByRef] string key, boolean value, boolean run_pipeline, boolean called_from_action);
     boolean? get_boolean_input([ByRef] string key);
     
     void reset_input([ByRef] string key, boolean run_pipeline, boolean called_from_action);

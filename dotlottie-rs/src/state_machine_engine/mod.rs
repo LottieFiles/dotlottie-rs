@@ -470,9 +470,11 @@ impl StateMachineEngine {
                 player.stop();
                 // Remove all playback settings but preserve use_frame_interpolation and layout
                 let current_config = player.config();
-                let mut reset_config = Config::default();
-                reset_config.use_frame_interpolation = current_config.use_frame_interpolation;
-                reset_config.layout = current_config.layout;
+                let reset_config = Config {
+                    use_frame_interpolation: current_config.use_frame_interpolation,
+                    layout: current_config.layout,
+                    ..Config::default()
+                };
                 player.set_config(reset_config);
             }
         }

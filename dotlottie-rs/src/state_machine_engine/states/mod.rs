@@ -2,7 +2,7 @@ use std::{rc::Rc, sync::RwLock};
 
 use serde::Deserialize;
 
-use crate::{dotlottie_player::Mode, Config, DotLottiePlayerContainer, Layout};
+use crate::{dotlottie_player::Mode, Config, DotLottiePlayerContainer};
 
 use super::{actions::StateMachineActionError, transitions::Transition, StateMachineEngine};
 
@@ -100,7 +100,10 @@ impl StateTrait for State {
 
                 if let Ok(player_read) = player.try_read() {
                     let size = player_read.size();
-                    let uses_frame_interpolation = player_read.config().use_frame_interpolation;
+                    let current_config = player_read.config();
+
+                    let uses_frame_interpolation = current_config.use_frame_interpolation;
+                    let current_layout = current_config.layout.clone();
 
                     let playback_config = Config {
                         mode: defined_mode,
@@ -112,12 +115,15 @@ impl StateTrait for State {
                         marker: defined_segment,
                         background_color: background_color
                             .unwrap_or(default_config.background_color),
-                        layout: Layout::default(),
+                        layout: current_layout,
                         segment: [].to_vec(),
                         theme_id: "".to_string(),
                         state_machine_id: "".to_string(),
                         animation_id: "".to_string(),
                     };
+
+                    // Set config first so that load_animation uses the preserved layout
+                    player_read.set_config(playback_config);
 
                     if !animation.is_empty()
                         && player_read.active_animation_id() != *animation
@@ -125,8 +131,6 @@ impl StateTrait for State {
                     {
                         player_read.load_animation(animation, size.0, size.1);
                     }
-
-                    player_read.set_config(playback_config);
 
                     /* Perform entry actions */
                     if let Some(actions) = entry_actions {

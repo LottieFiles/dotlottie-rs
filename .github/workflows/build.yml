@@ -47,6 +47,11 @@ on:
         description: "Enable SIMD"
         required: false
         default: false
+      create_prs:
+        type: boolean
+        description: "Create PRs in target repositories"
+        required: false
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.inputs.target }}
@@ -309,3 +314,316 @@ jobs:
           name: dotlottie-player.wasm.tar.gz
           path: release/wasm/dotlottie-player.wasm.tar.gz
           if-no-files-found: error
+
+  create-pr-ios:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.create_prs == 'true' && (github.event.inputs.target == 'apple' || github.event.inputs.target == 'all')
+    needs: [build-apple]
+    steps:
+      - name: Download iOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dotlottie-player.darwin.tar.gz
+          path: ./artifacts
+
+      - name: Extract iOS artifact
+        run: |
+          mkdir -p extracted
+          cd extracted
+          tar -xzf ../artifacts/dotlottie-player.darwin.tar.gz
+          ls -la
+          echo "Contents:"
+          find . -type f
+
+      - name: Checkout dotlottie-ios repository
+        uses: actions/checkout@v4
+        with:
+          repository: LottieFiles/dotlottie-ios
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: target-repo
+
+      - name: Create branch and copy files
+        run: |
+          cd target-repo
+
+          # Create a unique branch name
+          BRANCH_NAME="auto-update-ios-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b $BRANCH_NAME
+
+          # Remove old files
+          rm -f Sources/DotLottie/Public/dotlottie_player.swift
+          rm -rf Sources/DotLottieCore/DotLottiePlayer.xcframework
+
+          # Copy new files to correct locations
+          mkdir -p Sources/DotLottie/Public
+          mkdir -p Sources/DotLottieCore
+
+          cp ../extracted/dotlottie_player.swift Sources/DotLottie/Public/
+          cp -r ../extracted/DotLottiePlayer.xcframework Sources/DotLottieCore/
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Commit changes
+          git add .
+          git commit -m "chore: update iOS dotlottie player artifacts
+
+          Built from: ${{ github.repository }}@${{ github.sha }}
+          Build target: ${{ github.event.inputs.target }}
+          Features: threads=${{ github.event.inputs.feature_threads }}, webp=${{ github.event.inputs.feature_webp }}, png=${{ github.event.inputs.feature_png }}, jpg=${{ github.event.inputs.feature_jpg }}, ttf=${{ github.event.inputs.feature_ttf }}, expressions=${{ github.event.inputs.feature_expressions }}, simd=${{ github.event.inputs.feature_simd }}"
+
+          # Push branch
+          git push origin $BRANCH_NAME
+
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: target-repo
+          branch: ${{ env.BRANCH_NAME }}
+          title: "chore: update iOS dotlottie player artifacts"
+          body: |
+            ## Automated iOS Build Update
+
+            This PR updates the iOS dotlottie player artifacts from the latest build.
+
+            **Build Details:**
+            - Source: ${{ github.repository }}@${{ github.sha }}
+            - Target: `${{ github.event.inputs.target }}`
+            - Artifact: `dotlottie-player.darwin.tar.gz`
+
+            **Features Enabled:**
+            - Threads: ${{ github.event.inputs.feature_threads }}
+            - WebP: ${{ github.event.inputs.feature_webp }}
+            - PNG: ${{ github.event.inputs.feature_png }}
+            - JPEG: ${{ github.event.inputs.feature_jpg }}
+            - TTF: ${{ github.event.inputs.feature_ttf }}
+            - Expressions: ${{ github.event.inputs.feature_expressions }}
+            - SIMD: ${{ github.event.inputs.feature_simd }}
+
+            **Files Updated:**
+            - `Sources/DotLottie/Public/dotlottie_player.swift`
+            - `Sources/DotLottieCore/DotLottiePlayer.xcframework`
+
+            **Action required:** Please review and merge if tests pass.
+          labels: |
+            automated
+            dependencies
+            ios
+
+  # Android PR Creation
+  create-pr-android:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.create_prs == 'true' && (github.event.inputs.target == 'android' || github.event.inputs.target == 'all')
+    needs: [build-android]
+    steps:
+      - name: Download Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dotlottie-player.android.tar.gz
+          path: ./artifacts
+
+      - name: Extract Android artifact
+        run: |
+          mkdir -p extracted
+          cd extracted
+          tar -xzf ../artifacts/dotlottie-player.android.tar.gz
+          ls -la
+          echo "Contents:"
+          find . -type f
+
+      - name: Checkout dotlottie-android repository
+        uses: actions/checkout@v4
+        with:
+          repository: LottieFiles/dotlottie-android
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: target-repo
+
+      - name: Create branch and copy files
+        run: |
+          cd target-repo
+
+          # Create a unique branch name
+          BRANCH_NAME="auto-update-android-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b $BRANCH_NAME
+
+          # Remove old files
+          rm -f dotlottie/src/main/kotlin/com/dotlottie/dlplayer/dotlottie_player.kt
+          rm -rf dotlottie/src/main/jniLibs
+
+          # Copy new files preserving structure
+          mkdir -p dotlottie/src/main/kotlin/com/dotlottie/dlplayer
+          mkdir -p dotlottie/src/main/jniLibs
+
+          # Copy Kotlin file
+          cp extracted/dotlottie-player/src/main/kotlin/com/dotlottie/dlplayer/dotlottie_player.kt \
+             dotlottie/src/main/kotlin/com/dotlottie/dlplayer/
+
+          # Copy all jniLibs architectures
+          cp -r extracted/dotlottie-player/src/main/jniLibs/* dotlottie/src/main/jniLibs/
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Commit changes
+          git add .
+          git commit -m "chore: update Android dotlottie player artifacts
+
+          Built from: ${{ github.repository }}@${{ github.sha }}
+          Build target: ${{ github.event.inputs.target }}
+          Features: threads=${{ github.event.inputs.feature_threads }}, webp=${{ github.event.inputs.feature_webp }}, png=${{ github.event.inputs.feature_png }}, jpg=${{ github.event.inputs.feature_jpg }}, ttf=${{ github.event.inputs.feature_ttf }}, expressions=${{ github.event.inputs.feature_expressions }}, simd=${{ github.event.inputs.feature_simd }}"
+
+          # Push branch
+          git push origin $BRANCH_NAME
+
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: target-repo
+          branch: ${{ env.BRANCH_NAME }}
+          title: "chore: update Android dotlottie player artifacts"
+          body: |
+            ## Automated Android Build Update
+
+            This PR updates the Android dotlottie player artifacts from the latest build.
+
+            **Build Details:**
+            - Source: ${{ github.repository }}@${{ github.sha }}
+            - Target: `${{ github.event.inputs.target }}`
+            - Artifact: `dotlottie-player.android.tar.gz`
+
+            **Features Enabled:**
+            - Threads: ${{ github.event.inputs.feature_threads }}
+            - WebP: ${{ github.event.inputs.feature_webp }}
+            - PNG: ${{ github.event.inputs.feature_png }}
+            - JPEG: ${{ github.event.inputs.feature_jpg }}
+            - TTF: ${{ github.event.inputs.feature_ttf }}
+            - Expressions: ${{ github.event.inputs.feature_expressions }}
+            - SIMD: ${{ github.event.inputs.feature_simd }}
+
+            **Files Updated:**
+            - `dotlottie/src/main/kotlin/com/dotlottie/dlplayer/dotlottie_player.kt`
+            - `dotlottie/src/main/jniLibs/arm64-v8a/`
+            - `dotlottie/src/main/jniLibs/armeabi-v7a/`
+            - `dotlottie/src/main/jniLibs/x86/`
+            - `dotlottie/src/main/jniLibs/x86_64/`
+
+            **Action required:** Please review and merge if tests pass.
+          labels: |
+            automated
+            dependencies
+            android
+
+  # Web PR Creation
+  create-pr-web:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.create_prs == 'true' && (github.event.inputs.target == 'wasm' || github.event.inputs.target == 'all')
+    needs: [build-wasm]
+    steps:
+      - name: Download WASM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dotlottie-player.wasm.tar.gz
+          path: ./artifacts
+
+      - name: Extract and rename WASM files
+        run: |
+          mkdir -p extracted
+          cd extracted
+          tar -xzf ../artifacts/dotlottie-player.wasm.tar.gz
+
+          echo "Original contents:"
+          ls -la
+
+          # Rename files
+          mv DotLottiePlayer.wasm dotlottie-player.wasm
+          mv DotLottiePlayer.js dotlottie-player.js
+          mv DotLottiePlayer.d.ts dotlottie-player.types.ts
+
+          echo "After renaming:"
+          ls -la
+
+      - name: Checkout dotlottie-web repository
+        uses: actions/checkout@v4
+        with:
+          repository: LottieFiles/dotlottie-web
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: target-repo
+
+      - name: Create branch and copy files
+        run: |
+          cd target-repo
+
+          # Create a unique branch name
+          BRANCH_NAME="auto-update-web-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b $BRANCH_NAME
+
+          # Remove old files
+          rm -f packages/web/src/core/dotlottie-player.wasm
+          rm -f packages/web/src/core/dotlottie-player.js
+          rm -f packages/web/src/core/dotlottie-player.types.ts
+
+          # Copy new files
+          mkdir -p packages/web/src/core
+          cp ../extracted/dotlottie-player.wasm packages/web/src/core/
+          cp ../extracted/dotlottie-player.js packages/web/src/core/
+          cp ../extracted/dotlottie-player.types.ts packages/web/src/core/
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Commit changes
+          git add .
+          git commit -m "chore: update Web dotlottie player artifacts
+
+          Built from: ${{ github.repository }}@${{ github.sha }}
+          Build target: ${{ github.event.inputs.target }}
+          Features: webp=${{ github.event.inputs.feature_webp }}, png=${{ github.event.inputs.feature_png }}, jpg=${{ github.event.inputs.feature_jpg }}, ttf=${{ github.event.inputs.feature_ttf }}, expressions=${{ github.event.inputs.feature_expressions }}"
+
+          # Push branch
+          git push origin $BRANCH_NAME
+
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: target-repo
+          branch: ${{ env.BRANCH_NAME }}
+          title: "chore: update Web dotlottie player artifacts"
+          body: |
+            ## Automated Web Build Update
+
+            This PR updates the Web dotlottie player artifacts from the latest build.
+
+            **Build Details:**
+            - Source: ${{ github.repository }}@${{ github.sha }}
+            - Target: `${{ github.event.inputs.target }}`
+            - Artifact: `dotlottie-player.wasm.tar.gz`
+
+            **Features Enabled:**
+            - WebP: ${{ github.event.inputs.feature_webp }}
+            - PNG: ${{ github.event.inputs.feature_png }}
+            - JPEG: ${{ github.event.inputs.feature_jpg }}
+            - TTF: ${{ github.event.inputs.feature_ttf }}
+            - Expressions: ${{ github.event.inputs.feature_expressions }}
+
+            **Files Updated:**
+            - `packages/web/src/core/dotlottie-player.wasm`
+            - `packages/web/src/core/dotlottie-player.js`
+            - `packages/web/src/core/dotlottie-player.types.ts`
+
+            **Action required:** Please review and merge if tests pass.
+          labels: |
+            automated
+            dependencies
+            web

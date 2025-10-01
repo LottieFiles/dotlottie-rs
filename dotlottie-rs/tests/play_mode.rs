@@ -162,7 +162,7 @@ mod play_mode_tests {
         }
 
         let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
 
         let completed = *observed_completed.lock().unwrap();
         assert!(completed);
@@ -178,7 +178,7 @@ mod play_mode_tests {
         }
 
         let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 6, "Should have looped 6 times, got {}", loops);
+        assert_eq!(loops, 6, "Should have looped 6 times, got {loops}");
     }
 
     #[test]
@@ -215,7 +215,7 @@ mod play_mode_tests {
         }
 
         let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
 
         // Restart the player
         player.play();
@@ -228,7 +228,7 @@ mod play_mode_tests {
         }
 
         let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 5, "Should have looped 5 times, got {}", loops);
+        assert_eq!(loops, 5, "Should have looped 5 times, got {loops}");
 
         let completed = *observed_completed.lock().unwrap();
         assert!(completed);
@@ -378,7 +378,7 @@ mod play_mode_tests {
         }
 
         let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
 
         let completed = *observed_completed.lock().unwrap();
         assert!(completed);
@@ -466,7 +466,7 @@ mod play_mode_tests {
         }
 
         let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
 
         let completed = *observed_completed.lock().unwrap();
         assert!(completed);
@@ -569,7 +569,7 @@ mod play_mode_tests {
         }
 
         let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
 
         let completed = *observed_completed.lock().unwrap();
         assert!(completed);
@@ -671,7 +671,7 @@ mod play_mode_tests {
         }
 
         let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {}", loops);
+        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
 
         let completed = *observed_completed.lock().unwrap();
         assert!(completed);

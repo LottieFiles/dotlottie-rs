@@ -101,6 +101,40 @@ fn set_theme_benchmark(c: &mut Criterion) {
     });
 }
 
+fn state_machine_load_benchmark(c: &mut Criterion) {
+    let player = DotLottiePlayer::new(Config::default());
+
+    let data = include_bytes!(
+        "../tests/fixtures/statemachines/normal_usecases/sm_exploding_pigeon.lottie"
+    );
+    assert!(player.load_dotlottie_data(data, WIDTH, HEIGHT));
+
+    c.bench_function("state_machine_load", |b| {
+        b.iter(|| {
+            player.state_machine_load("Exploding Pigeon");
+        });
+    });
+}
+
+fn state_machine_load_data_benchmark(c: &mut Criterion) {
+    let player = DotLottiePlayer::new(Config::default());
+    let state_machine_data = std::str::from_utf8(include_bytes!(
+        "../tests/fixtures/statemachines/normal_usecases/exploding_pigeon.json"
+    ))
+    .unwrap();
+
+    let animation_data = include_bytes!(
+        "../tests/fixtures/statemachines/normal_usecases/sm_exploding_pigeon.lottie"
+    );
+    assert!(player.load_dotlottie_data(animation_data, WIDTH, HEIGHT));
+
+    c.bench_function("state_machine_load_data", |b| {
+        b.iter(|| {
+            player.state_machine_load_data(state_machine_data);
+        });
+    });
+}
+
 criterion_group!(
     benches,
     load_animation_data_benchmark,
@@ -108,5 +142,7 @@ criterion_group!(
     load_dotlottie_data_benchmark,
     animation_loop_benchmark,
     set_theme_benchmark,
+    state_machine_load_benchmark,
+    state_machine_load_data_benchmark,
 );
 criterion_main!(benches);

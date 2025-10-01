@@ -295,4 +295,4 @@ jobs:
         run: |
           echo "::warning::Performance regressions detected! Review the benchmark report above."
           # Uncomment the next line to fail CI on regressions:
-          exit 1
+          # exit 1

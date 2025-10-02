@@ -12,8 +12,10 @@ use zip::ZipArchive;
 const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 const DATA_IMAGE_PREFIX: &str = "data:image/";
+const DATA_FONT_PREFIX: &str = "data:font/";
 const BASE64_PREFIX: &str = ";base64,";
 const DEFAULT_EXT: &str = "png";
+const DEFAULT_FONT_EXT: &str = "ttf";
 
 pub struct DotLottieManager {
     active_animation_id: Box<str>,
@@ -121,6 +123,54 @@ impl DotLottieManager {
                                     asset_obj.insert("u".to_string(), empty_u.clone());
                                     asset_obj.insert("p".to_string(), Value::String(data_url));
                                     asset_obj.insert("e".to_string(), embedded_flag.clone());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if self.version == 2 {
+            if let Some(fonts) = lottie_animation
+                .get_mut("fonts")
+                .and_then(|v| v.as_object_mut())
+            {
+                if let Some(font_list) = fonts.get_mut("list").and_then(|v| v.as_array_mut()) {
+                    let mut font_path = String::with_capacity(128);
+
+                    for font in font_list.iter_mut() {
+                        if let Some(font_obj) = font.as_object_mut() {
+                            if let Some(f_path_str) = font_obj.get("fPath").and_then(|v| v.as_str())
+                            {
+                                // only process fonts with /f/ prefix (package-internal fonts)
+                                if f_path_str.starts_with("/f/") {
+                                    font_path.clear();
+                                    font_path.push_str("f/");
+                                    let path_without_prefix =
+                                        f_path_str.strip_prefix("/f/").unwrap_or(f_path_str);
+                                    font_path.push_str(path_without_prefix);
+
+                                    if let Ok(mut result) = archive.by_name(&font_path) {
+                                        let mut content =
+                                            Vec::with_capacity(result.size() as usize);
+                                        if result.read_to_end(&mut content).is_ok() {
+                                            let font_ext = path_without_prefix
+                                                .rfind('.')
+                                                .map(|i| &path_without_prefix[i + 1..])
+                                                .unwrap_or(DEFAULT_FONT_EXT);
+                                            let font_data_base64 = Self::encode_base64(&content);
+
+                                            let data_url = format!(
+                                                "{DATA_FONT_PREFIX}{font_ext}{BASE64_PREFIX}{font_data_base64}"
+                                            );
+
+                                            font_obj.insert(
+                                                "fPath".to_string(),
+                                                Value::String(data_url),
+                                            );
+                                        }
+                                    }
                                 }
                             }
                         }

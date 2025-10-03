@@ -1,3 +1,13 @@
+## 0.1.49 (2025-10-03)
+
+### Features
+
+#### dotLottie v2.0 font assets support (#404)
+
+### Fixes
+
+#### preserve layout property when entering state (#402)
+
 ## 0.1.48 (2025-09-29)
 
 ### Features

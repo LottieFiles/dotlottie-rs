@@ -2,7 +2,7 @@ use crate::time::Instant;
 
 use std::{
     error::Error,
-    ffi::{c_char, CString},
+    ffi::{c_char, c_void, CString},
     fmt, ptr,
     result::Result,
 };
@@ -10,7 +10,9 @@ use std::{
 #[cfg(feature = "tvg-ttf")]
 use crate::lottie_renderer::fallback_font;
 
-use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
+use super::{Animation, ColorSpace, Drawable, Renderer, Shape, AssetResolverFn};
+
+const DEFAULT_EXT: &str = "png";
 
 #[expect(non_upper_case_globals)]
 #[allow(non_snake_case)]
@@ -429,6 +431,81 @@ impl Animation for TvgAnimation {
 
     fn set_quality(&mut self, quality: u8) -> Result<(), TvgError> {
         unsafe { tvg::tvg_lottie_animation_set_quality(self.raw_animation, quality).into_result() }
+    }
+
+    fn set_asset_resolver(
+        &mut self, 
+        #[cfg_attr(not(feature = "tvg-v1"), allow(unused_variables))]
+        resolver: Option<AssetResolverFn>,
+        #[cfg_attr(not(feature = "tvg-v1"), allow(unused_variables))]
+        user_data: *mut c_void,
+    ) -> Result<(), TvgError> {
+        #[cfg(feature = "tvg-v1")]
+        {
+            if let Some(asset_resolver_fn) = resolver {
+                // Create a struct to hold both the resolver function and user_data
+                let resolver_data = Box::new((asset_resolver_fn, user_data));
+                let resolver_data_ptr = Box::into_raw(resolver_data) as *mut c_void;
+
+                unsafe extern "C" fn thorvg_asset_resolver_wrapper(
+                    paint: tvg::Tvg_Paint,
+                    src: *const i8,
+                    user_data: *mut c_void
+                ) -> bool {
+                    if user_data.is_null() {
+                        return false;
+                    }
+
+                    // Extract the resolver function and original user_data
+                    let (resolver_fn, original_user_data) = *(user_data as *const (AssetResolverFn, *mut c_void));
+                    
+                    let asset_data_ptr = resolver_fn(src, original_user_data);
+                    if asset_data_ptr.is_null() {
+                        return false;
+                    }
+
+                    let src_str = match std::ffi::CStr::from_ptr(src).to_str() {
+                        Ok(s) => s,
+                        Err(_) => return false,
+                    };
+
+                    let image_ext = src_str
+                                        .rfind('.')
+                                        .map(|i| &src_str[i + 1..])
+                                        .unwrap_or(DEFAULT_EXT);
+
+                    let asset_data = Box::from_raw(asset_data_ptr);
+
+                    let result = TvgAnimation::tvg_load_data_dispatch(
+                        paint,
+                        asset_data.as_ptr() as *const i8,
+                        asset_data.len() as u32,
+                        CString::new(image_ext).unwrap().as_ptr(),
+                    );
+
+                    result.is_ok()
+                }
+
+                unsafe {
+                    tvg::tvg_picture_set_asset_resolver(
+                        self.raw_paint,
+                        Some(thorvg_asset_resolver_wrapper),
+                        resolver_data_ptr,
+                    ).into_result()
+                }
+            } else {
+                unsafe {
+                    tvg::tvg_picture_set_asset_resolver(
+                        self.raw_paint,
+                        None,
+                        std::ptr::null_mut(),
+                    ).into_result()
+                }
+            }
+        }
+
+        #[cfg(not(feature = "tvg-v1"))]
+        Err(TvgError::NotSupported)
     }
 
     fn tween(

@@ -12,7 +12,7 @@ pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
 #[cfg(feature = "tvg")]
 pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
 
-use std::{error::Error, fmt};
+use std::{error::Error, fmt, ffi::c_void};
 
 #[derive(Debug)]
 pub enum LottieRendererError {
@@ -35,6 +35,8 @@ impl Error for LottieRendererError {}
 fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {
     LottieRendererError::RendererError
 }
+
+pub type AssetResolverFn = unsafe extern "C" fn(*const i8, *mut c_void) -> *mut Vec<u8>;
 
 pub trait LottieRenderer {
     fn load_data(&mut self, data: &str, width: u32, height: u32)
@@ -106,6 +108,12 @@ pub trait LottieRenderer {
         font_name: &str,
         font_data: &[u8],
     ) -> Result<(), LottieRendererError>;
+
+    fn set_asset_resolver(
+        &mut self,
+        resolver: Option<AssetResolverFn>,
+        user_data: *mut c_void,
+    ) -> Result<(), LottieRendererError>;
 }
 
 impl dyn LottieRenderer {
@@ -124,6 +132,8 @@ impl dyn LottieRenderer {
             buffer: vec![],
             layout: Layout::default(),
             user_transform: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+            asset_resolver: None,
+            asset_resolver_user_data: std::ptr::null_mut(),
         })
     }
 }
@@ -143,6 +153,8 @@ struct LottieRendererImpl<R: Renderer> {
     buffer: Vec<u32>,
     layout: Layout,
     user_transform: [f32; 9],
+    asset_resolver: Option<AssetResolverFn>,
+    asset_resolver_user_data: *mut c_void,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -197,6 +209,17 @@ impl<R: Renderer> LottieRendererImpl<R> {
     fn load_animation(&mut self, data: &str) -> Result<R::Animation, LottieRendererError> {
         let mut animation = R::Animation::default();
 
+        #[cfg(feature = "tvg-v1")]
+        if let Some(resolver) = self.asset_resolver {
+            animation.set_asset_resolver(Some(resolver), self.asset_resolver_user_data).map_err(into_lottie::<R>)?;
+        }
+
+        #[cfg(feature = "tvg-v0")]
+        animation
+            .load_data(data, "lottie")
+            .map_err(into_lottie::<R>)?;
+
+        #[cfg(feature = "tvg-v1")]
         animation
             .load_data(data, "lottie+json")
             .map_err(into_lottie::<R>)?;
@@ -591,6 +614,16 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             self.apply_user_transform()?;
         }
 
+        Ok(())
+    }
+
+    fn set_asset_resolver(
+        &mut self,
+        resolver: Option<AssetResolverFn>,
+        user_data: *mut c_void,
+    ) -> Result<(), LottieRendererError> {
+        self.asset_resolver = resolver;
+        self.asset_resolver_user_data = user_data;
         Ok(())
     }
 }

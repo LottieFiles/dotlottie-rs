@@ -1,6 +1,6 @@
 use crate::time::{Duration, Instant};
 use std::sync::RwLock;
-use std::{fs, rc::Rc, sync::Arc};
+use std::{fs, rc::Rc, sync::Arc, ffi::c_void};
 
 use crate::actions::open_url_policy::OpenUrlPolicy;
 use crate::state_machine_engine::events::Event;
@@ -839,10 +839,35 @@ impl DotLottieRuntime {
                             )
                         };
 
+                    let manager_ptr = manager as *const DotLottieManager as *mut c_void;
+
+                    unsafe extern "C" fn asset_resolver_callback(
+                        src: *const i8,
+                        user_data: *mut c_void
+                    ) -> *mut Vec<u8> {
+                        let src_str = match std::ffi::CStr::from_ptr(src).to_str() {
+                            Ok(s) => s,
+                            Err(_) => return std::ptr::null_mut(),
+                        };
+
+                        let manager = &*(user_data as *const DotLottieManager);
+                        match manager.resolve_asset(src_str) {
+                            Ok(asset_data) => {
+                                Box::into_raw(Box::new(asset_data))
+                            }
+                            Err(_) => {
+                                std::ptr::null_mut()
+                            }
+                        }
+                    }
+
                     if let Ok(animation_data) = active_animation {
                         self.markers = extract_markers(animation_data.as_str());
                         let animation_loaded = self.load_animation_common(
-                            |renderer, w, h| renderer.load_data(&animation_data, w, h),
+                            |renderer, w, h| {
+                                renderer.set_asset_resolver(Some(asset_resolver_callback), manager_ptr)?;
+                                renderer.load_data(&animation_data, w, h)
+                            },
                             width,
                             height,
                         );

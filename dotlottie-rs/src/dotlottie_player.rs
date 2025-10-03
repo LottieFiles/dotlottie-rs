@@ -850,6 +850,10 @@ impl DotLottieRuntime {
                             Err(_) => return std::ptr::null_mut(),
                         };
 
+                        if user_data.is_null() {
+                            return std::ptr::null_mut();
+                        }
+
                         let manager = &*(user_data as *const DotLottieManager);
                         match manager.resolve_asset(src_str) {
                             Ok(asset_data) => {

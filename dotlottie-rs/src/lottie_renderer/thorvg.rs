@@ -475,7 +475,7 @@ impl Animation for TvgAnimation {
                                         .map(|i| &src_str[i + 1..])
                                         .unwrap_or(DEFAULT_EXT);
 
-                    let asset_data = Box::from_raw(asset_data_ptr);
+                    let asset_data = unsafe { Box::from_raw(asset_data_ptr) };
 
                     let result = TvgAnimation::tvg_load_data_dispatch(
                         paint,
@@ -483,6 +483,8 @@ impl Animation for TvgAnimation {
                         asset_data.len() as u32,
                         CString::new(image_ext).unwrap().as_ptr(),
                     );
+
+                    drop(asset_data);
 
                     result.is_ok()
                 }

@@ -1,3 +1,4 @@
+mod binding_engine;
 mod dotlottie_player;
 mod fms;
 mod layout;
@@ -7,6 +8,7 @@ mod state_machine_engine;
 mod theming;
 pub(crate) mod time;
 
+pub use binding_engine::*;
 pub use dotlottie_player::*;
 pub use fms::*;
 pub use layout::*;

@@ -376,7 +376,7 @@ fn handle_text_keyframe(keyframe: &Value) -> Value {
 fn handle_text_document(value: &Value) -> Value {
     let mut text_doc = json!({});
 
-    if let Some(content) = value["content"].as_str() {
+    if let Some(content) = value["text"].as_str() {
         text_doc["t"] = json!(content);
     }
 
@@ -422,7 +422,7 @@ fn handle_text_document(value: &Value) -> Value {
         text_doc["j"] = json!(justify_to_number(justify));
     }
 
-    if let Some(caps) = value["caps"].as_str() {
+    if let Some(caps) = value["textCaps"].as_str() {
         text_doc["ca"] = json!(caps_to_number(caps));
     }
 

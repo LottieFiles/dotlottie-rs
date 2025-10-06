@@ -191,6 +191,14 @@ impl DotLottieManager {
     }
 
     #[inline]
+    pub fn get_binding(&self, binding_id: &str) -> Result<String, DotLottieError> {
+        let mut archive = self.archive.borrow_mut();
+        let path = format!("b/{binding_id}.json");
+        let content = Self::read_zip_file(&mut archive, &path)?;
+        String::from_utf8(content).map_err(|_| DotLottieError::InvalidUtf8Error)
+    }
+
+    #[inline]
     pub fn manifest(&self) -> &Manifest {
         &self.manifest
     }

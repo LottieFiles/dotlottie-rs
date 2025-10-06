@@ -11,7 +11,8 @@ use crate::{
     Marker, MarkersMap, StateMachineEngine,
 };
 use crate::{
-    transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer, StateMachineEngineError,
+    transform_theme_to_lottie_slots, BindingsEngine, DotLottieManager, Manifest, Renderer,
+    StateMachineEngineError,
 };
 
 use crate::StateMachineInternalObserver;
@@ -142,6 +143,7 @@ struct DotLottieRuntime {
     loop_count: u32,
     config: Config,
     dotlottie_manager: Option<DotLottieManager>,
+    bindings_engine: Option<BindingsEngine>,
     direction: Direction,
     markers: MarkersMap,
     active_animation_id: String,
@@ -171,6 +173,7 @@ impl DotLottieRuntime {
             loop_count: 0,
             config,
             dotlottie_manager: None,
+            bindings_engine: None,
             direction,
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
@@ -582,7 +585,20 @@ impl DotLottieRuntime {
     pub fn render(&mut self) -> bool {
         let is_ok = self.renderer.render().is_ok();
 
-        // rendered the last frame successfully
+        let current_theme = &self.active_theme_id.clone();
+
+        let should_set_theme = {
+            if let Some(bindings_engine) = &mut self.bindings_engine {
+                bindings_engine.read_task_queue() && !current_theme.is_empty()
+            } else {
+                false
+            }
+        };
+
+        if should_set_theme {
+            self.set_theme(&current_theme);
+        }
+
         if is_ok && self.is_complete() && !self.config.loop_animation {
             self.playback_state = PlaybackState::Stopped;
         }
@@ -931,11 +947,15 @@ impl DotLottieRuntime {
         }
     }
 
+    // Here
     pub fn set_theme(&mut self, theme_id: &str) -> bool {
-        if self.active_theme_id == theme_id {
-            return true;
-        }
-
+        /**
+         * Deactived for the moment to allow re-applying the same
+         * theme with a different binded var
+         */
+        // if self.active_theme_id == theme_id {
+        //     return true;
+        // }
         if self.dotlottie_manager.is_none() {
             return false;
         }
@@ -976,9 +996,26 @@ impl DotLottieRuntime {
             .as_mut()
             .and_then(|manager| manager.get_theme(theme_id).ok())
             .and_then(|theme_data| {
-                let slots = transform_theme_to_lottie_slots(&theme_data, &self.active_animation_id)
-                    .unwrap();
-                self.renderer.set_slots(&slots).ok()
+
+                if let Some(b_e) = &mut self.bindings_engine {
+                    let mutated_theme_data = b_e.update_theme(&theme_data, Some(&theme_id));
+
+                    if let Ok(mutated_theme_data) = mutated_theme_data {
+                        let slots = transform_theme_to_lottie_slots(
+                            &mutated_theme_data,
+                            &self.active_animation_id,
+                        )
+                        .unwrap();
+                        self.renderer.set_slots(&slots).ok()
+                    } else {
+                        return None;
+                    }
+                } else {
+                    let slots =
+                        transform_theme_to_lottie_slots(&theme_data, &self.active_animation_id)
+                            .unwrap();
+                    self.renderer.set_slots(&slots).ok()
+                }
             })
             .is_some();
 
@@ -997,9 +1034,21 @@ impl DotLottieRuntime {
     }
 
     pub fn set_theme_data(&mut self, theme_data: &str) -> bool {
-        match transform_theme_to_lottie_slots(theme_data, &self.active_animation_id) {
-            Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
-            Err(_) => false,
+        if let Some(b_e) = &mut self.bindings_engine {
+            let mutated_theme_data = match b_e.update_theme(&theme_data, None) {
+                Ok(data) => data,
+                Err(_) => return false,
+            };
+
+            match transform_theme_to_lottie_slots(&mutated_theme_data, &self.active_animation_id) {
+                Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
+                Err(_) => false,
+            }
+        } else {
+            match transform_theme_to_lottie_slots(theme_data, &self.active_animation_id) {
+                Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
+                Err(_) => false,
+            }
         }
     }
 
@@ -1087,6 +1136,60 @@ impl DotLottieRuntime {
             transform[8],
         ];
         self.renderer.set_transform(&transform_array).is_ok()
+    }
+
+    pub fn bindings_load_data(&mut self, bindings_data: &str) -> bool {
+        let engine = BindingsEngine::builder(bindings_data).build();
+
+        if engine.is_err() {
+            println!("[Bindings] Failed to create new BindingsEngine.");
+            return false;
+        }
+
+        if let Ok(new_bindings_engine) = engine {
+            if self.bindings_engine.is_none() {
+                self.bindings_engine.replace(new_bindings_engine);
+
+                return true;
+            } else {
+                println!("[Bindings] BindingsEngine already exists.");
+                
+                // Already have an active bindings file, need to shut it down, clean up and replace
+                return false;
+            }
+        }
+
+        false
+    }
+
+    pub fn mutate_text_binding(&mut self, binding_name: &str, new_value: &str) -> bool {
+        if let Some(bindings_engine) = self.bindings_engine.as_mut() {
+            return bindings_engine
+                .mutate_text_binding(binding_name, new_value)
+                .is_ok();
+        }
+
+        false
+    }
+
+    pub fn mutate_color_binding(&mut self, binding_name: &str, new_value: &[f64; 3]) -> bool {
+        if let Some(bindings_engine) = self.bindings_engine.as_mut() {
+            return bindings_engine
+                .mutate_color_binding(binding_name, *new_value)
+                .is_ok();
+        }
+
+        false
+    }
+
+    pub fn mutate_vector_binding(&mut self, binding_name: &str, new_value: &[f64; 2]) -> bool {
+        if let Some(bindings_engine) = self.bindings_engine.as_mut() {
+            return bindings_engine
+                .mutate_vector_binding(binding_name, *new_value)
+                .is_ok();
+        }
+
+        false
     }
 }
 
@@ -1636,6 +1739,34 @@ impl DotLottiePlayerContainer {
 
     pub fn set_transform(&self, transform: Vec<f32>) -> bool {
         self.runtime.write().unwrap().set_transform(transform)
+    }
+
+    pub fn bindings_load_data(&self, bindings_data: &str) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .bindings_load_data(bindings_data)
+    }
+
+    pub fn mutate_text_binding(&self, binding_name: &str, new_value: &str) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .mutate_text_binding(binding_name, new_value)
+    }
+
+    pub fn mutate_color_binding(&self, binding_name: &str, new_value: &[f64; 3]) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .mutate_color_binding(binding_name, new_value)
+    }
+
+    pub fn mutate_vector_binding(&self, binding_name: &str, new_value: &[f64; 2]) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .mutate_vector_binding(binding_name, new_value)
     }
 }
 
@@ -2245,6 +2376,34 @@ impl DotLottiePlayer {
 
     pub fn reset_theme(&self) -> bool {
         self.player.write().unwrap().reset_theme()
+    }
+
+    pub fn bindings_load_data(&self, bindings_data: &str) -> bool {
+        self.player
+            .read()
+            .unwrap()
+            .bindings_load_data(bindings_data)
+    }
+
+    pub fn mutate_text_binding(&self, binding_name: &str, new_value: &str) -> bool {
+        self.player
+            .read()
+            .unwrap()
+            .mutate_text_binding(binding_name, new_value)
+    }
+
+    pub fn mutate_color_binding(&self, binding_name: &str, new_value: &[f64; 3]) -> bool {
+        self.player
+            .read()
+            .unwrap()
+            .mutate_color_binding(binding_name, new_value)
+    }
+
+    pub fn mutate_vector_binding(&self, binding_name: &str, new_value: &[f64; 2]) -> bool {
+        self.player
+            .read()
+            .unwrap()
+            .mutate_vector_binding(binding_name, new_value)
     }
 
     pub fn state_machine_load_data(&self, state_machine: &str) -> bool {

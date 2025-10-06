@@ -23,6 +23,12 @@ pub struct ManifestStateMachine {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct ManifestBinding {
+    pub id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ManifestAnimation {
     pub id: String,
     pub name: Option<String>,
@@ -42,4 +48,5 @@ pub struct Manifest {
     pub animations: Vec<ManifestAnimation>,
     pub themes: Option<Vec<ManifestTheme>>,
     pub state_machines: Option<Vec<ManifestStateMachine>>,
+    pub bindings: Option<Vec<ManifestBinding>>,
 }

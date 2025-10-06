@@ -8,3 +8,7 @@ minifb = "0.27"
 dotlottie-rs = { path = "../../dotlottie-rs", features = ["dev"] }
 sysinfo = "0.30"
 rand = "0.8"
+
+[[bin]]
+name = "magic-wand"
+path = "src/bin/magic-wand/main.rs"

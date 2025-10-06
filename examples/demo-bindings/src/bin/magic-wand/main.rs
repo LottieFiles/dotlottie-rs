@@ -89,6 +89,9 @@ impl Player {
     }
 }
 
+pub const ANIMATION_NAME: &str = "magic_wand";
+pub const BINDING_FILE_NAME: &str = "magic_wand_binding";
+
 fn main() {
     let mut window = Window::new(
         "Lottie Player Demo (ESC to exit, ←/→ to change markers, P to play, S to stop)",
@@ -98,13 +101,15 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = Player::new("src/magic_wand.lottie");
+    let mut player = Player::new(&format!("./src/bin/magic-wand/{}.lottie", ANIMATION_NAME));
 
-    let binding_file_data =
-        std::str::from_utf8(include_bytes!("./magic_wand_binding.json")).unwrap();
-    // let theme_file_data = std::str::from_utf8(include_bytes!("./sick.json")).unwrap();
+    let binding_file_path = format!("./src/bin/magic-wand/{}.json", BINDING_FILE_NAME);
+    let binding_file_data = std::fs::read_to_string(&binding_file_path).expect(&format!(
+        "Failed to read binding file: {}",
+        binding_file_path
+    ));
 
-    let parse = player.player.bindings_load_data(binding_file_data);
+    let parse = player.player.bindings_load_data(&binding_file_data);
     println!("Parse succeeded: {}", parse);
 
     let loaded = player.player.state_machine_load("wand_sm");

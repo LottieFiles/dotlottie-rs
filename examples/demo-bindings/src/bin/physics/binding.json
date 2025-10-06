@@ -1,0 +1,12 @@
+{
+  "bindings": {
+    "sq_l": {
+      "type": "Vector",
+      "value": [32.30087494832663, 27]
+    },
+    "sq_r": {
+      "type": "Vector",
+      "value": [65.68, 27]
+    }
+  }
+}

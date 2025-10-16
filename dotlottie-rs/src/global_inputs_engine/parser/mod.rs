@@ -2,53 +2,54 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug)]
-pub enum BindingsParserError {
+pub enum GlobalInputsParserError {
     ParseError(String),
 }
-impl BindingsParserError {
+impl GlobalInputsParserError {
     pub(crate) fn to_string(&self) -> String {
         match self {
-            BindingsParserError::ParseError(msg) => format!("Parse error: {}", msg),
+            GlobalInputsParserError::ParseError(msg) => format!("Parse error: {}", msg),
         }
     }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct Bindings {
-    pub bindings: HashMap<String, Binding>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct Binding {
+pub struct GlobalInput {
     #[serde(flatten)]
-    pub r#type: BindingValue,
+    pub r#type: GlobalInputValue,
     // Disabled for stage 1
     // #[serde(skip_serializing_if = "Option::is_none")]
     // pub source: Option<BindingSource>,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GradientStop {
+    pub color: Vec<f64>,
+    pub offset: f64,
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type")]
-pub enum BindingValue {
+pub enum GlobalInputValue {
     Color { value: [f64; 3] },
     Vector { value: [f64; 2] },
     Scalar { value: f64 },
     Boolean { value: bool },
-    Gradient { value: Vec<[f64; 4]> },
+    Gradient { value: Vec<GradientStop> },
     Image { value: ImageValue },
     Text { value: String },
 }
 
-impl BindingValue {
+impl GlobalInputValue {
     pub fn to_json_value(&self) -> serde_json::Value {
         match self {
-            BindingValue::Color { value } => serde_json::to_value(value),
-            BindingValue::Vector { value } => serde_json::to_value(value),
-            BindingValue::Scalar { value } => serde_json::to_value(value),
-            BindingValue::Boolean { value } => serde_json::to_value(value),
-            BindingValue::Gradient { value } => serde_json::to_value(value),
-            BindingValue::Image { value } => serde_json::to_value(value),
-            BindingValue::Text { value } => serde_json::to_value(value),
+            GlobalInputValue::Color { value } => serde_json::to_value(value),
+            GlobalInputValue::Vector { value } => serde_json::to_value(value),
+            GlobalInputValue::Scalar { value } => serde_json::to_value(value),
+            GlobalInputValue::Boolean { value } => serde_json::to_value(value),
+            GlobalInputValue::Gradient { value } => serde_json::to_value(value),
+            GlobalInputValue::Image { value } => serde_json::to_value(value),
+            GlobalInputValue::Text { value } => serde_json::to_value(value),
         }
         .unwrap_or(serde_json::Value::Null)
     }
@@ -151,6 +152,8 @@ fn default_update_frequency() -> UpdateFrequency {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Converter {}
 
-pub fn parse_bindings(json: &str) -> Result<Bindings, BindingsParserError> {
-    serde_json::from_str(json).map_err(|e| BindingsParserError::ParseError(e.to_string()))
+pub type GlobalInputs = HashMap<String, GlobalInput>;
+
+pub fn parse_global_inputs(json: &str) -> Result<GlobalInputs, GlobalInputsParserError> {
+    serde_json::from_str(json).map_err(|e| GlobalInputsParserError::ParseError(e.to_string()))
 }

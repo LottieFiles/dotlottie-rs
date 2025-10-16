@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::{rc::Rc, sync::RwLock};
 
-use crate::{state_machine::StringBool, DotLottiePlayerContainer, Event};
+use crate::{inputs::InputTrait, state_machine::StringBool, DotLottiePlayerContainer, Event};
 
 use super::{state_machine::StringNumber, StateMachineEngine};
 
@@ -100,8 +100,7 @@ impl ActionTrait for Action {
                     if let Some(value) = value {
                         match value {
                             StringNumber::String(value) => {
-                                let trimmed_value = value.trim_start_matches('$');
-                                let opt_input_value = engine.get_numeric_input(trimmed_value);
+                                let opt_input_value = engine.inputs.resolve_numeric(&value);
                                 if let Some(input_value) = opt_input_value {
                                     engine.set_numeric_input(
                                         input_name,
@@ -141,8 +140,7 @@ impl ActionTrait for Action {
                     if let Some(value) = value {
                         match value {
                             StringNumber::String(value) => {
-                                let trimmed_value = value.trim_start_matches('$');
-                                let opt_input_value = engine.get_numeric_input(trimmed_value);
+                                let opt_input_value = engine.inputs.resolve_numeric(&value);
                                 if let Some(input_value) = opt_input_value {
                                     engine.set_numeric_input(
                                         input_name,
@@ -193,10 +191,8 @@ impl ActionTrait for Action {
 
                 if val.is_some() {
                     match value {
-                        StringBool::String(string_value) => {
-                            let trimmed_value = string_value.trim_start_matches('$');
-                            let opt_input_value = engine.get_boolean_input(trimmed_value);
-
+                        StringBool::String(value) => {
+                            let opt_input_value = engine.inputs.resolve_boolean(&value);
                             // In case of failure, don't change the input_name's value
                             if let Some(input_value) = opt_input_value {
                                 engine.set_boolean_input(
@@ -224,10 +220,8 @@ impl ActionTrait for Action {
 
                 if val.is_some() {
                     match value {
-                        StringNumber::String(string_value) => {
-                            let trimmed_value = string_value.trim_start_matches('$');
-                            let opt_input_value = engine.get_numeric_input(trimmed_value);
-
+                        StringNumber::String(value) => {
+                            let opt_input_value = engine.inputs.resolve_numeric(&value);
                             // In case of failure, don't change the input_name's value
                             if let Some(input_value) = opt_input_value {
                                 engine.set_numeric_input(
@@ -254,8 +248,8 @@ impl ActionTrait for Action {
                 let val = engine.get_string_input(input_name);
 
                 if val.is_some() {
-                    let trimmed_value = value.trim_start_matches('$');
-                    let opt_input_value = engine.get_string_input(trimmed_value);
+                    let opt_input_value = engine.inputs.resolve_string(&input_name);
+
                     if let Some(input_value) = opt_input_value {
                         engine.set_string_input(
                             input_name,
@@ -303,11 +297,8 @@ impl ActionTrait for Action {
 
                 match read_lock {
                     Ok(player) => {
-                        let resolved_value = if value.starts_with('$') {
-                            let trimmed_value = value.trim_start_matches('$');
-                            engine
-                                .get_string_input(trimmed_value)
-                                .unwrap_or_else(|| value.clone())
+                        let resolved_value = if engine.inputs.resolve_string(&value).is_some() {
+                            engine.inputs.resolve_string(&value).unwrap()
                         } else {
                             value.clone()
                         };
@@ -348,11 +339,8 @@ impl ActionTrait for Action {
                 let whitelist = &engine.open_url_whitelist;
                 let user_interaction_required = &engine.open_url_requires_user_interaction;
 
-                let resolved_url = if url.starts_with('$') {
-                    let trimmed_value = url.trim_start_matches('$');
-                    engine
-                        .get_string_input(trimmed_value)
-                        .unwrap_or_else(|| url.clone())
+                let resolved_url = if engine.inputs.resolve_string(&url).is_some() {
+                    engine.inputs.resolve_string(&url).unwrap()
                 } else {
                     url.clone()
                 };
@@ -375,14 +363,12 @@ impl ActionTrait for Action {
 
                     if let Some(Event::PointerDown { .. } | Event::Click { .. }) = interaction {
                         engine.observe_internal_event(&command);
-
                         return Ok(());
                     }
                     return Err(StateMachineActionError::ExecuteError);
                 }
 
                 engine.observe_internal_event(&command);
-
                 Ok(())
             }
             Action::FireCustomEvent { value } => {
@@ -398,8 +384,7 @@ impl ActionTrait for Action {
                         if let Ok(player) = read_lock {
                             // Get the frame number from the input
                             // Remove the "$" prefix from the value
-                            let value = value.trim_start_matches('$');
-                            let frame = engine.get_numeric_input(value);
+                            let frame = engine.inputs.resolve_numeric(&value);
                             if let Some(frame) = frame {
                                 let clamped_frame = frame.clamp(0.0, player.total_frames() - 1.0);
 
@@ -433,8 +418,7 @@ impl ActionTrait for Action {
                             StringNumber::String(value) => {
                                 // Get the frame number from the input
                                 // Remove the "$" prefix from the value
-                                let value = value.trim_start_matches('$');
-                                let percentage = engine.get_numeric_input(value);
+                                let percentage = engine.inputs.resolve_numeric(&value);
                                 if let Some(percentage) = percentage {
                                     let clamped_value = percentage.clamp(0.0, 100.0);
                                     let new_perc = clamped_value / 100.0;

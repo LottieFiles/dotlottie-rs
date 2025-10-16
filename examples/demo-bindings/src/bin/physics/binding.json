@@ -1,12 +1,22 @@
 {
-  "bindings": {
-    "sq_l": {
-      "type": "Vector",
-      "value": [32.30087494832663, 27]
-    },
-    "sq_r": {
-      "type": "Vector",
-      "value": [65.68, 27]
-    }
+  "sq_l": {
+    "type": "Vector",
+    "value": [132.23143817249093, 66.16461236996919]
+  },
+  "sq_r": {
+    "type": "Vector",
+    "value": [379.7685502660869, 66.16461236996919]
+  },
+  "sq_l_rot": {
+    "type": "Scalar",
+    "value": 0
+  },
+  "sq_r_rot": {
+    "type": "Scalar",
+    "value": 0
+  },
+  "ball": {
+    "type": "Vector",
+    "value": [255.99997891920236, 167.5615183858366]
   }
 }

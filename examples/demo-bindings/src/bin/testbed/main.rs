@@ -1,4 +1,6 @@
-use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event};
+use dotlottie_rs::{
+    actions::open_url_policy::OpenUrlPolicy, parser::GradientStop, Config, DotLottiePlayer, Event,
+};
 use minifb::{Key, KeyRepeat, MouseButton, Window, WindowOptions};
 use std::time::Instant;
 
@@ -89,8 +91,18 @@ impl Player {
     }
 }
 
-pub const ANIMATION_NAME: &str = "magic_wand";
-pub const BINDING_FILE_NAME: &str = "magic_wand_binding";
+// pub const ANIMATION_NAME: &str = "test_ball_gradient";
+// pub const BINDING_FILE_NAME: &str = "binding_tests_ball_gradient";
+// pub const THEMING_FILE_NAME: &str = "test_ball_gradient_theme";
+
+// pub const ANIMATION_NAME: &str = "test_ball_scalar";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
+
+pub const ANIMATION_NAME: &str = "test_inputs_star_sm";
+pub const BINDING_FILE_NAME: &str = "inputs";
+pub const THEMING_FILE_NAME: &str = "";
+pub const SM_FILE_NAME: &str = "starRating";
 
 fn main() {
     let mut window = Window::new(
@@ -101,22 +113,24 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = Player::new(&format!("./src/bin/magic-wand/{}.lottie", ANIMATION_NAME));
+    let mut player = Player::new(&format!("./src/bin/testbed/{}.lottie", ANIMATION_NAME));
 
-    let binding_file_path = format!("./src/bin/magic-wand/{}.json", BINDING_FILE_NAME);
-    let binding_file_data = std::fs::read_to_string(&binding_file_path).expect(&format!(
-        "Failed to read binding file: {}",
-        binding_file_path
-    ));
+    player.player.global_inputs_load(BINDING_FILE_NAME);
+    let sml = player.player.state_machine_load(SM_FILE_NAME);
+    let sms = player.player.state_machine_start(OpenUrlPolicy::default());
 
-    let parse = player.player.global_inputs_load_data(&binding_file_data);
-    println!("Parse succeeded: {}", parse);
+    println!("State machine loaded: {}", sml);
+    println!("State machine started: {}", sms);
 
-    let loaded = player.player.state_machine_load("wand_sm");
-    println!("[SM] Loaded? {}", loaded);
+    // let binding_file_path = format!( "./src/bin/testbed/unzip/g/{}.json", BINDING_FILE_NAME);
+    // let binding_file_data = std::fs::read_to_string(&binding_file_path).expect(&format!(
+    //     "Failed to read binding file: {}",
+    //     binding_file_path
+    // ));
+    // player.player.global_inputs_load_data(&binding_file_data);
 
-    let started = player.player.state_machine_start(OpenUrlPolicy::default());
-    println!("[SM] Started? {}", started);
+    // let st = player.player.set_theme(THEMING_FILE_NAME);
+    // println!("Set theme: {}", st);
 
     let mut mx = 0.0;
     let mut my = 0.0;
@@ -127,22 +141,50 @@ fn main() {
         let mouse_down = window.get_mouse_down(MouseButton::Left);
 
         if window.is_key_pressed(Key::Space, KeyRepeat::No) {
+            // Gradient
+            let mut gradient_storage = vec![];
+            gradient_storage.push(GradientStop {
+                color: vec![0.1, 0.1, 0.1],
+                offset: 0.0,
+            });
+            gradient_storage.push(GradientStop {
+                color: vec![0.5, 0.5, 0.5],
+                offset: 0.5,
+            });
+            gradient_storage.push(GradientStop {
+                color: vec![1.0, 1.0, 1.0],
+                offset: 1.0,
+            });
+            player
+                .player
+                .global_inputs_set_gradient("ball", &gradient_storage);
+
+            // Scalar
+            player.player.global_inputs_set_scalar("ball", 90.0);
+
+            // Vector
+            // player.player.mutate_color_binding("face", &[0.5, 0.5, 0.5]);
+
+            // Text
             // player
             //     .player
             //     .mutate_text_binding("interaction_title", "New title");
-            player
-                .player
-                .global_inputs_set_color("face", &[0.5, 0.5, 0.5]);
         }
 
-        if window.is_key_pressed(Key::S, KeyRepeat::No) {
-            player.player.stop();
+        if window.is_key_pressed(Key::Key1, KeyRepeat::No) {
+            player.player.global_inputs_set_scalar("rating", 1.0);
         }
-        if window.is_key_pressed(Key::P, KeyRepeat::No) {
-            player.player.play();
+        if window.is_key_pressed(Key::Key2, KeyRepeat::No) {
+            player.player.global_inputs_set_scalar("rating", 2.0);
         }
-        if window.is_key_pressed(Key::Right, KeyRepeat::No) {
-            player.next_marker();
+        if window.is_key_pressed(Key::Key3, KeyRepeat::No) {
+            player.player.global_inputs_set_scalar("rating", 3.0);
+        }
+        if window.is_key_pressed(Key::Key4, KeyRepeat::No) {
+            player.player.global_inputs_set_scalar("rating", 4.0);
+        }
+        if window.is_key_pressed(Key::Key5, KeyRepeat::No) {
+            player.player.global_inputs_set_scalar("rating", 5.0);
         }
 
         if !mouse_down && left_down {
@@ -162,9 +204,9 @@ fn main() {
         });
 
         if mx != 0.0 && my != 0.0 {
-            player
-                .player
-                .global_inputs_set_vector("wand_pos", &[mx.into(), my.into()]);
+            // player
+            //     .player
+            //     .mutate_vector_binding("wand_pos", &[mx.into(), my.into()]);
         }
 
         player.update();

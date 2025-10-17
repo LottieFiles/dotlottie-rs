@@ -19,29 +19,14 @@ pub enum InputValue {
     Boolean(bool),
 }
 
-pub trait InputTrait {
-    fn set_initial_boolean(&mut self, key: &str, value: bool);
-    fn set_initial_string(&mut self, key: &str, value: String);
-    fn set_initial_numeric(&mut self, key: &str, value: f32);
-    fn new() -> Self;
-    fn set_boolean(&mut self, key: &str, value: bool) -> Option<InputValue>;
-    fn set_string(&mut self, key: &str, value: String) -> Option<InputValue>;
-    fn set_numeric(&mut self, key: &str, value: f32) -> Option<InputValue>;
-    fn get_numeric(&self, key: &str) -> Option<f32>;
-    fn get_string(&self, key: &str) -> Option<String>;
-    fn get_boolean(&self, key: &str) -> Option<bool>;
-    fn get(&self, key: &str) -> Result<&InputValue, &'static str>;
-    fn reset_all(&mut self);
-    fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)>;
-}
 
 pub struct InputManager {
     inputs: HashMap<String, InputValue>,
     default_values: HashMap<String, InputValue>,
 }
 
-impl InputTrait for InputManager {
-    fn new() -> Self {
+impl InputManager {
+    pub fn new() -> Self {
         let inputs = HashMap::new();
 
         // Store defaults
@@ -53,7 +38,7 @@ impl InputTrait for InputManager {
         }
     }
 
-    fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)> {
+    pub fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)> {
         if let Some(default_value) = self.default_values.get(key) {
             return Some((
                 self.inputs
@@ -66,48 +51,48 @@ impl InputTrait for InputManager {
         None
     }
 
-    fn reset_all(&mut self) {
+    pub fn reset_all(&mut self) {
         self.inputs = self.default_values.clone();
     }
 
-    fn set_numeric(&mut self, key: &str, value: f32) -> Option<InputValue> {
+    pub fn set_numeric(&mut self, key: &str, value: f32) -> Option<InputValue> {
         self.inputs
             .insert(key.to_string(), InputValue::Numeric(value))
     }
 
     // Get methods for each type
-    fn get_numeric(&self, key: &str) -> Option<f32> {
+    pub fn get_numeric(&self, key: &str) -> Option<f32> {
         match self.inputs.get(key) {
             Some(InputValue::Numeric(value)) => Some(*value),
             _ => None,
         }
     }
 
-    fn set_string(&mut self, key: &str, value: String) -> Option<InputValue> {
+    pub fn set_string(&mut self, key: &str, value: String) -> Option<InputValue> {
         self.inputs
             .insert(key.to_string(), InputValue::String(value))
     }
 
-    fn get_string(&self, key: &str) -> Option<String> {
+    pub fn get_string(&self, key: &str) -> Option<String> {
         match self.inputs.get(key) {
             Some(InputValue::String(value)) => Some(value.clone()),
             _ => None,
         }
     }
 
-    fn set_boolean(&mut self, key: &str, value: bool) -> Option<InputValue> {
+    pub fn set_boolean(&mut self, key: &str, value: bool) -> Option<InputValue> {
         self.inputs
             .insert(key.to_string(), InputValue::Boolean(value))
     }
 
-    fn get_boolean(&self, key: &str) -> Option<bool> {
+    pub fn get_boolean(&self, key: &str) -> Option<bool> {
         match self.inputs.get(key) {
             Some(InputValue::Boolean(value)) => Some(*value),
             _ => None,
         }
     }
 
-    fn set_initial_numeric(&mut self, key: &str, value: f32) {
+    pub fn set_initial_numeric(&mut self, key: &str, value: f32) {
         self.inputs
             .insert(key.to_string(), InputValue::Numeric(value));
 
@@ -115,7 +100,7 @@ impl InputTrait for InputManager {
             .insert(key.to_string(), InputValue::Numeric(value));
     }
 
-    fn set_initial_string(&mut self, key: &str, value: String) {
+    pub fn set_initial_string(&mut self, key: &str, value: String) {
         self.inputs
             .insert(key.to_string(), InputValue::String(value.clone()));
 
@@ -123,7 +108,7 @@ impl InputTrait for InputManager {
             .insert(key.to_string(), InputValue::String(value.clone()));
     }
 
-    fn set_initial_boolean(&mut self, key: &str, value: bool) {
+    pub fn set_initial_boolean(&mut self, key: &str, value: bool) {
         self.inputs
             .insert(key.to_string(), InputValue::Boolean(value));
 
@@ -132,7 +117,11 @@ impl InputTrait for InputManager {
     }
 
     // Generic get method that returns a Result
-    fn get(&self, key: &str) -> Result<&InputValue, &'static str> {
+    pub fn get(&self, key: &str) -> Result<&InputValue, &'static str> {
         self.inputs.get(key).ok_or("Input key not found")
+    }
+
+    pub fn get_all_input_names(&self) -> Vec<String> {
+        self.inputs.keys().cloned().collect()
     }
 }

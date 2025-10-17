@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 use crate::{
-    inputs::{InputManager, InputTrait},
+    inputs::InputManager,
     state_machine::{StringBool, StringNumberBool},
 };
 

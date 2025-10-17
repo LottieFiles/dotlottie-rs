@@ -456,6 +456,27 @@
         const slots = Module.transformThemeToLottieSlots(
           JSON.stringify({
             rules: [
+              // dummy text rule
+              {
+                id: "text",
+                type: "Text",
+                value: {
+                  content: "مرحبا",
+                  fontFamily: "Ubuntu",
+                  fontSize: 12,
+                  fillColor: [1, 1, 1],
+                  strokeColor: [1, 1, 1],
+                  strokeWidth: 12,
+                  strokeOverFill: false,
+                  lineHeight: 12,
+                  tracking: 1,
+                  justify: "Center",
+                  caps: "AllCaps",
+                  baselineShift: 1,
+                  wrapSize: [200, 200],
+                  wrapPosition: [100, 100],
+                }
+              },
               {
                 id: "gradient_fill",
                 type: "Gradient",

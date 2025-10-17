@@ -1,3 +1,13 @@
+## 0.1.50 (2025-10-17)
+
+### Features
+
+#### update thorvg to v1.0-pre30
+
+### Fixes
+
+#### ensure renderer updates and marks state as updated in set_slots (#408)
+
 ## 0.1.49 (2025-10-03)
 
 ### Features

@@ -11,6 +11,7 @@ on:
           - "apple"
           - "android"
           - "wasm"
+          - "linux"
           - "all"
       feature_threads:
         type: boolean
@@ -308,4 +309,80 @@ jobs:
         with:
           name: dotlottie-player.wasm.tar.gz
           path: release/wasm/dotlottie-player.wasm.tar.gz
+          if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.target == 'linux' || github.event.inputs.target == 'all'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cross-compilation toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Setup Linux
+        run: make linux-setup
+
+      - name: Set Features
+        run: |
+          features=""
+
+          if [ "${{ github.event.inputs.feature_threads }}" = "true" ]; then
+            features="${features}tvg-threads,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_webp }}" = "true" ]; then
+            features="${features}tvg-webp,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_png }}" = "true" ]; then
+            features="${features}tvg-png,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_jpg }}" = "true" ]; then
+            features="${features}tvg-jpg,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_ttf }}" = "true" ]; then
+            features="${features}tvg-ttf,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_expressions }}" = "true" ]; then
+            features="${features}tvg-lottie-expressions,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_simd }}" = "true" ]; then
+            features="${features}tvg-simd,"
+          fi
+
+          # Remove trailing comma if features exist
+          if [ -n "$features" ]; then
+            features="${features%,}"
+          fi
+
+          echo "FEATURES=$features" >> $GITHUB_ENV
+          echo "Selected features: $features"
+
+      - name: Build Linux
+        run: make linux
+        env:
+          FEATURES: ${{ env.FEATURES }}
+
+      - name: Create Linux Archive
+        run: |
+          cd release/linux
+          tar -czf dotlottie-player.linux.tar.gz *
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.linux.tar.gz
+          path: release/linux/dotlottie-player.linux.tar.gz
           if-no-files-found: error

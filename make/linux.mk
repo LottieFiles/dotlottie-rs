@@ -16,6 +16,7 @@ LINUX_FFI_LIB_BASE ?= libdotlottie_player
 LINUX_STATIC_LIB := $(LINUX_FFI_LIB_BASE).a
 LINUX_SHARED_LIB := $(LINUX_FFI_LIB_BASE).so
 LINUX_HEADER_FILE := bindings.h
+LINUX_HEADER_OUTPUT := dotlottie_player.h
 
 # Get version information
 CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-ffi/Cargo.toml | grep -o '[0-9][0-9.]*')
@@ -44,9 +45,9 @@ define LINUX_PACKAGE_ARCH
 	@mkdir -p $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/include
 	@mkdir -p $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib
 
-	# Copy header file
+	# Copy header file and rename to dotlottie_player.h
 	@if [ -f "dotlottie-ffi/$(LINUX_HEADER_FILE)" ]; then \
-		cp dotlottie-ffi/$(LINUX_HEADER_FILE) $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/include/; \
+		cp dotlottie-ffi/$(LINUX_HEADER_FILE) $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/include/$(LINUX_HEADER_OUTPUT); \
 	else \
 		echo "Error: $(LINUX_HEADER_FILE) not found"; \
 		exit 1; \

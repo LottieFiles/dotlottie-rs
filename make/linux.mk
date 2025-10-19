@@ -64,8 +64,16 @@ define LINUX_PACKAGE_ARCH
 	@if [ -f "dotlottie-ffi/target/$(LINUX_TARGET_$(1))/release/$(LINUX_SHARED_LIB)" ]; then \
 		cp dotlottie-ffi/target/$(LINUX_TARGET_$(1))/release/$(LINUX_SHARED_LIB) \
 		   $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/; \
-		if command -v strip >/dev/null 2>&1; then \
-			strip --strip-unneeded $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/$(LINUX_SHARED_LIB); \
+		if [ "$(1)" = "arm64" ]; then \
+			if command -v aarch64-linux-gnu-strip >/dev/null 2>&1; then \
+				aarch64-linux-gnu-strip --strip-unneeded $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/$(LINUX_SHARED_LIB); \
+			else \
+				echo "Warning: aarch64-linux-gnu-strip not found, skipping strip for $(1)"; \
+			fi; \
+		else \
+			if command -v strip >/dev/null 2>&1; then \
+				strip --strip-unneeded $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/$(LINUX_SHARED_LIB); \
+			fi; \
 		fi; \
 	else \
 		echo "Warning: $(LINUX_SHARED_LIB) not found for $(1)"; \

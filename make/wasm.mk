@@ -6,7 +6,7 @@ RUST_TOOLCHAIN ?= nightly-2025-08-01
 
 # Default Rust features for WASM builds
 FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
-DEFAULT_FEATURES = tvg-v1,tvg-sw,uniffi
+DEFAULT_FEATURES = tvg,tvg-sw,uniffi
 
 # WASM/Emscripten configuration
 EMSDK := emsdk

@@ -7,7 +7,7 @@ MIN_MACCATALYST_VERSION ?= 13.1
 
 # Default Rust features for Apple builds
 FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-DEFAULT_FEATURES = tvg-v1,tvg-sw,uniffi
+DEFAULT_FEATURES = tvg,tvg-sw,uniffi
 
 # UniFFI Bindings
 BINDINGS_DIR ?= dotlottie-ffi/uniffi-bindings

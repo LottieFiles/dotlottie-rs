@@ -93,7 +93,7 @@ pub trait Renderer: Sized + 'static {
         color_space: ColorSpace,
     ) -> Result<(), Self::Error>;
 
-    fn clear(&self, free: bool) -> Result<(), Self::Error>;
+    fn clear(&self) -> Result<(), Self::Error>;
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), Self::Error>;
 

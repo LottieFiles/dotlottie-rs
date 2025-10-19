@@ -150,12 +150,9 @@ struct DotLottieRuntime {
 }
 
 impl DotLottieRuntime {
-    #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
+    #[cfg(feature = "tvg")]
     pub fn new(config: Config, threads: u32) -> Self {
-        Self::with_renderer(
-            config,
-            crate::TvgRenderer::new(crate::TvgEngine::TvgEngineSw, threads),
-        )
+        Self::with_renderer(config, crate::TvgRenderer::new(threads))
     }
 
     pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
@@ -1084,7 +1081,7 @@ pub struct DotLottiePlayerContainer {
 }
 
 impl DotLottiePlayerContainer {
-    #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
+    #[cfg(feature = "tvg")]
     pub fn new(config: Config, threads: u32) -> Self {
         DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config, threads)),
@@ -1632,7 +1629,7 @@ pub struct DotLottiePlayer {
 }
 
 impl DotLottiePlayer {
-    #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
+    #[cfg(feature = "tvg")]
     pub fn new(config: Config) -> Self {
         DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config, 0))),
@@ -1640,7 +1637,7 @@ impl DotLottiePlayer {
         }
     }
 
-    #[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
+    #[cfg(feature = "tvg")]
     pub fn with_threads(config: Config, threads: u32) -> Self {
         DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config, threads))),

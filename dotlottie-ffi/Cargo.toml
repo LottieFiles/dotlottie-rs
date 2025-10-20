@@ -20,7 +20,7 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [features]
-default = ["tvg", "ffi"]
+default = ["tvg", "tvg-sw", "ffi"]
 tvg = ["dotlottie-rs/tvg"]
 tvg-sw = ["dotlottie-rs/tvg-sw"]
 tvg-webp = ["dotlottie-rs/tvg-webp"]

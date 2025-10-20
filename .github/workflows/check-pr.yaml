@@ -55,3 +55,105 @@ jobs:
           cargo clippy --manifest-path=./dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
         env:
           RUSTFLAGS: "-Dwarnings"
+
+  benchmark:
+    if: github.event_name == 'pull_request' && github.head_ref != 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    env:
+      CC: clang
+      CXX: clang++
+      AR: llvm-ar
+      RANLIB: llvm-ranlib
+      CFLAGS: -O2
+      CXXFLAGS: -O2
+      BINDGEN_EXTRA_CLANG_ARGS: "-I/usr/include"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang llvm-dev libclang-dev
+
+      - name: Setup Rust
+        uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Setup Conan
+        uses: turtlebrowser/get-conan@main
+
+      - name: Cache cargo (base)
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-bench-base-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bench-base-
+
+      - name: Build base benchmarks
+        run: |
+          cargo build --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" --release
+
+      - name: Run benchmarks on base branch
+        run: |
+          cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
+
+      - name: Save baseline results
+        run: |
+          mkdir -p /tmp/criterion-base
+          cp -r dotlottie-rs/target/criterion /tmp/criterion-base/
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          clean: true
+          submodules: true
+
+      - name: Restore baseline
+        run: |
+          mkdir -p dotlottie-rs/target/criterion
+          cp -r /tmp/criterion-base/criterion/* dotlottie-rs/target/criterion/
+
+      - name: Run benchmarks on PR branch
+        run: |
+          cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
+
+      - name: Cache cargo (PR)
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-bench-pr-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bench-pr-
+
+      - name: Build PR benchmarks
+        run: |
+          cargo build --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" --release
+
+      - name: Run benchmarks on PR branch
+        run: |
+          cargo bench --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
+
+      - name: Generate comparison report
+        id: report
+        run: python3 ./scripts/benchmark_report.py
+
+      - name: Comment PR with results
+        uses: actions/github-script@v7
+        env:
+          COMMENT_BODY: ${{ steps.report.outputs.comment }}
+        with:
+          script: |
+            const script = require('./scripts/comment_benchmark_report.js');
+            await script({github, context});

@@ -1,11 +1,11 @@
 use crate::Layout;
 
 mod renderer;
-#[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
+#[cfg(feature = "tvg")]
 mod thorvg;
 
 pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
-#[cfg(any(feature = "tvg-v0", feature = "tvg-v1"))]
+#[cfg(feature = "tvg")]
 pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
 
 use std::{error::Error, fmt};
@@ -138,7 +138,7 @@ struct LottieRendererImpl<R: Renderer> {
 impl<R: Renderer> LottieRendererImpl<R> {
     fn clear(&mut self) -> Result<(), LottieRendererError> {
         if self.animation.is_some() || self.background_shape.is_some() {
-            self.renderer.clear(true).map_err(into_lottie::<R>)?;
+            self.renderer.clear().map_err(into_lottie::<R>)?;
             self.animation = None;
             self.background_shape = None;
         }
@@ -187,12 +187,6 @@ impl<R: Renderer> LottieRendererImpl<R> {
     fn load_animation(&mut self, data: &str) -> Result<R::Animation, LottieRendererError> {
         let mut animation = R::Animation::default();
 
-        #[cfg(feature = "tvg-v0")]
-        animation
-            .load_data(data, "lottie")
-            .map_err(into_lottie::<R>)?;
-
-        #[cfg(feature = "tvg-v1")]
         animation
             .load_data(data, "lottie+json")
             .map_err(into_lottie::<R>)?;

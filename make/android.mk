@@ -21,8 +21,12 @@ API_LEVEL ?= 21
 MIN_NDK_VERSION = 28
 
 # Default Rust features for Android builds
-FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-DEFAULT_FEATURES = tvg-v1,tvg-sw,uniffi
+ANDROID_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+ANDROID_DEFAULT_FEATURES = tvg,tvg-sw,uniffi
+
+ifdef FEATURES
+	ANDROID_FEATURES = $(FEATURES)
+endif
 
 # UniFFI Bindings
 BINDINGS_DIR ?= dotlottie-ffi/uniffi-bindings
@@ -150,7 +154,7 @@ kotlin-bindings:
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		--release \
 		--no-default-features \
-		--features=uniffi/cli,tvg-v1,uniffi \
+		--features=uniffi/cli,tvg,uniffi \
 		--bin uniffi-bindgen \
 		generate dotlottie-ffi/src/dotlottie_player.udl \
 		--language kotlin \
@@ -178,7 +182,7 @@ android-aarch64: kotlin-bindings android-check-ndk
 		--target $(RUST_TARGET_aarch64) \
 		--release \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) >/dev/null
+		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES) >/dev/null
 	@$(call ANDROID_PACKAGE_ARCH,aarch64)
 	@echo "✓ Android aarch64 build complete"
 
@@ -199,7 +203,7 @@ android-x86_64: kotlin-bindings android-check-ndk
 		--target $(RUST_TARGET_x86_64) \
 		--release \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) >/dev/null
+		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES) >/dev/null
 	@$(call ANDROID_PACKAGE_ARCH,x86_64)
 	@echo "✓ Android x86_64 build complete"
 
@@ -220,7 +224,7 @@ android-x86: kotlin-bindings android-check-ndk
 		--target $(RUST_TARGET_x86) \
 		--release \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) >/dev/null
+		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES) >/dev/null
 	@$(call ANDROID_PACKAGE_ARCH,x86)
 	@echo "✓ Android x86 build complete"
 
@@ -241,7 +245,7 @@ android-armv7: kotlin-bindings android-check-ndk
 		--target $(RUST_TARGET_armv7) \
 		--release \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) >/dev/null
+		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES) >/dev/null
 	@$(call ANDROID_PACKAGE_ARCH,armv7)
 	@echo "✓ Android ARMv7 build complete"
 

@@ -491,7 +491,13 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     fn set_slots(&mut self, slots: &str) -> Result<(), LottieRendererError> {
         self.get_animation_mut()?
             .set_slots(slots)
-            .map_err(into_lottie::<R>)
+            .map_err(into_lottie::<R>)?;
+
+        self.renderer.update().map_err(into_lottie::<R>)?;
+
+        self.updated = true;
+
+        Ok(())
     }
 
     fn set_quality(&mut self, quality: u8) -> Result<(), LottieRendererError> {

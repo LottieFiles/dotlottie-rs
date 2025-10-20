@@ -6,8 +6,12 @@ MIN_VISIONOS_VERSION ?= 1.0
 MIN_MACCATALYST_VERSION ?= 13.1
 
 # Default Rust features for Apple builds
-FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-DEFAULT_FEATURES = tvg,tvg-sw,uniffi
+APPLE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+APPLE_DEFAULT_FEATURES = tvg,tvg-sw,uniffi
+
+ifdef FEATURES
+	APPLE_FEATURES = $(FEATURES)
+endif
 
 # UniFFI Bindings
 BINDINGS_DIR ?= dotlottie-ffi/uniffi-bindings
@@ -147,7 +151,7 @@ $(SWIFT_BINDINGS_DIR)/dotlottie_player.swift: dotlottie-ffi/src/dotlottie_player
 	@cargo run \
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		--no-default-features \
-		--features=uniffi/cli,$(DEFAULT_FEATURES),$(FEATURES) \
+		--features=uniffi/cli,$(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) \
 		--bin uniffi-bindgen \
 		generate dotlottie-ffi/src/dotlottie_player.udl \
 		--language swift \
@@ -161,7 +165,7 @@ $(SWIFT_BINDINGS_DIR)/$(DOTLOTTIE_PLAYER_MODULE).h: dotlottie-ffi/src/dotlottie_
 	@cargo run \
 		--manifest-path dotlottie-ffi/Cargo.toml \
 		--no-default-features \
-		--features=uniffi/cli,$(DEFAULT_FEATURES),$(FEATURES) \
+		--features=uniffi/cli,$(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) \
 		--bin uniffi-bindgen \
 		generate dotlottie-ffi/src/dotlottie_player.udl \
 		--language swift \
@@ -211,7 +215,7 @@ apple-macos-arm64: swift-bindings apple-check-xcode
 		--target $(APPLE_TARGET_macos_arm64) \
 		--release \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) >/dev/null
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) >/dev/null
 	@echo "✓ macOS ARM64 build complete"
 
 # macOS x86_64
@@ -231,7 +235,7 @@ apple-macos-x86_64: swift-bindings apple-check-xcode
 		--target $(APPLE_TARGET_macos_x86_64) \
 		--release \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) >/dev/null
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) >/dev/null
 	@echo "✓ macOS x86_64 build complete"
 
 # iOS ARM64 (device)
@@ -251,7 +255,7 @@ apple-ios-arm64: swift-bindings apple-check-xcode
 		--target $(APPLE_TARGET_ios_arm64) \
 		--release \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) >/dev/null
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) >/dev/null
 	@echo "✓ iOS ARM64 build complete"
 
 # iOS x86_64 (simulator)
@@ -271,7 +275,7 @@ apple-ios-x86_64: swift-bindings apple-check-xcode
 		--target $(APPLE_TARGET_ios_x86_64) \
 		--release \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) >/dev/null
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) >/dev/null
 	@echo "✓ iOS x86_64 simulator build complete"
 
 # iOS ARM64 Simulator
@@ -291,7 +295,7 @@ apple-ios-sim-arm64: swift-bindings apple-check-xcode
 		--target $(APPLE_TARGET_ios_sim_arm64) \
 		--release \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) >/dev/null
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) >/dev/null
 	@echo "✓ iOS ARM64 simulator build complete"
 
 # Mac Catalyst ARM64
@@ -311,7 +315,7 @@ apple-maccatalyst-arm64: swift-bindings apple-check-xcode
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_maccatalyst_arm64) \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) \
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) \
 		--release >/dev/null
 	@echo "✓ Mac Catalyst ARM64 build complete"
 
@@ -332,7 +336,7 @@ apple-maccatalyst-x86_64: swift-bindings apple-check-xcode
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_maccatalyst_x86_64) \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) \
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) \
 		--release >/dev/null
 	@echo "✓ Mac Catalyst x86_64 build complete"
 
@@ -353,7 +357,7 @@ apple-visionos-arm64: swift-bindings apple-check-xcode
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_visionos_arm64) \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) \
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) \
 		--release >/dev/null
 	@echo "✓ visionOS ARM64 build complete"
 
@@ -374,7 +378,7 @@ apple-visionos-sim-arm64: swift-bindings apple-check-xcode
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_visionos_sim_arm64) \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) \
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) \
 		--release >/dev/null
 	@echo "✓ visionOS ARM64 simulator build complete"
 
@@ -395,7 +399,7 @@ apple-tvos-arm64: swift-bindings apple-check-xcode
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_tvos_arm64) \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) \
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) \
 		--release >/dev/null
 	@echo "✓ tvOS ARM64 build complete"
 
@@ -416,7 +420,7 @@ apple-tvos-sim-arm64: swift-bindings apple-check-xcode
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_tvos_sim_arm64) \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) \
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) \
 		--release >/dev/null
 	@echo "✓ tvOS ARM64 simulator build complete"
 

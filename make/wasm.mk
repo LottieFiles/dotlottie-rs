@@ -1,12 +1,16 @@
 EMSDK_VERSION ?= 3.1.74
 UNIFFI_BINDGEN_CPP ?= uniffi-bindgen-cpp
-UNIFFI_BINDGEN_CPP_VERSION ?= v0.7.2+v0.28.3
+UNIFFI_BINDGEN_CPP_VERSION ?= v0.7.3+v0.28.3
 
 RUST_TOOLCHAIN ?= nightly-2025-08-01
 
 # Default Rust features for WASM builds
-FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
-DEFAULT_FEATURES = tvg,tvg-sw,uniffi
+WASM_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
+WASM_DEFAULT_FEATURES = tvg,tvg-sw,uniffi
+
+ifdef FEATURES
+	WASM_FEATURES = $(FEATURES)
+endif
 
 # WASM/Emscripten configuration
 EMSDK := emsdk
@@ -126,7 +130,7 @@ wasm-build-rust: wasm-check-env wasm-cpp-bindings
 		-Z build-std-features=panic_immediate_abort \
 		--target $(WASM_TARGET) \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES) \
+		--features $(WASM_DEFAULT_FEATURES),$(WASM_FEATURES) \
 		--release
 	@echo "✓ Rust build complete"
 

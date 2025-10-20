@@ -1,10 +1,10 @@
-# Linux targets
-# Uses C FFI (ffi feature flag) along with tvg and tvg-sw for thorvg support
-# MUST NOT USE UNIFFI feature flag for linux build
-
 # Default Rust features for Linux builds
-FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-DEFAULT_FEATURES = tvg,tvg-sw,ffi
+LINUX_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+LINUX_DEFAULT_FEATURES = tvg,tvg-sw,ffi
+
+ifdef FEATURES
+	LINUX_FEATURES = $(FEATURES)
+endif
 
 # Release and packaging variables
 RELEASE_DIR ?= release
@@ -108,7 +108,7 @@ linux-x86_64: linux-check-deps
 		--target $(LINUX_TARGET_x86_64) \
 		--release \
 		--no-default-features \
-		--features $(DEFAULT_FEATURES),$(FEATURES)
+		--features $(LINUX_DEFAULT_FEATURES),$(LINUX_FEATURES)
 	@$(call LINUX_PACKAGE_ARCH,x86_64)
 	@echo "✓ Linux x86_64 build complete"
 
@@ -132,7 +132,7 @@ linux-arm64: linux-check-deps
 			--target $(LINUX_TARGET_arm64) \
 			--release \
 			--no-default-features \
-			--features $(DEFAULT_FEATURES),$(FEATURES); \
+			--features $(LINUX_DEFAULT_FEATURES),$(LINUX_FEATURES); \
 	else \
 		CC="aarch64-linux-gnu-gcc" \
 		CXX="aarch64-linux-gnu-g++" \
@@ -146,7 +146,7 @@ linux-arm64: linux-check-deps
 			--target $(LINUX_TARGET_arm64) \
 			--release \
 			--no-default-features \
-			--features $(DEFAULT_FEATURES),$(FEATURES); \
+			--features $(LINUX_DEFAULT_FEATURES),$(LINUX_FEATURES); \
 	fi
 	@$(call LINUX_PACKAGE_ARCH,arm64)
 	@echo "✓ Linux ARM64 build complete"

@@ -23,6 +23,78 @@ struct Theme {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct ImageRule {
+    id: Option<String>,
+    width: Option<f64>,
+    height: Option<f64>,
+    url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextRule {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_family: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_size: Option<f64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fill_color: Option<Vec<f64>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stroke_color: Option<Vec<f64>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stroke_width: Option<f64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stroke_over_fill: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line_height: Option<f64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tracking: Option<f64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub justify: Option<Justify>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_caps: Option<TextCaps>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_shift: Option<f64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wrap_size: Option<Vec<f64>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wrap_position: Option<Vec<f64>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Justify {
+    Left,
+    Right,
+    Center,
+    JustifyLastLeft,
+    JustifyLastRight,
+    JustifyLastCenter,
+    JustifyLastFull,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TextCaps {
+    Regular,
+    AllCaps,
+    SmallCaps,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct Rule {
     id: String,
     #[serde(rename = "type")]
@@ -301,12 +373,44 @@ impl GlobalInputsEngine {
         }
     }
 
-    fn replace_references(&mut self, theme: &mut Theme, theme_id: Option<&str>) {
+    fn replace_references(
+        &mut self,
+        theme: &mut Theme,
+        theme_id: Option<&str>,
+    ) -> Result<(), GlobalInputsEngineError> {
         for rule in &mut theme.rules {
             let binding_id = if let Value::String(s) = &rule.value {
                 s.strip_prefix('@').map(|stripped| stripped.to_string())
+            } else if let Value::Object(s) = &rule.value {
+                // The value is an object
+                // This is the case for text and images
+                // Try to parse as ImageRule, then extract reference if the ImageRule is a reference type.
+                if let Ok(image_rule) =
+                    serde_json::from_value::<ImageRule>(Value::Object(s.clone()))
+                {
+                    if let Some(id) = image_rule.id {
+                        id.strip_prefix('@').map(|reference| reference.to_string())
+                    } else {
+                        return Err(GlobalInputsEngineError::ParseError(
+                            "Failed to replace references".to_string(),
+                        ));
+                    }
+                } else if let Ok(text_rule) =
+                    // todo!!
+                    serde_json::from_value::<TextRule>(Value::Object(s.clone()))
+                {
+                    return Err(GlobalInputsEngineError::ParseError(
+                        "Failed to replace references".to_string(),
+                    ));
+                } else {
+                    return Err(GlobalInputsEngineError::ParseError(
+                        "Failed to replace references".to_string(),
+                    ));
+                }
             } else {
-                None
+                return Err(GlobalInputsEngineError::ParseError(
+                    "Failed to replace references".to_string(),
+                ));
             };
 
             if let Some(binding_id) = binding_id {
@@ -317,9 +421,15 @@ impl GlobalInputsEngine {
                     if let Some(theme_id) = theme_id {
                         self.add_new_theme_dependancy(theme_id, &binding_id);
                     }
+
+                    return Ok(());
                 }
+            } else {
+                println!("binding not found");
+                return Err(GlobalInputsEngineError::BindingNotFound("".to_string()));
             }
         }
+        Ok(())
     }
 
     pub fn update_theme(

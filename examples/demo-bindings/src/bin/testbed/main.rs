@@ -7,6 +7,7 @@ use std::time::Instant;
 const WIDTH: usize = 512;
 const HEIGHT: usize = 512;
 const EASE_LINEAR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+use dark_light::Mode;
 
 struct Player {
     player: DotLottiePlayer,
@@ -91,18 +92,24 @@ impl Player {
     }
 }
 
-// pub const ANIMATION_NAME: &str = "test_ball_gradient";
-// pub const BINDING_FILE_NAME: &str = "binding_tests_ball_gradient";
-// pub const THEMING_FILE_NAME: &str = "test_ball_gradient_theme";
+// pub const ANIMATION_NAME: &str = "test_inputs_bull_image";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
 
+pub const ANIMATION_NAME: &str = "test_ball_gradient";
+// pub const ANIMATION_NAME: &str = "test_inputs_text";
+pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const SM_FILE_NAME: &str = "toggleButton";
+pub const THEMING_FILE_NAME: &str = "theme";
+// //
 // pub const ANIMATION_NAME: &str = "test_ball_scalar";
 // pub const BINDING_FILE_NAME: &str = "inputs";
 // pub const THEMING_FILE_NAME: &str = "theme";
 
-pub const ANIMATION_NAME: &str = "test_inputs_star_sm";
-pub const BINDING_FILE_NAME: &str = "inputs";
-pub const THEMING_FILE_NAME: &str = "";
-pub const SM_FILE_NAME: &str = "starRating";
+// pub const ANIMATION_NAME: &str = "test_inputs_star_sm";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "";
+// pub const SM_FILE_NAME: &str = "starRating";
 
 fn main() {
     let mut window = Window::new(
@@ -116,11 +123,12 @@ fn main() {
     let mut player = Player::new(&format!("./src/bin/testbed/{}.lottie", ANIMATION_NAME));
 
     player.player.global_inputs_load(BINDING_FILE_NAME);
-    let sml = player.player.state_machine_load(SM_FILE_NAME);
-    let sms = player.player.state_machine_start(OpenUrlPolicy::default());
 
-    println!("State machine loaded: {}", sml);
-    println!("State machine started: {}", sms);
+    // let sml = player.player.state_machine_load(SM_FILE_NAME);
+    // let sms = player.player.state_machine_start(OpenUrlPolicy::default());
+
+    // println!("State machine loaded: {}", sml);
+    // println!("State machine started: {}", sms);
 
     // let binding_file_path = format!( "./src/bin/testbed/unzip/g/{}.json", BINDING_FILE_NAME);
     // let binding_file_data = std::fs::read_to_string(&binding_file_path).expect(&format!(
@@ -129,30 +137,65 @@ fn main() {
     // ));
     // player.player.global_inputs_load_data(&binding_file_data);
 
-    // let st = player.player.set_theme(THEMING_FILE_NAME);
-    // println!("Set theme: {}", st);
+    let st = player.player.set_theme(THEMING_FILE_NAME);
+    println!("Set theme: {}", st);
 
     let mut mx = 0.0;
     let mut my = 0.0;
 
     let mut left_down = false;
+    let mut toggle = false;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let mouse_down = window.get_mouse_down(MouseButton::Left);
 
+        // match dark_light::detect() {
+        //     Ok(dark_light::Mode::Dark) => {
+        //         player.player.global_inputs_set_boolean("OnOffSwitch", true);
+        //     }
+        //     Ok(dark_light::Mode::Light) => {
+        //         player
+        //             .player
+        //             .global_inputs_set_boolean("OnOffSwitch", false);
+        //     }
+        //     Ok(dark_light::Mode::Unspecified) => println!("Unspecified"),
+        //     Err(_) => todo!(),
+        // }
+
         if window.is_key_pressed(Key::Space, KeyRepeat::No) {
             // Gradient
+
+            // {
+            //     "ball": {
+            //       "type": "Gradient",
+            //       "value": [
+            //         {
+            //           "color": [0, 1, 1, 1],
+            //           "offset": 0
+            //         },
+            //         {
+            //           "color": [1, 0, 1, 1],
+            //           "offset": 0.5
+            //         },
+            //         {
+            //           "color": [1, 0, 1, 1],
+            //           "offset": 1
+            //         }
+            //       ]
+            //     }
+            //   }
+
             let mut gradient_storage = vec![];
             gradient_storage.push(GradientStop {
-                color: vec![0.1, 0.1, 0.1],
+                color: vec![0.0, 1.0, 1.0, 1.0],
                 offset: 0.0,
             });
             gradient_storage.push(GradientStop {
-                color: vec![0.5, 0.5, 0.5],
-                offset: 0.5,
+                color: vec![1.0, 0.0, 1.0, 1.0],
+                offset: 1.0,
             });
             gradient_storage.push(GradientStop {
-                color: vec![1.0, 1.0, 1.0],
+                color: vec![1.0, 0.0, 1.0, 1.0],
                 offset: 1.0,
             });
             player
@@ -161,6 +204,11 @@ fn main() {
 
             // Scalar
             player.player.global_inputs_set_scalar("ball", 90.0);
+
+            toggle = !toggle;
+            player
+                .player
+                .global_inputs_set_boolean("OnOffSwitch", toggle);
 
             // Vector
             // player.player.mutate_color_binding("face", &[0.5, 0.5, 0.5]);
@@ -204,9 +252,26 @@ fn main() {
         });
 
         if mx != 0.0 && my != 0.0 {
-            // player
-            //     .player
-            //     .mutate_vector_binding("wand_pos", &[mx.into(), my.into()]);
+            println!("MX: {}", ((mx / (WIDTH as f32) * 100.0) / 100.0) as f64);
+            let mut gradient_storage = vec![];
+            gradient_storage.push(GradientStop {
+                color: vec![0.0, 1.0, 1.0, 1.0],
+                offset: 0.0,
+            });
+            gradient_storage.push(GradientStop {
+                color: vec![1.0, 0.0, 1.0, 1.0],
+                offset: ((mx / (WIDTH as f32) * 100.0) / 100.0) as f64,
+            });
+            gradient_storage.push(GradientStop {
+                color: vec![1.0, 0.0, 1.0, 1.0],
+                offset: 1.0,
+            });
+            player
+                .player
+                .global_inputs_set_gradient("ball", &gradient_storage);
+            player
+                .player
+                .global_inputs_set_vector("wand_pos", &[mx.into(), my.into()]);
         }
 
         player.update();

@@ -1,7 +1,5 @@
-#[cfg(feature = "tvg-v1")]
 use crate::time::Instant;
 
-#[cfg_attr(not(feature = "tvg-v1"), allow(unused_imports))]
 use std::{
     error::Error,
     ffi::{c_char, CString},
@@ -74,58 +72,26 @@ pub enum TvgEngine {
     TvgEngineGl,
 }
 
-#[cfg(feature = "tvg-v0")]
-impl From<TvgEngine> for tvg::Tvg_Engine {
-    fn from(engine_method: TvgEngine) -> Self {
-        match engine_method {
-            TvgEngine::TvgEngineSw => tvg::Tvg_Engine_TVG_ENGINE_SW,
-            TvgEngine::TvgEngineGl => tvg::Tvg_Engine_TVG_ENGINE_GL,
-        }
-    }
-}
-
 static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
 
 pub struct TvgRenderer {
-    #[cfg(feature = "tvg-v0")]
-    raw_canvas: *mut tvg::Tvg_Canvas,
-    #[cfg(feature = "tvg-v1")]
     raw_canvas: tvg::Tvg_Canvas,
-    #[cfg(feature = "tvg-v0")]
-    engine_method: tvg::Tvg_Engine,
 }
 
 impl TvgRenderer {
-    pub fn new(
-        #[cfg_attr(not(feature = "tvg-v0"), allow(unused_variables))] engine_method: TvgEngine,
-        threads: u32,
-    ) -> Self {
+    pub fn new(threads: u32) -> Self {
         let mut count = RENDERERS_COUNT.lock().unwrap();
 
-        #[cfg(feature = "tvg-v0")]
-        let engine = engine_method.into();
-
         if *count == 0 {
-            #[cfg(feature = "tvg-v0")]
-            {
-                unsafe { tvg::tvg_engine_init(engine, threads).into_result() }.unwrap();
-            }
-
-            #[cfg(feature = "tvg-v1")]
             unsafe { tvg::tvg_engine_init(threads).into_result() }.unwrap();
         }
 
         *count += 1;
 
         TvgRenderer {
-            #[cfg(feature = "tvg-v1")]
             raw_canvas: unsafe {
                 tvg::tvg_swcanvas_create(tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_NONE)
             },
-            #[cfg(feature = "tvg-v0")]
-            raw_canvas: unsafe { tvg::tvg_swcanvas_create() },
-            #[cfg(feature = "tvg-v0")]
-            engine_method: engine,
         }
     }
 }
@@ -160,16 +126,8 @@ impl Renderer for TvgRenderer {
         }
     }
 
-    fn clear(&self, _free: bool) -> Result<(), TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        unsafe {
-            tvg::tvg_canvas_remove(self.raw_canvas, ptr::null_mut()).into_result()
-        }
-
-        #[cfg(feature = "tvg-v0")]
-        unsafe {
-            tvg::tvg_canvas_clear(self.raw_canvas, _free).into_result()
-        }
+    fn clear(&self) -> Result<(), TvgError> {
+        unsafe { tvg::tvg_canvas_remove(self.raw_canvas, ptr::null_mut()).into_result() }
     }
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), TvgError> {
@@ -181,16 +139,8 @@ impl Renderer for TvgRenderer {
         unsafe { tvg::tvg_canvas_push(self.raw_canvas, raw_paint).into_result() }
     }
 
-    fn draw(&mut self, _clear_buffer: bool) -> Result<(), TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        unsafe {
-            tvg::tvg_canvas_draw(self.raw_canvas, _clear_buffer).into_result()
-        }
-
-        #[cfg(feature = "tvg-v0")]
-        unsafe {
-            tvg::tvg_canvas_draw(self.raw_canvas).into_result()
-        }
+    fn draw(&mut self, clear_buffer: bool) -> Result<(), TvgError> {
+        unsafe { tvg::tvg_canvas_draw(self.raw_canvas, clear_buffer).into_result() }
     }
 
     fn sync(&mut self) -> Result<(), TvgError> {
@@ -213,20 +163,11 @@ impl Drop for TvgRenderer {
         *count = count.checked_sub(1).unwrap();
 
         if *count == 0 {
-            #[cfg(feature = "tvg-v0")]
-            unsafe {
-                tvg::tvg_engine_term(self.engine_method)
-            };
-
-            #[cfg(feature = "tvg-v1")]
-            unsafe {
-                tvg::tvg_engine_term()
-            };
+            unsafe { tvg::tvg_engine_term() };
         }
     }
 }
 
-#[cfg(feature = "tvg-v1")]
 struct TweenState {
     from: f32,
     to: f32,
@@ -236,15 +177,8 @@ struct TweenState {
 }
 
 pub struct TvgAnimation {
-    #[cfg(feature = "tvg-v0")]
-    raw_animation: *mut tvg::Tvg_Animation,
-    #[cfg(feature = "tvg-v1")]
     raw_animation: tvg::Tvg_Animation,
-    #[cfg(feature = "tvg-v0")]
-    raw_paint: *mut tvg::Tvg_Paint,
-    #[cfg(feature = "tvg-v1")]
     raw_paint: tvg::Tvg_Paint,
-    #[cfg(feature = "tvg-v1")]
     tween_state: Option<TweenState>,
     data: Option<CString>,
 }
@@ -257,7 +191,6 @@ impl Default for TvgAnimation {
         Self {
             raw_animation,
             raw_paint,
-            #[cfg(feature = "tvg-v1")]
             tween_state: None,
             data: None,
         }
@@ -265,7 +198,6 @@ impl Default for TvgAnimation {
 }
 
 impl TvgAnimation {
-    #[cfg(feature = "tvg-v1")]
     fn get_layer_obb(&self, layer_name: &str) -> Result<Option<[tvg::Tvg_Point; 4]>, TvgError> {
         unsafe {
             let mut obb: [tvg::Tvg_Point; 4] = [tvg::Tvg_Point { x: 0.0, y: 0.0 }; 4];
@@ -284,30 +216,20 @@ impl TvgAnimation {
     }
 
     unsafe fn tvg_load_data_dispatch(
-        #[cfg(feature = "tvg-v0")] raw_paint: *mut tvg::Tvg_Paint,
-        #[cfg(feature = "tvg-v1")] raw_paint: tvg::Tvg_Paint,
+        raw_paint: tvg::Tvg_Paint,
         data_ptr: *const c_char,
         data_len: u32,
         mimetype_ptr: *const c_char,
     ) -> Result<(), TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        {
-            tvg::tvg_picture_load_data(
-                raw_paint,
-                data_ptr,
-                data_len,
-                mimetype_ptr,
-                ptr::null(),
-                false,
-            )
-            .into_result()
-        }
-
-        #[cfg(feature = "tvg-v0")]
-        {
-            tvg::tvg_picture_load_data(raw_paint, data_ptr, data_len, mimetype_ptr, false)
-                .into_result()
-        }
+        tvg::tvg_picture_load_data(
+            raw_paint,
+            data_ptr,
+            data_len,
+            mimetype_ptr,
+            ptr::null(),
+            false,
+        )
+        .into_result()
     }
 }
 
@@ -343,64 +265,52 @@ impl Animation for TvgAnimation {
     }
 
     fn intersect(&self, _x: f32, _y: f32, _layer_name: &str) -> Result<bool, TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        {
-            if let Some(obb) = self.get_layer_obb(_layer_name)? {
-                let e1 = tvg::Tvg_Point {
-                    x: obb[1].x - obb[0].x,
-                    y: obb[1].y - obb[0].y,
-                };
-                let e2 = tvg::Tvg_Point {
-                    x: obb[3].x - obb[0].x,
-                    y: obb[3].y - obb[0].y,
-                };
-                let o = tvg::Tvg_Point {
-                    x: _x - obb[0].x,
-                    y: _y - obb[0].y,
-                };
-                let u = (o.x * e1.x + o.y * e1.y) / (e1.x * e1.x + e1.y * e1.y);
-                let v = (o.x * e2.x + o.y * e2.y) / (e2.x * e2.x + e2.y * e2.y);
+        if let Some(obb) = self.get_layer_obb(_layer_name)? {
+            let e1 = tvg::Tvg_Point {
+                x: obb[1].x - obb[0].x,
+                y: obb[1].y - obb[0].y,
+            };
+            let e2 = tvg::Tvg_Point {
+                x: obb[3].x - obb[0].x,
+                y: obb[3].y - obb[0].y,
+            };
+            let o = tvg::Tvg_Point {
+                x: _x - obb[0].x,
+                y: _y - obb[0].y,
+            };
+            let u = (o.x * e1.x + o.y * e1.y) / (e1.x * e1.x + e1.y * e1.y);
+            let v = (o.x * e2.x + o.y * e2.y) / (e2.x * e2.x + e2.y * e2.y);
 
-                // Check if point is inside the OBB
-                Ok((0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v))
-            } else {
-                Ok(false)
-            }
+            // Check if point is inside the OBB
+            Ok((0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v))
+        } else {
+            Ok(false)
         }
-
-        #[cfg(not(feature = "tvg-v1"))]
-        Err(TvgError::NotSupported)
     }
 
     fn get_layer_bounds(&self, _layer_name: &str) -> Result<[f32; 8], TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        {
-            if let Some(obb) = self.get_layer_obb(_layer_name)? {
-                // Return the 8 points out of obb
-                let mut point_vec: Vec<f32> = Vec::with_capacity(8);
+        if let Some(obb) = self.get_layer_obb(_layer_name)? {
+            // Return the 8 points out of obb
+            let mut point_vec: Vec<f32> = Vec::with_capacity(8);
 
-                for item in &obb {
-                    point_vec.push(item.x);
-                    point_vec.push(item.y);
-                }
-
-                Ok([
-                    point_vec[0],
-                    point_vec[1],
-                    point_vec[2],
-                    point_vec[3],
-                    point_vec[4],
-                    point_vec[5],
-                    point_vec[6],
-                    point_vec[7],
-                ])
-            } else {
-                Err(TvgError::Unknown)
+            for item in &obb {
+                point_vec.push(item.x);
+                point_vec.push(item.y);
             }
-        }
 
-        #[cfg(not(feature = "tvg-v1"))]
-        Err(TvgError::NotSupported)
+            Ok([
+                point_vec[0],
+                point_vec[1],
+                point_vec[2],
+                point_vec[3],
+                point_vec[4],
+                point_vec[5],
+                point_vec[6],
+                point_vec[7],
+            ])
+        } else {
+            Err(TvgError::Unknown)
+        }
     }
 
     fn get_size(&self) -> Result<(f32, f32), TvgError> {
@@ -468,43 +378,25 @@ impl Animation for TvgAnimation {
         Ok(curr_frame)
     }
 
-    fn set_slots(
-        &mut self,
-        #[cfg_attr(not(feature = "tvg-v1"), allow(unused_variables))] slots: &str,
-    ) -> Result<(), TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        {
-            let result = if slots.is_empty() {
-                unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, 0) }
-            } else {
-                let slots_cstr = CString::new(slots).expect("Failed to create CString");
-                let slot_id = unsafe {
-                    tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slots_cstr.as_ptr())
-                };
-                if slot_id == 0 {
-                    return Err(TvgError::InvalidArgument);
-                }
-                unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_id) }
+    fn set_slots(&mut self, slots_json: &str) -> Result<(), TvgError> {
+        let result = if slots_json.is_empty() {
+            unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, 0) }
+        } else {
+            let slots_cstr = CString::new(slots_json).expect("Failed to create CString");
+            let slot_id = unsafe {
+                tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slots_cstr.as_ptr())
             };
+            if slot_id == 0 {
+                return Err(TvgError::InvalidArgument);
+            }
+            unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_id) }
+        };
 
-            result.into_result()
-        }
-
-        #[cfg(not(feature = "tvg-v1"))]
-        Err(TvgError::NotSupported)
+        result.into_result()
     }
 
-    fn set_quality(
-        &mut self,
-        #[cfg_attr(not(feature = "tvg-v1"), allow(unused_variables))] quality: u8,
-    ) -> Result<(), TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        unsafe {
-            tvg::tvg_lottie_animation_set_quality(self.raw_animation, quality).into_result()
-        }
-
-        #[cfg(not(feature = "tvg-v1"))]
-        Err(TvgError::NotSupported)
+    fn set_quality(&mut self, quality: u8) -> Result<(), TvgError> {
+        unsafe { tvg::tvg_lottie_animation_set_quality(self.raw_animation, quality).into_result() }
     }
 
     fn tween(
@@ -513,114 +405,93 @@ impl Animation for TvgAnimation {
         _duration: Option<f32>,
         _easing: Option<[f32; 4]>,
     ) -> Result<(), TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        {
-            if self.is_tweening() {
-                return Err(TvgError::InvalidArgument);
-            }
-            if _duration.is_some() && _duration.unwrap() <= 0.0 {
-                return Err(TvgError::InvalidArgument);
-            }
-            if _easing.is_some() && _easing.unwrap().iter().any(|&x| !(0.0..=1.0).contains(&x)) {
-                return Err(TvgError::InvalidArgument);
-            }
-
-            let from = self.get_frame()?;
-
-            self.tween_state = Some(TweenState {
-                start_time: {
-                    if _duration.is_some() {
-                        Some(Instant::now())
-                    } else {
-                        None
-                    }
-                },
-                from,
-                to: _to,
-                duration: _duration,
-                easing: _easing,
-            });
-
-            Ok(())
+        if self.is_tweening() {
+            return Err(TvgError::InvalidArgument);
+        }
+        if _duration.is_some() && _duration.unwrap() <= 0.0 {
+            return Err(TvgError::InvalidArgument);
+        }
+        if _easing.is_some() && _easing.unwrap().iter().any(|&x| !(0.0..=1.0).contains(&x)) {
+            return Err(TvgError::InvalidArgument);
         }
 
-        #[cfg(not(feature = "tvg-v1"))]
-        Err(TvgError::NotSupported)
+        let from = self.get_frame()?;
+
+        self.tween_state = Some(TweenState {
+            start_time: {
+                if _duration.is_some() {
+                    Some(Instant::now())
+                } else {
+                    None
+                }
+            },
+            from,
+            to: _to,
+            duration: _duration,
+            easing: _easing,
+        });
+
+        Ok(())
     }
 
     fn is_tweening(&self) -> bool {
-        #[cfg(feature = "tvg-v1")]
-        return self.tween_state.is_some();
-
-        #[cfg(not(feature = "tvg-v1"))]
-        false
+        self.tween_state.is_some()
     }
 
     fn tween_stop(&mut self) -> Result<(), TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        {
-            self.tween_state = None;
-            Ok(())
-        }
+        self.tween_state = None;
 
-        #[cfg(not(feature = "tvg-v1"))]
-        Err(TvgError::NotSupported)
+        Ok(())
     }
 
     fn tween_update(&mut self, _given_progress: Option<f32>) -> Result<bool, TvgError> {
-        #[cfg(feature = "tvg-v1")]
-        {
-            if self.tween_state.is_some() && self.tween_state.as_ref().unwrap().duration.is_none() {
-                if _given_progress.is_none() {
-                    return Err(TvgError::InvalidArgument);
-                }
-
-                unsafe {
-                    tvg::tvg_lottie_animation_tween(
-                        self.raw_animation,
-                        self.tween_state.as_ref().unwrap().from,
-                        self.tween_state.as_ref().unwrap().to,
-                        _given_progress.unwrap(),
-                    );
-                };
-
-                return Ok(true);
+        if self.tween_state.is_some() && self.tween_state.as_ref().unwrap().duration.is_none() {
+            if _given_progress.is_none() {
+                return Err(TvgError::InvalidArgument);
             }
 
-            if let Some(tween_state) = self.tween_state.as_mut() {
-                let elapsed = Instant::now().duration_since(tween_state.start_time.unwrap());
-                let t = elapsed.as_secs_f32() / tween_state.duration.unwrap();
-                let progress = if t >= 1.0 {
-                    1.0
-                } else {
-                    let [x1, y1, x2, y2] = tween_state.easing.unwrap_or([0.0, 0.0, 1.0, 1.0]);
-                    bezier::cubic_bezier(t, x1, y1, x2, y2)
-                };
+            unsafe {
+                tvg::tvg_lottie_animation_tween(
+                    self.raw_animation,
+                    self.tween_state.as_ref().unwrap().from,
+                    self.tween_state.as_ref().unwrap().to,
+                    _given_progress.unwrap(),
+                );
+            };
 
-                unsafe {
-                    tvg::tvg_lottie_animation_tween(
-                        self.raw_animation,
-                        tween_state.from,
-                        tween_state.to,
-                        progress,
-                    );
-                };
-
-                if progress >= 1.0 {
-                    let target_frame = tween_state.to;
-                    self.tween_state = None;
-                    self.set_frame(target_frame)?;
-                    Ok(false)
-                } else {
-                    Ok(true)
-                }
-            } else {
-                Ok(false)
-            }
+            return Ok(true);
         }
 
-        #[cfg(not(feature = "tvg-v1"))]
-        Err(TvgError::NotSupported)
+        if let Some(tween_state) = self.tween_state.as_mut() {
+            let elapsed = Instant::now().duration_since(tween_state.start_time.unwrap());
+            let t = elapsed.as_secs_f32() / tween_state.duration.unwrap();
+            let progress = if t >= 1.0 {
+                1.0
+            } else {
+                let [x1, y1, x2, y2] = tween_state.easing.unwrap_or([0.0, 0.0, 1.0, 1.0]);
+                bezier::cubic_bezier(t, x1, y1, x2, y2)
+            };
+
+            unsafe {
+                tvg::tvg_lottie_animation_tween(
+                    self.raw_animation,
+                    tween_state.from,
+                    tween_state.to,
+                    progress,
+                );
+            };
+
+            if progress >= 1.0 {
+                let target_frame = tween_state.to;
+                self.tween_state = None;
+                self.set_frame(target_frame)?;
+                Ok(false)
+            } else {
+                Ok(true)
+            }
+        } else {
+            Ok(false)
+        }
     }
 
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), TvgError> {
@@ -679,9 +550,6 @@ impl Drop for TvgAnimation {
 }
 
 pub struct TvgShape {
-    #[cfg(feature = "tvg-v0")]
-    raw_shape: *mut tvg::Tvg_Paint,
-    #[cfg(feature = "tvg-v1")]
     raw_shape: tvg::Tvg_Paint,
 }
 
@@ -712,14 +580,8 @@ impl Shape for TvgShape {
         rx: f32,
         ry: f32,
     ) -> Result<(), TvgError> {
-        #[cfg(feature = "tvg-v1")]
         unsafe {
             tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry, true).into_result()
-        }
-
-        #[cfg(feature = "tvg-v0")]
-        unsafe {
-            tvg::tvg_shape_append_rect(self.raw_shape, x, y, w, h, rx, ry).into_result()
         }
     }
 
@@ -728,7 +590,6 @@ impl Shape for TvgShape {
     }
 }
 
-#[cfg(feature = "tvg-v1")]
 mod bezier {
     /// Computes the x-coordinate of the cubic Bézier for parameter `u`.
     /// P0 = 0, P1 = (x1, _), P2 = (x2, _), P3 = 1.
@@ -827,7 +688,7 @@ mod tests {
             let handle = thread::spawn(move || {
                 barrier_clone.wait();
 
-                let renderer = TvgRenderer::new(TvgEngine::TvgEngineSw, 0);
+                let renderer = TvgRenderer::new(0);
                 drop(renderer);
             });
             handles.push(handle);

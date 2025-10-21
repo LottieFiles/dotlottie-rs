@@ -13,6 +13,7 @@ all: help
 include make/android.mk
 include make/apple.mk
 include make/wasm.mk
+include make/linux.mk
 
 # Main help menu
 help:
@@ -24,7 +25,8 @@ help:
 	@echo "  make android                                      - Build all Android targets"
 	@echo "  make apple                                        - Build all Apple targets" 
 	@echo "  make wasm                                         - Build WASM module"
-	@echo "  make native                                       - Build native libraries for current platform"
+	@echo "  make linux                                        - Build all Linux targets"
+	@echo "  make native                                       - Build native (current platform)"
 	@echo ""
 	@echo "Android Targets:"
 	@echo "==============="
@@ -52,12 +54,18 @@ help:
 	@echo "  make apple-maccatalyst-arm64                      - Build macCatalyst ARM64"
 	@echo "  make apple-maccatalyst-x86_64                     - Build macCatalyst x86_64"
 	@echo ""
+	@echo "Linux Targets:"
+	@echo "=============="
+	@echo "  make linux-x86_64                                  - Build Linux x86_64"
+	@echo "  make linux-arm64                                    - Build Linux ARM64"
+	@echo ""
 	@echo "Setup Targets:"
 	@echo "=============="
 	@echo "  make setup                                        - Setup all platforms"
 	@echo "  make android-setup                                - Setup Android environment"
 	@echo "  make apple-setup                                  - Setup Apple environment"
 	@echo "  make wasm-setup                                   - Setup WASM environment"
+	@echo "  make linux-setup                                  - Setup Linux environment"
 	@echo ""
 	@echo "Clean Targets:"
 	@echo "=============="
@@ -65,8 +73,9 @@ help:
 	@echo "  make android-clean                                - Clean Android artifacts"
 	@echo "  make apple-clean                                  - Clean Apple artifacts"
 	@echo "  make wasm-clean                                   - Clean WASM artifacts"
-	@echo "  make native-clean                                 - Clean native artifacts"
-
+	@echo "  make linux-clean                                  - Clean Linux artifacts"
+	@echo "  make native-clean                                 - Clean Native artifacts"
+	@echo ""
 # List all supported platforms
 list-platforms:
 	@echo "Supported Platforms:"
@@ -74,11 +83,12 @@ list-platforms:
 	@echo "  android     - Android (ARM64, x86_64, x86, ARMv7)"
 	@echo "  apple       - Apple (macOS, iOS, visionOS, tvOS, macCatalyst)"
 	@echo "  wasm        - WebAssembly (Emscripten)"
-	@echo "  native      - Native libraries for current platform"
+	@echo "  linux       - Linux (x86_64, ARM64)"
+	@echo "  native      - Native (current platform)"
 	@echo ""
 
 # Setup all platforms
-setup: android-setup apple-setup wasm-setup
+setup: android-setup apple-setup wasm-setup linux-setup
 	@echo "✓ All platform setup complete"
 
 # Clean all build artifacts

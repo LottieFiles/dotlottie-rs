@@ -1,5 +1,4 @@
 mod thorvg {
-    use conan2::{ConanInstall, ConanVerbosity};
     use std::env;
     use std::fs::{self, OpenOptions};
     use std::io::Write;
@@ -77,6 +76,8 @@ mod thorvg {
 
         writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.0.0\"")?;
         writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
+        writeln!(thorvg_config_h, "#define TVG_STATIC")?;
+        writeln!(thorvg_config_h, "#define WIN32_LEAN_AND_MEAN")?;
 
         if cfg!(feature = "tvg-log") {
             writeln!(thorvg_config_h, "#define THORVG_LOG_ENABLED")?;
@@ -204,49 +205,11 @@ mod thorvg {
 
         Ok(())
     }
-
-    pub fn conan_build() -> std::io::Result<()> {
-        let cargo_instructions = ConanInstall::new()
-            .detect_profile()
-            .build("missing")
-            .verbosity(ConanVerbosity::Error)
-            .run()
-            .parse();
-
-        // Emit instructions to cargo
-        cargo_instructions.emit();
-
-        // Link platform-specific C++ standard library
-        get_cpp_standard_library()
-            .iter()
-            .for_each(|lib| println!("cargo:rustc-link-lib=dylib={lib}"));
-
-        // Create bindings
-        let mut bindings_builder = bindgen::Builder::default()
-            .header("wrapper.h")
-            .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
-
-        // Add conan include paths to bindgen
-        for path in cargo_instructions.include_paths() {
-            bindings_builder = bindings_builder.clang_arg(format!("-I{}", path.display()));
-        }
-
-        println!("cargo:rerun-if-changed=wrapper.h");
-        let bindings = bindings_builder
-            .generate()
-            .expect("Failed to generate bindings");
-
-        bindings.write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
-
-        Ok(())
-    }
 }
 
 fn main() -> std::io::Result<()> {
-    if cfg!(feature = "tvg-v1") {
+    if cfg!(feature = "tvg") {
         thorvg::build()?;
-    } else if cfg!(feature = "tvg-v0") {
-        thorvg::conan_build()?;
     }
 
     Ok(())

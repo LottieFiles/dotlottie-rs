@@ -107,7 +107,7 @@ All platforms support configurable Rust features through the `FEATURES` variable
 
 Default features include:
 
-- `tvg-v1`: ThorVG version 1 API
+- `tvg`: ThorVG renderer backend
 - `tvg-sw`: Software rendering backend
 - `uniffi`: UniFFI bindings support
 

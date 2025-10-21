@@ -8,9 +8,8 @@ links = "thorvg"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
-dev = ["tvg-v1", "tvg-sw", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-ttf"]
-tvg-v0 = []
-tvg-v1 = []
+dev = ["tvg", "tvg-sw", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-ttf"]
+tvg = []
 tvg-log = []
 tvg-sw = []
 tvg-lottie-expressions = []
@@ -30,7 +29,6 @@ zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
 [build-dependencies]
 bindgen = "0.72.0"
 lazy_static = "1.4"
-conan2 = "0.1"
 cc = "1.2"
 
 [dev-dependencies]

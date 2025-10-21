@@ -150,8 +150,42 @@ jobs:
           path: release/wasm/dotlottie-player.wasm.tar.gz
           if-no-files-found: error
 
+  build-linux:
+    runs-on: ubuntu-latest
+    if: github.head_ref == 'release' && github.event.pull_request.merged == true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cross-compilation toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Setup Linux
+        run: make linux-setup
+
+      - name: Build Linux
+        run: make linux
+
+      - name: Create Linux Archive
+        run: |
+          cd release/linux
+          tar -czf dotlottie-player.linux.tar.gz *
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.linux.tar.gz
+          path: release/linux/dotlottie-player.linux.tar.gz
+          if-no-files-found: error
+
   release:
-    needs: [build-apple, build-android, build-wasm]
+    needs: [build-apple, build-android, build-wasm, build-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

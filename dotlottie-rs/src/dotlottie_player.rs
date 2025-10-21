@@ -1918,6 +1918,8 @@ impl DotLottiePlayer {
         false
     }
 
+    // Returns all the inputs of the current state machine/
+    // Returns: Input name followed by it's type as a String
     pub fn state_machine_get_inputs(&self) -> Vec<String> {
         let Ok(guard) = self.state_machine.try_read() else {
             return vec![];

@@ -301,7 +301,7 @@ mod tests {
         let r = player.state_machine_start(OpenUrlPolicy::default());
         assert!(r);
 
-        let predefined_inputs = vec![
+        let predefined_inputs = [
             "a_exited", "Boolean", "Step", "Event", "rating", "Numeric", "b_exited", "String",
         ];
 
@@ -337,10 +337,6 @@ mod tests {
         input_pairs.sort();
         predefined_pairs.sort();
 
-        assert_eq!(
-            input_pairs, predefined_pairs,
-            "Input pairs don't match. Got: {:?}, Expected: {:?}",
-            input_pairs, predefined_pairs
-        );
+        assert_eq!(input_pairs, predefined_pairs);
     }
 }

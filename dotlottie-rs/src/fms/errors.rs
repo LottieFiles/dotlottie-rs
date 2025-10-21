@@ -6,6 +6,7 @@ pub enum DotLottieError {
     ReadContentError,
     MutexLockError,
     AnimationNotFound,
+    AssetNotFound,
     AnimationsNotFound,
     ManifestNotFound,
     InvalidUtf8Error,

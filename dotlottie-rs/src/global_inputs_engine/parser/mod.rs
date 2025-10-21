@@ -148,7 +148,6 @@ fn default_update_frequency() -> UpdateFrequency {
     UpdateFrequency::OnChange
 }
 
-// todo
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Converter {}
 

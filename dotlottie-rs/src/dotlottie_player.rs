@@ -600,7 +600,6 @@ impl DotLottieRuntime {
     pub fn render(&mut self) -> bool {
         let is_ok = self.renderer.render().is_ok();
 
-
         if is_ok && self.is_complete() && !self.config.loop_animation {
             self.playback_state = PlaybackState::Stopped;
         }
@@ -1001,21 +1000,36 @@ impl DotLottieRuntime {
                 if let Some(b_e) = &mut self.global_inputs_engine {
                     let mutated_theme_data = b_e.update_theme(&theme_data, Some(&theme_id));
 
-                    if let Ok(mutated_theme_data) = mutated_theme_data {
+                    match mutated_theme_data {
+                        Ok(mutated_theme_data) => {
+                            if let Some(manager) = self.dotlottie_manager.as_ref() {
+                                let slots = transform_theme_to_lottie_slots(
+                                    &mutated_theme_data,
+                                    &self.active_animation_id,
+                                    manager,
+                                )
+                                .unwrap();
+
+                                self.renderer.set_slots(&slots).ok()
+                            } else {
+                                return None;
+                            }
+                        }
+                        Err(_) => todo!(),
+                    } // closing match
+                } else {
+                    // In the absence of a global_inputs_engine, use the original theme_data
+                    if let Some(manager) = self.dotlottie_manager.as_ref() {
                         let slots = transform_theme_to_lottie_slots(
-                            &mutated_theme_data,
+                            &theme_data,
                             &self.active_animation_id,
+                            manager,
                         )
-                        .unwrap();
+                        .ok()?; // propagate None on error
                         self.renderer.set_slots(&slots).ok()
                     } else {
-                        return None;
+                        None
                     }
-                } else {
-                    let slots =
-                        transform_theme_to_lottie_slots(&theme_data, &self.active_animation_id)
-                            .unwrap();
-                    self.renderer.set_slots(&slots).ok()
                 }
             })
             .is_some();
@@ -1041,14 +1055,30 @@ impl DotLottieRuntime {
                 Err(_) => return false,
             };
 
-            match transform_theme_to_lottie_slots(&mutated_theme_data, &self.active_animation_id) {
-                Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
-                Err(_) => false,
+            if let Some(manager) = self.dotlottie_manager.as_ref() {
+                match transform_theme_to_lottie_slots(
+                    &mutated_theme_data,
+                    &self.active_animation_id,
+                    manager,
+                ) {
+                    Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
+                    Err(_) => false,
+                }
+            } else {
+                false
             }
         } else {
-            match transform_theme_to_lottie_slots(theme_data, &self.active_animation_id) {
-                Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
-                Err(_) => false,
+            if let Some(manager) = self.dotlottie_manager.as_ref() {
+                match transform_theme_to_lottie_slots(
+                    theme_data,
+                    &self.active_animation_id,
+                    manager,
+                ) {
+                    Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
+                    Err(_) => false,
+                }
+            } else {
+                false
             }
         }
     }

@@ -289,4 +289,58 @@ mod tests {
         player.state_machine_post_event(&event);
         assert_eq!(player.state_machine_current_state(), "f".to_string());
     }
+
+    #[test]
+    fn state_machine_get_inputs() {
+        let player = DotLottiePlayer::new(Config::default());
+        let pointer_down =
+            include_str!("fixtures/statemachines/sanity_tests/test_get_all_inputs.json");
+
+        player.state_machine_load_data(pointer_down);
+
+        let r = player.state_machine_start(OpenUrlPolicy::default());
+        assert!(r);
+
+        let predefined_inputs = vec![
+            "a_exited", "Boolean", "Step", "Event", "rating", "Numeric", "b_exited", "String",
+        ];
+
+        let inputs = player.state_machine_get_inputs();
+
+        // Check that the lengths match
+        assert_eq!(
+            inputs.len(),
+            predefined_inputs.len(),
+            "Length mismatch: got {} elements, expected {}",
+            inputs.len(),
+            predefined_inputs.len()
+        );
+
+        assert_eq!(
+            inputs.len() % 2,
+            0,
+            "Input array must have even length (key-value pairs)"
+        );
+
+        // Convert both arrays into sets of (key, type) pairs
+        let mut input_pairs: Vec<(&str, &str)> = inputs
+            .chunks_exact(2)
+            .map(|chunk| (chunk[0].as_str(), chunk[1].as_str()))
+            .collect();
+
+        let mut predefined_pairs: Vec<(&str, &str)> = predefined_inputs
+            .chunks_exact(2)
+            .map(|chunk| (chunk[0], chunk[1]))
+            .collect();
+
+        // Sort both for comparison
+        input_pairs.sort();
+        predefined_pairs.sort();
+
+        assert_eq!(
+            input_pairs, predefined_pairs,
+            "Input pairs don't match. Got: {:?}, Expected: {:?}",
+            input_pairs, predefined_pairs
+        );
+    }
 }

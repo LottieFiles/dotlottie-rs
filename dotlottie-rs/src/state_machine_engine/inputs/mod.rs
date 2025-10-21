@@ -17,12 +17,14 @@ pub enum InputValue {
     Numeric(f32),
     String(String),
     Boolean(bool),
+    Event(String),
 }
 
 pub trait InputTrait {
     fn set_initial_boolean(&mut self, key: &str, value: bool);
     fn set_initial_string(&mut self, key: &str, value: String);
     fn set_initial_numeric(&mut self, key: &str, value: f32);
+    fn set_initial_event(&mut self, key: &str, value: &str);
     fn new() -> Self;
     fn set_boolean(&mut self, key: &str, value: bool) -> Option<InputValue>;
     fn set_string(&mut self, key: &str, value: String) -> Option<InputValue>;
@@ -30,13 +32,14 @@ pub trait InputTrait {
     fn get_numeric(&self, key: &str) -> Option<f32>;
     fn get_string(&self, key: &str) -> Option<String>;
     fn get_boolean(&self, key: &str) -> Option<bool>;
+    fn get_event(&self, key: &str) -> Option<String>;
     fn get(&self, key: &str) -> Result<&InputValue, &'static str>;
     fn reset_all(&mut self);
     fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)>;
 }
 
 pub struct InputManager {
-    inputs: HashMap<String, InputValue>,
+    pub inputs: HashMap<String, InputValue>,
     default_values: HashMap<String, InputValue>,
 }
 
@@ -107,6 +110,13 @@ impl InputTrait for InputManager {
         }
     }
 
+    fn get_event(&self, key: &str) -> Option<String> {
+        match self.inputs.get(key) {
+            Some(InputValue::Event(value)) => Some(value.clone()),
+            _ => None,
+        }
+    }
+
     fn set_initial_numeric(&mut self, key: &str, value: f32) {
         self.inputs
             .insert(key.to_string(), InputValue::Numeric(value));
@@ -129,6 +139,11 @@ impl InputTrait for InputManager {
 
         self.default_values
             .insert(key.to_string(), InputValue::Boolean(value));
+    }
+
+    fn set_initial_event(&mut self, key: &str, value: &str) {
+        self.inputs
+            .insert(key.to_string(), InputValue::Event(value.to_string()));
     }
 
     // Generic get method that returns a Result

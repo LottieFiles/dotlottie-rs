@@ -441,7 +441,7 @@ impl GlobalInputsEngine {
             GlobalInputsEngineError::ParseError(format!("Theme parse error: {}", e))
         })?;
 
-        self.replace_references(&mut theme, theme_id);
+        let _ = self.replace_references(&mut theme, theme_id);
 
         serde_json::to_string(&theme).map_err(|e| {
             GlobalInputsEngineError::ParseError(format!("Theme serialize error: {}", e))

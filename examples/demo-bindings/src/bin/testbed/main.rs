@@ -7,7 +7,6 @@ use std::time::Instant;
 const WIDTH: usize = 512;
 const HEIGHT: usize = 512;
 const EASE_LINEAR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
-use dark_light::Mode;
 
 struct Player {
     player: DotLottiePlayer,
@@ -92,15 +91,27 @@ impl Player {
     }
 }
 
-// pub const ANIMATION_NAME: &str = "test_inputs_bull_image";
+// pub const ANIMATION_NAME: &str = "test_inputs_ball_scalar";
 // pub const BINDING_FILE_NAME: &str = "inputs";
 // pub const THEMING_FILE_NAME: &str = "theme";
 
-pub const ANIMATION_NAME: &str = "test_ball_gradient";
-// pub const ANIMATION_NAME: &str = "test_inputs_text";
+// pub const ANIMATION_NAME: &str = "test_inputs_ball_gradient";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
+
+// pub const ANIMATION_NAME: &str = "test_inputs_ball_color";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
+
+pub const ANIMATION_NAME: &str = "test_inputs_ball_vector";
 pub const BINDING_FILE_NAME: &str = "inputs";
-// pub const SM_FILE_NAME: &str = "toggleButton";
 pub const THEMING_FILE_NAME: &str = "theme";
+
+// pub const ANIMATION_NAME: &str = "test_ball_gradient";
+// pub const ANIMATION_NAME: &str = "test_inputs_text";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const SM_FILE_NAME: &str = "toggleButton";
+// pub const THEMING_FILE_NAME: &str = "theme";
 // //
 // pub const ANIMATION_NAME: &str = "test_ball_scalar";
 // pub const BINDING_FILE_NAME: &str = "inputs";
@@ -149,42 +160,7 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let mouse_down = window.get_mouse_down(MouseButton::Left);
 
-        // match dark_light::detect() {
-        //     Ok(dark_light::Mode::Dark) => {
-        //         player.player.global_inputs_set_boolean("OnOffSwitch", true);
-        //     }
-        //     Ok(dark_light::Mode::Light) => {
-        //         player
-        //             .player
-        //             .global_inputs_set_boolean("OnOffSwitch", false);
-        //     }
-        //     Ok(dark_light::Mode::Unspecified) => println!("Unspecified"),
-        //     Err(_) => todo!(),
-        // }
-
         if window.is_key_pressed(Key::Space, KeyRepeat::No) {
-            // Gradient
-
-            // {
-            //     "ball": {
-            //       "type": "Gradient",
-            //       "value": [
-            //         {
-            //           "color": [0, 1, 1, 1],
-            //           "offset": 0
-            //         },
-            //         {
-            //           "color": [1, 0, 1, 1],
-            //           "offset": 0.5
-            //         },
-            //         {
-            //           "color": [1, 0, 1, 1],
-            //           "offset": 1
-            //         }
-            //       ]
-            //     }
-            //   }
-
             let mut gradient_storage = vec![];
             gradient_storage.push(GradientStop {
                 color: vec![0.0, 1.0, 1.0, 1.0],
@@ -252,7 +228,6 @@ fn main() {
         });
 
         if mx != 0.0 && my != 0.0 {
-            println!("MX: {}", ((mx / (WIDTH as f32) * 100.0) / 100.0) as f64);
             let mut gradient_storage = vec![];
             gradient_storage.push(GradientStop {
                 color: vec![0.0, 1.0, 1.0, 1.0],

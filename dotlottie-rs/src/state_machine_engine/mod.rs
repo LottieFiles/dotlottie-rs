@@ -1,5 +1,5 @@
 use core::result::Result::Ok;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
@@ -110,8 +110,7 @@ pub struct StateMachineEngine {
     pub open_url_requires_user_interaction: bool,
     pub open_url_whitelist: Whitelist,
 
-    inputs: InputManager,
-    event_input: HashMap<String, String>,
+    pub inputs: InputManager,
     curr_event: Option<String>,
 
     // PointerEnter/PointerExit management
@@ -142,7 +141,6 @@ impl Default for StateMachineEngine {
             open_url_whitelist: Whitelist::new(),
             player: None,
             inputs: InputManager::new(),
-            event_input: HashMap::new(),
             curr_event: None,
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
@@ -173,7 +171,6 @@ impl StateMachineEngine {
             open_url_whitelist: Whitelist::new(),
             player: Some(player.clone()),
             inputs: InputManager::new(),
-            event_input: HashMap::new(),
             curr_event: None,
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
@@ -341,6 +338,7 @@ impl StateMachineEngine {
                         self.observe_boolean_input_value_change(key, old_value, new_value);
                     }
                 }
+                InputValue::Event(_) => {}
             }
         }
 
@@ -354,8 +352,8 @@ impl StateMachineEngine {
 
     pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), StateMachineEngineError> {
         // If the event is a valid input
-        if let Some(valid_event) = self.event_input.get(event) {
-            self.observe_on_input_fired(valid_event);
+        if let Some(valid_event) = self.inputs.get_event(event) {
+            self.observe_on_input_fired(&valid_event);
 
             self.curr_event = Some(valid_event.to_string());
 
@@ -407,9 +405,7 @@ impl StateMachineEngine {
                                 new_state_machine.inputs.set_initial_boolean(name, *value);
                             }
                             Input::Event { name } => {
-                                new_state_machine
-                                    .event_input
-                                    .insert(name.to_string(), name.to_string());
+                                new_state_machine.inputs.set_initial_event(name, name);
                             }
                         }
                     }

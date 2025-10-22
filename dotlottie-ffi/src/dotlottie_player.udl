@@ -210,6 +210,7 @@ interface DotLottiePlayer {
     f32 state_machine_get_numeric_input([ByRef] string key);
     string state_machine_get_string_input([ByRef] string key);
     boolean state_machine_get_boolean_input([ByRef] string key);
+    sequence<string> state_machine_get_inputs();
     string state_machine_current_state();
     boolean state_machine_subscribe(StateMachineObserver observer);
     boolean state_machine_unsubscribe([ByRef] StateMachineObserver observer);

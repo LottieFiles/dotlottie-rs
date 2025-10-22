@@ -1915,6 +1915,33 @@ impl DotLottiePlayer {
         false
     }
 
+    // Returns all the inputs of the current state machine/
+    // Returns: Input name followed by it's type as a String
+    pub fn state_machine_get_inputs(&self) -> Vec<String> {
+        let Ok(guard) = self.state_machine.try_read() else {
+            return vec![];
+        };
+
+        let Some(sm) = guard.as_ref() else {
+            return vec![];
+        };
+
+        let mut result = Vec::with_capacity(sm.inputs.inputs.len() * 2);
+        for (key, value) in sm.inputs.inputs.iter() {
+            result.push(key.clone());
+            result.push(
+                match value {
+                    crate::inputs::InputValue::Numeric(_) => "Numeric",
+                    crate::inputs::InputValue::String(_) => "String",
+                    crate::inputs::InputValue::Boolean(_) => "Boolean",
+                    crate::inputs::InputValue::Event(_) => "Event",
+                }
+                .to_string(),
+            );
+        }
+        result
+    }
+
     pub fn state_machine_fire_event(&self, event: &str) {
         if let Ok(mut state_machine) = self.state_machine.try_write() {
             if let Some(sm) = state_machine.as_mut() {

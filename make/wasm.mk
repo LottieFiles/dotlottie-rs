@@ -176,6 +176,7 @@ wasm-link-module: wasm-build-rust wasm-compile-cpp wasm-install-npm-deps
 			-sUSE_ES6_IMPORT_META=0 \
 			-sDYNAMIC_EXECUTION=0 \
 			-sENVIRONMENT=web \
+			-sMIN_SAFARI_VERSION=130000 \
 			-sFILESYSTEM=0 \
 			--no-entry \
 			--strip-all \

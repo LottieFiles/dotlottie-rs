@@ -117,7 +117,7 @@ impl StateTrait for State {
                             .unwrap_or(default_config.background_color),
                         layout: current_layout,
                         segment: [].to_vec(),
-                        theme_id: "".to_string(),
+                        theme_id: current_config.theme_id,
                         state_machine_id: "".to_string(),
                         animation_id: "".to_string(),
                     };

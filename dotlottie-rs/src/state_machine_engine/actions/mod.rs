@@ -413,7 +413,7 @@ impl ActionTrait for Action {
 
                 // Determine the target input type and validate/coerce result
 
-                if let Some(_) = engine.get_numeric_input(input_name) {
+                if engine.get_numeric_input(input_name).is_some() {
                     // Target is numeric input
                     if result.is_number() {
                         let numeric_result = result.to_number();
@@ -430,7 +430,7 @@ impl ActionTrait for Action {
                     } else {
                         return Err(StateMachineActionError::ExecuteError);
                     }
-                } else if let Some(_) = engine.get_boolean_input(input_name) {
+                } else if engine.get_boolean_input(input_name).is_some() {
                     // Target is boolean input
                     if result.is_boolean()
                         || (!result.is_number()
@@ -455,7 +455,7 @@ impl ActionTrait for Action {
                     } else {
                         return Err(StateMachineActionError::ExecuteError);
                     }
-                } else if let Some(_) = engine.get_string_input(input_name) {
+                } else if engine.get_string_input(input_name).is_some() {
                     // Target is string input
                     if result.is_string() {
                         match result.to_string() {

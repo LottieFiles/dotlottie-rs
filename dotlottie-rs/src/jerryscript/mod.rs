@@ -2,11 +2,11 @@
 #[allow(non_snake_case)]
 #[expect(non_camel_case_types)]
 #[expect(dead_code)]
-mod jerryscript {
+mod ffi {
     include!(concat!(env!("OUT_DIR"), "/jerryscript_bindings.rs"));
 }
 
-use jerryscript::*;
+use ffi::*;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
@@ -16,7 +16,7 @@ pub enum Error {
     /// JavaScript exception occurred
     Exception(String),
     /// UTF-8 conversion error
-    Utf8Error,
+    Utf8,
     /// Engine not initialized
     NotInitialized,
     /// Engine already initialized
@@ -27,7 +27,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Exception(msg) => write!(f, "JavaScript exception: {}", msg),
-            Error::Utf8Error => write!(f, "UTF-8 conversion error"),
+            Error::Utf8 => write!(f, "UTF-8 conversion error"),
             Error::NotInitialized => write!(f, "JerryScript engine not initialized"),
             Error::AlreadyInitialized => write!(f, "JerryScript engine already initialized"),
         }
@@ -45,11 +45,6 @@ impl Value {
     /// Create a new Value from a raw jerry_value_t handle
     fn new(handle: jerry_value_t) -> Self {
         Self { handle }
-    }
-
-    /// Get the raw jerry_value_t handle (for internal use)
-    pub(crate) fn handle(&self) -> jerry_value_t {
-        self.handle
     }
 
     /// Create an undefined value
@@ -70,7 +65,7 @@ impl Value {
     /// Create a string value from a C string
     pub fn string(value: &str) -> Result<Self, Error> {
         use std::ffi::CString;
-        let c_str = CString::new(value).map_err(|_| Error::Utf8Error)?;
+        let c_str = CString::new(value).map_err(|_| Error::Utf8)?;
         unsafe { Ok(Self::new(jerry_string_sz(c_str.as_ptr()))) }
     }
 
@@ -164,11 +159,11 @@ impl Value {
             );
 
             if copied == 0 {
-                return Err(Error::Utf8Error);
+                return Err(Error::Utf8);
             }
 
             buffer.truncate(copied as usize);
-            String::from_utf8(buffer).map_err(|_| Error::Utf8Error)
+            String::from_utf8(buffer).map_err(|_| Error::Utf8)
         }
     }
 }

@@ -1,3 +1,21 @@
+## 0.1.50 (2025-10-27)
+
+### Features
+
+#### update thorvg to v1.0-pre30
+
+#### added benchmarking to pr checks (#400)
+
+#### add linux(x86_64 & arm64) targets (#412)
+
+#### added state_machine_get_inputs (#413)
+
+#### add wasm support for safari version >= v13.0.0 (#416)
+
+### Fixes
+
+#### ensure renderer updates and marks state as updated in set_slots (#408)
+
 ## 0.1.49 (2025-10-03)
 
 ### Features

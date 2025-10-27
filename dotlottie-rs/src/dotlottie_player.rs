@@ -644,7 +644,6 @@ impl DotLottieRuntime {
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
         self.config.segment = new_config.segment;
         self.config.autoplay = new_config.autoplay;
-        self.config.theme_id = new_config.theme_id;
         self.config.animation_id = new_config.animation_id;
 
         if new_config.autoplay {
@@ -870,6 +869,10 @@ impl DotLottieRuntime {
 
             if ok {
                 self.active_animation_id = animation_id.to_string();
+
+                if !self.config.theme_id.is_empty() {
+                    self.set_theme(&self.config.theme_id.clone());
+                }
             }
 
             ok
@@ -928,6 +931,7 @@ impl DotLottieRuntime {
         }
 
         self.active_theme_id.clear();
+        self.config.theme_id.clear();
 
         if theme_id.is_empty() {
             return self.renderer.set_slots("").is_ok();
@@ -970,6 +974,7 @@ impl DotLottieRuntime {
 
         if ok {
             self.active_theme_id = theme_id.to_string();
+            self.config.theme_id = theme_id.to_string();
         }
 
         ok
@@ -977,6 +982,7 @@ impl DotLottieRuntime {
 
     pub fn reset_theme(&mut self) -> bool {
         self.active_theme_id.clear();
+        self.config.theme_id.clear();
         self.renderer.set_slots("").is_ok()
     }
 

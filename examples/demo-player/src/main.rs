@@ -1,6 +1,6 @@
 use dotlottie_rs::{Config, DotLottiePlayer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
-use std::{path::Path, time::Instant};
+use std::time::Instant;
 
 const WIDTH: usize = 600;
 const HEIGHT: usize = 600;
@@ -92,6 +92,14 @@ impl Player {
 }
 
 fn main() {
+    println!("\nDemo Player Controls:");
+    println!("  T - Apply text override slot (test set_slots fix)");
+    println!("  U - Clear slots (reset to original)");
+    println!("  P - Play");
+    println!("  S - Stop");
+    println!("  → - Next marker");
+    println!("  ESC - Exit\n");
+
     let mut window = Window::new(
         "Lottie Player Demo (ESC to exit, ←/→ to change markers, P to play, S to stop)",
         WIDTH,
@@ -100,14 +108,20 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = Player::new("src/emoji.json");
+    let mut player = Player::new("src/text.json");
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        if window.is_key_pressed(Key::S, KeyRepeat::No) {
-            player.player.stop();
+        if window.is_key_pressed(Key::U, KeyRepeat::No) {
+            player.player.set_slots("");
+        }
+        if window.is_key_pressed(Key::T, KeyRepeat::No) {
+            player.player.set_slots(r#"{"my_text": { "p": { "k": [{ "s": { "f": "cartoon", "fc": [0, 1, 0, 1], "s": 50, "t": "overridden", "j": 0 }, "t": 0 }] } } }"#);
         }
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
             player.player.play();
+        }
+        if window.is_key_pressed(Key::S, KeyRepeat::No) {
+            player.player.stop();
         }
         if window.is_key_pressed(Key::Right, KeyRepeat::No) {
             player.next_marker();

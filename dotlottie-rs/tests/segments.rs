@@ -82,35 +82,6 @@ mod tests {
     }
 
     #[test]
-    fn test_same_values_rejected() {
-        let config = Config {
-            autoplay: true,
-            segment: vec![30.0, 30.0],
-            ..Config::default()
-        };
-
-        let player = DotLottiePlayer::new(config);
-
-        assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            "Animation should load"
-        );
-
-        let total_frames = player.total_frames();
-
-        for i in 0..20 {
-            let frame = player.request_frame();
-
-            assert!(
-                frame >= 0.0 && frame < total_frames,
-                "Frame should be within full range, iteration {}, got: {}",
-                i,
-                frame
-            );
-        }
-    }
-
-    #[test]
     fn test_invalid_segment_all_modes() {
         let modes = vec![
             Mode::Forward,

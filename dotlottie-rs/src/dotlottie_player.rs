@@ -204,7 +204,7 @@ impl DotLottieRuntime {
             }
         }
 
-        if self.config.segment.len() == 2 && Self::is_valid_segment(&self.config.segment) {
+        if Self::is_valid_segment(&self.config.segment) {
             return self.config.segment[0].max(0.0);
         }
 
@@ -218,7 +218,7 @@ impl DotLottieRuntime {
             }
         }
 
-        if self.config.segment.len() == 2 && Self::is_valid_segment(&self.config.segment) {
+        if Self::is_valid_segment(&self.config.segment) {
             return self.config.segment[1].min(self.total_frames() - 1.0);
         }
 
@@ -650,7 +650,7 @@ impl DotLottieRuntime {
         // directly updating fields that don't require special handling
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
 
-        if new_config.segment.is_empty() || Self::is_valid_segment(&new_config.segment) {
+        if  Self::is_valid_segment(&new_config.segment) {
             self.config.segment = new_config.segment;
         }
         self.config.autoplay = new_config.autoplay;

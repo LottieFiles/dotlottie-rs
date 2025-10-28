@@ -190,6 +190,13 @@ impl DotLottieRuntime {
             .collect()
     }
 
+    fn is_valid_segment(segment: &[f32]) -> bool {
+        if segment.len() != 2 {
+            return false;
+        }
+        segment[0] < segment[1]
+    }
+
     fn start_frame(&self) -> f32 {
         if !self.config.marker.is_empty() {
             if let Some((time, _)) = self.markers.get(&self.config.marker) {
@@ -197,7 +204,7 @@ impl DotLottieRuntime {
             }
         }
 
-        if self.config.segment.len() == 2 {
+        if self.config.segment.len() == 2 && Self::is_valid_segment(&self.config.segment) {
             return self.config.segment[0].max(0.0);
         }
 
@@ -211,7 +218,7 @@ impl DotLottieRuntime {
             }
         }
 
-        if self.config.segment.len() == 2 {
+        if self.config.segment.len() == 2 && Self::is_valid_segment(&self.config.segment) {
             return self.config.segment[1].min(self.total_frames() - 1.0);
         }
 
@@ -642,7 +649,10 @@ impl DotLottieRuntime {
 
         // directly updating fields that don't require special handling
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
-        self.config.segment = new_config.segment;
+
+        if new_config.segment.is_empty() || Self::is_valid_segment(&new_config.segment) {
+            self.config.segment = new_config.segment;
+        }
         self.config.autoplay = new_config.autoplay;
         self.config.animation_id = new_config.animation_id;
 

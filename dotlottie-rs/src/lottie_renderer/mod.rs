@@ -487,8 +487,6 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .set_slots(slots)
             .map_err(into_lottie::<R>)?;
 
-        self.renderer.update().map_err(into_lottie::<R>)?;
-
         self.updated = true;
 
         Ok(())

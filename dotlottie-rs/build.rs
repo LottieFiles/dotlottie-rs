@@ -278,18 +278,15 @@ extern "C" {
         } else {
             // Use bindgen for native targets (works correctly on macOS, Linux, etc.)
             let jerryscript_bindings = bindgen::Builder::default()
-                .header("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/include/jerryscript.h")
+                .header(
+                    "deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/include/jerryscript.h",
+                )
                 .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
                 .generate()
                 .expect("Failed to generate jerryscript bindings");
 
             jerryscript_bindings.write_to_file(out_dir.join("jerryscript_bindings.rs"))?;
         }
-
-        println!(
-            "cargo:warning=jerryscript_bindings path {:#?}",
-            out_dir.join("jerryscript_bindings.rs")
-        );
 
         Ok(())
     }

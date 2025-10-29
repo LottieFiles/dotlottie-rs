@@ -43,6 +43,12 @@ pub struct InputManager {
     default_values: HashMap<String, InputValue>,
 }
 
+impl Default for InputManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InputManager {
     pub fn new() -> Self {
         let inputs = HashMap::new();

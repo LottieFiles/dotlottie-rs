@@ -3,9 +3,6 @@ use std::{rc::Rc, sync::RwLock};
 
 use crate::{state_machine::StringBool, DotLottiePlayerContainer, Event};
 
-#[cfg(feature = "tvg-lottie-expressions")]
-use crate::jerryscript::Value;
-
 use super::{state_machine::StringNumber, StateMachineEngine};
 
 pub mod open_url_policy;

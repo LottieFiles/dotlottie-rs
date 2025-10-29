@@ -353,7 +353,7 @@ impl StateMachineEngine {
             // We need to collect input data before borrowing the context mutably
             let mut input_updates = Vec::new();
             for input_name in self.inputs.get_all_input_names() {
-                let var_name = format!("${}", input_name);
+                let var_name = format!("${input_name}");
 
                 if let Some(value) = self.inputs.get_numeric(&input_name) {
                     input_updates.push((var_name, InputUpdateType::Numeric(value)));

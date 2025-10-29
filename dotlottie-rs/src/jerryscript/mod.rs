@@ -12,6 +12,7 @@ use std::sync::Mutex;
 
 /// Errors that can occur when working with JerryScript
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum Error {
     /// JavaScript exception occurred
     Exception(String),
@@ -26,7 +27,7 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::Exception(msg) => write!(f, "JavaScript exception: {}", msg),
+            Error::Exception(msg) => write!(f, "JavaScript exception: {msg}"),
             Error::Utf8 => write!(f, "UTF-8 conversion error"),
             Error::NotInitialized => write!(f, "JerryScript engine not initialized"),
             Error::AlreadyInitialized => write!(f, "JerryScript engine already initialized"),
@@ -41,6 +42,7 @@ pub struct Value {
     handle: jerry_value_t,
 }
 
+#[allow(dead_code)]
 impl Value {
     /// Create a new Value from a raw jerry_value_t handle
     fn new(handle: jerry_value_t) -> Self {
@@ -189,6 +191,7 @@ pub struct Context {
 static ENGINE_INITIALIZED: AtomicBool = AtomicBool::new(false);
 static ENGINE_MUTEX: Mutex<()> = Mutex::new(());
 
+#[allow(dead_code)]
 impl Context {
     /// Initialize JerryScript engine with default flags
     pub fn new() -> Result<Self, Error> {
@@ -219,7 +222,7 @@ impl Context {
     }
 
     pub fn set_global_number(&self, name: &str, value: f32) -> Result<(), Error> {
-        let js_code = format!("var {} = {};", name, value);
+        let js_code = format!("var {name} = {value};");
         self.eval(&js_code)?;
         Ok(())
     }
@@ -227,7 +230,7 @@ impl Context {
     pub fn set_global_string(&self, name: &str, value: &str) -> Result<(), Error> {
         // Escape the string value to handle quotes and special characters
         let escaped_value = value.replace('\\', "\\\\").replace('"', "\\\"");
-        let js_code = format!("var {} = \"{}\";", name, escaped_value);
+        let js_code = format!("var {name} = \"{escaped_value}\";");
         self.eval(&js_code)?;
         Ok(())
     }

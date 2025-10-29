@@ -106,7 +106,7 @@ test:
 
 # Run clippy
 clippy:
-	cargo clippy --manifest-path dotlottie-rs/Cargo.toml --all-targets -- -D clippy::print_stdout
+	cargo clippy --manifest-path dotlottie-rs/Cargo.toml --all-targets --all-features -- -D clippy::print_stdout
 	cargo clippy --manifest-path dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
 
 # Native build variables

@@ -110,14 +110,14 @@ impl InputManager {
         }
     }
 
-    fn get_event(&self, key: &str) -> Option<String> {
+    pub fn get_event(&self, key: &str) -> Option<String> {
         match self.inputs.get(key) {
             Some(InputValue::Event(value)) => Some(value.clone()),
             _ => None,
         }
     }
 
-    fn set_initial_numeric(&mut self, key: &str, value: f32) {
+    pub fn set_initial_numeric(&mut self, key: &str, value: f32) {
         self.inputs
             .insert(key.to_string(), InputValue::Numeric(value));
 
@@ -141,7 +141,7 @@ impl InputManager {
             .insert(key.to_string(), InputValue::Boolean(value));
     }
 
-    fn set_initial_event(&mut self, key: &str, value: &str) {
+    pub fn set_initial_event(&mut self, key: &str, value: &str) {
         self.inputs
             .insert(key.to_string(), InputValue::Event(value.to_string()));
     }

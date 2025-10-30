@@ -24,6 +24,7 @@ pub fn transform_theme_to_lottie_slots(
             "Image" => handle_image_slot(rule),
             "Gradient" => handle_gradient_slot(rule),
             "Scalar" => handle_scalar_slot(rule),
+            "Text" => handle_text_slot(rule),
             _ => handle_other_slot_types(rule),
         };
 
@@ -228,6 +229,36 @@ fn handle_scalar_slot(rule: &Value) -> Value {
     result
 }
 
+fn handle_text_slot(rule: &Value) -> Value {
+    let mut result = json!({});
+
+    if let Some(keyframes) = rule["keyframes"].as_array() {
+        let lottie_keyframes: Vec<Value> = keyframes.iter().map(handle_text_keyframe).collect();
+
+        result = json!({
+            "k": lottie_keyframes
+        });
+    } else if let Some(value) = rule["value"].as_object() {
+        let text_document = handle_text_document(&json!(value));
+
+        // static value becomes a single keyframe at t: 0
+        result = json!({
+            "k": [
+                {
+                    "t": 0,
+                    "s": text_document
+                }
+            ]
+        });
+    }
+
+    if let Some(expression) = rule["expression"].as_str() {
+        result["x"] = json!(expression);
+    }
+
+    result
+}
+
 fn handle_scalar_keyframe(keyframe: &Value) -> Value {
     let mut frame_data = json!({});
 
@@ -326,4 +357,114 @@ fn handle_generic_keyframe(keyframe: &Value) -> Value {
     }
 
     frame_data
+}
+
+fn handle_text_keyframe(keyframe: &Value) -> Value {
+    let mut frame_data = json!({});
+
+    if let Some(frame) = keyframe["frame"].as_u64() {
+        frame_data["t"] = json!(frame);
+    }
+
+    if let Some(value) = keyframe["value"].as_object() {
+        frame_data["s"] = handle_text_document(&json!(value));
+    }
+
+    frame_data
+}
+
+fn handle_text_document(value: &Value) -> Value {
+    let mut text_doc = json!({});
+
+    if let Some(content) = value["text"].as_str() {
+        text_doc["t"] = json!(content);
+    }
+
+    if let Some(font) = value["fontFamily"].as_str() {
+        text_doc["f"] = json!(font);
+    }
+
+    if let Some(font_size) = value["fontSize"].as_f64() {
+        text_doc["s"] = json!(font_size);
+    }
+
+    if let Some(fill_color) = value["fillColor"].as_array() {
+        let color: Vec<f64> = fill_color.iter().filter_map(|v| v.as_f64()).collect();
+        if !color.is_empty() {
+            text_doc["fc"] = json!(color);
+        }
+    }
+
+    if let Some(stroke_color) = value["strokeColor"].as_array() {
+        let color: Vec<f64> = stroke_color.iter().filter_map(|v| v.as_f64()).collect();
+        if !color.is_empty() {
+            text_doc["sc"] = json!(color);
+        }
+    }
+
+    if let Some(stroke_width) = value["strokeWidth"].as_f64() {
+        text_doc["sw"] = json!(stroke_width);
+    }
+
+    if let Some(stroke_over_fill) = value["strokeOverFill"].as_bool() {
+        text_doc["of"] = json!(stroke_over_fill);
+    }
+
+    if let Some(line_height) = value["lineHeight"].as_f64() {
+        text_doc["lh"] = json!(line_height);
+    }
+
+    if let Some(tracking) = value["tracking"].as_f64() {
+        text_doc["tr"] = json!(tracking);
+    }
+
+    if let Some(justify) = value["justify"].as_str() {
+        text_doc["j"] = json!(justify_to_number(justify));
+    }
+
+    if let Some(caps) = value["textCaps"].as_str() {
+        text_doc["ca"] = json!(caps_to_number(caps));
+    }
+
+    if let Some(baseline_shift) = value["baselineShift"].as_f64() {
+        text_doc["ls"] = json!(baseline_shift);
+    }
+
+    if let Some(wrap_size) = value["wrapSize"].as_array() {
+        let size: Vec<f64> = wrap_size.iter().filter_map(|v| v.as_f64()).collect();
+        if size.len() == 2 {
+            text_doc["sz"] = json!(size);
+        }
+    }
+
+    if let Some(wrap_position) = value["wrapPosition"].as_array() {
+        let position: Vec<f64> = wrap_position.iter().filter_map(|v| v.as_f64()).collect();
+        if position.len() == 2 {
+            text_doc["ps"] = json!(position);
+        }
+    }
+
+    text_doc
+}
+
+fn justify_to_number(justify: &str) -> u8 {
+    match justify {
+        "Left" => 0,
+        "Right" => 1,
+        "Center" => 2,
+        "JustifyLastLeft" => 3,
+        "JustifyLastRight" => 4,
+        "JustifyLastCenter" => 5,
+        "JustifyLastFull" => 6,
+        _ => 0, // Default to Left
+    }
+}
+
+fn caps_to_number(caps: &str) -> u8 {
+    match caps {
+        "Regular" => 0,
+        "AllCaps" => 1,
+        "SmallCaps" => 2,
+        _ => 0, // Default to Regular
+    }
 }

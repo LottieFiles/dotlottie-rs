@@ -1,3 +1,17 @@
+## 0.1.51 (2025-10-31)
+
+### Features
+
+#### add experimental text slot handling for dotLottie themes (#407)
+
+### Fixes
+
+#### preserve theme_id across state machine transitions (#417)
+
+#### remove redundant renderer.update() call in set_slots() (#418)
+
+#### reject invalid segments where start >= end (#419)
+
 ## 0.1.50 (2025-10-27)
 
 ### Features

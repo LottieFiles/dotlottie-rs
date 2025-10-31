@@ -196,12 +196,97 @@ mod thorvg {
 
         cc_build.compile("thorvg");
 
-        let bindings = bindgen::Builder::default()
+        let thorvg_bindings = bindgen::Builder::default()
             .header("deps/thorvg/src/bindings/capi/thorvg_capi.h")
             .generate()
             .expect("Failed to generate bindings");
 
-        bindings.write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
+        thorvg_bindings
+            .write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
+
+        // Generate jerryscript bindings
+        //
+        // WASM Target Limitation:
+        // Bindgen with libclang fails to generate function declarations for wasm32-unknown-emscripten
+        // when parsing headers that use preprocessor-expanded `extern "C" {}` blocks.
+        //
+        // Root Cause Investigation:
+        // - Bindgen uses libclang to parse C headers and extract declarations
+        // - The JerryScript headers use `JERRY_C_API_BEGIN`/`END` macros that expand to `extern "C" {}`
+        // - When targeting wasm32-unknown-emscripten, libclang incorrectly reports linkage for functions
+        //   inside these macro-expanded blocks, causing bindgen to skip them entirely
+        // - This results in bindings with ~991 lines of types/constants but ZERO function declarations
+        //
+        // Attempted Fixes (all failed):
+        // 1. Adding `-x c` flag to force C mode → still 0 functions
+        // 2. Bypassing BINDGEN_EXTRA_CLANG_ARGS (emscripten sysroot) → still 0 functions
+        // 3. Using a `.c` wrapper file instead of `.h` → still 0 functions
+        //
+        // Conclusion:
+        // This is a fundamental limitation of bindgen/libclang when cross-compiling to WASM
+        // with emscripten. Manual bindings are the correct and recommended solution for this scenario.
+        //
+        // References:
+        // - Bindgen linkage detection: https://github.com/rust-lang/rust-bindgen/blob/main/bindgen/ir/function.rs#L743-748
+        // - Similar cross-compilation issues have been reported in the Rust ecosystem
+        //
+        if target_triple == "wasm32-unknown-emscripten" {
+            // Manual bindings for WASM target
+            // Only includes functions actually used by the codebase
+            let manual_bindings = r#"
+/* Manually generated bindings for wasm32-unknown-emscripten */
+/* Bindgen fails to extract functions from macro-expanded extern "C" blocks */
+
+pub type jerry_value_t = u32;
+pub type jerry_char_t = u8;
+pub type jerry_size_t = u32;
+pub type jerry_length_t = u32;
+pub type jerry_init_flag_t = u32;
+
+// Constants
+pub const JERRY_INIT_EMPTY: u32 = 0;
+pub const jerry_init_flag_t_JERRY_INIT_EMPTY: u32 = 0;
+pub const jerry_encoding_t_JERRY_ENCODING_UTF8: u32 = 0;
+
+// Function declarations matching JerryScript C API
+extern "C" {
+    pub fn jerry_init(flags: jerry_init_flag_t);
+    pub fn jerry_cleanup();
+    pub fn jerry_eval(source_p: *const jerry_char_t, source_size: usize, flags: u32) -> jerry_value_t;
+    pub fn jerry_undefined() -> jerry_value_t;
+    pub fn jerry_boolean(value: bool) -> jerry_value_t;
+    pub fn jerry_number(value: f32) -> jerry_value_t;
+    pub fn jerry_string_sz(str_p: *const ::std::os::raw::c_char) -> jerry_value_t;
+    pub fn jerry_value_is_undefined(value: jerry_value_t) -> bool;
+    pub fn jerry_value_is_number(value: jerry_value_t) -> bool;
+    pub fn jerry_value_is_string(value: jerry_value_t) -> bool;
+    pub fn jerry_value_is_object(value: jerry_value_t) -> bool;
+    pub fn jerry_value_is_exception(value: jerry_value_t) -> bool;
+    pub fn jerry_value_as_number(value: jerry_value_t) -> f32;
+    pub fn jerry_value_to_string(value: jerry_value_t) -> jerry_value_t;
+    pub fn jerry_string_length(value: jerry_value_t) -> jerry_length_t;
+    pub fn jerry_string_to_buffer(
+        value: jerry_value_t,
+        encoding: u32,
+        buffer_p: *mut jerry_char_t,
+        buffer_size: jerry_size_t,
+    ) -> jerry_size_t;
+    pub fn jerry_value_free(value: jerry_value_t);
+}
+"#;
+            fs::write(out_dir.join("jerryscript_bindings.rs"), manual_bindings)?;
+        } else {
+            // Use bindgen for native targets (works correctly on macOS, Linux, etc.)
+            let jerryscript_bindings = bindgen::Builder::default()
+                .header(
+                    "deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/include/jerryscript.h",
+                )
+                .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+                .generate()
+                .expect("Failed to generate jerryscript bindings");
+
+            jerryscript_bindings.write_to_file(out_dir.join("jerryscript_bindings.rs"))?;
+        }
 
         Ok(())
     }

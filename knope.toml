@@ -18,6 +18,10 @@ name = "dotlottie-player.android.tar.gz"
 path = "release/dotlottie-player.wasm.tar.gz"
 name = "dotlottie-player.wasm.tar.gz"
 
+[[package.assets]]
+path = "release/dotlottie-player.linux.tar.gz"
+name = "dotlottie-player.linux.tar.gz"
+
 [[workflows]]
 name = "prepare-release"
 

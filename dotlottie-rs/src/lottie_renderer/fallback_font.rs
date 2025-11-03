@@ -1,10 +1,15 @@
 // The font is embedded as compressed data and decompressed at runtime using LZSS algorithm.
 
+#[cfg(feature = "tvg-ttf")]
 const COMPRESSED_FONT_SIZE: usize = 9721;
+#[cfg(feature = "tvg-ttf")]
 const DEFAULT_FONT_SIZE: usize = 14852;
+#[cfg(feature = "tvg-ttf")]
 const COMPRESSED_FONT: &[u8] = include_bytes!("fallback_font.bin");
+#[cfg(feature = "tvg-ttf")]
 const DEFAULT_FONT_NAME: &str = "default";
 
+#[cfg(feature = "tvg-ttf")]
 pub fn font() -> (&'static str, Vec<u8>) {
     let mut output = vec![0u8; DEFAULT_FONT_SIZE];
     let mut input_pos = 0;

@@ -116,7 +116,7 @@ impl Renderer for TvgRenderer {
 
     fn register_font(font_name: &str, font_data: &[u8]) -> Result<(), Self::Error> {
         let font_name_cstr = CString::new(font_name).map_err(|_| TvgError::InvalidArgument)?;
-        let font_data_ptr = font_data.as_ptr() as *const i8;
+        let font_data_ptr = font_data.as_ptr() as *const ::std::os::raw::c_char;
         let font_size: usize = font_data.len();
         let mimetype_cstr = CString::new("ttf").map_err(|_| TvgError::InvalidArgument)?;
         let copy: bool = true;

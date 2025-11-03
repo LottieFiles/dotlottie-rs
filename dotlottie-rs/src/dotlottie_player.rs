@@ -650,7 +650,7 @@ impl DotLottieRuntime {
         // directly updating fields that don't require special handling
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
 
-        if  Self::is_valid_segment(&new_config.segment) {
+        if Self::is_valid_segment(&new_config.segment) {
             self.config.segment = new_config.segment;
         }
         self.config.autoplay = new_config.autoplay;
@@ -1087,6 +1087,10 @@ impl DotLottieRuntime {
             transform[8],
         ];
         self.renderer.set_transform(&transform_array).is_ok()
+    }
+
+    pub fn register_font(&mut self, font_name: &str, font_data: &[u8]) -> bool {
+        self.renderer.register_font(font_name, font_data).is_ok()
     }
 }
 
@@ -1636,6 +1640,13 @@ impl DotLottiePlayerContainer {
 
     pub fn set_transform(&self, transform: Vec<f32>) -> bool {
         self.runtime.write().unwrap().set_transform(transform)
+    }
+
+    pub fn register_font(&self, font_name: &str, font_data: &[u8]) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .register_font(font_name, font_data)
     }
 }
 
@@ -2462,6 +2473,13 @@ impl DotLottiePlayer {
 
     pub fn set_transform(&self, transform: Vec<f32>) -> bool {
         self.player.read().unwrap().set_transform(transform)
+    }
+
+    pub fn register_font(&self, font_name: &str, font_data: &[u8]) -> bool {
+        self.player
+            .read()
+            .unwrap()
+            .register_font(font_name, font_data)
     }
 }
 

@@ -14,13 +14,6 @@ val buffer(DotLottiePlayer &player)
     return val(typed_memory_view(buffer_len, reinterpret_cast<uint8_t *>(buffer_ptr)));
 }
 
-bool load_dotlottie_data(DotLottiePlayer &player, std::string data, uint32_t width, uint32_t height)
-{
-    std::vector<char> data_vector(data.begin(), data.end());
-
-    return player.load_dotlottie_data(data_vector, width, height);
-}
-
 struct ObserverCallbacks
 {
     std::function<void()> on_complete;
@@ -409,6 +402,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     register_vector<float>("VectorFloat");
     register_vector<std::string>("VectorString");
     register_vector<Marker>("VectorMarker");
+    register_vector<char>("VectorChar");
 
     register_optional<std::vector<float>>();
     register_optional<std::string>();
@@ -511,7 +505,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("isStopped", &DotLottiePlayer::is_stopped)
         .function("loadAnimationData", &DotLottiePlayer::load_animation_data)
         .function("loadAnimationPath", &DotLottiePlayer::load_animation_path)
-        .function("loadDotLottieData", &load_dotlottie_data)
+        .function("loadDotLottieData", &DotLottiePlayer::load_dotlottie_data)
         .function("loadAnimation", &DotLottiePlayer::load_animation)
         // .function("manifest", &DotLottiePlayer::manifest)
         .function("manifestString", &DotLottiePlayer::manifest_string)
@@ -580,5 +574,6 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("stateMachineUnsubscribe", &stateMachineUnsubscribe)
         .function("stateMachineInternalSubscribe", &stateMachineInternalSubscribe, allow_raw_pointers())
         .function("stateMachineInternalUnsubscribe", &stateMachineInternalUnsubscribe)
-        .function("stateMachineStatus", &DotLottiePlayer::state_machine_status);
+        .function("stateMachineStatus", &DotLottiePlayer::state_machine_status)
+        .function("registerFont", &DotLottiePlayer::register_font);
 }

@@ -115,6 +115,7 @@ RELEASE = release
 RUNTIME_FFI = dotlottie-ffi
 DOTLOTTIE_PLAYER = dotlottie-player
 RUNTIME_FFI_HEADER = dotlottie_player.h
+NATIVE_FEATURES = ffi,tvg,tvg-sw,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions
 
 DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR = $(RELEASE)/$(NATIVE)/$(DOTLOTTIE_PLAYER)
 DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR = $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)/include
@@ -132,7 +133,7 @@ endef
 # Build native libraries for the current platform
 native:
 	@echo "Building native libraries for current platform..."
-	cargo build --manifest-path $(RUNTIME_FFI)/Cargo.toml --release
+	cargo build --manifest-path $(RUNTIME_FFI)/Cargo.toml --features $(NATIVE_FEATURES) --release
 	$(NATIVE_RELEASE)
 	@echo "✓ Native build complete. Artifacts available in $(RELEASE)/$(NATIVE)/"
 

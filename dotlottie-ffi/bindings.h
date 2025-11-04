@@ -314,8 +314,7 @@ int32_t dotlottie_pause(struct DotLottiePlayer *ptr);
 
 int32_t dotlottie_play(struct DotLottiePlayer *ptr);
 
-int32_t dotlottie_register_font(struct DotLottiePlayer *ptr,
-                                const char *font_name,
+int32_t dotlottie_register_font(const char *font_name,
                                 const char *font_data,
                                 size_t font_data_size);
 

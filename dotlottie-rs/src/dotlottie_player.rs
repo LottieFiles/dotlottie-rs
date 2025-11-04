@@ -1088,10 +1088,6 @@ impl DotLottieRuntime {
         ];
         self.renderer.set_transform(&transform_array).is_ok()
     }
-
-    pub fn register_font(&mut self, font_name: &str, font_data: &[u8]) -> bool {
-        self.renderer.register_font(font_name, font_data).is_ok()
-    }
 }
 
 pub struct DotLottiePlayerContainer {
@@ -1640,13 +1636,6 @@ impl DotLottiePlayerContainer {
 
     pub fn set_transform(&self, transform: Vec<f32>) -> bool {
         self.runtime.write().unwrap().set_transform(transform)
-    }
-
-    pub fn register_font(&self, font_name: &str, font_data: &[u8]) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .register_font(font_name, font_data)
     }
 }
 
@@ -2473,13 +2462,6 @@ impl DotLottiePlayer {
 
     pub fn set_transform(&self, transform: Vec<f32>) -> bool {
         self.player.read().unwrap().set_transform(transform)
-    }
-
-    pub fn register_font(&self, font_name: &str, font_data: &[u8]) -> bool {
-        self.player
-            .read()
-            .unwrap()
-            .register_font(font_name, font_data)
     }
 }
 

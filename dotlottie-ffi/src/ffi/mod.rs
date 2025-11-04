@@ -883,17 +883,14 @@ pub unsafe extern "C" fn dotlottie_state_machine_internal_unsubscribe(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_register_font(
-    ptr: *mut DotLottiePlayer,
     font_name: *const c_char,
     font_data: *const c_char,
     font_data_size: usize,
 ) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        if let Ok(font_name) = DotLottieString::read(font_name) {
-            let font_data_slice = slice::from_raw_parts(font_data as *const u8, font_data_size);
-            to_exit_status(dotlottie_player.register_font(&font_name, font_data_slice))
-        } else {
-            DOTLOTTIE_INVALID_PARAMETER
-        }
-    })
+    if let Ok(font_name) = DotLottieString::read(font_name) {
+        let font_data_slice = slice::from_raw_parts(font_data as *const u8, font_data_size);
+        to_exit_status(dotlottie_rs::register_font(&font_name, font_data_slice))
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
 }

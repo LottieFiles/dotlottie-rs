@@ -197,7 +197,7 @@
         }
 
         const fontName = registerAs || fullFontName;
-        const loaded = dotLottiePlayer.registerFont(fontName, vectorChar);
+        const loaded = Module.registerFont(fontName, vectorChar);
 
         if (loaded) {
           console.log(`✓ Font "${fontName}" loaded successfully`);

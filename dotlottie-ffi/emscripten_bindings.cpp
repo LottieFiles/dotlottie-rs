@@ -460,6 +460,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 
     function("createDefaultConfig", &create_default_config);
     function("transformThemeToLottieSlots", &transform_theme_to_lottie_slots);
+    function("registerFont", &register_font);
 
     class_<Observer>("Observer")
         .smart_ptr<std::shared_ptr<Observer>>("Observer")
@@ -574,6 +575,5 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("stateMachineUnsubscribe", &stateMachineUnsubscribe)
         .function("stateMachineInternalSubscribe", &stateMachineInternalSubscribe, allow_raw_pointers())
         .function("stateMachineInternalUnsubscribe", &stateMachineInternalUnsubscribe)
-        .function("stateMachineStatus", &DotLottiePlayer::state_machine_status)
-        .function("registerFont", &DotLottiePlayer::register_font);
+        .function("stateMachineStatus", &DotLottiePlayer::state_machine_status);
 }

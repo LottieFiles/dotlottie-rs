@@ -3,6 +3,7 @@ namespace dotlottie_player {
     Config create_default_config();
     OpenUrlPolicy create_default_open_url_policy();
     string transform_theme_to_lottie_slots([ByRef] string theme_data, [ByRef] string animation_id);
+    boolean register_font([ByRef] string font_name, [ByRef] bytes font_data);
 };
 
 [Trait, WithForeign]
@@ -218,5 +219,4 @@ interface DotLottiePlayer {
     boolean state_machine_internal_unsubscribe([ByRef] StateMachineInternalObserver observer);
     boolean state_machine_override_current_state([ByRef] string state_name, boolean do_tick);
     string state_machine_status();
-    boolean register_font([ByRef] string font_name, [ByRef] bytes font_data);
 };

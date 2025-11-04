@@ -1,6 +1,10 @@
 use crate::Layout;
 
 mod renderer;
+
+#[cfg(feature = "tvg")]
+mod fallback_font;
+
 #[cfg(feature = "tvg")]
 mod thorvg;
 
@@ -96,6 +100,12 @@ pub trait LottieRenderer {
     fn get_transform(&self) -> Result<[f32; 9], LottieRendererError>;
 
     fn set_transform(&mut self, transform: &[f32; 9]) -> Result<(), LottieRendererError>;
+
+    fn register_font(
+        &mut self,
+        font_name: &str,
+        font_data: &[u8],
+    ) -> Result<(), LottieRendererError>;
 }
 
 impl dyn LottieRenderer {
@@ -304,6 +314,14 @@ impl<R: Renderer> LottieRendererImpl<R> {
 }
 
 impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
+    fn register_font(
+        &mut self,
+        font_name: &str,
+        font_data: &[u8],
+    ) -> Result<(), LottieRendererError> {
+        R::register_font(font_name, font_data).map_err(into_lottie::<R>)
+    }
+
     fn load_data(
         &mut self,
         data: &str,

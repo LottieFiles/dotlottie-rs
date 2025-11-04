@@ -20,3 +20,7 @@ pub fn create_default_config() -> Config {
 pub fn transform_theme_to_lottie_slots(theme_data: &str, animation_id: &str) -> String {
     dotlottie_rs::transform_theme_to_lottie_slots(theme_data, animation_id).unwrap_or_default()
 }
+
+pub fn register_font(font_name: &str, font_data: &[u8]) -> bool {
+    dotlottie_rs::register_font(font_name, font_data)
+}

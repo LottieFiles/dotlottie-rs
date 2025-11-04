@@ -169,26 +169,69 @@
 
     const observerHandle = dotLottiePlayer.subscribe(observer);
 
+
+    async function registerSystemFont(fullFontName, registerAs = null) {
+      try {
+        if (!window.queryLocalFonts) {
+          console.warn("Local Font Access API not available. Font:", fullFontName);
+          return false;
+        }
+
+        const fonts = await window.queryLocalFonts();
+
+        const fontData = fonts.find(f => f.fullName === fullFontName || f.family === fullFontName);
+
+        if (!fontData) {
+          console.warn(`Font "${fullFontName}" not found in system fonts`);
+          return false;
+        }
+
+        const fontBlob = await fontData.blob();
+
+        const buf = await fontBlob.arrayBuffer();
+
+        const byteArray = new Uint8Array(buf);
+        const vectorChar = new Module.VectorChar();
+        for (let i = 0; i < byteArray.length; i++) {
+          vectorChar.push_back(byteArray[i]);
+        }
+
+        const fontName = registerAs || fullFontName;
+        const loaded = Module.registerFont(fontName, vectorChar);
+
+        if (loaded) {
+          console.log(`✓ Font "${fontName}" loaded successfully`);
+        } else {
+          console.error(`✗ Failed to register font "${fontName}"`);
+        }
+
+        return loaded;
+      } catch (error) {
+        console.error(`Error loading system font "${fullFontName}":`, error);
+        return false;
+      }
+    }
+
+    await registerSystemFont("Arial", "Arial");
+    await registerSystemFont("Impact", "Impact");
+
     const data = await fetch(
+      "./examples/demo-player/src/text.json"
       // "./examples/demo-player/src/optimized.lottie"
       // "./examples/demo-player/src/v2/gradient.json"
-      "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie"
+      // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie"
       // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
       // "./examples/demo-player/src/v2/bouncy-ball-lot.lottie"
-    ).then((res) => res.arrayBuffer());
+    ).then((res) => res.text());
 
     const canvas = document.querySelector("canvas");
 
-    // const loaded = dotLottiePlayer.loadAnimationData(
-    //   data,
-    //   canvas.width,
-    //   canvas.height
-    // );
-    const loaded = dotLottiePlayer.loadDotLottieData(
+    const loaded = dotLottiePlayer.loadAnimationData(
       data,
       canvas.width,
       canvas.height
     );
+
 
     // const manifest = JSON.parse(dotLottiePlayer.manifestString());
 
@@ -456,75 +499,17 @@
         const slots = Module.transformThemeToLottieSlots(
           JSON.stringify({
             rules: [
-            {
-                id: "gradient_fill",
-                type: "Gradient",
-                keyframes: [
-                  {
-                    frame: 0,
-                    value: [
-                      {
-                        color: [1, 0, 1], // RGB (initial color)
-                        offset: 0,
-                      },
-                      {
-                        color: [0, 1, 0, 0.2], // RGBA (green with 20% opacity)
-                        offset: 1,
-                      },
-                    ],
-                    inTangent: {
-                      x: 0.2,
-                      y: 0.2,
-                    },
-                    outTangent: {
-                      x: 0.8,
-                      y: 0.8,
-                    },
-                  },
-                  {
-                    frame: 30,
-                    value: [
-                      {
-                        color: [1, 1, 0], // Yellow RGB
-                        offset: 0,
-                      },
-                      {
-                        color: [0, 0, 1, 0.5], // Blue with 50% opacity
-                        offset: 1,
-                      },
-                    ],
-                    inTangent: {
-                      x: 0.4,
-                      y: 0.4,
-                    },
-                    outTangent: {
-                      x: 0.6,
-                      y: 0.6,
-                    },
-                  },
-                  {
-                    frame: 60,
-                    value: [
-                      {
-                        color: [0, 1, 1, 0.8], // Cyan with 80% opacity
-                        offset: 0,
-                      },
-                      {
-                        color: [1, 0, 0], // Red RGB (fully opaque)
-                        offset: 1,
-                      },
-                    ],
-                    inTangent: {
-                      x: 0.3,
-                      y: 0.3,
-                    },
-                    outTangent: {
-                      x: 0.7,
-                      y: 0.7,
-                    },
-                  },
-                ],
-              },
+              {
+                id: "my_text",
+                type: "Text",
+                value: {
+                  text: "Updated Text!",
+                  fontFamily: "Impact",
+                  fillColor: [0, 0, 1],
+                  fontSize: 60,
+                  justify: "Left",
+                }
+              }
             ],
           }),
           ""

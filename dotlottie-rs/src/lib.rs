@@ -16,3 +16,9 @@ pub use state_machine_engine::events::*;
 pub use state_machine_engine::security::*;
 pub use state_machine_engine::*;
 pub use theming::*;
+
+#[cfg(feature = "tvg")]
+pub fn register_font(font_name: &str, font_data: &[u8]) -> bool {
+    use lottie_renderer::Renderer;
+    crate::TvgRenderer::register_font(font_name, font_data).is_ok()
+}

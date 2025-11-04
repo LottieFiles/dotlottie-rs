@@ -3,6 +3,7 @@ namespace dotlottie_player {
     Config create_default_config();
     OpenUrlPolicy create_default_open_url_policy();
     string transform_theme_to_lottie_slots([ByRef] string theme_data, [ByRef] string animation_id);
+    boolean register_font([ByRef] string font_name, [ByRef] bytes font_data);
 };
 
 [Trait, WithForeign]

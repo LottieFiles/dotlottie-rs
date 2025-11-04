@@ -102,4 +102,6 @@ pub trait Renderer: Sized + 'static {
     fn sync(&mut self) -> Result<(), Self::Error>;
 
     fn update(&mut self) -> Result<(), Self::Error>;
+
+    fn register_font(font_name: &str, font_data: &[u8]) -> Result<(), Self::Error>;
 }

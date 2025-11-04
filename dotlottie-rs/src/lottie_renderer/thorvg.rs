@@ -7,6 +7,9 @@ use std::{
     result::Result,
 };
 
+#[cfg(feature = "tvg-ttf")]
+use crate::lottie_renderer::fallback_font;
+
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
 
 #[expect(non_upper_case_globals)]
@@ -74,6 +77,9 @@ pub enum TvgEngine {
 
 static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
 
+#[cfg(feature = "tvg-ttf")]
+static FONT_LOADED: std::sync::Once = std::sync::Once::new();
+
 pub struct TvgRenderer {
     raw_canvas: tvg::Tvg_Canvas,
 }
@@ -84,6 +90,13 @@ impl TvgRenderer {
 
         if *count == 0 {
             unsafe { tvg::tvg_engine_init(threads).into_result() }.unwrap();
+
+            #[cfg(feature = "tvg-ttf")]
+            FONT_LOADED.call_once(|| {
+                let (font_name, font_data) = fallback_font::font();
+
+                Self::register_font(font_name, &font_data).unwrap();
+            });
         }
 
         *count += 1;
@@ -100,6 +113,25 @@ impl Renderer for TvgRenderer {
     type Animation = TvgAnimation;
     type Shape = TvgShape;
     type Error = TvgError;
+
+    fn register_font(font_name: &str, font_data: &[u8]) -> Result<(), Self::Error> {
+        let font_name_cstr = CString::new(font_name).map_err(|_| TvgError::InvalidArgument)?;
+        let font_data_ptr = font_data.as_ptr() as *const ::std::os::raw::c_char;
+        let font_size: usize = font_data.len();
+        let mimetype_cstr = CString::new("ttf").map_err(|_| TvgError::InvalidArgument)?;
+        let copy: bool = true;
+
+        unsafe {
+            tvg::tvg_font_load_data(
+                font_name_cstr.as_ptr(),
+                font_data_ptr,
+                font_size as u32,
+                mimetype_cstr.as_ptr(),
+                copy,
+            )
+        }
+        .into_result()
+    }
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), TvgError> {
         unsafe { tvg::tvg_canvas_set_viewport(self.raw_canvas, x, y, w, h).into_result() }

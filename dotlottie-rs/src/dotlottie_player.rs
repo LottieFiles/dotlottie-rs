@@ -650,7 +650,7 @@ impl DotLottieRuntime {
         // directly updating fields that don't require special handling
         self.config.use_frame_interpolation = new_config.use_frame_interpolation;
 
-        if  Self::is_valid_segment(&new_config.segment) {
+        if Self::is_valid_segment(&new_config.segment) {
             self.config.segment = new_config.segment;
         }
         self.config.autoplay = new_config.autoplay;

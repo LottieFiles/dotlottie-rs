@@ -31,17 +31,12 @@ mod tests {
 
             assert!(
                 frame.is_finite(),
-                "Frame should be finite at iteration {}, got: {}",
-                i,
-                frame
+                "Frame should be finite at iteration {i}, got: {frame}"
             );
 
             assert!(
                 frame >= 0.0 && frame < total_frames,
-                "Frame should be within full animation range [0, {}), iteration {}, got: {}",
-                total_frames,
-                i,
-                frame
+                "Frame should be within full animation range [0, {total_frames}), iteration {i}, got: {frame}"
             );
         }
     }
@@ -68,15 +63,12 @@ mod tests {
 
             assert!(
                 frame.is_finite(),
-                "Frame should be finite at iteration {}",
-                i
+                "Frame should be finite at iteration {i}"
             );
 
             assert!(
                 frame >= 0.0 && frame < total_frames,
-                "Frame should be within full range, iteration {}, got: {}",
-                i,
-                frame
+                "Frame should be within full range, iteration {i}, got: {frame}"
             );
         }
     }
@@ -102,8 +94,7 @@ mod tests {
 
             assert!(
                 player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-                "Animation should load for mode {:?}",
-                mode
+                "Animation should load for mode {mode:?}"
             );
 
             let total_frames = player.total_frames();
@@ -113,18 +104,12 @@ mod tests {
 
                 assert!(
                     frame.is_finite(),
-                    "Frame should be finite for mode {:?}, iteration {}, got: {}",
-                    mode,
-                    i,
-                    frame
+                    "Frame should be finite for mode {mode:?}, iteration {i}, got: {frame}"
                 );
 
                 assert!(
                     frame >= 0.0 && frame < total_frames,
-                    "Frame should be in valid range for mode {:?}, iteration {}, got: {}",
-                    mode,
-                    i,
-                    frame
+                    "Frame should be in valid range for mode {mode:?}, iteration {i}, got: {frame}"
                 );
             }
         }
@@ -152,16 +137,12 @@ mod tests {
 
             assert!(
                 frame.is_finite(),
-                "Frame should be finite, iteration {}, got: {}",
-                i,
-                frame
+                "Frame should be finite, iteration {i}, got: {frame}"
             );
 
             assert!(
                 frame >= 0.0 && frame < total_frames,
-                "Frame should be in valid range, iteration {}, got: {}",
-                i,
-                frame
+                "Frame should be in valid range, iteration {i}, got: {frame}"
             );
         }
     }

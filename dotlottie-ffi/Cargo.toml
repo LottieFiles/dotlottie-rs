@@ -20,7 +20,7 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [features]
-default = ["tvg", "tvg-sw", "ffi"]
+default = ["tvg", "tvg-sw", "tvg-partial", "ffi"]
 tvg = ["dotlottie-rs/tvg"]
 tvg-sw = ["dotlottie-rs/tvg-sw"]
 tvg-webp = ["dotlottie-rs/tvg-webp"]
@@ -30,6 +30,7 @@ tvg-ttf = ["dotlottie-rs/tvg-ttf"]
 tvg-threads = ["dotlottie-rs/tvg-threads"]
 tvg-lottie-expressions = ["dotlottie-rs/tvg-lottie-expressions"]
 tvg-simd = ["dotlottie-rs/tvg-simd"]
+tvg-partial = ["dotlottie-rs/tvg-partial"]
 tvg-log = ["dotlottie-rs/tvg-log"]
 ffi = []
 uniffi = []

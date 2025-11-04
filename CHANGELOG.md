@@ -1,3 +1,21 @@
+## 0.1.51 (2025-11-04)
+
+### Features
+
+#### add experimental text slot handling for dotLottie themes (#407)
+
+#### add registerFont API for custom TTF font loading (#422)
+
+### Fixes
+
+#### preserve theme_id across state machine transitions (#417)
+
+#### remove redundant renderer.update() call in set_slots() (#418)
+
+#### reject invalid segments where start >= end (#419)
+
+#### add Linux artifact to release assets in knope.toml (#421)
+
 ## 0.1.50 (2025-10-27)
 
 ### Features

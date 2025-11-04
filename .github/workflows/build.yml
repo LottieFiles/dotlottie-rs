@@ -43,6 +43,11 @@ on:
         description: "Enable Lottie Expressions"
         required: false
         default: true
+      feature_partial_rendering:
+        type: boolean
+        description: "Enable Partial Rendering (for thorvg)"
+        required: false
+        default: false
       feature_simd:
         type: boolean
         description: "Enable SIMD"
@@ -135,6 +140,10 @@ jobs:
             features="${features}tvg-simd,"
           fi
 
+          if [ "${{ github.event.inputs.feature_partial_rendering }}" = "true" ]; then
+            features="${features}tvg-partial,"
+          fi
+
           # Remove trailing comma if features exist
           if [ -n "$features" ]; then
             features="${features%,}"
@@ -216,6 +225,10 @@ jobs:
             features="${features}tvg-simd,"
           fi
 
+          if [ "${{ github.event.inputs.feature_partial_rendering }}" = "true" ]; then
+            features="${features}tvg-partial,"
+          fi
+
           # Remove trailing comma if features exist
           if [ -n "$features" ]; then
             features="${features%,}"
@@ -284,6 +297,10 @@ jobs:
 
           if [ "${{ github.event.inputs.feature_expressions }}" = "true" ]; then
             features="${features}tvg-lottie-expressions,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_partial_rendering }}" = "true" ]; then
+            features="${features}tvg-partial,"
           fi
 
           # Remove trailing comma if features exist
@@ -360,6 +377,10 @@ jobs:
 
           if [ "${{ github.event.inputs.feature_simd }}" = "true" ]; then
             features="${features}tvg-simd,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_partial_rendering }}" = "true" ]; then
+            features="${features}tvg-partial,"
           fi
 
           # Remove trailing comma if features exist

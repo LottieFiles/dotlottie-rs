@@ -87,6 +87,10 @@ mod thorvg {
             writeln!(thorvg_config_h, "#define THORVG_THREAD_SUPPORT")?;
         }
 
+        if cfg!(feature = "tvg-partial") {
+            writeln!(thorvg_config_h, "#define THORVG_PARTIAL_RENDER_SUPPORT")?;
+        }
+
         let tvg_sw_enabled = cfg!(feature = "tvg-sw");
         if tvg_sw_enabled {
             writeln!(thorvg_config_h, "#define THORVG_SW_RASTER_SUPPORT")?;

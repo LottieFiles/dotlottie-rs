@@ -363,30 +363,32 @@ impl GlobalInputsEngine {
             let binding_id = if let Value::String(s) = &rule.value {
                 s.strip_prefix('@').map(|stripped| stripped.to_string())
             } else if let Value::Object(s) = &rule.value {
-                // The value is an object
-                // This is the case for text and images
-                // Try to parse as ImageRule, then extract reference if the ImageRule is a reference type.
-                if let Ok(image_rule) =
-                    serde_json::from_value::<ImageRule>(Value::Object(s.clone()))
-                {
-                    if let Some(id) = image_rule.id {
-                        id.strip_prefix('@').map(|reference| reference.to_string())
-                    } else {
-                        return Err(GlobalInputsEngineError::ParseError(
-                            "Failed to replace references".to_string(),
-                        ));
+                // Use the rule_type to determine what to parse
+                match rule.rule_type.as_str() {
+                    "Image" => {
+                        if let Ok(image_rule) =
+                            serde_json::from_value::<ImageRule>(Value::Object(s.clone()))
+                        {
+                            image_rule
+                                .id
+                                .and_then(|id| id.strip_prefix('@').map(|s| s.to_string()))
+                        } else {
+                            None
+                        }
                     }
-                } else if let Ok(text_rule) =
-                    // todo!!
-                    serde_json::from_value::<TextRule>(Value::Object(s.clone()))
-                {
-                    return Err(GlobalInputsEngineError::ParseError(
-                        "Failed to replace references".to_string(),
-                    ));
-                } else {
-                    return Err(GlobalInputsEngineError::ParseError(
-                        "Failed to replace references".to_string(),
-                    ));
+                    "Text" => {
+                        if let Ok(text_rule) =
+                            serde_json::from_value::<TextRule>(Value::Object(s.clone()))
+                        {
+                            // todo: Not necessarily JUST the text that can replaced
+                            text_rule
+                                .text
+                                .and_then(|id| id.strip_prefix('@').map(|s| s.to_string()))
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
                 }
             } else {
                 None
@@ -394,7 +396,15 @@ impl GlobalInputsEngine {
 
             if let Some(binding_id) = binding_id {
                 if let Some(binding) = self.global_inputs_container.get(&binding_id) {
-                    rule.value = binding.r#type.to_json_value();
+                    // For objects, update only the specific field, not the entire value
+                    if let Value::Object(obj) = &mut rule.value {
+                        // Update just the "text" field within the object
+                        obj.insert("text".to_string(), binding.r#type.to_json_value());
+                    } else {
+                        // For simple string references, replace the entire value
+                        rule.value = binding.r#type.to_json_value();
+                    }
+
                     if let Some(theme_id) = theme_id {
                         self.add_new_theme_dependancy(theme_id, &binding_id);
                     }

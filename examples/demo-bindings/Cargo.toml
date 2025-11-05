@@ -25,3 +25,7 @@ path = "src/bin/star-rating/main.rs"
 [[bin]]
 name = "ball-gradient"
 path = "src/bin/ball-gradient/main.rs"
+
+[[bin]]
+name = "text-input"
+path = "src/bin/text-input/main.rs"

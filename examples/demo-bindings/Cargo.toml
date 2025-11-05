@@ -17,3 +17,11 @@ path = "src/bin/magic-wand/main.rs"
 [[bin]]
 name = "physics"
 path = "src/bin/physics/main.rs"
+
+[[bin]]
+name = "star-rating"
+path = "src/bin/star-rating/main.rs"
+
+[[bin]]
+name = "ball-gradient"
+path = "src/bin/ball-gradient/main.rs"

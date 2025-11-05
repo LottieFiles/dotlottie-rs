@@ -233,7 +233,7 @@ impl DotLottieRuntime {
         self.renderer.intersect(x, y, layer_name).unwrap_or(false)
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
         let bbox = self.renderer.get_layer_bounds(layer_name);
 
         match bbox {
@@ -1780,7 +1780,7 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().markers()
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
         self.runtime.read().unwrap().get_layer_bounds(layer_name)
     }
 
@@ -2114,7 +2114,7 @@ impl DotLottiePlayer {
         self.player.read().unwrap().intersect(x, y, layer_name)
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 

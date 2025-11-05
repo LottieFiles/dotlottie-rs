@@ -205,13 +205,7 @@ macro_rules! impl_mutator {
                     GlobalInputValue::$variant { value } => {
                         *value = new_value;
 
-                        if self.theme_dependencies.contains_key(global_input_name) {
-                            println!(
-                                ">> Binding key: {} modified, is linked to {:?} themes",
-                                global_input_name,
-                                self.theme_dependencies.get(global_input_name)
-                            );
-                        }
+                        if self.theme_dependencies.contains_key(global_input_name) {}
 
                         self.was_updated = true;
                         println!("[Bindings] Updated: {} to {:?}", global_input_name, *value);
@@ -240,13 +234,7 @@ macro_rules! impl_mutator {
                     GlobalInputValue::$variant { value } => {
                         *value = new_value.clone();
 
-                        if self.theme_dependencies.contains_key(global_input_name) {
-                            println!(
-                                ">> Binding key: {} modified, is linked to {:?} themes",
-                                global_input_name,
-                                self.theme_dependencies.get(global_input_name)
-                            );
-                        }
+                        if self.theme_dependencies.contains_key(global_input_name) {}
                         self.was_updated = true;
 
                         println!("[Bindings] Updated: {} to {:?}", global_input_name, *value);
@@ -276,13 +264,7 @@ macro_rules! impl_mutator {
                     GlobalInputValue::$variant { value } => {
                         *value = new_value.to_string();
 
-                        if self.theme_dependencies.contains_key(global_input_name) {
-                            println!(
-                                ">> Binding key: {} modified, is linked to {:?} themes",
-                                global_input_name,
-                                self.theme_dependencies.get(global_input_name)
-                            );
-                        }
+                        if self.theme_dependencies.contains_key(global_input_name) {}
                         self.was_updated = true;
 
                         println!("[Bindings] Updated: {} to {}", global_input_name, *value);
@@ -368,7 +350,6 @@ impl GlobalInputsEngine {
             .or_insert_with(Vec::new);
 
         if !items.contains(&theme_id.to_string()) {
-            println!(">> Added theme dep: {} <> {}", binding_id, theme_id);
             items.push(theme_id.to_string());
         }
     }
@@ -408,27 +389,19 @@ impl GlobalInputsEngine {
                     ));
                 }
             } else {
-                return Err(GlobalInputsEngineError::ParseError(
-                    "Failed to replace references".to_string(),
-                ));
+                None
             };
 
             if let Some(binding_id) = binding_id {
                 if let Some(binding) = self.global_inputs_container.get(&binding_id) {
                     rule.value = binding.r#type.to_json_value();
-                    println!(">> Binding value: {:?}", rule.value);
-
                     if let Some(theme_id) = theme_id {
                         self.add_new_theme_dependancy(theme_id, &binding_id);
                     }
-
-                    return Ok(());
                 }
-            } else {
-                println!("binding not found");
-                return Err(GlobalInputsEngineError::BindingNotFound("".to_string()));
             }
         }
+
         Ok(())
     }
 

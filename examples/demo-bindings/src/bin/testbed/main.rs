@@ -95,17 +95,17 @@ impl Player {
 // pub const BINDING_FILE_NAME: &str = "inputs";
 // pub const THEMING_FILE_NAME: &str = "theme";
 
-// pub const ANIMATION_NAME: &str = "test_inputs_ball_gradient";
-// pub const BINDING_FILE_NAME: &str = "inputs";
-// pub const THEMING_FILE_NAME: &str = "theme";
+pub const ANIMATION_NAME: &str = "test_inputs_ball_gradient";
+pub const BINDING_FILE_NAME: &str = "inputs";
+pub const THEMING_FILE_NAME: &str = "theme";
 
 // pub const ANIMATION_NAME: &str = "test_inputs_ball_color";
 // pub const BINDING_FILE_NAME: &str = "inputs";
 // pub const THEMING_FILE_NAME: &str = "theme";
 
-pub const ANIMATION_NAME: &str = "test_inputs_ball_vector";
-pub const BINDING_FILE_NAME: &str = "inputs";
-pub const THEMING_FILE_NAME: &str = "theme";
+// pub const ANIMATION_NAME: &str = "test_inputs_ball_vector";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
 
 // pub const ANIMATION_NAME: &str = "test_ball_gradient";
 // pub const ANIMATION_NAME: &str = "test_inputs_text";

@@ -254,7 +254,7 @@ fn main() {
         binding_file_path
     ));
 
-    let parse = player.player.bindings_load_data(&binding_file_data);
+    let parse = player.player.global_inputs_load_data(&binding_file_data);
     let theme = player.player.set_theme("squares_theme");
 
     println!("Parse succeeded: {}", parse);
@@ -318,21 +318,21 @@ fn main() {
         // Update Lottie animation with physics positions
         player
             .player
-            .mutate_vector_binding("ball", &[lottie_ball_x.into(), lottie_ball_y.into()]);
+            .global_inputs_set_vector("ball", &[lottie_ball_x.into(), lottie_ball_y.into()]);
         player
             .player
-            .mutate_vector_binding("sq_l", &[lottie_left_x.into(), lottie_left_y.into()]);
+            .global_inputs_set_vector("sq_l", &[lottie_left_x.into(), lottie_left_y.into()]);
         player
             .player
-            .mutate_vector_binding("sq_r", &[lottie_right_x.into(), lottie_right_y.into()]);
+            .global_inputs_set_vector("sq_r", &[lottie_right_x.into(), lottie_right_y.into()]);
 
         // Update rotations
         player
             .player
-            .mutate_scalar_binding("sq_l_rot", left_rot_deg.into());
+            .global_inputs_set_scalar("sq_l_rot", left_rot_deg.into());
         player
             .player
-            .mutate_scalar_binding("sq_r_rot", right_rot_deg.into());
+            .global_inputs_set_scalar("sq_r_rot", right_rot_deg.into());
 
         player.update();
         window

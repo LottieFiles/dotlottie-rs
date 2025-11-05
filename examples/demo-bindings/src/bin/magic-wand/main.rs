@@ -165,6 +165,9 @@ fn main() {
             player
                 .player
                 .global_inputs_set_vector("wand_pos", &[mx.into(), my.into()]);
+            // player
+            //     .player
+            //     .global_inputs_set_vector("wand_pos", &[mx.into(), my.into()]);
         }
 
         player.update();

@@ -398,8 +398,30 @@ impl GlobalInputsEngine {
                 if let Some(binding) = self.global_inputs_container.get(&binding_id) {
                     // For objects, update only the specific field, not the entire value
                     if let Value::Object(obj) = &mut rule.value {
-                        // Update just the "text" field within the object
-                        obj.insert("text".to_string(), binding.r#type.to_json_value());
+                        match rule.rule_type.as_str() {
+                            "Image" => {
+                                if let Value::Object(binding_obj) = binding.r#type.to_json_value() {
+                                    // Insert/update fields from the binding, preserving other fields
+                                    for (key, value) in binding_obj {
+                                        obj.insert(key, value);
+                                    }
+                                } else {
+                                    obj.insert("id".to_string(), binding.r#type.to_json_value());
+                                }
+                            }
+                            "Text" => {
+                                if let Value::Object(binding_obj) = binding.r#type.to_json_value() {
+                                    // Insert/update ALL fields from the binding, preserving other fields
+                                    for (key, value) in binding_obj {
+                                        obj.insert(key, value);
+                                    }
+                                } else {
+                                    // Fallback if it's just a simple string value
+                                    obj.insert("text".to_string(), binding.r#type.to_json_value());
+                                }
+                            }
+                            _ => {}
+                        }
                     } else {
                         // For simple string references, replace the entire value
                         rule.value = binding.r#type.to_json_value();

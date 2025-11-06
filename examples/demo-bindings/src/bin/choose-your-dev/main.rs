@@ -1,4 +1,4 @@
-use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::time::Instant;
 
@@ -90,10 +90,10 @@ impl Player {
                 // Only update if there's still text remaining, or use a space as placeholder
                 if !self.text_input.is_empty() {
                     self.player
-                        .global_inputs_set_string("text_input", &self.text_input);
+                        .global_inputs_set_string("prompt", &self.text_input);
                 } else {
                     // Use a single space instead of empty string to avoid the crash
-                    self.player.global_inputs_set_string("text_input", " ");
+                    self.player.global_inputs_set_string("prompt", " ");
                 }
                 None
             }
@@ -104,12 +104,12 @@ impl Player {
             self.text_input.push(c);
             println!("Current text: '{}'", self.text_input);
             self.player
-                .global_inputs_set_string("text_input", &self.text_input);
+                .global_inputs_set_string("prompt", &self.text_input);
         }
     }
 }
 
-pub const ANIMATION_NAME: &str = "test_inputs_text";
+pub const ANIMATION_NAME: &str = "choose_your_dev";
 pub const BINDING_FILE_NAME: &str = "inputs";
 pub const THEMING_FILE_NAME: &str = "theme";
 // pub const SM_FILE_NAME: &str = "starRating";
@@ -123,7 +123,10 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = Player::new(&format!("./src/bin/text-input/{}.lottie", ANIMATION_NAME));
+    let mut player = Player::new(&format!(
+        "./src/bin/choose-your-dev/{}.lottie",
+        ANIMATION_NAME
+    ));
 
     // let binding_file_path = format!("./src/bin/text-input/{}.json", BINDING_FILE_NAME);
     // let binding_file_data = std::fs::read_to_string(&binding_file_path).expect(&format!(

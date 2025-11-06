@@ -29,3 +29,11 @@ path = "src/bin/ball-gradient/main.rs"
 [[bin]]
 name = "text-input"
 path = "src/bin/text-input/main.rs"
+
+[[bin]]
+name = "image-replacement"
+path = "src/bin/image-replacement/main.rs"
+
+[[bin]]
+name = "choose-your-dev"
+path = "src/bin/choose-your-dev/main.rs"

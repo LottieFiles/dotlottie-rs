@@ -79,47 +79,49 @@ impl InputTrait for InputManager {
     // Resolve a string input either from the State machine inputs or the data bindings
     // Return value: If neither the input or data bind was found, returns None
     fn resolve_string(&self, key: &str) -> Option<String> {
-        match key.strip_prefix('@') {
-            Some(binding_name) => self
-                .player
+        if let Some(binding_name) = key.strip_prefix('@') {
+            self.player
                 .as_ref()
                 .and_then(|p| p.try_read().ok())
-                .and_then(|p| p.global_inputs_get_text(binding_name)),
-            None => key
-                .strip_prefix('$')
-                .and_then(|binding_name| self.get_string(binding_name)),
+                .and_then(|p| p.global_inputs_get_text(binding_name))
+        } else if let Some(binding_name) = key.strip_prefix('$') {
+            self.get_string(binding_name)
+        } else {
+            Some(key.to_string())
         }
     }
 
     // Resolve a boolean input either from the State machine inputs or the data bindings
     // Return value: If neither the input or data bind was found, returns None
     fn resolve_boolean(&self, key: &str) -> Option<bool> {
-        match key.strip_prefix('@') {
-            Some(binding_name) => self
-                .player
+        if let Some(binding_name) = key.strip_prefix('@') {
+            self.player
                 .as_ref()
                 .and_then(|p| p.try_read().ok())
-                .and_then(|p| p.global_inputs_get_boolean(binding_name)),
-            None => key
-                .strip_prefix('$')
-                .and_then(|binding_name| self.get_boolean(binding_name)),
+                .and_then(|p| p.global_inputs_get_boolean(binding_name))
+        } else if let Some(binding_name) = key.strip_prefix('$') {
+            self.get_boolean(binding_name)
+        } else {
+            // For boolean, you might want to parse the key as a boolean literal
+            // or return None if it doesn't make sense as a boolean
+            key.parse::<bool>().ok()
         }
     }
 
     // Resolve a numeric input either from the State machine inputs or the data bindings
     // Return value: If neither the input or data bind was found, returns None
     fn resolve_numeric(&self, key: &str) -> Option<f32> {
-        match key.strip_prefix('@') {
-            Some(binding_name) => self
-                .player
+        if let Some(binding_name) = key.strip_prefix('@') {
+            self.player
                 .as_ref()
                 .and_then(|p| p.try_read().ok())
                 .and_then(|p| p.global_inputs_get_scalar(binding_name))
-                .map(|v| v as f32),
-            None => key
-                .strip_prefix('$')
-                .and_then(|binding_name| self.get_numeric(binding_name))
-                .map(|v| v as f32),
+                .map(|v| v as f32)
+        } else if let Some(binding_name) = key.strip_prefix('$') {
+            self.get_numeric(binding_name).map(|v| v as f32)
+        } else {
+            // Parse the key as a numeric literal
+            key.parse::<f32>().ok()
         }
     }
 

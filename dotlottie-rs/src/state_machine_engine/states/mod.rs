@@ -1,5 +1,3 @@
-use std::{rc::Rc, sync::RwLock};
-
 use serde::Deserialize;
 
 use crate::{dotlottie_player::Mode, Config, DotLottiePlayerContainer};
@@ -17,12 +15,12 @@ pub trait StateTrait {
     fn enter(
         &self,
         engine: &mut StateMachineEngine,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        player: &mut DotLottiePlayerContainer,
     ) -> Result<(), StateMachineActionError>;
     fn exit(
         &self,
         engine: &mut StateMachineEngine,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        player: &mut DotLottiePlayerContainer,
     ) -> Result<(), StateMachineActionError>;
     fn animation(&self) -> &str;
     fn transitions(&self) -> &Vec<Transition>;
@@ -64,7 +62,7 @@ impl StateTrait for State {
     fn enter(
         &self,
         engine: &mut StateMachineEngine,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        player: &mut DotLottiePlayerContainer,
     ) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState {
@@ -98,51 +96,49 @@ impl StateTrait for State {
                     defined_segment = new_segment.clone();
                 }
 
-                if let Ok(player_read) = player.try_read() {
-                    let size = player_read.size();
-                    let current_config = player_read.config();
+                let size = player.size();
+                let current_config = player.config();
 
-                    let uses_frame_interpolation = current_config.use_frame_interpolation;
-                    let current_layout = current_config.layout.clone();
+                let uses_frame_interpolation = current_config.use_frame_interpolation;
+                let current_layout = current_config.layout.clone();
 
-                    let playback_config = Config {
-                        mode: defined_mode,
-                        loop_animation: r#loop.unwrap_or(default_config.loop_animation),
-                        loop_count: loop_count.unwrap_or(default_config.loop_count),
-                        speed: speed.unwrap_or(default_config.speed),
-                        use_frame_interpolation: uses_frame_interpolation,
-                        autoplay: autoplay.unwrap_or(default_config.autoplay),
-                        marker: defined_segment,
-                        background_color: background_color
-                            .unwrap_or(default_config.background_color),
-                        layout: current_layout,
-                        segment: [].to_vec(),
-                        theme_id: current_config.theme_id,
-                        state_machine_id: "".to_string(),
-                        animation_id: "".to_string(),
-                    };
+                let playback_config = Config {
+                    mode: defined_mode,
+                    loop_animation: r#loop.unwrap_or(default_config.loop_animation),
+                    loop_count: loop_count.unwrap_or(default_config.loop_count),
+                    speed: speed.unwrap_or(default_config.speed),
+                    use_frame_interpolation: uses_frame_interpolation,
+                    autoplay: autoplay.unwrap_or(default_config.autoplay),
+                    marker: defined_segment,
+                    background_color: background_color
+                        .unwrap_or(default_config.background_color),
+                    layout: current_layout,
+                    segment: [].to_vec(),
+                    theme_id: current_config.theme_id,
+                    state_machine_id: "".to_string(),
+                    animation_id: "".to_string(),
+                };
 
-                    // Set config first so that load_animation uses the preserved layout
-                    player_read.set_config(playback_config);
+                // Set config first so that load_animation uses the preserved layout
+                player.set_config(playback_config);
 
-                    if !animation.is_empty()
-                        && player_read.active_animation_id() != *animation
-                        && player_read.render()
-                    {
-                        player_read.load_animation(animation, size.0, size.1);
+                if !animation.is_empty()
+                    && player.active_animation_id() != *animation
+                    && player.render()
+                {
+                    player.load_animation(animation, size.0, size.1);
+                }
+
+                /* Perform entry actions */
+                if let Some(actions) = entry_actions {
+                    for action in actions {
+                        let _ = action.execute(engine, player, false, true);
                     }
+                }
 
-                    /* Perform entry actions */
-                    if let Some(actions) = entry_actions {
-                        for action in actions {
-                            let _ = action.execute(engine, player.clone(), false, true);
-                        }
-                    }
-
-                    if let Some(is_final) = r#final {
-                        if *is_final {
-                            engine.stop();
-                        }
+                if let Some(is_final) = r#final {
+                    if *is_final {
+                        engine.stop(player);
                     }
                 }
             }
@@ -151,20 +147,18 @@ impl StateTrait for State {
                 entry_actions,
                 ..
             } => {
-                if let Ok(player_read) = player.try_read() {
-                    let size = player_read.size();
+                let size = player.size();
 
-                    if let Some(animation) = animation {
-                        if player_read.active_animation_id() != *animation {
-                            player_read.load_animation(animation, size.0, size.1);
-                        }
+                if let Some(animation) = animation {
+                    if player.active_animation_id() != *animation {
+                        player.load_animation(animation, size.0, size.1);
                     }
+                }
 
-                    // Perform entry actions
-                    if let Some(actions) = entry_actions {
-                        for action in actions {
-                            let _ = action.execute(engine, player.clone(), false, true);
-                        }
+                // Perform entry actions
+                if let Some(actions) = entry_actions {
+                    for action in actions {
+                        let _ = action.execute(engine, player, false, true);
                     }
                 }
             }
@@ -204,21 +198,21 @@ impl StateTrait for State {
     fn exit(
         &self,
         engine: &mut StateMachineEngine,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
+        player: &mut DotLottiePlayerContainer,
     ) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState { exit_actions, .. } => {
                 /* Perform exit actions */
                 if let Some(actions) = exit_actions {
                     for action in actions {
-                        let _ = action.execute(engine, player.clone(), false, true);
+                        let _ = action.execute(engine, player, false, true);
                     }
                 }
             }
             State::GlobalState { exit_actions, .. } => {
                 if let Some(actions) = exit_actions {
                     for action in actions {
-                        let _ = action.execute(engine, player.clone(), false, true);
+                        let _ = action.execute(engine, player, false, true);
                     }
                 }
             }

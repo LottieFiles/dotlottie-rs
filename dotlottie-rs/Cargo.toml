@@ -9,6 +9,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
 dev = ["tvg", "tvg-sw", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-ttf"]
+c_api = ["dep:bitflags"]
 tvg = []
 tvg-log = []
 tvg-sw = []
@@ -25,6 +26,7 @@ tvg-simd = []
 serde_json = { version = "1.0", default-features = false, features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
 zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
+bitflags = { version = "2.6", optional = true }
 
 [build-dependencies]
 bindgen = "0.72.0"

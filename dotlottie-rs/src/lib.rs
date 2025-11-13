@@ -7,6 +7,9 @@ mod state_machine_engine;
 mod theming;
 pub(crate) mod time;
 
+#[cfg(feature = "c_api")]
+pub mod c_api;
+
 pub use dotlottie_player::*;
 pub use fms::*;
 pub use layout::*;

@@ -1,4 +1,5 @@
 use core::error;
+use std::ffi::c_void;
 
 pub enum ColorSpace {
     ABGR8888,
@@ -58,6 +59,12 @@ pub trait Animation: Default {
     fn set_slots(&mut self, slots: &str) -> Result<(), Self::Error>;
 
     fn set_quality(&mut self, quality: u8) -> Result<(), Self::Error>;
+
+    fn set_asset_resolver(
+        &mut self, 
+        resolver: Option<super::AssetResolverFn>,
+        user_data: *mut c_void,
+    ) -> Result<(), Self::Error>;
 
     fn tween(
         &mut self,

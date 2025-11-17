@@ -1,10 +1,7 @@
 use crate::time::Instant;
 
 use std::{
-    error::Error,
-    ffi::{c_char, c_void, CString},
-    fmt, ptr,
-    result::Result,
+    error::Error, ffi::{CString, c_char, c_void}, fmt, ptr, result::Result
 };
 
 #[cfg(feature = "tvg-ttf")]
@@ -465,23 +462,50 @@ impl Animation for TvgAnimation {
                     Err(_) => return false,
                 };
 
-                let image_ext = src_str
+                let mut paint_type: tvg::Tvg_Type = 0;
+                unsafe { _ = tvg::tvg_paint_get_type(paint, &mut paint_type).into_result() };
+                let asset_data = unsafe { Box::from_raw(asset_data_ptr) };
+
+                // text load
+                if paint_type == tvg::Tvg_Type_TVG_TYPE_TEXT {
+                    let asset_name = src_str.split('/').next_back().unwrap_or("");
+                    let mut result = tvg::tvg_font_load_data(
+                        asset_name.as_ptr() as *const i8,
+                        asset_data.as_ptr() as *const i8,
+                        asset_data.len() as u32,
+                        CString::new("ttf").unwrap().as_ptr(),
+                        false,
+                    ).into_result();
+
+                    if result.is_ok() {
+                        result = tvg::tvg_text_set_font(
+                            paint,
+                        asset_name.as_ptr() as *const i8,
+                        ).into_result();
+                    }
+
+                    drop(asset_data);
+                    return result.is_ok();
+                } else if paint_type == tvg::Tvg_Type_TVG_TYPE_PICTURE {
+                    // image load
+                    let asset_ext = src_str
                                     .rfind('.')
                                     .map(|i| &src_str[i + 1..])
                                     .unwrap_or(DEFAULT_EXT);
 
-                let asset_data = unsafe { Box::from_raw(asset_data_ptr) };
+                    let result = TvgAnimation::tvg_load_data_dispatch(
+                        paint,
+                        asset_data.as_ptr() as *const i8,
+                        asset_data.len() as u32,
+                        CString::new(asset_ext).unwrap().as_ptr(),
+                    );
 
-                let result = TvgAnimation::tvg_load_data_dispatch(
-                    paint,
-                    asset_data.as_ptr() as *const i8,
-                    asset_data.len() as u32,
-                    CString::new(image_ext).unwrap().as_ptr(),
-                );
+                    drop(asset_data);
+                    return result.is_ok();
+                }
 
-                drop(asset_data);
-
-                result.is_ok()
+                // not supported paint type
+                false
             }
 
             unsafe {

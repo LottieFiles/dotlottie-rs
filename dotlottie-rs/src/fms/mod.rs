@@ -103,53 +103,53 @@ impl DotLottieManager {
             }
         }
 
-        if self.version == 2 {
-            if let Some(fonts) = lottie_animation
-                .get_mut("fonts")
-                .and_then(|v| v.as_object_mut())
-            {
-                if let Some(font_list) = fonts.get_mut("list").and_then(|v| v.as_array_mut()) {
-                    let mut font_path = String::with_capacity(128);
+        // if self.version == 2 {
+        //     if let Some(fonts) = lottie_animation
+        //         .get_mut("fonts")
+        //         .and_then(|v| v.as_object_mut())
+        //     {
+        //         if let Some(font_list) = fonts.get_mut("list").and_then(|v| v.as_array_mut()) {
+        //             let mut font_path = String::with_capacity(128);
 
-                    for font in font_list.iter_mut() {
-                        if let Some(font_obj) = font.as_object_mut() {
-                            if let Some(f_path_str) = font_obj.get("fPath").and_then(|v| v.as_str())
-                            {
-                                // only process fonts with /f/ prefix (package-internal fonts)
-                                if f_path_str.starts_with("/f/") {
-                                    font_path.clear();
-                                    font_path.push_str("f/");
-                                    let path_without_prefix =
-                                        f_path_str.strip_prefix("/f/").unwrap_or(f_path_str);
-                                    font_path.push_str(path_without_prefix);
+        //             for font in font_list.iter_mut() {
+        //                 if let Some(font_obj) = font.as_object_mut() {
+        //                     if let Some(f_path_str) = font_obj.get("fPath").and_then(|v| v.as_str())
+        //                     {
+        //                         // only process fonts with /f/ prefix (package-internal fonts)
+        //                         if f_path_str.starts_with("/f/") {
+        //                             font_path.clear();
+        //                             font_path.push_str("f/");
+        //                             let path_without_prefix =
+        //                                 f_path_str.strip_prefix("/f/").unwrap_or(f_path_str);
+        //                             font_path.push_str(path_without_prefix);
 
-                                    if let Ok(mut result) = archive.by_name(&font_path) {
-                                        let mut content =
-                                            Vec::with_capacity(result.size() as usize);
-                                        if result.read_to_end(&mut content).is_ok() {
-                                            let font_ext = path_without_prefix
-                                                .rfind('.')
-                                                .map(|i| &path_without_prefix[i + 1..])
-                                                .unwrap_or(DEFAULT_FONT_EXT);
-                                            let font_data_base64 = Self::encode_base64(&content);
+        //                             if let Ok(mut result) = archive.by_name(&font_path) {
+        //                                 let mut content =
+        //                                     Vec::with_capacity(result.size() as usize);
+        //                                 if result.read_to_end(&mut content).is_ok() {
+        //                                     let font_ext = path_without_prefix
+        //                                         .rfind('.')
+        //                                         .map(|i| &path_without_prefix[i + 1..])
+        //                                         .unwrap_or(DEFAULT_FONT_EXT);
+        //                                     let font_data_base64 = Self::encode_base64(&content);
 
-                                            let data_url = format!(
-                                                "{DATA_FONT_PREFIX}{font_ext}{BASE64_PREFIX}{font_data_base64}"
-                                            );
+        //                                     let data_url = format!(
+        //                                         "{DATA_FONT_PREFIX}{font_ext}{BASE64_PREFIX}{font_data_base64}"
+        //                                     );
 
-                                            font_obj.insert(
-                                                "fPath".to_string(),
-                                                Value::String(data_url),
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        //                                     font_obj.insert(
+        //                                         "fPath".to_string(),
+        //                                         Value::String(data_url),
+        //                                     );
+        //                                 }
+        //                             }
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
         serde_json::to_string(&lottie_animation).map_err(|_| DotLottieError::ReadContentError)
     }
@@ -157,9 +157,16 @@ impl DotLottieManager {
     pub fn resolve_asset(&self, asset_path: &str) -> Result<Vec<u8>, DotLottieError> {
         let mut archive = self.archive.borrow_mut();
 
-        let image_prefix = if self.version == 2 { "i/" } else { "images/" };
-        let asset_name = asset_path.split('/').next_back().unwrap_or("");
-        let asset_path = format!("{image_prefix}{asset_name}");
+        let mut asset_path = asset_path.to_string();
+        if asset_path.starts_with("/f/") {
+            // font path handling
+            asset_path = format!("f/{asset_path}");
+        } else {
+            // image path handling
+            let image_prefix = if self.version == 2 { "i/" } else { "images/" };
+            let asset_name = asset_path.split('/').next_back().unwrap_or("");
+            asset_path = format!("{image_prefix}{asset_name}");
+        }
 
         if let Ok(mut result) = archive.by_name(&asset_path) {
             let mut content = Vec::with_capacity(result.size() as usize);

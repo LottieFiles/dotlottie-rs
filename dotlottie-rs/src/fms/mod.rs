@@ -9,12 +9,7 @@ use std::cell::RefCell;
 use std::io::{self, Read};
 use zip::ZipArchive;
 
-const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
 const DATA_IMAGE_PREFIX: &str = "data:image/";
-const DATA_FONT_PREFIX: &str = "data:font/";
-const BASE64_PREFIX: &str = ";base64,";
-const DEFAULT_FONT_EXT: &str = "ttf";
 
 pub struct DotLottieManager {
     active_animation_id: Box<str>,
@@ -103,54 +98,6 @@ impl DotLottieManager {
             }
         }
 
-        // if self.version == 2 {
-        //     if let Some(fonts) = lottie_animation
-        //         .get_mut("fonts")
-        //         .and_then(|v| v.as_object_mut())
-        //     {
-        //         if let Some(font_list) = fonts.get_mut("list").and_then(|v| v.as_array_mut()) {
-        //             let mut font_path = String::with_capacity(128);
-
-        //             for font in font_list.iter_mut() {
-        //                 if let Some(font_obj) = font.as_object_mut() {
-        //                     if let Some(f_path_str) = font_obj.get("fPath").and_then(|v| v.as_str())
-        //                     {
-        //                         // only process fonts with /f/ prefix (package-internal fonts)
-        //                         if f_path_str.starts_with("/f/") {
-        //                             font_path.clear();
-        //                             font_path.push_str("f/");
-        //                             let path_without_prefix =
-        //                                 f_path_str.strip_prefix("/f/").unwrap_or(f_path_str);
-        //                             font_path.push_str(path_without_prefix);
-
-        //                             if let Ok(mut result) = archive.by_name(&font_path) {
-        //                                 let mut content =
-        //                                     Vec::with_capacity(result.size() as usize);
-        //                                 if result.read_to_end(&mut content).is_ok() {
-        //                                     let font_ext = path_without_prefix
-        //                                         .rfind('.')
-        //                                         .map(|i| &path_without_prefix[i + 1..])
-        //                                         .unwrap_or(DEFAULT_FONT_EXT);
-        //                                     let font_data_base64 = Self::encode_base64(&content);
-
-        //                                     let data_url = format!(
-        //                                         "{DATA_FONT_PREFIX}{font_ext}{BASE64_PREFIX}{font_data_base64}"
-        //                                     );
-
-        //                                     font_obj.insert(
-        //                                         "fPath".to_string(),
-        //                                         Value::String(data_url),
-        //                                     );
-        //                                 }
-        //                             }
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-
         serde_json::to_string(&lottie_animation).map_err(|_| DotLottieError::ReadContentError)
     }
 
@@ -205,48 +152,6 @@ impl DotLottieManager {
     }
 
     #[inline]
-    fn encode_base64(input: &[u8]) -> String {
-        if input.is_empty() {
-            return String::new();
-        }
-
-        let output_len = input.len().div_ceil(3) * 4;
-        let mut result = Vec::with_capacity(output_len);
-
-        let mut i = 0;
-        while i + 2 < input.len() {
-            let b0 = input[i] as u32;
-            let b1 = input[i + 1] as u32;
-            let b2 = input[i + 2] as u32;
-            let n = (b0 << 16) | (b1 << 8) | b2;
-
-            result.push(BASE64_CHARS[((n >> 18) & 63) as usize]);
-            result.push(BASE64_CHARS[((n >> 12) & 63) as usize]);
-            result.push(BASE64_CHARS[((n >> 6) & 63) as usize]);
-            result.push(BASE64_CHARS[(n & 63) as usize]);
-            i += 3;
-        }
-
-        if i < input.len() {
-            let b0 = input[i] as u32;
-            let b1 = input.get(i + 1).copied().unwrap_or(0) as u32;
-            let n = (b0 << 16) | (b1 << 8);
-
-            result.push(BASE64_CHARS[((n >> 18) & 63) as usize]);
-            result.push(BASE64_CHARS[((n >> 12) & 63) as usize]);
-            result.push(if i + 1 < input.len() {
-                BASE64_CHARS[((n >> 6) & 63) as usize]
-            } else {
-                b'='
-            });
-            result.push(b'=');
-        }
-
-        // safe conversion from Vec<u8> to String since we only used valid ASCII
-        unsafe { String::from_utf8_unchecked(result) }
-    }
-
-    #[inline]
     fn read_zip_file<R: Read + io::Seek>(
         archive: &mut ZipArchive<R>,
         path: &str,
@@ -289,16 +194,5 @@ mod tests {
                 }
             }
         }
-    }
-
-    #[test]
-    fn test_base64_encoding() {
-        let input = b"Hello, World!";
-        let result = DotLottieManager::encode_base64(input);
-        assert_eq!(result, "SGVsbG8sIFdvcmxkIQ==");
-
-        let empty_input = b"";
-        let empty_result = DotLottieManager::encode_base64(empty_input);
-        assert_eq!(empty_result, "");
     }
 }

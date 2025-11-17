@@ -209,17 +209,10 @@ impl<R: Renderer> LottieRendererImpl<R> {
     fn load_animation(&mut self, data: &str) -> Result<R::Animation, LottieRendererError> {
         let mut animation = R::Animation::default();
 
-        #[cfg(feature = "tvg-v1")]
         if let Some(resolver) = self.asset_resolver {
             animation.set_asset_resolver(Some(resolver), self.asset_resolver_user_data).map_err(into_lottie::<R>)?;
         }
 
-        #[cfg(feature = "tvg-v0")]
-        animation
-            .load_data(data, "lottie")
-            .map_err(into_lottie::<R>)?;
-
-        #[cfg(feature = "tvg-v1")]
         animation
             .load_data(data, "lottie+json")
             .map_err(into_lottie::<R>)?;

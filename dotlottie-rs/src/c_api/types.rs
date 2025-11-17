@@ -3,7 +3,6 @@ use core::fmt;
 use core::str::FromStr;
 use std::ffi::{c_char, CStr, CString};
 use std::io;
-use std::sync::Arc;
 
 use crate::{
     Config, Event, Fit, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme,
@@ -496,230 +495,326 @@ impl DotLottieEvent {
     }
 }
 
-pub type OnOp = unsafe extern "C" fn();
+// ============================================================================
+// Event System
+// ============================================================================
 
-// Function pointer types for observers
-pub type OnFrameOp = unsafe extern "C" fn(f32);
-pub type OnRenderOp = unsafe extern "C" fn(f32);
-pub type OnLoopOp = unsafe extern "C" fn(u32);
+// DotLottie Player Events (output events from polling)
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum DotLottiePlayerEventType {
+    Load = 0,
+    LoadError = 1,
+    Play = 2,
+    Pause = 3,
+    Stop = 4,
+    Frame = 5,
+    Render = 6,
+    Loop = 7,
+    Complete = 8,
+}
 
 #[repr(C)]
-pub struct Observer {
-    pub on_load_op: OnOp,
-    pub on_load_error_op: OnOp,
-    pub on_play_op: OnOp,
-    pub on_pause_op: OnOp,
-    pub on_stop_op: OnOp,
-    pub on_frame_op: OnFrameOp,
-    pub on_render_op: OnRenderOp,
-    pub on_loop_op: OnLoopOp,
-    pub on_complete_op: OnOp,
+pub union DotLottiePlayerEventData {
+    pub frame_no: f32,   // For Frame and Render events
+    pub loop_count: u32, // For Loop event
 }
-
-impl crate::Observer for Observer {
-    fn on_load(&self) {
-        unsafe { (self.on_load_op)() }
-    }
-    fn on_load_error(&self) {
-        unsafe { (self.on_load_error_op)() }
-    }
-    fn on_play(&self) {
-        unsafe { (self.on_play_op)() }
-    }
-    fn on_pause(&self) {
-        unsafe { (self.on_pause_op)() }
-    }
-    fn on_stop(&self) {
-        unsafe { (self.on_stop_op)() }
-    }
-    fn on_frame(&self, frame_no: f32) {
-        unsafe { (self.on_frame_op)(frame_no) }
-    }
-    fn on_render(&self, frame_no: f32) {
-        unsafe { (self.on_render_op)(frame_no) }
-    }
-    fn on_loop(&self, loop_count: u32) {
-        unsafe { (self.on_loop_op)(loop_count) }
-    }
-    fn on_complete(&self) {
-        unsafe { (self.on_complete_op)() }
-    }
-}
-
-impl Observer {
-    pub unsafe fn as_observer(&mut self) -> Arc<dyn crate::Observer> {
-        Arc::from(Box::from_raw(self as *mut dyn crate::Observer))
-    }
-}
-
-// Function pointer types for state machine observers
-pub type OnTransitionOp = unsafe extern "C" fn(*const c_char, *const c_char);
-pub type OnStateEnteredOp = unsafe extern "C" fn(*const c_char);
-pub type OnStateExitOp = unsafe extern "C" fn(*const c_char);
-pub type OnStateCustomEventOp = unsafe extern "C" fn(*const c_char);
-pub type OnStateErrorOp = unsafe extern "C" fn(*const c_char);
-pub type OnStateMachineStartOp = unsafe extern "C" fn();
-pub type OnStateMachineStopOp = unsafe extern "C" fn();
-pub type OnStringInputValueChangeOp =
-    unsafe extern "C" fn(*const c_char, *const c_char, *const c_char);
-pub type OnNumericInputValueChangeOp = unsafe extern "C" fn(*const c_char, f32, f32);
-pub type OnBooleanInputValueChangeOp = unsafe extern "C" fn(*const c_char, bool, bool);
-pub type OnInputFiredOp = unsafe extern "C" fn(*const c_char);
 
 #[repr(C)]
-pub struct StateMachineObserver {
-    pub on_transition_op: OnTransitionOp,
-    pub on_state_entered_op: OnStateEnteredOp,
-    pub on_state_exit_op: OnStateExitOp,
-    pub on_state_custom_event_op: OnStateCustomEventOp,
-    pub on_state_error_op: OnStateErrorOp,
-    pub on_state_machine_start_op: OnStateMachineStartOp,
-    pub on_state_machine_stop_op: OnStateMachineStopOp,
-    pub on_string_input_value_change_op: OnStringInputValueChangeOp,
-    pub on_numeric_input_value_change_op: OnNumericInputValueChangeOp,
-    pub on_boolean_input_value_change_op: OnBooleanInputValueChangeOp,
-    pub on_input_fired_op: OnInputFiredOp,
+pub struct DotLottiePlayerEvent {
+    pub event_type: DotLottiePlayerEventType,
+    pub data: DotLottiePlayerEventData,
 }
 
-impl crate::StateMachineObserver for StateMachineObserver {
-    fn on_transition(&self, previous_state: String, new_state: String) {
-        if let (Ok(previous_state), Ok(new_state)) =
-            (CString::new(previous_state), CString::new(new_state))
-        {
-            unsafe {
-                (self.on_transition_op)(
-                    previous_state.as_bytes_with_nul().as_ptr() as *const c_char,
-                    new_state.as_bytes_with_nul().as_ptr() as *const c_char,
-                )
-            }
+impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
+    fn from(event: crate::DotLottieEvent) -> Self {
+        match event {
+            crate::DotLottieEvent::Load => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Load,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            },
+            crate::DotLottieEvent::LoadError => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::LoadError,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            },
+            crate::DotLottieEvent::Play => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Play,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            },
+            crate::DotLottieEvent::Pause => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Pause,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            },
+            crate::DotLottieEvent::Stop => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Stop,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            },
+            crate::DotLottieEvent::Frame { frame_no } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Frame,
+                data: DotLottiePlayerEventData { frame_no },
+            },
+            crate::DotLottieEvent::Render { frame_no } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Render,
+                data: DotLottiePlayerEventData { frame_no },
+            },
+            crate::DotLottieEvent::Loop { loop_count } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Loop,
+                data: DotLottiePlayerEventData { loop_count },
+            },
+            crate::DotLottieEvent::Complete => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Complete,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            },
         }
     }
+}
 
-    fn on_state_entered(&self, entering_state: String) {
-        if let Ok(entering_state) = CString::new(entering_state) {
-            unsafe {
-                (self.on_state_entered_op)(
-                    entering_state.as_bytes_with_nul().as_ptr() as *const c_char
-                )
+// State Machine Events
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum StateMachineEventType {
+    StateMachineStart = 0,
+    StateMachineStop = 1,
+    StateMachineTransition = 2,
+    StateMachineStateEntered = 3,
+    StateMachineStateExit = 4,
+    StateMachineCustomEvent = 5,
+    StateMachineError = 6,
+    StateMachineStringInputChange = 7,
+    StateMachineNumericInputChange = 8,
+    StateMachineBooleanInputChange = 9,
+    StateMachineInputFired = 10,
+}
+
+// For string-based event data (states, input names, messages)
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct StateMachineStringData {
+    pub str1: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
+    pub str2: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
+    pub str3: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
+}
+
+// For numeric input changes
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct StateMachineNumericData {
+    pub name: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
+    pub old_value: f32,
+    pub new_value: f32,
+}
+
+// For boolean input changes
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct StateMachineBooleanData {
+    pub name: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
+    pub old_value: bool,
+    pub new_value: bool,
+}
+
+#[repr(C)]
+pub union StateMachineEventData {
+    pub strings: StateMachineStringData,
+    pub numeric: StateMachineNumericData,
+    pub boolean: StateMachineBooleanData,
+}
+
+#[repr(C)]
+pub struct StateMachineEvent {
+    pub event_type: StateMachineEventType,
+    pub data: StateMachineEventData,
+}
+
+impl StateMachineEvent {
+    pub unsafe fn from_rust(event: crate::StateMachineEvent) -> Result<Self, io::Error> {
+        match event {
+            crate::StateMachineEvent::Start => Ok(StateMachineEvent {
+                event_type: StateMachineEventType::StateMachineStart,
+                data: StateMachineEventData {
+                    strings: StateMachineStringData {
+                        str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                        str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                        str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    },
+                },
+            }),
+            crate::StateMachineEvent::Stop => Ok(StateMachineEvent {
+                event_type: StateMachineEventType::StateMachineStop,
+                data: StateMachineEventData {
+                    strings: StateMachineStringData {
+                        str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                        str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                        str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    },
+                },
+            }),
+            crate::StateMachineEvent::Transition {
+                previous_state,
+                new_state,
+            } => {
+                let mut data = StateMachineStringData {
+                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                };
+                DotLottieString::copy(
+                    &previous_state,
+                    data.str1.as_mut_ptr(),
+                    DOTLOTTIE_MAX_STR_LENGTH,
+                )?;
+                DotLottieString::copy(
+                    &new_state,
+                    data.str2.as_mut_ptr(),
+                    DOTLOTTIE_MAX_STR_LENGTH,
+                )?;
+                Ok(StateMachineEvent {
+                    event_type: StateMachineEventType::StateMachineTransition,
+                    data: StateMachineEventData { strings: data },
+                })
             }
-        }
-    }
-
-    fn on_state_exit(&self, leaving_state: String) {
-        if let Ok(leaving_state) = CString::new(leaving_state) {
-            unsafe {
-                (self.on_state_exit_op)(leaving_state.as_bytes_with_nul().as_ptr() as *const c_char)
+            crate::StateMachineEvent::StateEntered { state } => {
+                let mut data = StateMachineStringData {
+                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                };
+                DotLottieString::copy(&state, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
+                Ok(StateMachineEvent {
+                    event_type: StateMachineEventType::StateMachineStateEntered,
+                    data: StateMachineEventData { strings: data },
+                })
             }
-        }
-    }
-
-    fn on_custom_event(&self, message: String) {
-        if let Ok(message) = CString::new(message) {
-            unsafe {
-                (self.on_state_custom_event_op)(
-                    message.as_bytes_with_nul().as_ptr() as *const c_char
-                )
+            crate::StateMachineEvent::StateExit { state } => {
+                let mut data = StateMachineStringData {
+                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                };
+                DotLottieString::copy(&state, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
+                Ok(StateMachineEvent {
+                    event_type: StateMachineEventType::StateMachineStateExit,
+                    data: StateMachineEventData { strings: data },
+                })
             }
-        }
-    }
-
-    fn on_error(&self, message: String) {
-        if let Ok(message) = CString::new(message) {
-            unsafe {
-                (self.on_state_error_op)(message.as_bytes_with_nul().as_ptr() as *const c_char)
+            crate::StateMachineEvent::CustomEvent { message } => {
+                let mut data = StateMachineStringData {
+                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                };
+                DotLottieString::copy(&message, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
+                Ok(StateMachineEvent {
+                    event_type: StateMachineEventType::StateMachineCustomEvent,
+                    data: StateMachineEventData { strings: data },
+                })
             }
-        }
-    }
-
-    fn on_start(&self) {
-        unsafe { (self.on_state_machine_start_op)() }
-    }
-
-    fn on_stop(&self) {
-        unsafe { (self.on_state_machine_stop_op)() }
-    }
-
-    fn on_string_input_value_change(
-        &self,
-        input_name: String,
-        old_value: String,
-        new_value: String,
-    ) {
-        if let (Ok(input_name), Ok(old_value), Ok(new_value)) = (
-            CString::new(input_name),
-            CString::new(old_value),
-            CString::new(new_value),
-        ) {
-            unsafe {
-                (self.on_string_input_value_change_op)(
-                    input_name.as_bytes_with_nul().as_ptr() as *const c_char,
-                    old_value.as_bytes_with_nul().as_ptr() as *const c_char,
-                    new_value.as_bytes_with_nul().as_ptr() as *const c_char,
-                )
+            crate::StateMachineEvent::Error { message } => {
+                let mut data = StateMachineStringData {
+                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                };
+                DotLottieString::copy(&message, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
+                Ok(StateMachineEvent {
+                    event_type: StateMachineEventType::StateMachineError,
+                    data: StateMachineEventData { strings: data },
+                })
             }
-        }
-    }
-
-    fn on_numeric_input_value_change(&self, input_name: String, old_value: f32, new_value: f32) {
-        if let Ok(input_name) = CString::new(input_name) {
-            unsafe {
-                (self.on_numeric_input_value_change_op)(
-                    input_name.as_bytes_with_nul().as_ptr() as *const c_char,
+            crate::StateMachineEvent::StringInputChange {
+                name,
+                old_value,
+                new_value,
+            } => {
+                let mut data = StateMachineStringData {
+                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                };
+                DotLottieString::copy(&name, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
+                DotLottieString::copy(
+                    &old_value,
+                    data.str2.as_mut_ptr(),
+                    DOTLOTTIE_MAX_STR_LENGTH,
+                )?;
+                DotLottieString::copy(
+                    &new_value,
+                    data.str3.as_mut_ptr(),
+                    DOTLOTTIE_MAX_STR_LENGTH,
+                )?;
+                Ok(StateMachineEvent {
+                    event_type: StateMachineEventType::StateMachineStringInputChange,
+                    data: StateMachineEventData { strings: data },
+                })
+            }
+            crate::StateMachineEvent::NumericInputChange {
+                name,
+                old_value,
+                new_value,
+            } => {
+                let mut data = StateMachineNumericData {
+                    name: [0; DOTLOTTIE_MAX_STR_LENGTH],
                     old_value,
                     new_value,
-                )
+                };
+                DotLottieString::copy(&name, data.name.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
+                Ok(StateMachineEvent {
+                    event_type: StateMachineEventType::StateMachineNumericInputChange,
+                    data: StateMachineEventData { numeric: data },
+                })
             }
-        }
-    }
-
-    fn on_boolean_input_value_change(&self, input_name: String, old_value: bool, new_value: bool) {
-        if let Ok(input_name) = CString::new(input_name) {
-            unsafe {
-                (self.on_boolean_input_value_change_op)(
-                    input_name.as_bytes_with_nul().as_ptr() as *const c_char,
+            crate::StateMachineEvent::BooleanInputChange {
+                name,
+                old_value,
+                new_value,
+            } => {
+                let mut data = StateMachineBooleanData {
+                    name: [0; DOTLOTTIE_MAX_STR_LENGTH],
                     old_value,
                     new_value,
-                )
+                };
+                DotLottieString::copy(&name, data.name.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
+                Ok(StateMachineEvent {
+                    event_type: StateMachineEventType::StateMachineBooleanInputChange,
+                    data: StateMachineEventData { boolean: data },
+                })
             }
-        }
-    }
-
-    fn on_input_fired(&self, input_name: String) {
-        if let Ok(input_name) = CString::new(input_name) {
-            unsafe {
-                (self.on_input_fired_op)(input_name.as_bytes_with_nul().as_ptr() as *const c_char)
+            crate::StateMachineEvent::InputFired { name } => {
+                let mut data = StateMachineStringData {
+                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                };
+                DotLottieString::copy(&name, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
+                Ok(StateMachineEvent {
+                    event_type: StateMachineEventType::StateMachineInputFired,
+                    data: StateMachineEventData { strings: data },
+                })
             }
         }
     }
 }
 
-impl StateMachineObserver {
-    pub unsafe fn as_observer(&mut self) -> Arc<dyn crate::StateMachineObserver> {
-        Arc::from(Box::from_raw(
-            self as *mut dyn crate::StateMachineObserver,
-        ))
-    }
-}
-
-pub type OnMessageOp = unsafe extern "C" fn(*const c_char);
-
+// Internal State Machine Events (for framework use)
 #[repr(C)]
-pub struct StateMachineInternalObserver {
-    pub on_message_op: OnMessageOp,
+pub struct StateMachineInternalEvent {
+    pub message: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
 }
 
-impl crate::StateMachineInternalObserver for StateMachineInternalObserver {
-    fn on_message(&self, message: String) {
-        if let Ok(message) = CString::new(message) {
-            unsafe { (self.on_message_op)(message.as_bytes_with_nul().as_ptr() as *const c_char) }
+impl StateMachineInternalEvent {
+    pub unsafe fn from_rust(event: crate::StateMachineInternalEvent) -> Result<Self, io::Error> {
+        match event {
+            crate::StateMachineInternalEvent::Message { message } => {
+                let mut data = StateMachineInternalEvent {
+                    message: [0; DOTLOTTIE_MAX_STR_LENGTH],
+                };
+                DotLottieString::copy(
+                    &message,
+                    data.message.as_mut_ptr(),
+                    DOTLOTTIE_MAX_STR_LENGTH,
+                )?;
+                Ok(data)
+            }
         }
-    }
-}
-
-impl StateMachineInternalObserver {
-    pub unsafe fn as_observer(&mut self) -> Arc<dyn crate::StateMachineInternalObserver> {
-        Arc::from(Box::from_raw(
-            self as *mut dyn crate::StateMachineInternalObserver,
-        ))
     }
 }

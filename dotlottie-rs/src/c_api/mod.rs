@@ -29,7 +29,11 @@ fn to_exit_status(result: bool) -> i32 {
 
 // Translates rust boolean to C boolean (1 for true, 0 for false)
 fn to_bool_i32(result: bool) -> i32 {
-    if result { 1 } else { 0 }
+    if result {
+        1
+    } else {
+        0
+    }
 }
 
 #[no_mangle]
@@ -586,42 +590,6 @@ pub unsafe extern "C" fn dotlottie_layer_bounds(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_subscribe(
-    ptr: *mut DotLottiePlayer,
-    observer: *mut types::Observer,
-) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        if observer.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
-        }
-        if let Some(v) = observer.as_mut() {
-            dotlottie_player.subscribe(v.as_observer());
-            DOTLOTTIE_SUCCESS
-        } else {
-            DOTLOTTIE_ERROR
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_unsubscribe(
-    ptr: *mut DotLottiePlayer,
-    observer: *mut types::Observer,
-) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        if observer.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
-        }
-        if let Some(v) = observer.as_mut() {
-            dotlottie_player.unsubscribe(&v.as_observer());
-            DOTLOTTIE_SUCCESS
-        } else {
-            DOTLOTTIE_ERROR
-        }
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_current_state(
     ptr: *mut DotLottiePlayer,
     result: *mut c_char,
@@ -762,78 +730,6 @@ pub unsafe extern "C" fn dotlottie_state_machine_load_data(
     })
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_subscribe(
-    ptr: *mut DotLottiePlayer,
-    observer: *mut types::StateMachineObserver,
-) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        if observer.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
-        }
-        if let Some(v) = observer.as_mut() {
-            to_exit_status(dotlottie_player.state_machine_subscribe(v.as_observer()))
-        } else {
-            DOTLOTTIE_ERROR
-        }
-    })
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_unsubscribe(
-    ptr: *mut DotLottiePlayer,
-    observer: *mut types::StateMachineObserver,
-) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        if observer.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
-        }
-        if let Some(v) = observer.as_mut() {
-            to_exit_status(dotlottie_player.state_machine_unsubscribe(&v.as_observer()))
-        } else {
-            DOTLOTTIE_ERROR
-        }
-    })
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_internal_subscribe(
-    ptr: *mut DotLottiePlayer,
-    observer: *mut types::StateMachineInternalObserver,
-) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        if observer.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
-        }
-        if let Some(v) = observer.as_mut() {
-            to_exit_status(dotlottie_player.state_machine_internal_subscribe(v.as_observer()))
-        } else {
-            DOTLOTTIE_ERROR
-        }
-    })
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_internal_unsubscribe(
-    ptr: *mut DotLottiePlayer,
-    observer: *mut types::StateMachineInternalObserver,
-) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        if observer.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
-        }
-        if let Some(v) = observer.as_mut() {
-            to_exit_status(dotlottie_player.state_machine_internal_unsubscribe(&v.as_observer()))
-        } else {
-            DOTLOTTIE_ERROR
-        }
-    })
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_register_font(
     font_name: *const c_char,
@@ -853,5 +749,119 @@ pub unsafe extern "C" fn dotlottie_register_font(
         }
     } else {
         DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+// ============================================================================
+//  Event Polling Functions
+// ============================================================================
+
+/// Poll for the next player event
+///
+/// Returns 1 if an event was retrieved, 0 if no events are available, or -1 on error.
+/// The event data is written to the event pointer.
+///
+/// # Example
+/// ```c
+/// DotLottiePlayerEvent event;
+/// while (dotlottie_poll_event(player, &event) == 1) {
+///     switch (event.event_type) {
+///         case DotLottiePlayerEventType_Load:
+///             printf("Animation loaded\n");
+///             break;
+///         case DotLottiePlayerEventType_Frame:
+///             printf("Frame: %f\n", event.data.frame_no);
+///             break;
+///     }
+/// }
+/// ```
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_poll_event(
+    player: *mut DotLottiePlayer,
+    event: *mut types::DotLottiePlayerEvent,
+) -> i32 {
+    if player.is_null() || event.is_null() {
+        return -1;
+    }
+
+    let player = &mut *player;
+
+    match player.poll_event() {
+        Some(rust_event) => {
+            let c_event = types::DotLottiePlayerEvent::from(rust_event);
+            std::ptr::write(event, c_event);
+            1 // Event retrieved
+        }
+        None => 0, // No events available
+    }
+}
+
+/// Poll for the next state machine event
+///
+/// Returns 1 if an event was retrieved, 0 if no events are available, or -1 on error.
+/// The event data is written to the event pointer.
+///
+/// # Example
+/// ```c
+/// StateMachineEvent event;
+/// while (dotlottie_state_machine_poll_event(player, &event) == 1) {
+///     switch (event.event_type) {
+///         case StateMachineEventType_Transition:
+///             printf("Transition: %s -> %s\n", event.data.strings.str1, event.data.strings.str2);
+///             break;
+///     }
+/// }
+/// ```
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_poll_event(
+    player: *mut DotLottiePlayer,
+    event: *mut types::StateMachineEvent,
+) -> i32 {
+    if player.is_null() || event.is_null() {
+        return -1;
+    }
+
+    let player = &mut *player;
+
+    match player.poll_state_machine_event() {
+        Some(rust_event) => {
+            match types::StateMachineEvent::from_rust(rust_event) {
+                Ok(c_event) => {
+                    std::ptr::write(event, c_event);
+                    1 // Event retrieved
+                }
+                Err(_) => -1, // Error converting event
+            }
+        }
+        None => 0, // No events available
+    }
+}
+
+/// Poll for the next internal state machine event (for framework use)
+///
+/// Returns 1 if an event was retrieved, 0 if no events are available, or -1 on error.
+/// The event data is written to the event pointer.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_poll_internal_event(
+    player: *mut DotLottiePlayer,
+    event: *mut types::StateMachineInternalEvent,
+) -> i32 {
+    if player.is_null() || event.is_null() {
+        return -1;
+    }
+
+    let player = &mut *player;
+
+    match player.poll_state_machine_internal_event() {
+        Some(rust_event) => {
+            match types::StateMachineInternalEvent::from_rust(rust_event) {
+                Ok(c_event) => {
+                    std::ptr::write(event, c_event);
+                    1 // Event retrieved
+                }
+                Err(_) => -1, // Error converting event
+            }
+        }
+        None => 0, // No events available
     }
 }

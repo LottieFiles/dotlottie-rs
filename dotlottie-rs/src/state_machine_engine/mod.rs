@@ -1,6 +1,5 @@
 use core::result::Result::Ok;
 use std::collections::HashSet;
-use std::sync::{Arc, RwLock};
 
 pub mod actions;
 pub mod errors;
@@ -22,6 +21,7 @@ use transitions::guard::GuardTrait;
 use transitions::{Transition, TransitionTrait};
 
 use crate::actions::whitelist::Whitelist;
+use crate::events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, Config, DotLottiePlayerContainer,
@@ -30,29 +30,6 @@ use crate::{
 
 use self::state_machine::state_machine_parse;
 use self::{events::Event, states::State};
-
-pub trait StateMachineObserver: Send + Sync {
-    fn on_start(&self);
-    fn on_stop(&self);
-    fn on_transition(&self, previous_state: String, new_state: String);
-    fn on_state_entered(&self, entering_state: String);
-    fn on_state_exit(&self, leaving_state: String);
-    fn on_custom_event(&self, message: String);
-    fn on_string_input_value_change(
-        &self,
-        input_name: String,
-        old_value: String,
-        new_value: String,
-    );
-    fn on_numeric_input_value_change(&self, input_name: String, old_value: f32, new_value: f32);
-    fn on_boolean_input_value_change(&self, input_name: String, old_value: bool, new_value: bool);
-    fn on_input_fired(&self, input_name: String);
-    fn on_error(&self, error: String);
-}
-
-pub trait StateMachineInternalObserver: Send + Sync {
-    fn on_message(&self, message: String);
-}
 
 #[derive(PartialEq, Debug)]
 pub enum StateMachineEngineStatus {
@@ -114,8 +91,9 @@ pub struct StateMachineEngine {
     // PointerEnter/PointerExit management
     pointer_management: PointerData,
 
-    pub observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
-    pub internal_observer: RwLock<Option<Arc<dyn StateMachineInternalObserver>>>,
+    // event queues
+    event_queue: EventQueue<StateMachineEvent>,
+    internal_event_queue: EventQueue<StateMachineInternalEvent>,
 
     state_machine: StateMachine,
 
@@ -141,8 +119,8 @@ impl Default for StateMachineEngine {
             curr_event: None,
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
-            observers: RwLock::new(Vec::new()),
-            internal_observer: RwLock::new(None),
+            event_queue: EventQueue::new(),
+            internal_event_queue: EventQueue::new(),
             state_history: Vec::new(),
             max_cycle_count: 20,
             current_cycle_count: 0,
@@ -170,8 +148,8 @@ impl StateMachineEngine {
             curr_event: None,
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
-            observers: RwLock::new(Vec::new()),
-            internal_observer: RwLock::new(None),
+            event_queue: EventQueue::new(),
+            internal_event_queue: EventQueue::new(),
             state_history: Vec::new(),
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
@@ -182,30 +160,20 @@ impl StateMachineEngine {
         state_machine.create_state_machine(state_machine_definition, player)
     }
 
-    pub fn subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
-        let mut observers = self.observers.write().unwrap();
-        observers.push(observer);
+    /// Poll for the next state machine event
+    ///
+    /// Returns Some(event) if an event is available, None if the queue is empty.
+    /// Events are removed from the queue when polled.
+    pub fn poll_event(&mut self) -> Option<StateMachineEvent> {
+        self.event_queue.poll()
     }
 
-    pub fn unsubscribe(&self, observer: &Arc<dyn StateMachineObserver>) {
-        self.observers
-            .write()
-            .unwrap()
-            .retain(|o| !Arc::ptr_eq(o, observer));
-    }
-
-    pub fn internal_subscribe(&self, observer: Arc<dyn StateMachineInternalObserver>) {
-        let mut internal_observer = self.internal_observer.write().unwrap();
-        *internal_observer = Some(observer);
-    }
-
-    pub fn internal_unsubscribe(&self, observer: &Arc<dyn StateMachineInternalObserver>) {
-        let mut internal_observer_write_lock = self.internal_observer.write().unwrap();
-        if let Some(internal_observer) = &*internal_observer_write_lock {
-            if Arc::ptr_eq(internal_observer, observer) {
-                *internal_observer_write_lock = None;
-            }
-        }
+    /// Poll for the next internal state machine event
+    ///
+    /// Returns Some(event) if an event is available, None if the queue is empty.
+    /// Internal events are for framework use only.
+    pub fn poll_internal_event(&mut self) -> Option<StateMachineInternalEvent> {
+        self.internal_event_queue.poll()
     }
 
     // key: The key of the input
@@ -1214,56 +1182,45 @@ impl StateMachineEngine {
         "".to_string()
     }
 
-    fn observe_on_state_entered(&self, entering_state: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_state_entered(entering_state.to_string());
-            }
-        }
+    fn observe_on_state_entered(&mut self, entering_state: &str) {
+        self.event_queue.push(StateMachineEvent::StateEntered {
+            state: entering_state.to_string(),
+        });
     }
 
-    fn observe_on_state_exit(&self, leaving_state: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_state_exit(leaving_state.to_string());
-            }
-        }
+    fn observe_on_state_exit(&mut self, leaving_state: &str) {
+        self.event_queue.push(StateMachineEvent::StateExit {
+            state: leaving_state.to_string(),
+        });
     }
 
-    fn observe_on_transition(&self, previous_state: &str, new_state: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_transition(previous_state.to_string(), new_state.to_string());
-            }
-        }
+    fn observe_on_transition(&mut self, previous_state: &str, new_state: &str) {
+        self.event_queue.push(StateMachineEvent::Transition {
+            previous_state: previous_state.to_string(),
+            new_state: new_state.to_string(),
+        });
     }
 
-    pub fn observe_internal_event(&self, message: &str) {
-        if let Ok(observer) = self.internal_observer.try_read() {
-            if let Some(ob) = &*observer {
-                ob.on_message(message.to_string());
-            }
-        }
+    pub fn observe_internal_event(&mut self, message: &str) {
+        self.internal_event_queue.push(StateMachineInternalEvent::Message {
+            message: message.to_string(),
+        });
     }
 
-    pub fn observe_custom_event(&self, message: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_custom_event(message.to_string());
-            }
-        }
+    pub fn observe_custom_event(&mut self, message: &str) {
+        self.event_queue.push(StateMachineEvent::CustomEvent {
+            message: message.to_string(),
+        });
     }
 
-    pub fn observe_on_error(&self, message: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_error(message.to_string());
-            }
-        }
+    pub fn observe_on_error(&mut self, message: &str) {
+        self.event_queue.push(StateMachineEvent::Error {
+            message: message.to_string(),
+        });
     }
 
     pub fn observe_string_input_value_change(
-        &self,
+        &mut self,
         input_name: &str,
         old_value: &str,
         new_value: &str,
@@ -1271,19 +1228,15 @@ impl StateMachineEngine {
         if old_value == new_value {
             return;
         }
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_string_input_value_change(
-                    input_name.to_string(),
-                    old_value.to_string(),
-                    new_value.to_string(),
-                );
-            }
-        }
+        self.event_queue.push(StateMachineEvent::StringInputChange {
+            name: input_name.to_string(),
+            old_value: old_value.to_string(),
+            new_value: new_value.to_string(),
+        });
     }
 
     pub fn observe_numeric_input_value_change(
-        &self,
+        &mut self,
         input_name: &str,
         old_value: f32,
         new_value: f32,
@@ -1291,19 +1244,15 @@ impl StateMachineEngine {
         if old_value == new_value {
             return;
         }
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_numeric_input_value_change(
-                    input_name.to_string(),
-                    old_value,
-                    new_value,
-                );
-            }
-        }
+        self.event_queue.push(StateMachineEvent::NumericInputChange {
+            name: input_name.to_string(),
+            old_value,
+            new_value,
+        });
     }
 
     pub fn observe_boolean_input_value_change(
-        &self,
+        &mut self,
         input_name: &str,
         old_value: bool,
         new_value: bool,
@@ -1311,41 +1260,25 @@ impl StateMachineEngine {
         if old_value == new_value {
             return;
         }
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_boolean_input_value_change(
-                    input_name.to_string(),
-                    old_value,
-                    new_value,
-                );
-            }
-        }
+        self.event_queue.push(StateMachineEvent::BooleanInputChange {
+            name: input_name.to_string(),
+            old_value,
+            new_value,
+        });
     }
 
-    pub fn observe_on_start(&self) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_start();
-            }
-        }
+    pub fn observe_on_start(&mut self) {
+        self.event_queue.push(StateMachineEvent::Start);
     }
 
-    pub fn observe_on_stop(&self) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_stop();
-            }
-        }
+    pub fn observe_on_stop(&mut self) {
+        self.event_queue.push(StateMachineEvent::Stop);
     }
 
-    pub fn observe_on_input_fired(&self, input_name: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_input_fired(input_name.to_string());
-            }
-        }
+    pub fn observe_on_input_fired(&mut self, input_name: &str) {
+        self.event_queue.push(StateMachineEvent::InputFired {
+            name: input_name.to_string(),
+        });
     }
 }
 
-unsafe impl Send for StateMachineEngine {}
-unsafe impl Sync for StateMachineEngine {}

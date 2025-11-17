@@ -1,7 +1,8 @@
 use crate::time::{Duration, Instant};
-use std::{fs, sync::Arc};
+use std::fs;
 
 use crate::actions::open_url_policy::OpenUrlPolicy;
+use crate::events::{DotLottieEvent, EventQueue, StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::events::Event;
 use crate::{
     extract_markers,
@@ -13,22 +14,7 @@ use crate::{
     transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer,
 };
 
-use crate::StateMachineInternalObserver;
-use crate::StateMachineObserver;
-
 use crate::StateMachineEngineStatus;
-
-pub trait Observer: Send + Sync {
-    fn on_load(&self);
-    fn on_load_error(&self);
-    fn on_play(&self);
-    fn on_pause(&self);
-    fn on_stop(&self);
-    fn on_frame(&self, frame_no: f32);
-    fn on_render(&self, frame_no: f32);
-    fn on_loop(&self, loop_count: u32);
-    fn on_complete(&self);
-}
 
 pub enum PlaybackState {
     Playing,
@@ -147,6 +133,7 @@ struct DotLottieRuntime {
     active_theme_id: String,
     active_state_machine_id: String,
     cached_start_end_frame: Option<(f32, f32)>,
+    event_queue: EventQueue<DotLottieEvent>,
 }
 
 impl DotLottieRuntime {
@@ -177,6 +164,7 @@ impl DotLottieRuntime {
             active_theme_id: String::new(),
             active_state_machine_id: String::new(),
             cached_start_end_frame: None,
+            event_queue: EventQueue::new(),
         }
     }
 
@@ -1120,7 +1108,6 @@ impl DotLottieRuntime {
 
 pub struct DotLottiePlayerContainer {
     runtime: DotLottieRuntime,
-    observers: Vec<Arc<dyn Observer>>,
     state_machine: Option<StateMachineEngine>,
 }
 
@@ -1129,7 +1116,6 @@ impl DotLottiePlayerContainer {
     pub fn new(config: Config, threads: u32) -> Self {
         DotLottiePlayerContainer {
             runtime: DotLottieRuntime::new(config, threads),
-            observers: Vec::new(),
             state_machine: None,
         }
     }
@@ -1137,72 +1123,7 @@ impl DotLottiePlayerContainer {
     pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
         DotLottiePlayerContainer {
             runtime: DotLottieRuntime::with_renderer(config, renderer),
-            observers: Vec::new(),
             state_machine: None,
-        }
-    }
-
-    pub fn emit_on_load(&self) {
-        self.observers.iter().for_each(|observer| {
-            observer.on_load();
-        });
-    }
-
-    pub fn emit_on_load_error(&self) {
-        self.observers.iter().for_each(|observer| {
-            observer.on_load_error();
-        });
-    }
-
-    pub fn emit_on_play(&self) {
-        self.observers.iter().for_each(|observer| {
-            observer.on_play();
-        });
-    }
-
-    pub fn emit_on_pause(&self) {
-        self.observers.iter().for_each(|observer| {
-            observer.on_pause();
-        });
-    }
-
-    pub fn emit_on_stop(&self) {
-        self.observers.iter().for_each(|observer| {
-            observer.on_stop();
-        });
-    }
-
-    pub fn emit_on_frame(&self, frame_no: f32) {
-        self.observers.iter().for_each(|observer| {
-            observer.on_frame(frame_no);
-        });
-    }
-
-    pub fn emit_on_render(&self, frame_no: f32) {
-        self.observers.iter().for_each(|observer| {
-            observer.on_render(frame_no);
-        });
-    }
-
-    pub fn emit_on_loop(&mut self, loop_count: u32) {
-        self.observers.iter().for_each(|observer| {
-            observer.on_loop(loop_count);
-        });
-
-        if let Some(mut sm) = self.state_machine.take() {
-            sm.post_event(&Event::OnLoopComplete, self);
-            self.state_machine = Some(sm);
-        }
-    }
-
-    pub fn emit_on_complete(&mut self) {
-        self.observers.iter().for_each(|observer| {
-            observer.on_complete();
-        });
-
-        if let Some(mut sm) = self.state_machine.take() {
-            sm.post_event(&Event::OnComplete, self);
-            self.state_machine = Some(sm);
         }
     }
 
@@ -1210,13 +1131,13 @@ impl DotLottiePlayerContainer {
         let is_ok = self.runtime.load_animation_data(animation_data, width, height);
 
         if is_ok {
-            self.emit_on_load();
+            self.runtime.event_queue.push(DotLottieEvent::Load);
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.emit_on_load_error();
+            self.runtime.event_queue.push(DotLottieEvent::LoadError);
 
             return false;
         }
@@ -1228,13 +1149,13 @@ impl DotLottiePlayerContainer {
         let is_ok = self.runtime.load_animation_path(animation_path, width, height);
 
         if is_ok {
-            self.emit_on_load();
+            self.runtime.event_queue.push(DotLottieEvent::Load);
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.emit_on_load_error();
+            self.runtime.event_queue.push(DotLottieEvent::LoadError);
 
             return false;
         }
@@ -1246,13 +1167,13 @@ impl DotLottiePlayerContainer {
         let is_ok = self.runtime.load_dotlottie_data(file_data, width, height);
 
         if is_ok {
-            self.emit_on_load();
+            self.runtime.event_queue.push(DotLottieEvent::Load);
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.emit_on_load_error();
+            self.runtime.event_queue.push(DotLottieEvent::LoadError);
 
             return false;
         }
@@ -1264,13 +1185,13 @@ impl DotLottiePlayerContainer {
         let is_ok = self.runtime.load_animation(animation_id, width, height);
 
         if is_ok {
-            self.emit_on_load();
+            self.runtime.event_queue.push(DotLottieEvent::Load);
 
             if self.config().autoplay {
                 self.play();
             }
         } else {
-            self.emit_on_load_error();
+            self.runtime.event_queue.push(DotLottieEvent::LoadError);
 
             return false;
         }
@@ -1350,7 +1271,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.play();
 
         if ok {
-            self.emit_on_play();
+            self.runtime.event_queue.push(DotLottieEvent::Play);
         }
 
         ok
@@ -1360,7 +1281,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.pause();
 
         if ok {
-            self.emit_on_pause();
+            self.runtime.event_queue.push(DotLottieEvent::Pause);
         }
 
         ok
@@ -1370,7 +1291,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.stop();
 
         if ok {
-            self.emit_on_stop();
+            self.runtime.event_queue.push(DotLottieEvent::Stop);
         }
 
         ok
@@ -1384,7 +1305,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.set_frame(no);
 
         if ok {
-            self.emit_on_frame(no);
+            self.runtime.event_queue.push(DotLottieEvent::Frame { frame_no: no });
         }
 
         ok
@@ -1394,7 +1315,7 @@ impl DotLottiePlayerContainer {
         let ok = self.runtime.seek(no);
 
         if ok {
-            self.emit_on_frame(no);
+            self.runtime.event_queue.push(DotLottieEvent::Frame { frame_no: no });
         }
 
         ok
@@ -1410,7 +1331,7 @@ impl DotLottiePlayerContainer {
         if ok {
             let frame_no = self.current_frame();
 
-            self.emit_on_render(frame_no);
+            self.runtime.event_queue.push(DotLottieEvent::Render { frame_no });
 
             if self.is_complete() {
                 if self.config().loop_animation {
@@ -1423,14 +1344,14 @@ impl DotLottiePlayerContainer {
                         self.stop();
                     }
 
-                    self.emit_on_loop(self.loop_count());
+                    self.runtime.event_queue.push(DotLottieEvent::Loop { loop_count: self.loop_count() });
 
                     if count_complete {
-                        self.emit_on_complete();
+                        self.runtime.event_queue.push(DotLottieEvent::Complete);
                         self.reset_loop_count();
                     }
                 } else if !self.config().loop_animation {
-                    self.emit_on_complete();
+                    self.runtime.event_queue.push(DotLottieEvent::Complete);
                 }
             }
         }
@@ -1450,10 +1371,6 @@ impl DotLottiePlayerContainer {
         self.runtime.config()
     }
 
-    pub fn subscribe(&mut self, observer: Arc<dyn Observer>) {
-        self.observers.push(observer);
-    }
-
     pub fn manifest_string(&self) -> String {
         self.runtime
             .manifest()
@@ -1467,8 +1384,23 @@ impl DotLottiePlayerContainer {
         self.runtime.is_complete()
     }
 
-    pub fn unsubscribe(&mut self, observer: &Arc<dyn Observer>) {
-        self.observers.retain(|o| !Arc::ptr_eq(o, observer));
+    /// Poll for the next event from the event queue
+    ///
+    /// Returns Some(event) if an event is available, None if the queue is empty.
+    /// Events are removed from the queue when polled.
+    ///
+    /// # Example
+    /// ```
+    /// while let Some(event) = player.poll_event() {
+    ///     match event {
+    ///         DotLottieEvent::Load => println!("Animation loaded"),
+    ///         DotLottieEvent::Frame { frame_no } => println!("Frame: {}", frame_no),
+    ///         _ => {}
+    ///     }
+    /// }
+    /// ```
+    pub fn poll_event(&mut self) -> Option<DotLottieEvent> {
+        self.runtime.event_queue.poll()
     }
 
     pub fn set_theme(&mut self, theme_id: &str) -> bool {
@@ -2042,70 +1974,6 @@ impl DotLottiePlayer {
         self.player.config()
     }
 
-    pub fn subscribe(&mut self, observer: Arc<dyn Observer>) {
-        self.player.subscribe(observer)
-    }
-
-    pub fn state_machine_subscribe(&mut self, observer: Arc<dyn StateMachineObserver>) -> bool {
-        if self.player.state_machine.is_none() {
-            let new_state_machine: StateMachineEngine = StateMachineEngine::default();
-
-            new_state_machine.subscribe(observer);
-
-            self.player.state_machine = Some(new_state_machine);
-
-            return true;
-        } else if let Some(sm) = self.player.state_machine.as_mut() {
-            sm.subscribe(observer);
-        }
-
-        true
-    }
-
-    pub fn state_machine_unsubscribe(&mut self, observer: &Arc<dyn StateMachineObserver>) -> bool {
-        if self.player.state_machine.is_none() {
-            return false;
-        }
-
-        self.player.state_machine.as_mut().unwrap().unsubscribe(observer);
-
-        true
-    }
-
-    // Internal state machine observer subscribe function for frameworks
-    // This allows us to send custom internal messages to the frameworks, without polluting the user's observers.
-    pub fn state_machine_internal_subscribe(
-        &mut self,
-        observer: Arc<dyn StateMachineInternalObserver>,
-    ) -> bool {
-        if self.player.state_machine.is_none() {
-            let new_state_machine: StateMachineEngine = StateMachineEngine::default();
-
-            new_state_machine.internal_subscribe(observer);
-
-            self.player.state_machine = Some(new_state_machine);
-
-            return true;
-        } else if let Some(sm) = self.player.state_machine.as_mut() {
-            sm.internal_subscribe(observer);
-        }
-
-        true
-    }
-
-    pub fn state_machine_internal_unsubscribe(
-        &mut self,
-        observer: &Arc<dyn StateMachineInternalObserver>,
-    ) -> bool {
-        if self.player.state_machine.is_none() {
-            return false;
-        }
-
-        self.player.state_machine.as_mut().unwrap().internal_unsubscribe(observer);
-
-        true
-    }
-
     pub fn manifest_string(&self) -> String {
         self.player.manifest_string()
     }
@@ -2114,8 +1982,31 @@ impl DotLottiePlayer {
         self.player.is_complete()
     }
 
-    pub fn unsubscribe(&mut self, observer: &Arc<dyn Observer>) {
-        self.player.unsubscribe(observer)
+    pub fn poll_event(&mut self) -> Option<DotLottieEvent> {
+        self.player.poll_event()
+    }
+
+    /// Poll for the next state machine event (SDL-style)
+    ///
+    /// Returns Some(event) if an event is available, None if the queue is empty or state machine is not loaded.
+    pub fn poll_state_machine_event(&mut self) -> Option<StateMachineEvent> {
+        if let Some(sm) = &mut self.player.state_machine {
+            sm.poll_event()
+        } else {
+            None
+        }
+    }
+
+    /// Poll for the next internal state machine event (SDL-style)
+    ///
+    /// Returns Some(event) if an event is available, None if the queue is empty or state machine is not loaded.
+    /// Internal events are for framework use only.
+    pub fn poll_state_machine_internal_event(&mut self) -> Option<StateMachineInternalEvent> {
+        if let Some(sm) = &mut self.player.state_machine {
+            sm.poll_internal_event()
+        } else {
+            None
+        }
     }
 
     pub fn set_theme(&mut self, theme_id: &str) -> bool {
@@ -2131,21 +2022,6 @@ impl DotLottiePlayer {
 
         match new_state_machine {
             Ok(sm) => {
-                // We've called subscribe before loading a state machine
-                if let Some(existing_sm) = &self.player.state_machine {
-                    let tmp_sm_observers = existing_sm.observers.read().unwrap().clone();
-                    let tmp_sm_framework_observers =
-                        existing_sm.internal_observer.read().unwrap().clone();
-
-                    if let Some(tmp_sm_framework_observers) = tmp_sm_framework_observers {
-                        sm.internal_subscribe(tmp_sm_framework_observers.clone());
-                    }
-
-                    for observer in tmp_sm_observers {
-                        sm.subscribe(observer.clone());
-                    }
-                }
-
                 self.player.state_machine = Some(sm);
                 self.player.set_active_state_machine_id("");
                 true
@@ -2163,21 +2039,6 @@ impl DotLottiePlayer {
 
             match new_state_machine {
                 Ok(sm) => {
-                    // We've called subscribe before loading a state machine
-                    if let Some(existing_sm) = &self.player.state_machine {
-                        let tmp_sm_observers = existing_sm.observers.read().unwrap().clone();
-                        let tmp_sm_framework_observers =
-                            existing_sm.internal_observer.read().unwrap().clone();
-
-                        if let Some(tmp_sm_framework_observers) = tmp_sm_framework_observers {
-                            sm.internal_subscribe(tmp_sm_framework_observers.clone());
-                        }
-
-                        for observer in tmp_sm_observers {
-                            sm.subscribe(observer.clone());
-                        }
-                    }
-
                     self.player.state_machine = Some(sm);
                     self.player.set_active_state_machine_id(state_machine_id);
                     return true;

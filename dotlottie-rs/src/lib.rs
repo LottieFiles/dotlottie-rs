@@ -1,4 +1,5 @@
 mod dotlottie_player;
+mod events;
 mod fms;
 mod layout;
 mod lottie_renderer;
@@ -11,6 +12,7 @@ pub(crate) mod time;
 pub mod c_api;
 
 pub use dotlottie_player::*;
+pub use events::*;
 pub use fms::*;
 pub use layout::*;
 pub use lottie_renderer::*;

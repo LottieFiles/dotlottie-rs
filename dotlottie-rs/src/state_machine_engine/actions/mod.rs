@@ -82,6 +82,10 @@ pub enum Action {
     FireCustomEvent {
         value: String,
     },
+    Eval {
+        input_name: String,
+        value: String,
+    },
 }
 
 impl ActionTrait for Action {
@@ -389,6 +393,93 @@ impl ActionTrait for Action {
                 engine.observe_custom_event(value);
 
                 Ok(())
+            }
+            #[cfg(feature = "tvg-lottie-expressions")]
+            Action::Eval { input_name, value } => {
+                // Get or initialize the persistent JavaScript context with current input values
+                let ctx = match engine.get_js_context() {
+                    Ok(ctx) => ctx,
+                    Err(_) => return Err(StateMachineActionError::ExecuteError),
+                };
+
+                // Evaluate the expression
+                let result = match ctx.eval(value) {
+                    Ok(result) => result,
+                    Err(_) => return Err(StateMachineActionError::ExecuteError),
+                };
+
+                // Determine the target input type and validate/coerce result
+
+                if engine.get_numeric_input(input_name).is_some() {
+                    // Target is numeric input
+                    if result.is_number() {
+                        let numeric_result = result.to_number();
+                        if numeric_result.is_finite() {
+                            engine.set_numeric_input(
+                                input_name,
+                                numeric_result,
+                                run_pipeline,
+                                called_from_action,
+                            );
+                        } else {
+                            return Err(StateMachineActionError::ExecuteError);
+                        }
+                    } else {
+                        return Err(StateMachineActionError::ExecuteError);
+                    }
+                } else if engine.get_boolean_input(input_name).is_some() {
+                    // Target is boolean input
+                    if result.is_boolean()
+                        || (!result.is_number()
+                            && !result.is_string()
+                            && !result.is_object()
+                            && !result.is_undefined()
+                            && !result.is_exception())
+                    {
+                        // Convert to boolean using JavaScript truthiness rules
+                        let bool_result = if result.is_boolean() {
+                            result.to_number() != 0.0
+                        } else {
+                            // Handle other boolean-like results (e.g., comparison operators)
+                            result.to_number() != 0.0
+                        };
+                        engine.set_boolean_input(
+                            input_name,
+                            bool_result,
+                            run_pipeline,
+                            called_from_action,
+                        );
+                    } else {
+                        return Err(StateMachineActionError::ExecuteError);
+                    }
+                } else if engine.get_string_input(input_name).is_some() {
+                    // Target is string input
+                    if result.is_string() {
+                        match result.to_string() {
+                            Ok(string_result) => {
+                                engine.set_string_input(
+                                    input_name,
+                                    &string_result,
+                                    run_pipeline,
+                                    called_from_action,
+                                );
+                            }
+                            Err(_) => return Err(StateMachineActionError::ExecuteError),
+                        }
+                    } else {
+                        return Err(StateMachineActionError::ExecuteError);
+                    }
+                } else {
+                    // Input not found
+                    return Err(StateMachineActionError::ExecuteError);
+                }
+
+                Ok(())
+            }
+            #[cfg(not(feature = "tvg-lottie-expressions"))]
+            Action::Eval { .. } => {
+                // Eval action requires tvg-lottie-expressions feature
+                Err(StateMachineActionError::ExecuteError)
             }
             Action::SetFrame { value } => {
                 let read_lock = player.read();

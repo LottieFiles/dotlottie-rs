@@ -1057,15 +1057,19 @@ impl DotLottieRuntime {
         self.renderer.set_position_slot(slot_id, slot).is_ok()
     }
 
-    pub fn get_all_slots(&self) -> std::collections::BTreeMap<String, crate::lottie_renderer::SlotType> {
-        self.renderer.get_all_slots()
-    }
-
     pub fn clear_slots(&mut self) -> bool {
         self.renderer.clear_slots().is_ok()
     }
 
-    pub fn set_slots(&mut self, slots_json: &str) -> bool {
+    pub fn clear_slot(&mut self, slot_id: &str) -> bool {
+        self.renderer.clear_slot(slot_id).is_ok()
+    }
+
+    pub fn set_slots(&mut self, slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>) -> bool {
+        self.renderer.set_slots(slots).is_ok()
+    }
+
+    pub fn set_slots_str(&mut self, slots_json: &str) -> bool {
         use crate::lottie_renderer::slots::slots_from_json_string;
 
         if slots_json.is_empty() {
@@ -1593,16 +1597,20 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().set_position_slot(slot_id, slot)
     }
 
-    pub fn get_all_slots(&self) -> std::collections::BTreeMap<String, crate::lottie_renderer::SlotType> {
-        self.runtime.read().unwrap().get_all_slots()
-    }
-
     pub fn clear_slots(&self) -> bool {
         self.runtime.write().unwrap().clear_slots()
     }
 
-    pub fn set_slots(&self, slots_json: &str) -> bool {
-        self.runtime.write().unwrap().set_slots(slots_json)
+    pub fn clear_slot(&self, slot_id: &str) -> bool {
+        self.runtime.write().unwrap().clear_slot(slot_id)
+    }
+
+    pub fn set_slots(&self, slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>) -> bool {
+        self.runtime.write().unwrap().set_slots(slots)
+    }
+
+    pub fn set_slots_str(&self, slots_json: &str) -> bool {
+        self.runtime.write().unwrap().set_slots_str(slots_json)
     }
 
     pub fn set_quality(&self, quality: u8) -> bool {
@@ -2520,16 +2528,20 @@ impl DotLottiePlayer {
         self.player.write().unwrap().set_position_slot(slot_id, slot)
     }
 
-    pub fn get_all_slots(&self) -> std::collections::BTreeMap<String, crate::lottie_renderer::SlotType> {
-        self.player.read().unwrap().get_all_slots()
-    }
-
     pub fn clear_slots(&self) -> bool {
         self.player.write().unwrap().clear_slots()
     }
 
-    pub fn set_slots(&self, slots_json: &str) -> bool {
-        self.player.write().unwrap().set_slots(slots_json)
+    pub fn clear_slot(&self, slot_id: &str) -> bool {
+        self.player.write().unwrap().clear_slot(slot_id)
+    }
+
+    pub fn set_slots(&self, slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>) -> bool {
+        self.player.write().unwrap().set_slots(slots)
+    }
+
+    pub fn set_slots_str(&self, slots_json: &str) -> bool {
+        self.player.write().unwrap().set_slots_str(slots_json)
     }
 
     pub fn set_quality(&self, quality: u8) -> bool {

@@ -55,7 +55,7 @@ pub trait Animation: Default {
 
     fn get_frame(&self) -> Result<f32, Self::Error>;
 
-    fn set_slots(&mut self, slots: &str) -> Result<(), Self::Error>;
+    fn set_slots_str(&mut self, slots: &str) -> Result<(), Self::Error>;
 
     fn set_quality(&mut self, quality: u8) -> Result<(), Self::Error>;
 

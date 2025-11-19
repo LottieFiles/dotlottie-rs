@@ -100,9 +100,11 @@ pub trait LottieRenderer {
     fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot)
         -> Result<(), LottieRendererError>;
 
-    fn get_all_slots(&self) -> BTreeMap<String, SlotType>;
-
     fn clear_slots(&mut self) -> Result<(), LottieRendererError>;
+
+    fn clear_slot(&mut self, slot_id: &str) -> Result<(), LottieRendererError>;
+
+    fn set_slots(&mut self, slots: BTreeMap<String, SlotType>) -> Result<(), LottieRendererError>;
 
     fn set_quality(&mut self, quality: u8) -> Result<(), LottieRendererError>;
 
@@ -327,7 +329,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
             .map_err(|_| LottieRendererError::InvalidArgument)?;
 
         self.get_animation_mut()?
-            .set_slots(&slots_json)
+            .set_slots_str(&slots_json)
             .map_err(into_lottie::<R>)?;
 
         self.updated = true;
@@ -580,17 +582,23 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.apply_all_slots()
     }
 
-    fn get_all_slots(&self) -> BTreeMap<String, SlotType> {
-        self.slots.clone()
-    }
-
     fn clear_slots(&mut self) -> Result<(), LottieRendererError> {
         self.slots.clear();
         self.get_animation_mut()?
-            .set_slots("")
+            .set_slots_str("")
             .map_err(into_lottie::<R>)?;
         self.updated = true;
         Ok(())
+    }
+
+    fn clear_slot(&mut self, slot_id: &str) -> Result<(), LottieRendererError> {
+        self.slots.remove(slot_id);
+        self.apply_all_slots()
+    }
+
+    fn set_slots(&mut self, slots: BTreeMap<String, SlotType>) -> Result<(), LottieRendererError> {
+        self.slots = slots;
+        self.apply_all_slots()
     }
 
     fn set_quality(&mut self, quality: u8) -> Result<(), LottieRendererError> {

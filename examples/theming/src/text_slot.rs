@@ -3,8 +3,10 @@
 /// This example demonstrates how to use the `set_text_slot` API to dynamically
 /// change text content, font, size, and color in a Lottie animation.
 /// The text.json animation has a slot with ID "my_text" that we can modify.
+///
+/// Demonstrates both static and animated slot values.
 
-use dotlottie_rs::{Config, DotLottiePlayer, TextDocument, TextSlot};
+use dotlottie_rs::{Config, DotLottiePlayer, TextDocument, TextKeyframe, TextSlot};
 use minifb::{Key, Window, WindowOptions};
 
 const WIDTH: u32 = 512;
@@ -13,7 +15,7 @@ const HEIGHT: u32 = 512;
 fn main() {
     // Create window
     let mut window = Window::new(
-        "Text Slot Example - Press SPACE to cycle messages",
+        "Text Slot Example - Press T to toggle, SPACE to cycle",
         WIDTH as usize,
         HEIGHT as usize,
         WindowOptions::default(),
@@ -37,7 +39,8 @@ fn main() {
     }
 
     println!("Animation loaded successfully!");
-    println!("Press SPACE to cycle through different messages");
+    println!("Press T to toggle between static and animated modes");
+    println!("Press SPACE to cycle through different messages (static mode)");
     println!("Press ESC to quit");
 
     // Define some text variations with colors [R, G, B, A]
@@ -52,8 +55,10 @@ fn main() {
 
     let mut current_text_index = 0;
     let mut last_space_press = std::time::Instant::now();
+    let mut last_toggle_press = std::time::Instant::now();
+    let mut is_animated = false;
 
-    // Set initial text
+    // Set initial text (static)
     let text_doc = TextDocument::new(texts[current_text_index].0)
         .with_font("Arial")
         .with_size(200.0)
@@ -61,13 +66,55 @@ fn main() {
 
     let text_slot = TextSlot::with_document(text_doc);
     player.set_text_slot("my_text", text_slot);
-    println!("Current text: {}", texts[current_text_index].0);
+    println!("Mode: STATIC | Current text: {}", texts[current_text_index].0);
 
     // Main render loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        // Handle text cycling with SPACE key
-        if window.is_key_down(Key::Space) {
-            let now = std::time::Instant::now();
+        let now = std::time::Instant::now();
+
+        // Handle toggle between static and animated with T key
+        if window.is_key_down(Key::T) {
+            if now.duration_since(last_toggle_press).as_millis() > 200 {
+                is_animated = !is_animated;
+
+                if is_animated {
+                    // Create animated text slot: "Hello" -> "World"
+                    let text_slot = TextSlot::with_keyframes(vec![
+                        TextKeyframe {
+                            frame: 0,
+                            text_document: TextDocument::new("Hello")
+                                .with_font("Arial")
+                                .with_size(200.0)
+                                .with_fill_color(vec![1.0, 0.0, 0.0, 1.0]), // Red
+                        },
+                        TextKeyframe {
+                            frame: 30,
+                            text_document: TextDocument::new("World")
+                                .with_font("Arial")
+                                .with_size(200.0)
+                                .with_fill_color(vec![0.0, 0.0, 1.0, 1.0]), // Blue
+                        },
+                    ]);
+                    player.set_text_slot("my_text", text_slot);
+                    println!("Mode: ANIMATED (\"Hello\" -> \"World\")");
+                } else {
+                    // Switch back to static mode
+                    let text_doc = TextDocument::new(texts[current_text_index].0)
+                        .with_font("Arial")
+                        .with_size(200.0)
+                        .with_fill_color(texts[current_text_index].1.clone());
+
+                    let text_slot = TextSlot::with_document(text_doc);
+                    player.set_text_slot("my_text", text_slot);
+                    println!("Mode: STATIC | Current text: {}", texts[current_text_index].0);
+                }
+
+                last_toggle_press = now;
+            }
+        }
+
+        // Handle text cycling with SPACE key (only in static mode)
+        if !is_animated && window.is_key_down(Key::Space) {
             if now.duration_since(last_space_press).as_millis() > 200 {
                 current_text_index = (current_text_index + 1) % texts.len();
 
@@ -80,7 +127,7 @@ fn main() {
                 let text_slot = TextSlot::with_document(text_doc);
                 player.set_text_slot("my_text", text_slot);
 
-                println!("Current text: {}", texts[current_text_index].0);
+                println!("Mode: STATIC | Current text: {}", texts[current_text_index].0);
                 last_space_press = now;
             }
         }

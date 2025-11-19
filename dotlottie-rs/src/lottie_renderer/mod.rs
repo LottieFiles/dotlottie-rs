@@ -11,9 +11,9 @@ mod thorvg;
 
 pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
 pub use slots::{
-    slots_from_json_string, Bezier, ColorSlot, GradientSlot, GradientStop, ImageSlot, LottieKeyframe,
-    LottieProperty, PositionSlot, ScalarSlot, SlotType, TextCaps, TextDocument, TextJustify,
-    TextKeyframe, TextSlot, VectorSlot,
+    slots_from_json_string, Bezier, BezierValue, ColorSlot, GradientSlot, GradientStop, ImageSlot,
+    LottieKeyframe, LottieProperty, PositionSlot, ScalarSlot, SlotType, TextCaps, TextDocument,
+    TextJustify, TextKeyframe, TextSlot, VectorSlot,
 };
 #[cfg(feature = "tvg")]
 pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};

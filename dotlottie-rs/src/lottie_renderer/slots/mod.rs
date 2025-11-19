@@ -17,11 +17,28 @@ pub use vector::VectorSlot;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+/// Bezier value can be either a single number or a vector for multi-dimensional properties
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum BezierValue {
+    Single(f32),
+    Multi(Vec<f32>),
+}
+
+/// Bezier easing control point for keyframe interpolation
+///
+/// For linear interpolation:
+/// - `o` (out): `{"x": [0, 0], "y": [0, 0]}`
+/// - `i` (in): `{"x": [1, 1], "y": [1, 1]}`
+///
+/// The x axis represents time (0 = current keyframe, 1 = next keyframe)
+/// The y axis represents value interpolation (0 = current value, 1 = next value)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bezier {
-    pub x: f32,
-    pub y: f32,
+    pub x: BezierValue,
+    pub y: BezierValue,
 }
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LottieKeyframe<T> {

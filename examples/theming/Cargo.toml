@@ -32,5 +32,9 @@ name = "position_slot"
 path = "src/position_slot.rs"
 
 [[bin]]
+name = "with_expression"
+path = "src/with_expression.rs"
+
+[[bin]]
 name = "theme"
 path = "src/theme.rs"

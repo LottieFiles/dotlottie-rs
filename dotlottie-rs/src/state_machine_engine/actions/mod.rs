@@ -61,12 +61,6 @@ pub enum Action {
     Reset {
         input_name: String,
     },
-    SetExpression {
-        layer_name: String,
-        property_index: u32,
-        var_name: String,
-        value: f32,
-    },
     SetTheme {
         value: String,
     },
@@ -75,9 +69,6 @@ pub enum Action {
     },
     SetProgress {
         value: StringNumber,
-    },
-    SetThemeData {
-        value: String,
     },
     FireCustomEvent {
         value: String,
@@ -283,21 +274,6 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::SetExpression {
-                layer_name,
-                property_index,
-                var_name,
-                value,
-            } => {
-                todo!(
-                    "Set expression for layer {} property {} var {} value {}",
-                    layer_name,
-                    property_index,
-                    var_name,
-                    value
-                );
-                // Ok(())
-            }
             Action::SetTheme { value } => {
                 let read_lock = player.try_read();
 
@@ -320,28 +296,6 @@ impl ActionTrait for Action {
                         return Err(StateMachineActionError::ExecuteError);
                     }
                 }
-                Ok(())
-            }
-            Action::SetThemeData { value } => {
-                let read_lock = player.read();
-
-                match read_lock {
-                    Ok(player) => {
-                        // If there is a $x inside value, replace with the value of x
-                        // If there is a $y inside value, replace with the value of x
-                        let value = value
-                            .replace("$x", &engine.pointer_management.pointer_x.to_string())
-                            .replace("$y", &engine.pointer_management.pointer_y.to_string());
-
-                        if !player.set_slots(&value) {
-                            return Err(StateMachineActionError::ExecuteError);
-                        }
-                    }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError);
-                    }
-                }
-
                 Ok(())
             }
             Action::OpenUrl { url, target } => {

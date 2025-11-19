@@ -1,0 +1,36 @@
+[package]
+name = "theming-examples"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+minifb = "0.27"
+dotlottie-rs = { path = "../../dotlottie-rs", features = ["dev"] }
+
+[[bin]]
+name = "color_slot"
+path = "src/color_slot.rs"
+
+[[bin]]
+name = "scalar_slot"
+path = "src/scalar_slot.rs"
+
+[[bin]]
+name = "text_slot"
+path = "src/text_slot.rs"
+
+[[bin]]
+name = "gradient_slot"
+path = "src/gradient_slot.rs"
+
+[[bin]]
+name = "vector_slot"
+path = "src/vector_slot.rs"
+
+[[bin]]
+name = "position_slot"
+path = "src/position_slot.rs"
+
+[[bin]]
+name = "theme"
+path = "src/theme.rs"

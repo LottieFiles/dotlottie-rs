@@ -27,6 +27,13 @@
 
 #define LISTENER_TYPE_UNSET 0
 
+typedef enum Mode {
+  Forward,
+  Reverse,
+  Bounce,
+  ReverseBounce,
+} Mode;
+
 typedef enum DotLottieFit {
   Contain,
   Fill,
@@ -35,13 +42,6 @@ typedef enum DotLottieFit {
   FitHeight,
   Void,
 } DotLottieFit;
-
-typedef enum Mode {
-  Forward,
-  Reverse,
-  Bounce,
-  ReverseBounce,
-} Mode;
 
 typedef struct DotLottiePlayer DotLottiePlayer;
 
@@ -231,6 +231,10 @@ typedef struct Observer {
   OnOp on_complete_op;
 } Observer;
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 int32_t dotlottie_active_animation_id(struct DotLottiePlayer *ptr, char *result);
 
 int32_t dotlottie_active_theme_id(struct DotLottiePlayer *ptr, char *result);
@@ -393,3 +397,7 @@ int32_t dotlottie_subscribe(struct DotLottiePlayer *ptr, struct Observer *observ
 int32_t dotlottie_total_frames(struct DotLottiePlayer *ptr, float *result);
 
 int32_t dotlottie_unsubscribe(struct DotLottiePlayer *ptr, struct Observer *observer);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif  // __cplusplus

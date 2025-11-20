@@ -614,7 +614,7 @@ fn get_color_space_for_target() -> ColorSpace {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        ColorSpace::ABGR8888
+        ColorSpace::ARGB8888S
     }
 }
 

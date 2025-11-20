@@ -140,7 +140,7 @@ impl Default for StateMachineEngine {
             open_url_requires_user_interaction: false,
             open_url_whitelist: Whitelist::new(),
             player: None,
-            inputs: InputManager::new(),
+            inputs: InputManager::new(None),
             curr_event: None,
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
@@ -170,7 +170,7 @@ impl StateMachineEngine {
             open_url_requires_user_interaction: false,
             open_url_whitelist: Whitelist::new(),
             player: Some(player.clone()),
-            inputs: InputManager::new(),
+            inputs: InputManager::new(None),
             curr_event: None,
             pointer_management: PointerData::default(),
             status: StateMachineEngineStatus::Stopped,
@@ -422,6 +422,7 @@ impl StateMachineEngine {
                 }
 
                 new_state_machine.player = Some(player.clone());
+                new_state_machine.inputs.player = Some(player.clone());
                 new_state_machine.state_machine = parsed_state_machine;
 
                 let try_read_lock = &player.try_read();

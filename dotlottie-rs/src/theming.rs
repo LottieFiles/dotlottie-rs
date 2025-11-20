@@ -1,9 +1,12 @@
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
+use crate::DotLottieManager;
+
 pub fn transform_theme_to_lottie_slots(
     theme_json: &str,
     active_animation_id: &str,
+    manager: &DotLottieManager,
 ) -> Result<String, serde_json::Error> {
     let theme: Value = serde_json::from_str(theme_json)?;
     let rules = theme["rules"]
@@ -21,7 +24,7 @@ pub fn transform_theme_to_lottie_slots(
         let slot_type = rule["type"].as_str().unwrap_or("");
 
         let p = match slot_type {
-            "Image" => handle_image_slot(rule),
+            "Image" => handle_image_slot(rule, manager),
             "Gradient" => handle_gradient_slot(rule),
             "Scalar" => handle_scalar_slot(rule),
             "Text" => handle_text_slot(rule),
@@ -32,6 +35,7 @@ pub fn transform_theme_to_lottie_slots(
     }
 
     let lottie_slots_json = serde_json::to_string(&lottie_slots)?;
+
     Ok(lottie_slots_json)
 }
 
@@ -47,7 +51,7 @@ fn should_process_rule(rule: &Value, active_animation_id: &str) -> bool {
         .any(|anim| anim.as_str() == Some(active_animation_id))
 }
 
-fn handle_image_slot(rule: &Value) -> Value {
+fn handle_image_slot(rule: &Value, manager: &DotLottieManager) -> Value {
     if let Some(value) = rule["value"].as_object() {
         let mut image_data = json!({});
 
@@ -63,6 +67,13 @@ fn handle_image_slot(rule: &Value) -> Value {
             image_data["u"] = json!(path); // should be the path
             image_data["p"] = json!(path.split('/').next_back().unwrap_or("")); // should be the file name
             image_data["e"] = json!(0);
+        }
+
+        if let Some(path) = value.get("id").and_then(|v| v.as_str()) {
+            if let Ok(data) = manager.get_image(path) {
+                image_data["p"] = json!(data);
+                image_data["e"] = json!(1);
+            }
         }
 
         if let Some(data_url) = value.get("dataUrl").and_then(|v| v.as_str()) {

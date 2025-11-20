@@ -1175,7 +1175,10 @@ impl DotLottieRuntime {
             let engine = GlobalInputsEngine::builder(&data).build();
 
             if engine.is_err() {
-                println!("[Bindings] Failed to create new GlobalInputsEngine.");
+                println!(
+                    "[Bindings] Failed to create new GlobalInputsEngine. Reason: {:?}",
+                    engine.err()
+                );
                 return false;
             }
 
@@ -1200,7 +1203,10 @@ impl DotLottieRuntime {
         let engine = GlobalInputsEngine::builder(bindings_data).build();
 
         if engine.is_err() {
-            println!("[Bindings] Failed to create new GlobalInputsEngine.");
+            println!(
+                "[Bindings] Failed to create new GlobalInputsEngine. Reason: {:?}",
+                engine.err()
+            );
             return false;
         }
 

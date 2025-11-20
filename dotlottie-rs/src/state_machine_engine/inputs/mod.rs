@@ -77,7 +77,7 @@ impl InputTrait for InputManager {
     }
 
     // Resolve a string input either from the State machine inputs or the data bindings
-    // Return value: If neither the input or data bind was found, returns None
+    // Return value: If neither the input or data bind was found, returns the key
     fn resolve_string(&self, key: &str) -> Option<String> {
         if let Some(binding_name) = key.strip_prefix('@') {
             self.player
@@ -87,7 +87,7 @@ impl InputTrait for InputManager {
         } else if let Some(binding_name) = key.strip_prefix('$') {
             self.get_string(binding_name)
         } else {
-            Some(key.to_string())
+            self.get_string(key)
         }
     }
 
@@ -102,9 +102,7 @@ impl InputTrait for InputManager {
         } else if let Some(binding_name) = key.strip_prefix('$') {
             self.get_boolean(binding_name)
         } else {
-            // For boolean, you might want to parse the key as a boolean literal
-            // or return None if it doesn't make sense as a boolean
-            key.parse::<bool>().ok()
+            self.get_boolean(key)
         }
     }
 
@@ -118,10 +116,9 @@ impl InputTrait for InputManager {
                 .and_then(|p| p.global_inputs_get_scalar(binding_name))
                 .map(|v| v as f32)
         } else if let Some(binding_name) = key.strip_prefix('$') {
-            self.get_numeric(binding_name).map(|v| v as f32)
+            self.get_numeric(binding_name)
         } else {
-            // Parse the key as a numeric literal
-            key.parse::<f32>().ok()
+            self.get_numeric(key)
         }
     }
 

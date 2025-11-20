@@ -13,11 +13,12 @@ pub const HEIGHT: usize = 500;
 // pub const ANIMATION_NAME: &str = "smiley_slider";
 // pub const STATE_MACHINE_NAME: &str = "smiley-slider-state";
 
-pub const ANIMATION_NAME: &str = "traffic_lights";
-pub const STATE_MACHINE_NAME: &str = "traffic_lights";
+pub const ANIMATION_NAME: &str = "star_marked";
+pub const STATE_MACHINE_NAME: &str = "sm-star-marked";
 
 // pub const STATE_MACHINE_NAME: &str = "pigeon_with_listeners";
 // pub const ANIMATION_NAME: &str = "pigeon";
+
 // pub const STATE_MACHINE_NAME: &str = "theming";
 // pub const ANIMATION_NAME: &str = "themed";
 // pub const STATE_MACHINE_NAME: &str = "rating";
@@ -150,9 +151,30 @@ fn main() {
 
     let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
         background_color: 0xffffffff,
-        state_machine_id: STATE_MACHINE_NAME.to_string(),
+        // state_machine_id: STATE_MACHINE_NAME.to_string(),
+        autoplay: true,
+        loop_animation: true,
         ..Config::default()
     });
+
+    let my_json_string = r#"{
+        "rating": {
+            "type": "Scalar",
+            "value": 5
+        }
+    }"#;
+
+    //
+    // The `r#""#` raw string allows you to easily embed JSON code, including quotes.
+    //
+    // If you want to create JSON from Rust data structures, you can use serde_json:
+    // use serde_json::json;
+    // let data = json!({
+    //     "name": "example",
+    //     "value": 42
+    // });
+    // let my_json_string = data.to_string();
+
     let mut markers = File::open(format!(
         "./src/bin/shared/animations/{}.lottie",
         ANIMATION_NAME
@@ -167,6 +189,8 @@ fn main() {
     markers.read(&mut markers_buffer).expect("buffer overflow");
 
     lottie_player.load_dotlottie_data(&markers_buffer, WIDTH as u32, HEIGHT as u32);
+    let data = lottie_player.global_inputs_load_data(my_json_string);
+    println!("Load data: {}", data);
 
     let mut timer = Timer::new();
 
@@ -189,7 +213,7 @@ fn main() {
 
     let s = lottie_player.state_machine_start(open_url);
 
-    println!("Start state machine -> {}", s);
+    // println!("Start state machine -> {}", s);
 
     println!("is_playing: {}", lottie_player.is_playing());
 

@@ -4,6 +4,7 @@ mod manifest;
 pub use errors::*;
 pub use manifest::*;
 
+use crate::theme::Theme;
 use serde_json::Value;
 use std::cell::RefCell;
 use std::io::{self, Read};
@@ -201,11 +202,12 @@ impl DotLottieManager {
     }
 
     #[inline]
-    pub fn get_theme(&self, theme_id: &str) -> Result<String, DotLottieError> {
+    pub fn get_theme(&self, theme_id: &str) -> Result<Theme, DotLottieError> {
         let mut archive = self.archive.borrow_mut();
         let path = format!("t/{theme_id}.json");
         let content = Self::read_zip_file(&mut archive, &path)?;
-        String::from_utf8(content).map_err(|_| DotLottieError::InvalidUtf8Error)
+        let theme_str = std::str::from_utf8(&content).map_err(|_| DotLottieError::InvalidUtf8Error)?;
+        theme_str.parse::<Theme>().map_err(|_| DotLottieError::ReadContentError)
     }
 
     #[inline]

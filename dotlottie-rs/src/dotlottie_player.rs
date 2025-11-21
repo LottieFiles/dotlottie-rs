@@ -10,9 +10,7 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap, StateMachineEngine,
 };
-use crate::{
-    transform_theme_to_lottie_slots, DotLottieManager, Manifest, Renderer, StateMachineEngineError,
-};
+use crate::{DotLottieManager, Manifest, Renderer, StateMachineEngineError};
 
 use crate::StateMachineInternalObserver;
 use crate::StateMachineObserver;
@@ -944,7 +942,7 @@ impl DotLottieRuntime {
         self.config.theme_id.clear();
 
         if theme_id.is_empty() {
-            return self.renderer.set_slots("").is_ok();
+            return self.renderer.clear_slots().is_ok();
         }
 
         let theme_exists = self
@@ -975,12 +973,11 @@ impl DotLottieRuntime {
             .dotlottie_manager
             .as_mut()
             .and_then(|manager| manager.get_theme(theme_id).ok())
-            .and_then(|theme_data| {
-                let slots = transform_theme_to_lottie_slots(&theme_data, &self.active_animation_id)
-                    .unwrap();
-                self.renderer.set_slots(&slots).ok()
+            .map(|theme| {
+                let slots = theme.to_slot_types(&self.active_animation_id);
+                self.apply_slot_types(slots)
             })
-            .is_some();
+            .unwrap_or(false);
 
         if ok {
             self.active_theme_id = theme_id.to_string();
@@ -993,22 +990,115 @@ impl DotLottieRuntime {
     pub fn reset_theme(&mut self) -> bool {
         self.active_theme_id.clear();
         self.config.theme_id.clear();
-        self.renderer.set_slots("").is_ok()
+        self.renderer.clear_slots().is_ok()
     }
 
     pub fn set_theme_data(&mut self, theme_data: &str) -> bool {
-        match transform_theme_to_lottie_slots(theme_data, &self.active_animation_id) {
-            Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
+        match theme_data.parse::<crate::theme::Theme>() {
+            Ok(theme) => {
+                let slots = theme.to_slot_types(&self.active_animation_id);
+                self.apply_slot_types(slots)
+            }
             Err(_) => false,
         }
     }
 
-    pub fn set_slots(&mut self, slots: &str) -> bool {
-        self.renderer.set_slots(slots).is_ok()
+    fn apply_slot_types(&mut self, slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>) -> bool {
+        use crate::lottie_renderer::SlotType;
+
+        for (slot_id, slot_type) in slots {
+            let result = match slot_type {
+                SlotType::Color(slot) => self.renderer.set_color_slot(&slot_id, slot),
+                SlotType::Gradient(slot) => self.renderer.set_gradient_slot(&slot_id, slot),
+                SlotType::Image(slot) => self.renderer.set_image_slot(&slot_id, slot),
+                SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot),
+                SlotType::Scalar(slot) => self.renderer.set_scalar_slot(&slot_id, slot),
+                SlotType::Vector(slot) => self.renderer.set_vector_slot(&slot_id, slot),
+                SlotType::Position(slot) => self.renderer.set_position_slot(&slot_id, slot),
+            };
+
+            if result.is_err() {
+                return false;
+            }
+        }
+
+        true
     }
 
     pub fn set_quality(&mut self, quality: u8) -> bool {
         self.renderer.set_quality(quality).is_ok()
+    }
+
+    pub fn set_color_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::ColorSlot) -> bool {
+        self.renderer.set_color_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_gradient_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::GradientSlot) -> bool {
+        self.renderer.set_gradient_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_image_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::ImageSlot) -> bool {
+        self.renderer.set_image_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_text_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::TextSlot) -> bool {
+        self.renderer.set_text_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_scalar_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::ScalarSlot) -> bool {
+        self.renderer.set_scalar_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_vector_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::VectorSlot) -> bool {
+        self.renderer.set_vector_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_position_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::PositionSlot) -> bool {
+        self.renderer.set_position_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn clear_slots(&mut self) -> bool {
+        self.renderer.clear_slots().is_ok()
+    }
+
+    pub fn clear_slot(&mut self, slot_id: &str) -> bool {
+        self.renderer.clear_slot(slot_id).is_ok()
+    }
+
+    pub fn set_slots(&mut self, slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>) -> bool {
+        self.renderer.set_slots(slots).is_ok()
+    }
+
+    pub fn set_slots_str(&mut self, slots_json: &str) -> bool {
+        use crate::lottie_renderer::slots::slots_from_json_string;
+
+        if slots_json.is_empty() {
+            return self.clear_slots();
+        }
+
+        match slots_from_json_string(slots_json) {
+            Ok(slots) => {
+                for (slot_id, slot_type) in slots {
+                    use crate::lottie_renderer::SlotType;
+
+                    let result = match slot_type {
+                        SlotType::Color(slot) => self.renderer.set_color_slot(&slot_id, slot),
+                        SlotType::Gradient(slot) => self.renderer.set_gradient_slot(&slot_id, slot),
+                        SlotType::Image(slot) => self.renderer.set_image_slot(&slot_id, slot),
+                        SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot),
+                        SlotType::Scalar(slot) => self.renderer.set_scalar_slot(&slot_id, slot),
+                        SlotType::Vector(slot) => self.renderer.set_vector_slot(&slot_id, slot),
+                        SlotType::Position(slot) => self.renderer.set_position_slot(&slot_id, slot),
+                    };
+
+                    if result.is_err() {
+                        return false;
+                    }
+                }
+                true
+            }
+            Err(_) => false,
+        }
     }
 
     pub fn active_animation_id(&self) -> &str {
@@ -1479,8 +1569,48 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().set_theme_data(theme_data)
     }
 
-    pub fn set_slots(&self, slots: &str) -> bool {
+    pub fn set_color_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ColorSlot) -> bool {
+        self.runtime.write().unwrap().set_color_slot(slot_id, slot)
+    }
+
+    pub fn set_gradient_slot(&self, slot_id: &str, slot: crate::lottie_renderer::GradientSlot) -> bool {
+        self.runtime.write().unwrap().set_gradient_slot(slot_id, slot)
+    }
+
+    pub fn set_image_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ImageSlot) -> bool {
+        self.runtime.write().unwrap().set_image_slot(slot_id, slot)
+    }
+
+    pub fn set_text_slot(&self, slot_id: &str, slot: crate::lottie_renderer::TextSlot) -> bool {
+        self.runtime.write().unwrap().set_text_slot(slot_id, slot)
+    }
+
+    pub fn set_scalar_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ScalarSlot) -> bool {
+        self.runtime.write().unwrap().set_scalar_slot(slot_id, slot)
+    }
+
+    pub fn set_vector_slot(&self, slot_id: &str, slot: crate::lottie_renderer::VectorSlot) -> bool {
+        self.runtime.write().unwrap().set_vector_slot(slot_id, slot)
+    }
+
+    pub fn set_position_slot(&self, slot_id: &str, slot: crate::lottie_renderer::PositionSlot) -> bool {
+        self.runtime.write().unwrap().set_position_slot(slot_id, slot)
+    }
+
+    pub fn clear_slots(&self) -> bool {
+        self.runtime.write().unwrap().clear_slots()
+    }
+
+    pub fn clear_slot(&self, slot_id: &str) -> bool {
+        self.runtime.write().unwrap().clear_slot(slot_id)
+    }
+
+    pub fn set_slots(&self, slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>) -> bool {
         self.runtime.write().unwrap().set_slots(slots)
+    }
+
+    pub fn set_slots_str(&self, slots_json: &str) -> bool {
+        self.runtime.write().unwrap().set_slots_str(slots_json)
     }
 
     pub fn set_quality(&self, quality: u8) -> bool {
@@ -2370,8 +2500,48 @@ impl DotLottiePlayer {
         self.player.write().unwrap().set_theme_data(theme_data)
     }
 
-    pub fn set_slots(&self, slots: &str) -> bool {
+    pub fn set_color_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ColorSlot) -> bool {
+        self.player.write().unwrap().set_color_slot(slot_id, slot)
+    }
+
+    pub fn set_gradient_slot(&self, slot_id: &str, slot: crate::lottie_renderer::GradientSlot) -> bool {
+        self.player.write().unwrap().set_gradient_slot(slot_id, slot)
+    }
+
+    pub fn set_image_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ImageSlot) -> bool {
+        self.player.write().unwrap().set_image_slot(slot_id, slot)
+    }
+
+    pub fn set_text_slot(&self, slot_id: &str, slot: crate::lottie_renderer::TextSlot) -> bool {
+        self.player.write().unwrap().set_text_slot(slot_id, slot)
+    }
+
+    pub fn set_scalar_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ScalarSlot) -> bool {
+        self.player.write().unwrap().set_scalar_slot(slot_id, slot)
+    }
+
+    pub fn set_vector_slot(&self, slot_id: &str, slot: crate::lottie_renderer::VectorSlot) -> bool {
+        self.player.write().unwrap().set_vector_slot(slot_id, slot)
+    }
+
+    pub fn set_position_slot(&self, slot_id: &str, slot: crate::lottie_renderer::PositionSlot) -> bool {
+        self.player.write().unwrap().set_position_slot(slot_id, slot)
+    }
+
+    pub fn clear_slots(&self) -> bool {
+        self.player.write().unwrap().clear_slots()
+    }
+
+    pub fn clear_slot(&self, slot_id: &str) -> bool {
+        self.player.write().unwrap().clear_slot(slot_id)
+    }
+
+    pub fn set_slots(&self, slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>) -> bool {
         self.player.write().unwrap().set_slots(slots)
+    }
+
+    pub fn set_slots_str(&self, slots_json: &str) -> bool {
+        self.player.write().unwrap().set_slots_str(slots_json)
     }
 
     pub fn set_quality(&self, quality: u8) -> bool {

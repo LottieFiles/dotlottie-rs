@@ -79,7 +79,7 @@ pub enum StateMachineInternalEvent {
     },
 }
 
-const MAX_EVENTS: usize = 256;
+pub const MAX_EVENTS: usize = 256;
 
 /// Trait for events that can be coalesced to save queue space
 pub trait CoalescableEvent: Sized {

@@ -8,8 +8,8 @@ style = "both"
 no_includes = false
 sys_includes = ["stdint.h", "stdbool.h"]
 after_includes = """
-/* Compatibility aliases for demo-player-c */
-typedef struct dotlottieDotLottiePlayer DotLottiePlayer;
+/* Type aliases for cleaner C code */
+typedef struct dotlottieDotLottieRuntime DotLottieRuntime;
 typedef struct dotlottieDotLottieConfig DotLottieConfig;
 #define DOTLOTTIE_SUCCESS 0
 """

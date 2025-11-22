@@ -24,8 +24,8 @@ use crate::actions::whitelist::Whitelist;
 use crate::events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, Config, DotLottiePlayerContainer,
-    EventName, PointerEvent, StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, Config, DotLottieRuntime, EventName,
+    PointerEvent, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -70,7 +70,7 @@ impl Default for PointerData {
     }
 }
 
-pub struct StateMachineEngine {
+pub struct StateMachineEngine<'a> {
     // For resetting the player config after state machine is stopped
     cached_player_config: Config,
 
@@ -84,6 +84,8 @@ pub struct StateMachineEngine {
     // Open url policy configurations
     pub open_url_requires_user_interaction: bool,
     pub open_url_whitelist: Whitelist,
+
+    pub player: &'a mut DotLottieRuntime,
 
     pub inputs: InputManager,
     curr_event: Option<String>,
@@ -106,58 +108,13 @@ pub struct StateMachineEngine {
     tween_transition_target_state: Option<State>,
 }
 
-impl Default for StateMachineEngine {
-    fn default() -> StateMachineEngine {
-        StateMachineEngine {
-            cached_player_config: Config::default(),
-            global_state: None,
-            state_machine: StateMachine::default(),
-            current_state: None,
-            open_url_requires_user_interaction: false,
-            open_url_whitelist: Whitelist::new(),
-            inputs: InputManager::new(),
-            curr_event: None,
-            pointer_management: PointerData::default(),
-            status: StateMachineEngineStatus::Stopped,
-            event_queue: EventQueue::new(),
-            internal_event_queue: EventQueue::new(),
-            state_history: Vec::new(),
-            max_cycle_count: 20,
-            current_cycle_count: 0,
-            action_mutated_inputs: false,
-            tween_transition_target_state: None,
-        }
-    }
-}
-
-impl StateMachineEngine {
+impl<'a> StateMachineEngine<'a> {
     pub fn new(
         state_machine_definition: &str,
-        player: &mut DotLottiePlayerContainer,
+        player: &'a mut DotLottieRuntime,
         max_cycle_count: Option<usize>,
-    ) -> Result<StateMachineEngine, StateMachineEngineError> {
-        // Create an empty state machine object that we'll use to boot up the parser from
-        let mut state_machine = StateMachineEngine {
-            cached_player_config: Config::default(),
-            global_state: None,
-            state_machine: StateMachine::default(),
-            current_state: None,
-            open_url_requires_user_interaction: false,
-            open_url_whitelist: Whitelist::new(),
-            inputs: InputManager::new(),
-            curr_event: None,
-            pointer_management: PointerData::default(),
-            status: StateMachineEngineStatus::Stopped,
-            event_queue: EventQueue::new(),
-            internal_event_queue: EventQueue::new(),
-            state_history: Vec::new(),
-            max_cycle_count: max_cycle_count.unwrap_or(20),
-            current_cycle_count: 0,
-            action_mutated_inputs: false,
-            tween_transition_target_state: None,
-        };
-
-        state_machine.create_state_machine(state_machine_definition, player)
+    ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
+        Self::from_definition(state_machine_definition, player, max_cycle_count)
     }
 
     /// Poll for the next state machine event
@@ -184,7 +141,7 @@ impl StateMachineEngine {
         &mut self,
         key: &str,
         value: f32,
-        _run_pipeline: bool,
+        run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<InputValue> {
         // Modifying triggers whilst tweening isn't allowed
@@ -202,8 +159,9 @@ impl StateMachineEngine {
             self.action_mutated_inputs = true;
         }
 
-        // Note: run_pipeline is tracked but the actual pipeline run happens outside
-        // when the caller has access to the player reference
+        if run_pipeline {
+            let _ = self.run_current_state_pipeline();
+        }
 
         ret
     }
@@ -216,7 +174,7 @@ impl StateMachineEngine {
         &mut self,
         key: &str,
         value: &str,
-        _run_pipeline: bool,
+        run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<InputValue> {
         // Modifying triggers whilst tweening isn't allowed
@@ -233,8 +191,10 @@ impl StateMachineEngine {
         if called_from_action {
             self.action_mutated_inputs = true;
         }
-        // Note: run_pipeline is tracked but the actual pipeline run happens outside
-        // when the caller has access to the player reference
+
+        if run_pipeline {
+            let _ = self.run_current_state_pipeline();
+        }
 
         ret
     }
@@ -247,7 +207,7 @@ impl StateMachineEngine {
         &mut self,
         key: &str,
         value: bool,
-        _run_pipeline: bool,
+        run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<InputValue> {
         // Modifying triggers whilst tweening isn't allowed
@@ -264,8 +224,10 @@ impl StateMachineEngine {
         if called_from_action {
             self.action_mutated_inputs = true;
         }
-        // Note: run_pipeline is tracked but the actual pipeline run happens outside
-        // when the caller has access to the player reference
+
+        if run_pipeline {
+            let _ = self.run_current_state_pipeline();
+        }
 
         ret
     }
@@ -274,7 +236,7 @@ impl StateMachineEngine {
         self.inputs.get_boolean(key)
     }
 
-    pub fn reset_input(&mut self, key: &str, _run_pipeline: bool, called_from_action: bool) {
+    pub fn reset_input(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
         // Modifying triggers whilst tweening isn't allowed
         if self.status != StateMachineEngineStatus::Running {
             return;
@@ -306,19 +268,23 @@ impl StateMachineEngine {
         if called_from_action {
             self.action_mutated_inputs = true;
         }
-        // Note: run_pipeline is tracked but the actual pipeline run happens outside
-        // when the caller has access to the player reference
+
+        if run_pipeline {
+            let _ = self.run_current_state_pipeline();
+        }
     }
 
-    pub fn fire(&mut self, event: &str, _run_pipeline: bool) -> Result<(), StateMachineEngineError> {
+    pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), StateMachineEngineError> {
         // If the event is a valid input
         if let Some(valid_event) = self.inputs.get_event(event) {
             self.observe_on_input_fired(&valid_event);
 
             self.curr_event = Some(valid_event.to_string());
 
-            // Note: run_pipeline is tracked but the actual pipeline run happens outside
-            // when the caller has access to the player reference
+            // Run pipeline is always false if called from an action
+            if run_pipeline {
+                let _ = self.run_current_state_pipeline();
+            }
 
             return Ok(());
         }
@@ -327,20 +293,41 @@ impl StateMachineEngine {
     }
 
     // Parses the JSON of the state machine definition and creates the states and transitions
-    pub fn create_state_machine(
-        &mut self,
+    // Previously called create_state_machine
+    pub fn from_definition(
         sm_definition: &str,
-        player: &mut DotLottiePlayerContainer,
-    ) -> Result<StateMachineEngine, StateMachineEngineError> {
+        player: &'a mut DotLottieRuntime,
+        max_cycle_count: Option<usize>,
+    ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
-        let mut new_state_machine = StateMachineEngine::default();
+        let mut new_state_machine = StateMachineEngine {
+            cached_player_config: player.config(),
+            player, // `player` Moved. Don't use after this point
+            global_state: None,
+            state_machine: StateMachine::default(),
+            current_state: None,
+            open_url_requires_user_interaction: false,
+            open_url_whitelist: Whitelist::new(),
+            inputs: InputManager::new(),
+            curr_event: None,
+            pointer_management: PointerData::default(),
+            status: StateMachineEngineStatus::Stopped,
+            event_queue: EventQueue::new(),
+            internal_event_queue: EventQueue::new(),
+            state_history: Vec::new(),
+            max_cycle_count: max_cycle_count.unwrap_or(20),
+            current_cycle_count: 0,
+            action_mutated_inputs: false,
+            tween_transition_target_state: None,
+        };
+
         if parsed_state_machine.is_err() {
             let message = match parsed_state_machine.err() {
                 Some(e) => format!("Parsing error: {e:?}"),
                 None => "Parsing error: Unknown error".to_string(),
             };
 
-            self.observe_on_error(message.as_str());
+            new_state_machine.observe_on_error(message.as_str());
 
             return Err(StateMachineEngineError::ParsingError(message));
         }
@@ -381,19 +368,17 @@ impl StateMachineEngine {
 
                 new_state_machine.state_machine = parsed_state_machine;
 
-                new_state_machine.cached_player_config = player.config();
-
                 new_state_machine.init_listened_layers();
 
                 // Run the security check pipeline
-                let check_report = self.security_check_pipeline(&new_state_machine);
+                let check_report = Self::security_check_pipeline(&new_state_machine);
 
                 match check_report {
                     Ok(_) => {}
                     Err(error) => {
                         let message = format!("Load: {error:?}");
 
-                        self.observe_on_error(message.as_str());
+                        new_state_machine.observe_on_error(message.as_str());
 
                         return Err(StateMachineEngineError::CreationError);
                     }
@@ -406,23 +391,22 @@ impl StateMachineEngine {
     }
 
     fn security_check_pipeline(
-        &self,
         state_machine: &StateMachineEngine,
     ) -> Result<(), StateMachineEngineSecurityError> {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self, player: &mut DotLottiePlayerContainer, open_url: &OpenUrlPolicy) -> bool {
+    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> bool {
         // Reset to first frame
-        player.stop();
+        self.player.stop();
         // Remove all playback settings but preserve use_frame_interpolation and layout
-        let current_config = player.config();
+        let current_config = self.player.config();
         let reset_config = Config {
             use_frame_interpolation: current_config.use_frame_interpolation,
             layout: current_config.layout,
             ..Config::default()
         };
-        player.set_config(reset_config);
+        self.player.set_config(reset_config);
 
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
@@ -444,7 +428,7 @@ impl StateMachineEngine {
 
         let initial = &self.state_machine.initial.clone();
 
-        let err = self.set_current_state(initial, None, false, player);
+        let err = self.set_current_state(initial, None, false);
         match err {
             Ok(_) => {}
             Err(error) => {
@@ -464,17 +448,25 @@ impl StateMachineEngine {
 
         self.status = StateMachineEngineStatus::Running;
 
-        let _ = self.run_current_state_pipeline(player);
+        let _ = self.run_current_state_pipeline();
 
         true
     }
 
-    pub fn stop(&mut self, player: &mut DotLottiePlayerContainer) {
+    pub fn stop(&mut self) {
         self.status = StateMachineEngineStatus::Stopped;
 
         self.observe_on_stop();
 
-        player.set_config(self.cached_player_config.clone());
+        self.player.set_config(self.cached_player_config.clone());
+    }
+
+    /// For external use only.
+    /// `mut self` here drops state_machine_engine which releases the borrow of `dotlottie_runtime`
+    pub fn release(mut self) {
+        if self.status != StateMachineEngineStatus::Stopped {
+            self.stop();
+        }
     }
 
     pub fn status(&self) -> String {
@@ -566,7 +558,7 @@ impl StateMachineEngine {
         None
     }
 
-    pub fn resume_from_tweening(&mut self, player: &mut DotLottiePlayerContainer) {
+    pub fn resume_from_tweening(&mut self) {
         if self.status != StateMachineEngineStatus::Tweening {
             return;
         }
@@ -589,7 +581,7 @@ impl StateMachineEngine {
             // Now use the extracted information
             if let Some(state) = state {
                 // Enter the state
-                let _ = state.enter(self, player);
+                let _ = state.enter(self);
 
                 // Don't forget to put things back
                 // new_state becomes the current state
@@ -606,7 +598,6 @@ impl StateMachineEngine {
         state_name: &str,
         causing_transition: Option<&Transition>,
         called_from_global: bool,
-        player: &mut DotLottiePlayerContainer,
     ) -> Result<(), StateMachineEngineError> {
         let new_state = self.get_state(state_name);
         // We have a new state
@@ -619,7 +610,7 @@ impl StateMachineEngine {
                 // Now use the extracted information
                 if let Some(state) = state {
                     if !called_from_global {
-                        let _ = state.exit(self, player);
+                        let _ = state.exit(self);
                     }
                     // Don't forget to put things back
                     // new_state becomes the current state
@@ -645,15 +636,14 @@ impl StateMachineEngine {
                         // If we're transitioning to a PlaybackState, grab the start segment
                         State::PlaybackState { .. } => {
                             if let Some(target_segment) = segment_clone {
-                                self.tween_transition_target_state =
-                                    Some(new_state.clone());
+                                self.tween_transition_target_state = Some(new_state.clone());
                                 // Tweening is activated and the state machine has been paused whilst it transitions
                                 self.status = StateMachineEngineStatus::Tweening;
 
-                                player.tween_to_marker(
+                                self.player.tween_to_marker(
                                     &target_segment,
                                     Some(causing_transition.duration()),
-                                    Some(causing_transition.easing().to_vec()),
+                                    Some(causing_transition.easing()),
                                 );
 
                                 return Ok(());
@@ -678,7 +668,7 @@ impl StateMachineEngine {
             // Now use the extracted information
             if let Some(state) = state {
                 // Enter the state
-                let _ = state.enter(self, player);
+                let _ = state.enter(self);
                 // Don't forget to put things back
                 // new_state becomes the current state
                 self.current_state = Some(state);
@@ -765,7 +755,7 @@ impl StateMachineEngine {
         Some((target_state.to_string(), guardless_transition?.clone()))
     }
 
-    fn evaluate_global_state(&mut self, player: &mut DotLottiePlayerContainer) -> bool {
+    fn evaluate_global_state(&mut self) -> bool {
         if let Some(state_to_evaluate) = &self.global_state {
             if let Some((target_state, causing_transition)) =
                 self.evaluate_transitions(state_to_evaluate, self.curr_event.as_ref())
@@ -778,7 +768,7 @@ impl StateMachineEngine {
                 }
 
                 let success =
-                    self.set_current_state(&target_state, Some(&causing_transition), true, player);
+                    self.set_current_state(&target_state, Some(&causing_transition), true);
 
                 match success {
                     Ok(()) => {
@@ -793,7 +783,7 @@ impl StateMachineEngine {
         false
     }
 
-    pub fn run_current_state_pipeline(&mut self, player: &mut DotLottiePlayerContainer) -> Result<(), StateMachineEngineError> {
+    pub fn run_current_state_pipeline(&mut self) -> Result<(), StateMachineEngineError> {
         // Reset cycle count for each pipeline run
         self.current_cycle_count = 0;
 
@@ -824,7 +814,7 @@ impl StateMachineEngine {
                 self.current_cycle_count += 1;
 
                 if self.current_cycle_count >= self.max_cycle_count {
-                    self.stop(player);
+                    self.stop();
                     self.observe_on_error("InfiniteLoop");
                     return Err(StateMachineEngineError::InfiniteLoopError);
                 }
@@ -844,7 +834,7 @@ impl StateMachineEngine {
             // If there is, evaluate the transitions of the global state first
             if !ignore_global {
                 // Global state returned true meaning it changed the current state
-                if self.evaluate_global_state(player) {
+                if self.evaluate_global_state() {
                     // Check the current state, if its tweening, stop immediately
                     if self.status == StateMachineEngineStatus::Tweening {
                         break;
@@ -875,7 +865,7 @@ impl StateMachineEngine {
                         self.curr_event = None;
 
                         let success =
-                            self.set_current_state(&target_state, Some(&causing_transition), false, player);
+                            self.set_current_state(&target_state, Some(&causing_transition), false);
 
                         match success {
                             Ok(()) => {
@@ -942,7 +932,7 @@ impl StateMachineEngine {
         None
     }
 
-    fn manage_explicit_events(&mut self, event: &Event, x: f32, y: f32, player: &mut DotLottiePlayerContainer) {
+    fn manage_explicit_events(&mut self, event: &Event, x: f32, y: f32) {
         let mut actions_to_execute: Vec<Action> = Vec::new();
         let interactions = self.interactions(None);
         let mut entered_layer = self.pointer_management.curr_entered_layer.clone();
@@ -954,14 +944,14 @@ impl StateMachineEngine {
                     // If we have a pointer down event, we need to check if the pointer is outside of the layer
                     if let Event::PointerExit { x, y } = event {
                         if self.pointer_management.curr_entered_layer == *layer
-                            && !player.intersect(*x, *y, &layer)
+                            && !self.player.intersect(*x, *y, &layer)
                         {
                             entered_layer = "".to_string();
                             actions_to_execute.extend(interaction.get_actions().clone());
                         }
                     } else {
                         // Hit check will return true if the layer was hit
-                        if player.intersect(x, y, &layer) {
+                        if self.player.intersect(x, y, &layer) {
                             entered_layer = layer.clone();
                             actions_to_execute.extend(interaction.get_actions().clone());
                         }
@@ -977,11 +967,11 @@ impl StateMachineEngine {
 
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
-            let _ = action.execute(self, player, true, false);
+            let _ = action.execute(self, true, false);
         }
     }
 
-    fn manage_cross_platform_events(&mut self, event: &Event, x: f32, y: f32, player: &mut DotLottiePlayerContainer) {
+    fn manage_cross_platform_events(&mut self, event: &Event, x: f32, y: f32) {
         let mut actions_to_execute = Vec::new();
 
         // Manage pointerMove interactions
@@ -1007,7 +997,7 @@ impl StateMachineEngine {
             // We're only interested in the listened layers that need enter / exit event
             if (event_name == event_type_name!(PointerEnter)
                 || event_name == event_type_name!(PointerExit))
-                && player.intersect(x, y, layer)
+                && self.player.intersect(x, y, layer)
             {
                 hit = true;
 
@@ -1025,9 +1015,7 @@ impl StateMachineEngine {
                 // Add their actions if their layer name matches the current layer name in loop
                 for interaction in pointer_enter_interactions {
                     if let Some(interaction_layer_name) = interaction.get_layer_name() {
-                        if *interaction_layer_name
-                            == self.pointer_management.curr_entered_layer
-                        {
+                        if *interaction_layer_name == self.pointer_management.curr_entered_layer {
                             actions_to_execute.extend(interaction.get_actions().clone());
                         }
                     }
@@ -1055,7 +1043,7 @@ impl StateMachineEngine {
 
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
-            let _ = action.execute(self, player, true, false);
+            let _ = action.execute(self, true, false);
         }
     }
 
@@ -1084,13 +1072,13 @@ impl StateMachineEngine {
     // It would override PointerDown with layers, which is not a great experience.
     // With the current setup we can have an action that happens when the cursor is over the canvas
     // and another action that happens when the cursor is over a specific layer.
-    fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32, player: &mut DotLottiePlayerContainer) {
+    fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32) {
         self.pointer_management.pointer_x = x;
         self.pointer_management.pointer_y = y;
 
         // This will handle PointerDown, PointerUp, PointerEnter, PointerExit, Click
         if event.type_name() != "PointerMove" {
-            self.manage_explicit_events(event, x, y, player);
+            self.manage_explicit_events(event, x, y);
         }
 
         // We're left with PointerMove
@@ -1099,11 +1087,11 @@ impl StateMachineEngine {
             || event.type_name() == "PointerDown"
             || event.type_name() == "PointerUp"
         {
-            self.manage_cross_platform_events(event, x, y, player);
+            self.manage_cross_platform_events(event, x, y);
         }
     }
 
-    fn manage_player_events(&mut self, event: &Event, player: &mut DotLottiePlayerContainer) {
+    fn manage_player_events(&mut self, event: &Event) {
         let interactions = self.interactions(Some(event.type_name()));
 
         if interactions.is_empty() {
@@ -1139,17 +1127,17 @@ impl StateMachineEngine {
 
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
-            let _ = action.execute(self, player, true, false);
+            let _ = action.execute(self, true, false);
         }
     }
 
-    pub fn post_event(&mut self, event: &Event, player: &mut DotLottiePlayerContainer) {
+    pub fn post_event(&mut self, event: &Event) {
         self.pointer_management.most_recent_event = Some(event.clone());
 
         if event.type_name().contains("Pointer") || event.type_name().contains("Click") {
-            self.manage_pointer_event(event, event.x(), event.y(), player);
+            self.manage_pointer_event(event, event.x(), event.y());
         } else {
-            self.manage_player_events(event, player);
+            self.manage_player_events(event);
         }
     }
 
@@ -1160,11 +1148,11 @@ impl StateMachineEngine {
      * @params state_name: The name of the state to change to.
      * @params do_tick: If true, the state machine will run the transition evaluation pipeline after changing the state.
      */
-    pub fn override_current_state(&mut self, state_name: &str, do_tick: bool, player: &mut DotLottiePlayerContainer) -> bool {
-        let r = self.set_current_state(state_name, None, false, player).is_ok();
+    pub fn override_current_state(&mut self, state_name: &str, do_tick: bool) -> bool {
+        let r = self.set_current_state(state_name, None, false).is_ok();
 
         if do_tick {
-            return self.run_current_state_pipeline(player).is_ok();
+            return self.run_current_state_pipeline().is_ok();
         }
 
         r
@@ -1202,9 +1190,10 @@ impl StateMachineEngine {
     }
 
     pub fn observe_internal_event(&mut self, message: &str) {
-        self.internal_event_queue.push(StateMachineInternalEvent::Message {
-            message: message.to_string(),
-        });
+        self.internal_event_queue
+            .push(StateMachineInternalEvent::Message {
+                message: message.to_string(),
+            });
     }
 
     pub fn observe_custom_event(&mut self, message: &str) {
@@ -1244,11 +1233,12 @@ impl StateMachineEngine {
         if old_value == new_value {
             return;
         }
-        self.event_queue.push(StateMachineEvent::NumericInputChange {
-            name: input_name.to_string(),
-            old_value,
-            new_value,
-        });
+        self.event_queue
+            .push(StateMachineEvent::NumericInputChange {
+                name: input_name.to_string(),
+                old_value,
+                new_value,
+            });
     }
 
     pub fn observe_boolean_input_value_change(
@@ -1260,11 +1250,12 @@ impl StateMachineEngine {
         if old_value == new_value {
             return;
         }
-        self.event_queue.push(StateMachineEvent::BooleanInputChange {
-            name: input_name.to_string(),
-            old_value,
-            new_value,
-        });
+        self.event_queue
+            .push(StateMachineEvent::BooleanInputChange {
+                name: input_name.to_string(),
+                old_value,
+                new_value,
+            });
     }
 
     pub fn observe_on_start(&mut self) {
@@ -1280,5 +1271,17 @@ impl StateMachineEngine {
             name: input_name.to_string(),
         });
     }
-}
 
+    pub fn tick(&mut self) -> bool {
+        let ticked = self.player.tick();
+
+        let needs_resume =
+            self.status == StateMachineEngineStatus::Tweening && !self.player.is_tweening();
+
+        if needs_resume {
+            self.resume_from_tweening();
+        }
+
+        ticked
+    }
+}

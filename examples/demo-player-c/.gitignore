@@ -4,5 +4,9 @@ demo-player-perf
 demo-player-perf.dSYM/
 demo-player-events
 demo-player-events.dSYM/
-torus_animation_monster.json
+demo-player-state-machine
+demo-player-state-machine.dSYM/
+*.json
+*.lottie
+
 

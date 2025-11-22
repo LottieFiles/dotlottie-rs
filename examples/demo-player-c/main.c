@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   SDL_Event e;
 
   DotLottieConfig config;
-  DotLottiePlayer *player;
+  DotLottieRuntime *player;
 
   const char *animation_path;
   int screen;

@@ -5,9 +5,11 @@ use std::ffi::{c_char, CStr, CString};
 use std::io;
 
 use crate::{
-    Config, Event, Fit, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme,
+    Config, Fit, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme,
     Marker, Mode,
 };
+use crate::state_machine_engine::events::Event;
+use crate::actions::open_url_policy::OpenUrlPolicy;
 
 // Function return codes
 pub const DOTLOTTIE_SUCCESS: i32 = 0;
@@ -467,6 +469,40 @@ impl DotLottieLayout {
     }
 }
 
+// OpenUrlPolicy for state machine URL opening control
+#[derive(Clone, PartialEq)]
+#[repr(C)]
+pub struct DotLottieOpenUrlPolicy {
+    pub whitelist: DotLottieString,  // Comma-separated list of allowed URL patterns
+    pub require_user_interaction: bool,
+}
+
+impl DotLottieOpenUrlPolicy {
+    pub unsafe fn to_policy(&self) -> Result<OpenUrlPolicy, io::Error> {
+        let whitelist_str = DotLottieString::read(self.whitelist.value.as_ptr())?;
+        let whitelist = if whitelist_str.is_empty() {
+            vec![]
+        } else {
+            whitelist_str.split(',').map(|s| s.trim().to_string()).collect()
+        };
+
+        Ok(OpenUrlPolicy {
+            whitelist,
+            require_user_interaction: self.require_user_interaction,
+        })
+    }
+}
+
+impl Default for DotLottieOpenUrlPolicy {
+    fn default() -> Self {
+        DotLottieOpenUrlPolicy {
+            whitelist: DotLottieString::default(),
+            require_user_interaction: true,
+        }
+    }
+}
+
+// Input events for state machine (pointer interactions)
 #[allow(dead_code)]
 #[repr(C)]
 pub enum DotLottieEvent {
@@ -502,7 +538,7 @@ impl DotLottieEvent {
 // DotLottie Player Events (output events from polling)
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum DotLottiePlayerEventType {
+pub enum DotLottieRuntimeEventType {
     Load = 0,
     LoadError = 1,
     Play = 2,
@@ -515,55 +551,55 @@ pub enum DotLottiePlayerEventType {
 }
 
 #[repr(C)]
-pub union DotLottiePlayerEventData {
+pub union DotLottieRuntimeEventData {
     pub frame_no: f32,   // For Frame and Render events
     pub loop_count: u32, // For Loop event
 }
 
 #[repr(C)]
-pub struct DotLottiePlayerEvent {
-    pub event_type: DotLottiePlayerEventType,
-    pub data: DotLottiePlayerEventData,
+pub struct DotLottieRuntimeEvent {
+    pub event_type: DotLottieRuntimeEventType,
+    pub data: DotLottieRuntimeEventData,
 }
 
-impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
+impl From<crate::DotLottieEvent> for DotLottieRuntimeEvent {
     fn from(event: crate::DotLottieEvent) -> Self {
         match event {
-            crate::DotLottieEvent::Load => DotLottiePlayerEvent {
-                event_type: DotLottiePlayerEventType::Load,
-                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::Load => DotLottieRuntimeEvent {
+                event_type: DotLottieRuntimeEventType::Load,
+                data: DotLottieRuntimeEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::LoadError => DotLottiePlayerEvent {
-                event_type: DotLottiePlayerEventType::LoadError,
-                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::LoadError => DotLottieRuntimeEvent {
+                event_type: DotLottieRuntimeEventType::LoadError,
+                data: DotLottieRuntimeEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Play => DotLottiePlayerEvent {
-                event_type: DotLottiePlayerEventType::Play,
-                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::Play => DotLottieRuntimeEvent {
+                event_type: DotLottieRuntimeEventType::Play,
+                data: DotLottieRuntimeEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Pause => DotLottiePlayerEvent {
-                event_type: DotLottiePlayerEventType::Pause,
-                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::Pause => DotLottieRuntimeEvent {
+                event_type: DotLottieRuntimeEventType::Pause,
+                data: DotLottieRuntimeEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Stop => DotLottiePlayerEvent {
-                event_type: DotLottiePlayerEventType::Stop,
-                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::Stop => DotLottieRuntimeEvent {
+                event_type: DotLottieRuntimeEventType::Stop,
+                data: DotLottieRuntimeEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Frame { frame_no } => DotLottiePlayerEvent {
-                event_type: DotLottiePlayerEventType::Frame,
-                data: DotLottiePlayerEventData { frame_no },
+            crate::DotLottieEvent::Frame { frame_no } => DotLottieRuntimeEvent {
+                event_type: DotLottieRuntimeEventType::Frame,
+                data: DotLottieRuntimeEventData { frame_no },
             },
-            crate::DotLottieEvent::Render { frame_no } => DotLottiePlayerEvent {
-                event_type: DotLottiePlayerEventType::Render,
-                data: DotLottiePlayerEventData { frame_no },
+            crate::DotLottieEvent::Render { frame_no } => DotLottieRuntimeEvent {
+                event_type: DotLottieRuntimeEventType::Render,
+                data: DotLottieRuntimeEventData { frame_no },
             },
-            crate::DotLottieEvent::Loop { loop_count } => DotLottiePlayerEvent {
-                event_type: DotLottiePlayerEventType::Loop,
-                data: DotLottiePlayerEventData { loop_count },
+            crate::DotLottieEvent::Loop { loop_count } => DotLottieRuntimeEvent {
+                event_type: DotLottieRuntimeEventType::Loop,
+                data: DotLottieRuntimeEventData { loop_count },
             },
-            crate::DotLottieEvent::Complete => DotLottiePlayerEvent {
-                event_type: DotLottiePlayerEventType::Complete,
-                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::Complete => DotLottieRuntimeEvent {
+                event_type: DotLottieRuntimeEventType::Complete,
+                data: DotLottieRuntimeEventData { frame_no: 0.0 },
             },
         }
     }

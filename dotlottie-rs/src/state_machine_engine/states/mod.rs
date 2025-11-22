@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::{dotlottie_player::Mode, Config, DotLottiePlayerContainer};
+use crate::{dotlottie_runtime::Mode, Config };
 
 use super::{actions::StateMachineActionError, transitions::Transition, StateMachineEngine};
 
@@ -15,12 +15,10 @@ pub trait StateTrait {
     fn enter(
         &self,
         engine: &mut StateMachineEngine,
-        player: &mut DotLottiePlayerContainer,
     ) -> Result<(), StateMachineActionError>;
     fn exit(
         &self,
         engine: &mut StateMachineEngine,
-        player: &mut DotLottiePlayerContainer,
     ) -> Result<(), StateMachineActionError>;
     fn animation(&self) -> &str;
     fn transitions(&self) -> &Vec<Transition>;
@@ -62,7 +60,6 @@ impl StateTrait for State {
     fn enter(
         &self,
         engine: &mut StateMachineEngine,
-        player: &mut DotLottiePlayerContainer,
     ) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState {
@@ -96,8 +93,8 @@ impl StateTrait for State {
                     defined_segment = new_segment.clone();
                 }
 
-                let size = player.size();
-                let current_config = player.config();
+                let size = engine.player.size();
+                let current_config = engine.player.config();
 
                 let uses_frame_interpolation = current_config.use_frame_interpolation;
                 let current_layout = current_config.layout.clone();
@@ -120,25 +117,25 @@ impl StateTrait for State {
                 };
 
                 // Set config first so that load_animation uses the preserved layout
-                player.set_config(playback_config);
+                engine.player.set_config(playback_config);
 
                 if !animation.is_empty()
-                    && player.active_animation_id() != *animation
-                    && player.render()
+                    && engine.player.active_animation_id() != *animation
+                    && engine.player.render()
                 {
-                    player.load_animation(animation, size.0, size.1);
+                    engine.player.load_animation(animation, size.0, size.1);
                 }
 
                 /* Perform entry actions */
                 if let Some(actions) = entry_actions {
                     for action in actions {
-                        let _ = action.execute(engine, player, false, true);
+                        let _ = action.execute(engine, false, true);
                     }
                 }
 
                 if let Some(is_final) = r#final {
                     if *is_final {
-                        engine.stop(player);
+                        engine.stop();
                     }
                 }
             }
@@ -147,18 +144,18 @@ impl StateTrait for State {
                 entry_actions,
                 ..
             } => {
-                let size = player.size();
+                let size = engine.player.size();
 
                 if let Some(animation) = animation {
-                    if player.active_animation_id() != *animation {
-                        player.load_animation(animation, size.0, size.1);
+                    if engine.player.active_animation_id() != *animation {
+                        engine.player.load_animation(animation, size.0, size.1);
                     }
                 }
 
                 // Perform entry actions
                 if let Some(actions) = entry_actions {
                     for action in actions {
-                        let _ = action.execute(engine, player, false, true);
+                        let _ = action.execute(engine, false, true);
                     }
                 }
             }
@@ -198,21 +195,20 @@ impl StateTrait for State {
     fn exit(
         &self,
         engine: &mut StateMachineEngine,
-        player: &mut DotLottiePlayerContainer,
     ) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState { exit_actions, .. } => {
                 /* Perform exit actions */
                 if let Some(actions) = exit_actions {
                     for action in actions {
-                        let _ = action.execute(engine, player, false, true);
+                        let _ = action.execute(engine, false, true);
                     }
                 }
             }
             State::GlobalState { exit_actions, .. } => {
                 if let Some(actions) = exit_actions {
                     for action in actions {
-                        let _ = action.execute(engine, player, false, true);
+                        let _ = action.execute(engine, false, true);
                     }
                 }
             }

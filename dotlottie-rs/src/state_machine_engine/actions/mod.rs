@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::{state_machine::StringBool, DotLottiePlayerContainer, Event};
+use crate::{state_machine::StringBool, Event};
 
 use super::{state_machine::StringNumber, StateMachineEngine};
 
@@ -17,7 +17,6 @@ pub trait ActionTrait {
     fn execute(
         &self,
         engine: &mut StateMachineEngine,
-        player: &mut DotLottiePlayerContainer,
         run_pipeline: bool,
         called_from_interaction: bool,
     ) -> Result<(), StateMachineActionError>;
@@ -87,7 +86,6 @@ impl ActionTrait for Action {
     fn execute(
         &self,
         engine: &mut StateMachineEngine,
-        player: &mut DotLottiePlayerContainer,
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Result<(), StateMachineActionError> {
@@ -307,7 +305,7 @@ impl ActionTrait for Action {
                     value.clone()
                 };
 
-                if !player.set_theme(&resolved_value) {
+                if !engine.player.set_theme(&resolved_value) {
                     return Err(StateMachineActionError::ExecuteError);
                 }
                 Ok(())
@@ -319,7 +317,7 @@ impl ActionTrait for Action {
                     .replace("$x", &engine.pointer_management.pointer_x.to_string())
                     .replace("$y", &engine.pointer_management.pointer_y.to_string());
 
-                if !player.set_slots(&value) {
+                if !engine.player.set_slots(&value) {
                     return Err(StateMachineActionError::ExecuteError);
                 }
 
@@ -379,16 +377,16 @@ impl ActionTrait for Action {
                         let value = value.trim_start_matches('$');
                         let frame = engine.get_numeric_input(value);
                         if let Some(frame) = frame {
-                            let clamped_frame = frame.clamp(0.0, player.total_frames() - 1.0);
-                            player.set_frame(clamped_frame);
+                            let clamped_frame = frame.clamp(0.0, engine.player.total_frames() - 1.0);
+                            engine.player.set_frame(clamped_frame);
                         } else {
                             return Err(StateMachineActionError::ExecuteError);
                         }
                         return Ok(());
                     }
                     StringNumber::F32(value) => {
-                        let clamped_frame = value.clamp(0.0, player.total_frames() - 1.0);
-                        player.set_frame(clamped_frame);
+                        let clamped_frame = value.clamp(0.0, engine.player.total_frames() - 1.0);
+                        engine.player.set_frame(clamped_frame);
                     }
                 }
                 Ok(())
@@ -403,9 +401,9 @@ impl ActionTrait for Action {
                         if let Some(percentage) = percentage {
                             let clamped_value = percentage.clamp(0.0, 100.0);
                             let new_perc = clamped_value / 100.0;
-                            let frame = (player.total_frames() - 1.0) * new_perc;
+                            let frame = (engine.player.total_frames() - 1.0) * new_perc;
 
-                            player.set_frame(frame);
+                            engine.player.set_frame(frame);
                         }
 
                         return Ok(());
@@ -413,9 +411,9 @@ impl ActionTrait for Action {
                     StringNumber::F32(value) => {
                         let clamped_value = value.clamp(0.0, 100.0);
                         let new_perc = clamped_value / 100.0;
-                        let frame = (player.total_frames() - 1.0) * new_perc;
+                        let frame = (engine.player.total_frames() - 1.0) * new_perc;
 
-                        player.set_frame(frame);
+                        engine.player.set_frame(frame);
                     }
                 }
 

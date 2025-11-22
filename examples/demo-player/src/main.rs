@@ -18,7 +18,7 @@ impl Player {
 
         println!("Using {} threads", threads);
 
-        let player = DotLottiePlayer::with_threads(
+        let mut player = DotLottiePlayer::with_threads(
             Config {
                 autoplay: true,
                 loop_animation: true,

@@ -137,6 +137,23 @@ native:
 	$(NATIVE_RELEASE)
 	@echo "✓ Native build complete. Artifacts available in $(RELEASE)/$(NATIVE)/"
 
+# Native NEW build variables (using dotlottie-rs c_api)
+NATIVE_NEW_FEATURES = tvg,tvg-sw,c_api
+NATIVE_NEW_RELEASE_DIR = $(RELEASE)/native-new
+NATIVE_NEW_LIB_DIR = $(NATIVE_NEW_RELEASE_DIR)/lib
+NATIVE_NEW_INCLUDE_DIR = $(NATIVE_NEW_RELEASE_DIR)/include
+
+# Build native libraries using dotlottie-rs c_api
+native-new:
+	@echo "Building native libraries with dotlottie-rs c_api..."
+	cargo build --manifest-path dotlottie-rs/Cargo.toml --features $(NATIVE_NEW_FEATURES) --release
+	@mkdir -p $(NATIVE_NEW_LIB_DIR) $(NATIVE_NEW_INCLUDE_DIR)
+	@find dotlottie-rs/target/release/ -maxdepth 1 \( -name 'libdotlottie_rs.so' -or -name 'libdotlottie_rs.dylib' -or -name 'dotlottie_rs.dll' \) -exec cp {} $(NATIVE_NEW_LIB_DIR)/ \;
+	@cbindgen --config dotlottie-rs/cbindgen.toml --crate dotlottie-rs --output $(NATIVE_NEW_INCLUDE_DIR)/dotlottie_player.h dotlottie-rs
+	@echo "✓ Native NEW build complete. Artifacts available in $(NATIVE_NEW_RELEASE_DIR)/"
+	@echo "   Library: $(NATIVE_NEW_LIB_DIR)/"
+	@echo "   Header:  $(NATIVE_NEW_INCLUDE_DIR)/dotlottie_player.h"
+
 # Clean native artifacts
 native-clean:
 	@echo "Cleaning native artifacts..."

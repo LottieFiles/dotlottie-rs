@@ -8,7 +8,7 @@
 #include <string.h>
 #include <unistd.h> // For readlink
 
-#include "dotlottie_player.h"
+#include "dotlottie_runtime.h"
 
 #define WIDTH 1000
 #define HEIGHT 1000

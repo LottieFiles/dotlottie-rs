@@ -6,7 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "dotlottie_player.h"
+#include "dotlottie_runtime.h"
 
 #define WIDTH 800
 #define HEIGHT 600

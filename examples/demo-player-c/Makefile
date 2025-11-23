@@ -3,7 +3,7 @@
 # Use the new dotlottie-rs c_api bindings
 DOTLOTTIE_PLAYER_LIB_PATH=../../release/native-new/lib/
 DOTLOTTIE_PLAYER_HEADER_PATH=../../release/native-new/include/
-DOTLOTTIE_PLAYER_LIB=dotlottie_rs
+DOTLOTTIE_PLAYER_LIB=dotlottie_runtime
 
 SDL2_CFLAGS=$(shell sdl2-config --cflags)
 SDL2_LIBS=$(shell sdl2-config --libs) -lSDL2_ttf

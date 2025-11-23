@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-#include "dotlottie_player.h"
+#include "dotlottie_runtime.h"
 
 #define WIDTH 900
 #define HEIGHT 700

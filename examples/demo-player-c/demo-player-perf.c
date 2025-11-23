@@ -14,7 +14,7 @@
 #include <mach/task_info.h>
 #endif
 
-#include "dotlottie_player.h"
+#include "dotlottie_runtime.h"
 
 #define MAX_ANIMATIONS 1040
 #define ANIMATION_SIZE 200

@@ -115,7 +115,7 @@ define ANDROID_PACKAGE_ARCH
 		cp -r $(KOTLIN_BINDINGS_DIR)/* $(DOTLOTTIE_PLAYER_ANDROID_SRC_DIR)/; \
 	fi
 	
-	# Copy and rename main library (libdotlottie_player.so to libuniffi_dotlottie_player.so)
+	# Copy and rename main library (libdotlottie_runtime.so to libuniffi_dotlottie_player.so)
 	@if [ -f "dotlottie-ffi/target/$(RUST_TARGET_$(1))/release/$(ANDROID_FFI_LIB)" ]; then \
 		cp dotlottie-ffi/target/$(RUST_TARGET_$(1))/release/$(ANDROID_FFI_LIB) \
 		   $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/jniLibs/$(ANDROID_ABI_$(1))/$(DOTLOTTIE_PLAYER_LIB); \
@@ -331,7 +331,7 @@ android-new-aarch64: android-check-ndk
 		--features $(ANDROID_NEW_DEFAULT_FEATURES),$(ANDROID_FEATURES)
 	@mkdir -p $(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)
 	@cp dotlottie-rs/target/$(RUST_TARGET_aarch64)/release/$(ANDROID_NEW_LIB_NAME) \
-		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/libdotlottie_player.so
+		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/libdotlottie_runtime.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_aarch64)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/
 	@echo "✓ Android aarch64 (new C API) build complete"
@@ -356,7 +356,7 @@ android-new-x86_64: android-check-ndk
 		--features $(ANDROID_NEW_DEFAULT_FEATURES),$(ANDROID_FEATURES)
 	@mkdir -p $(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)
 	@cp dotlottie-rs/target/$(RUST_TARGET_x86_64)/release/$(ANDROID_NEW_LIB_NAME) \
-		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/libdotlottie_player.so
+		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/libdotlottie_runtime.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_x86_64)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/
 	@echo "✓ Android x86_64 (new C API) build complete"
@@ -381,7 +381,7 @@ android-new-x86: android-check-ndk
 		--features $(ANDROID_NEW_DEFAULT_FEATURES),$(ANDROID_FEATURES)
 	@mkdir -p $(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)
 	@cp dotlottie-rs/target/$(RUST_TARGET_x86)/release/$(ANDROID_NEW_LIB_NAME) \
-		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/libdotlottie_player.so
+		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/libdotlottie_runtime.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_x86)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/
 	@echo "✓ Android x86 (new C API) build complete"
@@ -406,7 +406,7 @@ android-new-armv7: android-check-ndk
 		--features $(ANDROID_NEW_DEFAULT_FEATURES),$(ANDROID_FEATURES)
 	@mkdir -p $(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)
 	@cp dotlottie-rs/target/$(RUST_TARGET_armv7)/release/$(ANDROID_NEW_LIB_NAME) \
-		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/libdotlottie_player.so
+		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/libdotlottie_runtime.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_armv7)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_NEW_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/
 	@echo "✓ Android ARMv7 (new C API) build complete"
@@ -418,7 +418,7 @@ android-new-package:
 	@echo "→ Generating C header with cbindgen..."
 	@cbindgen --config dotlottie-rs/cbindgen.toml \
 		--crate dotlottie-rs \
-		--output $(ANDROID_NEW_RELEASE_DIR)/include/dotlottie_player.h \
+		--output $(ANDROID_NEW_RELEASE_DIR)/include/dotlottie_runtime.h \
 		dotlottie-rs
 	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(ANDROID_NEW_RELEASE_DIR)/version.txt
 	@echo "api-type=c-api-new" >> $(ANDROID_NEW_RELEASE_DIR)/version.txt
@@ -426,10 +426,10 @@ android-new-package:
 	@echo ""
 	@echo "Output structure:"
 	@echo "  $(ANDROID_NEW_RELEASE_DIR)/"
-	@echo "    ├── include/dotlottie_player.h   (C header - generated with cbindgen)"
+	@echo "    ├── include/dotlottie_runtime.h   (C header - generated with cbindgen)"
 	@echo "    ├── jniLibs/"
-	@echo "    │   ├── arm64-v8a/libdotlottie_player.so"
-	@echo "    │   ├── armeabi-v7a/libdotlottie_player.so"
-	@echo "    │   ├── x86/libdotlottie_player.so"
-	@echo "    │   └── x86_64/libdotlottie_player.so"
+	@echo "    │   ├── arm64-v8a/libdotlottie_runtime.so"
+	@echo "    │   ├── armeabi-v7a/libdotlottie_runtime.so"
+	@echo "    │   ├── x86/libdotlottie_runtime.so"
+	@echo "    │   └── x86_64/libdotlottie_runtime.so"
 	@echo "    └── version.txt"

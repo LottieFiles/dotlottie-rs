@@ -90,10 +90,10 @@ impl Player {
                 // Only update if there's still text remaining, or use a space as placeholder
                 if !self.text_input.is_empty() {
                     self.player
-                        .global_inputs_set_string("text_input", &self.text_input);
+                        .global_inputs_set_text("text_input", &self.text_input);
                 } else {
                     // Use a single space instead of empty string to avoid the crash
-                    self.player.global_inputs_set_string("text_input", " ");
+                    self.player.global_inputs_set_text("text_input", " ");
                 }
                 None
             }
@@ -104,7 +104,7 @@ impl Player {
             self.text_input.push(c);
             println!("Current text: '{}'", self.text_input);
             self.player
-                .global_inputs_set_string("text_input", &self.text_input);
+                .global_inputs_set_text("text_input", &self.text_input);
         }
     }
 }

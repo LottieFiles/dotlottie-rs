@@ -264,7 +264,7 @@ impl ActionTrait for Action {
                         .try_read()
                         .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                    player.global_inputs_set_string(global_var_name, &new_value);
+                    player.global_inputs_set_text(global_var_name, &new_value);
                 } else {
                     engine.set_string_input(
                         input_name,

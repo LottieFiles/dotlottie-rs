@@ -106,7 +106,9 @@ impl GuardTrait for Guard {
                 if let Some(input_value) = input.resolve_string(input_name) {
                     match compare_to {
                         StringNumberBool::String(compare_to) => {
-                            let extracted_string = input.resolve_string(&compare_to);
+                            let extracted_string = input
+                                .resolve_string(&compare_to)
+                                .or(Some(compare_to.clone()));
 
                             if let Some(string_value) = extracted_string {
                                 match condition_type {

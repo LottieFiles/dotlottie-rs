@@ -233,7 +233,7 @@ impl DotLottieRuntime {
         self.renderer.intersect(x, y, layer_name).unwrap_or(false)
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
         let bbox = self.renderer.get_layer_bounds(layer_name);
 
         match bbox {
@@ -1226,10 +1226,10 @@ impl DotLottieRuntime {
         false
     }
 
-    pub fn global_inputs_set_string(&mut self, binding_name: &str, new_value: &str) -> bool {
+    pub fn global_inputs_set_text(&mut self, binding_name: &str, new_value: &str) -> bool {
         if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
             return global_inputs_engine
-                .global_inputs_set_string(binding_name, new_value)
+                .global_inputs_set_text(binding_name, new_value)
                 .is_ok();
         }
 
@@ -1786,7 +1786,7 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().markers()
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
         self.runtime.read().unwrap().get_layer_bounds(layer_name)
     }
 
@@ -1955,11 +1955,11 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().global_inputs_load(id)
     }
 
-    pub fn global_inputs_set_string(&self, binding_name: &str, new_value: &str) -> bool {
+    pub fn global_inputs_set_text(&self, binding_name: &str, new_value: &str) -> bool {
         self.runtime
             .write()
             .unwrap()
-            .global_inputs_set_string(binding_name, new_value)
+            .global_inputs_set_text(binding_name, new_value)
     }
 
     pub fn global_inputs_set_color(&self, binding_name: &str, new_value: &[f64; 3]) -> bool {
@@ -2120,7 +2120,7 @@ impl DotLottiePlayer {
         self.player.read().unwrap().intersect(x, y, layer_name)
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 
@@ -2685,11 +2685,11 @@ impl DotLottiePlayer {
         self.player.read().unwrap().global_inputs_load(id)
     }
 
-    pub fn global_inputs_set_string(&self, binding_name: &str, new_value: &str) -> bool {
+    pub fn global_inputs_set_text(&self, binding_name: &str, new_value: &str) -> bool {
         self.player
             .read()
             .unwrap()
-            .global_inputs_set_string(binding_name, new_value)
+            .global_inputs_set_text(binding_name, new_value)
     }
 
     pub fn global_inputs_set_color(&self, binding_name: &str, new_value: &[f64; 3]) -> bool {

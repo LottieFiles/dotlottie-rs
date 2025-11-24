@@ -332,7 +332,7 @@ impl GlobalInputsEngine {
         "Gradient"
     );
     impl_mutator!(global_inputs_set_image, Image, &ImageValue, "Image");
-    impl_mutator!(global_inputs_set_string, Text, &str, "Text", to_string);
+    impl_mutator!(global_inputs_set_text, Text, &str, "Text", to_string);
 
     // ============================================================================
     // Utility Methods

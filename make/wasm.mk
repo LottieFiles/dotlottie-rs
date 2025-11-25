@@ -183,9 +183,9 @@ wasm-link-module: wasm-build-rust wasm-compile-cpp wasm-install-npm-deps
 			--closure=1"
 	@echo "✓ WASM module linked"
 
-# Main WASM build target
-wasm: wasm-link-module wasm-package
-	@echo "✓ WASM build and packaging complete"
+# Old UniFFI-based WASM build target (deprecated - use 'make wasm' for new C API build)
+wasm-old: wasm-link-module wasm-package
+	@echo "✓ Old WASM build and packaging complete"
 
 # Package WASM build
 wasm-package: wasm-link-module
@@ -251,3 +251,123 @@ wasm-clean:
 	@rm -rf $(WASM_RELEASE_DIR)
 	@echo "✓ WASM builds cleaned"
 
+
+# ============================================================================
+# New WASM C API Build (Direct C function exports - No C++ wrapper)
+# ============================================================================
+
+# New WASM configuration
+WASM_NEW_FEATURES = tvg,tvg-sw,c_api
+WASM_NEW_MODULE = dotlottie_runtime
+WASM_NEW_BUILD_DIR = dotlottie-rs/build/wasm
+WASM_NEW_RELEASE_DIR = release/wasm
+WASM_NEW_CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-rs/Cargo.toml | grep -o '[0-9][0-9.]*')
+
+# Note: C API function export list is auto-generated from the C header during link step
+
+# Build Rust library for WASM with C API (NO C++ wrapper needed!)
+wasm-new-build-rust: wasm-check-env
+	@echo "→ Building Rust library for WASM (C API - direct export)..."
+	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
+	CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
+	CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
+	AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar \
+	CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
+	CXXFLAGS='-isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/c++/v1 -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include' \
+	BINDGEN_EXTRA_CLANG_ARGS='-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot' \
+	RUSTFLAGS='-C panic=abort -C link-arg=--no-entry -C link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0' \
+	cargo +$(RUST_TOOLCHAIN) build \
+		--manifest-path dotlottie-rs/Cargo.toml \
+		-Z build-std=std,panic_abort \
+		-Z build-std-features=panic_immediate_abort \
+		--target $(WASM_TARGET) \
+		--no-default-features \
+		--features $(WASM_NEW_FEATURES),$(WASM_FEATURES) \
+		--release"
+	@echo "✓ Rust library built for WASM"
+
+# Generate C header first (needed for dynamic export list)
+wasm-new-generate-header:
+	@echo "→ Generating C header with cbindgen..."
+	@mkdir -p $(WASM_NEW_BUILD_DIR)
+	@cbindgen --config dotlottie-rs/cbindgen.toml \
+		--crate dotlottie-rs \
+		--output $(WASM_NEW_BUILD_DIR)/dotlottie_runtime.h \
+		dotlottie-rs
+	@echo "✓ C header generated"
+
+# Link WASM module - Direct C API, no C++ layer!
+wasm-new-link: wasm-new-build-rust wasm-new-generate-header wasm-install-npm-deps
+	@echo "→ Linking WASM module (direct C API)..."
+	@mkdir -p $(WASM_NEW_BUILD_DIR)
+	@echo "  Auto-generating export list from C header..."
+	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
+		C_API_EXPORTED_FUNCTIONS=\$$(grep -o 'dotlottie_[a-z_]*(' $(WASM_NEW_BUILD_DIR)/dotlottie_runtime.h | sed 's/(//g' | sort -u | sed 's/^/_/' | paste -sd ',' - | sed 's/,/\",\"/g' | sed 's/^/\"/' | sed 's/\$$/\",\"_malloc\",\"_free\"/') && \
+		echo \"  Exporting \$$(echo \$$C_API_EXPORTED_FUNCTIONS | grep -o '_dotlottie' | wc -l | tr -d ' ') C API functions\" && \
+		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
+			-o $(PWD)/$(WASM_NEW_BUILD_DIR)/$(WASM_NEW_MODULE).js \
+			$(PWD)/dotlottie-rs/target/$(WASM_TARGET)/release/libdotlottie_rs.a \
+			-Wl,-u,htons \
+			-Wl,-u,ntohs \
+			-Wl,-u,htonl \
+			-flto \
+			-Oz \
+			-sWASM=1 \
+			-sALLOW_MEMORY_GROWTH=1 \
+			-sFORCE_FILESYSTEM=0 \
+			-sMODULARIZE=1 \
+			-sEXPORT_NAME=createDotLottieRuntimeModule \
+			-sEXPORT_ES6=1 \
+			-sUSE_ES6_IMPORT_META=0 \
+			-sDYNAMIC_EXECUTION=0 \
+			-sENVIRONMENT=web \
+			-sMIN_SAFARI_VERSION=130000 \
+			-sFILESYSTEM=0 \
+			-sEXPORTED_FUNCTIONS=\"[\$$C_API_EXPORTED_FUNCTIONS]\" \
+			-sEXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"getValue\",\"setValue\",\"HEAPU8\",\"HEAPU32\"]' \
+			--no-entry \
+			--strip-all \
+			--closure=1"
+	@echo "✓ WASM module linked (direct C API)"
+
+# Package new WASM build
+wasm-new-package: wasm-new-link
+	@echo "→ Creating WASM release package..."
+	@mkdir -p $(WASM_NEW_RELEASE_DIR)/include
+
+	# Copy WASM module files
+	@cp $(WASM_NEW_BUILD_DIR)/$(WASM_NEW_MODULE).wasm $(WASM_NEW_RELEASE_DIR)/
+	@cp $(WASM_NEW_BUILD_DIR)/$(WASM_NEW_MODULE).js $(WASM_NEW_RELEASE_DIR)/
+
+	# Copy C header
+	@cp $(WASM_NEW_BUILD_DIR)/dotlottie_runtime.h $(WASM_NEW_RELEASE_DIR)/include/
+
+	# Create version file
+	@echo "dlplayer-version=$(WASM_NEW_CRATE_VERSION)-$(COMMIT_HASH)" > $(WASM_NEW_RELEASE_DIR)/version.txt
+	@echo "api-type=c-api" >> $(WASM_NEW_RELEASE_DIR)/version.txt
+
+	@echo "✓ WASM release package created: $(WASM_NEW_RELEASE_DIR)/"
+	@echo ""
+	@echo "Output structure:"
+	@echo "  $(WASM_NEW_RELEASE_DIR)/"
+	@echo "    ├── $(WASM_NEW_MODULE).wasm"
+	@echo "    ├── $(WASM_NEW_MODULE).js"
+	@echo "    ├── include/dotlottie_runtime.h"
+	@echo "    └── version.txt"
+	@echo ""
+	@echo "Usage in JavaScript:"
+	@echo "  import createModule from './$(WASM_NEW_MODULE).js';"
+	@echo "  const Module = await createModule();"
+	@echo "  const newPlayer = Module.cwrap('dotlottie_new_player', 'number', ['number']);"
+
+# Main WASM build target (C API - direct export)
+wasm: wasm-new-package
+	@echo "✓ WASM C API build complete"
+
+# Clean new WASM builds
+wasm-clean:
+	@echo "→ Cleaning WASM C API builds..."
+	@cargo clean --manifest-path dotlottie-rs/Cargo.toml --target $(WASM_TARGET)
+	@rm -rf $(WASM_NEW_BUILD_DIR)
+	@rm -rf $(WASM_NEW_RELEASE_DIR)
+	@echo "✓ WASM C API builds cleaned"

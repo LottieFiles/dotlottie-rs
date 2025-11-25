@@ -38,6 +38,13 @@ criterion = "0.5.1"
 # This is a workaround to enable this feature only on dev.
 dotlottie-rs = { path = ".", features = ["dev"] }
 
+[profile.release]
+lto = "fat"           # Full link-time optimization across all crates
+# opt-level = "z"       # Optimize aggressively for size. This is what's affecting frame rate / performance
+strip = "debuginfo"   # Strip debug information
+codegen-units = 1     # Better optimization at cost of compile time
+panic = "abort"       # Remove panic unwinding infrastructure
+
 [[bench]]
 name = "benchmarks"
 harness = false

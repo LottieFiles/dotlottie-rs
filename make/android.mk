@@ -170,7 +170,11 @@ android-aarch64: android-check-ndk
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/libdotlottie_runtime.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_aarch64)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/
-	@echo "✓ Android aarch64  build complete"
+	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/$(LIBCPP_SHARED_LIB); \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/libdotlottie_runtime.so; \
+	fi
+	@echo "✓ Android aarch64 build complete"
 
 # Build for Android x86_64 with C API
 android-x86_64: android-check-ndk
@@ -195,7 +199,11 @@ android-x86_64: android-check-ndk
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/libdotlottie_runtime.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_x86_64)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/
-	@echo "✓ Android x86_64  build complete"
+	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/$(LIBCPP_SHARED_LIB); \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/libdotlottie_runtime.so; \
+	fi
+	@echo "✓ Android x86_64 build complete"
 
 # Build for Android x86 with C API
 android-x86: android-check-ndk
@@ -220,7 +228,11 @@ android-x86: android-check-ndk
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/libdotlottie_runtime.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_x86)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/
-	@echo "✓ Android x86  build complete"
+	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/$(LIBCPP_SHARED_LIB); \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/libdotlottie_runtime.so; \
+	fi
+	@echo "✓ Android x86 build complete"
 
 # Build for Android ARMv7 with C API
 android-armv7: android-check-ndk
@@ -245,7 +257,11 @@ android-armv7: android-check-ndk
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/libdotlottie_runtime.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_armv7)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/
-	@echo "✓ Android ARMv7  build complete"
+	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/$(LIBCPP_SHARED_LIB); \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/libdotlottie_runtime.so; \
+	fi
+	@echo "✓ Android ARMv7 build complete"
 
 # Package Android C API build with bindings generation
 android-package:

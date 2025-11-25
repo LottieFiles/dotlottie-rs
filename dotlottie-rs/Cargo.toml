@@ -40,7 +40,7 @@ dotlottie-rs = { path = ".", features = ["dev"] }
 
 [profile.release]
 lto = "fat"           # Full link-time optimization across all crates
-# opt-level = "z"       # Optimize aggressively for size. This is what's affecting frame rate / performance
+opt-level = 3         # "z" is what's affecting frame rate / performance. Keeping it at 3
 strip = "debuginfo"   # Strip debug information
 codegen-units = 1     # Better optimization at cost of compile time
 panic = "abort"       # Remove panic unwinding infrastructure

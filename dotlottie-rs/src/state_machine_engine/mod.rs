@@ -21,7 +21,7 @@ use transitions::guard::GuardTrait;
 use transitions::{Transition, TransitionTrait};
 
 use crate::actions::whitelist::Whitelist;
-use crate::events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
+use crate::dotlottie_events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, Config, DotLottieRuntime, EventName,

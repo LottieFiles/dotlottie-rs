@@ -1,7 +1,7 @@
 use crate::time::{Duration, Instant};
 use std::fs;
 
-use crate::events::{DotLottieEvent, EventQueue};
+use crate::dotlottie_events::{DotLottieEvent, EventQueue};
 use crate::{
     extract_markers,
     layout::Layout,

@@ -31,52 +31,50 @@ pub enum StateMachineEvent {
     // State transitions
     Transition {
         previous_state: String,
-        new_state: String
+        new_state: String,
     },
     StateEntered {
-        state: String
+        state: String,
     },
     StateExit {
-        state: String
+        state: String,
     },
 
     // Custom events and errors
     CustomEvent {
-        message: String
+        message: String,
     },
     Error {
-        message: String
+        message: String,
     },
 
     // Input value changes
     StringInputChange {
         name: String,
         old_value: String,
-        new_value: String
+        new_value: String,
     },
     NumericInputChange {
         name: String,
         old_value: f32,
-        new_value: f32
+        new_value: f32,
     },
     BooleanInputChange {
         name: String,
         old_value: bool,
-        new_value: bool
+        new_value: bool,
     },
 
     // Event input fired
     InputFired {
-        name: String
+        name: String,
     },
 }
 
 /// Internal state machine events (for framework use)
 #[derive(Debug, Clone, PartialEq)]
 pub enum StateMachineInternalEvent {
-    Message {
-        message: String
-    },
+    Message { message: String },
 }
 
 pub const MAX_EVENTS: usize = 256;
@@ -117,7 +115,7 @@ impl CoalescableEvent for StateMachineInternalEvent {
 /// Event queue with bounded size and coalescing support
 ///
 /// This queue follows SDL's event system design:
-/// - Fixed maximum size (256 events)
+/// - Fixed maximum size (MAX_EVENTS events)
 /// - When full, oldest events are dropped
 /// - Consecutive frame/render events coalesce to save space
 /// - Single-threaded (no synchronization overhead)

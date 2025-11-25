@@ -1,5 +1,5 @@
+mod dotlottie_events;
 mod dotlottie_runtime;
-mod events;
 mod fms;
 mod layout;
 mod lottie_renderer;
@@ -11,8 +11,8 @@ pub(crate) mod time;
 #[cfg(feature = "c_api")]
 pub mod c_api;
 
+pub use dotlottie_events::*;
 pub use dotlottie_runtime::*;
-pub use events::*;
 pub use fms::*;
 pub use layout::*;
 pub use lottie_renderer::*;

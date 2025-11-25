@@ -1,8 +1,8 @@
 .PHONY: all run debug
 
 # Use the new dotlottie-rs c_api bindings
-DOTLOTTIE_PLAYER_LIB_PATH=../../release/native-new/lib/
-DOTLOTTIE_PLAYER_HEADER_PATH=../../release/native-new/include/
+DOTLOTTIE_PLAYER_LIB_PATH=../../release/native/lib/
+DOTLOTTIE_PLAYER_HEADER_PATH=../../release/native/include/
 DOTLOTTIE_PLAYER_LIB=dotlottie_runtime
 
 SDL2_CFLAGS=$(shell sdl2-config --cflags)

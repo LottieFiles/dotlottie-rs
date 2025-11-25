@@ -131,31 +131,25 @@ define NATIVE_RELEASE
 endef
 
 # Build native libraries for the current platform
-native:
-	@echo "Building native libraries for current platform..."
-	cargo build --manifest-path $(RUNTIME_FFI)/Cargo.toml --features $(NATIVE_FEATURES) --release
-	$(NATIVE_RELEASE)
-	@echo "✓ Native build complete. Artifacts available in $(RELEASE)/$(NATIVE)/"
-
-# Native NEW build variables (using dotlottie-rs c_api)
-NATIVE_NEW_FEATURES = tvg,tvg-sw,c_api
-NATIVE_NEW_RELEASE_DIR = $(RELEASE)/native-new
-NATIVE_NEW_LIB_DIR = $(NATIVE_NEW_RELEASE_DIR)/lib
-NATIVE_NEW_INCLUDE_DIR = $(NATIVE_NEW_RELEASE_DIR)/include
+# Native build variables (using dotlottie-rs c_api)
+NATIVE_FEATURES = tvg,tvg-sw,c_api
+NATIVE_RELEASE_DIR = $(RELEASE)/native
+NATIVE_LIB_DIR = $(NATIVE_RELEASE_DIR)/lib
+NATIVE_INCLUDE_DIR = $(NATIVE_RELEASE_DIR)/include
 
 # Build native libraries using dotlottie-rs c_api
-native-new:
+native:
 	@echo "Building native libraries with dotlottie-rs c_api..."
-	cargo build --manifest-path dotlottie-rs/Cargo.toml --features $(NATIVE_NEW_FEATURES) --release
-	@mkdir -p $(NATIVE_NEW_LIB_DIR) $(NATIVE_NEW_INCLUDE_DIR)
-	@cp dotlottie-rs/target/release/libdotlottie_rs.dylib $(NATIVE_NEW_LIB_DIR)/libdotlottie_runtime.dylib 2>/dev/null || true
-	@cp dotlottie-rs/target/release/libdotlottie_rs.so $(NATIVE_NEW_LIB_DIR)/libdotlottie_runtime.so 2>/dev/null || true
-	@cp dotlottie-rs/target/release/dotlottie_rs.dll $(NATIVE_NEW_LIB_DIR)/dotlottie_runtime.dll 2>/dev/null || true
-	@cp dotlottie-rs/target/release/libdotlottie_rs.a $(NATIVE_NEW_LIB_DIR)/libdotlottie_runtime.a 2>/dev/null || true
-	@cbindgen --config dotlottie-rs/cbindgen.toml --crate dotlottie-rs --output $(NATIVE_NEW_INCLUDE_DIR)/dotlottie_runtime.h dotlottie-rs
-	@echo "✓ Native NEW build complete. Artifacts available in $(NATIVE_NEW_RELEASE_DIR)/"
-	@echo "   Library: $(NATIVE_NEW_LIB_DIR)/"
-	@echo "   Header:  $(NATIVE_NEW_INCLUDE_DIR)/dotlottie_runtime.h"
+	cargo build --manifest-path dotlottie-rs/Cargo.toml --features $(NATIVE_FEATURES) --release
+	@mkdir -p $(NATIVE_LIB_DIR) $(NATIVE_INCLUDE_DIR)
+	@cp dotlottie-rs/target/release/libdotlottie_rs.dylib $(NATIVE_LIB_DIR)/libdotlottie_runtime.dylib 2>/dev/null || true
+	@cp dotlottie-rs/target/release/libdotlottie_rs.so $(NATIVE_LIB_DIR)/libdotlottie_runtime.so 2>/dev/null || true
+	@cp dotlottie-rs/target/release/dotlottie_rs.dll $(NATIVE_LIB_DIR)/dotlottie_runtime.dll 2>/dev/null || true
+	@cp dotlottie-rs/target/release/libdotlottie_rs.a $(NATIVE_LIB_DIR)/libdotlottie_runtime.a 2>/dev/null || true
+	@cbindgen --config dotlottie-rs/cbindgen.toml --crate dotlottie-rs --output $(NATIVE_INCLUDE_DIR)/dotlottie_runtime.h dotlottie-rs
+	@echo "✓ Native build complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
+	@echo "   Library: $(NATIVE_LIB_DIR)/"
+	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/dotlottie_runtime.h"
 
 # Clean native artifacts
 native-clean:

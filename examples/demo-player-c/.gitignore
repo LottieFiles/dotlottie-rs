@@ -1,11 +1,9 @@
 demo-player
-demo-player.dSYM/
 demo-player-perf
-demo-player-perf.dSYM/
+*.dSYM/
 demo-player-events
-demo-player-events.dSYM/
 demo-player-state-machine
-demo-player-state-machine.dSYM/
+test-leaks
 *.json
 *.lottie
 

@@ -8,7 +8,7 @@ links = "thorvg"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
-dev = ["tvg", "tvg-sw", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-ttf"]
+dev = ["tvg", "tvg-sw", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-ttf", "c_api"]
 c_api = ["dep:bitflags"]
 tvg = []
 tvg-log = []

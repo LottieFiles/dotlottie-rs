@@ -22,6 +22,9 @@ demo-player-events: demo-player-events.c
 demo-player-state-machine: demo-player-state-machine.c
 	$(CC) -g demo-player-state-machine.c -I$(DOTLOTTIE_PLAYER_HEADER_PATH) $(SDL2_CFLAGS) $(SDL2_LIBS) -L$(DOTLOTTIE_PLAYER_LIB_PATH) -l$(DOTLOTTIE_PLAYER_LIB) -o $@
 
+test-leaks: test-leaks.c
+	$(CC) -g test-leaks.c -I$(DOTLOTTIE_PLAYER_HEADER_PATH) -L$(DOTLOTTIE_PLAYER_LIB_PATH) -l$(DOTLOTTIE_PLAYER_LIB) -o $@
+
 run: export LD_LIBRARY_PATH = $(DOTLOTTIE_PLAYER_LIB_PATH)
 run: demo-player
 	@./demo-player $(ANIMATION_PATH)
@@ -33,6 +36,12 @@ run-perf: demo-player-perf
 	else \
 		./demo-player-perf $(ANIMATION_PATH) $(NUM_ANIMATIONS); \
 	fi
+
+test-leaks: export LD_LIBRARY_PATH = $(DOTLOTTIE_PLAYER_LIB_PATH)
+test-leaks: export MallocStackLogging = 1
+test-leaks: test-leaks
+	@echo "Running memory leak test..."
+	@leaks --atExit -- ./test-leaks
 
 run-events: export LD_LIBRARY_PATH = $(DOTLOTTIE_PLAYER_LIB_PATH)
 run-events: demo-player-events

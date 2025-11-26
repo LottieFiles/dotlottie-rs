@@ -355,6 +355,10 @@ int main(int argc, char **argv) {
   ret = 0;
 
 quit:
+
+  if (player) {
+    dotlottie_destroy(player);
+  }
   if (texture)
     SDL_DestroyTexture(texture);
   if (renderer)

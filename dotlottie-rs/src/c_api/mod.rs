@@ -1,8 +1,8 @@
 use std::{ffi::c_char, slice};
 
-use crate::{Config, DotLottieRuntime, LayerBoundingBox, StateMachineEngine};
 use crate::actions::open_url_policy::OpenUrlPolicy;
 use crate::state_machine_engine::events::Event;
+use crate::{Config, DotLottieRuntime, LayerBoundingBox, StateMachineEngine};
 
 use types::*;
 
@@ -52,7 +52,9 @@ fn to_bool_i32(result: bool) -> i32 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_new_player(ptr: *const DotLottieConfig) -> *mut DotLottieRuntime {
+pub unsafe extern "C" fn dotlottie_new_player(
+    ptr: *const DotLottieConfig,
+) -> *mut DotLottieRuntime {
     if let Some(dotlottie_config) = ptr.as_ref() {
         if let Ok(config) = dotlottie_config.to_config() {
             let dotlottie_player = Box::new(DotLottieRuntime::new(config, 0));
@@ -64,10 +66,13 @@ pub unsafe extern "C" fn dotlottie_new_player(ptr: *const DotLottieConfig) -> *m
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_destroy(ptr: *mut DotLottieRuntime) -> i32 {
-    exec_dotlottie_player_op(ptr, |dotlottie_player| {
-        std::mem::drop(std::ptr::read(dotlottie_player));
-        DOTLOTTIE_SUCCESS
-    })
+    if ptr.is_null() {
+        return DOTLOTTIE_INVALID_PARAMETER;
+    }
+
+    // Reconstruct the Box from raw pointer and drop it (frees memory)
+    let _ = Box::from_raw(ptr);
+    DOTLOTTIE_SUCCESS
 }
 
 #[no_mangle]
@@ -213,7 +218,6 @@ pub unsafe extern "C" fn dotlottie_manifest_state_machines(
         }
     })
 }
-
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_buffer_ptr(
@@ -417,7 +421,11 @@ pub unsafe extern "C" fn dotlottie_tick(ptr: *mut DotLottieRuntime) -> i32 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_resize(ptr: *mut DotLottieRuntime, width: u32, height: u32) -> i32 {
+pub unsafe extern "C" fn dotlottie_resize(
+    ptr: *mut DotLottieRuntime,
+    width: u32,
+    height: u32,
+) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_exit_status(dotlottie_player.resize(width, height))
     })
@@ -756,9 +764,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_release(sm: *mut StateMachineEn
 /// Tick the state machine (advances animation and processes state logic)
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_tick(sm: *mut StateMachineEngine<'static>) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
-        to_exit_status(state_machine.tick())
-    })
+    exec_state_machine_op(sm, |state_machine| to_exit_status(state_machine.tick()))
 }
 
 /// Post a pointer/click event to the state machine
@@ -984,7 +990,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_string_input(
         if let Ok(key) = DotLottieString::read(key) {
             if let Some(value) = state_machine.get_string_input(&key) {
                 return to_exit_status(
-                    DotLottieString::copy(&value, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok()
+                    DotLottieString::copy(&value, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
                 );
             }
         }
@@ -1026,7 +1032,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_current_state(
     exec_state_machine_op(sm, |state_machine| {
         let current_state = state_machine.get_current_state_name();
         to_exit_status(
-            DotLottieString::copy(&current_state, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok()
+            DotLottieString::copy(&current_state, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
         )
     })
 }
@@ -1039,9 +1045,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_status(
 ) -> i32 {
     exec_state_machine_op(sm, |state_machine| {
         let status = state_machine.status();
-        to_exit_status(
-            DotLottieString::copy(&status, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok()
-        )
+        to_exit_status(DotLottieString::copy(&status, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok())
     })
 }
 
@@ -1060,15 +1064,13 @@ pub unsafe extern "C" fn dotlottie_state_machine_poll_event(
     let state_machine = &mut *sm;
 
     match state_machine.poll_event() {
-        Some(rust_event) => {
-            match types::StateMachineEvent::from_rust(rust_event) {
-                Ok(c_event) => {
-                    std::ptr::write(event, c_event);
-                    1
-                }
-                Err(_) => -1,
+        Some(rust_event) => match types::StateMachineEvent::from_rust(rust_event) {
+            Ok(c_event) => {
+                std::ptr::write(event, c_event);
+                1
             }
-        }
+            Err(_) => -1,
+        },
         None => 0,
     }
 }
@@ -1088,15 +1090,13 @@ pub unsafe extern "C" fn dotlottie_state_machine_poll_internal_event(
     let state_machine = &mut *sm;
 
     match state_machine.poll_internal_event() {
-        Some(rust_event) => {
-            match types::StateMachineInternalEvent::from_rust(rust_event) {
-                Ok(c_event) => {
-                    std::ptr::write(event, c_event);
-                    1
-                }
-                Err(_) => -1,
+        Some(rust_event) => match types::StateMachineInternalEvent::from_rust(rust_event) {
+            Ok(c_event) => {
+                std::ptr::write(event, c_event);
+                1
             }
-        }
+            Err(_) => -1,
+        },
         None => 0,
     }
 }
@@ -1116,7 +1116,7 @@ pub unsafe extern "C" fn dotlottie_get_state_machine(
         if let Ok(sm_id) = DotLottieString::read(state_machine_id) {
             if let Some(sm_json) = dotlottie_player.get_state_machine(&sm_id) {
                 return to_exit_status(
-                    DotLottieString::copy(&sm_json, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok()
+                    DotLottieString::copy(&sm_json, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
                 );
             }
         }

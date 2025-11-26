@@ -1,11 +1,15 @@
 // The font is embedded as compressed data and decompressed at runtime using LZSS algorithm.
 
+/// cbindgen:ignore
 #[cfg(feature = "tvg-ttf")]
 const COMPRESSED_FONT_SIZE: usize = 9721;
+/// cbindgen:ignore
 #[cfg(feature = "tvg-ttf")]
 const DEFAULT_FONT_SIZE: usize = 14852;
+/// cbindgen:ignore
 #[cfg(feature = "tvg-ttf")]
 const COMPRESSED_FONT: &[u8] = include_bytes!("fallback_font.bin");
+/// cbindgen:ignore
 #[cfg(feature = "tvg-ttf")]
 const DEFAULT_FONT_NAME: &str = "default";
 

@@ -9,12 +9,18 @@ use std::cell::RefCell;
 use std::io::{self, Read};
 use zip::ZipArchive;
 
+/// cbindgen:ignore
 const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+/// cbindgen:ignore
 const DATA_IMAGE_PREFIX: &str = "data:image/";
+/// cbindgen:ignore
 const DATA_FONT_PREFIX: &str = "data:font/";
+/// cbindgen:ignore
 const BASE64_PREFIX: &str = ";base64,";
+/// cbindgen:ignore
 const DEFAULT_EXT: &str = "png";
+/// cbindgen:ignore
 const DEFAULT_FONT_EXT: &str = "ttf";
 
 pub struct DotLottieManager {

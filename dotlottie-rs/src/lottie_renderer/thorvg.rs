@@ -75,8 +75,10 @@ pub enum TvgEngine {
     TvgEngineGl,
 }
 
+/// cbindgen:ignore
 static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
 
+/// cbindgen:ignore
 #[cfg(feature = "tvg-ttf")]
 static FONT_LOADED: std::sync::Once = std::sync::Once::new();
 

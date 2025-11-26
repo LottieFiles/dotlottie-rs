@@ -503,6 +503,49 @@ impl<'a> StateMachineEngine<'a> {
         interactions_clone
     }
 
+    pub fn framework_setup(&self) -> Vec<String> {
+        let mut interaction_types = vec![];
+
+        for interaction in self.interactions(None) {
+            match interaction {
+                crate::interactions::Interaction::PointerUp { .. } => {
+                    interaction_types.push("PointerUp".to_string())
+                }
+                crate::interactions::Interaction::PointerDown { .. } => {
+                    interaction_types.push("PointerDown".to_string())
+                }
+                crate::interactions::Interaction::PointerEnter { .. } => {
+                    // In case framework self detects pointer entering layers, push pointerExit
+                    interaction_types.push("PointerEnter".to_string());
+                    // We push PointerMove too so that we can do hit detection instead of the framework
+                    interaction_types.push("PointerMove".to_string());
+                }
+                crate::interactions::Interaction::PointerMove { .. } => {
+                    interaction_types.push("PointerMove".to_string())
+                }
+                crate::interactions::Interaction::PointerExit { .. } => {
+                    // In case framework self detects pointer exiting layers, push pointerExit
+                    interaction_types.push("PointerExit".to_string());
+                    // We push PointerMove too so that we can do hit detection instead of the framework
+                    interaction_types.push("PointerMove".to_string());
+                }
+                crate::interactions::Interaction::OnComplete { .. } => {
+                    interaction_types.push("OnComplete".to_string())
+                }
+                crate::interactions::Interaction::OnLoopComplete { .. } => {
+                    interaction_types.push("OnLoopComplete".to_string())
+                }
+                crate::interactions::Interaction::Click { .. } => {
+                    interaction_types.push("Click".to_string());
+                }
+            }
+        }
+
+        interaction_types.sort();
+        interaction_types.dedup();
+        interaction_types
+    }
+
     fn init_listened_layers(&mut self) {
         let mut interactions = vec![];
 

@@ -4,12 +4,12 @@ use core::str::FromStr;
 use std::ffi::{c_char, CStr, CString};
 use std::io;
 
-use crate::{
-    Config, Fit, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme,
-    Marker, Mode,
-};
-use crate::state_machine_engine::events::Event;
 use crate::actions::open_url_policy::OpenUrlPolicy;
+use crate::state_machine_engine::events::Event;
+use crate::{
+    Config, Fit, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme, Marker,
+    Mode,
+};
 
 // Function return codes
 pub const DOTLOTTIE_SUCCESS: i32 = 0;
@@ -20,12 +20,16 @@ pub const DOTLOTTIE_MANIFEST_NOT_AVAILABLE: i32 = 3;
 // Other constant(s)
 pub const DOTLOTTIE_MAX_STR_LENGTH: usize = 512;
 
-pub const LISTENER_TYPE_UNSET: u16 = 0;
-pub const LISTENER_TYPE_POINTER_UP: u16 = 1 << 0;
-pub const LISTENER_TYPE_POINTER_DOWN: u16 = 1 << 1;
-pub const LISTENER_TYPE_POINTER_ENTER: u16 = 1 << 2;
-pub const LISTENER_TYPE_POINTER_EXIT: u16 = 1 << 3;
-pub const LISTENER_TYPE_POINTER_MOVE: u16 = 1 << 4;
+// Legacy - kept for compatibility (unused)
+pub const INTERACTION_TYPE_UNSET: u16 = 0;
+pub const INTERACTION_TYPE_POINTER_UP: u16 = 1 << 0; // Bit 0 (1)
+pub const INTERACTION_TYPE_POINTER_DOWN: u16 = 1 << 1; // Bit 1 (2)
+pub const INTERACTION_TYPE_POINTER_ENTER: u16 = 1 << 2; // Bit 2 (4)
+pub const INTERACTION_TYPE_POINTER_EXIT: u16 = 1 << 3; // Bit 3 (8)
+pub const INTERACTION_TYPE_POINTER_MOVE: u16 = 1 << 4; // Bit 4 (16)
+pub const INTERACTION_TYPE_CLICK: u16 = 1 << 5; // Bit 5 (32)
+pub const INTERACTION_TYPE_ON_COMPLETE: u16 = 1 << 6; // Bit 6 (64)
+pub const INTERACTION_TYPE_ON_LOOP_COMPLETE: u16 = 1 << 7; // Bit 7 (128)
 
 // This type allows us to work with Interaction Types as bit flags and easily communicate this
 // information to the C side
@@ -33,13 +37,16 @@ bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     #[repr(C)]
     pub(crate) struct InteractionType: u16 {
-        const UNSET = LISTENER_TYPE_UNSET;
+        const UNSET = INTERACTION_TYPE_UNSET;
 
-        const POINTER_UP    = LISTENER_TYPE_POINTER_UP;
-        const POINTER_DOWN  = LISTENER_TYPE_POINTER_DOWN;
-        const POINTER_ENTER = LISTENER_TYPE_POINTER_ENTER;
-        const POINTER_EXIT  = LISTENER_TYPE_POINTER_EXIT;
-        const POINTER_MOVE  = LISTENER_TYPE_POINTER_MOVE;
+        const POINTER_UP    = INTERACTION_TYPE_POINTER_UP;
+        const POINTER_DOWN  = INTERACTION_TYPE_POINTER_DOWN;
+        const POINTER_ENTER = INTERACTION_TYPE_POINTER_ENTER;
+        const POINTER_EXIT  = INTERACTION_TYPE_POINTER_EXIT;
+        const POINTER_MOVE  = INTERACTION_TYPE_POINTER_MOVE;
+        const CLICK         = INTERACTION_TYPE_CLICK;
+        const ON_COMPLETE   = INTERACTION_TYPE_ON_COMPLETE;
+        const ON_LOOP_COMPLETE = INTERACTION_TYPE_ON_LOOP_COMPLETE;
     }
 }
 
@@ -68,6 +75,9 @@ impl FromStr for InteractionType {
             "PointerEnter" => Ok(InteractionType::POINTER_ENTER),
             "PointerExit" => Ok(InteractionType::POINTER_EXIT),
             "PointerMove" => Ok(InteractionType::POINTER_MOVE),
+            "Click" => Ok(InteractionType::CLICK),
+            "OnComplete" => Ok(InteractionType::ON_COMPLETE),
+            "OnLoopComplete" => Ok(InteractionType::ON_LOOP_COMPLETE),
             _ => Err(InteractionTypeParseError),
         }
     }
@@ -473,7 +483,7 @@ impl DotLottieLayout {
 #[derive(Clone, PartialEq)]
 #[repr(C)]
 pub struct DotLottieOpenUrlPolicy {
-    pub whitelist: DotLottieString,  // Comma-separated list of allowed URL patterns
+    pub whitelist: DotLottieString, // Comma-separated list of allowed URL patterns
     pub require_user_interaction: bool,
 }
 
@@ -483,7 +493,10 @@ impl DotLottieOpenUrlPolicy {
         let whitelist = if whitelist_str.is_empty() {
             vec![]
         } else {
-            whitelist_str.split(',').map(|s| s.trim().to_string()).collect()
+            whitelist_str
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect()
         };
 
         Ok(OpenUrlPolicy {

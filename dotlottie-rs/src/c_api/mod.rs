@@ -1049,6 +1049,32 @@ pub unsafe extern "C" fn dotlottie_state_machine_status(
     })
 }
 
+/// Get interaction types for framework setup
+///
+/// Returns bit flags indicating which interaction types are needed.
+/// Frameworks should register listeners for the returned interaction types.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
+    sm: *mut StateMachineEngine<'static>,
+    result: *mut u16,
+) -> i32 {
+    exec_state_machine_op(sm, |state_machine| {
+        if result.is_null() {
+            return DOTLOTTIE_INVALID_PARAMETER;
+        }
+
+        let interaction_types = state_machine.framework_setup();
+
+        // Convert Vec<String> to bit flags using InteractionType
+        if let Ok(interaction_type) = InteractionType::new(&interaction_types) {
+            *result = interaction_type.bits();
+            DOTLOTTIE_SUCCESS
+        } else {
+            DOTLOTTIE_ERROR
+        }
+    })
+}
+
 /// Poll for the next state machine event
 ///
 /// Returns 1 if an event was retrieved, 0 if no events are available, or -1 on error.

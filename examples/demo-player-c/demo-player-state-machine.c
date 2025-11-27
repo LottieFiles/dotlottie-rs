@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
     TTF_Font *font = NULL;
 
     DotLottieConfig config;
-    DotLottieRuntime *runtime;
+    DotLottiePlayer *player;
     struct dotlottieStateMachineEngine *sm = NULL;
 
     const char *animation_path;
@@ -179,9 +179,9 @@ int main(int argc, char **argv) {
     config.layout.align_y = 0.5;
     config.autoplay = true;
 
-    runtime = dotlottie_new_player(&config);
-    if (!runtime) {
-        fprintf(stderr, "Could not create dotlottie runtime\n");
+    player = dotlottie_new_player(&config);
+    if (!player) {
+        fprintf(stderr, "Could not create dotlottie player\n");
         ret = 1;
         goto quit;
     }
@@ -222,11 +222,11 @@ int main(int argc, char **argv) {
         }
 
         // Load as binary dotLottie data
-        ret = dotlottie_load_dotlottie_data(runtime, file_data, file_size, ANIMATION_SIZE, ANIMATION_SIZE);
+        ret = dotlottie_load_dotlottie_data(player, file_data, file_size, ANIMATION_SIZE, ANIMATION_SIZE);
         free(file_data);
     } else {
         // Load as path (for .json files)
-        ret = dotlottie_load_animation_path(runtime, animation_path, ANIMATION_SIZE, ANIMATION_SIZE);
+        ret = dotlottie_load_animation_path(player, animation_path, ANIMATION_SIZE, ANIMATION_SIZE);
     }
 
     if (ret != DOTLOTTIE_SUCCESS) {
@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
         goto quit;
     }
 
-    ret = dotlottie_buffer_ptr(runtime, &buffer);
+    ret = dotlottie_buffer_ptr(player, &buffer);
     if (ret != DOTLOTTIE_SUCCESS) {
         fprintf(stderr, "Could not access underlying dotlottie buffer\n");
         ret = 1;
@@ -338,7 +338,7 @@ int main(int argc, char **argv) {
                 if (is_point_in_button(mx, my, &buttons.start_sm)) {
                     if (sm == NULL) {
                         // Load state machine (returns pointer, NULL on error)
-                        sm = dotlottie_state_machine_load(runtime, "star-rating");
+                        sm = dotlottie_state_machine_load(player, "star-rating");
                         if (sm != NULL) {
                             // Start the state machine with default policy (NULL = use default)
                             ret = dotlottie_state_machine_start(sm, NULL);
@@ -397,11 +397,11 @@ int main(int argc, char **argv) {
             }
         }
 
-        // Poll DotLottie runtime events
-        struct dotlottieDotLottieRuntimeEvent runtime_event;
-        while (dotlottie_poll_event(runtime, &runtime_event) == 1) {
-            // We can log runtime events if needed
-            if (runtime_event.event_type == Complete) {
+        // Poll DotLottie player events
+        struct dotlottieDotLottiePlayerEvent player_event;
+        while (dotlottie_poll_event(player, &player_event) == 1) {
+            // We can log player events if needed
+            if (player_event.event_type == Complete) {
                 log_event(&event_log, "✓ Animation complete");
             }
         }
@@ -517,13 +517,13 @@ int main(int argc, char **argv) {
         }
         }  // End of if (sm != NULL) for polling
 
-        // Tick - use SM tick if active, otherwise runtime tick
+        // Tick - use SM tick if active, otherwise player tick
         Uint32 current_tick = SDL_GetTicks();
         if (current_tick - last_tick >= 16) {
             if (sm != NULL) {
                 dotlottie_state_machine_tick(sm);
             } else {
-                dotlottie_tick(runtime);
+                dotlottie_tick(player);
             }
             last_tick = current_tick;
         }
@@ -560,9 +560,9 @@ quit:
     // Release state machine first (if exists)
     if (sm)
         dotlottie_state_machine_release(sm);
-    // Then destroy runtime
-    if (runtime)
-        dotlottie_destroy(runtime);
+    // Then destroy player
+    if (player)
+        dotlottie_destroy(player);
     if (texture)
         SDL_DestroyTexture(texture);
     if (renderer)

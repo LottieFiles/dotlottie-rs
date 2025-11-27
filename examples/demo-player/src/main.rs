@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottieRuntime};
+use dotlottie_rs::{Config, DotLottiePlayer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::time::Instant;
 
@@ -7,7 +7,7 @@ const HEIGHT: usize = 600;
 const EASE_LINEAR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
 struct Player {
-    player: DotLottieRuntime,
+    player: DotLottiePlayer,
     current_marker: usize,
     last_update: Instant,
 }
@@ -18,7 +18,7 @@ impl Player {
 
         println!("Using {} threads", threads);
 
-        let mut player = DotLottieRuntime::new(
+        let mut player = DotLottiePlayer::new(
             Config {
                 autoplay: true,
                 loop_animation: true,

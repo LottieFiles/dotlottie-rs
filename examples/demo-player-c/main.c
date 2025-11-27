@@ -8,7 +8,7 @@
 #include <string.h>
 #include <unistd.h> // For readlink
 
-#include "dotlottie_runtime.h"
+#include "dotlottie_player.h"
 
 #define WIDTH 1000
 #define HEIGHT 1000
@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   SDL_Event e;
 
   DotLottieConfig config;
-  DotLottieRuntime *player;
+  DotLottiePlayer *player;
 
   const char *animation_path;
   int screen;

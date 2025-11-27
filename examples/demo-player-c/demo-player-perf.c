@@ -20,7 +20,7 @@
 #define ANIMATION_SIZE 200
 
 typedef struct {
-  DotLottieRuntime *player;
+  DotLottiePlayer *player;
   const uint32_t *buffer;
   SDL_Texture *texture;
   int x;

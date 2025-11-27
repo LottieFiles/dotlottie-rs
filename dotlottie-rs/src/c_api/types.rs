@@ -551,7 +551,7 @@ impl DotLottieEvent {
 // DotLottie Player Events (output events from polling)
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum DotLottieRuntimeEventType {
+pub enum DotLottiePlayerEventType {
     Load = 0,
     LoadError = 1,
     Play = 2,
@@ -564,55 +564,55 @@ pub enum DotLottieRuntimeEventType {
 }
 
 #[repr(C)]
-pub union DotLottieRuntimeEventData {
+pub union DotLottiePlayerEventData {
     pub frame_no: f32,   // For Frame and Render events
     pub loop_count: u32, // For Loop event
 }
 
 #[repr(C)]
-pub struct DotLottieRuntimeEvent {
-    pub event_type: DotLottieRuntimeEventType,
-    pub data: DotLottieRuntimeEventData,
+pub struct DotLottiePlayerEvent {
+    pub event_type: DotLottiePlayerEventType,
+    pub data: DotLottiePlayerEventData,
 }
 
-impl From<crate::DotLottieEvent> for DotLottieRuntimeEvent {
+impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
     fn from(event: crate::DotLottieEvent) -> Self {
         match event {
-            crate::DotLottieEvent::Load => DotLottieRuntimeEvent {
-                event_type: DotLottieRuntimeEventType::Load,
-                data: DotLottieRuntimeEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::Load => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Load,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::LoadError => DotLottieRuntimeEvent {
-                event_type: DotLottieRuntimeEventType::LoadError,
-                data: DotLottieRuntimeEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::LoadError => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::LoadError,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Play => DotLottieRuntimeEvent {
-                event_type: DotLottieRuntimeEventType::Play,
-                data: DotLottieRuntimeEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::Play => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Play,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Pause => DotLottieRuntimeEvent {
-                event_type: DotLottieRuntimeEventType::Pause,
-                data: DotLottieRuntimeEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::Pause => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Pause,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Stop => DotLottieRuntimeEvent {
-                event_type: DotLottieRuntimeEventType::Stop,
-                data: DotLottieRuntimeEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::Stop => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Stop,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Frame { frame_no } => DotLottieRuntimeEvent {
-                event_type: DotLottieRuntimeEventType::Frame,
-                data: DotLottieRuntimeEventData { frame_no },
+            crate::DotLottieEvent::Frame { frame_no } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Frame,
+                data: DotLottiePlayerEventData { frame_no },
             },
-            crate::DotLottieEvent::Render { frame_no } => DotLottieRuntimeEvent {
-                event_type: DotLottieRuntimeEventType::Render,
-                data: DotLottieRuntimeEventData { frame_no },
+            crate::DotLottieEvent::Render { frame_no } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Render,
+                data: DotLottiePlayerEventData { frame_no },
             },
-            crate::DotLottieEvent::Loop { loop_count } => DotLottieRuntimeEvent {
-                event_type: DotLottieRuntimeEventType::Loop,
-                data: DotLottieRuntimeEventData { loop_count },
+            crate::DotLottieEvent::Loop { loop_count } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Loop,
+                data: DotLottiePlayerEventData { loop_count },
             },
-            crate::DotLottieEvent::Complete => DotLottieRuntimeEvent {
-                event_type: DotLottieRuntimeEventType::Complete,
-                data: DotLottieRuntimeEventData { frame_no: 0.0 },
+            crate::DotLottieEvent::Complete => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::Complete,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
         }
     }

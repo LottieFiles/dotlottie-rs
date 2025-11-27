@@ -116,7 +116,7 @@ impl Default for LayerBoundingBox {
     }
 }
 
-pub struct DotLottieRuntime {
+pub struct DotLottiePlayer {
     renderer: Box<dyn LottieRenderer>,
     playback_state: PlaybackState,
     is_loaded: bool,
@@ -133,7 +133,7 @@ pub struct DotLottieRuntime {
     event_queue: EventQueue<DotLottieEvent>,
 }
 
-impl DotLottieRuntime {
+impl DotLottiePlayer {
     #[cfg(feature = "tvg")]
     pub fn new(config: Config, threads: u32) -> Self {
         Self::with_renderer(config, crate::TvgRenderer::new(threads))
@@ -147,7 +147,7 @@ impl DotLottieRuntime {
             Mode::ReverseBounce => Direction::Reverse,
         };
 
-        DotLottieRuntime {
+        DotLottiePlayer {
             renderer: <dyn LottieRenderer>::new(renderer),
             playback_state: PlaybackState::Stopped,
             is_loaded: false,
@@ -691,7 +691,7 @@ impl DotLottieRuntime {
         self.renderer.clear()
     }
 
-    // Notes: Runtime doesn't have the state machine
+    // Notes: Player doesn't have the state machine
     // Therefor the state machine can't be loaded here, user must use the load methods.
     pub fn set_config(&mut self, new_config: Config) {
         self.update_mode(&new_config);

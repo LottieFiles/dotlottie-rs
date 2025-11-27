@@ -2,7 +2,7 @@ use std::{ffi::c_char, slice};
 
 use crate::actions::open_url_policy::OpenUrlPolicy;
 use crate::state_machine_engine::events::Event;
-use crate::{Config, DotLottieRuntime, LayerBoundingBox, StateMachineEngine};
+use crate::{Config, DotLottiePlayer, LayerBoundingBox, StateMachineEngine};
 
 use types::*;
 
@@ -10,9 +10,9 @@ pub mod types;
 
 // Allows to wrap every C API call with some additional logic. This is currently used to
 // check if the dotlottie player pointer is valid or not
-unsafe fn exec_dotlottie_player_op<Op>(ptr: *mut DotLottieRuntime, op: Op) -> i32
+unsafe fn exec_dotlottie_player_op<Op>(ptr: *mut DotLottiePlayer, op: Op) -> i32
 where
-    Op: Fn(&mut DotLottieRuntime) -> i32,
+    Op: Fn(&mut DotLottiePlayer) -> i32,
 {
     match ptr.as_mut() {
         Some(dotlottie_player) => op(dotlottie_player),
@@ -22,7 +22,7 @@ where
 
 // Helper for StateMachineEngine operations
 // Note: Using 'static here is safe because we manage the lifetime manually
-// The actual lifetime is tied to the DotLottieRuntime, enforced by Rust's ownership
+// The actual lifetime is tied to the DotLottiePlayer, enforced by Rust's ownership
 unsafe fn exec_state_machine_op<Op>(ptr: *mut StateMachineEngine<'static>, op: Op) -> i32
 where
     Op: Fn(&mut StateMachineEngine<'static>) -> i32,
@@ -52,12 +52,10 @@ fn to_bool_i32(result: bool) -> i32 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_new_player(
-    ptr: *const DotLottieConfig,
-) -> *mut DotLottieRuntime {
+pub unsafe extern "C" fn dotlottie_new_player(ptr: *const DotLottieConfig) -> *mut DotLottiePlayer {
     if let Some(dotlottie_config) = ptr.as_ref() {
         if let Ok(config) = dotlottie_config.to_config() {
-            let dotlottie_player = Box::new(DotLottieRuntime::new(config, 0));
+            let dotlottie_player = Box::new(DotLottiePlayer::new(config, 0));
             return Box::into_raw(dotlottie_player);
         }
     }
@@ -65,7 +63,7 @@ pub unsafe extern "C" fn dotlottie_new_player(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_destroy(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_destroy(ptr: *mut DotLottiePlayer) -> i32 {
     if ptr.is_null() {
         return DOTLOTTIE_INVALID_PARAMETER;
     }
@@ -90,7 +88,7 @@ pub unsafe extern "C" fn dotlottie_init_config(config: *mut DotLottieConfig) -> 
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_load_animation_data(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     animation_data: *const c_char,
     width: u32,
     height: u32,
@@ -106,7 +104,7 @@ pub unsafe extern "C" fn dotlottie_load_animation_data(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_load_animation_path(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     animation_path: *const c_char,
     width: u32,
     height: u32,
@@ -122,7 +120,7 @@ pub unsafe extern "C" fn dotlottie_load_animation_path(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_load_animation(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     animation_id: *const c_char,
     width: u32,
     height: u32,
@@ -138,7 +136,7 @@ pub unsafe extern "C" fn dotlottie_load_animation(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     file_data: *const c_char,
     file_size: usize,
     width: u32,
@@ -152,7 +150,7 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_manifest(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieManifest,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -166,7 +164,7 @@ pub unsafe extern "C" fn dotlottie_manifest(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_manifest_animations(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieManifestAnimation,
     size: *mut usize,
 ) -> i32 {
@@ -181,7 +179,7 @@ pub unsafe extern "C" fn dotlottie_manifest_animations(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_manifest_themes(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieManifestTheme,
     size: *mut usize,
 ) -> i32 {
@@ -201,7 +199,7 @@ pub unsafe extern "C" fn dotlottie_manifest_themes(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_manifest_state_machines(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieManifestStateMachine,
     size: *mut usize,
 ) -> i32 {
@@ -221,7 +219,7 @@ pub unsafe extern "C" fn dotlottie_manifest_state_machines(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_buffer_ptr(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut *const u32,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -235,7 +233,7 @@ pub unsafe extern "C" fn dotlottie_buffer_ptr(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_buffer_len(ptr: *mut DotLottieRuntime, result: *mut u64) -> i32 {
+pub unsafe extern "C" fn dotlottie_buffer_len(ptr: *mut DotLottiePlayer, result: *mut u64) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.buffer().len() as u64;
@@ -248,7 +246,7 @@ pub unsafe extern "C" fn dotlottie_buffer_len(ptr: *mut DotLottieRuntime, result
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_config(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut DotLottieConfig,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -258,7 +256,7 @@ pub unsafe extern "C" fn dotlottie_config(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_total_frames(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut f32,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -272,7 +270,7 @@ pub unsafe extern "C" fn dotlottie_total_frames(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_duration(ptr: *mut DotLottieRuntime, result: *mut f32) -> i32 {
+pub unsafe extern "C" fn dotlottie_duration(ptr: *mut DotLottiePlayer, result: *mut f32) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.duration();
@@ -285,7 +283,7 @@ pub unsafe extern "C" fn dotlottie_duration(ptr: *mut DotLottieRuntime, result: 
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_current_frame(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut f32,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -299,7 +297,7 @@ pub unsafe extern "C" fn dotlottie_current_frame(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_loop_count(ptr: *mut DotLottieRuntime, result: *mut u32) -> i32 {
+pub unsafe extern "C" fn dotlottie_loop_count(ptr: *mut DotLottiePlayer, result: *mut u32) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.loop_count();
@@ -311,49 +309,49 @@ pub unsafe extern "C" fn dotlottie_loop_count(ptr: *mut DotLottieRuntime, result
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_loaded(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_is_loaded(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_bool_i32(dotlottie_player.is_loaded())
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_playing(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_is_playing(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_bool_i32(dotlottie_player.is_playing())
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_paused(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_is_paused(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_bool_i32(dotlottie_player.is_paused())
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_stopped(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_is_stopped(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_bool_i32(dotlottie_player.is_stopped())
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_play(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_play(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_exit_status(dotlottie_player.play())
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_pause(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_pause(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_exit_status(dotlottie_player.pause())
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_stop(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_stop(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_exit_status(dotlottie_player.stop())
     })
@@ -361,7 +359,7 @@ pub unsafe extern "C" fn dotlottie_stop(ptr: *mut DotLottieRuntime) -> i32 {
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_request_frame(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut f32,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -375,21 +373,21 @@ pub unsafe extern "C" fn dotlottie_request_frame(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_frame(ptr: *mut DotLottieRuntime, no: f32) -> i32 {
+pub unsafe extern "C" fn dotlottie_set_frame(ptr: *mut DotLottiePlayer, no: f32) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_exit_status(dotlottie_player.set_frame(no))
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_seek(ptr: *mut DotLottieRuntime, no: f32) -> i32 {
+pub unsafe extern "C" fn dotlottie_seek(ptr: *mut DotLottiePlayer, no: f32) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_exit_status(dotlottie_player.seek(no))
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_render(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_render(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_exit_status(dotlottie_player.render())
     })
@@ -414,7 +412,7 @@ pub unsafe extern "C" fn dotlottie_render(ptr: *mut DotLottieRuntime) -> i32 {
 ///     }
 /// ```
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_tick(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_tick(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_exit_status(dotlottie_player.tick())
     })
@@ -422,7 +420,7 @@ pub unsafe extern "C" fn dotlottie_tick(ptr: *mut DotLottieRuntime) -> i32 {
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_resize(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     width: u32,
     height: u32,
 ) -> i32 {
@@ -432,7 +430,7 @@ pub unsafe extern "C" fn dotlottie_resize(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_clear(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_clear(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         dotlottie_player.clear();
         DOTLOTTIE_SUCCESS
@@ -440,7 +438,7 @@ pub unsafe extern "C" fn dotlottie_clear(ptr: *mut DotLottieRuntime) -> i32 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_complete(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_is_complete(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_bool_i32(dotlottie_player.is_complete())
     })
@@ -448,7 +446,7 @@ pub unsafe extern "C" fn dotlottie_is_complete(ptr: *mut DotLottieRuntime) -> i3
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_set_theme(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     theme_id: *const c_char,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -461,7 +459,7 @@ pub unsafe extern "C" fn dotlottie_set_theme(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut DotLottieRuntime) -> i32 {
+pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut DotLottiePlayer) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
         to_exit_status(dotlottie_player.reset_theme())
     })
@@ -469,7 +467,7 @@ pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut DotLottieRuntime) -> i3
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_set_theme_data(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     theme_data: *const c_char,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -483,7 +481,7 @@ pub unsafe extern "C" fn dotlottie_set_theme_data(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_markers(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieMarker,
     size: *mut usize,
 ) -> i32 {
@@ -494,7 +492,7 @@ pub unsafe extern "C" fn dotlottie_markers(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_active_animation_id(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut c_char,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -507,7 +505,7 @@ pub unsafe extern "C" fn dotlottie_active_animation_id(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_active_theme_id(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut c_char,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -520,7 +518,7 @@ pub unsafe extern "C" fn dotlottie_active_theme_id(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_set_viewport(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     x: i32,
     y: i32,
     w: i32,
@@ -533,7 +531,7 @@ pub unsafe extern "C" fn dotlottie_set_viewport(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_segment_duration(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     result: *mut f32,
 ) -> i32 {
     exec_dotlottie_player_op(ptr, |dotlottie_player| {
@@ -548,7 +546,7 @@ pub unsafe extern "C" fn dotlottie_segment_duration(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_animation_size(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     picture_width: *mut f32,
     picture_height: *mut f32,
 ) -> i32 {
@@ -569,7 +567,7 @@ pub unsafe extern "C" fn dotlottie_animation_size(
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_get_layer_bounds(
-    ptr: *mut DotLottieRuntime,
+    ptr: *mut DotLottiePlayer,
     layer_name: *const c_char,
     result: *mut LayerBoundingBox,
 ) -> i32 {
@@ -608,13 +606,13 @@ pub unsafe extern "C" fn dotlottie_get_layer_bounds(
 ///
 /// # Example
 /// ```c
-/// DotLottieRuntimeEvent event;
+/// DotLottiePlayerEvent event;
 /// while (dotlottie_poll_event(player, &event) == 1) {
 ///     switch (event.event_type) {
-///         case DotLottieRuntimeEventType_Load:
+///         case DotLottiePlayerEventType_Load:
 ///             printf("Animation loaded\n");
 ///             break;
-///         case DotLottieRuntimeEventType_Frame:
+///         case DotLottiePlayerEventType_Frame:
 ///             printf("Frame: %f\n", event.data.frame_no);
 ///             break;
 ///     }
@@ -622,8 +620,8 @@ pub unsafe extern "C" fn dotlottie_get_layer_bounds(
 /// ```
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_poll_event(
-    player: *mut DotLottieRuntime,
-    event: *mut types::DotLottieRuntimeEvent,
+    player: *mut DotLottiePlayer,
+    event: *mut types::DotLottiePlayerEvent,
 ) -> i32 {
     if player.is_null() || event.is_null() {
         return -1;
@@ -633,7 +631,7 @@ pub unsafe extern "C" fn dotlottie_poll_event(
 
     match player.poll_event() {
         Some(rust_event) => {
-            let c_event = types::DotLottieRuntimeEvent::from(rust_event);
+            let c_event = types::DotLottiePlayerEvent::from(rust_event);
             std::ptr::write(event, c_event);
             1 // Event retrieved
         }
@@ -643,7 +641,7 @@ pub unsafe extern "C" fn dotlottie_poll_event(
 
 // ============================================================================
 // STATE MACHINE C API
-// Separate StateMachineEngine object with lifetime to DotLottieRuntime
+// Separate StateMachineEngine object with lifetime to DotLottiePlayer
 // ============================================================================
 
 /// Load a state machine by ID from the loaded .lottie file
@@ -658,7 +656,7 @@ pub unsafe extern "C" fn dotlottie_poll_event(
 ///   BEFORE destroying the runtime
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_load(
-    runtime: *mut DotLottieRuntime,
+    runtime: *mut DotLottiePlayer,
     state_machine_id: *const c_char,
 ) -> *mut StateMachineEngine<'static> {
     if runtime.is_null() {
@@ -687,7 +685,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_load(
 /// Returns a pointer to the StateMachineEngine or NULL on error.
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_load_data(
-    runtime: *mut DotLottieRuntime,
+    runtime: *mut DotLottiePlayer,
     state_machine_definition: *const c_char,
 ) -> *mut StateMachineEngine<'static> {
     if runtime.is_null() {
@@ -1130,7 +1128,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_poll_internal_event(
 /// Get the state machine definition as JSON string
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_get_state_machine(
-    runtime: *mut DotLottieRuntime,
+    runtime: *mut DotLottiePlayer,
     state_machine_id: *const c_char,
     result: *mut c_char,
 ) -> i32 {

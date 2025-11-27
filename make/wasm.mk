@@ -155,7 +155,7 @@ wasm-link: wasm-build-rust  wasm-install-npm-deps
 			-sALLOW_MEMORY_GROWTH=1 \
 			-sFORCE_FILESYSTEM=0 \
 			-sMODULARIZE=1 \
-			-sEXPORT_NAME=createDotLottieRuntimeModule \
+			-sEXPORT_NAME=createDotLottiePlayerModule \
 			-sEXPORT_ES6=1 \
 			-sUSE_ES6_IMPORT_META=0 \
 			-sDYNAMIC_EXECUTION=0 \

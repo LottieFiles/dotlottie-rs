@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
   TTF_Font *font = NULL;
 
   DotLottieConfig config;
-  DotLottieRuntime *player;
+  DotLottiePlayer *player;
 
   const char *animation_path;
   const uint32_t *buffer;
@@ -275,7 +275,7 @@ int main(int argc, char **argv) {
     }
 
     // Poll DotLottie events
-    struct dotlottieDotLottieRuntimeEvent player_event;
+    struct dotlottieDotLottiePlayerEvent player_event;
     while (dotlottie_poll_event(player, &player_event) == 1) {
       switch (player_event.event_type) {
       case Load:

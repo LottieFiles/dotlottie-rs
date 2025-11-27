@@ -167,12 +167,12 @@ android-aarch64: android-check-ndk
 		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES)
 	@mkdir -p $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)
 	@cp dotlottie-rs/target/$(RUST_TARGET_aarch64)/release/$(ANDROID_LIB_NAME) \
-		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/libdotlottie_runtime.so
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/libdotlottie_player.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_aarch64)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/
 	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
 		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/$(LIBCPP_SHARED_LIB); \
-		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/libdotlottie_runtime.so; \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/libdotlottie_player.so; \
 	fi
 	@echo "✓ Android aarch64 build complete"
 
@@ -196,12 +196,12 @@ android-x86_64: android-check-ndk
 		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES)
 	@mkdir -p $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)
 	@cp dotlottie-rs/target/$(RUST_TARGET_x86_64)/release/$(ANDROID_LIB_NAME) \
-		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/libdotlottie_runtime.so
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/libdotlottie_player.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_x86_64)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/
 	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
 		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/$(LIBCPP_SHARED_LIB); \
-		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/libdotlottie_runtime.so; \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/libdotlottie_player.so; \
 	fi
 	@echo "✓ Android x86_64 build complete"
 
@@ -225,12 +225,12 @@ android-x86: android-check-ndk
 		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES)
 	@mkdir -p $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)
 	@cp dotlottie-rs/target/$(RUST_TARGET_x86)/release/$(ANDROID_LIB_NAME) \
-		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/libdotlottie_runtime.so
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/libdotlottie_player.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_x86)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/
 	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
 		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/$(LIBCPP_SHARED_LIB); \
-		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/libdotlottie_runtime.so; \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/libdotlottie_player.so; \
 	fi
 	@echo "✓ Android x86 build complete"
 
@@ -254,12 +254,12 @@ android-armv7: android-check-ndk
 		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES)
 	@mkdir -p $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)
 	@cp dotlottie-rs/target/$(RUST_TARGET_armv7)/release/$(ANDROID_LIB_NAME) \
-		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/libdotlottie_runtime.so
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/libdotlottie_player.so
 	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_armv7)/$(LIBCPP_SHARED_LIB) \
 		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/
 	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
 		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/$(LIBCPP_SHARED_LIB); \
-		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/libdotlottie_runtime.so; \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/libdotlottie_player.so; \
 	fi
 	@echo "✓ Android ARMv7 build complete"
 
@@ -270,7 +270,7 @@ android-package:
 	@echo "→ Generating C header with cbindgen..."
 	@cbindgen --config dotlottie-rs/cbindgen.toml \
 		--crate dotlottie-rs \
-		--output $(ANDROID_RELEASE_DIR)/include/dotlottie_runtime.h \
+		--output $(ANDROID_RELEASE_DIR)/include/dotlottie_player.h \
 		dotlottie-rs
 	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(ANDROID_RELEASE_DIR)/version.txt
 	@echo "api-type=c-api" >> $(ANDROID_RELEASE_DIR)/version.txt
@@ -278,10 +278,10 @@ android-package:
 	@echo ""
 	@echo "Output structure:"
 	@echo "  $(ANDROID_RELEASE_DIR)/"
-	@echo "    ├── include/dotlottie_runtime.h   (C header - generated with cbindgen)"
+	@echo "    ├── include/dotlottie_player.h   (C header - generated with cbindgen)"
 	@echo "    ├── jniLibs/"
-	@echo "    │   ├── arm64-v8a/libdotlottie_runtime.so"
-	@echo "    │   ├── armeabi-v7a/libdotlottie_runtime.so"
-	@echo "    │   ├── x86/libdotlottie_runtime.so"
-	@echo "    │   └── x86_64/libdotlottie_runtime.so"
+	@echo "    │   ├── arm64-v8a/libdotlottie_player.so"
+	@echo "    │   ├── armeabi-v7a/libdotlottie_player.so"
+	@echo "    │   ├── x86/libdotlottie_player.so"
+	@echo "    │   └── x86_64/libdotlottie_player.so"
 	@echo "    └── version.txt"

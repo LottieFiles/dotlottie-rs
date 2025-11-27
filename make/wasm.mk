@@ -18,9 +18,10 @@ EMSDK_DIR := deps/modules/$(EMSDK)
 EMSDK_ENV := emsdk_env.sh
 
 # WASM module configuration
-WASM_MODULE := dotlottie_runtime
+WASM_MODULE := dotlottie_player
 WASM_TARGET := wasm32-unknown-emscripten
 WASM_BUILD_DIR := dotlottie-rs/build/wasm
+BUILD_DIR := dotlottie-rs/build
 
 # Get version information
 CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-rs/Cargo.toml | grep -o '[0-9][0-9.]*')
@@ -34,7 +35,7 @@ ifneq (,$(findstring tvg-simd,$(FEATURES)))
 endif
 
 # WASM-specific phony targets
-.PHONY: wasm wasm-setup wasm-install-emsdk wasm-build-rust wasm-generate-header wasm-link wasm-package wasm-clean
+.PHONY: wasm wasm-setup wasm-install-emsdk wasm-build-rust wasm-link wasm-package wasm-clean
 
 
 # Initialize emsdk submodule
@@ -124,16 +125,6 @@ wasm-build-rust: wasm-check-env
 		--release"
 	@echo "✓ Rust library built for WASM"
 
-# Generate C header
-wasm-generate-header:
-	@echo "→ Generating C header with cbindgen..."
-	@mkdir -p $(WASM_BUILD_DIR)
-	@cbindgen --config dotlottie-rs/cbindgen.toml \
-		--crate dotlottie-rs \
-		--output $(WASM_BUILD_DIR)/dotlottie_runtime.h \
-		dotlottie-rs 2>&1 | grep -v "WARN: Skip" || true
-	@echo "✓ C header generated"
-
 # Install npm dependencies for TypeScript support
 wasm-install-npm-deps:
 	@echo "→ Installing npm dependencies for TypeScript support..."
@@ -145,12 +136,12 @@ wasm-install-npm-deps:
 	@echo "✓ npm dependencies installed"
 
 # Link WASM module - Direct C API
-wasm-link: wasm-build-rust wasm-generate-header wasm-install-npm-deps
+wasm-link: wasm-build-rust  wasm-install-npm-deps
 	@echo "→ Linking WASM module (direct C API)..."
 	@mkdir -p $(WASM_BUILD_DIR)
 	@echo "  Auto-generating export list from C header..."
 	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
-		C_API_EXPORTED_FUNCTIONS=\$$(grep -o 'dotlottie_[a-z_]*(' $(WASM_BUILD_DIR)/dotlottie_runtime.h | sed 's/(//g' | sort -u | sed 's/^/_/' | paste -sd ',' - | sed 's/,/\",\"/g' | sed 's/^/\"/' | sed 's/\$$/\",\"_malloc\",\"_free\"/') && \
+		C_API_EXPORTED_FUNCTIONS=\$$(grep -o 'dotlottie_[a-z_]*(' $(BUILD_DIR)/dotlottie_player.h | sed 's/(//g' | sort -u | sed 's/^/_/' | paste -sd ',' - | sed 's/,/\",\"/g' | sed 's/^/\"/' | sed 's/\$$/\",\"_malloc\",\"_free\"/') && \
 		echo \"  Exporting \$$(echo \$$C_API_EXPORTED_FUNCTIONS | grep -o '_dotlottie' | wc -l | tr -d ' ') C API functions\" && \
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
 			-o $(PWD)/$(WASM_BUILD_DIR)/$(WASM_MODULE).js \
@@ -187,9 +178,6 @@ wasm-package: wasm-link
 	@cp $(WASM_BUILD_DIR)/$(WASM_MODULE).wasm $(WASM_RELEASE_DIR)/
 	@cp $(WASM_BUILD_DIR)/$(WASM_MODULE).js $(WASM_RELEASE_DIR)/
 
-	# Copy C header
-	@cp $(WASM_BUILD_DIR)/dotlottie_runtime.h $(WASM_RELEASE_DIR)/include/
-
 	# Create version file
 	@echo "dlplayer-version=$(WASM_NEW_CRATE_VERSION)-$(COMMIT_HASH)" > $(WASM_RELEASE_DIR)/version.txt
 	@echo "api-type=c-api" >> $(WASM_RELEASE_DIR)/version.txt
@@ -200,7 +188,6 @@ wasm-package: wasm-link
 	@echo "  $(WASM_RELEASE_DIR)/"
 	@echo "    ├── $(WASM_MODULE).wasm"
 	@echo "    ├── $(WASM_MODULE).js"
-	@echo "    ├── include/dotlottie_runtime.h"
 	@echo "    └── version.txt"
 	@echo ""
 	@echo "Usage in JavaScript:"

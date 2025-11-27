@@ -2,7 +2,7 @@
 # Main build orchestrator for dotlottie-ffi across multiple platforms
 
 # Variables that can be overridden
-BINDINGS_DIR ?= dotlottie-ffi/uniffi-bindings
+BINDINGS_DIR ?= dotlottie-rs/build
 
 .PHONY: all clean help list-platforms test clippy native native-clean
 

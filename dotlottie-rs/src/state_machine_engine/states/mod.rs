@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::{dotlottie_runtime::Mode, Config };
+use crate::{player::Mode, Config };
 
 use super::{actions::StateMachineActionError, transitions::Transition, StateMachineEngine};
 

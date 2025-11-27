@@ -94,7 +94,6 @@ setup: android-setup apple-setup wasm-setup linux-setup
 # Clean all build artifacts
 clean: native-clean
 	@echo "Cleaning all build artifacts..."
-	cargo clean --manifest-path dotlottie-ffi/Cargo.toml
 	cargo clean --manifest-path dotlottie-rs/Cargo.toml
 	rm -rf $(BINDINGS_DIR)
 	@echo "Clean complete."
@@ -113,8 +112,11 @@ clippy:
 NATIVE = native
 RELEASE = release
 RUNTIME_FFI = dotlottie-ffi
+DOTLOTTIE_ROOT = dotlottie-rs
+RELEASE_FILE_NAME = dotlottie_player
+RUNTIME_HEADER = $(RELEASE_FILE_NAME).h
+BUILD_DIR = $(DOTLOTTIE_ROOT)/build
 DOTLOTTIE_PLAYER = dotlottie-player
-RUNTIME_FFI_HEADER = dotlottie_player.h
 NATIVE_FEATURES = ffi,tvg,tvg-sw,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions
 
 DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR = $(RELEASE)/$(NATIVE)/$(DOTLOTTIE_PLAYER)
@@ -125,9 +127,11 @@ DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR = $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)
 define NATIVE_RELEASE
 	rm -rf $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)
 	mkdir -p $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR) $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)
-	cp $(RUNTIME_FFI)/bindings.h $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR)/$(RUNTIME_FFI_HEADER)
-	find $(RUNTIME_FFI)/target/release/ -maxdepth 1 \( -name '*.so' -or -name '*.dylib' -or -name "*.dll" \) \
-		-exec cp {} $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR) \;
+	cp $(BUILD_DIR)/$(RUNTIME_HEADER) $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR)/$(RUNTIME_HEADER)
+	
+	# The updated find command
+	find $(DOTLOTTIE_ROOT)/target/release/ -maxdepth 1 \( -name '*.so' -or -name '*.dylib' -or -name "*.dll" \) \
+		-exec sh -c 'cp "$$1" "$(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)/lib$(RELEASE_FILE_NAME).$${1##*.}"' _ {} \;
 endef
 
 # Build native libraries for the current platform
@@ -140,13 +144,10 @@ NATIVE_INCLUDE_DIR = $(NATIVE_RELEASE_DIR)/include
 # Build native libraries using dotlottie-rs c_api
 native:
 	@echo "Building native libraries with dotlottie-rs c_api..."
-	cargo build --manifest-path dotlottie-rs/Cargo.toml --features $(NATIVE_FEATURES) --release
-	@mkdir -p $(NATIVE_LIB_DIR) $(NATIVE_INCLUDE_DIR)
-	@cp dotlottie-rs/target/release/libdotlottie_rs.dylib $(NATIVE_LIB_DIR)/libdotlottie_runtime.dylib 2>/dev/null || true
-	@cp dotlottie-rs/target/release/libdotlottie_rs.so $(NATIVE_LIB_DIR)/libdotlottie_runtime.so 2>/dev/null || true
-	@cp dotlottie-rs/target/release/dotlottie_rs.dll $(NATIVE_LIB_DIR)/dotlottie_runtime.dll 2>/dev/null || true
-	@cp dotlottie-rs/target/release/libdotlottie_rs.a $(NATIVE_LIB_DIR)/libdotlottie_runtime.a 2>/dev/null || true
-	@cbindgen --config dotlottie-rs/cbindgen.toml --crate dotlottie-rs --output $(NATIVE_INCLUDE_DIR)/dotlottie_runtime.h dotlottie-rs
+	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features $(NATIVE_FEATURES) --release
+
+	$(NATIVE_RELEASE)
+
 	@echo "✓ Native build complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
 	@echo "   Library: $(NATIVE_LIB_DIR)/"
 	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/dotlottie_runtime.h"

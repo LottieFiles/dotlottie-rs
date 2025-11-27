@@ -14,16 +14,11 @@ typedef struct dotlottieDotLottieConfig DotLottieConfig;
 #define DOTLOTTIE_SUCCESS 0
 """
 
-[defines]
-"target_os = emscripten" = "TARGET_EMSCRIPTEN"
-"feature = c_api" = "DOTLOTTIE_C_API"
-
 [export]
 include = []
 renaming_overrides_prefixing = false
 prefix = "dotlottie"
-item_types = []
-# item_types = ["globals", "enums", "structs", "unions", "typedefs", "opaque", "functions", "constants"]
+item_types = ["globals", "enums", "structs", "unions", "typedefs", "opaque", "functions", "constants"]
 exclude = [
     "InteractionType",
     "InteractionTypeParseError",

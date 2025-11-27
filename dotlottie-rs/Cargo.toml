@@ -30,6 +30,7 @@ bitflags = { version = "2.6", optional = true }
 
 [build-dependencies]
 bindgen = "0.72.0"
+cbindgen = "0.29.2" 
 lazy_static = "1.4"
 cc = "1.2"
 

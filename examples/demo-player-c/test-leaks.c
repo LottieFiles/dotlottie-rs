@@ -1,4 +1,4 @@
-#include "dotlottie_runtime.h"
+#include "dotlottie_player.h"
 #include <stdio.h>
 
 int main() {

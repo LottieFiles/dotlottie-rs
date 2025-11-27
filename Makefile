@@ -128,8 +128,6 @@ define NATIVE_RELEASE
 	rm -rf $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)
 	mkdir -p $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR) $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)
 	cp $(BUILD_DIR)/$(RUNTIME_HEADER) $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR)/$(RUNTIME_HEADER)
-	
-	# The updated find command
 	find $(DOTLOTTIE_ROOT)/target/release/ -maxdepth 1 \( -name '*.so' -or -name '*.dylib' -or -name "*.dll" \) \
 		-exec sh -c 'cp "$$1" "$(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)/lib$(RELEASE_FILE_NAME).$${1##*.}"' _ {} \;
 endef
@@ -150,7 +148,7 @@ native:
 
 	@echo "✓ Native build complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
 	@echo "   Library: $(NATIVE_LIB_DIR)/"
-	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/dotlottie_runtime.h"
+	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/$(RUNTIME_HEADER)"
 
 # Clean native artifacts
 native-clean:

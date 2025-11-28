@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer};
+    use dotlottie_rs::{Config, DotLottiePlayer};
 
     #[test]
     fn check_guards_for_existing_inputs() {
@@ -8,10 +8,9 @@ mod tests {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
 
-        let mut sm = player.state_machine_load(global_state).expect("state machine to load successfully");
-        let s = sm.start(&OpenUrlPolicy::default());
+        let sm = player.state_machine_load(global_state);
 
-        assert!(!s);
+        assert!(sm.is_err());
     }
 
     #[test]
@@ -21,10 +20,9 @@ mod tests {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
 
-        let mut sm = player.state_machine_load(global_state).expect("state machine to load successfully");
-        let s = sm.start(&OpenUrlPolicy::default());
+        let sm = player.state_machine_load(global_state);
 
-        assert!(!s);
+        assert!(sm.is_err());
     }
 
     #[test]
@@ -33,10 +31,9 @@ mod tests {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
 
-        let mut sm = player.state_machine_load(global_state).expect("state machine to load successfully");
-        let s = sm.start(&OpenUrlPolicy::default());
+        let sm = player.state_machine_load(global_state);
 
-        assert!(!s);
+        assert!(sm.is_err());
     }
 
     #[test]
@@ -45,9 +42,8 @@ mod tests {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
         player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
 
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
-        let s = sm.start(&OpenUrlPolicy::default());
+        let sm = player.state_machine_load_data(global_state);
 
-        assert!(!s);
+        assert!(sm.is_err());
     }
 }

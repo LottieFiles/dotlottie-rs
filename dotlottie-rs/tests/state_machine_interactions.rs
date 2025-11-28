@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use dotlottie_rs::{
-        Config, DotLottiePlayer, Event, StateMachineEngineStatus, actions::open_url_policy::OpenUrlPolicy
+        Config, DotLottiePlayer, Event, actions::open_url_policy::OpenUrlPolicy
     };
 
     #[test]

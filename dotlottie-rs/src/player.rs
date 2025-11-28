@@ -882,18 +882,11 @@ impl DotLottiePlayer {
 
         let load_status = match fs::read_to_string(file_path) {
             Ok(data) => self.load_animation_data(&data, width, height),
-            Err(_) => false,
-        };
-
-        if load_status {
-            self.event_queue.push(DotLottieEvent::Load);
-
-            if self.config().autoplay {
-                self.play();
+            Err(_) => {
+                self.event_queue.push(DotLottieEvent::LoadError);
+                false
             }
-        } else {
-            self.event_queue.push(DotLottieEvent::LoadError);
-        }
+        };
 
         load_status
     }

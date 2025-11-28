@@ -15,7 +15,7 @@ mod tests {
             ..Config::default()
         };
 
-        let player = DotLottiePlayer::new(config);
+        let mut player = DotLottiePlayer::new(config, 0);
 
         assert!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
@@ -49,7 +49,7 @@ mod tests {
             ..Config::default()
         };
 
-        let player = DotLottiePlayer::new(config);
+        let mut player = DotLottiePlayer::new(config, 0);
 
         assert!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
@@ -90,7 +90,7 @@ mod tests {
                 ..Config::default()
             };
 
-            let player = DotLottiePlayer::new(config);
+            let mut player = DotLottiePlayer::new(config, 0);
 
             assert!(
                 player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
@@ -123,7 +123,7 @@ mod tests {
             ..Config::default()
         };
 
-        let player = DotLottiePlayer::new(config);
+        let mut player = DotLottiePlayer::new(config, 0);
 
         assert!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
@@ -155,7 +155,7 @@ mod tests {
             ..Config::default()
         };
 
-        let player = DotLottiePlayer::new(config);
+        let mut player = DotLottiePlayer::new(config, 0);
 
         assert!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),

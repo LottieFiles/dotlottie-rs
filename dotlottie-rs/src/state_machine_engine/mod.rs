@@ -1327,4 +1327,21 @@ impl<'a> StateMachineEngine<'a> {
 
         ticked
     }
+
+    pub fn get_inputs(&self) -> Vec<String> {
+        let mut result = Vec::with_capacity(self.inputs.inputs.len() * 2);
+        for (key, value) in self.inputs.inputs.iter() {
+            result.push(key.clone());
+            result.push(
+                match value {
+                    crate::inputs::InputValue::Numeric(_) => "Numeric",
+                    crate::inputs::InputValue::String(_) => "String",
+                    crate::inputs::InputValue::Boolean(_) => "Boolean",
+                    crate::inputs::InputValue::Event(_) => "Event",
+                }
+                .to_string(),
+            );
+        }
+        result
+    }
 }

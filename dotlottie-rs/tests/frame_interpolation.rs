@@ -28,11 +28,14 @@ mod tests {
 
     #[test]
     fn test_disable_frame_interpolation() {
-        let mut player = DotLottiePlayer::new(Config {
-            autoplay: true,
-            use_frame_interpolation: false,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                autoplay: true,
+                use_frame_interpolation: false,
+                ..Config::default()
+            },
+            0,
+        );
 
         assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
 

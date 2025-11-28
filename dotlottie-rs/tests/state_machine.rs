@@ -65,7 +65,7 @@ mod tests {
         let sm = player.state_machine_load_data("bad_data");
 
         // Should not load
-        assert!(!sm.is_err());
+        assert!(sm.is_err());
 
         let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
         let mut sm2 = player.state_machine_load_data(global_state).expect("state machine to load successfully");

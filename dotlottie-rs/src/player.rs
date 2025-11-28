@@ -912,6 +912,7 @@ impl DotLottiePlayer {
                             )
                         };
 
+                    // Returns this result
                     if let Ok(animation_data) = active_animation {
                         self.markers = extract_markers(animation_data.as_str());
                         let animation_loaded = self.load_animation_common(
@@ -927,10 +928,13 @@ impl DotLottiePlayer {
                             }
                         }
 
-                        return animation_loaded;
+                        animation_loaded
+                    } else {
+                        false
                     }
+                } else {
+                    false
                 }
-                false
             }
             Err(_) => false,
         };

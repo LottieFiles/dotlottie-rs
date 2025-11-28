@@ -24,8 +24,8 @@ use crate::actions::whitelist::Whitelist;
 use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, Config, DotLottiePlayer, EventName,
-    PointerEvent, StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, CompletionEvent, Config, DotLottiePlayer,
+    EventName, PointerEvent, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -1315,8 +1315,22 @@ impl<'a> StateMachineEngine<'a> {
         });
     }
 
+    fn check_completion(&mut self) {
+        match self.player.pop_completion_event() {
+            CompletionEvent::Completed => {
+                self.post_event(&Event::OnComplete);
+            }
+            CompletionEvent::LoopCompleted => {
+                self.post_event(&Event::OnLoopComplete);
+            }
+            _ => {}
+        }
+    }
+
     pub fn tick(&mut self) -> bool {
         let ticked = self.player.tick();
+
+        self.check_completion();
 
         let needs_resume =
             self.status == StateMachineEngineStatus::Tweening && !self.player.is_tweening();

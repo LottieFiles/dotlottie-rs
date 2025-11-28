@@ -283,13 +283,22 @@ mod tests {
         assert_eq!(curr_state_name, "star_3");
 
         let expected_events = [
+            // on start events
+            "on_transition:  -> global".to_string(),
+            "on_state_exit: ".to_string(),
+            "on_state_entered: global".to_string(),
+            "on_transition: global -> star_0".to_string(),
+            "on_state_exit: global".to_string(),
+            "on_state_entered: star_0".to_string(),
+            "custom_event: WOOHOO STAR 0".to_string(),
+
+            // our interactions related
             "on_transition: star_0 -> star_3".to_string(),
             "on_state_exit: star_0".to_string(),
             "on_state_entered: star_3".to_string(),
             "custom_event: WOOHOO STAR 3".to_string(),
         ];
 
-        // let recorded_events = events.lock().unwrap();
         let mut events = vec![];
 
         while let Some(event) = sm.poll_event() {
@@ -306,26 +315,10 @@ mod tests {
                 StateMachineEvent::CustomEvent { message } => {
                     Some(format!("custom_event: {}", message))
                 }
-                StateMachineEvent::Error { message } => {
-                    Some(format!("on_error: {}", message))
-                }
-                StateMachineEvent::StringInputChange { name, old_value, new_value } => {
-                    Some(format!("on_string_input_value_change: {} {} -> {}", name, old_value, new_value))
-                }
-                StateMachineEvent::NumericInputChange { name, old_value, new_value } => {
-                    Some(format!("on_numeric_input_value_change: {} {} -> {}", name, old_value, new_value))
-                }
-                StateMachineEvent::BooleanInputChange { name, old_value, new_value } => {
-                    Some(format!("on_boolean_input_value_change: {} {} -> {}", name, old_value, new_value))
-                }
-                StateMachineEvent::InputFired { name } => {
-                    Some(format!("on_input_fired: {}", name))
-                } 
                 _ => None            
             };
 
             if let Some(event_str) = event_str {
-                println!("Event: {:?}", event_str);
                 events.push(event_str.to_string());
             }
         }

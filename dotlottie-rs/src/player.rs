@@ -1,5 +1,5 @@
 use crate::time::{Duration, Instant};
-use std::fs;
+use std::{fs, mem};
 
 use crate::poll_events::{DotLottieEvent, EventQueue};
 use crate::{
@@ -116,6 +116,13 @@ impl Default for LayerBoundingBox {
     }
 }
 
+// This is used to pass the loop complete / complete event to the state machine engine
+pub enum CompletionEvent {
+    None,
+    Completed,
+    LoopCompleted,
+}
+
 pub struct DotLottiePlayer {
     renderer: Box<dyn LottieRenderer>,
     playback_state: PlaybackState,
@@ -131,6 +138,7 @@ pub struct DotLottiePlayer {
     active_state_machine_id: String,
     cached_start_end_frame: Option<(f32, f32)>,
     event_queue: EventQueue<DotLottieEvent>,
+    completion_event: CompletionEvent,
 }
 
 impl DotLottiePlayer {
@@ -162,6 +170,7 @@ impl DotLottiePlayer {
             active_state_machine_id: String::new(),
             cached_start_end_frame: None,
             event_queue: EventQueue::new(),
+            completion_event: CompletionEvent::None,
         }
     }
 
@@ -174,6 +183,10 @@ impl DotLottiePlayer {
                 duration: *duration,
             })
             .collect()
+    }
+
+    pub fn pop_completion_event(&mut self) -> CompletionEvent {
+        mem::replace(&mut self.completion_event, CompletionEvent::None)
     }
 
     fn is_valid_segment(segment: &[f32]) -> bool {
@@ -598,6 +611,18 @@ impl DotLottiePlayer {
         self.renderer.set_viewport(x, y, w, h).is_ok()
     }
 
+    fn emit_on_complete(&mut self) {
+        self.completion_event = CompletionEvent::Completed;
+        self.event_queue.push(DotLottieEvent::Complete);
+    }
+
+    pub fn emit_on_loop(&mut self) {
+        self.completion_event = CompletionEvent::LoopCompleted;
+        self.event_queue.push(DotLottieEvent::Loop {
+            loop_count: self.loop_count(),
+        });
+    }
+
     pub fn render(&mut self) -> bool {
         let is_ok = self.renderer.render().is_ok();
 
@@ -622,16 +647,14 @@ impl DotLottiePlayer {
                         self.stop();
                     }
 
-                    self.event_queue.push(DotLottieEvent::Loop {
-                        loop_count: self.loop_count(),
-                    });
+                    self.emit_on_loop();
 
                     if count_complete {
-                        self.event_queue.push(DotLottieEvent::Complete);
+                        self.emit_on_complete();
                         self.reset_loop_count();
                     }
                 } else if !self.config().loop_animation {
-                    self.event_queue.push(DotLottieEvent::Complete);
+                    self.emit_on_complete();
                 }
             }
         }

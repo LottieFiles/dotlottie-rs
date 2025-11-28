@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event,
+        Config, DotLottiePlayer, Event, StateMachineEngineStatus, actions::open_url_policy::OpenUrlPolicy
     };
 
     #[test]
@@ -331,7 +331,7 @@ mod tests {
 
         loop {
             sm.tick();
-            if sm.player.loop_count() >= 4 {
+            if sm.status() == "Stopped".to_string() {
                 break;
             }
         }

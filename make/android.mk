@@ -22,31 +22,15 @@ MIN_NDK_VERSION = 28
 
 # Default Rust features for Android builds
 ANDROID_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-ANDROID_DEFAULT_FEATURES = tvg,tvg-sw,uniffi
 
 ifdef FEATURES
 	ANDROID_FEATURES = $(FEATURES)
 endif
 
-# UniFFI Bindings
-BINDINGS_DIR ?= dotlottie-ffi/uniffi-bindings
-KOTLIN_BINDINGS_DIR ?= $(BINDINGS_DIR)/kotlin
-
 # Release and packaging variables
 RELEASE_DIR ?= release
 ANDROID_RELEASE_DIR ?= $(RELEASE_DIR)/android
-DOTLOTTIE_PLAYER_DIR ?= dotlottie-player
-DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR ?= $(ANDROID_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_DIR)
-DOTLOTTIE_PLAYER_ANDROID_SRC_DIR ?= $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/kotlin
-
-# Library names and paths
-ANDROID_FFI_LIB_BASE ?= libdotlottie_player
-ANDROID_FFI_LIB := $(ANDROID_FFI_LIB_BASE).so
-DOTLOTTIE_PLAYER_LIB ?= libuniffi_dotlottie_player.so
 LIBCPP_SHARED_LIB ?= libc++_shared.so
-
-# Assets
-GRADLE_PROPERTIES ?= gradle.properties
 
 # Detect host tag for NDK
 
@@ -102,161 +86,15 @@ ANDROID_CXX_x86 = $(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang+
 ANDROID_CXX_armv7 = $(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang++
 
 # Get version information
-CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-ffi/Cargo.toml | grep -o '[0-9][0-9.]*')
+CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-rs/Cargo.toml | grep -o '[0-9][0-9.]*')
 COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
-# Android packaging function
-define ANDROID_PACKAGE_ARCH
-	@mkdir -p $(DOTLOTTIE_PLAYER_ANDROID_SRC_DIR)
-	@mkdir -p $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/jniLibs/$(ANDROID_ABI_$(1))
-	
-	# Copy Kotlin bindings
-	@if [ -d "$(KOTLIN_BINDINGS_DIR)" ] && [ -n "$$(ls -A $(KOTLIN_BINDINGS_DIR) 2>/dev/null)" ]; then \
-		cp -r $(KOTLIN_BINDINGS_DIR)/* $(DOTLOTTIE_PLAYER_ANDROID_SRC_DIR)/; \
-	fi
-	
-	# Copy and rename main library (libdotlottie_player.so to libuniffi_dotlottie_player.so)
-	@if [ -f "dotlottie-ffi/target/$(RUST_TARGET_$(1))/release/$(ANDROID_FFI_LIB)" ]; then \
-		cp dotlottie-ffi/target/$(RUST_TARGET_$(1))/release/$(ANDROID_FFI_LIB) \
-		   $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/jniLibs/$(ANDROID_ABI_$(1))/$(DOTLOTTIE_PLAYER_LIB); \
-		if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
-			$(ANDROID_STRIP) --strip-unneeded \
-			   $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/jniLibs/$(ANDROID_ABI_$(1))/$(DOTLOTTIE_PLAYER_LIB) >/dev/null 2>&1; \
-		fi; \
-	else \
-		echo "Warning: $(ANDROID_FFI_LIB) not found in dotlottie-ffi/target/$(RUST_TARGET_$(1))/release/"; \
-	fi
-	
-	# Copy libc++ shared library
-	@if [ -f "$(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_$(1))/$(LIBCPP_SHARED_LIB)" ]; then \
-		cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_$(1))/$(LIBCPP_SHARED_LIB) \
-		   $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/jniLibs/$(ANDROID_ABI_$(1))/$(LIBCPP_SHARED_LIB); \
-		if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
-			$(ANDROID_STRIP) --strip-unneeded \
-			   $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/src/main/jniLibs/$(ANDROID_ABI_$(1))/$(LIBCPP_SHARED_LIB) >/dev/null 2>&1; \
-		fi; \
-	fi
-	
-	# Create gradle properties file
-	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(DOTLOTTIE_PLAYER_ANDROID_RELEASE_DIR)/$(GRADLE_PROPERTIES)
-endef
+# ============================================================================
+# Android Build Targets (C API)
+# ============================================================================
 
 # Android-specific phony targets
 .PHONY: android android-aarch64 android-x86_64 android-x86 android-armv7 android-package android-setup android-clean
-
-# Generate Kotlin UniFFI bindings
-kotlin-bindings:
-	$(call check_android_platform_support)
-	@echo "→ Generating Kotlin UniFFI bindings..."
-	@mkdir -p $(KOTLIN_BINDINGS_DIR)
-	@rm -rf $(KOTLIN_BINDINGS_DIR)/*
-	@cargo run \
-		--manifest-path dotlottie-ffi/Cargo.toml \
-		--release \
-		--no-default-features \
-		--features=uniffi/cli,tvg,uniffi \
-		--bin uniffi-bindgen \
-		generate dotlottie-ffi/src/dotlottie_player.udl \
-		--language kotlin \
-		--out-dir $(KOTLIN_BINDINGS_DIR) >/dev/null
-	@echo "✓ Kotlin bindings generated"
-
-# Build for all Android architectures (with bindings and packaging)
-android: kotlin-bindings $(addprefix android-,aarch64 x86_64 x86 armv7) android-package
-	@echo "✓ All Android builds and packaging complete"
-
-# Build for Android ARM64
-android-aarch64: kotlin-bindings android-check-ndk
-	$(call check_android_platform_support)
-	@echo "→ Building Android aarch64..."
-	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
-	CC="$(ANDROID_TOOLCHAIN)/bin/aarch64-linux-android$(API_LEVEL)-clang" \
-	CXX="$(ANDROID_TOOLCHAIN)/bin/aarch64-linux-android$(API_LEVEL)-clang++" \
-	CLANG_PATH="$(ANDROID_TOOLCHAIN)/bin/aarch64-linux-android$(API_LEVEL)-clang" \
-	CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$(ANDROID_TOOLCHAIN)/bin/aarch64-linux-android$(API_LEVEL)-clang" \
-	AR="$(ANDROID_AR)" \
-	RANLIB="$(ANDROID_RANLIB)" \
-	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
-	cargo build \
-		--manifest-path dotlottie-ffi/Cargo.toml \
-		--target $(RUST_TARGET_aarch64) \
-		--release \
-		--no-default-features \
-		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES) >/dev/null
-	@$(call ANDROID_PACKAGE_ARCH,aarch64)
-	@echo "✓ Android aarch64 build complete"
-
-# Build for Android x86_64
-android-x86_64: kotlin-bindings android-check-ndk
-	$(call check_android_platform_support)
-	@echo "→ Building Android x86_64..."
-	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
-	CC="$(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang" \
-	CXX="$(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang++" \
-	CLANG_PATH="$(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang" \
-	CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang" \
-	AR="$(ANDROID_AR)" \
-	RANLIB="$(ANDROID_RANLIB)" \
-	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
-	cargo build \
-		--manifest-path dotlottie-ffi/Cargo.toml \
-		--target $(RUST_TARGET_x86_64) \
-		--release \
-		--no-default-features \
-		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES) >/dev/null
-	@$(call ANDROID_PACKAGE_ARCH,x86_64)
-	@echo "✓ Android x86_64 build complete"
-
-# Build for Android x86
-android-x86: kotlin-bindings android-check-ndk
-	$(call check_android_platform_support)
-	@echo "→ Building Android x86..."
-	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
-	CC="$(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang" \
-	CXX="$(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang++" \
-	CLANG_PATH="$(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang" \
-	CARGO_TARGET_I686_LINUX_ANDROID_LINKER="$(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang" \
-	AR="$(ANDROID_AR)" \
-	RANLIB="$(ANDROID_RANLIB)" \
-	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
-	cargo build \
-		--manifest-path dotlottie-ffi/Cargo.toml \
-		--target $(RUST_TARGET_x86) \
-		--release \
-		--no-default-features \
-		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES) >/dev/null
-	@$(call ANDROID_PACKAGE_ARCH,x86)
-	@echo "✓ Android x86 build complete"
-
-# Build for Android ARMv7
-android-armv7: kotlin-bindings android-check-ndk
-	$(call check_android_platform_support)
-	@echo "→ Building Android ARMv7..."
-	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
-	CC="$(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang" \
-	CXX="$(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang++" \
-	CLANG_PATH="$(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang" \
-	CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang" \
-	AR="$(ANDROID_AR)" \
-	RANLIB="$(ANDROID_RANLIB)" \
-	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
-	cargo build \
-		--manifest-path dotlottie-ffi/Cargo.toml \
-		--target $(RUST_TARGET_armv7) \
-		--release \
-		--no-default-features \
-		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES) >/dev/null
-	@$(call ANDROID_PACKAGE_ARCH,armv7)
-	@echo "✓ Android ARMv7 build complete"
-
-# Package Android build
-android-package:
-	@echo "→ Creating Android release package..."
-	
-	# Create version file
-	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(ANDROID_RELEASE_DIR)/version.txt
-	
-	@echo "✓ Android release package created: $(ANDROID_RELEASE_DIR)/"
 
 # Check if NDK path is valid
 android-check-ndk:
@@ -294,6 +132,156 @@ android-setup:
 # Clean Android bindings and release artifacts
 android-clean:
 	@echo "→ Cleaning Android builds..."
-	@rm -rf $(KOTLIN_BINDINGS_DIR)
 	@rm -rf $(ANDROID_RELEASE_DIR)
 	@echo "✓ Android builds cleaned"
+
+# ============================================================================
+# Android C API Targets (using dotlottie-rs)
+# ============================================================================
+
+# Android feature set (C API from dotlottie-rs)
+ANDROID_DEFAULT_FEATURES = tvg,tvg-sw,c_api
+ANDROID_LIB_NAME = libdotlottie_rs.so
+
+# Build for all Android architectures with C API
+android: $(addprefix android-,aarch64 x86_64 x86 armv7) android-package
+	@echo "✓ All Android C API builds complete"
+
+# Build for Android ARM64
+android-aarch64: android-check-ndk
+	$(call check_android_platform_support)
+	@echo "→ Building Android aarch64..."
+	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
+	CC="$(ANDROID_TOOLCHAIN)/bin/aarch64-linux-android$(API_LEVEL)-clang" \
+	CXX="$(ANDROID_TOOLCHAIN)/bin/aarch64-linux-android$(API_LEVEL)-clang++" \
+	CLANG_PATH="$(ANDROID_TOOLCHAIN)/bin/aarch64-linux-android$(API_LEVEL)-clang" \
+	CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$(ANDROID_TOOLCHAIN)/bin/aarch64-linux-android$(API_LEVEL)-clang" \
+	AR="$(ANDROID_AR)" \
+	RANLIB="$(ANDROID_RANLIB)" \
+	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
+	cargo build \
+		--manifest-path dotlottie-rs/Cargo.toml \
+		--target $(RUST_TARGET_aarch64) \
+		--release \
+		--no-default-features \
+		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES)
+	@mkdir -p $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)
+	@cp dotlottie-rs/target/$(RUST_TARGET_aarch64)/release/$(ANDROID_LIB_NAME) \
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/libdotlottie_player.so
+	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_aarch64)/$(LIBCPP_SHARED_LIB) \
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/
+	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/$(LIBCPP_SHARED_LIB); \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_aarch64)/libdotlottie_player.so; \
+	fi
+	@echo "✓ Android aarch64 build complete"
+
+# Build for Android x86_64 with C API
+android-x86_64: android-check-ndk
+	$(call check_android_platform_support)
+	@echo "→ Building Android x86_64 ..."
+	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
+	CC="$(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang" \
+	CXX="$(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang++" \
+	CLANG_PATH="$(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang" \
+	CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang" \
+	AR="$(ANDROID_AR)" \
+	RANLIB="$(ANDROID_RANLIB)" \
+	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
+	cargo build \
+		--manifest-path dotlottie-rs/Cargo.toml \
+		--target $(RUST_TARGET_x86_64) \
+		--release \
+		--no-default-features \
+		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES)
+	@mkdir -p $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)
+	@cp dotlottie-rs/target/$(RUST_TARGET_x86_64)/release/$(ANDROID_LIB_NAME) \
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/libdotlottie_player.so
+	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_x86_64)/$(LIBCPP_SHARED_LIB) \
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/
+	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/$(LIBCPP_SHARED_LIB); \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86_64)/libdotlottie_player.so; \
+	fi
+	@echo "✓ Android x86_64 build complete"
+
+# Build for Android x86 with C API
+android-x86: android-check-ndk
+	$(call check_android_platform_support)
+	@echo "→ Building Android x86 ..."
+	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
+	CC="$(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang" \
+	CXX="$(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang++" \
+	CLANG_PATH="$(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang" \
+	CARGO_TARGET_I686_LINUX_ANDROID_LINKER="$(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang" \
+	AR="$(ANDROID_AR)" \
+	RANLIB="$(ANDROID_RANLIB)" \
+	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
+	cargo build \
+		--manifest-path dotlottie-rs/Cargo.toml \
+		--target $(RUST_TARGET_x86) \
+		--release \
+		--no-default-features \
+		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES)
+	@mkdir -p $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)
+	@cp dotlottie-rs/target/$(RUST_TARGET_x86)/release/$(ANDROID_LIB_NAME) \
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/libdotlottie_player.so
+	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_x86)/$(LIBCPP_SHARED_LIB) \
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/
+	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/$(LIBCPP_SHARED_LIB); \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_x86)/libdotlottie_player.so; \
+	fi
+	@echo "✓ Android x86 build complete"
+
+# Build for Android ARMv7 with C API
+android-armv7: android-check-ndk
+	$(call check_android_platform_support)
+	@echo "→ Building Android ARMv7 ..."
+	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
+	CC="$(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang" \
+	CXX="$(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang++" \
+	CLANG_PATH="$(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang" \
+	CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang" \
+	AR="$(ANDROID_AR)" \
+	RANLIB="$(ANDROID_RANLIB)" \
+	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
+	cargo build \
+		--manifest-path dotlottie-rs/Cargo.toml \
+		--target $(RUST_TARGET_armv7) \
+		--release \
+		--no-default-features \
+		--features $(ANDROID_DEFAULT_FEATURES),$(ANDROID_FEATURES)
+	@mkdir -p $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)
+	@cp dotlottie-rs/target/$(RUST_TARGET_armv7)/release/$(ANDROID_LIB_NAME) \
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/libdotlottie_player.so
+	@cp $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)/sysroot/usr/lib/$(LIBCPP_PATH_armv7)/$(LIBCPP_SHARED_LIB) \
+		$(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/
+	@if command -v $(ANDROID_STRIP) >/dev/null 2>&1; then \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/$(LIBCPP_SHARED_LIB); \
+		$(ANDROID_STRIP) --strip-unneeded $(ANDROID_RELEASE_DIR)/jniLibs/$(ANDROID_ABI_armv7)/libdotlottie_player.so; \
+	fi
+	@echo "✓ Android ARMv7 build complete"
+
+# Package Android C API build with bindings generation
+android-package:
+	@echo "→ Creating Android  release package..."
+	@mkdir -p $(ANDROID_RELEASE_DIR)/include
+	@echo "→ Generating C header with cbindgen..."
+	@cbindgen --config dotlottie-rs/cbindgen.toml \
+		--crate dotlottie-rs \
+		--output $(ANDROID_RELEASE_DIR)/include/dotlottie_player.h \
+		dotlottie-rs
+	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(ANDROID_RELEASE_DIR)/version.txt
+	@echo "api-type=c-api" >> $(ANDROID_RELEASE_DIR)/version.txt
+	@echo "✓ Android release package created: $(ANDROID_RELEASE_DIR)/"
+	@echo ""
+	@echo "Output structure:"
+	@echo "  $(ANDROID_RELEASE_DIR)/"
+	@echo "    ├── include/dotlottie_player.h   (C header - generated with cbindgen)"
+	@echo "    ├── jniLibs/"
+	@echo "    │   ├── arm64-v8a/libdotlottie_player.so"
+	@echo "    │   ├── armeabi-v7a/libdotlottie_player.so"
+	@echo "    │   ├── x86/libdotlottie_player.so"
+	@echo "    │   └── x86_64/libdotlottie_player.so"
+	@echo "    └── version.txt"

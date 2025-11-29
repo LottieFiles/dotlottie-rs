@@ -3,7 +3,7 @@ mod tests {
     use core::assert_eq;
     use std::fs::{self, File};
 
-    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event};
+    use dotlottie_rs::{Config, DotLottiePlayer, Event, StateMachineEngineStatus, actions::open_url_policy::OpenUrlPolicy};
     use std::io::Read;
 
     #[test]
@@ -12,7 +12,7 @@ mod tests {
             autoplay: true,
             ..Config::default()
         };
-        let player = DotLottiePlayer::new(config);
+        let mut player = DotLottiePlayer::new(config, 0);
 
         let mut markers =
             File::open("tests/fixtures/statemachines/normal_usecases/sm_exploding_pigeon.lottie")
@@ -29,72 +29,66 @@ mod tests {
 
         assert!(player.is_playing());
 
-        let load = player.state_machine_load("Exploding Pigeon");
-        let start = player.state_machine_start(OpenUrlPolicy::default());
+        let mut sm = player.state_machine_load("Exploding Pigeon").expect("state machine to load successfully");
 
-        assert!(load);
-        assert!(start);
+        assert!(sm.start(&OpenUrlPolicy::default()));
 
         // Tests with a state machine loaded
         let global_state =
             include_str!("fixtures/statemachines/normal_usecases/exploding_pigeon.json");
 
-        let l = player.get_state_machine("Exploding Pigeon");
+        let l = player.get_state_machine("Exploding Pigeon").expect("to return a state machine json");
 
         assert_eq!(l, global_state);
     }
 
     #[test]
     fn state_machine_start() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        player.state_machine_load_data("bad_data");
+        let sm = player.state_machine_load_data("bad_data");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
-
-        assert!(!r);
+        assert!(sm.is_err());
 
         let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
-        player.state_machine_load_data(global_state);
+        let mut sm2 = player.state_machine_load_data(global_state).expect("state machine to load successfully");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
+        let r = sm2.start(&OpenUrlPolicy::default());
 
         assert!(r);
     }
 
     #[test]
     fn state_machine_stop() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        player.state_machine_load_data("bad_data");
+        let sm = player.state_machine_load_data("bad_data");
 
-        // Not started
-        let r = player.state_machine_stop();
-
-        assert!(!r);
+        // Should not load
+        assert!(sm.is_err());
 
         let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
-        player.state_machine_load_data(global_state);
+        let mut sm2 = player.state_machine_load_data(global_state).expect("state machine to load successfully");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
-        let s = player.state_machine_stop();
+        let r = sm2.start(&OpenUrlPolicy::default());
+        sm2.stop();
 
         assert!(r);
-        assert!(s);
+        assert!(sm2.status == StateMachineEngineStatus::Stopped);
     }
 
     #[test]
     fn state_machine_framework_setup() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
         let pointer_down =
             include_str!("fixtures/statemachines/interaction_tests/interaction_array.json");
 
-        player.state_machine_load_data(pointer_down);
+        let mut sm = player.state_machine_load_data(pointer_down).expect("state machine to load successfully");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
+        let r = sm.start(&OpenUrlPolicy::default());
         assert!(r);
 
-        let r = player.state_machine_framework_setup();
+        let r = sm.framework_setup();
 
         assert!(r.contains(&"PointerDown".to_string()));
         assert!(r.contains(&"PointerUp".to_string()));
@@ -106,206 +100,206 @@ mod tests {
 
     #[test]
     fn state_machine_post_event() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
         let pointer_down =
             include_str!("fixtures/statemachines/interaction_tests/all_interaction_events.json");
 
-        player.state_machine_load_data(pointer_down);
+        let mut sm = player.state_machine_load_data(pointer_down).expect("state machine to load successfully");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
+        let r = sm.start(&OpenUrlPolicy::default());
         assert!(r);
 
         let event = Event::PointerDown { x: 0.0, y: 0.0 };
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "a".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "a".to_string());
 
         let event = Event::PointerUp { x: 0.0, y: 0.0 };
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "b".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "b".to_string());
 
         let event = Event::PointerMove { x: 0.0, y: 0.0 };
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "c".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "c".to_string());
 
         let event = Event::PointerEnter { x: 0.0, y: 0.0 };
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "d".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "d".to_string());
 
         let event = Event::PointerExit { x: 0.0, y: 0.0 };
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "e".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "e".to_string());
 
         let event = Event::OnComplete;
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "f".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "f".to_string());
     }
 
     #[test]
     fn state_machine_set_get_numeric_input() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
         let rating = include_str!("fixtures/statemachines/normal_usecases/rating.json");
 
-        player.state_machine_load_data(rating);
+        let mut sm = player.state_machine_load_data(rating).expect("state machine to load successfully");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
+        let r = sm.start(&OpenUrlPolicy::default());
         assert!(r);
 
         // Setting the inputs
-        player.state_machine_set_numeric_input("rating", 1.0);
-        assert_eq!(player.state_machine_current_state(), "star_1".to_string());
+        sm.set_numeric_input("rating", 1.0, true, false);
+        assert_eq!(sm.get_current_state_name(), "star_1".to_string());
 
-        assert_eq!(player.state_machine_get_numeric_input("rating"), 1.0);
+        assert_eq!(sm.get_numeric_input("rating").expect("to get numeric input"), 1.0);
 
-        player.state_machine_set_numeric_input("rating", 5.0);
-        assert_eq!(player.state_machine_current_state(), "star_5".to_string());
+        sm.set_numeric_input("rating", 5.0, true, false);
+        assert_eq!(sm.get_current_state_name(), "star_5".to_string());
 
-        assert_eq!(player.state_machine_get_numeric_input("rating"), 5.0);
+        assert_eq!(sm.get_numeric_input("rating").expect("to get numeric input"), 5.0);
     }
 
     #[test]
     fn state_machine_set_get_boolean_input() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
         let sm = include_str!("fixtures/statemachines/normal_usecases/toggle.json");
 
-        player.state_machine_load_data(sm);
+        let mut sm = player.state_machine_load_data(sm).expect("state machine to load successfully");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
+        let r = sm.start(&OpenUrlPolicy::default());
         assert!(r);
 
-        assert!(!player.state_machine_get_boolean_input("OnOffSwitch"));
+        assert!(!sm.get_boolean_input("OnOffSwitch").expect("to get boolean input"));
 
         // Setting the inputs
-        player.state_machine_set_boolean_input("OnOffSwitch", true);
-        assert_eq!(player.state_machine_current_state(), "a".to_string());
-        assert!(player.state_machine_get_boolean_input("OnOffSwitch"));
+        sm.set_boolean_input("OnOffSwitch", true, true, false);
+        assert_eq!(sm.get_current_state_name(), "a".to_string());
+        assert!(sm.get_boolean_input("OnOffSwitch").expect("to get boolean input"));
 
-        player.state_machine_set_boolean_input("OnOffSwitch", false);
-        assert_eq!(player.state_machine_current_state(), "b".to_string());
-        assert!(!player.state_machine_get_boolean_input("OnOffSwitch"));
+        sm.set_boolean_input("OnOffSwitch", false, true, false);
+        assert_eq!(sm.get_current_state_name(), "b".to_string());
+        assert!(!sm.get_boolean_input("OnOffSwitch").expect("to get boolean input"));
     }
 
     #[test]
     fn state_machine_set_get_string_input() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
         let sm = include_str!("fixtures/statemachines/normal_usecases/password.json");
 
-        player.state_machine_load_data(sm);
+        let mut sm = player.state_machine_load_data(sm).expect("state machine to load successfully");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
+        let r = sm.start(&OpenUrlPolicy::default());
         assert!(r);
 
         assert_eq!(
-            player.state_machine_get_string_input("password"),
+            sm.get_string_input("password").expect("to get string input"),
             "incorrect".to_string()
         );
 
         // Setting the inputs
-        player.state_machine_set_string_input("password", "welcome");
-        assert_eq!(player.state_machine_current_state(), "a".to_string());
+        sm.set_string_input("password", "welcome", true, false);
+        assert_eq!(sm.get_current_state_name(), "a".to_string());
         assert_eq!(
-            player.state_machine_get_string_input("password"),
+            sm.get_string_input("password").expect("to get string input"),
             "welcome".to_string()
         );
 
-        player.state_machine_set_string_input("password", "goodbye");
-        assert_eq!(player.state_machine_current_state(), "b".to_string());
+        sm.set_string_input("password", "goodbye", true, false);
+        assert_eq!(sm.get_current_state_name(), "b".to_string());
         assert_eq!(
-            player.state_machine_get_string_input("password"),
+            sm.get_string_input("password").expect("to get string input"),
             "goodbye".to_string()
         );
     }
 
     #[test]
     fn state_machine_fire_event() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
         let sm = include_str!("fixtures/statemachines/normal_usecases/password_with_events.json");
 
-        player.state_machine_load_data(sm);
+        let mut sm = player.state_machine_load_data(sm).expect("state machine to load successfully");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
+        let r = sm.start(&OpenUrlPolicy::default());
         assert!(r);
 
-        player.state_machine_fire_event("Step");
-        assert_eq!(player.state_machine_current_state(), "a".to_string());
+        sm.fire("Step", true).expect("event to fire successfully");
+        assert_eq!(sm.get_current_state_name(), "a".to_string());
 
-        player.state_machine_fire_event("Step");
-        assert_eq!(player.state_machine_current_state(), "b".to_string());
+        sm.fire("Step", true).expect("event to fire successfully");
+        assert_eq!(sm.get_current_state_name(), "b".to_string());
     }
 
     #[test]
     fn final_state() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
         let sm = include_str!("fixtures/statemachines/normal_usecases/final_state.json");
 
-        player.state_machine_load_data(sm);
+        let mut sm = player.state_machine_load_data(sm).expect("state machine to load successfully");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
+        let r = sm.start(&OpenUrlPolicy::default());
         assert!(r);
 
-        assert_eq!(player.state_machine_current_state(), "star_0".to_string());
+        assert_eq!(sm.get_current_state_name(), "star_0".to_string());
 
-        player.state_machine_set_numeric_input("rating", 3.0);
-        assert_eq!(player.state_machine_current_state(), "star_3".to_string());
+        sm.set_numeric_input("rating", 3.0, true, false);
+        assert_eq!(sm.get_current_state_name(), "star_3".to_string());
 
-        player.state_machine_set_numeric_input("rating", 5.0);
-        assert_eq!(player.state_machine_current_state(), "star_1".to_string());
+        sm.set_numeric_input("rating", 5.0, true, false);
+        assert_eq!(sm.get_current_state_name(), "star_1".to_string());
 
-        player.state_machine_set_numeric_input("rating", 3.0);
-        assert_eq!(player.state_machine_current_state(), "star_1".to_string());
+        sm.set_numeric_input("rating", 3.0, true, false);
+        assert_eq!(sm.get_current_state_name(), "star_1".to_string());
     }
 
     #[test]
     fn state_machine_current_state() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
         let pointer_down =
             include_str!("fixtures/statemachines/interaction_tests/all_interaction_events.json");
 
-        player.state_machine_load_data(pointer_down);
+        let mut sm = player.state_machine_load_data(pointer_down).expect("state machine to load successfully");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
+        let r = sm.start(&OpenUrlPolicy::default());
         assert!(r);
 
         let event = Event::PointerDown { x: 0.0, y: 0.0 };
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "a".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "a".to_string());
 
         let event = Event::PointerUp { x: 0.0, y: 0.0 };
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "b".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "b".to_string());
 
         let event = Event::PointerMove { x: 0.0, y: 0.0 };
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "c".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "c".to_string());
 
         let event = Event::PointerEnter { x: 0.0, y: 0.0 };
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "d".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "d".to_string());
 
         let event = Event::PointerExit { x: 0.0, y: 0.0 };
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "e".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "e".to_string());
 
         let event = Event::OnComplete;
-        player.state_machine_post_event(&event);
-        assert_eq!(player.state_machine_current_state(), "f".to_string());
+        sm.post_event(&event);
+        assert_eq!(sm.get_current_state_name(), "f".to_string());
     }
 
     #[test]
     fn state_machine_get_inputs() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
         let pointer_down =
             include_str!("fixtures/statemachines/sanity_tests/test_get_all_inputs.json");
 
-        player.state_machine_load_data(pointer_down);
+        let mut sm = player.state_machine_load_data(pointer_down).expect("state machine to load successfully");
 
-        let r = player.state_machine_start(OpenUrlPolicy::default());
+        let r = sm.start(&OpenUrlPolicy::default());
         assert!(r);
 
         let predefined_inputs = [
             "a_exited", "Boolean", "Step", "Event", "rating", "Numeric", "b_exited", "String",
         ];
 
-        let inputs = player.state_machine_get_inputs();
+        let inputs = sm.get_inputs();
 
         // Check that the lengths match
         assert_eq!(

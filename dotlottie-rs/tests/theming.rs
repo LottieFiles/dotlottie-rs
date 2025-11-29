@@ -10,10 +10,10 @@ mod tests {
 
     #[test]
     fn test_load_valid_theme() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let valid_theme_id = "test_theme";
 
@@ -33,10 +33,10 @@ mod tests {
 
     #[test]
     fn test_load_invalid_theme() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let invalid_theme_id = "invalid_theme";
 
@@ -57,10 +57,10 @@ mod tests {
 
     #[test]
     fn test_unset_theme() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let theme_id = "test_theme";
 
@@ -72,10 +72,10 @@ mod tests {
 
     #[test]
     fn test_unset_theme_before_load() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         assert!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT));
 
@@ -84,10 +84,10 @@ mod tests {
 
     #[test]
     fn test_clear_active_theme_id_after_new_animation_data_is_loaded() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let valid_theme_id = "test_theme";
 
@@ -111,10 +111,10 @@ mod tests {
 
     #[test]
     fn test_clear_active_theme_id_after_new_animation_path_is_loaded() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let valid_theme_id = "test_theme";
 
@@ -136,10 +136,10 @@ mod tests {
 
     #[test]
     fn test_clear_active_theme_id_after_new_dotlottie_is_loaded() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let valid_theme_id = "test_theme";
 

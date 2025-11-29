@@ -1,7 +1,6 @@
 use serde::Deserialize;
-use std::{rc::Rc, sync::RwLock};
 
-use crate::{state_machine::StringBool, DotLottiePlayerContainer, Event};
+use crate::{state_machine::StringBool, Event};
 
 use super::{state_machine::StringNumber, StateMachineEngine};
 
@@ -18,7 +17,6 @@ pub trait ActionTrait {
     fn execute(
         &self,
         engine: &mut StateMachineEngine,
-        player: Rc<RwLock<DotLottiePlayerContainer>>,
         run_pipeline: bool,
         called_from_interaction: bool,
     ) -> Result<(), StateMachineActionError>;
@@ -79,7 +77,6 @@ impl ActionTrait for Action {
     fn execute(
         &self,
         engine: &mut StateMachineEngine,
-        player: Rc<RwLock<DotLottiePlayerContainer>>,
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Result<(), StateMachineActionError> {
@@ -275,26 +272,17 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::SetTheme { value } => {
-                let read_lock = player.try_read();
+                let resolved_value = if value.starts_with('$') {
+                    let trimmed_value = value.trim_start_matches('$');
+                    engine
+                        .get_string_input(trimmed_value)
+                        .unwrap_or_else(|| value.clone())
+                } else {
+                    value.clone()
+                };
 
-                match read_lock {
-                    Ok(player) => {
-                        let resolved_value = if value.starts_with('$') {
-                            let trimmed_value = value.trim_start_matches('$');
-                            engine
-                                .get_string_input(trimmed_value)
-                                .unwrap_or_else(|| value.clone())
-                        } else {
-                            value.clone()
-                        };
-
-                        if !player.set_theme(&resolved_value) {
-                            return Err(StateMachineActionError::ExecuteError);
-                        }
-                    }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError);
-                    }
+                if !engine.player.set_theme(&resolved_value) {
+                    return Err(StateMachineActionError::ExecuteError);
                 }
                 Ok(())
             }
@@ -345,71 +333,50 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::SetFrame { value } => {
-                let read_lock = player.read();
-
                 match value {
                     StringNumber::String(value) => {
-                        if let Ok(player) = read_lock {
-                            // Get the frame number from the input
-                            // Remove the "$" prefix from the value
-                            let value = value.trim_start_matches('$');
-                            let frame = engine.get_numeric_input(value);
-                            if let Some(frame) = frame {
-                                let clamped_frame = frame.clamp(0.0, player.total_frames() - 1.0);
-
-                                player.set_frame(clamped_frame);
-                            } else {
-                                return Err(StateMachineActionError::ExecuteError);
-                            }
-                            return Ok(());
+                        // Get the frame number from the input
+                        // Remove the "$" prefix from the value
+                        let value = value.trim_start_matches('$');
+                        let frame = engine.get_numeric_input(value);
+                        if let Some(frame) = frame {
+                            let clamped_frame = frame.clamp(0.0, engine.player.total_frames() - 1.0);
+                            engine.player.set_frame(clamped_frame);
                         } else {
                             return Err(StateMachineActionError::ExecuteError);
                         }
+                        return Ok(());
                     }
                     StringNumber::F32(value) => {
-                        if let Ok(player) = read_lock {
-                            let clamped_frame = value.clamp(0.0, player.total_frames() - 1.0);
-
-                            player.set_frame(clamped_frame);
-                        } else {
-                            return Err(StateMachineActionError::ExecuteError);
-                        }
+                        let clamped_frame = value.clamp(0.0, engine.player.total_frames() - 1.0);
+                        engine.player.set_frame(clamped_frame);
                     }
                 }
                 Ok(())
             }
             Action::SetProgress { value } => {
-                let read_lock = player.read();
+                match value {
+                    StringNumber::String(value) => {
+                        // Get the frame number from the input
+                        // Remove the "$" prefix from the value
+                        let value = value.trim_start_matches('$');
+                        let percentage = engine.get_numeric_input(value);
+                        if let Some(percentage) = percentage {
+                            let clamped_value = percentage.clamp(0.0, 100.0);
+                            let new_perc = clamped_value / 100.0;
+                            let frame = (engine.player.total_frames() - 1.0) * new_perc;
 
-                match read_lock {
-                    Ok(player) => {
-                        match value {
-                            StringNumber::String(value) => {
-                                // Get the frame number from the input
-                                // Remove the "$" prefix from the value
-                                let value = value.trim_start_matches('$');
-                                let percentage = engine.get_numeric_input(value);
-                                if let Some(percentage) = percentage {
-                                    let clamped_value = percentage.clamp(0.0, 100.0);
-                                    let new_perc = clamped_value / 100.0;
-                                    let frame = (player.total_frames() - 1.0) * new_perc;
-
-                                    player.set_frame(frame);
-                                }
-
-                                return Ok(());
-                            }
-                            StringNumber::F32(value) => {
-                                let clamped_value = value.clamp(0.0, 100.0);
-                                let new_perc = clamped_value / 100.0;
-                                let frame = (player.total_frames() - 1.0) * new_perc;
-
-                                player.set_frame(frame);
-                            }
+                            engine.player.set_frame(frame);
                         }
+
+                        return Ok(());
                     }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError);
+                    StringNumber::F32(value) => {
+                        let clamped_value = value.clamp(0.0, 100.0);
+                        let new_perc = clamped_value / 100.0;
+                        let frame = (engine.player.total_frames() - 1.0) * new_perc;
+
+                        engine.player.set_frame(frame);
                     }
                 }
 

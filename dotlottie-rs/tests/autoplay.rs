@@ -10,14 +10,14 @@ mod tests {
 
     #[test]
     fn test_default_autoplay() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = DotLottiePlayer::new(Config::default(), 0);
 
         assert!(!player.config().autoplay);
     }
 
     #[test]
     fn test_set_autoplay() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
 
         let mut config = player.config();
         config.autoplay = true;
@@ -28,10 +28,10 @@ mod tests {
 
     #[test]
     fn test_autoplay() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
         assert!(player.is_playing());
@@ -56,10 +56,10 @@ mod tests {
 
     #[test]
     fn test_no_autoplay() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: false,
             ..Config::default()
-        });
+        }, 0);
 
         let loaded = player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT);
 

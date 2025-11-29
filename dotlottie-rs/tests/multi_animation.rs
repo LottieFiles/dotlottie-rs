@@ -11,10 +11,10 @@ mod tests {
     pub fn test_load_animation_with_animation_id() {
         let animation_id = "crying".to_string();
 
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             animation_id: animation_id.clone(),
             ..Config::default()
-        });
+        }, 0);
 
         assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
 
@@ -23,7 +23,7 @@ mod tests {
 
     #[test]
     pub fn test_load_animation() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
         assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
 
         let manifest = player.manifest();
@@ -32,7 +32,7 @@ mod tests {
 
         let manifest = manifest.unwrap();
 
-        let animations = manifest.animations;
+        let animations = manifest.animations.clone();
 
         assert!(
             animations[0].id == player.active_animation_id(),

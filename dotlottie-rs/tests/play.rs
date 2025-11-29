@@ -9,7 +9,7 @@ mod tests {
 
     #[test]
     fn test_play_fail_when_animation_is_not_loaded() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
 
         assert!(
             !player.play(),
@@ -26,7 +26,7 @@ mod tests {
 
     #[test]
     fn test_play_while_playing() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new(Config::default(), 0);
 
         assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 
@@ -39,10 +39,10 @@ mod tests {
 
     #[test]
     fn test_play_after_pause() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             use_frame_interpolation: false,
             ..Config::default()
-        });
+        }, 0);
 
         assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 
@@ -84,10 +84,10 @@ mod tests {
 
     #[test]
     fn test_play_after_complete() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             use_frame_interpolation: false,
             ..Config::default()
-        });
+        }, 0);
 
         assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 
@@ -121,10 +121,10 @@ mod tests {
 
     #[test]
     fn test_play_after_setting_frame() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             use_frame_interpolation: false,
             ..Config::default()
-        });
+        }, 0);
 
         assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
 

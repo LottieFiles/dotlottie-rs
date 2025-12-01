@@ -3,8 +3,10 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::parser::{parse_global_inputs, GlobalInputs, GradientStop};
-use crate::parser::{GlobalInputValue, ImageValue};
+use crate::parser::color_path::ColorPath;
+use crate::parser::GlobalInputValue;
+use crate::parser::{parse_global_inputs, GlobalInputs};
+use crate::{GradientStop, ImageValue, LottieRenderer};
 pub mod parser;
 
 #[derive(Debug)]
@@ -17,81 +19,27 @@ pub enum GlobalInputsEngineError {
     },
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct Theme {
-    rules: Vec<Rule>,
+impl From<String> for GlobalInputsEngineError {
+    fn from(s: String) -> Self {
+        GlobalInputsEngineError::ParseError(s)
+    }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct ImageRule {
-    id: Option<String>,
-    width: Option<f64>,
-    height: Option<f64>,
-    url: Option<String>,
+#[derive(Debug)]
+pub enum BindingUsageSlotType {
+    Color,
+    Gradient,
+    Image,
+    String,
+    Numeric,
+    Vector,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TextRule {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub font_family: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub font_size: Option<f64>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fill_color: Option<Vec<f64>>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stroke_color: Option<Vec<f64>>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stroke_width: Option<f64>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stroke_over_fill: Option<bool>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub line_height: Option<f64>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tracking: Option<f64>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub justify: Option<Justify>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub text_caps: Option<TextCaps>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub baseline_shift: Option<f64>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub wrap_size: Option<Vec<f64>>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub wrap_position: Option<Vec<f64>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Justify {
-    Left,
-    Right,
-    Center,
-    JustifyLastLeft,
-    JustifyLastRight,
-    JustifyLastCenter,
-    JustifyLastFull,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum TextCaps {
-    Regular,
-    AllCaps,
-    SmallCaps,
+#[derive(Debug, Default)]
+pub struct ResolvedThemeBinding {
+    pub rule_id: String,
+    pub theme_id: String,
+    pub path: ColorPath,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -100,6 +48,11 @@ struct Rule {
     #[serde(rename = "type")]
     rule_type: String,
     value: Value,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Theme {
+    rules: Vec<Rule>,
 }
 
 pub struct GlobalInputsEngineBuilder {
@@ -125,7 +78,18 @@ impl GlobalInputsEngineBuilder {
         let parsed_bindings = parse_global_inputs(&self.bindings_definition)
             .map_err(|e| GlobalInputsEngineError::ParseError(e.to_string()))?;
 
-        println!("Found: {:?}", parsed_bindings);
+        // println!("Found: {:?}", parsed_bindings);
+        // for (key, value) in &parsed_bindings {
+        //     match &value.r#type {
+        //         GlobalInputValue::Color { value } => println!("Color: {:?}", value),
+        //         GlobalInputValue::Vector { value } => println!("Vector: {:?}", value),
+        //         GlobalInputValue::Numeric { value } => println!("Numeric: {}", value),
+        //         GlobalInputValue::Boolean { value } => println!("Boolean: {}", value),
+        //         GlobalInputValue::Gradient { value } => println!("Gradient: {:?}", value),
+        //         GlobalInputValue::Image { value } => println!("Image: {:?}", value),
+        //         GlobalInputValue::String { value } => println!("String: {}", value),
+        //     }
+        // }
 
         Ok(GlobalInputsEngine {
             global_inputs_container: parsed_bindings,
@@ -252,7 +216,7 @@ macro_rules! impl_mutator {
             }
         }
     };
-    // For &str -> String conversion (text binding)
+    // For &str -> String conversion (String binding)
     ($method_name:ident, $variant:ident, $param_type:ty, $type_name:expr, to_string) => {
         pub fn $method_name(
             &mut self,
@@ -304,9 +268,9 @@ impl GlobalInputsEngine {
     // Getters
     // ============================================================================
 
-    impl_getter!(global_inputs_get_color, Color, [f64; 3], "Color", copy);
-    impl_getter!(global_inputs_get_vector, Vector, [f64; 2], "Vector", copy);
-    impl_getter!(global_inputs_get_scalar, Scalar, f64, "Scalar", copy);
+    // impl_getter!(global_inputs_get_color, Color, vec<f, "Color", copy);
+    impl_getter!(global_inputs_get_vector, Vector, [f32; 2], "Vector", copy);
+    impl_getter!(global_inputs_get_numeric, Numeric, f32, "Numeric", copy);
     impl_getter!(global_inputs_get_boolean, Boolean, bool, "Boolean", copy);
     impl_getter!(
         global_inputs_get_gradient,
@@ -315,15 +279,15 @@ impl GlobalInputsEngine {
         "Gradient"
     );
     impl_getter!(global_inputs_get_image, Image, ImageValue, "Image");
-    impl_getter!(global_inputs_get_text, Text, String, "Text");
+    impl_getter!(global_inputs_get_string, String, String, "String");
 
     // ============================================================================
     // Mutators
     // ============================================================================
 
-    impl_mutator!(global_inputs_set_color, Color, [f64; 3], "Color", copy);
-    impl_mutator!(global_inputs_set_vector, Vector, [f64; 2], "Vector", copy);
-    impl_mutator!(global_inputs_set_scalar, Scalar, f64, "Scalar", copy);
+    // impl_mutator!(global_inputs_set_color, Color, [f32; 3], "Color", copy);
+    impl_mutator!(global_inputs_set_vector, Vector, [f32; 2], "Vector", copy);
+    impl_mutator!(global_inputs_set_numeric, Numeric, f32, "Numeric", copy);
     impl_mutator!(global_inputs_set_boolean, Boolean, bool, "Boolean", copy);
     impl_mutator!(
         global_inputs_set_gradient,
@@ -332,7 +296,7 @@ impl GlobalInputsEngine {
         "Gradient"
     );
     impl_mutator!(global_inputs_set_image, Image, &ImageValue, "Image");
-    impl_mutator!(global_inputs_set_text, Text, &str, "Text", to_string);
+    impl_mutator!(global_inputs_set_string, String, &str, "String", to_string);
 
     // ============================================================================
     // Utility Methods
@@ -343,113 +307,157 @@ impl GlobalInputsEngine {
         return was_updated;
     }
 
-    fn add_new_theme_dependancy(&mut self, theme_id: &str, binding_id: &str) {
-        let items = self
-            .theme_dependencies
-            .entry(binding_id.to_string())
-            .or_insert_with(Vec::new);
+    fn vec_tof32(&self, input: &Vec<f32>) -> [f32; 4] {
+        let rgba_value = if input.len() >= 4 {
+            [input[0], input[1], input[2], input[3]]
+        } else if input.len() >= 3 {
+            [input[0], input[1], input[2], 1.0]
+        } else {
+            [0.0, 0.0, 0.0, 1.0]
+        };
 
-        if !items.contains(&theme_id.to_string()) {
-            items.push(theme_id.to_string());
+        rgba_value
+    }
+
+    pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f32; 4]> {
+        let color: Option<&parser::GlobalInput> = self.global_inputs_container.get(binding_name);
+
+        if let Some(color) = color {
+            match &color.r#type {
+                GlobalInputValue::Color { value } => {
+                    if value.len() < 3 {
+                        None
+                    } else {
+                        let rgba_value = self.vec_tof32(value);
+
+                        Some(rgba_value)
+                    }
+                }
+                _ => None,
+            }
+        } else {
+            None
         }
     }
 
-    fn replace_references(
+    pub fn global_inputs_set_color(
         &mut self,
-        theme: &mut Theme,
-        theme_id: Option<&str>,
-    ) -> Result<(), GlobalInputsEngineError> {
-        for rule in &mut theme.rules {
-            let binding_id = if let Value::String(s) = &rule.value {
-                s.strip_prefix('@').map(|stripped| stripped.to_string())
-            } else if let Value::Object(s) = &rule.value {
-                // Use the rule_type to determine what to parse
-                match rule.rule_type.as_str() {
-                    "Image" => {
-                        if let Ok(image_rule) =
-                            serde_json::from_value::<ImageRule>(Value::Object(s.clone()))
-                        {
-                            image_rule
-                                .id
-                                .and_then(|id| id.strip_prefix('@').map(|s| s.to_string()))
-                        } else {
-                            None
-                        }
-                    }
-                    "Text" => {
-                        if let Ok(text_rule) =
-                            serde_json::from_value::<TextRule>(Value::Object(s.clone()))
-                        {
-                            // todo: Not necessarily JUST the text that can replaced
-                            text_rule
-                                .text
-                                .and_then(|id| id.strip_prefix('@').map(|s| s.to_string()))
-                        } else {
-                            None
-                        }
-                    }
-                    _ => None,
-                }
-            } else {
-                None
-            };
+        global_input_name: &str,
+        new_value: [f32; 4],
+        renderer: &mut Box<dyn LottieRenderer>,
+    ) -> bool {
+        println!(
+            ">>> global_inputs_set_color called for: {}",
+            global_input_name
+        );
 
-            if let Some(binding_id) = binding_id {
-                if let Some(binding) = self.global_inputs_container.get(&binding_id) {
-                    // For objects, update only the specific field, not the entire value
-                    if let Value::Object(obj) = &mut rule.value {
-                        match rule.rule_type.as_str() {
-                            "Image" => {
-                                if let Value::Object(binding_obj) = binding.r#type.to_json_value() {
-                                    // Insert/update fields from the binding, preserving other fields
-                                    for (key, value) in binding_obj {
-                                        obj.insert(key, value);
-                                    }
-                                } else {
-                                    obj.insert("id".to_string(), binding.r#type.to_json_value());
+        if let Some(binding) = self.global_inputs_container.get_mut(global_input_name) {
+            println!(
+                ">>> Found binding, resolved_theme_bindings count: {}",
+                binding.resolved_theme_bindings.len()
+            );
+
+            match &mut binding.r#type {
+                GlobalInputValue::Color { value } => {
+                    *value = new_value.to_vec();
+
+                    for resolved in &binding.resolved_theme_bindings {
+                        if resolved.path.targets_gradient() {
+                            if let Some(gradient_slot) =
+                                renderer.get_gradient_slot(&resolved.rule_id)
+                            {
+                                if let Err(e) = resolved
+                                    .path
+                                    .apply_to_gradient(gradient_slot, &new_value.to_vec())
+                                {
+                                    eprintln!("Failed to apply gradient path: {e}");
                                 }
                             }
-                            "Text" => {
-                                if let Value::Object(binding_obj) = binding.r#type.to_json_value() {
-                                    // Insert/update ALL fields from the binding, preserving other fields
-                                    for (key, value) in binding_obj {
-                                        obj.insert(key, value);
-                                    }
-                                } else {
-                                    // Fallback if it's just a simple string value
-                                    obj.insert("text".to_string(), binding.r#type.to_json_value());
+                        } else {
+                            if let Some(color_slot) = renderer.get_color_slot(&resolved.rule_id) {
+                                if let Err(e) = resolved
+                                    .path
+                                    .apply_to_color(color_slot, &new_value.to_vec())
+                                {
+                                    eprintln!("Failed to apply color path: {e}");
                                 }
                             }
-                            _ => {}
                         }
-                    } else {
-                        // For simple string references, replace the entire value
-                        rule.value = binding.r#type.to_json_value();
                     }
-
-                    if let Some(theme_id) = theme_id {
-                        self.add_new_theme_dependancy(theme_id, &binding_id);
-                    }
+                    let _ = renderer.apply_all_slots();
+                    return true;
                 }
+                _ => {}
             }
+        } else {
+            println!(">>> Binding not found: {}", global_input_name);
         }
 
-        Ok(())
+        false
     }
 
     pub fn update_theme(
         &mut self,
-        theme_data: &str,
-        theme_id: Option<&str>,
+        theme_id: &str,
+        renderer: &mut Box<dyn LottieRenderer>,
     ) -> Result<String, GlobalInputsEngineError> {
-        let mut theme: Theme = serde_json::from_str(theme_data).map_err(|e| {
-            GlobalInputsEngineError::ParseError(format!("Theme parse error: {}", e))
-        })?;
+        for (_, global_input) in self.global_inputs_container.iter_mut() {
+            if let Some(themes) = &global_input.bindings.themes {
+                for theme_binding in themes {
+                    if theme_binding.theme_id == theme_id
+                        || theme_binding.theme_id == "*".to_string()
+                    {
+                        match &global_input.r#type {
+                            GlobalInputValue::Color { value } => {
+                                let parsed_path = ColorPath::parse(&theme_binding.path)?;
 
-        let _ = self.replace_references(&mut theme, theme_id);
+                                // Color input is going in to a Gradient
+                                if parsed_path.targets_gradient() {
+                                    if let Some(gradient_slot) =
+                                        renderer.get_gradient_slot(&theme_binding.rule_id)
+                                    {
+                                        parsed_path.apply_to_gradient(gradient_slot, value)?;
 
-        serde_json::to_string(&theme).map_err(|e| {
-            GlobalInputsEngineError::ParseError(format!("Theme serialize error: {}", e))
-        })
+                                        global_input.resolved_theme_bindings.push(
+                                            ResolvedThemeBinding {
+                                                rule_id: theme_binding.rule_id.clone(),
+                                                theme_id: theme_binding.theme_id.clone(),
+                                                path: parsed_path,
+                                            },
+                                        );
+
+                                        let _ = renderer.apply_all_slots();
+                                    }
+                                } else {
+                                    // Color input is going in to a Color
+                                    if let Some(color_slot) =
+                                        renderer.get_color_slot(&theme_binding.rule_id)
+                                    {
+                                        parsed_path.apply_to_color(color_slot, value)?;
+
+                                        global_input.resolved_theme_bindings.push(
+                                            ResolvedThemeBinding {
+                                                rule_id: theme_binding.rule_id.clone(),
+                                                theme_id: theme_binding.theme_id.clone(),
+                                                path: parsed_path,
+                                            },
+                                        );
+
+                                        let _ = renderer.apply_all_slots();
+                                    }
+                                }
+                            }
+                            GlobalInputValue::Vector { value } => {}
+                            GlobalInputValue::Numeric { value } => {}
+                            GlobalInputValue::Boolean { value } => {}
+                            GlobalInputValue::Gradient { value } => {}
+                            GlobalInputValue::Image { value } => {}
+                            GlobalInputValue::String { value } => {}
+                        }
+                    }
+                }
+            }
+        }
+        Ok("".to_string())
     }
 }

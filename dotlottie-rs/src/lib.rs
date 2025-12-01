@@ -5,7 +5,7 @@ mod layout;
 mod lottie_renderer;
 mod markers;
 mod state_machine_engine;
-mod theming;
+mod theme;
 pub(crate) mod time;
 
 pub use global_inputs_engine::*;
@@ -17,7 +17,7 @@ pub use markers::*;
 pub use state_machine_engine::events::*;
 pub use state_machine_engine::security::*;
 pub use state_machine_engine::*;
-pub use theming::*;
+pub use theme::*;
 
 #[cfg(feature = "tvg")]
 pub fn register_font(font_name: &str, font_data: &[u8]) -> bool {

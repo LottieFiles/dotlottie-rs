@@ -1,4 +1,4 @@
-use dotlottie_rs::{parser::GradientStop, Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer, GradientStop};
 use minifb::{Key, Window, WindowOptions};
 use std::time::Instant;
 
@@ -65,9 +65,10 @@ fn main() {
 
     let mut player = Player::new(&format!("./src/bin/testbed/{}.lottie", ANIMATION_NAME));
 
-    player.player.global_inputs_load(BINDING_FILE_NAME);
+    let load = player.player.global_inputs_load(BINDING_FILE_NAME);
 
     let st = player.player.set_theme(THEMING_FILE_NAME);
+    println!("Inputs load: {}", load);
     println!("Set theme: {}", st);
 
     let mut mx = 0.0;
@@ -85,15 +86,15 @@ fn main() {
         if mx != 0.0 && my != 0.0 {
             let mut gradient_storage = vec![];
             gradient_storage.push(GradientStop {
-                color: vec![0.0, 1.0, 1.0, 1.0],
+                color: [0.0, 1.0, 1.0, 1.0],
                 offset: 0.0,
             });
             gradient_storage.push(GradientStop {
-                color: vec![1.0, 0.0, 1.0, 1.0],
-                offset: ((mx / (WIDTH as f32) * 100.0) / 100.0) as f64,
+                color: [1.0, 0.0, 1.0, 1.0],
+                offset: ((mx / (WIDTH as f32) * 100.0) / 100.0),
             });
             gradient_storage.push(GradientStop {
-                color: vec![1.0, 0.0, 1.0, 1.0],
+                color: [1.0, 0.0, 1.0, 1.0],
                 offset: 1.0,
             });
             player

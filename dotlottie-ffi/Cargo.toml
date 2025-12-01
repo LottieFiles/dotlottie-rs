@@ -1,6 +1,6 @@
 [package]
 name = "dotlottie-ffi"
-version = "0.1.51"
+version = "0.1.52"
 edition = "2021"
 build = "build.rs"
 
@@ -43,4 +43,4 @@ bitflags = "2.6.0"
 [build-dependencies]
 uniffi = { version = "0.28", features = ["build"] }
 lazy_static = "1.4"
-cbindgen = "0.26.0"
+cbindgen = "0.29.0"

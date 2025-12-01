@@ -410,7 +410,7 @@ impl Animation for TvgAnimation {
         Ok(curr_frame)
     }
 
-    fn set_slots(&mut self, slots_json: &str) -> Result<(), TvgError> {
+    fn set_slots_str(&mut self, slots_json: &str) -> Result<(), TvgError> {
         let result = if slots_json.is_empty() {
             unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, 0) }
         } else {

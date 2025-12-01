@@ -1,4 +1,3 @@
-use crate::parser::{GradientStop, ImageValue};
 use crate::time::{Duration, Instant};
 use std::sync::RwLock;
 use std::{fs, rc::Rc, sync::Arc};
@@ -12,7 +11,7 @@ use crate::{
     Marker, MarkersMap, StateMachineEngine,
 };
 use crate::{
-    transform_theme_to_lottie_slots, DotLottieManager, GlobalInputsEngine, Manifest, Renderer,
+    DotLottieManager, GlobalInputsEngine, GradientStop, ImageValue, Manifest, Renderer,
     StateMachineEngineError,
 };
 
@@ -233,7 +232,7 @@ impl DotLottieRuntime {
         self.renderer.intersect(x, y, layer_name).unwrap_or(false)
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
         let bbox = self.renderer.get_layer_bounds(layer_name);
 
         match bbox {
@@ -948,15 +947,11 @@ impl DotLottieRuntime {
         }
     }
 
-    // Here
     pub fn set_theme(&mut self, theme_id: &str) -> bool {
-        /*
-         * Deactived for the moment to allow re-applying the same
-         * theme with a different binded var
-         */
-        // if self.active_theme_id == theme_id {
-        //     return true;
-        // }
+        if self.active_theme_id == theme_id {
+            return true;
+        }
+
         if self.dotlottie_manager.is_none() {
             return false;
         }
@@ -965,7 +960,7 @@ impl DotLottieRuntime {
         self.config.theme_id.clear();
 
         if theme_id.is_empty() {
-            return self.renderer.set_slots("").is_ok();
+            return self.renderer.clear_slots().is_ok();
         }
 
         let theme_exists = self
@@ -996,45 +991,17 @@ impl DotLottieRuntime {
             .dotlottie_manager
             .as_mut()
             .and_then(|manager| manager.get_theme(theme_id).ok())
-            .and_then(|theme_data| {
-                if let Some(b_e) = &mut self.global_inputs_engine {
-                    let mutated_theme_data = b_e.update_theme(&theme_data, Some(&theme_id));
-
-                    match mutated_theme_data {
-                        Ok(mutated_theme_data) => {
-                            if let Some(manager) = self.dotlottie_manager.as_ref() {
-                                let slots = transform_theme_to_lottie_slots(
-                                    &mutated_theme_data,
-                                    &self.active_animation_id,
-                                    manager,
-                                )
-                                .unwrap();
-
-                                self.renderer.set_slots(&slots).ok()
-                            } else {
-                                return None;
-                            }
-                        }
-                        Err(_) => todo!(),
-                    } // closing match
-                } else {
-                    // In the absence of a global_inputs_engine, use the original theme_data
-                    if let Some(manager) = self.dotlottie_manager.as_ref() {
-                        let slots = transform_theme_to_lottie_slots(
-                            &theme_data,
-                            &self.active_animation_id,
-                            manager,
-                        )
-                        .ok()?; // propagate None on error
-                        self.renderer.set_slots(&slots).ok()
-                    } else {
-                        None
-                    }
-                }
+            .map(|theme| {
+                let slots = theme.to_slot_types(&self.active_animation_id);
+                self.apply_slot_types(slots)
             })
-            .is_some();
+            .unwrap_or(false);
 
         if ok {
+            if let Some(b_e) = &mut self.global_inputs_engine {
+                let _ = b_e.update_theme(&theme_id, &mut self.renderer);
+            }
+
             self.active_theme_id = theme_id.to_string();
             self.config.theme_id = theme_id.to_string();
         }
@@ -1045,50 +1012,152 @@ impl DotLottieRuntime {
     pub fn reset_theme(&mut self) -> bool {
         self.active_theme_id.clear();
         self.config.theme_id.clear();
-        self.renderer.set_slots("").is_ok()
+        self.renderer.clear_slots().is_ok()
     }
 
     pub fn set_theme_data(&mut self, theme_data: &str) -> bool {
-        if let Some(b_e) = &mut self.global_inputs_engine {
-            let mutated_theme_data = match b_e.update_theme(&theme_data, None) {
-                Ok(data) => data,
-                Err(_) => return false,
-            };
+        match theme_data.parse::<crate::theme::Theme>() {
+            Ok(theme) => {
+                let slots = theme.to_slot_types(&self.active_animation_id);
+                let r = self.apply_slot_types(slots);
 
-            if let Some(manager) = self.dotlottie_manager.as_ref() {
-                match transform_theme_to_lottie_slots(
-                    &mutated_theme_data,
-                    &self.active_animation_id,
-                    manager,
-                ) {
-                    Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
-                    Err(_) => false,
+                if let Some(b_e) = &mut self.global_inputs_engine {
+                    let _ = b_e.update_theme("", &mut self.renderer);
                 }
-            } else {
-                false
+
+                r
             }
-        } else {
-            if let Some(manager) = self.dotlottie_manager.as_ref() {
-                match transform_theme_to_lottie_slots(
-                    theme_data,
-                    &self.active_animation_id,
-                    manager,
-                ) {
-                    Ok(slots) => self.renderer.set_slots(&slots).is_ok(),
-                    Err(_) => false,
-                }
-            } else {
-                false
-            }
+            Err(_) => false,
         }
     }
 
-    pub fn set_slots(&mut self, slots: &str) -> bool {
-        self.renderer.set_slots(slots).is_ok()
+    fn apply_slot_types(
+        &mut self,
+        slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
+    ) -> bool {
+        use crate::lottie_renderer::SlotType;
+
+        for (slot_id, slot_type) in slots {
+            let result = match slot_type {
+                SlotType::Color(slot) => self.renderer.set_color_slot(&slot_id, slot),
+                SlotType::Gradient(slot) => self.renderer.set_gradient_slot(&slot_id, slot),
+                SlotType::Image(slot) => self.renderer.set_image_slot(&slot_id, slot),
+                SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot),
+                SlotType::Scalar(slot) => self.renderer.set_scalar_slot(&slot_id, slot),
+                SlotType::Vector(slot) => self.renderer.set_vector_slot(&slot_id, slot),
+                SlotType::Position(slot) => self.renderer.set_position_slot(&slot_id, slot),
+            };
+
+            if let Err(e) = result {
+                println!("Err: {:?}", e);
+                return false;
+            }
+        }
+
+        true
     }
 
     pub fn set_quality(&mut self, quality: u8) -> bool {
         self.renderer.set_quality(quality).is_ok()
+    }
+
+    pub fn set_color_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::ColorSlot,
+    ) -> bool {
+        self.renderer.set_color_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_gradient_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::GradientSlot,
+    ) -> bool {
+        self.renderer.set_gradient_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_image_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::ImageSlot,
+    ) -> bool {
+        self.renderer.set_image_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_text_slot(&mut self, slot_id: &str, slot: crate::lottie_renderer::TextSlot) -> bool {
+        self.renderer.set_text_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_scalar_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::ScalarSlot,
+    ) -> bool {
+        self.renderer.set_scalar_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_vector_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::VectorSlot,
+    ) -> bool {
+        self.renderer.set_vector_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn set_position_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::PositionSlot,
+    ) -> bool {
+        self.renderer.set_position_slot(slot_id, slot).is_ok()
+    }
+
+    pub fn clear_slots(&mut self) -> bool {
+        self.renderer.clear_slots().is_ok()
+    }
+
+    pub fn clear_slot(&mut self, slot_id: &str) -> bool {
+        self.renderer.clear_slot(slot_id).is_ok()
+    }
+
+    pub fn set_slots(
+        &mut self,
+        slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
+    ) -> bool {
+        self.renderer.set_slots(slots).is_ok()
+    }
+
+    pub fn set_slots_str(&mut self, slots_json: &str) -> bool {
+        use crate::lottie_renderer::slots::slots_from_json_string;
+
+        if slots_json.is_empty() {
+            return self.clear_slots();
+        }
+
+        match slots_from_json_string(slots_json) {
+            Ok(slots) => {
+                for (slot_id, slot_type) in slots {
+                    use crate::lottie_renderer::SlotType;
+
+                    let result = match slot_type {
+                        SlotType::Color(slot) => self.renderer.set_color_slot(&slot_id, slot),
+                        SlotType::Gradient(slot) => self.renderer.set_gradient_slot(&slot_id, slot),
+                        SlotType::Image(slot) => self.renderer.set_image_slot(&slot_id, slot),
+                        SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot),
+                        SlotType::Scalar(slot) => self.renderer.set_scalar_slot(&slot_id, slot),
+                        SlotType::Vector(slot) => self.renderer.set_vector_slot(&slot_id, slot),
+                        SlotType::Position(slot) => self.renderer.set_position_slot(&slot_id, slot),
+                    };
+
+                    if result.is_err() {
+                        return false;
+                    }
+                }
+                true
+            }
+            Err(_) => false,
+        }
     }
 
     pub fn active_animation_id(&self) -> &str {
@@ -1186,6 +1255,11 @@ impl DotLottieRuntime {
                 if self.global_inputs_engine.is_none() {
                     self.global_inputs_engine.replace(new_global_inputs_engine);
 
+                    if self.active_theme_id().len() > 0 {
+                        if let Some(b_e) = &mut self.global_inputs_engine {
+                            let _ = b_e.update_theme("theme", &mut self.renderer);
+                        }
+                    }
                     return true;
                 } else {
                     println!("[Bindings] GlobalInputsEngine already exists.");
@@ -1226,27 +1300,29 @@ impl DotLottieRuntime {
         false
     }
 
-    pub fn global_inputs_set_text(&mut self, binding_name: &str, new_value: &str) -> bool {
+    pub fn global_inputs_set_string(&mut self, binding_name: &str, new_value: &str) -> bool {
         if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
             return global_inputs_engine
-                .global_inputs_set_text(binding_name, new_value)
+                .global_inputs_set_string(binding_name, new_value)
                 .is_ok();
         }
 
         false
     }
 
-    pub fn global_inputs_set_color(&mut self, binding_name: &str, new_value: &[f64; 3]) -> bool {
+    pub fn global_inputs_set_color(&mut self, binding_name: &str, new_value: &[f32; 4]) -> bool {
         if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine
-                .global_inputs_set_color(binding_name, *new_value)
-                .is_ok();
+            return global_inputs_engine.global_inputs_set_color(
+                binding_name,
+                *new_value,
+                &mut self.renderer,
+            );
         }
 
         false
     }
 
-    pub fn global_inputs_set_vector(&mut self, binding_name: &str, new_value: &[f64; 2]) -> bool {
+    pub fn global_inputs_set_vector(&mut self, binding_name: &str, new_value: &[f32; 2]) -> bool {
         if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
             return global_inputs_engine
                 .global_inputs_set_vector(binding_name, *new_value)
@@ -1256,10 +1332,10 @@ impl DotLottieRuntime {
         false
     }
 
-    pub fn global_inputs_set_scalar(&mut self, binding_name: &str, new_value: f64) -> bool {
+    pub fn global_inputs_set_numeric(&mut self, binding_name: &str, new_value: f32) -> bool {
         if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
             return global_inputs_engine
-                .global_inputs_set_scalar(binding_name, new_value)
+                .global_inputs_set_numeric(binding_name, new_value)
                 .is_ok();
         }
 
@@ -1300,27 +1376,25 @@ impl DotLottieRuntime {
         false
     }
 
-    pub fn global_inputs_get_text(&self, binding_name: &str) -> Option<String> {
+    pub fn global_inputs_get_string(&self, binding_name: &str) -> Option<String> {
         if let Some(global_inputs_engine) = &self.global_inputs_engine {
             return global_inputs_engine
-                .global_inputs_get_text(binding_name)
+                .global_inputs_get_string(binding_name)
                 .ok();
         }
 
         None
     }
 
-    pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f64; 3]> {
+    pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f32; 4]> {
         if let Some(global_inputs_engine) = &self.global_inputs_engine {
-            return global_inputs_engine
-                .global_inputs_get_color(binding_name)
-                .ok();
+            return global_inputs_engine.global_inputs_get_color(binding_name);
         }
 
         None
     }
 
-    pub fn global_inputs_get_vector(&self, binding_name: &str) -> Option<[f64; 2]> {
+    pub fn global_inputs_get_vector(&self, binding_name: &str) -> Option<[f32; 2]> {
         if let Some(global_inputs_engine) = &self.global_inputs_engine {
             return global_inputs_engine
                 .global_inputs_get_vector(binding_name)
@@ -1330,10 +1404,10 @@ impl DotLottieRuntime {
         None
     }
 
-    pub fn global_inputs_get_scalar(&self, binding_name: &str) -> Option<f64> {
+    pub fn global_inputs_get_numeric(&self, binding_name: &str) -> Option<f32> {
         if let Some(global_inputs_engine) = &self.global_inputs_engine {
             return global_inputs_engine
-                .global_inputs_get_scalar(binding_name)
+                .global_inputs_get_numeric(binding_name)
                 .ok();
         }
 
@@ -1760,8 +1834,65 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().set_theme_data(theme_data)
     }
 
-    pub fn set_slots(&self, slots: &str) -> bool {
+    pub fn set_color_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ColorSlot) -> bool {
+        self.runtime.write().unwrap().set_color_slot(slot_id, slot)
+    }
+
+    pub fn set_gradient_slot(
+        &self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::GradientSlot,
+    ) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_gradient_slot(slot_id, slot)
+    }
+
+    pub fn set_image_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ImageSlot) -> bool {
+        self.runtime.write().unwrap().set_image_slot(slot_id, slot)
+    }
+
+    pub fn set_text_slot(&self, slot_id: &str, slot: crate::lottie_renderer::TextSlot) -> bool {
+        self.runtime.write().unwrap().set_text_slot(slot_id, slot)
+    }
+
+    pub fn set_scalar_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ScalarSlot) -> bool {
+        self.runtime.write().unwrap().set_scalar_slot(slot_id, slot)
+    }
+
+    pub fn set_vector_slot(&self, slot_id: &str, slot: crate::lottie_renderer::VectorSlot) -> bool {
+        self.runtime.write().unwrap().set_vector_slot(slot_id, slot)
+    }
+
+    pub fn set_position_slot(
+        &self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::PositionSlot,
+    ) -> bool {
+        self.runtime
+            .write()
+            .unwrap()
+            .set_position_slot(slot_id, slot)
+    }
+
+    pub fn clear_slots(&self) -> bool {
+        self.runtime.write().unwrap().clear_slots()
+    }
+
+    pub fn clear_slot(&self, slot_id: &str) -> bool {
+        self.runtime.write().unwrap().clear_slot(slot_id)
+    }
+
+    pub fn set_slots(
+        &self,
+        slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
+    ) -> bool {
         self.runtime.write().unwrap().set_slots(slots)
+    }
+
+    pub fn set_slots_str(&self, slots_json: &str) -> bool {
+        self.runtime.write().unwrap().set_slots_str(slots_json)
     }
 
     pub fn set_quality(&self, quality: u8) -> bool {
@@ -1786,7 +1917,7 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().markers()
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
         self.runtime.read().unwrap().get_layer_bounds(layer_name)
     }
 
@@ -1955,32 +2086,32 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().global_inputs_load(id)
     }
 
-    pub fn global_inputs_set_text(&self, binding_name: &str, new_value: &str) -> bool {
+    pub fn global_inputs_set_string(&self, binding_name: &str, new_value: &str) -> bool {
         self.runtime
             .write()
             .unwrap()
-            .global_inputs_set_text(binding_name, new_value)
+            .global_inputs_set_string(binding_name, new_value)
     }
 
-    pub fn global_inputs_set_color(&self, binding_name: &str, new_value: &[f64; 3]) -> bool {
+    pub fn global_inputs_set_color(&self, binding_name: &str, new_value: &[f32; 4]) -> bool {
         self.runtime
             .write()
             .unwrap()
             .global_inputs_set_color(binding_name, new_value)
     }
 
-    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f64; 2]) -> bool {
+    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f32; 2]) -> bool {
         self.runtime
             .write()
             .unwrap()
             .global_inputs_set_vector(binding_name, new_value)
     }
 
-    pub fn global_inputs_set_scalar(&self, binding_name: &str, new_value: f64) -> bool {
+    pub fn global_inputs_set_numeric(&self, binding_name: &str, new_value: f32) -> bool {
         self.runtime
             .write()
             .unwrap()
-            .global_inputs_set_scalar(binding_name, new_value)
+            .global_inputs_set_numeric(binding_name, new_value)
     }
 
     pub fn global_inputs_set_boolean(&self, binding_name: &str, new_value: bool) -> bool {
@@ -2008,32 +2139,32 @@ impl DotLottiePlayerContainer {
             .global_inputs_set_image(binding_name, new_value)
     }
 
-    pub fn global_inputs_get_text(&self, binding_name: &str) -> Option<String> {
+    pub fn global_inputs_get_string(&self, binding_name: &str) -> Option<String> {
         self.runtime
             .read()
             .unwrap()
-            .global_inputs_get_text(binding_name)
+            .global_inputs_get_string(binding_name)
     }
 
-    pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f64; 3]> {
+    pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f32; 4]> {
         self.runtime
             .read()
             .unwrap()
             .global_inputs_get_color(binding_name)
     }
 
-    pub fn global_inputs_get_vector(&self, binding_name: &str) -> Option<[f64; 2]> {
+    pub fn global_inputs_get_vector(&self, binding_name: &str) -> Option<[f32; 2]> {
         self.runtime
             .read()
             .unwrap()
             .global_inputs_get_vector(binding_name)
     }
 
-    pub fn global_inputs_get_scalar(&self, binding_name: &str) -> Option<f64> {
+    pub fn global_inputs_get_numeric(&self, binding_name: &str) -> Option<f32> {
         self.runtime
             .read()
             .unwrap()
-            .global_inputs_get_scalar(binding_name)
+            .global_inputs_get_numeric(binding_name)
     }
 
     pub fn global_inputs_get_boolean(&self, binding_name: &str) -> Option<bool> {
@@ -2120,7 +2251,7 @@ impl DotLottiePlayer {
         self.player.read().unwrap().intersect(x, y, layer_name)
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 
@@ -2685,32 +2816,32 @@ impl DotLottiePlayer {
         self.player.read().unwrap().global_inputs_load(id)
     }
 
-    pub fn global_inputs_set_text(&self, binding_name: &str, new_value: &str) -> bool {
+    pub fn global_inputs_set_string(&self, binding_name: &str, new_value: &str) -> bool {
         self.player
             .read()
             .unwrap()
-            .global_inputs_set_text(binding_name, new_value)
+            .global_inputs_set_string(binding_name, new_value)
     }
 
-    pub fn global_inputs_set_color(&self, binding_name: &str, new_value: &[f64; 3]) -> bool {
+    pub fn global_inputs_set_color(&self, binding_name: &str, new_value: &[f32; 4]) -> bool {
         self.player
             .read()
             .unwrap()
             .global_inputs_set_color(binding_name, new_value)
     }
 
-    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f64; 2]) -> bool {
+    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f32; 2]) -> bool {
         self.player
             .read()
             .unwrap()
             .global_inputs_set_vector(binding_name, new_value)
     }
 
-    pub fn global_inputs_set_scalar(&self, binding_name: &str, new_value: f64) -> bool {
+    pub fn global_inputs_set_numeric(&self, binding_name: &str, new_value: f32) -> bool {
         self.player
             .read()
             .unwrap()
-            .global_inputs_set_scalar(binding_name, new_value)
+            .global_inputs_set_numeric(binding_name, new_value)
     }
 
     pub fn global_inputs_set_boolean(&self, binding_name: &str, new_value: bool) -> bool {
@@ -2738,32 +2869,32 @@ impl DotLottiePlayer {
             .global_inputs_set_image(binding_name, new_value)
     }
 
-    pub fn global_inputs_get_text(&self, binding_name: &str) -> Option<String> {
+    pub fn global_inputs_get_string(&self, binding_name: &str) -> Option<String> {
         self.player
             .read()
             .unwrap()
-            .global_inputs_get_text(binding_name)
+            .global_inputs_get_string(binding_name)
     }
 
-    pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f64; 3]> {
+    pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f32; 4]> {
         self.player
             .read()
             .unwrap()
             .global_inputs_get_color(binding_name)
     }
 
-    pub fn global_inputs_get_vector(&self, binding_name: &str) -> Option<[f64; 2]> {
+    pub fn global_inputs_get_vector(&self, binding_name: &str) -> Option<[f32; 2]> {
         self.player
             .read()
             .unwrap()
             .global_inputs_get_vector(binding_name)
     }
 
-    pub fn global_inputs_get_scalar(&self, binding_name: &str) -> Option<f64> {
+    pub fn global_inputs_get_numeric(&self, binding_name: &str) -> Option<f32> {
         self.player
             .read()
             .unwrap()
-            .global_inputs_get_scalar(binding_name)
+            .global_inputs_get_numeric(binding_name)
     }
 
     pub fn global_inputs_get_boolean(&self, binding_name: &str) -> Option<bool> {
@@ -2910,8 +3041,65 @@ impl DotLottiePlayer {
         self.player.write().unwrap().set_theme_data(theme_data)
     }
 
-    pub fn set_slots(&self, slots: &str) -> bool {
+    pub fn set_color_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ColorSlot) -> bool {
+        self.player.write().unwrap().set_color_slot(slot_id, slot)
+    }
+
+    pub fn set_gradient_slot(
+        &self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::GradientSlot,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_gradient_slot(slot_id, slot)
+    }
+
+    pub fn set_image_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ImageSlot) -> bool {
+        self.player.write().unwrap().set_image_slot(slot_id, slot)
+    }
+
+    pub fn set_text_slot(&self, slot_id: &str, slot: crate::lottie_renderer::TextSlot) -> bool {
+        self.player.write().unwrap().set_text_slot(slot_id, slot)
+    }
+
+    pub fn set_scalar_slot(&self, slot_id: &str, slot: crate::lottie_renderer::ScalarSlot) -> bool {
+        self.player.write().unwrap().set_scalar_slot(slot_id, slot)
+    }
+
+    pub fn set_vector_slot(&self, slot_id: &str, slot: crate::lottie_renderer::VectorSlot) -> bool {
+        self.player.write().unwrap().set_vector_slot(slot_id, slot)
+    }
+
+    pub fn set_position_slot(
+        &self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::PositionSlot,
+    ) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .set_position_slot(slot_id, slot)
+    }
+
+    pub fn clear_slots(&self) -> bool {
+        self.player.write().unwrap().clear_slots()
+    }
+
+    pub fn clear_slot(&self, slot_id: &str) -> bool {
+        self.player.write().unwrap().clear_slot(slot_id)
+    }
+
+    pub fn set_slots(
+        &self,
+        slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
+    ) -> bool {
         self.player.write().unwrap().set_slots(slots)
+    }
+
+    pub fn set_slots_str(&self, slots_json: &str) -> bool {
+        self.player.write().unwrap().set_slots_str(slots_json)
     }
 
     pub fn set_quality(&self, quality: u8) -> bool {

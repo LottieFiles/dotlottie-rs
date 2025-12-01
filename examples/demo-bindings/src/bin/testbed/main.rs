@@ -1,5 +1,5 @@
 use dotlottie_rs::{
-    actions::open_url_policy::OpenUrlPolicy, parser::GradientStop, Config, DotLottiePlayer, Event,
+    actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event, GradientStop,
 };
 use minifb::{Key, KeyRepeat, MouseButton, Window, WindowOptions};
 use std::time::Instant;
@@ -91,13 +91,25 @@ impl Player {
     }
 }
 
-// pub const ANIMATION_NAME: &str = "test_inputs_ball_scalar";
+// pub const ANIMATION_NAME: &str = "test_inputs_ball_color_animated";
 // pub const BINDING_FILE_NAME: &str = "inputs";
 // pub const THEMING_FILE_NAME: &str = "theme";
 
-pub const ANIMATION_NAME: &str = "test_inputs_ball_gradient";
+// pub const ANIMATION_NAME: &str = "test_inputs_ball_gradient_animated";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
+
+pub const ANIMATION_NAME: &str = "test_inputs_sheet_gradient_animated";
 pub const BINDING_FILE_NAME: &str = "inputs";
 pub const THEMING_FILE_NAME: &str = "theme";
+
+// pub const ANIMATION_NAME: &str = "test_inputs_ball_gradient_static";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
+
+// pub const ANIMATION_NAME: &str = "test_inputs_ball_scalar";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
 
 // pub const ANIMATION_NAME: &str = "test_inputs_ball_color";
 // pub const BINDING_FILE_NAME: &str = "inputs";
@@ -133,7 +145,7 @@ fn main() {
 
     let mut player = Player::new(&format!("./src/bin/testbed/{}.lottie", ANIMATION_NAME));
 
-    player.player.global_inputs_load(BINDING_FILE_NAME);
+    // player.player.global_inputs_load(BINDING_FILE_NAME);
 
     // let sml = player.player.state_machine_load(SM_FILE_NAME);
     // let sms = player.player.state_machine_start(OpenUrlPolicy::default());
@@ -148,8 +160,12 @@ fn main() {
     // ));
     // player.player.global_inputs_load_data(&binding_file_data);
 
-    let st = player.player.set_theme(THEMING_FILE_NAME);
-    println!("Set theme: {}", st);
+    if player.player.is_loaded() {
+        let st = player.player.set_theme(THEMING_FILE_NAME);
+        println!("Set theme: {}", st);
+    }
+
+    // player.player.global_inputs_load(BINDING_FILE_NAME);
 
     let mut mx = 0.0;
     let mut my = 0.0;
@@ -160,26 +176,45 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let mouse_down = window.get_mouse_down(MouseButton::Left);
 
+        if window.is_key_pressed(Key::Enter, KeyRepeat::No) {
+            player.player.global_inputs_load(BINDING_FILE_NAME);
+        }
         if window.is_key_pressed(Key::Space, KeyRepeat::No) {
-            let mut gradient_storage = vec![];
-            gradient_storage.push(GradientStop {
-                color: vec![0.0, 1.0, 1.0, 1.0],
-                offset: 0.0,
-            });
-            gradient_storage.push(GradientStop {
-                color: vec![1.0, 0.0, 1.0, 1.0],
-                offset: 1.0,
-            });
-            gradient_storage.push(GradientStop {
-                color: vec![1.0, 0.0, 1.0, 1.0],
-                offset: 1.0,
-            });
+            player.player.global_inputs_set_color(
+                "ball_start",
+                &[
+                    rand::random::<f32>() * 1.0,
+                    rand::random::<f32>() * 1.0,
+                    rand::random::<f32>() * 1.0,
+                    1.0,
+                ],
+            );
+            // player
+            //     .player
+            //     .global_inputs_set_color("ball_start", &[0.0, 0.0, 0.0]);
             player
                 .player
-                .global_inputs_set_gradient("ball", &gradient_storage);
+                .global_inputs_set_color("ball_end", &[1.0, 0.5, 0.3, 1.0]);
+
+            // let mut gradient_storage = vec![];
+            // gradient_storage.push(GradientStop {
+            //     color: [0.0, 1.0, 1.0, 1.0],
+            //     offset: 0.0,
+            // });
+            // gradient_storage.push(GradientStop {
+            //     color: [1.0, 0.0, 1.0, 1.0],
+            //     offset: 1.0,
+            // });
+            // gradient_storage.push(GradientStop {
+            //     color: [1.0, 0.0, 1.0, 1.0],
+            //     offset: 1.0,
+            // });
+            // player
+            //     .player
+            //     .global_inputs_set_gradient("ball", &gradient_storage);
 
             // Scalar
-            player.player.global_inputs_set_scalar("ball", 90.0);
+            player.player.global_inputs_set_numeric("ball", 90.0);
 
             toggle = !toggle;
             player
@@ -195,20 +230,29 @@ fn main() {
             //     .mutate_text_binding("interaction_title", "New title");
         }
 
+        if window.is_key_pressed(Key::Key0, KeyRepeat::No) {
+            player
+                .player
+                .global_inputs_set_color("start_0", &[1.0, 0.0, 1.0, 1.0]);
+            player
+                .player
+                .global_inputs_set_color("end_0", &[0.0, 1.0, 0.0, 0.2]);
+        }
         if window.is_key_pressed(Key::Key1, KeyRepeat::No) {
-            player.player.global_inputs_set_scalar("rating", 1.0);
+            player
+                .player
+                .global_inputs_set_color("start_1", &[1.0, 1.0, 0.0, 1.0]);
+            player
+                .player
+                .global_inputs_set_color("end_1", &[0.0, 0.0, 1.0, 0.5]);
         }
         if window.is_key_pressed(Key::Key2, KeyRepeat::No) {
-            player.player.global_inputs_set_scalar("rating", 2.0);
-        }
-        if window.is_key_pressed(Key::Key3, KeyRepeat::No) {
-            player.player.global_inputs_set_scalar("rating", 3.0);
-        }
-        if window.is_key_pressed(Key::Key4, KeyRepeat::No) {
-            player.player.global_inputs_set_scalar("rating", 4.0);
-        }
-        if window.is_key_pressed(Key::Key5, KeyRepeat::No) {
-            player.player.global_inputs_set_scalar("rating", 5.0);
+            player
+                .player
+                .global_inputs_set_color("start_2", &[0.0, 1.0, 1.0, 0.8]);
+            player
+                .player
+                .global_inputs_set_color("end_2", &[1.0, 0.0, 0.0, 1.0]);
         }
 
         if !mouse_down && left_down {
@@ -228,22 +272,22 @@ fn main() {
         });
 
         if mx != 0.0 && my != 0.0 {
-            let mut gradient_storage = vec![];
-            gradient_storage.push(GradientStop {
-                color: vec![0.0, 1.0, 1.0, 1.0],
-                offset: 0.0,
-            });
-            gradient_storage.push(GradientStop {
-                color: vec![1.0, 0.0, 1.0, 1.0],
-                offset: ((mx / (WIDTH as f32) * 100.0) / 100.0) as f64,
-            });
-            gradient_storage.push(GradientStop {
-                color: vec![1.0, 0.0, 1.0, 1.0],
-                offset: 1.0,
-            });
-            player
-                .player
-                .global_inputs_set_gradient("ball", &gradient_storage);
+            // let mut gradient_storage = vec![];
+            // gradient_storage.push(GradientStop {
+            //     color: [0.0, 1.0, 1.0, 1.0],
+            //     offset: 0.0,
+            // });
+            // gradient_storage.push(GradientStop {
+            //     color: [1.0, 0.0, 1.0, 1.0],
+            //     offset: ((mx / (WIDTH as f32) * 100.0) / 100.0),
+            // });
+            // gradient_storage.push(GradientStop {
+            //     color: [1.0, 0.0, 1.0, 1.0],
+            //     offset: 1.0,
+            // });
+            // player
+            //     .player
+            //     .global_inputs_set_gradient("ball", &gradient_storage);
             player
                 .player
                 .global_inputs_set_vector("wand_pos", &[mx.into(), my.into()]);

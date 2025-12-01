@@ -2,10 +2,8 @@ use serde::Deserialize;
 use std::{rc::Rc, sync::RwLock};
 
 use crate::{
-    inputs::InputTrait,
-    parser::{GradientStop, ImageValue},
-    state_machine::StringBool,
-    DotLottiePlayerContainer, Event,
+    inputs::InputTrait, state_machine::StringBool, DotLottiePlayerContainer, Event, GradientStop,
+    ImageValue,
 };
 
 use super::{state_machine::StringNumber, StateMachineEngine};
@@ -67,7 +65,7 @@ pub enum Action {
     },
     SetGlobalColor {
         global_var_name: String,
-        value: [StringNumber; 3],
+        value: [StringNumber; 4],
     },
     SetGlobalGradient {
         global_var_name: String,
@@ -83,12 +81,6 @@ pub enum Action {
     Reset {
         input_name: String,
     },
-    SetExpression {
-        layer_name: String,
-        property_index: u32,
-        var_name: String,
-        value: f32,
-    },
     SetTheme {
         value: String,
     },
@@ -97,9 +89,6 @@ pub enum Action {
     },
     SetProgress {
         value: StringNumber,
-    },
-    SetThemeData {
-        value: String,
     },
     FireCustomEvent {
         value: String,
@@ -135,7 +124,7 @@ impl ActionTrait for Action {
                         .try_read()
                         .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                    player.global_inputs_set_scalar(global_var_name, new_value.into());
+                    player.global_inputs_set_numeric(global_var_name, new_value.into());
                 } else {
                     engine.set_numeric_input(
                         input_name,
@@ -167,7 +156,7 @@ impl ActionTrait for Action {
                         .try_read()
                         .map_err(|_| return StateMachineActionError::ExecuteError)?;
 
-                    player.global_inputs_set_scalar(global_var_name, new_value.into());
+                    player.global_inputs_set_numeric(global_var_name, new_value.into());
                 } else {
                     engine.set_numeric_input(
                         input_name,
@@ -241,7 +230,7 @@ impl ActionTrait for Action {
                         .try_read()
                         .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                    player.global_inputs_set_scalar(global_var_name, new_value.into());
+                    player.global_inputs_set_numeric(global_var_name, new_value.into());
                 } else {
                     engine.set_numeric_input(
                         input_name,
@@ -264,7 +253,7 @@ impl ActionTrait for Action {
                         .try_read()
                         .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                    player.global_inputs_set_text(global_var_name, &new_value);
+                    player.global_inputs_set_string(global_var_name, &new_value);
                 } else {
                     engine.set_string_input(
                         input_name,
@@ -295,21 +284,6 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::SetExpression {
-                layer_name,
-                property_index,
-                var_name,
-                value,
-            } => {
-                todo!(
-                    "Set expression for layer {} property {} var {} value {}",
-                    layer_name,
-                    property_index,
-                    var_name,
-                    value
-                );
-                // Ok(())
-            }
             Action::SetTheme { value } => {
                 let player = player
                     .try_read()
@@ -321,21 +295,6 @@ impl ActionTrait for Action {
                     .unwrap_or_else(|| value.clone());
 
                 if !player.set_theme(&resolved_value) {
-                    return Err(StateMachineActionError::ExecuteError);
-                }
-
-                Ok(())
-            }
-            Action::SetThemeData { value } => {
-                let player = player
-                    .read()
-                    .map_err(|_| StateMachineActionError::ExecuteError)?;
-
-                let resolved_value = value
-                    .replace("$x", &engine.pointer_management.pointer_x.to_string())
-                    .replace("$y", &engine.pointer_management.pointer_y.to_string());
-
-                if !player.set_slots(&resolved_value) {
                     return Err(StateMachineActionError::ExecuteError);
                 }
 
@@ -478,9 +437,22 @@ impl ActionTrait for Action {
                     StringNumber::F32(v) => v,
                 };
 
+                let fourth_value = match value[3] {
+                    StringNumber::String(ref name) => engine
+                        .inputs
+                        .resolve_numeric(name)
+                        .ok_or(StateMachineActionError::ExecuteError)?,
+                    StringNumber::F32(v) => v,
+                };
+
                 player.global_inputs_set_color(
                     &global_var_name,
-                    &[first_value.into(), second_value.into(), third_value.into()],
+                    &[
+                        first_value.into(),
+                        second_value.into(),
+                        third_value.into(),
+                        fourth_value.into(),
+                    ],
                 );
                 Ok(())
             }

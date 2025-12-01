@@ -83,7 +83,7 @@ impl InputTrait for InputManager {
             self.player
                 .as_ref()
                 .and_then(|p| p.try_read().ok())
-                .and_then(|p| p.global_inputs_get_text(binding_name))
+                .and_then(|p| p.global_inputs_get_string(binding_name))
         } else if let Some(binding_name) = key.strip_prefix('$') {
             self.get_string(binding_name)
         } else {
@@ -113,7 +113,7 @@ impl InputTrait for InputManager {
             self.player
                 .as_ref()
                 .and_then(|p| p.try_read().ok())
-                .and_then(|p| p.global_inputs_get_scalar(binding_name))
+                .and_then(|p| p.global_inputs_get_numeric(binding_name))
                 .map(|v| v as f32)
         } else if let Some(binding_name) = key.strip_prefix('$') {
             self.get_numeric(binding_name)

@@ -82,19 +82,19 @@ fn main() {
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if window.is_key_pressed(Key::Key1, KeyRepeat::No) {
-            player.player.global_inputs_set_scalar("rating", 1.0);
+            player.player.global_inputs_set_numeric("rating", 1.0);
         }
         if window.is_key_pressed(Key::Key2, KeyRepeat::No) {
-            player.player.global_inputs_set_scalar("rating", 2.0);
+            player.player.global_inputs_set_numeric("rating", 2.0);
         }
         if window.is_key_pressed(Key::Key3, KeyRepeat::No) {
-            player.player.global_inputs_set_scalar("rating", 3.0);
+            player.player.global_inputs_set_numeric("rating", 3.0);
         }
         if window.is_key_pressed(Key::Key4, KeyRepeat::No) {
-            player.player.global_inputs_set_scalar("rating", 4.0);
+            player.player.global_inputs_set_numeric("rating", 4.0);
         }
         if window.is_key_pressed(Key::Key5, KeyRepeat::No) {
-            player.player.global_inputs_set_scalar("rating", 5.0);
+            player.player.global_inputs_set_numeric("rating", 5.0);
         }
 
         player.update();

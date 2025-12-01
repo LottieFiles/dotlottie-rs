@@ -329,10 +329,10 @@ fn main() {
         // Update rotations
         player
             .player
-            .global_inputs_set_scalar("sq_l_rot", left_rot_deg.into());
+            .global_inputs_set_numeric("sq_l_rot", left_rot_deg.into());
         player
             .player
-            .global_inputs_set_scalar("sq_r_rot", right_rot_deg.into());
+            .global_inputs_set_numeric("sq_r_rot", right_rot_deg.into());
 
         player.update();
         window

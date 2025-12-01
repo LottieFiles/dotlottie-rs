@@ -1,3 +1,11 @@
+## 0.1.52 (2025-11-21)
+
+### Features
+
+#### upgrade thorvg to v1.0.0-pre31 (#425)
+
+#### improve slots apis (#430)
+
 ## 0.1.51 (2025-11-04)
 
 ### Features

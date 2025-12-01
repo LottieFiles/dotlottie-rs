@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::{GradientStop, ImageValue, ResolvedThemeBinding};
+
+pub mod color_path;
+
 #[derive(Debug)]
 pub enum GlobalInputsParserError {
     ParseError(String),
@@ -14,30 +18,52 @@ impl GlobalInputsParserError {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ThemeBinding {
+    pub theme_id: String,
+    pub rule_id: String,
+    pub path: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct StateMachineBinding {
+    pub state_machine_id: String,
+    pub input_name: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Bindings {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub themes: Option<Vec<ThemeBinding>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_machines: Option<Vec<StateMachineBinding>>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 pub struct GlobalInput {
     #[serde(flatten)]
     pub r#type: GlobalInputValue,
+    pub bindings: Bindings,
+
+    #[serde(skip)]
+    pub resolved_theme_bindings: Vec<ResolvedThemeBinding>,
     // Disabled for stage 1
     // #[serde(skip_serializing_if = "Option::is_none")]
     // pub source: Option<BindingSource>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GradientStop {
-    pub color: Vec<f64>,
-    pub offset: f64,
-}
-
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type")]
 pub enum GlobalInputValue {
-    Color { value: [f64; 3] },
-    Vector { value: [f64; 2] },
-    Scalar { value: f64 },
+    Color { value: Vec<f32> },
+    Vector { value: [f32; 2] },
+    Numeric { value: f32 },
     Boolean { value: bool },
     Gradient { value: Vec<GradientStop> },
     Image { value: ImageValue },
-    Text { value: String },
+    String { value: String },
 }
 
 impl GlobalInputValue {
@@ -45,26 +71,14 @@ impl GlobalInputValue {
         match self {
             GlobalInputValue::Color { value } => serde_json::to_value(value),
             GlobalInputValue::Vector { value } => serde_json::to_value(value),
-            GlobalInputValue::Scalar { value } => serde_json::to_value(value),
+            GlobalInputValue::Numeric { value } => serde_json::to_value(value),
             GlobalInputValue::Boolean { value } => serde_json::to_value(value),
             GlobalInputValue::Gradient { value } => serde_json::to_value(value),
             GlobalInputValue::Image { value } => serde_json::to_value(value),
-            GlobalInputValue::Text { value } => serde_json::to_value(value),
+            GlobalInputValue::String { value } => serde_json::to_value(value),
         }
         .unwrap_or(serde_json::Value::Null)
     }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct ImageValue {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub width: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub height: Option<f64>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

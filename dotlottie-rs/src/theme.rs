@@ -217,7 +217,7 @@ pub struct TextRule {
 pub struct TextValue {
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub font_family: Option<String>,
+    pub font_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub font_size: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -657,7 +657,7 @@ impl From<&PositionRule> for PositionSlot {
 fn text_value_to_document(value: &TextValue) -> TextDocument {
     TextDocument {
         text: value.text.clone(),
-        font_family: value.font_family.clone(),
+        font_name: value.font_name.clone(),
         font_size: value.font_size,
         fill_color: value.fill_color.clone(),
         stroke_color: value.stroke_color.clone(),

@@ -73,7 +73,7 @@ pub struct TextDocument {
     #[serde(rename = "t")]
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none", rename = "f")]
-    pub font_family: Option<String>,
+    pub font_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "s")]
     pub font_size: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "fc")]
@@ -104,7 +104,7 @@ impl TextDocument {
     pub fn new(text: impl Into<String>) -> Self {
         Self {
             text: text.into(),
-            font_family: None,
+            font_name: None,
             font_size: None,
             fill_color: None,
             stroke_color: None,
@@ -121,7 +121,7 @@ impl TextDocument {
     }
 
     pub fn with_font(mut self, font: impl Into<String>) -> Self {
-        self.font_family = Some(font.into());
+        self.font_name = Some(font.into());
         self
     }
 

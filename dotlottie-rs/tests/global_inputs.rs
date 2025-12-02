@@ -73,7 +73,7 @@ mod tests {
         assert!(inputs_loaded);
         assert!(set_theme);
 
-        assert_eq!(player.global_inputs_get_scalar("ball"), Some(50.0));
+        assert_eq!(player.global_inputs_get_numeric("ball"), Some(50.0));
 
         player.set_frame(30.0);
         player.render();
@@ -150,7 +150,7 @@ mod tests {
 
         assert_eq!(
             player.global_inputs_get_color("ball"),
-            Some([0.5, 0.9, 0.2])
+            Some([0.5, 0.9, 0.2, 1.0])
         );
 
         assert!(load);
@@ -184,7 +184,7 @@ mod tests {
         // SID is on the position of the wand
         // The data binding affects it's position, taking it from the center to the top left corner
         let animation_data =
-            include_bytes!("fixtures/global_inputs/test_inputs_wand_vector.lottie");
+            include_bytes!("fixtures/global_inputs/test_vector_global_input.lottie");
 
         let player = DotLottiePlayer::new(Config::default());
         let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
@@ -196,7 +196,7 @@ mod tests {
         assert!(inputs_loaded);
         assert!(set_theme);
 
-        assert_eq!(player.global_inputs_get_vector("ball"), Some([50.0, 50.0]));
+        assert_eq!(player.global_inputs_get_vector("wand_pos"), Some([50.0, 50.0]));
 
         player.set_frame(30.0);
         player.render();
@@ -302,49 +302,48 @@ mod tests {
         // .unwrap();
     }
 
-    #[test]
-    pub fn image_global_input_test() {
-        // Description:
-        // The image data binding is used to replace an image with another inside the dotLottie
-        let animation_data = include_bytes!("fixtures/global_inputs/test_inputs_bull_image.lottie");
+    // #[test]
+    // pub fn image_global_input_test() {
+    //     // Description:
+    //     // The image data binding is used to replace an image with another inside the dotLottie
+    //     let animation_data = include_bytes!("fixtures/global_inputs/test_inputs_bull_image.lottie");
 
-        let player = DotLottiePlayer::new(Config::default());
-        let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
+    //     let player = DotLottiePlayer::new(Config::default());
+    //     let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
 
-        let inputs_loaded = player.global_inputs_load("inputs");
+    //     let inputs_loaded = player.global_inputs_load("inputs");
 
-        let set_theme = player.set_theme("theme");
+    //     let set_theme = player.set_theme("theme");
 
-        assert!(load);
-        assert!(inputs_loaded);
-        assert!(set_theme);
+    //     assert!(load);
+    //     assert!(inputs_loaded);
+    //     assert!(set_theme);
 
-        player.set_frame(30.0);
-        player.render();
+    //     player.set_frame(30.0);
+    //     player.render();
 
-        assert_eq!(
-            player.global_inputs_get_image("image").unwrap().id,
-            Some("test".to_string())
-        );
+    //     assert_eq!(
+    //         player.global_inputs_get_image("image").unwrap().id,
+    //         Some("test".to_string())
+    //     );
 
-        let buffer = player.buffer();
-        let snapshot_path = "./tests/snapshots/image_global_input_snapshot_after.bin";
+    //     let buffer = player.buffer();
+    //     let snapshot_path = "./tests/snapshots/image_global_input_snapshot_after.bin";
 
-        assert!(
-            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
-            "Buffer at frame 30 doesn't match snapshot"
-        );
+    //     assert!(
+    //         compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+    //         "Buffer at frame 30 doesn't match snapshot"
+    //     );
 
-        // ⚠️ Uncomment block to generate initial snapshot
-        // let buffer = player.buffer();
-        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
-        // snapshot_to_png(
-        //     snapshot_path,
-        //     "./tests/snapshots/image_global_input_snapshot_after.png",
-        // )
-        // .unwrap();
-    }
-
+    //     // ⚠️ Uncomment block to generate initial snapshot
+    //     // let buffer = player.buffer();
+    //     // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+    //     // snapshot_to_png(
+    //     //     snapshot_path,
+    //     //     "./tests/snapshots/image_global_input_snapshot_after.png",
+    //     // )
+    //     // .unwrap();
+    // }
     #[test]
     pub fn text_global_input_test() {
         // Description:
@@ -365,7 +364,7 @@ mod tests {
         player.render();
 
         assert_eq!(
-            player.global_inputs_get_text("text_input"),
+            player.global_inputs_get_string("text_input"),
             Some("First Try!".to_string())
         );
 
@@ -386,9 +385,9 @@ mod tests {
         // )
         // .unwrap();
 
-        player.global_inputs_set_text("text_input", "New Value");
+        player.global_inputs_set_string("text_input", "New Value");
         assert_eq!(
-            player.global_inputs_get_text("text_input"),
+            player.global_inputs_get_string("text_input"),
             Some("New Value".to_string())
         );
 

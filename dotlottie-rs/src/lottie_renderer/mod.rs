@@ -95,21 +95,21 @@ pub trait LottieRenderer {
     fn get_image_slot(&self, slot_id: &str) -> Option<&ImageSlot>;
 
     fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot) -> Result<(), LottieRendererError>;
-    fn get_text_slot(&self, slot_id: &str) -> Option<&TextSlot>;
+    fn get_text_slot(&mut self, slot_id: &str) -> Option<&mut TextSlot>;
 
     fn set_scalar_slot(
         &mut self,
         slot_id: &str,
         slot: ScalarSlot,
     ) -> Result<(), LottieRendererError>;
-    fn get_scalar_slot(&self, slot_id: &str) -> Option<&ScalarSlot>;
+    fn get_scalar_slot(&mut self, slot_id: &str) -> Option<&mut ScalarSlot>;
 
     fn set_vector_slot(
         &mut self,
         slot_id: &str,
         slot: VectorSlot,
     ) -> Result<(), LottieRendererError>;
-    fn get_vector_slot(&self, slot_id: &str) -> Option<&VectorSlot>;
+    fn get_vector_slot(&mut self, slot_id: &str) -> Option<&mut VectorSlot>;
 
     fn set_position_slot(
         &mut self,
@@ -633,9 +633,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.apply_all_slots()
     }
 
-    fn get_text_slot(&self, slot_id: &str) -> Option<&TextSlot> {
-        self.slots.get(slot_id).and_then(|slot_type| {
-            if let SlotType::Text(ref text_slot) = slot_type {
+    fn get_text_slot(&mut self, slot_id: &str) -> Option<&mut TextSlot> {
+        self.slots.get_mut(slot_id).and_then(|slot_type| {
+            if let SlotType::Text(ref mut text_slot) = slot_type {
                 Some(text_slot)
             } else {
                 None
@@ -653,9 +653,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.apply_all_slots()
     }
 
-    fn get_scalar_slot(&self, slot_id: &str) -> Option<&ScalarSlot> {
-        self.slots.get(slot_id).and_then(|slot_type| {
-            if let SlotType::Scalar(ref scalar_slot) = slot_type {
+    fn get_scalar_slot(&mut self, slot_id: &str) -> Option<&mut ScalarSlot> {
+        self.slots.get_mut(slot_id).and_then(|slot_type| {
+            if let SlotType::Scalar(ref mut scalar_slot) = slot_type {
                 Some(scalar_slot)
             } else {
                 None
@@ -672,9 +672,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.apply_all_slots()
     }
 
-    fn get_vector_slot(&self, slot_id: &str) -> Option<&VectorSlot> {
-        self.slots.get(slot_id).and_then(|slot_type| {
-            if let SlotType::Vector(ref vector_slot) = slot_type {
+    fn get_vector_slot(&mut self, slot_id: &str) -> Option<&mut VectorSlot> {
+        self.slots.get_mut(slot_id).and_then(|slot_type| {
+            if let SlotType::Vector(ref mut vector_slot) = slot_type {
                 Some(vector_slot)
             } else {
                 None

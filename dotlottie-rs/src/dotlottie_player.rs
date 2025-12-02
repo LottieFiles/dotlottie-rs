@@ -232,7 +232,7 @@ impl DotLottieRuntime {
         self.renderer.intersect(x, y, layer_name).unwrap_or(false)
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
         let bbox = self.renderer.get_layer_bounds(layer_name);
 
         match bbox {
@@ -999,7 +999,7 @@ impl DotLottieRuntime {
 
         if ok {
             if let Some(b_e) = &mut self.global_inputs_engine {
-                let _ = b_e.update_theme(&theme_id, &mut self.renderer);
+                let _ = b_e.insert_in_to_slots(&theme_id, &mut self.renderer);
             }
 
             self.active_theme_id = theme_id.to_string();
@@ -1022,7 +1022,7 @@ impl DotLottieRuntime {
                 let r = self.apply_slot_types(slots);
 
                 if let Some(b_e) = &mut self.global_inputs_engine {
-                    let _ = b_e.update_theme("", &mut self.renderer);
+                    let _ = b_e.insert_in_to_slots("", &mut self.renderer);
                 }
 
                 r
@@ -1042,7 +1042,10 @@ impl DotLottieRuntime {
                 SlotType::Color(slot) => self.renderer.set_color_slot(&slot_id, slot),
                 SlotType::Gradient(slot) => self.renderer.set_gradient_slot(&slot_id, slot),
                 SlotType::Image(slot) => self.renderer.set_image_slot(&slot_id, slot),
-                SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot),
+                SlotType::Text(slot) => {
+                    println!("Text slot: {:?}", slot);
+                    self.renderer.set_text_slot(&slot_id, slot)
+                }
                 SlotType::Scalar(slot) => self.renderer.set_scalar_slot(&slot_id, slot),
                 SlotType::Vector(slot) => self.renderer.set_vector_slot(&slot_id, slot),
                 SlotType::Position(slot) => self.renderer.set_position_slot(&slot_id, slot),
@@ -1257,7 +1260,7 @@ impl DotLottieRuntime {
 
                     if self.active_theme_id().len() > 0 {
                         if let Some(b_e) = &mut self.global_inputs_engine {
-                            let _ = b_e.update_theme("theme", &mut self.renderer);
+                            let _ = b_e.insert_in_to_slots("theme", &mut self.renderer);
                         }
                     }
                     return true;
@@ -1302,9 +1305,11 @@ impl DotLottieRuntime {
 
     pub fn global_inputs_set_string(&mut self, binding_name: &str, new_value: &str) -> bool {
         if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine
-                .global_inputs_set_string(binding_name, new_value)
-                .is_ok();
+            return global_inputs_engine.global_inputs_set_string(
+                binding_name,
+                new_value,
+                &mut self.renderer,
+            );
         }
 
         false
@@ -1324,9 +1329,11 @@ impl DotLottieRuntime {
 
     pub fn global_inputs_set_vector(&mut self, binding_name: &str, new_value: &[f32; 2]) -> bool {
         if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine
-                .global_inputs_set_vector(binding_name, *new_value)
-                .is_ok();
+            return global_inputs_engine.global_inputs_set_vector(
+                binding_name,
+                *new_value,
+                &mut self.renderer,
+            );
         }
 
         false
@@ -1334,9 +1341,11 @@ impl DotLottieRuntime {
 
     pub fn global_inputs_set_numeric(&mut self, binding_name: &str, new_value: f32) -> bool {
         if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine
-                .global_inputs_set_numeric(binding_name, new_value)
-                .is_ok();
+            return global_inputs_engine.global_inputs_set_numeric(
+                binding_name,
+                new_value,
+                &mut self.renderer,
+            );
         }
 
         false
@@ -1344,9 +1353,11 @@ impl DotLottieRuntime {
 
     pub fn global_inputs_set_boolean(&mut self, binding_name: &str, new_value: bool) -> bool {
         if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine
-                .global_inputs_set_boolean(binding_name, new_value)
-                .is_ok();
+            return global_inputs_engine.global_inputs_set_boolean(
+                binding_name,
+                new_value,
+                &mut self.renderer,
+            );
         }
 
         false
@@ -1358,9 +1369,11 @@ impl DotLottieRuntime {
         new_value: &Vec<GradientStop>,
     ) -> bool {
         if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine
-                .global_inputs_set_gradient(binding_name, new_value)
-                .is_ok();
+            return global_inputs_engine.global_inputs_set_gradient(
+                binding_name,
+                new_value,
+                &mut self.renderer,
+            );
         }
 
         false
@@ -1917,7 +1930,7 @@ impl DotLottiePlayerContainer {
         self.runtime.read().unwrap().markers()
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
         self.runtime.read().unwrap().get_layer_bounds(layer_name)
     }
 
@@ -2251,7 +2264,7 @@ impl DotLottiePlayer {
         self.player.read().unwrap().intersect(x, y, layer_name)
     }
 
-    pub fn get_layer_bounds(&self, layer_name: &str) -> LayerBoundingBox {
+    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
         self.player.read().unwrap().get_layer_bounds(layer_name)
     }
 

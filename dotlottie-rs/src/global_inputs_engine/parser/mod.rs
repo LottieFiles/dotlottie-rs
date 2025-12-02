@@ -1,9 +1,15 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::{GradientStop, ImageValue, ResolvedThemeBinding};
+use crate::{parser::binding_path::BindingPath, GradientStop, ImageValue};
 
+pub mod binding_path;
+pub mod boolean_path;
 pub mod color_path;
+pub mod gradient_path;
+pub mod numeric_path;
+pub mod string_path;
+pub mod vector_path;
 
 #[derive(Debug)]
 pub enum GlobalInputsParserError {
@@ -39,6 +45,13 @@ pub struct Bindings {
     pub themes: Option<Vec<ThemeBinding>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_machines: Option<Vec<StateMachineBinding>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedThemeBinding {
+    pub rule_id: String,
+    pub theme_id: String,
+    pub path: BindingPath,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

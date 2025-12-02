@@ -3,9 +3,15 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::parser::binding_path::{BindingPath, BindingValue};
+use crate::parser::boolean_path::BooleanPath;
 use crate::parser::color_path::ColorPath;
-use crate::parser::GlobalInputValue;
+use crate::parser::gradient_path::GradientPath;
+use crate::parser::numeric_path::NumericPath;
+use crate::parser::string_path::StringPath;
+use crate::parser::vector_path::VectorPath;
 use crate::parser::{parse_global_inputs, GlobalInputs};
+use crate::parser::{GlobalInputValue, ResolvedThemeBinding};
 use crate::{GradientStop, ImageValue, LottieRenderer};
 pub mod parser;
 
@@ -33,13 +39,6 @@ pub enum BindingUsageSlotType {
     String,
     Numeric,
     Vector,
-}
-
-#[derive(Debug, Default)]
-pub struct ResolvedThemeBinding {
-    pub rule_id: String,
-    pub theme_id: String,
-    pub path: ColorPath,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -286,17 +285,17 @@ impl GlobalInputsEngine {
     // ============================================================================
 
     // impl_mutator!(global_inputs_set_color, Color, [f32; 3], "Color", copy);
-    impl_mutator!(global_inputs_set_vector, Vector, [f32; 2], "Vector", copy);
-    impl_mutator!(global_inputs_set_numeric, Numeric, f32, "Numeric", copy);
-    impl_mutator!(global_inputs_set_boolean, Boolean, bool, "Boolean", copy);
-    impl_mutator!(
-        global_inputs_set_gradient,
-        Gradient,
-        &Vec<GradientStop>,
-        "Gradient"
-    );
+    // impl_mutator!(global_inputs_set_vector, Vector, [f32; 2], "Vector", copy);
+    // impl_mutator!(global_inputs_set_numeric, Numeric, f32, "Numeric", copy);
+    // impl_mutator!(global_inputs_set_boolean, Boolean, bool, "Boolean", copy);
+    // impl_mutator!(
+    //     global_inputs_set_gradient,
+    //     Gradient,
+    //     &Vec<GradientStop>,
+    //     "Gradient"
+    // );
     impl_mutator!(global_inputs_set_image, Image, &ImageValue, "Image");
-    impl_mutator!(global_inputs_set_string, String, &str, "String", to_string);
+    // impl_mutator!(global_inputs_set_string, String, &str, "String", to_string);
 
     // ============================================================================
     // Utility Methods
@@ -346,42 +345,18 @@ impl GlobalInputsEngine {
         new_value: [f32; 4],
         renderer: &mut Box<dyn LottieRenderer>,
     ) -> bool {
-        println!(
-            ">>> global_inputs_set_color called for: {}",
-            global_input_name
-        );
-
         if let Some(binding) = self.global_inputs_container.get_mut(global_input_name) {
-            println!(
-                ">>> Found binding, resolved_theme_bindings count: {}",
-                binding.resolved_theme_bindings.len()
-            );
-
             match &mut binding.r#type {
                 GlobalInputValue::Color { value } => {
                     *value = new_value.to_vec();
 
                     for resolved in &binding.resolved_theme_bindings {
-                        if resolved.path.targets_gradient() {
-                            if let Some(gradient_slot) =
-                                renderer.get_gradient_slot(&resolved.rule_id)
-                            {
-                                if let Err(e) = resolved
-                                    .path
-                                    .apply_to_gradient(gradient_slot, &new_value.to_vec())
-                                {
-                                    eprintln!("Failed to apply gradient path: {e}");
-                                }
-                            }
-                        } else {
-                            if let Some(color_slot) = renderer.get_color_slot(&resolved.rule_id) {
-                                if let Err(e) = resolved
-                                    .path
-                                    .apply_to_color(color_slot, &new_value.to_vec())
-                                {
-                                    eprintln!("Failed to apply color path: {e}");
-                                }
-                            }
+                        if let Err(e) = resolved.path.apply(
+                            renderer,
+                            &resolved.rule_id,
+                            parser::binding_path::BindingValue::Vector(&new_value),
+                        ) {
+                            eprintln!("Failed to apply path: {e}");
                         }
                     }
                     let _ = renderer.apply_all_slots();
@@ -389,14 +364,156 @@ impl GlobalInputsEngine {
                 }
                 _ => {}
             }
-        } else {
-            println!(">>> Binding not found: {}", global_input_name);
         }
-
         false
     }
 
-    pub fn update_theme(
+    pub fn global_inputs_set_numeric(
+        &mut self,
+        global_input_name: &str,
+        new_value: f32,
+        renderer: &mut Box<dyn LottieRenderer>,
+    ) -> bool {
+        if let Some(binding) = self.global_inputs_container.get_mut(global_input_name) {
+            match &mut binding.r#type {
+                GlobalInputValue::Numeric { value } => {
+                    *value = new_value;
+
+                    for resolved in &binding.resolved_theme_bindings {
+                        if let Err(e) = resolved.path.apply(
+                            renderer,
+                            &resolved.rule_id,
+                            parser::binding_path::BindingValue::Numeric(new_value),
+                        ) {
+                            eprintln!("Failed to apply path: {e}");
+                        }
+                    }
+                    let _ = renderer.apply_all_slots();
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
+    pub fn global_inputs_set_string(
+        &mut self,
+        global_input_name: &str,
+        new_value: &str,
+        renderer: &mut Box<dyn LottieRenderer>,
+    ) -> bool {
+        if let Some(binding) = self.global_inputs_container.get_mut(global_input_name) {
+            match &mut binding.r#type {
+                GlobalInputValue::String { value } => {
+                    *value = new_value.to_string();
+
+                    for resolved in &binding.resolved_theme_bindings {
+                        if let Err(e) = resolved.path.apply(
+                            renderer,
+                            &resolved.rule_id,
+                            parser::binding_path::BindingValue::String(new_value),
+                        ) {
+                            eprintln!("Failed to apply path: {e}");
+                        }
+                    }
+                    let _ = renderer.apply_all_slots();
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
+    pub fn global_inputs_set_boolean(
+        &mut self,
+        global_input_name: &str,
+        new_value: bool,
+        renderer: &mut Box<dyn LottieRenderer>,
+    ) -> bool {
+        if let Some(binding) = self.global_inputs_container.get_mut(global_input_name) {
+            match &mut binding.r#type {
+                GlobalInputValue::Boolean { value } => {
+                    *value = new_value;
+
+                    for resolved in &binding.resolved_theme_bindings {
+                        if let Err(e) = resolved.path.apply(
+                            renderer,
+                            &resolved.rule_id,
+                            parser::binding_path::BindingValue::Boolean(new_value),
+                        ) {
+                            eprintln!("Failed to apply path: {e}");
+                        }
+                    }
+                    let _ = renderer.apply_all_slots();
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
+    pub fn global_inputs_set_vector(
+        &mut self,
+        global_input_name: &str,
+        new_value: [f32; 2],
+        renderer: &mut Box<dyn LottieRenderer>,
+    ) -> bool {
+        if let Some(binding) = self.global_inputs_container.get_mut(global_input_name) {
+            match &mut binding.r#type {
+                GlobalInputValue::Vector { value } => {
+                    *value = new_value;
+
+                    for resolved in &binding.resolved_theme_bindings {
+                        if let Err(e) = resolved.path.apply(
+                            renderer,
+                            &resolved.rule_id,
+                            parser::binding_path::BindingValue::Vector(&new_value),
+                        ) {
+                            eprintln!("Failed to apply path: {e}");
+                        }
+                    }
+                    let _ = renderer.apply_all_slots();
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
+    pub fn global_inputs_set_gradient(
+        &mut self,
+        global_input_name: &str,
+        new_value: &Vec<GradientStop>,
+        renderer: &mut Box<dyn LottieRenderer>,
+    ) -> bool {
+        if let Some(binding) = self.global_inputs_container.get_mut(global_input_name) {
+            match &mut binding.r#type {
+                GlobalInputValue::Gradient { value } => {
+                    *value = new_value.to_vec();
+
+                    for resolved in &binding.resolved_theme_bindings {
+                        if let Err(e) = resolved.path.apply(
+                            renderer,
+                            &resolved.rule_id,
+                            BindingValue::Gradient(new_value.as_slice()),
+                        ) {
+                            eprintln!("Failed to apply path: {e}");
+                        }
+                    }
+                    let _ = renderer.apply_all_slots();
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
+    pub fn insert_in_to_slots(
         &mut self,
         theme_id: &str,
         renderer: &mut Box<dyn LottieRenderer>,
@@ -404,56 +521,48 @@ impl GlobalInputsEngine {
         for (_, global_input) in self.global_inputs_container.iter_mut() {
             if let Some(themes) = &global_input.bindings.themes {
                 for theme_binding in themes {
-                    if theme_binding.theme_id == theme_id
-                        || theme_binding.theme_id == "*".to_string()
-                    {
-                        match &global_input.r#type {
-                            GlobalInputValue::Color { value } => {
-                                let parsed_path = ColorPath::parse(&theme_binding.path)?;
-
-                                // Color input is going in to a Gradient
-                                if parsed_path.targets_gradient() {
-                                    if let Some(gradient_slot) =
-                                        renderer.get_gradient_slot(&theme_binding.rule_id)
-                                    {
-                                        parsed_path.apply_to_gradient(gradient_slot, value)?;
-
-                                        global_input.resolved_theme_bindings.push(
-                                            ResolvedThemeBinding {
-                                                rule_id: theme_binding.rule_id.clone(),
-                                                theme_id: theme_binding.theme_id.clone(),
-                                                path: parsed_path,
-                                            },
-                                        );
-
-                                        let _ = renderer.apply_all_slots();
-                                    }
-                                } else {
-                                    // Color input is going in to a Color
-                                    if let Some(color_slot) =
-                                        renderer.get_color_slot(&theme_binding.rule_id)
-                                    {
-                                        parsed_path.apply_to_color(color_slot, value)?;
-
-                                        global_input.resolved_theme_bindings.push(
-                                            ResolvedThemeBinding {
-                                                rule_id: theme_binding.rule_id.clone(),
-                                                theme_id: theme_binding.theme_id.clone(),
-                                                path: parsed_path,
-                                            },
-                                        );
-
-                                        let _ = renderer.apply_all_slots();
-                                    }
+                    if theme_binding.theme_id == theme_id || theme_binding.theme_id == "*" {
+                        let (binding_path, binding_value): (BindingPath, BindingValue) =
+                            match &global_input.r#type {
+                                GlobalInputValue::Color { value } => {
+                                    let parsed = ColorPath::parse(&theme_binding.path)?;
+                                    (parsed.into(), BindingValue::Color(value.as_slice()))
                                 }
-                            }
-                            GlobalInputValue::Vector { value } => {}
-                            GlobalInputValue::Numeric { value } => {}
-                            GlobalInputValue::Boolean { value } => {}
-                            GlobalInputValue::Gradient { value } => {}
-                            GlobalInputValue::Image { value } => {}
-                            GlobalInputValue::String { value } => {}
-                        }
+                                GlobalInputValue::Vector { value } => {
+                                    let parsed = VectorPath::parse(&theme_binding.path)?;
+                                    (parsed.into(), BindingValue::Vector(value.as_slice()))
+                                }
+                                GlobalInputValue::Numeric { value } => {
+                                    let parsed = NumericPath::parse(&theme_binding.path)?;
+                                    (parsed.into(), BindingValue::Numeric(*value))
+                                }
+                                GlobalInputValue::String { value } => {
+                                    let parsed = StringPath::parse(&theme_binding.path)?;
+                                    (parsed.into(), BindingValue::String(value.as_str()))
+                                }
+                                GlobalInputValue::Boolean { value } => {
+                                    let parsed = BooleanPath::parse(&theme_binding.path)?;
+                                    (parsed.into(), BindingValue::Boolean(*value))
+                                }
+                                GlobalInputValue::Gradient { value } => {
+                                    let parsed = GradientPath::parse(&theme_binding.path)?;
+                                    (parsed.into(), BindingValue::Gradient(&value))
+                                }
+                                // Skip unimplemented types for now
+                                _ => continue,
+                            };
+
+                        binding_path.apply(renderer, &theme_binding.rule_id, binding_value)?;
+
+                        global_input
+                            .resolved_theme_bindings
+                            .push(ResolvedThemeBinding {
+                                rule_id: theme_binding.rule_id.clone(),
+                                theme_id: theme_binding.theme_id.clone(),
+                                path: binding_path,
+                            });
+
+                        let _ = renderer.apply_all_slots();
                     }
                 }
             }

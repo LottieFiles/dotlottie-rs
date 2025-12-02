@@ -1,6 +1,6 @@
 use crate::{
     slots::{GradientValue, PropertyValue},
-    ColorSlot, GradientSlot,
+    ColorSlot, GradientSlot, LottieRenderer, TextSlot,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -12,6 +12,12 @@ pub enum ColorPath {
     // Color -> Gradient targets
     GradientStop(usize),                // value/{stop}/color
     GradientKeyframeStop(usize, usize), // keyframes/{kf}/value/{stop}/color
+
+    // Color -> Text targets
+    FillColor,                  // value/fillColor
+    StrokeColor,                // value/strokeColor
+    KeyframeFillColor(usize),   // keyframes/{kf}/value/fillColor
+    KeyframeStrokeColor(usize), // keyframes/{kf}/value/strokeColor
 }
 
 impl ColorPath {
@@ -47,7 +53,50 @@ impl ColorPath {
                 Ok(ColorPath::GradientKeyframeStop(kf, stop))
             }
 
+            // Color -> Text (static)
+            ["value", "fillColor"] => Ok(ColorPath::FillColor),
+            ["value", "strokeColor"] => Ok(ColorPath::StrokeColor),
+
+            // Color -> Text (animated)
+            ["keyframes", kf_idx, "value", "fillColor"] => {
+                let kf: usize = kf_idx
+                    .parse()
+                    .map_err(|_| format!("invalid keyframe index: {kf_idx}"))?;
+                Ok(ColorPath::KeyframeFillColor(kf))
+            }
+            ["keyframes", kf_idx, "value", "strokeColor"] => {
+                let kf: usize = kf_idx
+                    .parse()
+                    .map_err(|_| format!("invalid keyframe index: {kf_idx}"))?;
+                Ok(ColorPath::KeyframeStrokeColor(kf))
+            }
+
             _ => Err(format!("invalid path: {path}")),
+        }
+    }
+
+    /// Apply this color path to the appropriate slot type
+    pub fn apply(
+        &self,
+        renderer: &mut Box<dyn LottieRenderer>,
+        rule_id: &str,
+        value: &Vec<f32>,
+    ) -> Result<(), String> {
+        if self.targets_gradient() {
+            let gradient_slot = renderer
+                .get_gradient_slot(rule_id)
+                .ok_or_else(|| format!("gradient slot '{}' not found", rule_id))?;
+            self.apply_to_gradient(gradient_slot, value)
+        } else if self.targets_text() {
+            let text_slot = renderer
+                .get_text_slot(rule_id)
+                .ok_or_else(|| format!("text slot '{}' not found", rule_id))?;
+            self.apply_to_text(text_slot, value)
+        } else {
+            let color_slot = renderer
+                .get_color_slot(rule_id)
+                .ok_or_else(|| format!("color slot '{}' not found", rule_id))?;
+            self.apply_to_color(color_slot, value)
         }
     }
 
@@ -78,6 +127,12 @@ impl ColorPath {
             },
             ColorPath::GradientStop(_) | ColorPath::GradientKeyframeStop(_, _) => {
                 Err("path targets gradient, not color slot".to_string())
+            }
+            ColorPath::FillColor
+            | ColorPath::StrokeColor
+            | ColorPath::KeyframeFillColor(_)
+            | ColorPath::KeyframeStrokeColor(_) => {
+                Err("path targets text slot, not color slot".to_string())
             }
         }
     }
@@ -118,6 +173,61 @@ impl ColorPath {
             },
             ColorPath::StaticValue | ColorPath::Keyframe(_) => {
                 Err("path targets color slot, not gradient".to_string())
+            }
+            ColorPath::FillColor
+            | ColorPath::StrokeColor
+            | ColorPath::KeyframeFillColor(_)
+            | ColorPath::KeyframeStrokeColor(_) => {
+                Err("path targets text slot, not gradient slot".to_string())
+            }
+        }
+    }
+
+    pub fn apply_to_text(&self, slot: &mut TextSlot, value: &Vec<f32>) -> Result<(), String> {
+        let color_value = if value.len() >= 3 {
+            value.clone()
+        } else {
+            vec![0.0, 0.0, 0.0]
+        };
+
+        match self {
+            ColorPath::FillColor => {
+                let kf = slot
+                    .keyframes
+                    .first_mut()
+                    .ok_or_else(|| "text slot has no keyframes".to_string())?;
+                kf.text_document.fill_color = Some(color_value);
+                Ok(())
+            }
+            ColorPath::StrokeColor => {
+                let kf = slot
+                    .keyframes
+                    .first_mut()
+                    .ok_or_else(|| "text slot has no keyframes".to_string())?;
+                kf.text_document.stroke_color = Some(color_value);
+                Ok(())
+            }
+            ColorPath::KeyframeFillColor(kf_idx) => {
+                let kf = slot
+                    .keyframes
+                    .get_mut(*kf_idx)
+                    .ok_or_else(|| format!("keyframe index {kf_idx} out of bounds"))?;
+                kf.text_document.fill_color = Some(color_value);
+                Ok(())
+            }
+            ColorPath::KeyframeStrokeColor(kf_idx) => {
+                let kf = slot
+                    .keyframes
+                    .get_mut(*kf_idx)
+                    .ok_or_else(|| format!("keyframe index {kf_idx} out of bounds"))?;
+                kf.text_document.stroke_color = Some(color_value);
+                Ok(())
+            }
+            ColorPath::StaticValue | ColorPath::Keyframe(_) => {
+                Err("path targets color slot, not text slot".to_string())
+            }
+            ColorPath::GradientStop(_) | ColorPath::GradientKeyframeStop(_, _) => {
+                Err("path targets gradient slot, not text slot".to_string())
             }
         }
     }
@@ -167,6 +277,17 @@ impl ColorPath {
         matches!(
             self,
             ColorPath::GradientStop(_) | ColorPath::GradientKeyframeStop(_, _)
+        )
+    }
+
+    /// Returns true if this path targets a text slot
+    pub fn targets_text(&self) -> bool {
+        matches!(
+            self,
+            ColorPath::FillColor
+                | ColorPath::StrokeColor
+                | ColorPath::KeyframeFillColor(_)
+                | ColorPath::KeyframeStrokeColor(_)
         )
     }
 }

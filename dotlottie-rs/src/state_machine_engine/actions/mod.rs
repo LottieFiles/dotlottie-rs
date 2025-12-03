@@ -58,7 +58,6 @@ pub enum Action {
         input_name: String,
         value: StringNumber,
     },
-    //Should scalar, text etc be separate?
     SetGlobalVector {
         global_var_name: String,
         value: [StringNumber; 2],
@@ -374,7 +373,6 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            // Todo: how can we enable using input values for the x & y?
             Action::SetGlobalVector {
                 global_var_name,
                 value,
@@ -405,6 +403,7 @@ impl ActionTrait for Action {
                 );
                 Ok(())
             }
+            // todo: Change to Vec
             Action::SetGlobalColor {
                 global_var_name,
                 value,
@@ -447,12 +446,7 @@ impl ActionTrait for Action {
 
                 player.global_inputs_set_color(
                     &global_var_name,
-                    &[
-                        first_value.into(),
-                        second_value.into(),
-                        third_value.into(),
-                        fourth_value.into(),
-                    ],
+                    &vec![first_value, second_value, third_value, fourth_value],
                 );
                 Ok(())
             }

@@ -12,6 +12,7 @@ struct Player {
     player: DotLottiePlayer,
     current_marker: usize,
     last_update: Instant,
+    text_input: String,
 }
 
 impl Player {
@@ -50,6 +51,7 @@ impl Player {
             player,
             current_marker: 0,
             last_update: Instant::now(),
+            text_input: "".to_string(),
         }
     }
 
@@ -89,6 +91,59 @@ impl Player {
         let (ptr, len) = (self.player.buffer_ptr(), self.player.buffer_len());
         unsafe { std::slice::from_raw_parts(ptr as *const u32, len as usize) }
     }
+
+    fn handle_text_input(&mut self, key: Key) {
+        let char_to_add = match key {
+            Key::A => Some('a'),
+            Key::B => Some('b'),
+            Key::C => Some('c'),
+            Key::D => Some('d'),
+            Key::E => Some('e'),
+            Key::F => Some('f'),
+            Key::G => Some('g'),
+            Key::H => Some('h'),
+            Key::I => Some('i'),
+            Key::J => Some('j'),
+            Key::K => Some('k'),
+            Key::L => Some('l'),
+            Key::M => Some('m'),
+            Key::N => Some('n'),
+            Key::O => Some('o'),
+            Key::P => Some('p'),
+            Key::Q => Some('q'),
+            Key::R => Some('r'),
+            Key::S => Some('s'),
+            Key::T => Some('t'),
+            Key::U => Some('u'),
+            Key::V => Some('v'),
+            Key::W => Some('w'),
+            Key::X => Some('x'),
+            Key::Y => Some('y'),
+            Key::Z => Some('z'),
+            Key::Space => Some(' '),
+            Key::Backspace => {
+                self.text_input.pop();
+                println!("Current text: '{}'", self.text_input);
+                // Only update if there's still text remaining, or use a space as placeholder
+                if !self.text_input.is_empty() {
+                    self.player
+                        .global_inputs_set_string("text", &self.text_input);
+                } else {
+                    // Use a single space instead of empty string to avoid the crash
+                    self.player.global_inputs_set_string("text", " ");
+                }
+                None
+            }
+            _ => None,
+        };
+
+        if let Some(c) = char_to_add {
+            self.text_input.push(c);
+            println!("Current text: '{}'", self.text_input);
+            self.player
+                .global_inputs_set_string("text", &self.text_input);
+        }
+    }
 }
 
 // pub const ANIMATION_NAME: &str = "test_inputs_ball_color_animated";
@@ -99,9 +154,39 @@ impl Player {
 // pub const BINDING_FILE_NAME: &str = "inputs";
 // pub const THEMING_FILE_NAME: &str = "theme";
 
-pub const ANIMATION_NAME: &str = "test_inputs_sheet_gradient_animated";
+// pub const ANIMATION_NAME: &str = "test_inputs_sheet_gradient_animated";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
+
+// pub const ANIMATION_NAME: &str = "test_vector_global_input";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
+
+// ----- TEXT -----
+// pub const ANIMATION_NAME: &str = "test_inputs_text_static";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
+// ----- END TEXT -----
+
+// ----- SCALAR -----
+// pub const ANIMATION_NAME: &str = "test_inputs_ball_numeric_static";
+
+// pub const ANIMATION_NAME: &str = "test_inputs_ball_numeric_animated";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
+// ----- END SCALAR -----
+
+// ----- GRADIENT -----
+pub const ANIMATION_NAME: &str = "test_inputs_sheet_gradient_static";
+// pub const ANIMATION_NAME: &str = "test_inputs_sheet_gradient_animated";
+
 pub const BINDING_FILE_NAME: &str = "inputs";
 pub const THEMING_FILE_NAME: &str = "theme";
+// ----- END GRADIENT -----
+
+// pub const ANIMATION_NAME: &str = "test_inputs_text_animated";
+// pub const BINDING_FILE_NAME: &str = "inputs";
+// pub const THEMING_FILE_NAME: &str = "theme";
 
 // pub const ANIMATION_NAME: &str = "test_inputs_ball_gradient_static";
 // pub const BINDING_FILE_NAME: &str = "inputs";
@@ -158,14 +243,15 @@ fn main() {
     //     "Failed to read binding file: {}",
     //     binding_file_path
     // ));
+
     // player.player.global_inputs_load_data(&binding_file_data);
 
     if player.player.is_loaded() {
         let st = player.player.set_theme(THEMING_FILE_NAME);
         println!("Set theme: {}", st);
     }
-
-    // player.player.global_inputs_load(BINDING_FILE_NAME);
+    // let l = player.player.global_inputs_load(BINDING_FILE_NAME);
+    // println!("L : {}", l);
 
     let mut mx = 0.0;
     let mut my = 0.0;
@@ -174,6 +260,11 @@ fn main() {
     let mut toggle = false;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        window
+            .get_keys_pressed(KeyRepeat::No)
+            .iter()
+            .for_each(|key| player.handle_text_input(*key));
+
         let mouse_down = window.get_mouse_down(MouseButton::Left);
 
         if window.is_key_pressed(Key::Enter, KeyRepeat::No) {
@@ -182,7 +273,7 @@ fn main() {
         if window.is_key_pressed(Key::Space, KeyRepeat::No) {
             player.player.global_inputs_set_color(
                 "ball_start",
-                &[
+                &vec![
                     rand::random::<f32>() * 1.0,
                     rand::random::<f32>() * 1.0,
                     rand::random::<f32>() * 1.0,
@@ -233,7 +324,7 @@ fn main() {
         if window.is_key_pressed(Key::Key0, KeyRepeat::No) {
             player
                 .player
-                .global_inputs_set_color("start_0", &[1.0, 0.0, 1.0, 1.0]);
+                .global_inputs_set_color("start_0", &vec![1.0, 0.0, 1.0, 1.0]);
             player
                 .player
                 .global_inputs_set_color("end_0", &[0.0, 1.0, 0.0, 0.2]);
@@ -288,9 +379,10 @@ fn main() {
             // player
             //     .player
             //     .global_inputs_set_gradient("ball", &gradient_storage);
-            player
-                .player
-                .global_inputs_set_vector("wand_pos", &[mx.into(), my.into()]);
+            // println!("setting wand_pos");
+            // player
+            //     .player
+            //     .global_inputs_set_vector("wand_pos", &[mx.into(), my.into()]);
         }
 
         player.update();

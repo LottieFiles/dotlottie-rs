@@ -1,0 +1,20 @@
+{
+  "ball": {
+    "type": "Numeric",
+    "value": 100,
+    "bindings": {
+      "themes": [
+        { "themeId": "theme", "ruleId": "ball", "path": "keyframes/0/value" }
+      ]
+    }
+  },
+  "ball_end": {
+    "type": "Numeric",
+    "value": 10,
+    "bindings": {
+      "themes": [
+        { "themeId": "theme", "ruleId": "ball", "path": "keyframes/1/value" }
+      ]
+    }
+  }
+}

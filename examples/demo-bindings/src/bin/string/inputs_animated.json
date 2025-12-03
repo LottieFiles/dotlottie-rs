@@ -1,0 +1,1 @@
+{"text":{"type":"String","value":"START REPLACED WITH BINDING","bindings":{"themes":[{"themeId":"theme","ruleId":"my_text","path":"keyframes/0/value/text"}]}},"second_text":{"type":"String","value":"END REPLACED WITH BINDING","bindings":{"themes":[{"themeId":"theme","ruleId":"my_text","path":"keyframes/1/value/text"}]}}}

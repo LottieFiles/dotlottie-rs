@@ -15,6 +15,26 @@ name = "magic-wand"
 path = "src/bin/magic-wand/main.rs"
 
 [[bin]]
+name = "numeric"
+path = "src/bin/numeric/main.rs"
+
+[[bin]]
+name = "color"
+path = "src/bin/color/main.rs"
+
+[[bin]]
+name = "string"
+path = "src/bin/string/main.rs"
+
+[[bin]]
+name = "gradient"
+path = "src/bin/gradient/main.rs"
+
+[[bin]]
+name = "boolean"
+path = "src/bin/boolean/main.rs"
+
+[[bin]]
 name = "physics"
 path = "src/bin/physics/main.rs"
 

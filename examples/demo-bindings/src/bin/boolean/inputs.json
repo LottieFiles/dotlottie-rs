@@ -1,0 +1,11 @@
+{
+  "toggle_global_input": {
+    "type": "Boolean",
+    "value": true,
+    "bindings": {
+      "stateMachines": [
+        { "stateMachineId": "toggleButton", "inputName": ["OnOffSwitch"] }
+      ]
+    }
+  }
+}

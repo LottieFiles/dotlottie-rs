@@ -14,7 +14,6 @@ pub enum BindingPath {
     String(StringPath),
     Boolean(BooleanPath),
     Gradient(GradientPath),
-    // Future: Gradient(GradientPath), Image(ImagePath), etc.
 }
 
 #[derive(Debug, Clone)]

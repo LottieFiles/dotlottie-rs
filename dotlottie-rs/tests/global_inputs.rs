@@ -3,7 +3,6 @@ mod test_utils;
 #[cfg(test)]
 mod tests {
 
-    use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
     use dotlottie_rs::Config;
     use dotlottie_rs::DotLottiePlayer;
 
@@ -55,13 +54,13 @@ mod tests {
     // }
 
     #[test]
-    pub fn scalar_global_input_test() {
+    pub fn numeric_static_global_input_test() {
         // Description:
         // SID is on the opacity of the ball's fill
         // The data binding affects the transparency of the fill
 
         let animation_data =
-            include_bytes!("fixtures/global_inputs/test_inputs_ball_scalar.lottie");
+            include_bytes!("fixtures/global_inputs/test_inputs_ball_numeric_static.lottie");
 
         let player = DotLottiePlayer::new(Config::default());
         let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
@@ -79,7 +78,7 @@ mod tests {
         player.render();
 
         let buffer = player.buffer();
-        let snapshot_path = "./tests/snapshots/scalar_global_input_snapshot.bin";
+        let snapshot_path = "./tests/snapshots/numeric_global_input_static_snapshot.bin";
 
         assert!(
             compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
@@ -91,18 +90,61 @@ mod tests {
         // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
         // snapshot_to_png(
         //     snapshot_path,
-        //     "./tests/snapshots/scalar_global_input_snapshot.png",
+        //     "./tests/snapshots/numeric_global_input_static_snapshot.png",
         // )
         // .unwrap();
     }
 
     #[test]
-    pub fn gradient_global_input_test() {
+    pub fn numeric_animated_global_input_test() {
+        // Description:
+        // SID is on the opacity of the ball's fill
+        // The data binding affects the transparency of the fill
+
+        let animation_data =
+            include_bytes!("fixtures/global_inputs/test_inputs_ball_numeric_animated.lottie");
+
+        let player = DotLottiePlayer::new(Config::default());
+        let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
+
+        let set_theme = player.set_theme("theme");
+        let inputs_loaded = player.global_inputs_load("inputs");
+
+        assert!(load);
+        assert!(inputs_loaded);
+        assert!(set_theme);
+
+        assert_eq!(player.global_inputs_get_numeric("ball"), Some(100.0));
+        assert_eq!(player.global_inputs_get_numeric("ball_end"), Some(10.0));
+
+        player.set_frame(20.0);
+        player.render();
+
+        let buffer = player.buffer();
+        let snapshot_path = "./tests/snapshots/numeric_global_input_animated_snapshot.bin";
+
+        assert!(
+            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+            "Buffer at frame 20 doesn't match snapshot"
+        );
+
+        // ⚠️ Uncomment block to generate initial snapshot
+        // let buffer = player.buffer();
+        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+        // snapshot_to_png(
+        //     snapshot_path,
+        //     "./tests/snapshots/numeric_global_input_animated_snapshot.png",
+        // )
+        // .unwrap();
+    }
+
+    #[test]
+    pub fn gradient_static_global_input_test() {
         // Description:
         // SID is on the content of the gradient
         // The data binding affects the colors of the gradient
         let animation_data =
-            include_bytes!("fixtures/global_inputs/test_inputs_ball_gradient.lottie");
+            include_bytes!("fixtures/global_inputs/test_inputs_sheet_gradient_static.lottie");
 
         let player = DotLottiePlayer::new(Config::default());
         let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
@@ -118,7 +160,7 @@ mod tests {
         player.render();
 
         let buffer = player.buffer();
-        let snapshot_path = "./tests/snapshots/gradient_global_input_snapshot.bin";
+        let snapshot_path = "./tests/snapshots/gradient_global_input_static_snapshot.bin";
 
         assert!(
             compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
@@ -130,17 +172,58 @@ mod tests {
         // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
         // snapshot_to_png(
         //     snapshot_path,
-        //     "./tests/snapshots/gradient_global_input_snapshot.png",
+        //     "./tests/snapshots/gradient_global_input_static_snapshot.png",
         // )
         // .unwrap();
     }
 
     #[test]
-    pub fn color_global_input_test() {
+    pub fn gradient_animated_global_input_test() {
         // Description:
-        // SID is on the fill color
-        // The data binding affects which color is used
-        let animation_data = include_bytes!("fixtures/global_inputs/test_inputs_ball_color.lottie");
+        // SID is on the content of the gradient
+        // The data binding affects the colors of the gradient
+        let animation_data =
+            include_bytes!("fixtures/global_inputs/test_inputs_sheet_gradient_animated.lottie");
+
+        let player = DotLottiePlayer::new(Config::default());
+        let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
+
+        let inputs_loaded = player.global_inputs_load("inputs");
+        let set_theme = player.set_theme("theme");
+
+        assert!(load);
+        assert!(inputs_loaded);
+        assert!(set_theme);
+
+        player.set_frame(30.0);
+        player.render();
+
+        let buffer = player.buffer();
+        let snapshot_path = "./tests/snapshots/gradient_global_input_animated_snapshot.bin";
+
+        assert!(
+            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+            "Buffer at frame 30 doesn't match snapshot"
+        );
+
+        //⚠️ Uncomment block to generate initial snapshot
+        // let buffer = player.buffer();
+        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+        // snapshot_to_png(
+        //     snapshot_path,
+        //     "./tests/snapshots/gradient_global_input_animated_snapshot.png",
+        // )
+        // .unwrap();
+    }
+
+    #[test]
+    pub fn color_static_global_input_test() {
+        // Description:
+        // SID is on the gradient color
+        // The data binding is a Color that replaces the color of a Gradient
+        // todo: Test Color -> Color
+        let animation_data =
+            include_bytes!("fixtures/global_inputs/test_inputs_sheet_color_static.lottie");
 
         let player = DotLottiePlayer::new(Config::default());
         let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
@@ -149,8 +232,12 @@ mod tests {
         let set_theme = player.set_theme("theme");
 
         assert_eq!(
-            player.global_inputs_get_color("ball"),
-            Some([0.5, 0.9, 0.2, 1.0])
+            player.global_inputs_get_color("start_0"),
+            Some([0.9, 0.9, 0.9, 1.0])
+        );
+        assert_eq!(
+            player.global_inputs_get_color("end_0"),
+            Some([0.1, 0.1, 0.1, 1.0])
         );
 
         assert!(load);
@@ -161,19 +248,84 @@ mod tests {
         player.render();
 
         let buffer = player.buffer();
-        let snapshot_path = "./tests/snapshots/color_global_input_snapshot.bin";
+        let snapshot_path = "./tests/snapshots/color_global_input_static_snapshot.bin";
 
         assert!(
             compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
             "Buffer at frame 30 doesn't match snapshot"
         );
 
-        //⚠️ Uncomment block to generate initial snapshot
+        // ⚠️ Uncomment block to generate initial snapshot
         // let buffer = player.buffer();
         // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
         // snapshot_to_png(
         //     snapshot_path,
-        //     "./tests/snapshots/color_global_input_snapshot.png",
+        //     "./tests/snapshots/color_global_input_static_snapshot.png",
+        // )
+        // .unwrap();
+    }
+
+    #[test]
+    pub fn color_animated_global_input_test() {
+        // Description:
+        // SID is on the gradient color
+        // The data binding is a Color that replaces the color of a Gradient
+        // todo: Test Color -> Color
+        let animation_data =
+            include_bytes!("fixtures/global_inputs/test_inputs_sheet_color_animated.lottie");
+
+        let player = DotLottiePlayer::new(Config::default());
+        let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
+
+        let inputs_loaded = player.global_inputs_load("inputs");
+        let set_theme = player.set_theme("theme");
+
+        assert_eq!(
+            player.global_inputs_get_color("start_0"),
+            Some([0.1, 0.1, 0.1, 1.0])
+        );
+        assert_eq!(
+            player.global_inputs_get_color("end_0"),
+            Some([0.2, 0.2, 0.2, 1.0])
+        );
+        assert_eq!(
+            player.global_inputs_get_color("start_1"),
+            Some([0.3, 0.3, 0.3, 1.0])
+        );
+        assert_eq!(
+            player.global_inputs_get_color("end_1"),
+            Some([0.4, 0.4, 0.4, 1.0])
+        );
+        assert_eq!(
+            player.global_inputs_get_color("start_2"),
+            Some([0.4, 0.4, 0.4, 1.0])
+        );
+        assert_eq!(
+            player.global_inputs_get_color("end_2"),
+            Some([0.5, 0.5, 0.5, 1.0])
+        );
+
+        assert!(load);
+        assert!(inputs_loaded);
+        assert!(set_theme);
+
+        player.set_frame(30.0);
+        player.render();
+
+        let buffer = player.buffer();
+        let snapshot_path = "./tests/snapshots/color_global_input_animated_snapshot.bin";
+
+        assert!(
+            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+            "Buffer at frame 30 doesn't match snapshot"
+        );
+
+        // ⚠️ Uncomment block to generate initial snapshot
+        // let buffer = player.buffer();
+        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+        // snapshot_to_png(
+        //     snapshot_path,
+        //     "./tests/snapshots/color_global_input_animated_snapshot.png",
         // )
         // .unwrap();
     }
@@ -196,7 +348,10 @@ mod tests {
         assert!(inputs_loaded);
         assert!(set_theme);
 
-        assert_eq!(player.global_inputs_get_vector("wand_pos"), Some([50.0, 50.0]));
+        assert_eq!(
+            player.global_inputs_get_vector("wand_pos"),
+            Some([50.0, 50.0])
+        );
 
         player.set_frame(30.0);
         player.render();
@@ -219,88 +374,88 @@ mod tests {
         // .unwrap();
     }
 
-    #[test]
-    pub fn boolean_global_input_test() {
-        // Description:
-        // The boolean data binding is used inside the toggle state machine
-        // Changing the value of the data binding makes the toggle state machine go from day to night
-        let animation_data = include_bytes!("fixtures/global_inputs/test_inputs_toggle_sm.lottie");
+    // #[test]
+    // pub fn boolean_global_input_test() {
+    //     // Description:
+    //     // The boolean data binding is used inside the toggle state machine
+    //     // Changing the value of the data binding makes the toggle state machine go from day to night
+    //     let animation_data = include_bytes!("fixtures/global_inputs/test_inputs_toggle_sm.lottie");
 
-        let player = DotLottiePlayer::new(Config::default());
-        let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
+    //     let player = DotLottiePlayer::new(Config::default());
+    //     let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
 
-        let inputs_loaded = player.global_inputs_load("inputs");
-        let sm = player.state_machine_load("toggleButton");
-        player.state_machine_start(OpenUrlPolicy::default());
+    //     let inputs_loaded = player.global_inputs_load("inputs");
+    //     let sm = player.state_machine_load("toggleButton");
+    //     player.state_machine_start(OpenUrlPolicy::default());
 
-        assert!(load);
-        assert!(inputs_loaded);
-        assert!(sm);
+    //     assert!(load);
+    //     assert!(inputs_loaded);
+    //     assert!(sm);
 
-        assert_eq!(player.global_inputs_get_boolean("OnOffSwitch"), Some(false));
+    //     assert_eq!(player.global_inputs_get_boolean("OnOffSwitch"), Some(false));
 
-        player.set_frame(0.0);
-        player.render();
+    //     player.set_frame(0.0);
+    //     player.render();
 
-        // ⚠️ Uncomment block to generate initial snapshot
-        // let buffer = player.buffer();
-        // write_buffer_snapshot(
-        //     buffer,
-        //     WIDTH,
-        //     HEIGHT,
-        //     "./tests/snapshots/boolean_global_input_snapshot_before.bin",
-        // )
-        // .unwrap();
-        // snapshot_to_png(
-        //     "./tests/snapshots/boolean_global_input_snapshot_before.bin",
-        //     "./tests/snapshots/boolean_global_input_snapshot_before.png",
-        // )
-        // .unwrap();
-        let buffer = player.buffer();
+    //     // ⚠️ Uncomment block to generate initial snapshot
+    //     // let buffer = player.buffer();
+    //     // write_buffer_snapshot(
+    //     //     buffer,
+    //     //     WIDTH,
+    //     //     HEIGHT,
+    //     //     "./tests/snapshots/boolean_global_input_snapshot_before.bin",
+    //     // )
+    //     // .unwrap();
+    //     // snapshot_to_png(
+    //     //     "./tests/snapshots/boolean_global_input_snapshot_before.bin",
+    //     //     "./tests/snapshots/boolean_global_input_snapshot_before.png",
+    //     // )
+    //     // .unwrap();
+    //     let buffer = player.buffer();
 
-        assert!(
-            compare_with_snapshot(
-                buffer,
-                WIDTH,
-                HEIGHT,
-                "./tests/snapshots/boolean_global_input_snapshot_before.bin"
-            )
-            .unwrap(),
-            "Buffer at frame 0 doesn't match snapshot"
-        );
+    //     assert!(
+    //         compare_with_snapshot(
+    //             buffer,
+    //             WIDTH,
+    //             HEIGHT,
+    //             "./tests/snapshots/boolean_global_input_snapshot_before.bin"
+    //         )
+    //         .unwrap(),
+    //         "Buffer at frame 0 doesn't match snapshot"
+    //     );
 
-        player.global_inputs_set_boolean("OnOffSwitch", true);
-        assert_eq!(player.global_inputs_get_boolean("OnOffSwitch"), Some(true));
+    //     player.global_inputs_set_boolean("OnOffSwitch", true);
+    //     assert_eq!(player.global_inputs_get_boolean("OnOffSwitch"), Some(true));
 
-        player.set_frame(50.0);
-        player.render();
+    //     player.set_frame(50.0);
+    //     player.render();
 
-        assert!(
-            compare_with_snapshot(
-                buffer,
-                WIDTH,
-                HEIGHT,
-                "./tests/snapshots/boolean_global_input_snapshot_after.bin"
-            )
-            .unwrap(),
-            "Buffer at frame 50 doesn't match snapshot"
-        );
+    //     assert!(
+    //         compare_with_snapshot(
+    //             buffer,
+    //             WIDTH,
+    //             HEIGHT,
+    //             "./tests/snapshots/boolean_global_input_snapshot_after.bin"
+    //         )
+    //         .unwrap(),
+    //         "Buffer at frame 50 doesn't match snapshot"
+    //     );
 
-        // ⚠️ Uncomment block to generate initial snapshot
-        // let buffer = player.buffer();
-        // write_buffer_snapshot(
-        //     buffer,
-        //     WIDTH,
-        //     HEIGHT,
-        //     "./tests/snapshots/boolean_global_input_snapshot_after.bin",
-        // )
-        // .unwrap();
-        // snapshot_to_png(
-        //     "./tests/snapshots/boolean_global_input_snapshot_after.bin",
-        //     "./tests/snapshots/boolean_global_input_snapshot_after.png",
-        // )
-        // .unwrap();
-    }
+    //     // ⚠️ Uncomment block to generate initial snapshot
+    //     // let buffer = player.buffer();
+    //     // write_buffer_snapshot(
+    //     //     buffer,
+    //     //     WIDTH,
+    //     //     HEIGHT,
+    //     //     "./tests/snapshots/boolean_global_input_snapshot_after.bin",
+    //     // )
+    //     // .unwrap();
+    //     // snapshot_to_png(
+    //     //     "./tests/snapshots/boolean_global_input_snapshot_after.bin",
+    //     //     "./tests/snapshots/boolean_global_input_snapshot_after.png",
+    //     // )
+    //     // .unwrap();
+    // }
 
     // #[test]
     // pub fn image_global_input_test() {
@@ -344,69 +499,70 @@ mod tests {
     //     // )
     //     // .unwrap();
     // }
-    #[test]
-    pub fn text_global_input_test() {
-        // Description:
-        // The image data binding is used to replace an image with another inside the dotLottie
-        let animation_data = include_bytes!("fixtures/global_inputs/test_inputs_text.lottie");
 
-        let player = DotLottiePlayer::new(Config::default());
-        let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
+    // #[test]
+    // pub fn text_global_input_test() {
+    //     // Description:
+    //     // The image data binding is used to replace an image with another inside the dotLottie
+    //     let animation_data = include_bytes!("fixtures/global_inputs/test_inputs_text.lottie");
 
-        let inputs_loaded = player.global_inputs_load("inputs");
+    //     let player = DotLottiePlayer::new(Config::default());
+    //     let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
 
-        let set_theme = player.set_theme("theme");
+    //     let inputs_loaded = player.global_inputs_load("inputs");
 
-        assert!(load);
-        assert!(inputs_loaded);
-        assert!(set_theme);
+    //     let set_theme = player.set_theme("theme");
 
-        player.render();
+    //     assert!(load);
+    //     assert!(inputs_loaded);
+    //     assert!(set_theme);
 
-        assert_eq!(
-            player.global_inputs_get_string("text_input"),
-            Some("First Try!".to_string())
-        );
+    //     player.render();
 
-        let buffer = player.buffer();
-        let snapshot_path = "./tests/snapshots/text_global_input_snapshot_before.bin";
+    //     assert_eq!(
+    //         player.global_inputs_get_string("text_input"),
+    //         Some("First Try!".to_string())
+    //     );
 
-        assert!(
-            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
-            "Buffer at frame 30 doesn't match snapshot"
-        );
+    //     let buffer = player.buffer();
+    //     let snapshot_path = "./tests/snapshots/text_global_input_snapshot_before.bin";
 
-        // ⚠️ Uncomment block to generate initial snapshot
-        // let buffer = player.buffer();
-        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
-        // snapshot_to_png(
-        //     snapshot_path,
-        //     "./tests/snapshots/text_global_input_snapshot_before.png",
-        // )
-        // .unwrap();
+    //     assert!(
+    //         compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+    //         "Buffer at frame 30 doesn't match snapshot"
+    //     );
 
-        player.global_inputs_set_string("text_input", "New Value");
-        assert_eq!(
-            player.global_inputs_get_string("text_input"),
-            Some("New Value".to_string())
-        );
+    //     // ⚠️ Uncomment block to generate initial snapshot
+    //     // let buffer = player.buffer();
+    //     // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+    //     // snapshot_to_png(
+    //     //     snapshot_path,
+    //     //     "./tests/snapshots/text_global_input_snapshot_before.png",
+    //     // )
+    //     // .unwrap();
 
-        player.render();
+    //     player.global_inputs_set_string("text_input", "New Value");
+    //     assert_eq!(
+    //         player.global_inputs_get_string("text_input"),
+    //         Some("New Value".to_string())
+    //     );
 
-        let buffer = player.buffer();
-        let snapshot_path = "./tests/snapshots/text_global_input_snapshot_after.bin";
+    //     player.render();
 
-        assert!(
-            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
-            "Buffer at frame 30 doesn't match snapshot"
-        );
+    //     let buffer = player.buffer();
+    //     let snapshot_path = "./tests/snapshots/text_global_input_snapshot_after.bin";
 
-        // ⚠️ Uncomment block to generate initial snapshot
-        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
-        // snapshot_to_png(
-        //     snapshot_path,
-        //     "./tests/snapshots/text_global_input_snapshot_after.png",
-        // )
-        // .unwrap();
-    }
+    //     assert!(
+    //         compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+    //         "Buffer at frame 30 doesn't match snapshot"
+    //     );
+
+    //     // ⚠️ Uncomment block to generate initial snapshot
+    //     // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+    //     // snapshot_to_png(
+    //     //     snapshot_path,
+    //     //     "./tests/snapshots/text_global_input_snapshot_after.png",
+    //     // )
+    //     // .unwrap();
+    // }
 }

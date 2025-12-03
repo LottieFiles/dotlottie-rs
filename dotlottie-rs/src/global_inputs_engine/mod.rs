@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -12,7 +10,7 @@ use crate::parser::string_path::StringPath;
 use crate::parser::vector_path::VectorPath;
 use crate::parser::{parse_global_inputs, GlobalInputs};
 use crate::parser::{GlobalInputValue, ResolvedThemeBinding};
-use crate::{GradientStop, ImageValue, LottieRenderer};
+use crate::{GradientStop, ImageValue, LottieRenderer, StateMachineEngine};
 pub mod parser;
 
 #[derive(Debug)]
@@ -56,7 +54,6 @@ struct Theme {
 
 pub struct GlobalInputsEngineBuilder {
     bindings_definition: String,
-    initial_dependencies: Option<HashMap<String, Vec<String>>>,
 }
 
 impl GlobalInputsEngineBuilder {
@@ -64,35 +61,15 @@ impl GlobalInputsEngineBuilder {
     pub fn new(bindings_definition: &str) -> Self {
         Self {
             bindings_definition: bindings_definition.to_string(),
-            initial_dependencies: None,
         }
-    }
-
-    pub fn with_dependencies(mut self, dependencies: HashMap<String, Vec<String>>) -> Self {
-        self.initial_dependencies = Some(dependencies);
-        self
     }
 
     pub fn build(self) -> Result<GlobalInputsEngine, GlobalInputsEngineError> {
         let parsed_bindings = parse_global_inputs(&self.bindings_definition)
             .map_err(|e| GlobalInputsEngineError::ParseError(e.to_string()))?;
 
-        // println!("Found: {:?}", parsed_bindings);
-        // for (key, value) in &parsed_bindings {
-        //     match &value.r#type {
-        //         GlobalInputValue::Color { value } => println!("Color: {:?}", value),
-        //         GlobalInputValue::Vector { value } => println!("Vector: {:?}", value),
-        //         GlobalInputValue::Numeric { value } => println!("Numeric: {}", value),
-        //         GlobalInputValue::Boolean { value } => println!("Boolean: {}", value),
-        //         GlobalInputValue::Gradient { value } => println!("Gradient: {:?}", value),
-        //         GlobalInputValue::Image { value } => println!("Image: {:?}", value),
-        //         GlobalInputValue::String { value } => println!("String: {}", value),
-        //     }
-        // }
-
         Ok(GlobalInputsEngine {
             global_inputs_container: parsed_bindings,
-            theme_dependencies: self.initial_dependencies.unwrap_or_else(HashMap::new),
             was_updated: false,
         })
     }
@@ -100,12 +77,6 @@ impl GlobalInputsEngineBuilder {
 
 pub struct GlobalInputsEngine {
     global_inputs_container: GlobalInputs,
-
-    /**
-     * Map<BindingId, [ThemeIds]>
-     */
-    theme_dependencies: HashMap<String, Vec<String>>,
-
     was_updated: bool,
 }
 
@@ -197,7 +168,6 @@ macro_rules! impl_mutator {
                     GlobalInputValue::$variant { value } => {
                         *value = new_value.clone();
 
-                        if self.theme_dependencies.contains_key(global_input_name) {}
                         self.was_updated = true;
 
                         println!("[Bindings] Updated: {} to {:?}", global_input_name, *value);
@@ -258,7 +228,6 @@ impl GlobalInputsEngine {
 
         Ok(GlobalInputsEngine {
             global_inputs_container: parsed_bindings,
-            theme_dependencies: HashMap::new(),
             was_updated: false,
         })
     }
@@ -342,13 +311,14 @@ impl GlobalInputsEngine {
     pub fn global_inputs_set_color(
         &mut self,
         global_input_name: &str,
-        new_value: [f32; 4],
+        new_value: &Vec<f32>,
         renderer: &mut Box<dyn LottieRenderer>,
     ) -> bool {
         if let Some(binding) = self.global_inputs_container.get_mut(global_input_name) {
             match &mut binding.r#type {
                 GlobalInputValue::Color { value } => {
                     *value = new_value.to_vec();
+                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -378,6 +348,7 @@ impl GlobalInputsEngine {
             match &mut binding.r#type {
                 GlobalInputValue::Numeric { value } => {
                     *value = new_value;
+                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -407,6 +378,7 @@ impl GlobalInputsEngine {
             match &mut binding.r#type {
                 GlobalInputValue::String { value } => {
                     *value = new_value.to_string();
+                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -436,6 +408,7 @@ impl GlobalInputsEngine {
             match &mut binding.r#type {
                 GlobalInputValue::Boolean { value } => {
                     *value = new_value;
+                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -465,6 +438,7 @@ impl GlobalInputsEngine {
             match &mut binding.r#type {
                 GlobalInputValue::Vector { value } => {
                     *value = new_value;
+                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -494,6 +468,7 @@ impl GlobalInputsEngine {
             match &mut binding.r#type {
                 GlobalInputValue::Gradient { value } => {
                     *value = new_value.to_vec();
+                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -513,7 +488,46 @@ impl GlobalInputsEngine {
         false
     }
 
-    pub fn insert_in_to_slots(
+    pub fn apply_to_state_machine(
+        &mut self,
+        state_machine_engine: &mut StateMachineEngine,
+    ) -> bool {
+        for (_, global_input) in self.global_inputs_container.iter_mut() {
+            if let Some(state_machines) = &global_input.bindings.state_machines {
+                for state_machine in state_machines {
+                    println!(
+                        "State machine id matches: {} = {}",
+                        state_machine.state_machine_id, state_machine_engine.id
+                    );
+                    if state_machine.state_machine_id == state_machine_engine.id {
+                        for binding in &state_machine.input_name {
+                            match &global_input.r#type {
+                                GlobalInputValue::Numeric { value } => state_machine_engine
+                                    .set_numeric_input(&binding, *value, true, false),
+                                GlobalInputValue::Boolean { value } => {
+                                    println!(">> Calling set boolean");
+                                    state_machine_engine
+                                        .set_boolean_input(&binding, *value, true, false)
+                                }
+                                GlobalInputValue::String { value } => state_machine_engine
+                                    .set_string_input(&binding, &value, true, false),
+                                _ => {
+                                    eprintln!(
+                                        "Tried to set an unsupported type to a state machine"
+                                    );
+                                    return false;
+                                }
+                            };
+                        }
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn apply_to_slots(
         &mut self,
         theme_id: &str,
         renderer: &mut Box<dyn LottieRenderer>,
@@ -549,11 +563,20 @@ impl GlobalInputsEngine {
                                     (parsed.into(), BindingValue::Gradient(&value))
                                 }
                                 // Skip unimplemented types for now
-                                _ => continue,
+                                // missing image
+                                _ => {
+                                    continue;
+                                }
                             };
 
-                        binding_path.apply(renderer, &theme_binding.rule_id, binding_value)?;
+                        let r = binding_path.apply(renderer, &theme_binding.rule_id, binding_value);
+                        if r.is_err() {
+                            GlobalInputsEngineError::ParseError(
+                                "Failed to apply global inputs on to current slots.".to_string(),
+                            );
+                        }
 
+                        //todo: This doesnt detect duplicates
                         global_input
                             .resolved_theme_bindings
                             .push(ResolvedThemeBinding {
@@ -561,6 +584,12 @@ impl GlobalInputsEngine {
                                 theme_id: theme_binding.theme_id.clone(),
                                 path: binding_path,
                             });
+
+                        //todo: This doesnt clear out ever
+                        println!(
+                            "Resolved theme bindings: {}",
+                            global_input.resolved_theme_bindings.len()
+                        );
 
                         let _ = renderer.apply_all_slots();
                     }

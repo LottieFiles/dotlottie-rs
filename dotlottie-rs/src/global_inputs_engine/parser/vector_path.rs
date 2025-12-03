@@ -56,20 +56,15 @@ impl VectorPath {
         rule_id: &str,
         value: &[f32],
     ) -> Result<(), String> {
-        println!("Applying vector slot..");
         if self.targets_text() {
-            println!("Got text slot..");
             let text_slot = renderer
                 .get_text_slot(rule_id)
                 .ok_or_else(|| format!("text slot '{}' not found", rule_id))?;
             self.apply_to_text(text_slot, value)
         } else {
-            println!("Got vector slot..");
             let vector_slot = renderer
                 .get_vector_slot(rule_id)
                 .ok_or_else(|| format!("vector slot '{}' not found", rule_id))?;
-
-            println!("Got vector slot");
 
             self.apply_to_vector(vector_slot, value)
         }
@@ -126,7 +121,6 @@ impl VectorPath {
 
         match self {
             VectorPath::StaticValue => {
-                println!("Applied static value to VectorPath");
                 slot.value = PropertyValue::Static(xy_value);
                 Ok(())
             }
@@ -135,7 +129,6 @@ impl VectorPath {
                     let kf = keyframes
                         .get_mut(*keyframe)
                         .ok_or_else(|| format!("index {keyframe} out of bounds"))?;
-                    println!("Applied animated value to VectorPath");
                     kf.start_value = xy_value;
                     Ok(())
                 }

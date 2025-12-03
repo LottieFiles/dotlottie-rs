@@ -1,0 +1,137 @@
+use dotlottie_rs::{Config, DotLottiePlayer};
+use minifb::{Key, Window, WindowOptions};
+use std::time::Instant;
+
+const WIDTH: usize = 512;
+const HEIGHT: usize = 512;
+
+struct Player {
+    player: DotLottiePlayer,
+    last_update: Instant,
+}
+
+impl Player {
+    fn new(animation_path: &str) -> Self {
+        let player = DotLottiePlayer::new(Config {
+            autoplay: true,
+            loop_animation: true,
+            background_color: 0xffffffff,
+            ..Default::default()
+        });
+
+        let is_dotlottie = animation_path.ends_with(".lottie");
+
+        if is_dotlottie {
+            let data = std::fs::read(animation_path).unwrap();
+            player.load_dotlottie_data(&data, WIDTH as u32, HEIGHT as u32);
+        } else {
+            player.load_animation_path(animation_path, WIDTH as u32, HEIGHT as u32);
+        }
+
+        Self {
+            player,
+            last_update: Instant::now(),
+        }
+    }
+
+    fn update(&mut self) -> bool {
+        let updated = self.player.tick();
+        self.last_update = Instant::now();
+        updated
+    }
+
+    fn frame_buffer(&self) -> &[u32] {
+        let (ptr, len) = (self.player.buffer_ptr(), self.player.buffer_len());
+        unsafe { std::slice::from_raw_parts(ptr as *const u32, len as usize) }
+    }
+}
+
+pub const ANIMATION_NAME: &str = "test_inputs_sheet_gradient_animated";
+pub const BINDING_FILE_NAME: &str = "inputs_animated";
+
+fn main() {
+    let mut window = Window::new(
+        "[Bindings - Color] S=Switch Mode | R=Remove Theme | T=Apply theme",
+        WIDTH,
+        HEIGHT,
+        WindowOptions::default(),
+    )
+    .expect("Failed to create window");
+
+    let mut using_animated = true;
+    let mut player = Player::new(&format!("./src/bin/gradient/{}.lottie", ANIMATION_NAME));
+
+    // Load binding and set theme on startup
+    let binding_file_path = format!("./src/bin/gradient/{}.json", BINDING_FILE_NAME);
+    let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
+    player.player.global_inputs_load_data(&binding_file_data);
+    player.player.set_theme("theme");
+
+    println!("[Info] Controls:");
+    println!("  S - Switch between animated/static mode");
+    println!("  R - Remove theme");
+    println!("  T - Apply theme");
+    println!("[Info] Current mode: ANIMATED");
+
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        player.update();
+
+        // R: Remove theme
+        if window.is_key_pressed(Key::R, minifb::KeyRepeat::No) {
+            player.player.reset_theme();
+            player.player.global_inputs_remove();
+            player.player.set_theme("theme");
+            println!("[Debug] Theme removed");
+        }
+
+        // T: Apply theme
+        if window.is_key_pressed(Key::T, minifb::KeyRepeat::Yes) {
+            let binding_file_name = if using_animated {
+                "inputs_animated"
+            } else {
+                "inputs_static"
+            };
+
+            let lt = player.player.set_theme("theme");
+
+            // Load corresponding binding and apply theme
+            let binding_file_path = format!("./src/bin/gradient/{}.json", binding_file_name);
+            let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
+            let load = player.player.global_inputs_load_data(&binding_file_data);
+            println!("[Debug]: Loaded inputs: {}", load);
+        }
+
+        // S: Switch between animated and static mode
+        if window.is_key_pressed(Key::S, minifb::KeyRepeat::No) {
+            using_animated = !using_animated;
+
+            let animation_name = if using_animated {
+                ANIMATION_NAME.to_string()
+            } else {
+                ANIMATION_NAME.replace("_animated", "_static")
+            };
+
+            let binding_file_name = if using_animated {
+                BINDING_FILE_NAME.to_string()
+            } else {
+                BINDING_FILE_NAME.replace("animated", "static")
+            };
+
+            // Load new animation
+            player = Player::new(&format!("./src/bin/gradient/{}.lottie", animation_name));
+
+            // Load corresponding binding and apply theme
+            let binding_file_path = format!("./src/bin/gradient/{}.json", binding_file_name);
+            let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
+            player.player.global_inputs_load_data(&binding_file_data);
+            player.player.set_theme("theme");
+
+            let mode_str = if using_animated { "ANIMATED" } else { "STATIC" };
+            println!("[Info] Switched to {} mode", mode_str);
+        }
+
+        window
+            .update_with_buffer(player.frame_buffer(), WIDTH, HEIGHT)
+            .expect("Failed to update window");
+    }
+}

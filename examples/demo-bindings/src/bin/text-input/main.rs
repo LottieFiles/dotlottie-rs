@@ -89,11 +89,13 @@ impl Player {
                 println!("Current text: '{}'", self.text_input);
                 // Only update if there's still text remaining, or use a space as placeholder
                 if !self.text_input.is_empty() {
-                    self.player
-                        .global_inputs_set_string("text_input", &self.text_input);
+                    let failed = self
+                        .player
+                        .global_inputs_set_string("text", &self.text_input);
+                    println!("Failed: {}", failed);
                 } else {
                     // Use a single space instead of empty string to avoid the crash
-                    self.player.global_inputs_set_string("text_input", " ");
+                    self.player.global_inputs_set_string("text", " ");
                 }
                 None
             }
@@ -104,12 +106,12 @@ impl Player {
             self.text_input.push(c);
             println!("Current text: '{}'", self.text_input);
             self.player
-                .global_inputs_set_string("text_input", &self.text_input);
+                .global_inputs_set_string("text", &self.text_input);
         }
     }
 }
 
-pub const ANIMATION_NAME: &str = "test_inputs_text";
+pub const ANIMATION_NAME: &str = "test_inputs_text_animated";
 pub const BINDING_FILE_NAME: &str = "inputs";
 pub const THEMING_FILE_NAME: &str = "theme";
 // pub const SM_FILE_NAME: &str = "starRating";

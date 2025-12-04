@@ -66,12 +66,12 @@ fn main() {
     // Load binding and set theme on startup
     let binding_file_path = format!("./src/bin/boolean/{}.json", BINDING_FILE_NAME);
     let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
-    let s = player.player.state_machine_load(SM_FILE_NAME);
-    let l = player.player.state_machine_start(OpenUrlPolicy::default());
+    let l = player.player.state_machine_load(SM_FILE_NAME);
+    let s = player.player.state_machine_start(OpenUrlPolicy::default());
     player.player.global_inputs_load_data(&binding_file_data);
     player.player.set_theme("theme");
 
-    println!("{}{}", s, l);
+    println!("state machine: {}{}", l, s);
 
     println!("[Info] Controls:");
     println!("  S - Switch between animated/static mode");

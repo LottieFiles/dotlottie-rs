@@ -80,50 +80,36 @@ impl StateTrait for State {
                 entry_actions,
                 ..
             } => {
-                println!(
-                    "[StateMachine] Entering PlaybackState: animation = '{}'",
-                    animation
-                );
-
                 let default_config = Config::default();
                 let mut defined_mode = default_config.mode;
                 let mut defined_segment = default_config.marker;
 
                 if let Some(new_mode) = mode {
-                    println!("[StateMachine] Found mode override: '{}'", new_mode);
                     match new_mode.as_str() {
                         "Forward" => {
                             defined_mode = Mode::Forward;
-                            println!("[StateMachine] Mode set to Forward");
                         }
                         "Reverse" => {
                             defined_mode = Mode::Reverse;
-                            println!("[StateMachine] Mode set to Reverse");
                         }
                         "Bounce" => {
                             defined_mode = Mode::Bounce;
-                            println!("[StateMachine] Mode set to Bounce");
                         }
                         "ReverseBounce" => {
                             defined_mode = Mode::ReverseBounce;
-                            println!("[StateMachine] Mode set to ReverseBounce");
                         }
                         _ => {
-                            println!("[StateMachine][ERROR] Unknown mode: '{}'", new_mode);
                             return Err(StateMachineActionError::ParsingError);
                         }
                     }
                 }
 
                 if let Some(new_segment) = segment {
-                    println!("[StateMachine] Setting custom segment: '{}'", new_segment);
                     defined_segment = new_segment.clone();
                 }
 
                 if let Ok(player_read) = player.try_read() {
-                    println!("[StateMachine] Acquired player read lock");
                     let size = player_read.size();
-                    println!("[StateMachine] Player size = {:?}", size);
                     let current_config = player_read.config();
 
                     let uses_frame_interpolation = current_config.use_frame_interpolation;
@@ -146,60 +132,32 @@ impl StateTrait for State {
                         animation_id: "".to_string(),
                     };
 
-                    println!(
-                        "[StateMachine] Applying playback config: {:?}",
-                        playback_config
-                    );
-
                     // Set config first so that load_animation uses the preserved layout
                     player_read.set_config(playback_config);
-                    println!("[StateMachine] Config is set on player");
 
                     if !animation.is_empty()
                         && player_read.active_animation_id() != *animation
                         && player_read.render()
                     {
-                        println!(
-                            "[StateMachine] Loading new animation '{}' (current was '{}')",
-                            animation,
-                            player_read.active_animation_id()
-                        );
                         player_read.load_animation(animation, size.0, size.1);
                     } else {
                         if animation.is_empty() {
-                            println!("[StateMachine] Animation name is empty, no reload required");
                         } else if player_read.active_animation_id() == *animation {
-                            println!(
-                                "[StateMachine] Animation '{}' already active, no reload",
-                                animation
-                            );
-                        } else {
-                            println!("[StateMachine] player.render() returned false, animation not loaded");
                         }
                     }
 
                     /* Perform entry actions */
                     if let Some(actions) = entry_actions {
-                        println!("[StateMachine] Executing {} entry_actions", actions.len());
                         for action in actions {
-                            println!("[StateMachine] Executing entry action: {:?}", action);
-                            let result = action.execute(engine, player.clone(), false, true);
-                            if let Err(e) = result {
-                                println!("[StateMachine][ERROR] Action execution failed: {:?}", e);
-                            }
+                            let _ = action.execute(engine, player.clone(), false, true);
                         }
-                    } else {
-                        println!("[StateMachine] No entry actions to perform");
                     }
 
                     if let Some(is_final) = r#final {
                         if *is_final {
-                            println!("[StateMachine] This is a final state. Stopping engine.");
                             engine.stop();
                         }
                     }
-                } else {
-                    println!("[StateMachine][ERROR] Failed to acquire player read lock");
                 }
             }
             State::GlobalState {

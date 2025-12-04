@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -57,7 +59,6 @@ pub struct GlobalInputsEngineBuilder {
 }
 
 impl GlobalInputsEngineBuilder {
-    /// Create a new builder with the bindings definition
     pub fn new(bindings_definition: &str) -> Self {
         Self {
             bindings_definition: bindings_definition.to_string(),
@@ -70,14 +71,29 @@ impl GlobalInputsEngineBuilder {
 
         Ok(GlobalInputsEngine {
             global_inputs_container: parsed_bindings,
-            was_updated: false,
+            state_machine_binding_cache: HashMap::new(),
         })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct StateMachineBindingKey {
+    binding_id: String,
+    state_machine_id: String,
+}
+
+impl StateMachineBindingKey {
+    pub fn new(binding_id: &str, state_machine_id: &str) -> Self {
+        Self {
+            binding_id: binding_id.to_string(),
+            state_machine_id: state_machine_id.to_string(),
+        }
     }
 }
 
 pub struct GlobalInputsEngine {
     global_inputs_container: GlobalInputs,
-    was_updated: bool,
+    state_machine_binding_cache: HashMap<StateMachineBindingKey, Vec<String>>,
 }
 
 // ============================================================================
@@ -127,96 +143,6 @@ macro_rules! impl_getter {
     };
 }
 
-macro_rules! impl_mutator {
-    ($method_name:ident, $variant:ident, $param_type:ty, $type_name:expr, copy) => {
-        pub fn $method_name(
-            &mut self,
-            global_input_name: &str,
-            new_value: $param_type,
-        ) -> Result<(), GlobalInputsEngineError> {
-            if let Some(binding) = self.global_inputs_container.get_mut(global_input_name) {
-                match &mut binding.r#type {
-                    GlobalInputValue::$variant { value } => {
-                        *value = new_value;
-
-                        if self.theme_dependencies.contains_key(global_input_name) {}
-
-                        self.was_updated = true;
-                        println!("[Bindings] Updated: {} to {:?}", global_input_name, *value);
-                        Ok(())
-                    }
-                    _ => Err(GlobalInputsEngineError::WrongGlobalInputType {
-                        global_input_name: global_input_name.to_string(),
-                        expected: $type_name.to_string(),
-                    }),
-                }
-            } else {
-                Err(GlobalInputsEngineError::BindingNotFound(
-                    global_input_name.to_string(),
-                ))
-            }
-        }
-    };
-    ($method_name:ident, $variant:ident, $param_type:ty, $type_name:expr) => {
-        pub fn $method_name(
-            &mut self,
-            global_input_name: &str,
-            new_value: $param_type,
-        ) -> Result<(), GlobalInputsEngineError> {
-            if let Some(binding) = self.global_inputs_container.get_mut(global_input_name) {
-                match &mut binding.r#type {
-                    GlobalInputValue::$variant { value } => {
-                        *value = new_value.clone();
-
-                        self.was_updated = true;
-
-                        println!("[Bindings] Updated: {} to {:?}", global_input_name, *value);
-                        Ok(())
-                    }
-                    _ => Err(GlobalInputsEngineError::WrongGlobalInputType {
-                        global_input_name: global_input_name.to_string(),
-                        expected: $type_name.to_string(),
-                    }),
-                }
-            } else {
-                Err(GlobalInputsEngineError::BindingNotFound(
-                    global_input_name.to_string(),
-                ))
-            }
-        }
-    };
-    // For &str -> String conversion (String binding)
-    ($method_name:ident, $variant:ident, $param_type:ty, $type_name:expr, to_string) => {
-        pub fn $method_name(
-            &mut self,
-            global_input_name: &str,
-            new_value: $param_type,
-        ) -> Result<(), GlobalInputsEngineError> {
-            if let Some(binding) = self.global_inputs_container.get_mut(global_input_name) {
-                match &mut binding.r#type {
-                    GlobalInputValue::$variant { value } => {
-                        *value = new_value.to_string();
-
-                        if self.theme_dependencies.contains_key(global_input_name) {}
-                        self.was_updated = true;
-
-                        println!("[Bindings] Updated: {} to {}", global_input_name, *value);
-                        Ok(())
-                    }
-                    _ => Err(GlobalInputsEngineError::WrongGlobalInputType {
-                        global_input_name: global_input_name.to_string(),
-                        expected: $type_name.to_string(),
-                    }),
-                }
-            } else {
-                Err(GlobalInputsEngineError::BindingNotFound(
-                    global_input_name.to_string(),
-                ))
-            }
-        }
-    };
-}
-
 impl GlobalInputsEngine {
     pub fn builder(bindings_definition: &str) -> GlobalInputsEngineBuilder {
         GlobalInputsEngineBuilder::new(bindings_definition)
@@ -228,7 +154,7 @@ impl GlobalInputsEngine {
 
         Ok(GlobalInputsEngine {
             global_inputs_container: parsed_bindings,
-            was_updated: false,
+            state_machine_binding_cache: HashMap::new(),
         })
     }
 
@@ -250,31 +176,8 @@ impl GlobalInputsEngine {
     impl_getter!(global_inputs_get_string, String, String, "String");
 
     // ============================================================================
-    // Mutators
-    // ============================================================================
-
-    // impl_mutator!(global_inputs_set_color, Color, [f32; 3], "Color", copy);
-    // impl_mutator!(global_inputs_set_vector, Vector, [f32; 2], "Vector", copy);
-    // impl_mutator!(global_inputs_set_numeric, Numeric, f32, "Numeric", copy);
-    // impl_mutator!(global_inputs_set_boolean, Boolean, bool, "Boolean", copy);
-    // impl_mutator!(
-    //     global_inputs_set_gradient,
-    //     Gradient,
-    //     &Vec<GradientStop>,
-    //     "Gradient"
-    // );
-    impl_mutator!(global_inputs_set_image, Image, &ImageValue, "Image");
-    // impl_mutator!(global_inputs_set_string, String, &str, "String", to_string);
-
-    // ============================================================================
     // Utility Methods
     // ============================================================================
-    pub fn read_task_queue(&mut self) -> bool {
-        let was_updated = self.was_updated;
-        self.was_updated = false;
-        return was_updated;
-    }
-
     fn vec_tof32(&self, input: &Vec<f32>) -> [f32; 4] {
         let rgba_value = if input.len() >= 4 {
             [input[0], input[1], input[2], input[3]]
@@ -318,7 +221,6 @@ impl GlobalInputsEngine {
             match &mut binding.r#type {
                 GlobalInputValue::Color { value } => {
                     *value = new_value.to_vec();
-                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -348,7 +250,6 @@ impl GlobalInputsEngine {
             match &mut binding.r#type {
                 GlobalInputValue::Numeric { value } => {
                     *value = new_value;
-                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -378,7 +279,6 @@ impl GlobalInputsEngine {
             match &mut binding.r#type {
                 GlobalInputValue::String { value } => {
                     *value = new_value.to_string();
-                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -408,7 +308,6 @@ impl GlobalInputsEngine {
             match &mut binding.r#type {
                 GlobalInputValue::Boolean { value } => {
                     *value = new_value;
-                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -438,7 +337,6 @@ impl GlobalInputsEngine {
             match &mut binding.r#type {
                 GlobalInputValue::Vector { value } => {
                     *value = new_value;
-                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -468,7 +366,6 @@ impl GlobalInputsEngine {
             match &mut binding.r#type {
                 GlobalInputValue::Gradient { value } => {
                     *value = new_value.to_vec();
-                    self.was_updated = true;
 
                     for resolved in &binding.resolved_theme_bindings {
                         if let Err(e) = resolved.path.apply(
@@ -490,41 +387,66 @@ impl GlobalInputsEngine {
 
     pub fn apply_to_state_machine(
         &mut self,
+        binding_id: &str,
         state_machine_engine: &mut StateMachineEngine,
     ) -> bool {
-        for (_, global_input) in self.global_inputs_container.iter_mut() {
-            if let Some(state_machines) = &global_input.bindings.state_machines {
-                for state_machine in state_machines {
-                    println!(
-                        "State machine id matches: {} = {}",
-                        state_machine.state_machine_id, state_machine_engine.id
-                    );
-                    if state_machine.state_machine_id == state_machine_engine.id {
-                        for binding in &state_machine.input_name {
-                            match &global_input.r#type {
-                                GlobalInputValue::Numeric { value } => state_machine_engine
-                                    .set_numeric_input(&binding, *value, true, false),
-                                GlobalInputValue::Boolean { value } => {
-                                    println!(">> Calling set boolean");
-                                    state_machine_engine
-                                        .set_boolean_input(&binding, *value, true, false)
-                                }
-                                GlobalInputValue::String { value } => state_machine_engine
-                                    .set_string_input(&binding, &value, true, false),
-                                _ => {
-                                    eprintln!(
-                                        "Tried to set an unsupported type to a state machine"
-                                    );
-                                    return false;
-                                }
-                            };
-                        }
-                    }
-                }
+        let cache_key = StateMachineBindingKey::new(binding_id, &state_machine_engine.id);
+
+        // Check cache first
+        let input_names = if let Some(cached) = self.state_machine_binding_cache.get(&cache_key) {
+            cached.clone()
+        } else {
+            // Resolve and cache
+            let input_names = self.resolve_input_names(binding_id, &state_machine_engine.id);
+            self.state_machine_binding_cache
+                .insert(cache_key, input_names.clone());
+            input_names
+        };
+
+        if input_names.is_empty() {
+            return false;
+        }
+
+        let Some(global_input) = self.global_inputs_container.get(binding_id) else {
+            return false;
+        };
+
+        let mut success = false;
+        for input_name in &input_names {
+            let result = match &global_input.r#type {
+                GlobalInputValue::Numeric { value } => state_machine_engine
+                    .set_numeric_input(input_name, *value, true, false)
+                    .is_some(),
+                GlobalInputValue::Boolean { value } => state_machine_engine
+                    .set_boolean_input(input_name, *value, true, false)
+                    .is_some(),
+                GlobalInputValue::String { value } => state_machine_engine
+                    .set_string_input(input_name, value, true, false)
+                    .is_some(),
+                _ => false,
+            };
+            success = success || result;
+        }
+
+        success
+    }
+
+    fn resolve_input_names(&self, binding_id: &str, state_machine_id: &str) -> Vec<String> {
+        let Some(global_input) = self.global_inputs_container.get(binding_id) else {
+            return vec![];
+        };
+
+        let Some(state_machine_bindings) = &global_input.bindings.state_machines else {
+            return vec![];
+        };
+
+        for sm_binding in state_machine_bindings {
+            if sm_binding.state_machine_id == state_machine_id {
+                return sm_binding.input_name.clone();
             }
         }
 
-        false
+        vec![]
     }
 
     pub fn apply_to_slots(
@@ -586,16 +508,17 @@ impl GlobalInputsEngine {
                             });
 
                         //todo: This doesnt clear out ever
-                        println!(
-                            "Resolved theme bindings: {}",
-                            global_input.resolved_theme_bindings.len()
-                        );
-
                         let _ = renderer.apply_all_slots();
                     }
                 }
             }
         }
         Ok("".to_string())
+    }
+
+    pub fn clear_resolved_theme_bindings(&mut self) {
+        for (_, global_input) in self.global_inputs_container.iter_mut() {
+            global_input.resolved_theme_bindings.clear();
+        }
     }
 }

@@ -143,7 +143,6 @@ struct DotLottieRuntime {
     loop_count: u32,
     config: Config,
     dotlottie_manager: Option<DotLottieManager>,
-    global_inputs_engine: Option<GlobalInputsEngine>,
     direction: Direction,
     markers: MarkersMap,
     active_animation_id: String,
@@ -173,13 +172,17 @@ impl DotLottieRuntime {
             loop_count: 0,
             config,
             dotlottie_manager: None,
-            global_inputs_engine: None,
             direction,
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
             active_theme_id: String::new(),
             active_state_machine_id: String::new(),
         }
+    }
+
+    /// Returns a mutable reference to the renderer for external slot operations
+    pub fn renderer_mut(&mut self) -> &mut Box<dyn LottieRenderer> {
+        &mut self.renderer
     }
 
     pub fn markers(&self) -> Vec<Marker> {
@@ -588,14 +591,6 @@ impl DotLottieRuntime {
         self.renderer.set_viewport(x, y, w, h).is_ok()
     }
 
-    pub fn global_input_was_modified(&mut self) -> bool {
-        if let Some(global_inputs_engine) = &mut self.global_inputs_engine {
-            global_inputs_engine.read_task_queue()
-        } else {
-            false
-        }
-    }
-
     pub fn render(&mut self) -> bool {
         let is_ok = self.renderer.render().is_ok();
 
@@ -998,10 +993,6 @@ impl DotLottieRuntime {
             .unwrap_or(false);
 
         if ok {
-            if let Some(b_e) = &mut self.global_inputs_engine {
-                let _ = b_e.apply_to_slots(&theme_id, &mut self.renderer);
-            }
-
             self.active_theme_id = theme_id.to_string();
             self.config.theme_id = theme_id.to_string();
         }
@@ -1020,10 +1011,6 @@ impl DotLottieRuntime {
             Ok(theme) => {
                 let slots = theme.to_slot_types(&self.active_animation_id);
                 let r = self.apply_slot_types(slots);
-
-                if let Some(b_e) = &mut self.global_inputs_engine {
-                    let _ = b_e.apply_to_slots("", &mut self.renderer);
-                }
 
                 r
             }
@@ -1237,242 +1224,13 @@ impl DotLottieRuntime {
         ];
         self.renderer.set_transform(&transform_array).is_ok()
     }
-
-    pub fn global_inputs_load(&mut self, id: &str) -> bool {
-        let Some(data) = self.get_global_input(id) else {
-            return false;
-        };
-
-        let engine = match GlobalInputsEngine::builder(&data).build() {
-            Ok(engine) => engine,
-            Err(e) => {
-                println!(
-                    "[Bindings] Failed to create new GlobalInputsEngine. Reason: {:?}",
-                    e
-                );
-                return false;
-            }
-        };
-
-        let already_exists = self.global_inputs_engine.is_some();
-
-        if already_exists {
-            println!("[Bindings] GlobalInputsEngine already exists.");
-        } else {
-            self.global_inputs_engine = Some(engine);
-        }
-
-        // Apply theme if one is active
-        let active_theme_id = self.active_theme_id().to_string();
-        if !active_theme_id.is_empty() {
-            if let Some(b_e) = &mut self.global_inputs_engine {
-                let _ = b_e.apply_to_slots(&active_theme_id, &mut self.renderer);
-            }
-        }
-
-        !already_exists
-    }
-
-    pub fn global_inputs_remove(&mut self) {
-        self.global_inputs_engine = None;
-    }
-
-    pub fn global_inputs_apply_to_state_machine(
-        &mut self,
-        state_machine_engine: &mut StateMachineEngine,
-    ) {
-        if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            global_inputs_engine.apply_to_state_machine(state_machine_engine);
-        }
-    }
-
-    pub fn global_inputs_load_data(&mut self, bindings_data: &str) -> bool {
-        let engine = GlobalInputsEngine::builder(bindings_data).build();
-
-        if engine.is_err() {
-            println!(
-                "[Bindings] Failed to create new GlobalInputsEngine. Reason: {:?}",
-                engine.err()
-            );
-            return false;
-        }
-
-        let theme_id = self.active_theme_id().to_string();
-
-        if let Ok(new_bindings_engine) = engine {
-            self.global_inputs_engine.replace(new_bindings_engine);
-
-            if !theme_id.is_empty() {
-                if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-                    let result = global_inputs_engine.apply_to_slots(&theme_id, &mut self.renderer);
-                    return result.is_ok();
-                }
-            }
-            return false;
-        }
-
-        false
-    }
-
-    pub fn global_inputs_set_string(&mut self, binding_name: &str, new_value: &str) -> bool {
-        if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine.global_inputs_set_string(
-                binding_name,
-                new_value,
-                &mut self.renderer,
-            );
-        }
-
-        false
-    }
-
-    pub fn global_inputs_set_color(&mut self, binding_name: &str, new_value: &Vec<f32>) -> bool {
-        if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine.global_inputs_set_color(
-                binding_name,
-                new_value,
-                &mut self.renderer,
-            );
-        }
-
-        false
-    }
-
-    pub fn global_inputs_set_vector(&mut self, binding_name: &str, new_value: &[f32; 2]) -> bool {
-        if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine.global_inputs_set_vector(
-                binding_name,
-                *new_value,
-                &mut self.renderer,
-            );
-        }
-
-        false
-    }
-
-    pub fn global_inputs_set_numeric(&mut self, binding_name: &str, new_value: f32) -> bool {
-        if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine.global_inputs_set_numeric(
-                binding_name,
-                new_value,
-                &mut self.renderer,
-            );
-        }
-
-        false
-    }
-
-    pub fn global_inputs_set_boolean(&mut self, binding_name: &str, new_value: bool) -> bool {
-        if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine.global_inputs_set_boolean(
-                binding_name,
-                new_value,
-                &mut self.renderer,
-            );
-        }
-
-        false
-    }
-
-    pub fn global_inputs_set_gradient(
-        &mut self,
-        binding_name: &str,
-        new_value: &Vec<GradientStop>,
-    ) -> bool {
-        if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine.global_inputs_set_gradient(
-                binding_name,
-                new_value,
-                &mut self.renderer,
-            );
-        }
-
-        false
-    }
-
-    pub fn global_inputs_set_image(&mut self, binding_name: &str, new_value: &ImageValue) -> bool {
-        if let Some(global_inputs_engine) = self.global_inputs_engine.as_mut() {
-            return global_inputs_engine
-                .global_inputs_set_image(binding_name, new_value)
-                .is_ok();
-        }
-
-        false
-    }
-
-    pub fn global_inputs_get_string(&self, binding_name: &str) -> Option<String> {
-        if let Some(global_inputs_engine) = &self.global_inputs_engine {
-            return global_inputs_engine
-                .global_inputs_get_string(binding_name)
-                .ok();
-        }
-
-        None
-    }
-
-    pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f32; 4]> {
-        if let Some(global_inputs_engine) = &self.global_inputs_engine {
-            return global_inputs_engine.global_inputs_get_color(binding_name);
-        }
-
-        None
-    }
-
-    pub fn global_inputs_get_vector(&self, binding_name: &str) -> Option<[f32; 2]> {
-        if let Some(global_inputs_engine) = &self.global_inputs_engine {
-            return global_inputs_engine
-                .global_inputs_get_vector(binding_name)
-                .ok();
-        }
-
-        None
-    }
-
-    pub fn global_inputs_get_numeric(&self, binding_name: &str) -> Option<f32> {
-        if let Some(global_inputs_engine) = &self.global_inputs_engine {
-            return global_inputs_engine
-                .global_inputs_get_numeric(binding_name)
-                .ok();
-        }
-
-        None
-    }
-
-    pub fn global_inputs_get_boolean(&self, binding_name: &str) -> Option<bool> {
-        if let Some(global_inputs_engine) = &self.global_inputs_engine {
-            return global_inputs_engine
-                .global_inputs_get_boolean(binding_name)
-                .ok();
-        }
-
-        None
-    }
-
-    pub fn global_inputs_get_gradient(&self, binding_name: &str) -> Option<Vec<GradientStop>> {
-        if let Some(global_inputs_engine) = &self.global_inputs_engine {
-            return global_inputs_engine
-                .global_inputs_get_gradient(binding_name)
-                .ok();
-        }
-
-        None
-    }
-
-    pub fn global_inputs_get_image(&self, binding_name: &str) -> Option<ImageValue> {
-        if let Some(global_inputs_engine) = &self.global_inputs_engine {
-            return global_inputs_engine
-                .global_inputs_get_image(binding_name)
-                .ok();
-        }
-
-        None
-    }
 }
 
 pub struct DotLottiePlayerContainer {
     runtime: RwLock<DotLottieRuntime>,
     observers: RwLock<Vec<Arc<dyn Observer>>>,
     state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
+    global_inputs_engine: RwLock<Option<GlobalInputsEngine>>,
 }
 
 impl DotLottiePlayerContainer {
@@ -1482,6 +1240,7 @@ impl DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::new(config, threads)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
+            global_inputs_engine: RwLock::new(None),
         }
     }
 
@@ -1490,6 +1249,7 @@ impl DotLottiePlayerContainer {
             runtime: RwLock::new(DotLottieRuntime::with_renderer(config, renderer)),
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
+            global_inputs_engine: RwLock::new(None),
         }
     }
 
@@ -1847,7 +1607,14 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn set_theme(&self, theme_id: &str) -> bool {
-        self.runtime.write().unwrap().set_theme(theme_id)
+        let result = self.runtime.write().unwrap().set_theme(theme_id);
+
+        if result {
+            // Apply global inputs to the new theme's slots
+            self.global_inputs_apply_to_slots(theme_id);
+        }
+
+        result
     }
 
     pub fn reset_theme(&self) -> bool {
@@ -1995,36 +1762,7 @@ impl DotLottiePlayerContainer {
         "".to_string()
     }
 
-    pub fn global_input_change_check(&self) {
-        if self.active_state_machine_id().is_empty() {
-            return;
-        }
-
-        let mut runtime_guard = match self.runtime.write() {
-            Ok(guard) => guard,
-            Err(_) => return,
-        };
-
-        if runtime_guard.global_input_was_modified() {
-            println!("Global input was modified");
-            if let Ok(mut state_machine) = self.state_machine.try_write() {
-                if let Some(sm) = state_machine.as_mut() {
-                    // drop the current runtime_guard before acquiring a new write lock, in case there's inner lock ordering
-                    drop(runtime_guard);
-
-                    if let Ok(mut runtime_guard2) = self.runtime.write() {
-                        println!("Applying to statemachine");
-                        runtime_guard2.global_inputs_apply_to_state_machine(sm);
-                        println!("Finished applying to state machine");
-                    }
-                }
-            }
-        }
-    }
-
     pub fn tick(&self) -> bool {
-        self.global_input_change_check();
-
         if self.is_tweening() {
             self.tween_update(None) && self.render()
         } else {
@@ -2110,53 +1848,281 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn global_inputs_remove(&self) {
-        self.runtime.write().unwrap().global_inputs_remove()
+        if let Ok(mut engine_guard) = self.global_inputs_engine.write() {
+            *engine_guard = None;
+        }
     }
 
-    pub fn global_inputs_load_data(&self, bindings_data: &str) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .global_inputs_load_data(bindings_data)
+    fn sync_global_inputs_to_state_machine(&self, modified_binding_id: &str) {
+        if self.active_state_machine_id().is_empty() {
+            return;
+        }
+
+        let mut state_machine_guard = match self.state_machine.try_write() {
+            Ok(g) => g,
+            Err(_) => {
+                return;
+            }
+        };
+
+        let sm = match state_machine_guard.as_mut() {
+            Some(sm) => sm,
+            None => {
+                return;
+            }
+        };
+
+        let mut engine_guard = match self.global_inputs_engine.write() {
+            Ok(g) => g,
+            Err(_) => {
+                return;
+            }
+        };
+
+        if let Some(engine) = engine_guard.as_mut() {
+            engine.apply_to_state_machine(modified_binding_id, sm);
+        }
     }
 
     pub fn global_inputs_load(&self, id: &str) -> bool {
-        self.runtime.write().unwrap().global_inputs_load(id)
+        // Get the data from runtime's dotlottie_manager
+        let data = {
+            let runtime = match self.runtime.read() {
+                Ok(r) => r,
+                Err(_) => return false,
+            };
+            match runtime.get_global_input(id) {
+                Some(d) => d,
+                None => return false,
+            }
+        }; // runtime lock released
+
+        let engine = match GlobalInputsEngine::builder(&data).build() {
+            Ok(e) => e,
+            Err(e) => {
+                println!("[Bindings] Failed to create GlobalInputsEngine: {:?}", e);
+                return false;
+            }
+        };
+
+        let mut engine_guard = match self.global_inputs_engine.write() {
+            Ok(g) => g,
+            Err(_) => return false,
+        };
+
+        if engine_guard.is_some() {
+            println!("[Bindings] GlobalInputsEngine already exists.");
+            return false;
+        }
+
+        *engine_guard = Some(engine);
+        drop(engine_guard);
+
+        // Apply theme if one is active
+        let active_theme_id = self.active_theme_id();
+        if !active_theme_id.is_empty() {
+            self.global_inputs_apply_to_slots(&active_theme_id);
+        }
+
+        true
+    }
+
+    pub fn global_inputs_load_data(&self, bindings_data: &str) -> bool {
+        let engine = match GlobalInputsEngine::builder(bindings_data).build() {
+            Ok(e) => e,
+            Err(e) => {
+                println!("[Bindings] Failed to create GlobalInputsEngine: {:?}", e);
+                return false;
+            }
+        };
+
+        let mut engine_guard = match self.global_inputs_engine.write() {
+            Ok(g) => g,
+            Err(_) => return false,
+        };
+
+        *engine_guard = Some(engine);
+        drop(engine_guard);
+
+        // Apply theme if one is active
+        let active_theme_id = self.active_theme_id();
+        if !active_theme_id.is_empty() {
+            self.global_inputs_apply_to_slots(&active_theme_id);
+        }
+
+        true
+    }
+
+    /// Helper to apply global inputs to renderer slots
+    fn global_inputs_apply_to_slots(&self, theme_id: &str) -> bool {
+        let mut engine_guard = match self.global_inputs_engine.write() {
+            Ok(g) => g,
+            Err(_) => return false,
+        };
+
+        let engine = match engine_guard.as_mut() {
+            Some(e) => e,
+            None => return false,
+        };
+
+        let mut runtime_guard = match self.runtime.write() {
+            Ok(r) => r,
+            Err(_) => return false,
+        };
+
+        engine
+            .apply_to_slots(theme_id, runtime_guard.renderer_mut())
+            .is_ok()
     }
 
     pub fn global_inputs_set_string(&self, binding_name: &str, new_value: &str) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .global_inputs_set_string(binding_name, new_value)
+        let success = {
+            let mut engine_guard = match self.global_inputs_engine.write() {
+                Ok(g) => g,
+                Err(_) => return false,
+            };
+
+            let engine = match engine_guard.as_mut() {
+                Some(e) => e,
+                None => return false,
+            };
+
+            let mut runtime_guard = match self.runtime.write() {
+                Ok(r) => r,
+                Err(_) => return false,
+            };
+
+            engine.global_inputs_set_string(binding_name, new_value, runtime_guard.renderer_mut())
+        };
+
+        if success {
+            self.sync_global_inputs_to_state_machine(binding_name);
+        }
+
+        success
     }
 
     pub fn global_inputs_set_color(&self, binding_name: &str, new_value: &Vec<f32>) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .global_inputs_set_color(binding_name, new_value)
+        let success = {
+            let mut engine_guard = match self.global_inputs_engine.write() {
+                Ok(g) => g,
+                Err(_) => return false,
+            };
+
+            let engine = match engine_guard.as_mut() {
+                Some(e) => e,
+                None => return false,
+            };
+
+            let mut runtime_guard = match self.runtime.write() {
+                Ok(r) => r,
+                Err(_) => return false,
+            };
+
+            engine.global_inputs_set_color(binding_name, new_value, runtime_guard.renderer_mut())
+        };
+
+        if success {
+            self.sync_global_inputs_to_state_machine(binding_name);
+        }
+
+        success
     }
 
     pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f32; 2]) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .global_inputs_set_vector(binding_name, new_value)
+        let success = {
+            let mut engine_guard = match self.global_inputs_engine.write() {
+                Ok(g) => g,
+                Err(_) => return false,
+            };
+
+            let engine = match engine_guard.as_mut() {
+                Some(e) => e,
+                None => return false,
+            };
+
+            let mut runtime_guard = match self.runtime.write() {
+                Ok(r) => r,
+                Err(_) => return false,
+            };
+
+            engine.global_inputs_set_vector(binding_name, *new_value, runtime_guard.renderer_mut())
+        };
+
+        if success {
+            self.sync_global_inputs_to_state_machine(binding_name);
+        }
+
+        success
     }
 
     pub fn global_inputs_set_numeric(&self, binding_name: &str, new_value: f32) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .global_inputs_set_numeric(binding_name, new_value)
+        let success = {
+            let mut engine_guard = match self.global_inputs_engine.write() {
+                Ok(g) => g,
+                Err(_) => return false,
+            };
+
+            let engine = match engine_guard.as_mut() {
+                Some(e) => e,
+                None => return false,
+            };
+
+            let mut runtime_guard = match self.runtime.write() {
+                Ok(r) => r,
+                Err(_) => return false,
+            };
+
+            engine.global_inputs_set_numeric(binding_name, new_value, runtime_guard.renderer_mut())
+        };
+
+        if success {
+            self.sync_global_inputs_to_state_machine(binding_name);
+        }
+
+        success
     }
 
     pub fn global_inputs_set_boolean(&self, binding_name: &str, new_value: bool) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .global_inputs_set_boolean(binding_name, new_value)
+        let success = {
+            println!("Getting engine write..");
+            let mut engine_guard = match self.global_inputs_engine.write() {
+                Ok(g) => g,
+                Err(_) => {
+                    println!("[set_boolean] Failed to acquire engine lock");
+                    return false;
+                }
+            };
+
+            println!("Getting engine write..DONE");
+
+            let engine = match engine_guard.as_mut() {
+                Some(e) => e,
+                None => {
+                    println!("[set_boolean] Failed to acquire engine lock");
+                    return false;
+                }
+            };
+            println!("Getting runtime write..");
+            let mut runtime_guard = match self.runtime.write() {
+                Ok(r) => r,
+                Err(_) => {
+                    println!("[set_boolean] Failed to acquire engine lock");
+                    return false;
+                }
+            };
+
+            println!("Getting runtime write..DONE");
+            println!("Calling global_inputs_set_boolean");
+            engine.global_inputs_set_boolean(binding_name, new_value, runtime_guard.renderer_mut())
+        };
+
+        if success {
+            println!("Global input set! Calling state machine sync");
+            self.sync_global_inputs_to_state_machine(binding_name);
+        }
+
+        success
     }
 
     pub fn global_inputs_set_gradient(
@@ -2164,66 +2130,119 @@ impl DotLottiePlayerContainer {
         binding_name: &str,
         new_value: &Vec<GradientStop>,
     ) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .global_inputs_set_gradient(binding_name, new_value)
+        let success = {
+            let mut engine_guard = match self.global_inputs_engine.write() {
+                Ok(g) => g,
+                Err(_) => return false,
+            };
+
+            let engine = match engine_guard.as_mut() {
+                Some(e) => e,
+                None => return false,
+            };
+
+            let mut runtime_guard = match self.runtime.write() {
+                Ok(r) => r,
+                Err(_) => return false,
+            };
+
+            engine.global_inputs_set_gradient(binding_name, new_value, runtime_guard.renderer_mut())
+        };
+
+        if success {
+            self.sync_global_inputs_to_state_machine(binding_name);
+        }
+
+        success
     }
 
     pub fn global_inputs_set_image(&self, binding_name: &str, new_value: &ImageValue) -> bool {
-        self.runtime
-            .write()
-            .unwrap()
-            .global_inputs_set_image(binding_name, new_value)
+        // Note: image doesn't need renderer, just the engine
+        let success = {
+            let mut engine_guard = match self.global_inputs_engine.write() {
+                Ok(g) => g,
+                Err(_) => return false,
+            };
+
+            let engine = match engine_guard.as_mut() {
+                Some(e) => e,
+                None => return false,
+            };
+
+            false
+
+            // engine
+            //     .global_inputs_set_image(binding_name, new_value)
+            //     .is_ok()
+        };
+
+        if success {
+            self.sync_global_inputs_to_state_machine(binding_name);
+        }
+
+        success
     }
 
     pub fn global_inputs_get_string(&self, binding_name: &str) -> Option<String> {
-        self.runtime
+        self.global_inputs_engine
             .read()
-            .unwrap()
+            .ok()?
+            .as_ref()?
             .global_inputs_get_string(binding_name)
+            .ok()
     }
 
     pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f32; 4]> {
-        self.runtime
+        self.global_inputs_engine
             .read()
-            .unwrap()
+            .ok()?
+            .as_ref()?
             .global_inputs_get_color(binding_name)
     }
 
     pub fn global_inputs_get_vector(&self, binding_name: &str) -> Option<[f32; 2]> {
-        self.runtime
+        self.global_inputs_engine
             .read()
-            .unwrap()
+            .ok()?
+            .as_ref()?
             .global_inputs_get_vector(binding_name)
+            .ok()
     }
 
     pub fn global_inputs_get_numeric(&self, binding_name: &str) -> Option<f32> {
-        self.runtime
+        self.global_inputs_engine
             .read()
-            .unwrap()
+            .ok()?
+            .as_ref()?
             .global_inputs_get_numeric(binding_name)
+            .ok()
     }
 
     pub fn global_inputs_get_boolean(&self, binding_name: &str) -> Option<bool> {
-        self.runtime
+        self.global_inputs_engine
             .read()
-            .unwrap()
+            .ok()?
+            .as_ref()?
             .global_inputs_get_boolean(binding_name)
+            .ok()
     }
 
     pub fn global_inputs_get_gradient(&self, binding_name: &str) -> Option<Vec<GradientStop>> {
-        self.runtime
+        self.global_inputs_engine
             .read()
-            .unwrap()
+            .ok()?
+            .as_ref()?
             .global_inputs_get_gradient(binding_name)
+            .ok()
     }
 
     pub fn global_inputs_get_image(&self, binding_name: &str) -> Option<ImageValue> {
-        self.runtime
+        self.global_inputs_engine
             .read()
-            .unwrap()
+            .ok()?
+            .as_ref()?
             .global_inputs_get_image(binding_name)
+            .ok()
     }
 }
 
@@ -2860,37 +2879,37 @@ impl DotLottiePlayer {
 
     pub fn global_inputs_set_string(&self, binding_name: &str, new_value: &str) -> bool {
         self.player
-            .write()
-            .unwrap()
-            .global_inputs_set_string(binding_name, new_value)
+            .read()
+            .map(|p| p.global_inputs_set_string(binding_name, new_value))
+            .unwrap_or(false)
     }
 
     pub fn global_inputs_set_color(&self, binding_name: &str, new_value: &Vec<f32>) -> bool {
         self.player
-            .write()
-            .unwrap()
-            .global_inputs_set_color(binding_name, new_value)
+            .read()
+            .map(|p| p.global_inputs_set_color(binding_name, new_value))
+            .unwrap_or(false)
     }
 
     pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f32; 2]) -> bool {
         self.player
-            .write()
-            .unwrap()
-            .global_inputs_set_vector(binding_name, new_value)
+            .read()
+            .map(|p| p.global_inputs_set_vector(binding_name, new_value))
+            .unwrap_or(false)
     }
 
     pub fn global_inputs_set_numeric(&self, binding_name: &str, new_value: f32) -> bool {
         self.player
-            .write()
-            .unwrap()
-            .global_inputs_set_numeric(binding_name, new_value)
+            .read()
+            .map(|p| p.global_inputs_set_numeric(binding_name, new_value))
+            .unwrap_or(false)
     }
 
     pub fn global_inputs_set_boolean(&self, binding_name: &str, new_value: bool) -> bool {
         self.player
-            .write()
-            .unwrap()
-            .global_inputs_set_boolean(binding_name, new_value)
+            .read()
+            .map(|p| p.global_inputs_set_boolean(binding_name, new_value))
+            .unwrap_or(false)
     }
 
     pub fn global_inputs_set_gradient(
@@ -2900,15 +2919,15 @@ impl DotLottiePlayer {
     ) -> bool {
         self.player
             .read()
-            .unwrap()
-            .global_inputs_set_gradient(binding_name, new_value)
+            .map(|p| p.global_inputs_set_gradient(binding_name, new_value))
+            .unwrap_or(false)
     }
 
     pub fn global_inputs_set_image(&self, binding_name: &str, new_value: &ImageValue) -> bool {
         self.player
             .read()
-            .unwrap()
-            .global_inputs_set_image(binding_name, new_value)
+            .map(|p| p.global_inputs_set_image(binding_name, new_value))
+            .unwrap_or(false)
     }
 
     pub fn global_inputs_get_string(&self, binding_name: &str) -> Option<String> {

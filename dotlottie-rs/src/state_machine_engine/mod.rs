@@ -297,24 +297,18 @@ impl StateMachineEngine {
             return None;
         }
 
-        println!("A");
         let ret = self.inputs.set_boolean(key, value);
-        println!("b");
         if let Some(InputValue::Boolean(old_value)) = ret.clone() {
             self.observe_boolean_input_value_change(key, old_value, value);
         }
-        println!("c");
 
         if called_from_action {
             self.action_mutated_inputs = true;
         }
-        println!("d");
 
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
         }
-
-        println!("e");
 
         ret
     }
@@ -678,66 +672,37 @@ impl StateMachineEngine {
         causing_transition: Option<&Transition>,
         called_from_global: bool,
     ) -> Result<(), StateMachineEngineError> {
-        println!("set_current_state called with state_name: {}", state_name);
-
         let new_state = self.get_state(state_name);
         if new_state.is_none() {
-            println!("set_current_state: failed to get state '{}'", state_name);
             return Err(StateMachineEngineError::CreationError);
         }
 
         let new_state = new_state.unwrap();
-        println!(
-            "set_current_state: Acquired new state '{}', current is '{}'",
-            new_state.name(),
-            self.get_current_state_name()
-        );
 
         // Emit transition occured event
-        println!(
-            "set_current_state: Emitting observe_on_transition({}, {})",
-            self.get_current_state_name(),
-            new_state.name()
-        );
         self.observe_on_transition(&self.get_current_state_name(), &new_state.name());
 
         // Perform exit actions on the current state if there is one.
         if self.current_state.is_some() {
-            println!("set_current_state: current_state is_some, preparing to exit");
             let state = self.current_state.take();
             let player = self.player.take();
             if let (Some(state), Some(player)) = (state, player) {
                 if !called_from_global {
-                    println!(
-                        "set_current_state: calling exit on state '{}'",
-                        state.name()
-                    );
                     let _ = state.exit(self, &player);
                 }
                 // Don't forget to put things back
-                println!("set_current_state: putting state/player back after exit");
                 self.current_state = Some(state);
                 self.player = Some(player);
-            } else {
-                println!("set_current_state: missing state or player for exit");
             }
-        } else {
-            println!("set_current_state: current_state is None, so no exit to run");
         }
 
         // Emit transition occured event for state exit
-        println!(
-            "set_current_state: Emitting observe_on_state_exit({})",
-            self.get_current_state_name()
-        );
         self.observe_on_state_exit(&self.get_current_state_name());
 
         // Handle tweened transitions
         if let Some(causing_transition) = causing_transition {
             if let Transition::Tweened { .. } = causing_transition {
-                println!("set_current_state: This is a Tweened transition, trying to handle tween");
                 if let Some(unwrapped_player) = &self.player {
-                    println!("set_current_state: player Some, trying read lock");
                     let read_lock = &unwrapped_player.try_read();
 
                     if let Ok(player) = read_lock {
@@ -748,16 +713,7 @@ impl StateMachineEngine {
                         };
                         match &new_state {
                             State::PlaybackState { .. } => {
-                                println!(
-                                    "set_current_state: transitioning to PlaybackState, checking for segment"
-                                );
                                 if let Some(target_segment) = segment_clone {
-                                    println!(
-                                        "set_current_state: Initiating Tween to marker: '{:?}', duration: {:?}, easing: {:?}",
-                                        target_segment,
-                                        causing_transition.duration(),
-                                        causing_transition.easing()
-                                    );
                                     self.tween_transition_target_state = Some(new_state.clone());
                                     self.status = StateMachineEngineStatus::Tweening;
                                     player.tween_to_marker(
@@ -765,68 +721,36 @@ impl StateMachineEngine {
                                         Some(causing_transition.duration()),
                                         Some(causing_transition.easing().to_vec()),
                                     );
-                                    println!(
-                                        "set_current_state: Tween started; state machine set to Tweening, returning early"
-                                    );
                                     return Ok(());
-                                } else {
-                                    println!(
-                                        "set_current_state: No segment on PlaybackState; continuing with normal transition"
-                                    );
                                 }
                             }
                             State::GlobalState { .. } => {
-                                println!(
-                                    "set_current_state: transitioning to GlobalState while tweening; doing nothing extra"
-                                );
                                 return Ok(());
                             }
                         }
-                    } else {
-                        println!(
-                            "set_current_state: Could not get read lock on player for tweening"
-                        );
                     }
-                } else {
-                    println!("set_current_state: No player found when handling tweened transition");
                 }
             }
         }
 
         // Assign the new state to the current_state
-        println!("set_current_state: Assigning new_state to current_state");
         self.current_state = Some(new_state);
 
         // Emit transition occured event for state entry
-        println!(
-            "set_current_state: Emitting observe_on_state_entered({})",
-            self.get_current_state_name()
-        );
         self.observe_on_state_entered(&self.get_current_state_name());
 
         // Perform entry actions
-        println!("set_current_state: About to take state/player for entry actions");
         let state = self.current_state.take();
         let player = self.player.take();
 
         if let (Some(state), Some(player)) = (state, player) {
-            println!(
-                "set_current_state: calling state.enter on state '{}'",
-                state.name()
-            );
             let _ = state.enter(self, &player);
             // Don't forget to put things back
-            println!("set_current_state: returning state/player to self after entry");
             self.current_state = Some(state);
             self.player = Some(player);
         } else {
-            println!("set_current_state: Missing state or player; SetStateError");
             return Err(StateMachineEngineError::SetStateError);
         }
-        println!(
-            "set_current_state: Transition to state '{}' complete, returning Ok",
-            self.get_current_state_name()
-        );
         Ok(())
     }
 
@@ -934,14 +858,11 @@ impl StateMachineEngine {
     }
 
     pub fn run_current_state_pipeline(&mut self) -> Result<(), StateMachineEngineError> {
-        println!("f: Entered run_current_state_pipeline");
         // Reset cycle count for each pipeline run
         self.current_cycle_count = 0;
-        println!("g: Reset current_cycle_count");
 
         // If the state machine is tweening, don't run the pipeline
         if self.status == StateMachineEngineStatus::Tweening {
-            println!("h: StateMachineEngineStatus is Tweening, exiting early");
             return Ok(());
         }
 
@@ -950,41 +871,33 @@ impl StateMachineEngine {
         if self.status != StateMachineEngineStatus::Running
             || (self.current_state.is_none() && self.global_state.is_none())
         {
-            println!("i: StateMachineEngineStatus is not Running or no state present, exiting with error");
             return Err(StateMachineEngineError::NotRunningError);
         }
 
         let mut tick = true;
         let mut ignore_global = false;
-        println!("j: Starting while loop for state pipeline");
 
         while tick {
-            println!("k: Top of tick loop");
-
             // Safety fallback to prevent infinite loops
             tick = false;
             let mut ignore_child = false;
 
             // --------------- Start infinite loop detection
             if let Some(_cycle) = self.detect_cycle() {
-                println!("l: Cycle detected");
                 self.current_cycle_count += 1;
 
                 if self.current_cycle_count >= self.max_cycle_count {
-                    println!("m: Max cycle count exceeded, stopping engine");
                     self.stop();
                     self.observe_on_error("InfiniteLoop");
                     return Err(StateMachineEngineError::InfiniteLoopError);
                 }
 
                 // Clear the history to allow for detecting new cycles
-                println!("n: Clearing state_history for new cycle detection");
                 self.state_history.clear();
             }
 
             // Record the current state
             if let Some(state) = &self.current_state {
-                println!("o: Pushing current state {} to state_history", state.name());
                 self.state_history.push(state.name().to_string());
             }
 
@@ -993,19 +906,15 @@ impl StateMachineEngine {
             // Check if there is a global state
             // If there is, evaluate the transitions of the global state first
             if !ignore_global {
-                println!("p: Evaluating global state...");
                 // Global state returned true meaning it changed the current state
                 if self.evaluate_global_state() {
-                    println!("q: Global state evaluation led to a state change");
                     // Check the current state, if its tweening, stop immediately
                     if self.status == StateMachineEngineStatus::Tweening {
-                        println!("r: Status is Tweening after global change, breaking loop");
                         break;
                     }
                     // Therfor we need to re-evaluate the global state.
                     // When we entered the state from global, it made on_entry changes.
                     if self.action_mutated_inputs {
-                        println!("s: action_mutated_inputs set after global change, prepare to re-evaluate");
                         ignore_global = false;
                         ignore_child = true;
 
@@ -1013,7 +922,6 @@ impl StateMachineEngine {
                         self.action_mutated_inputs = false;
                     }
                     if self.curr_event.is_some() {
-                        println!("t: curr_event is Some after global change, will re-evaluate");
                         ignore_global = false;
                         ignore_child = true;
 
@@ -1023,37 +931,23 @@ impl StateMachineEngine {
             }
 
             if !ignore_child {
-                println!("u: Evaluating current state transitions...");
                 if let Some(current_state_to_evaluate) = &self.current_state {
                     if let Some((target_state, causing_transition)) = self
                         .evaluate_transitions(current_state_to_evaluate, self.curr_event.as_ref())
                     {
-                        println!(
-                            "v: Found a transition for state {} to {}",
-                            current_state_to_evaluate.name(),
-                            target_state
-                        );
                         self.curr_event = None;
 
-                        println!("vv: Setting current state");
                         let success =
                             self.set_current_state(&target_state, Some(&causing_transition), false);
 
-                        println!("vvv: Setting current state");
-
                         match success {
                             Ok(()) => {
-                                println!("w: State set to {} successfully", target_state);
                                 // Check the current state, if its tweening, stop immediately
                                 if self.status == StateMachineEngineStatus::Tweening {
-                                    println!(
-                                        "x: Status is Tweening after state transition, breaking"
-                                    );
                                     break;
                                 }
                                 // Re-evaluate global state, a input was changed
                                 if self.action_mutated_inputs {
-                                    println!("y: action_mutated_inputs set after child change, prepare to re-evaluate");
                                     tick = true;
 
                                     ignore_global = false;
@@ -1061,34 +955,28 @@ impl StateMachineEngine {
                                 }
                                 // Re-evaluate global state, an event was fired
                                 else if self.curr_event.is_some() {
-                                    println!("z: curr_event is Some after child change, will re-evaluate global");
                                     tick = true;
 
                                     ignore_global = false;
                                 }
                                 // Re-evaluate current state, ignore global since no inputs were changed or events fired
                                 else {
-                                    println!("aa: No action_mutated_inputs or curr_event, will only re-evaluate current state");
                                     tick = true;
 
                                     ignore_global = true;
                                 }
                             }
                             Err(_) => {
-                                println!("ab: set_current_state failed, breaking tick loop");
                                 break;
                             }
                         }
                     }
                 }
             }
-            println!("ac: End of tick loop iteration");
         }
 
-        println!("ad: Exiting state pipeline loop, resetting curr_event");
         self.curr_event = None;
 
-        println!("ae: Finished run_current_state_pipeline");
         Ok(())
     }
 

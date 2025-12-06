@@ -198,7 +198,6 @@ impl DotLottieRuntime {
         }
     }
 
-    /// Returns a mutable reference to the renderer for external slot operations
     pub fn renderer_mut(&mut self) -> &mut Box<dyn LottieRenderer> {
         &mut self.renderer
     }
@@ -1028,9 +1027,7 @@ impl DotLottieRuntime {
         match theme_data.parse::<crate::theme::Theme>() {
             Ok(theme) => {
                 let slots = theme.to_slot_types(&self.active_animation_id);
-                let r = self.apply_slot_types(slots);
-
-                r
+                self.apply_slot_types(slots)
             }
             Err(_) => false,
         }
@@ -1053,8 +1050,7 @@ impl DotLottieRuntime {
                 SlotType::Position(slot) => self.renderer.set_position_slot(&slot_id, slot),
             };
 
-            if let Err(e) = result {
-                println!("Err: {:?}", e);
+            if result.is_err() {
                 return false;
             }
         }
@@ -1881,8 +1877,7 @@ impl DotLottiePlayerContainer {
 
         let engine = match GlobalInputsEngine::builder(&data).build() {
             Ok(e) => e,
-            Err(e) => {
-                println!("[Bindings] Failed to create GlobalInputsEngine: {:?}", e);
+            Err(_) => {
                 return false;
             }
         };
@@ -1893,7 +1888,6 @@ impl DotLottiePlayerContainer {
         };
 
         if engine_guard.is_some() {
-            println!("[Bindings] GlobalInputsEngine already exists.");
             return false;
         }
 
@@ -1906,8 +1900,7 @@ impl DotLottiePlayerContainer {
     pub fn global_inputs_load_data(&self, bindings_data: &str) -> bool {
         let engine = match GlobalInputsEngine::builder(bindings_data).build() {
             Ok(e) => e,
-            Err(e) => {
-                println!("[Bindings] Failed to create GlobalInputsEngine: {:?}", e);
+            Err(_) => {
                 return false;
             }
         };
@@ -1970,7 +1963,7 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn global_inputs_apply_to_state_machine(&self) -> bool {
-        let (boolean_updates, numeric_updates, string_updates) = {
+        let updates = {
             let engine_guard = match self.global_inputs_engine.read() {
                 Ok(g) => g,
                 Err(_) => return false,
@@ -1982,13 +1975,13 @@ impl DotLottiePlayerContainer {
             }
         };
 
-        for (input_names, value) in boolean_updates {
+        for (input_names, value) in updates.boolean_updates {
             self.global_inputs_apply_boolean_to_state_machine(&input_names, value);
         }
-        for (input_names, value) in numeric_updates {
+        for (input_names, value) in updates.numeric_updates {
             self.global_inputs_apply_numeric_to_state_machine(&input_names, value);
         }
-        for (input_names, value) in string_updates {
+        for (input_names, value) in updates.string_updates {
             self.global_inputs_apply_string_to_state_machine(&input_names, &value);
         }
 
@@ -2185,7 +2178,7 @@ impl DotLottiePlayerContainer {
                         value,
                     };
 
-                    if !queue.iter().any(|u| *u == new_update) {
+                    if !queue.contains(&new_update) {
                         queue.push(new_update);
                     }
                 }
@@ -2217,7 +2210,7 @@ impl DotLottiePlayerContainer {
                         value,
                     };
 
-                    if !queue.iter().any(|u| *u == new_update) {
+                    if !queue.contains(&new_update) {
                         queue.push(new_update);
                     }
                 }
@@ -2249,7 +2242,7 @@ impl DotLottiePlayerContainer {
                         value: value.to_string(),
                     };
 
-                    if !queue.iter().any(|u| *u == new_update) {
+                    if !queue.contains(&new_update) {
                         queue.push(new_update);
                     }
                 }

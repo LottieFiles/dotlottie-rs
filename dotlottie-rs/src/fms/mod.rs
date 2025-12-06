@@ -196,13 +196,11 @@ impl DotLottieManager {
         let mut archive = self.archive.borrow_mut();
         let image_prefix = if self.version == 2 { "i/" } else { "images/" };
 
-        let path = format!("{}{}.png", image_prefix, image_id);
+        let path = format!("{image_prefix}{image_id}.png");
         let p_str = "png";
         let mut asset_path = String::with_capacity(128); // Larger initial capacity
 
         asset_path.push_str(&path);
-
-        println!("Asset path: {}", asset_path);
 
         let by_name_result = archive.by_name(&asset_path);
         if let Ok(mut result) = by_name_result {
@@ -217,7 +215,7 @@ impl DotLottieManager {
                 let data_url =
                     format!("{DATA_IMAGE_PREFIX}{image_ext}{BASE64_PREFIX}{image_data_base64}");
 
-                return Ok(data_url);
+                Ok(data_url)
             } else {
                 Err(DotLottieError::AssetNotFound)
             }
@@ -251,10 +249,9 @@ impl DotLottieManager {
         let content = Self::read_zip_file(&mut archive, &path)?;
         let theme_str =
             std::str::from_utf8(&content).map_err(|_| DotLottieError::InvalidUtf8Error)?;
-        theme_str.parse::<Theme>().map_err(|e| {
-            println!("Error parsing theme: {:?}", e);
-            DotLottieError::ReadContentError
-        })
+        theme_str
+            .parse::<Theme>()
+            .map_err(|_| DotLottieError::ReadContentError)
     }
 
     #[inline]

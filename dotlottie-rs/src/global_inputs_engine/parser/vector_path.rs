@@ -59,12 +59,12 @@ impl VectorPath {
         if self.targets_text() {
             let text_slot = renderer
                 .get_text_slot(rule_id)
-                .ok_or_else(|| format!("text slot '{}' not found", rule_id))?;
+                .ok_or_else(|| format!("text slot '{rule_id}' not found"))?;
             self.apply_to_text(text_slot, value)
         } else {
             let vector_slot = renderer
                 .get_vector_slot(rule_id)
-                .ok_or_else(|| format!("vector slot '{}' not found", rule_id))?;
+                .ok_or_else(|| format!("vector slot '{rule_id}' not found"))?;
 
             self.apply_to_vector(vector_slot, value)
         }

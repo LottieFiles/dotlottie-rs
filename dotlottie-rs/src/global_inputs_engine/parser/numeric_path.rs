@@ -84,12 +84,12 @@ impl NumericPath {
         if self.targets_text() {
             let text_slot = renderer
                 .get_text_slot(rule_id)
-                .ok_or_else(|| format!("text slot '{}' not found", rule_id))?;
+                .ok_or_else(|| format!("text slot '{rule_id}' not found"))?;
             self.apply_to_text(text_slot, value)
         } else {
             let scalar_slot = renderer
                 .get_scalar_slot(rule_id)
-                .ok_or_else(|| format!("scalar slot '{}' not found", rule_id))?;
+                .ok_or_else(|| format!("scalar slot '{rule_id}' not found"))?;
             self.apply_to_scalar(scalar_slot, value)
         }
     }

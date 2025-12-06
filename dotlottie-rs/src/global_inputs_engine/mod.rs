@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use serde::{Deserialize, Serialize};
@@ -13,7 +12,7 @@ use crate::parser::string_path::StringPath;
 use crate::parser::vector_path::VectorPath;
 use crate::parser::{parse_global_inputs, GlobalInputs};
 use crate::parser::{GlobalInputValue, ResolvedThemeBinding};
-use crate::{GradientStop, ImageValue, LottieRenderer, StateMachineEngine};
+use crate::{GradientStop, ImageValue, LottieRenderer};
 pub mod parser;
 
 pub trait GlobalInputsObserver: Send + Sync {
@@ -81,6 +80,13 @@ pub enum BindingUsageSlotType {
     Vector,
 }
 
+#[derive(Debug)]
+pub struct StateMachineUpdates {
+    pub boolean_updates: Vec<(Vec<String>, bool)>,
+    pub numeric_updates: Vec<(Vec<String>, f32)>,
+    pub string_updates: Vec<(Vec<String>, String)>,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct Rule {
     id: String,
@@ -111,30 +117,13 @@ impl GlobalInputsEngineBuilder {
 
         Ok(GlobalInputsEngine {
             global_inputs_container: parsed_bindings,
-            state_machine_binding_cache: HashMap::new(),
             observers: RwLock::new(Vec::new()),
         })
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct StateMachineBindingKey {
-    binding_id: String,
-    state_machine_id: String,
-}
-
-impl StateMachineBindingKey {
-    pub fn new(binding_id: &str, state_machine_id: &str) -> Self {
-        Self {
-            binding_id: binding_id.to_string(),
-            state_machine_id: state_machine_id.to_string(),
-        }
-    }
-}
-
 pub struct GlobalInputsEngine {
     global_inputs_container: GlobalInputs,
-    state_machine_binding_cache: HashMap<StateMachineBindingKey, Vec<String>>,
     pub observers: RwLock<Vec<Arc<dyn GlobalInputsObserver>>>,
 }
 
@@ -196,7 +185,6 @@ impl GlobalInputsEngine {
 
         Ok(GlobalInputsEngine {
             global_inputs_container: parsed_bindings,
-            state_machine_binding_cache: HashMap::new(),
             observers: RwLock::new(Vec::new()),
         })
     }
@@ -221,16 +209,14 @@ impl GlobalInputsEngine {
     // ============================================================================
     // Utility Methods
     // ============================================================================
-    fn vec_tof32(&self, input: &Vec<f32>) -> [f32; 4] {
-        let rgba_value = if input.len() >= 4 {
+    fn vec_tof32(&self, input: &[f32]) -> [f32; 4] {
+        if input.len() >= 4 {
             [input[0], input[1], input[2], input[3]]
         } else if input.len() >= 3 {
             [input[0], input[1], input[2], 1.0]
         } else {
             [0.0, 0.0, 0.0, 1.0]
-        };
-
-        rgba_value
+        }
     }
 
     /// Converts Vec<GradientStop> to Vec<f32> for observer notifications
@@ -309,11 +295,15 @@ impl GlobalInputsEngine {
         *value = new_value;
 
         for resolved in &binding.resolved_theme_bindings {
-            if let Err(_) = resolved.path.apply(
-                renderer,
-                &resolved.rule_id,
-                BindingValue::Boolean(new_value),
-            ) {
+            if resolved
+                .path
+                .apply(
+                    renderer,
+                    &resolved.rule_id,
+                    BindingValue::Boolean(new_value),
+                )
+                .is_err()
+            {
                 return false;
             }
         }
@@ -342,11 +332,15 @@ impl GlobalInputsEngine {
         *value = new_value;
 
         for resolved in &binding.resolved_theme_bindings {
-            if let Err(_) = resolved.path.apply(
-                renderer,
-                &resolved.rule_id,
-                BindingValue::Numeric(new_value),
-            ) {
+            if resolved
+                .path
+                .apply(
+                    renderer,
+                    &resolved.rule_id,
+                    BindingValue::Numeric(new_value),
+                )
+                .is_err()
+            {
                 return false;
             }
         }
@@ -375,10 +369,10 @@ impl GlobalInputsEngine {
         *value = new_value.to_string();
 
         for resolved in &binding.resolved_theme_bindings {
-            if let Err(_) =
-                resolved
-                    .path
-                    .apply(renderer, &resolved.rule_id, BindingValue::String(new_value))
+            if resolved
+                .path
+                .apply(renderer, &resolved.rule_id, BindingValue::String(new_value))
+                .is_err()
             {
                 return false;
             }
@@ -408,11 +402,15 @@ impl GlobalInputsEngine {
         *value = new_value.clone();
 
         for resolved in &binding.resolved_theme_bindings {
-            if let Err(_) = resolved.path.apply(
-                renderer,
-                &resolved.rule_id,
-                BindingValue::Color(new_value.as_slice()),
-            ) {
+            if resolved
+                .path
+                .apply(
+                    renderer,
+                    &resolved.rule_id,
+                    BindingValue::Color(new_value.as_slice()),
+                )
+                .is_err()
+            {
                 return false;
             }
         }
@@ -441,11 +439,15 @@ impl GlobalInputsEngine {
         *value = new_value;
 
         for resolved in &binding.resolved_theme_bindings {
-            if let Err(_) = resolved.path.apply(
-                renderer,
-                &resolved.rule_id,
-                BindingValue::Vector(&new_value),
-            ) {
+            if resolved
+                .path
+                .apply(
+                    renderer,
+                    &resolved.rule_id,
+                    BindingValue::Vector(&new_value),
+                )
+                .is_err()
+            {
                 return false;
             }
         }
@@ -475,11 +477,15 @@ impl GlobalInputsEngine {
         let new_value_vec = Self::gradient_stops_to_vec(new_value);
 
         for resolved in &binding.resolved_theme_bindings {
-            if let Err(_) = resolved.path.apply(
-                renderer,
-                &resolved.rule_id,
-                BindingValue::Gradient(new_value.as_slice()),
-            ) {
+            if resolved
+                .path
+                .apply(
+                    renderer,
+                    &resolved.rule_id,
+                    BindingValue::Gradient(new_value.as_slice()),
+                )
+                .is_err()
+            {
                 return false;
             }
         }
@@ -566,13 +572,7 @@ impl GlobalInputsEngine {
         Some((input_names, value.clone()))
     }
 
-    pub fn collect_all_state_machine_updates(
-        &self,
-    ) -> (
-        Vec<(Vec<String>, bool)>,
-        Vec<(Vec<String>, f32)>,
-        Vec<(Vec<String>, String)>,
-    ) {
+    pub fn collect_all_state_machine_updates(&self) -> StateMachineUpdates {
         let mut boolean_updates = Vec::new();
         let mut numeric_updates = Vec::new();
         let mut string_updates = Vec::new();
@@ -589,7 +589,11 @@ impl GlobalInputsEngine {
             }
         }
 
-        (boolean_updates, numeric_updates, string_updates)
+        StateMachineUpdates {
+            boolean_updates,
+            numeric_updates,
+            string_updates,
+        }
     }
 
     pub fn apply_to_slots(
@@ -625,7 +629,7 @@ impl GlobalInputsEngine {
                                 }
                                 GlobalInputValue::Gradient { value } => {
                                     let parsed = GradientPath::parse(&theme_binding.path)?;
-                                    (parsed.into(), BindingValue::Gradient(&value))
+                                    (parsed.into(), BindingValue::Gradient(value))
                                 }
                                 // Skip unimplemented types for now
                                 // missing image
@@ -635,11 +639,11 @@ impl GlobalInputsEngine {
                             };
 
                         let r = binding_path.apply(renderer, &theme_binding.rule_id, binding_value);
-                        if r.is_err() {
+                        r.map_err(|_| {
                             GlobalInputsEngineError::ParseError(
                                 "Failed to apply global inputs on to current slots.".to_string(),
-                            );
-                        }
+                            )
+                        })?;
 
                         //todo: This doesnt detect duplicates
                         global_input
@@ -650,7 +654,6 @@ impl GlobalInputsEngine {
                                 path: binding_path,
                             });
 
-                        //todo: This doesnt clear out ever
                         let _ = renderer.apply_all_slots();
                     }
                 }

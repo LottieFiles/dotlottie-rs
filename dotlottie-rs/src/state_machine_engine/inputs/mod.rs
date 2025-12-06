@@ -1,8 +1,6 @@
-use std::{collections::HashMap, rc::Rc, sync::RwLock};
+use std::collections::HashMap;
 
 use serde::Deserialize;
-
-use crate::DotLottiePlayerContainer;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all_fields = "camelCase")]

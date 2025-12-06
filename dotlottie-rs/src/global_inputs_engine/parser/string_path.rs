@@ -74,7 +74,7 @@ impl StringPath {
         // String paths always target text slots
         let text_slot = renderer
             .get_text_slot(rule_id)
-            .ok_or_else(|| format!("text slot '{}' not found", rule_id))?;
+            .ok_or_else(|| format!("text slot '{rule_id}' not found"))?;
         self.apply_to_text(text_slot, value)
     }
 
@@ -157,7 +157,7 @@ impl StringPath {
             "JustifyLastRight" => Ok(4),
             "JustifyLastCenter" => Ok(5),
             "JustifyLastFull" => Ok(6),
-            _ => Err(format!("invalid justify value: {}", value)),
+            _ => Err(format!("invalid justify value: {value}")),
         }
     }
 
@@ -167,7 +167,7 @@ impl StringPath {
             "Regular" => Ok(0),
             "AllCaps" => Ok(1),
             "SmallCaps" => Ok(2),
-            _ => Err(format!("invalid textCaps value: {}", value)),
+            _ => Err(format!("invalid textCaps value: {value}")),
         }
     }
 

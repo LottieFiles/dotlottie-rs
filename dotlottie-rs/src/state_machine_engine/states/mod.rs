@@ -140,10 +140,6 @@ impl StateTrait for State {
                         && player_read.render()
                     {
                         player_read.load_animation(animation, size.0, size.1);
-                    } else {
-                        if animation.is_empty() {
-                        } else if player_read.active_animation_id() == *animation {
-                        }
                     }
 
                     /* Perform entry actions */

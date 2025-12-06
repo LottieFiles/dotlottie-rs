@@ -380,8 +380,10 @@ impl StateMachineEngine {
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
-        let mut new_state_machine = StateMachineEngine::default();
-        new_state_machine.id = sm_id.to_string();
+        let mut new_state_machine = StateMachineEngine {
+            id: sm_id.to_string(),
+            ..Default::default()
+        };
         if parsed_state_machine.is_err() {
             let message = match parsed_state_machine.err() {
                 Some(e) => format!("Parsing error: {e:?}"),

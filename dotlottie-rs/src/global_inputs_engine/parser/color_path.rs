@@ -24,8 +24,6 @@ impl ColorPath {
     pub fn parse(path: &str) -> Result<Self, String> {
         let parts: Vec<&str> = path.split('/').collect();
 
-        println!("Parts: {:?}", parts);
-
         match parts.as_slice() {
             // Color -> Color
             ["value"] => Ok(ColorPath::StaticValue),
@@ -80,27 +78,27 @@ impl ColorPath {
         &self,
         renderer: &mut Box<dyn LottieRenderer>,
         rule_id: &str,
-        value: &Vec<f32>,
+        value: &[f32],
     ) -> Result<(), String> {
         if self.targets_gradient() {
             let gradient_slot = renderer
                 .get_gradient_slot(rule_id)
-                .ok_or_else(|| format!("gradient slot '{}' not found", rule_id))?;
+                .ok_or_else(|| format!("gradient slot '{rule_id}' not found"))?;
             self.apply_to_gradient(gradient_slot, value)
         } else if self.targets_text() {
             let text_slot = renderer
                 .get_text_slot(rule_id)
-                .ok_or_else(|| format!("text slot '{}' not found", rule_id))?;
+                .ok_or_else(|| format!("text slot '{rule_id}' not found"))?;
             self.apply_to_text(text_slot, value)
         } else {
             let color_slot = renderer
                 .get_color_slot(rule_id)
-                .ok_or_else(|| format!("color slot '{}' not found", rule_id))?;
+                .ok_or_else(|| format!("color slot '{rule_id}' not found"))?;
             self.apply_to_color(color_slot, value)
         }
     }
 
-    pub fn apply_to_color(&self, slot: &mut ColorSlot, value: &Vec<f32>) -> Result<(), String> {
+    pub fn apply_to_color(&self, slot: &mut ColorSlot, value: &[f32]) -> Result<(), String> {
         let rgba_value = if value.len() >= 4 {
             [value[0], value[1], value[2], value[3]]
         } else if value.len() >= 3 {
@@ -120,7 +118,6 @@ impl ColorPath {
                         .get_mut(*i)
                         .ok_or_else(|| format!("index {i} out of bounds"))?;
                     kf.start_value = rgba_value;
-                    println!("KF: {:?}", kf);
                     Ok(())
                 }
                 PropertyValue::Static(_) => Err("slot is not animated".to_string()),
@@ -137,11 +134,7 @@ impl ColorPath {
         }
     }
 
-    pub fn apply_to_gradient(
-        &self,
-        slot: &mut GradientSlot,
-        value: &Vec<f32>,
-    ) -> Result<(), String> {
+    pub fn apply_to_gradient(&self, slot: &mut GradientSlot, value: &[f32]) -> Result<(), String> {
         let num_stops = slot.num_stops;
         let rgba_value = if value.len() >= 4 {
             [value[0], value[1], value[2], value[3]]
@@ -183,11 +176,11 @@ impl ColorPath {
         }
     }
 
-    pub fn apply_to_text(&self, slot: &mut TextSlot, value: &Vec<f32>) -> Result<(), String> {
+    pub fn apply_to_text(&self, slot: &mut TextSlot, value: &[f32]) -> Result<(), String> {
         let color_value = if value.len() >= 3 {
-            value.clone()
+            value
         } else {
-            vec![0.0, 0.0, 0.0]
+            &[0.0, 0.0, 0.0]
         };
 
         match self {
@@ -196,7 +189,7 @@ impl ColorPath {
                     .keyframes
                     .first_mut()
                     .ok_or_else(|| "text slot has no keyframes".to_string())?;
-                kf.text_document.fill_color = Some(color_value);
+                kf.text_document.fill_color = Some(color_value.to_vec());
                 Ok(())
             }
             ColorPath::StrokeColor => {
@@ -204,7 +197,7 @@ impl ColorPath {
                     .keyframes
                     .first_mut()
                     .ok_or_else(|| "text slot has no keyframes".to_string())?;
-                kf.text_document.stroke_color = Some(color_value);
+                kf.text_document.stroke_color = Some(color_value.to_vec());
                 Ok(())
             }
             ColorPath::KeyframeFillColor(kf_idx) => {
@@ -212,7 +205,7 @@ impl ColorPath {
                     .keyframes
                     .get_mut(*kf_idx)
                     .ok_or_else(|| format!("keyframe index {kf_idx} out of bounds"))?;
-                kf.text_document.fill_color = Some(color_value);
+                kf.text_document.fill_color = Some(color_value.to_vec());
                 Ok(())
             }
             ColorPath::KeyframeStrokeColor(kf_idx) => {
@@ -220,7 +213,7 @@ impl ColorPath {
                     .keyframes
                     .get_mut(*kf_idx)
                     .ok_or_else(|| format!("keyframe index {kf_idx} out of bounds"))?;
-                kf.text_document.stroke_color = Some(color_value);
+                kf.text_document.stroke_color = Some(color_value.to_vec());
                 Ok(())
             }
             ColorPath::StaticValue | ColorPath::Keyframe(_) => {
@@ -233,7 +226,7 @@ impl ColorPath {
     }
 
     fn set_stop_color(
-        data: &mut Vec<f32>,
+        data: &mut [f32],
         stop_idx: usize,
         num_stops: usize,
         value: [f32; 4],

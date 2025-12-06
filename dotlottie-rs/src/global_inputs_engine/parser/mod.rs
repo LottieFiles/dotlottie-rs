@@ -15,13 +15,22 @@ pub mod vector_path;
 pub enum GlobalInputsParserError {
     ParseError(String),
 }
-impl GlobalInputsParserError {
-    pub(crate) fn to_string(&self) -> String {
+
+impl std::fmt::Display for GlobalInputsParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GlobalInputsParserError::ParseError(msg) => format!("Parse error: {}", msg),
+            GlobalInputsParserError::ParseError(msg) => write!(f, "Parse error: {msg}"),
         }
     }
 }
+
+// impl GlobalInputsParserError {
+//     pub(crate) fn to_string(&self) -> String {
+//         match self {
+//             GlobalInputsParserError::ParseError(msg) => format!("Parse error: {msg}"),
+//         }
+//     }
+// }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

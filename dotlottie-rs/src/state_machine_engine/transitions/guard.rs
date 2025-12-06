@@ -69,7 +69,7 @@ impl GuardTrait for Guard {
                             _ => return false,
                         },
                         StringBool::String(compare_to) => {
-                            let resolved_bool = input.resolve_boolean(&compare_to);
+                            let resolved_bool = input.resolve_boolean(compare_to);
 
                             if let Some(bool_value) = resolved_bool {
                                 match condition_type {
@@ -107,7 +107,7 @@ impl GuardTrait for Guard {
                     match compare_to {
                         StringNumberBool::String(compare_to) => {
                             let extracted_string = input
-                                .resolve_string(&compare_to)
+                                .resolve_string(compare_to)
                                 .or(Some(compare_to.clone()));
 
                             if let Some(string_value) = extracted_string {
@@ -146,7 +146,7 @@ impl GuardTrait for Guard {
                 if let Some(input_value) = input.resolve_numeric(input_name) {
                     match compare_to {
                         StringNumberBool::String(compare_to) => {
-                            let resolved_numeric = input.resolve_numeric(&compare_to);
+                            let resolved_numeric = input.resolve_numeric(compare_to);
                             if let Some(numeric_value) = resolved_numeric {
                                 match condition_type {
                                     TransitionGuardConditionType::GreaterThan => {

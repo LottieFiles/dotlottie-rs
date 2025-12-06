@@ -37,7 +37,7 @@ impl GradientPath {
     ) -> Result<(), String> {
         let gradient_slot = renderer
             .get_gradient_slot(rule_id)
-            .ok_or_else(|| format!("gradient slot '{}' not found", rule_id))?;
+            .ok_or_else(|| format!("gradient slot '{rule_id}' not found"))?;
         self.apply_to_gradient(gradient_slot, value)
     }
 

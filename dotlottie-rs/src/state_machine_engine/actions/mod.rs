@@ -3,7 +3,6 @@ use std::{rc::Rc, sync::RwLock};
 
 use crate::{
     inputs::InputTrait, state_machine::StringBool, DotLottiePlayerContainer, Event, GradientStop,
-    ImageValue,
 };
 
 use super::{state_machine::StringNumber, StateMachineEngine};
@@ -116,9 +115,10 @@ impl ActionTrait for Action {
     ) -> Result<(), StateMachineActionError> {
         match self {
             Action::Increment { input_name, value } => {
-                let current_val = engine.inputs.resolve_numeric(&input_name).ok_or_else(|| {
-                    return StateMachineActionError::ExecuteError;
-                })?;
+                let current_val = engine
+                    .inputs
+                    .resolve_numeric(input_name)
+                    .ok_or(StateMachineActionError::ExecuteError)?;
 
                 let increment_amount = match value {
                     Some(StringNumber::String(ref name)) => {
@@ -135,9 +135,10 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::Decrement { input_name, value } => {
-                let current_val = engine.inputs.resolve_numeric(&input_name).ok_or_else(|| {
-                    return StateMachineActionError::ExecuteError;
-                })?;
+                let current_val = engine
+                    .inputs
+                    .resolve_numeric(input_name)
+                    .ok_or(StateMachineActionError::ExecuteError)?;
 
                 let increment_amount = match value {
                     Some(StringNumber::String(ref name)) => {
@@ -329,10 +330,7 @@ impl ActionTrait for Action {
                     StringNumber::F32(v) => v,
                 };
 
-                player.global_inputs_set_vector(
-                    &global_input_id,
-                    &[first_value.into(), second_value.into()],
-                );
+                player.global_inputs_set_vector(global_input_id, &[first_value, second_value]);
                 Ok(())
             }
             Action::SetGlobalColor {
@@ -380,7 +378,7 @@ impl ActionTrait for Action {
                         1.0
                     };
                     player.global_inputs_set_color(
-                        &global_input_id,
+                        global_input_id,
                         &vec![first_value, second_value, third_value, fourth_value],
                     );
                 }
@@ -394,7 +392,7 @@ impl ActionTrait for Action {
                     .read()
                     .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                player.global_inputs_set_gradient(&global_input_id, value);
+                player.global_inputs_set_gradient(global_input_id, value);
                 Ok(())
             }
             Action::SetGlobalString {
@@ -405,7 +403,7 @@ impl ActionTrait for Action {
                     .read()
                     .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                player.global_inputs_set_string(&global_input_id, value);
+                player.global_inputs_set_string(global_input_id, value);
                 Ok(())
             }
             Action::SetGlobalNumeric {
@@ -416,7 +414,7 @@ impl ActionTrait for Action {
                     .read()
                     .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                player.global_inputs_set_numeric(&global_input_id, *value);
+                player.global_inputs_set_numeric(global_input_id, *value);
                 Ok(())
             }
             Action::SetGlobalBoolean {
@@ -427,7 +425,7 @@ impl ActionTrait for Action {
                     .read()
                     .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                player.global_inputs_set_boolean(&global_input_id, *value);
+                player.global_inputs_set_boolean(global_input_id, *value);
                 Ok(())
             }
         }

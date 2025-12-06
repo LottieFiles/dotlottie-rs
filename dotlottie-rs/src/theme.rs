@@ -25,8 +25,8 @@ impl FromStr for Theme {
 impl fmt::Display for Theme {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match serde_json::to_string(self) {
-            Ok(s) => write!(f, "{}", s),
-            Err(e) => write!(f, "Error serializing theme: {}", e),
+            Ok(s) => write!(f, "{s}"),
+            Err(e) => write!(f, "Error serializing theme: {e}"),
         }
     }
 }

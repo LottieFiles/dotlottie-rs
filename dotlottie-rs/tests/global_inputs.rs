@@ -7,8 +7,6 @@ mod tests {
     use dotlottie_rs::DotLottiePlayer;
 
     use crate::test_utils::compare_with_snapshot;
-    use crate::test_utils::snapshot_to_png;
-    use crate::test_utils::write_buffer_snapshot;
     use crate::test_utils::HEIGHT;
     use crate::test_utils::WIDTH;
 
@@ -83,7 +81,7 @@ mod tests {
         let snapshot_path = "./tests/snapshots/numeric_global_input_static_snapshot.bin";
 
         assert!(
-            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
             "Buffer at frame 30 doesn't match snapshot"
         );
 
@@ -128,7 +126,7 @@ mod tests {
         let snapshot_path = "./tests/snapshots/numeric_global_input_animated_snapshot.bin";
 
         assert!(
-            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
             "Buffer at frame 20 doesn't match snapshot"
         );
 
@@ -169,7 +167,7 @@ mod tests {
         let snapshot_path = "./tests/snapshots/gradient_global_input_static_snapshot.bin";
 
         assert!(
-            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
             "Buffer at frame 30 doesn't match snapshot"
         );
 
@@ -209,7 +207,7 @@ mod tests {
         let snapshot_path = "./tests/snapshots/gradient_global_input_animated_snapshot.bin";
 
         assert!(
-            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
             "Buffer at frame 50 doesn't match snapshot"
         );
 
@@ -260,7 +258,7 @@ mod tests {
         let snapshot_path = "./tests/snapshots/color_global_input_static_snapshot.bin";
 
         assert!(
-            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
             "Buffer at frame 30 doesn't match snapshot"
         );
 
@@ -327,7 +325,7 @@ mod tests {
         let snapshot_path = "./tests/snapshots/color_global_input_animated_snapshot.bin";
 
         assert!(
-            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
             "Buffer at frame 30 doesn't match snapshot"
         );
 
@@ -373,7 +371,7 @@ mod tests {
         let snapshot_path = "./tests/snapshots/vector_global_input_snapshot.bin";
 
         assert!(
-            compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
             "Buffer at frame 30 doesn't match snapshot"
         );
 

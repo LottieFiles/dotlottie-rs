@@ -67,7 +67,9 @@ mod tests {
 
         let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
+        let inputs_apply = player.global_inputs_apply();
 
+        assert!(inputs_apply);
         assert!(load);
         assert!(inputs_loaded);
         assert!(set_theme);
@@ -109,7 +111,9 @@ mod tests {
 
         let set_theme = player.set_theme("theme");
         let inputs_loaded = player.global_inputs_load("inputs");
+        let inputs_apply = player.global_inputs_apply();
 
+        assert!(inputs_apply);
         assert!(load);
         assert!(inputs_loaded);
         assert!(set_theme);
@@ -151,7 +155,9 @@ mod tests {
 
         let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
+        let inputs_apply = player.global_inputs_apply();
 
+        assert!(inputs_apply);
         assert!(load);
         assert!(inputs_loaded);
         assert!(set_theme);
@@ -187,11 +193,12 @@ mod tests {
 
         let player = DotLottiePlayer::new(Config::default());
         let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
-
         let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
+        let inputs_apply = player.global_inputs_apply();
 
         assert!(load);
+        assert!(inputs_apply);
         assert!(inputs_loaded);
         assert!(set_theme);
 
@@ -203,7 +210,7 @@ mod tests {
 
         assert!(
             compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
-            "Buffer at frame 30 doesn't match snapshot"
+            "Buffer at frame 50 doesn't match snapshot"
         );
 
         //⚠️ Uncomment block to generate initial snapshot
@@ -230,7 +237,9 @@ mod tests {
 
         let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
+        let inputs_apply = player.global_inputs_apply();
 
+        assert!(inputs_apply);
         assert_eq!(
             player.global_inputs_get_color("start_0"),
             Some([0.9, 0.9, 0.9, 1.0])
@@ -279,7 +288,9 @@ mod tests {
 
         let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
+        let inputs_apply = player.global_inputs_apply();
 
+        assert!(inputs_apply);
         assert_eq!(
             player.global_inputs_get_color("start_0"),
             Some([0.1, 0.1, 0.1, 1.0])
@@ -343,7 +354,9 @@ mod tests {
 
         let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
+        let inputs_apply = player.global_inputs_apply();
 
+        assert!(inputs_apply);
         assert!(load);
         assert!(inputs_loaded);
         assert!(set_theme);

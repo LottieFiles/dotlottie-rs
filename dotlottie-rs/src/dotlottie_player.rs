@@ -361,7 +361,7 @@ impl DotLottieRuntime {
             .and_then(|manager| manager.get_state_machine(state_machine_id).ok())
     }
 
-    pub fn get_global_input(&self, id: &str) -> Option<String> {
+    pub fn get_global_input_file_data(&self, id: &str) -> Option<String> {
         self.dotlottie_manager
             .as_ref()
             .and_then(|manager| manager.get_global_input(id).ok())
@@ -961,9 +961,9 @@ impl DotLottieRuntime {
     }
 
     pub fn set_theme(&mut self, theme_id: &str) -> bool {
-        // if self.active_theme_id == theme_id {
-        //     return true;
-        // }
+        if self.active_theme_id == theme_id {
+            return true;
+        }
 
         if self.dotlottie_manager.is_none() {
             return false;
@@ -1628,14 +1628,7 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn set_theme(&self, theme_id: &str) -> bool {
-        let result = self.runtime.write().unwrap().set_theme(theme_id);
-
-        if result {
-            // Apply global inputs to the new theme's slots
-            self.global_inputs_apply_to_slots(theme_id);
-        }
-
-        result
+        self.runtime.write().unwrap().set_theme(theme_id)
     }
 
     pub fn reset_theme(&self) -> bool {
@@ -1767,9 +1760,9 @@ impl DotLottiePlayerContainer {
         }
     }
 
-    pub fn get_global_input(&self, id: &str) -> Option<String> {
+    pub fn get_global_input_file_data(&self, id: &str) -> Option<String> {
         match self.runtime.try_read() {
-            Ok(runtime) => runtime.get_global_input(id),
+            Ok(runtime) => runtime.get_global_input_file_data(id),
             Err(_) => None,
         }
     }
@@ -1875,17 +1868,16 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn global_inputs_load(&self, id: &str) -> bool {
-        // Get the data from runtime's dotlottie_manager
         let data = {
             let runtime = match self.runtime.read() {
                 Ok(r) => r,
                 Err(_) => return false,
             };
-            match runtime.get_global_input(id) {
+            match runtime.get_global_input_file_data(id) {
                 Some(d) => d,
                 None => return false,
             }
-        }; // runtime lock released
+        };
 
         let engine = match GlobalInputsEngine::builder(&data).build() {
             Ok(e) => e,
@@ -1908,12 +1900,6 @@ impl DotLottiePlayerContainer {
         *engine_guard = Some(engine);
         drop(engine_guard);
 
-        // Apply theme if one is active
-        let active_theme_id = self.active_theme_id();
-        if !active_theme_id.is_empty() {
-            self.global_inputs_apply_to_slots(&active_theme_id);
-        }
-
         true
     }
 
@@ -1934,17 +1920,33 @@ impl DotLottiePlayerContainer {
         *engine_guard = Some(engine);
         drop(engine_guard);
 
-        // Apply theme if one is active
-        let active_theme_id = self.active_theme_id();
-        if !active_theme_id.is_empty() {
-            self.global_inputs_apply_to_slots(&active_theme_id);
-        }
-
         true
     }
 
-    /// Helper to apply global inputs to renderer slots
-    fn global_inputs_apply_to_slots(&self, theme_id: &str) -> bool {
+    pub fn global_inputs_apply(&self) -> bool {
+        let has_engine = self
+            .global_inputs_engine
+            .read()
+            .is_ok_and(|guard| guard.is_some());
+
+        if !has_engine {
+            return false;
+        }
+
+        let has_state_machine = !self.active_state_machine_id().is_empty();
+        let has_theme = !self.active_theme_id().is_empty();
+
+        match (has_theme, has_state_machine) {
+            (true, true) => {
+                self.global_inputs_apply_to_slots() && self.global_inputs_apply_to_state_machine()
+            }
+            (true, false) => self.global_inputs_apply_to_slots(),
+            (false, true) => self.global_inputs_apply_to_state_machine(),
+            (false, false) => false,
+        }
+    }
+
+    pub fn global_inputs_apply_to_slots(&self) -> bool {
         let mut engine_guard = match self.global_inputs_engine.write() {
             Ok(g) => g,
             Err(_) => return false,
@@ -1960,9 +1962,37 @@ impl DotLottiePlayerContainer {
             Err(_) => return false,
         };
 
+        let current_theme = runtime_guard.active_theme_id().to_string();
+
         engine
-            .apply_to_slots(theme_id, runtime_guard.renderer_mut())
+            .apply_to_slots(&current_theme, runtime_guard.renderer_mut())
             .is_ok()
+    }
+
+    pub fn global_inputs_apply_to_state_machine(&self) -> bool {
+        let (boolean_updates, numeric_updates, string_updates) = {
+            let engine_guard = match self.global_inputs_engine.read() {
+                Ok(g) => g,
+                Err(_) => return false,
+            };
+
+            match engine_guard.as_ref() {
+                Some(e) => e.collect_all_state_machine_updates(),
+                None => return false,
+            }
+        };
+
+        for (input_names, value) in boolean_updates {
+            self.global_inputs_apply_boolean_to_state_machine(&input_names, value);
+        }
+        for (input_names, value) in numeric_updates {
+            self.global_inputs_apply_numeric_to_state_machine(&input_names, value);
+        }
+        for (input_names, value) in string_updates {
+            self.global_inputs_apply_string_to_state_machine(&input_names, &value);
+        }
+
+        true
     }
 
     pub fn global_inputs_set_boolean(&self, binding_name: &str, new_value: bool) -> bool {
@@ -1994,7 +2024,7 @@ impl DotLottiePlayerContainer {
         };
 
         if let Some((input_names, value)) = state_machine_update {
-            self.apply_boolean_to_state_machine(&input_names, value);
+            self.global_inputs_apply_boolean_to_state_machine(&input_names, value);
         }
 
         true
@@ -2029,7 +2059,7 @@ impl DotLottiePlayerContainer {
         };
 
         if let Some((input_names, value)) = state_machine_update {
-            self.apply_numeric_to_state_machine(&input_names, value);
+            self.global_inputs_apply_numeric_to_state_machine(&input_names, value);
         }
 
         true
@@ -2064,7 +2094,7 @@ impl DotLottiePlayerContainer {
         };
 
         if let Some((input_names, value)) = state_machine_update {
-            self.apply_string_to_state_machine(&input_names, &value);
+            self.global_inputs_apply_string_to_state_machine(&input_names, &value);
         }
 
         true
@@ -2131,7 +2161,7 @@ impl DotLottiePlayerContainer {
         engine.global_inputs_set_gradient(binding_name, new_value, runtime_guard.renderer_mut())
     }
 
-    fn apply_boolean_to_state_machine(&self, input_names: &[String], value: bool) {
+    fn global_inputs_apply_boolean_to_state_machine(&self, input_names: &[String], value: bool) {
         match self.state_machine.try_write() {
             Ok(mut sm_guard) => {
                 if let Some(sm) = sm_guard.as_mut() {
@@ -2163,7 +2193,7 @@ impl DotLottiePlayerContainer {
         }
     }
 
-    fn apply_numeric_to_state_machine(&self, input_names: &[String], value: f32) {
+    fn global_inputs_apply_numeric_to_state_machine(&self, input_names: &[String], value: f32) {
         match self.state_machine.try_write() {
             Ok(mut sm_guard) => {
                 if let Some(sm) = sm_guard.as_mut() {
@@ -2195,7 +2225,7 @@ impl DotLottiePlayerContainer {
         }
     }
 
-    fn apply_string_to_state_machine(&self, input_names: &[String], value: &str) {
+    fn global_inputs_apply_string_to_state_machine(&self, input_names: &[String], value: &str) {
         match self.state_machine.try_write() {
             Ok(mut sm_guard) => {
                 if let Some(sm) = sm_guard.as_mut() {
@@ -2408,14 +2438,6 @@ impl DotLottiePlayer {
             .unwrap()
             .get_state_machine(state_machine_id)
         {
-            return sm;
-        }
-
-        "".to_string()
-    }
-
-    pub fn get_global_input(&self, id: &str) -> String {
-        if let Some(sm) = self.player.read().unwrap().get_global_input(id) {
             return sm;
         }
 
@@ -2635,9 +2657,9 @@ impl DotLottiePlayer {
     }
 
     pub fn state_machine_get_string_input(&self, key: &str) -> String {
-        match self.state_machine.try_write() {
-            Ok(mut state_machine) => {
-                if let Some(sm) = state_machine.as_mut() {
+        match self.state_machine.try_read() {
+            Ok(state_machine) => {
+                if let Some(sm) = state_machine.as_ref() {
                     if let Some(value) = sm.get_string_input(key) {
                         return value;
                     }
@@ -2915,14 +2937,14 @@ impl DotLottiePlayer {
 
     pub fn global_inputs_subscribe(&self, observer: Arc<dyn GlobalInputsObserver>) -> bool {
         self.player
-            .write()
+            .read()
             .unwrap()
             .global_inputs_subscribe(observer)
     }
 
     pub fn global_inputs_unsubscribe(&self, observer: &Arc<dyn GlobalInputsObserver>) -> bool {
         self.player
-            .write()
+            .read()
             .unwrap()
             .global_inputs_unsubscribe(observer)
     }
@@ -2995,18 +3017,22 @@ impl DotLottiePlayer {
     }
 
     pub fn global_inputs_remove(&self) {
-        self.player.write().unwrap().global_inputs_remove()
+        self.player.read().unwrap().global_inputs_remove()
     }
 
     pub fn global_inputs_load_data(&self, bindings_data: &str) -> bool {
         self.player
-            .write()
+            .read()
             .unwrap()
             .global_inputs_load_data(bindings_data)
     }
 
     pub fn global_inputs_load(&self, id: &str) -> bool {
-        self.player.write().unwrap().global_inputs_load(id)
+        self.player.read().unwrap().global_inputs_load(id)
+    }
+
+    pub fn global_inputs_apply(&self) -> bool {
+        self.player.read().unwrap().global_inputs_apply()
     }
 
     pub fn global_inputs_set_string(&self, binding_name: &str, new_value: &str) -> bool {
@@ -3135,7 +3161,7 @@ impl DotLottiePlayer {
                 match player {
                     Ok(mut player) => {
                         player.state_machine = self.state_machine.clone();
-                        player.set_active_state_machine_id("");
+                        player.set_active_state_machine_id("data");
                     }
                     Err(_) => {
                         return false;

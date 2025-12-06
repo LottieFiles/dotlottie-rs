@@ -70,6 +70,7 @@ fn main() {
     let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
     player.player.global_inputs_load_data(&binding_file_data);
     player.player.set_theme("theme");
+    player.player.global_inputs_apply();
 
     println!("[Info] Controls:");
     println!("  S - Switch between animated/static mode");
@@ -92,16 +93,16 @@ fn main() {
         if window.is_key_pressed(Key::T, minifb::KeyRepeat::Yes) {
             println!("T");
             let binding_file_name = if !using_animated {
-                "inputs_animated"
-            } else {
                 "inputs_static"
+            } else {
+                "inputs_animated"
             };
 
             // Load corresponding binding and apply theme
             let binding_file_path = format!("./src/bin/color/{}.json", binding_file_name);
             let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
             let load = player.player.global_inputs_load_data(&binding_file_data);
-            println!("LOAD: {}", load);
+            player.player.global_inputs_apply();
         }
 
         // S: Switch between animated and static mode

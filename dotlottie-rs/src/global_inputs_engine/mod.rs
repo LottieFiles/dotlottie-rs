@@ -566,68 +566,30 @@ impl GlobalInputsEngine {
         Some((input_names, value.clone()))
     }
 
-    pub fn apply_to_state_machine(
-        &mut self,
-        binding_id: &str,
-        state_machine_engine: &mut StateMachineEngine,
-    ) -> bool {
-        let cache_key = StateMachineBindingKey::new(binding_id, &state_machine_engine.id);
+    pub fn collect_all_state_machine_updates(
+        &self,
+    ) -> (
+        Vec<(Vec<String>, bool)>,
+        Vec<(Vec<String>, f32)>,
+        Vec<(Vec<String>, String)>,
+    ) {
+        let mut boolean_updates = Vec::new();
+        let mut numeric_updates = Vec::new();
+        let mut string_updates = Vec::new();
 
-        // Check cache first
-        let input_names = if let Some(cached) = self.state_machine_binding_cache.get(&cache_key) {
-            cached.clone()
-        } else {
-            // Resolve and cache
-            let input_names = self.resolve_input_names(binding_id, &state_machine_engine.id);
-            self.state_machine_binding_cache
-                .insert(cache_key, input_names.clone());
-            input_names
-        };
-
-        if input_names.is_empty() {
-            return false;
-        }
-
-        let Some(global_input) = self.global_inputs_container.get(binding_id) else {
-            return false;
-        };
-
-        let mut success = false;
-        for input_name in &input_names {
-            let result = match &global_input.r#type {
-                GlobalInputValue::Numeric { value } => state_machine_engine
-                    .set_numeric_input(input_name, *value, true, false)
-                    .is_some(),
-                GlobalInputValue::Boolean { value } => state_machine_engine
-                    .set_boolean_input(input_name, *value, true, false)
-                    .is_some(),
-                GlobalInputValue::String { value } => state_machine_engine
-                    .set_string_input(input_name, value, true, false)
-                    .is_some(),
-                _ => false,
-            };
-            success = success || result;
-        }
-
-        success
-    }
-
-    fn resolve_input_names(&self, binding_id: &str, state_machine_id: &str) -> Vec<String> {
-        let Some(global_input) = self.global_inputs_container.get(binding_id) else {
-            return vec![];
-        };
-
-        let Some(state_machine_bindings) = &global_input.bindings.state_machines else {
-            return vec![];
-        };
-
-        for sm_binding in state_machine_bindings {
-            if sm_binding.state_machine_id == state_machine_id {
-                return sm_binding.input_name.clone();
+        for (binding_id, _) in self.global_inputs_container.iter() {
+            if let Some(update) = self.get_state_machine_input_names_for_boolean(binding_id) {
+                boolean_updates.push(update);
+            }
+            if let Some(update) = self.get_state_machine_input_names_for_numeric(binding_id) {
+                numeric_updates.push(update);
+            }
+            if let Some(update) = self.get_state_machine_input_names_for_string(binding_id) {
+                string_updates.push(update);
             }
         }
 
-        vec![]
+        (boolean_updates, numeric_updates, string_updates)
     }
 
     pub fn apply_to_slots(

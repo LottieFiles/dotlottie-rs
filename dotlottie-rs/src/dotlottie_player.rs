@@ -11,8 +11,8 @@ use crate::{
     Marker, MarkersMap, StateMachineEngine,
 };
 use crate::{
-    DotLottieManager, GlobalInputsEngine, GradientStop, ImageValue, Manifest, Renderer,
-    StateMachineEngineError,
+    DotLottieManager, GlobalInputsEngine, GlobalInputsObserver, GradientStop, ImageValue, Manifest,
+    Renderer, StateMachineEngineError,
 };
 
 use crate::StateMachineInternalObserver;
@@ -134,6 +134,24 @@ impl Default for LayerBoundingBox {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+enum PendingSmUpdate {
+    Boolean {
+        input_names: Vec<String>,
+        value: bool,
+    },
+    Numeric {
+        input_names: Vec<String>,
+        value: f32,
+    },
+    String {
+        input_names: Vec<String>,
+        value: String,
+    },
+}
+
+const MAX_PENDING_UPDATES: usize = 50;
 
 struct DotLottieRuntime {
     renderer: Box<dyn LottieRenderer>,
@@ -1231,6 +1249,7 @@ pub struct DotLottiePlayerContainer {
     observers: RwLock<Vec<Arc<dyn Observer>>>,
     state_machine: Rc<RwLock<Option<StateMachineEngine>>>,
     global_inputs_engine: RwLock<Option<GlobalInputsEngine>>,
+    pending_sm_updates: RwLock<Vec<PendingSmUpdate>>,
 }
 
 impl DotLottiePlayerContainer {
@@ -1241,6 +1260,7 @@ impl DotLottiePlayerContainer {
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
             global_inputs_engine: RwLock::new(None),
+            pending_sm_updates: RwLock::new(Vec::new()),
         }
     }
 
@@ -1250,6 +1270,7 @@ impl DotLottiePlayerContainer {
             observers: RwLock::new(Vec::new()),
             state_machine: Rc::new(RwLock::new(None)),
             global_inputs_engine: RwLock::new(None),
+            pending_sm_updates: RwLock::new(Vec::new()),
         }
     }
 
@@ -1853,37 +1874,6 @@ impl DotLottiePlayerContainer {
         }
     }
 
-    fn sync_global_inputs_to_state_machine(&self, modified_binding_id: &str) {
-        if self.active_state_machine_id().is_empty() {
-            return;
-        }
-
-        let mut state_machine_guard = match self.state_machine.try_write() {
-            Ok(g) => g,
-            Err(_) => {
-                return;
-            }
-        };
-
-        let sm = match state_machine_guard.as_mut() {
-            Some(sm) => sm,
-            None => {
-                return;
-            }
-        };
-
-        let mut engine_guard = match self.global_inputs_engine.write() {
-            Ok(g) => g,
-            Err(_) => {
-                return;
-            }
-        };
-
-        if let Some(engine) = engine_guard.as_mut() {
-            engine.apply_to_state_machine(modified_binding_id, sm);
-        }
-    }
-
     pub fn global_inputs_load(&self, id: &str) -> bool {
         // Get the data from runtime's dotlottie_manager
         let data = {
@@ -1975,8 +1965,8 @@ impl DotLottiePlayerContainer {
             .is_ok()
     }
 
-    pub fn global_inputs_set_string(&self, binding_name: &str, new_value: &str) -> bool {
-        let success = {
+    pub fn global_inputs_set_boolean(&self, binding_name: &str, new_value: bool) -> bool {
+        let state_machine_update = {
             let mut engine_guard = match self.global_inputs_engine.write() {
                 Ok(g) => g,
                 Err(_) => return false,
@@ -1992,72 +1982,26 @@ impl DotLottiePlayerContainer {
                 Err(_) => return false,
             };
 
-            engine.global_inputs_set_string(binding_name, new_value, runtime_guard.renderer_mut())
+            if !engine.global_inputs_set_boolean(
+                binding_name,
+                new_value,
+                runtime_guard.renderer_mut(),
+            ) {
+                return false;
+            }
+
+            engine.get_state_machine_input_names_for_boolean(binding_name)
         };
 
-        if success {
-            self.sync_global_inputs_to_state_machine(binding_name);
+        if let Some((input_names, value)) = state_machine_update {
+            self.apply_boolean_to_state_machine(&input_names, value);
         }
 
-        success
-    }
-
-    pub fn global_inputs_set_color(&self, binding_name: &str, new_value: &Vec<f32>) -> bool {
-        let success = {
-            let mut engine_guard = match self.global_inputs_engine.write() {
-                Ok(g) => g,
-                Err(_) => return false,
-            };
-
-            let engine = match engine_guard.as_mut() {
-                Some(e) => e,
-                None => return false,
-            };
-
-            let mut runtime_guard = match self.runtime.write() {
-                Ok(r) => r,
-                Err(_) => return false,
-            };
-
-            engine.global_inputs_set_color(binding_name, new_value, runtime_guard.renderer_mut())
-        };
-
-        if success {
-            self.sync_global_inputs_to_state_machine(binding_name);
-        }
-
-        success
-    }
-
-    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f32; 2]) -> bool {
-        let success = {
-            let mut engine_guard = match self.global_inputs_engine.write() {
-                Ok(g) => g,
-                Err(_) => return false,
-            };
-
-            let engine = match engine_guard.as_mut() {
-                Some(e) => e,
-                None => return false,
-            };
-
-            let mut runtime_guard = match self.runtime.write() {
-                Ok(r) => r,
-                Err(_) => return false,
-            };
-
-            engine.global_inputs_set_vector(binding_name, *new_value, runtime_guard.renderer_mut())
-        };
-
-        if success {
-            self.sync_global_inputs_to_state_machine(binding_name);
-        }
-
-        success
+        true
     }
 
     pub fn global_inputs_set_numeric(&self, binding_name: &str, new_value: f32) -> bool {
-        let success = {
+        let state_machine_update = {
             let mut engine_guard = match self.global_inputs_engine.write() {
                 Ok(g) => g,
                 Err(_) => return false,
@@ -2073,56 +2017,95 @@ impl DotLottiePlayerContainer {
                 Err(_) => return false,
             };
 
-            engine.global_inputs_set_numeric(binding_name, new_value, runtime_guard.renderer_mut())
+            if !engine.global_inputs_set_numeric(
+                binding_name,
+                new_value,
+                runtime_guard.renderer_mut(),
+            ) {
+                return false;
+            }
+
+            engine.get_state_machine_input_names_for_numeric(binding_name)
         };
 
-        if success {
-            self.sync_global_inputs_to_state_machine(binding_name);
+        if let Some((input_names, value)) = state_machine_update {
+            self.apply_numeric_to_state_machine(&input_names, value);
         }
 
-        success
+        true
     }
 
-    pub fn global_inputs_set_boolean(&self, binding_name: &str, new_value: bool) -> bool {
-        let success = {
-            println!("Getting engine write..");
+    pub fn global_inputs_set_string(&self, binding_name: &str, new_value: &str) -> bool {
+        let state_machine_update = {
             let mut engine_guard = match self.global_inputs_engine.write() {
                 Ok(g) => g,
-                Err(_) => {
-                    println!("[set_boolean] Failed to acquire engine lock");
-                    return false;
-                }
+                Err(_) => return false,
             };
-
-            println!("Getting engine write..DONE");
 
             let engine = match engine_guard.as_mut() {
                 Some(e) => e,
-                None => {
-                    println!("[set_boolean] Failed to acquire engine lock");
-                    return false;
-                }
+                None => return false,
             };
-            println!("Getting runtime write..");
+
             let mut runtime_guard = match self.runtime.write() {
                 Ok(r) => r,
-                Err(_) => {
-                    println!("[set_boolean] Failed to acquire engine lock");
-                    return false;
-                }
+                Err(_) => return false,
             };
 
-            println!("Getting runtime write..DONE");
-            println!("Calling global_inputs_set_boolean");
-            engine.global_inputs_set_boolean(binding_name, new_value, runtime_guard.renderer_mut())
+            if !engine.global_inputs_set_string(
+                binding_name,
+                new_value,
+                runtime_guard.renderer_mut(),
+            ) {
+                return false;
+            }
+
+            engine.get_state_machine_input_names_for_string(binding_name)
         };
 
-        if success {
-            println!("Global input set! Calling state machine sync");
-            self.sync_global_inputs_to_state_machine(binding_name);
+        if let Some((input_names, value)) = state_machine_update {
+            self.apply_string_to_state_machine(&input_names, &value);
         }
 
-        success
+        true
+    }
+
+    pub fn global_inputs_set_color(&self, binding_name: &str, new_value: &Vec<f32>) -> bool {
+        let mut engine_guard = match self.global_inputs_engine.write() {
+            Ok(g) => g,
+            Err(_) => return false,
+        };
+
+        let engine = match engine_guard.as_mut() {
+            Some(e) => e,
+            None => return false,
+        };
+
+        let mut runtime_guard = match self.runtime.write() {
+            Ok(r) => r,
+            Err(_) => return false,
+        };
+
+        engine.global_inputs_set_color(binding_name, new_value, runtime_guard.renderer_mut())
+    }
+
+    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f32; 2]) -> bool {
+        let mut engine_guard = match self.global_inputs_engine.write() {
+            Ok(g) => g,
+            Err(_) => return false,
+        };
+
+        let engine = match engine_guard.as_mut() {
+            Some(e) => e,
+            None => return false,
+        };
+
+        let mut runtime_guard = match self.runtime.write() {
+            Ok(r) => r,
+            Err(_) => return false,
+        };
+
+        engine.global_inputs_set_vector(binding_name, *new_value, runtime_guard.renderer_mut())
     }
 
     pub fn global_inputs_set_gradient(
@@ -2130,57 +2113,170 @@ impl DotLottiePlayerContainer {
         binding_name: &str,
         new_value: &Vec<GradientStop>,
     ) -> bool {
-        let success = {
-            let mut engine_guard = match self.global_inputs_engine.write() {
-                Ok(g) => g,
-                Err(_) => return false,
-            };
-
-            let engine = match engine_guard.as_mut() {
-                Some(e) => e,
-                None => return false,
-            };
-
-            let mut runtime_guard = match self.runtime.write() {
-                Ok(r) => r,
-                Err(_) => return false,
-            };
-
-            engine.global_inputs_set_gradient(binding_name, new_value, runtime_guard.renderer_mut())
+        let mut engine_guard = match self.global_inputs_engine.write() {
+            Ok(g) => g,
+            Err(_) => return false,
         };
 
-        if success {
-            self.sync_global_inputs_to_state_machine(binding_name);
-        }
+        let engine = match engine_guard.as_mut() {
+            Some(e) => e,
+            None => return false,
+        };
 
-        success
+        let mut runtime_guard = match self.runtime.write() {
+            Ok(r) => r,
+            Err(_) => return false,
+        };
+
+        engine.global_inputs_set_gradient(binding_name, new_value, runtime_guard.renderer_mut())
     }
 
-    pub fn global_inputs_set_image(&self, binding_name: &str, new_value: &ImageValue) -> bool {
-        // Note: image doesn't need renderer, just the engine
-        let success = {
-            let mut engine_guard = match self.global_inputs_engine.write() {
-                Ok(g) => g,
-                Err(_) => return false,
-            };
+    fn apply_boolean_to_state_machine(&self, input_names: &[String], value: bool) {
+        match self.state_machine.try_write() {
+            Ok(mut sm_guard) => {
+                if let Some(sm) = sm_guard.as_mut() {
+                    for input_name in input_names {
+                        let _ = sm.set_boolean_input(input_name, value, true, false);
+                    }
+                }
+                drop(sm_guard);
+                self.process_pending_state_machine_updates();
+            }
+            Err(_) => {
+                // We failed to get a lock on the state machine, this can happen if the state machine has entry/exit actions
+                // That set global inputs, so we queue the updates for later on
+                if let Ok(mut queue) = self.pending_sm_updates.write() {
+                    if queue.len() >= MAX_PENDING_UPDATES {
+                        return;
+                    }
 
-            let engine = match engine_guard.as_mut() {
-                Some(e) => e,
-                None => return false,
-            };
+                    let new_update = PendingSmUpdate::Boolean {
+                        input_names: input_names.to_vec(),
+                        value,
+                    };
 
-            false
-
-            // engine
-            //     .global_inputs_set_image(binding_name, new_value)
-            //     .is_ok()
-        };
-
-        if success {
-            self.sync_global_inputs_to_state_machine(binding_name);
+                    if !queue.iter().any(|u| *u == new_update) {
+                        queue.push(new_update);
+                    }
+                }
+            }
         }
+    }
 
-        success
+    fn apply_numeric_to_state_machine(&self, input_names: &[String], value: f32) {
+        match self.state_machine.try_write() {
+            Ok(mut sm_guard) => {
+                if let Some(sm) = sm_guard.as_mut() {
+                    for input_name in input_names {
+                        let _ = sm.set_numeric_input(input_name, value, true, false);
+                    }
+                }
+                drop(sm_guard);
+                self.process_pending_state_machine_updates();
+            }
+            Err(_) => {
+                // We failed to get a lock on the state machine, this can happen if the state machine has entry/exit actions
+                // That set global inputs, so we queue the updates for later on
+                if let Ok(mut queue) = self.pending_sm_updates.write() {
+                    if queue.len() >= MAX_PENDING_UPDATES {
+                        return;
+                    }
+
+                    let new_update = PendingSmUpdate::Numeric {
+                        input_names: input_names.to_vec(),
+                        value,
+                    };
+
+                    if !queue.iter().any(|u| *u == new_update) {
+                        queue.push(new_update);
+                    }
+                }
+            }
+        }
+    }
+
+    fn apply_string_to_state_machine(&self, input_names: &[String], value: &str) {
+        match self.state_machine.try_write() {
+            Ok(mut sm_guard) => {
+                if let Some(sm) = sm_guard.as_mut() {
+                    for input_name in input_names {
+                        let _ = sm.set_string_input(input_name, value, true, false);
+                    }
+                }
+                drop(sm_guard);
+                self.process_pending_state_machine_updates();
+            }
+            Err(_) => {
+                // We failed to get a lock on the state machine, this can happen if the state machine has entry/exit actions
+                // That set global inputs, so we queue the updates for later on
+                if let Ok(mut queue) = self.pending_sm_updates.write() {
+                    if queue.len() >= MAX_PENDING_UPDATES {
+                        return;
+                    }
+
+                    let new_update = PendingSmUpdate::String {
+                        input_names: input_names.to_vec(),
+                        value: value.to_string(),
+                    };
+
+                    if !queue.iter().any(|u| *u == new_update) {
+                        queue.push(new_update);
+                    }
+                }
+            }
+        }
+    }
+
+    fn process_pending_state_machine_updates(&self) {
+        const MAX_ITERATIONS: usize = 100;
+        let mut iteration = 0;
+
+        loop {
+            if iteration >= MAX_ITERATIONS {
+                if let Ok(mut queue) = self.pending_sm_updates.write() {
+                    queue.clear();
+                }
+                break;
+            }
+
+            let updates = {
+                let mut queue = match self.pending_sm_updates.write() {
+                    Ok(q) => q,
+                    Err(_) => return,
+                };
+                std::mem::take(&mut *queue)
+            };
+
+            if updates.is_empty() {
+                break;
+            }
+
+            iteration += 1;
+
+            if let Ok(mut sm_guard) = self.state_machine.try_write() {
+                if let Some(sm) = sm_guard.as_mut() {
+                    for update in updates {
+                        match update {
+                            PendingSmUpdate::Boolean { input_names, value } => {
+                                for input_name in &input_names {
+                                    let _ = sm.set_boolean_input(input_name, value, true, false);
+                                }
+                            }
+                            PendingSmUpdate::Numeric { input_names, value } => {
+                                for input_name in &input_names {
+                                    let _ = sm.set_numeric_input(input_name, value, true, false);
+                                }
+                            }
+                            PendingSmUpdate::String { input_names, value } => {
+                                for input_name in &input_names {
+                                    let _ = sm.set_string_input(input_name, &value, true, false);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub fn global_inputs_get_string(&self, binding_name: &str) -> Option<String> {
@@ -2243,6 +2339,28 @@ impl DotLottiePlayerContainer {
             .as_ref()?
             .global_inputs_get_image(binding_name)
             .ok()
+    }
+
+    pub fn global_inputs_subscribe(&self, observer: Arc<dyn GlobalInputsObserver>) -> bool {
+        if let Ok(mut guard) = self.global_inputs_engine.write() {
+            if let Some(engine) = guard.as_mut() {
+                engine.subscribe(observer);
+
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn global_inputs_unsubscribe(&self, observer: &Arc<dyn GlobalInputsObserver>) -> bool {
+        if let Ok(mut guard) = self.global_inputs_engine.write() {
+            if let Some(engine) = guard.as_mut() {
+                engine.unsubscribe(observer);
+
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -2795,6 +2913,20 @@ impl DotLottiePlayer {
         true
     }
 
+    pub fn global_inputs_subscribe(&self, observer: Arc<dyn GlobalInputsObserver>) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .global_inputs_subscribe(observer)
+    }
+
+    pub fn global_inputs_unsubscribe(&self, observer: &Arc<dyn GlobalInputsObserver>) -> bool {
+        self.player
+            .write()
+            .unwrap()
+            .global_inputs_unsubscribe(observer)
+    }
+
     // Internal state machine observer subscribe function for frameworks
     // This allows us to send custom internal messages to the frameworks, without polluting the user's observers.
     pub fn state_machine_internal_subscribe(
@@ -2920,13 +3052,6 @@ impl DotLottiePlayer {
         self.player
             .read()
             .map(|p| p.global_inputs_set_gradient(binding_name, new_value))
-            .unwrap_or(false)
-    }
-
-    pub fn global_inputs_set_image(&self, binding_name: &str, new_value: &ImageValue) -> bool {
-        self.player
-            .read()
-            .map(|p| p.global_inputs_set_image(binding_name, new_value))
             .unwrap_or(false)
     }
 

@@ -35,6 +35,10 @@ name = "boolean"
 path = "src/bin/boolean/main.rs"
 
 [[bin]]
+name = "numeric-star-rating"
+path = "src/bin/numeric-star-rating/main.rs"
+
+[[bin]]
 name = "physics"
 path = "src/bin/physics/main.rs"
 

@@ -195,7 +195,7 @@ mod tests {
         assert!(inputs_loaded);
         assert!(set_theme);
 
-        player.set_frame(30.0);
+        player.set_frame(50.0);
         player.render();
 
         let buffer = player.buffer();

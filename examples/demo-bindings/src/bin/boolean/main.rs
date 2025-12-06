@@ -1,6 +1,9 @@
-use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer};
+use dotlottie_rs::{
+    actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, GlobalInputsObserver,
+};
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::cell::RefCell;
+use std::sync::Arc;
 use std::time::Instant;
 
 const WIDTH: usize = 512;
@@ -51,6 +54,82 @@ pub const ANIMATION_NAME: &str = "sm_toggle_button";
 pub const BINDING_FILE_NAME: &str = "inputs";
 pub const SM_FILE_NAME: &str = "toggleButton";
 
+struct DummyGlobalInputsObserver;
+
+impl GlobalInputsObserver for DummyGlobalInputsObserver {
+    fn on_color_global_input_value_change(
+        &self,
+        global_input_name: String,
+        old_value: Vec<f32>,
+        new_value: Vec<f32>,
+    ) {
+        println!(
+            "[global input event] color_input_value_change ==> {} : {:?} -> {:?}",
+            global_input_name, old_value, new_value
+        );
+    }
+
+    fn on_gradient_global_input_value_change(
+        &self,
+        global_input_name: String,
+        old_value: Vec<f32>,
+        new_value: Vec<f32>,
+    ) {
+        println!(
+            "[global input event] gradient_input_value_change ==> {} : {:?} -> {:?}",
+            global_input_name, old_value, new_value
+        );
+    }
+
+    fn on_numeric_global_input_value_change(
+        &self,
+        global_input_name: String,
+        old_value: f32,
+        new_value: f32,
+    ) {
+        println!(
+            "[global input event] numeric_input_value_change ==> {} : {} -> {}",
+            global_input_name, old_value, new_value
+        );
+    }
+
+    fn on_boolean_global_input_value_change(
+        &self,
+        global_input_name: String,
+        old_value: bool,
+        new_value: bool,
+    ) {
+        println!(
+            "[global input event] boolean_input_value_change ==> {} : {} -> {}",
+            global_input_name, old_value, new_value
+        );
+    }
+
+    fn on_string_global_input_value_change(
+        &self,
+        global_input_name: String,
+        old_value: String,
+        new_value: String,
+    ) {
+        println!(
+            "[global input event] string_input_value_change ==> {} : {} -> {}",
+            global_input_name, old_value, new_value
+        );
+    }
+
+    fn on_vector_global_input_value_change(
+        &self,
+        global_input_name: String,
+        old_value: [f32; 2],
+        new_value: [f32; 2],
+    ) {
+        println!(
+            "[global input event] vector_input_value_change ==> {} : [{}, {}] -> [{}, {}]",
+            global_input_name, old_value[0], old_value[1], new_value[0], new_value[1]
+        );
+    }
+}
+
 fn main() {
     let mut window = Window::new(
         "[Bindings - Color] S=Switch Mode | R=Remove Theme | T=Apply theme",
@@ -70,6 +149,9 @@ fn main() {
     let s = player.player.state_machine_start(OpenUrlPolicy::default());
     player.player.global_inputs_load_data(&binding_file_data);
     player.player.set_theme("theme");
+
+    let observer: Arc<dyn GlobalInputsObserver + 'static> = Arc::new(DummyGlobalInputsObserver {});
+    player.player.global_inputs_subscribe(observer.clone());
 
     println!("state machine: {}{}", l, s);
 
@@ -155,6 +237,9 @@ fn main() {
             let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
             player.player.global_inputs_load_data(&binding_file_data);
             player.player.set_theme("theme");
+
+            // Re-subscribe observer after creating new player
+            player.player.global_inputs_subscribe(observer.clone());
 
             let mode_str = if using_animated { "ANIMATED" } else { "STATIC" };
             println!("[Info] Switched to {} mode", mode_str);

@@ -58,21 +58,33 @@ pub enum Action {
         input_name: String,
         value: StringNumber,
     },
-    SetGlobalVector {
-        global_var_name: String,
-        value: [StringNumber; 2],
-    },
     SetGlobalColor {
-        global_var_name: String,
-        value: [StringNumber; 4],
+        global_input_id: String,
+        value: Vec<StringNumber>,
     },
     SetGlobalGradient {
-        global_var_name: String,
+        global_input_id: String,
         value: Vec<GradientStop>,
     },
-    SetGlobalImage {
-        global_var_name: String,
-        value: ImageValue,
+    // SetGlobalImage {
+    //     global_input_id: String,
+    //     value: ImageValue,
+    // },
+    SetGlobalString {
+        global_input_id: String,
+        value: String,
+    },
+    SetGlobalNumeric {
+        global_input_id: String,
+        value: f32,
+    },
+    SetGlobalBoolean {
+        global_input_id: String,
+        value: bool,
+    },
+    SetGlobalVector {
+        global_input_id: String,
+        value: [StringNumber; 2],
     },
     Fire {
         input_name: String,
@@ -118,20 +130,7 @@ impl ActionTrait for Action {
 
                 let new_value = current_val + increment_amount;
 
-                if let Some(global_var_name) = input_name.strip_prefix('@') {
-                    let player = player
-                        .try_read()
-                        .map_err(|_| StateMachineActionError::ExecuteError)?;
-
-                    player.global_inputs_set_numeric(global_var_name, new_value.into());
-                } else {
-                    engine.set_numeric_input(
-                        input_name,
-                        new_value,
-                        run_pipeline,
-                        called_from_action,
-                    );
-                }
+                engine.set_numeric_input(input_name, new_value, run_pipeline, called_from_action);
 
                 Ok(())
             }
@@ -150,41 +149,13 @@ impl ActionTrait for Action {
 
                 let new_value = current_val - increment_amount;
 
-                if let Some(global_var_name) = input_name.strip_prefix('@') {
-                    let player = player
-                        .try_read()
-                        .map_err(|_| return StateMachineActionError::ExecuteError)?;
-
-                    player.global_inputs_set_numeric(global_var_name, new_value.into());
-                } else {
-                    engine.set_numeric_input(
-                        input_name,
-                        new_value,
-                        run_pipeline,
-                        called_from_action,
-                    );
-                }
+                engine.set_numeric_input(input_name, new_value, run_pipeline, called_from_action);
 
                 Ok(())
             }
             Action::Toggle { input_name } => {
-                if let Some(global_var_name) = input_name.strip_prefix('@') {
-                    let player = player
-                        .try_read()
-                        .map_err(|_| StateMachineActionError::ExecuteError)?;
-
-                    if let Some(val) = player.global_inputs_get_boolean(global_var_name) {
-                        player.global_inputs_set_boolean(global_var_name, !val);
-                    }
-                } else {
-                    if let Some(val) = engine.get_boolean_input(input_name) {
-                        engine.set_boolean_input(
-                            input_name,
-                            !val,
-                            run_pipeline,
-                            called_from_action,
-                        );
-                    }
+                if let Some(val) = engine.get_boolean_input(input_name) {
+                    engine.set_boolean_input(input_name, !val, run_pipeline, called_from_action);
                 }
 
                 Ok(())
@@ -198,20 +169,7 @@ impl ActionTrait for Action {
                     StringBool::Bool(v) => *v,
                 };
 
-                if let Some(global_var_name) = input_name.strip_prefix('@') {
-                    let player = player
-                        .try_read()
-                        .map_err(|_| StateMachineActionError::ExecuteError)?;
-
-                    player.global_inputs_set_boolean(global_var_name, new_value);
-                } else {
-                    engine.set_boolean_input(
-                        input_name,
-                        new_value,
-                        run_pipeline,
-                        called_from_action,
-                    );
-                }
+                engine.set_boolean_input(input_name, new_value, run_pipeline, called_from_action);
 
                 Ok(())
             }
@@ -224,20 +182,7 @@ impl ActionTrait for Action {
                     StringNumber::F32(v) => *v,
                 };
 
-                if let Some(global_var_name) = input_name.strip_prefix('@') {
-                    let player = player
-                        .try_read()
-                        .map_err(|_| StateMachineActionError::ExecuteError)?;
-
-                    player.global_inputs_set_numeric(global_var_name, new_value.into());
-                } else {
-                    engine.set_numeric_input(
-                        input_name,
-                        new_value,
-                        run_pipeline,
-                        called_from_action,
-                    );
-                }
+                engine.set_numeric_input(input_name, new_value, run_pipeline, called_from_action);
 
                 Ok(())
             }
@@ -247,20 +192,7 @@ impl ActionTrait for Action {
                     .resolve_string(input_name)
                     .unwrap_or_else(|| value.clone());
 
-                if let Some(global_var_name) = input_name.strip_prefix('@') {
-                    let player = player
-                        .try_read()
-                        .map_err(|_| StateMachineActionError::ExecuteError)?;
-
-                    player.global_inputs_set_string(global_var_name, &new_value);
-                } else {
-                    engine.set_string_input(
-                        input_name,
-                        &new_value,
-                        run_pipeline,
-                        called_from_action,
-                    );
-                }
+                engine.set_string_input(input_name, &new_value, run_pipeline, called_from_action);
 
                 Ok(())
             }
@@ -374,7 +306,7 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::SetGlobalVector {
-                global_var_name,
+                global_input_id,
                 value,
             } => {
                 let player = player
@@ -398,78 +330,104 @@ impl ActionTrait for Action {
                 };
 
                 player.global_inputs_set_vector(
-                    &global_var_name,
+                    &global_input_id,
                     &[first_value.into(), second_value.into()],
                 );
                 Ok(())
             }
-            // todo: Change to Vec
             Action::SetGlobalColor {
-                global_var_name,
+                global_input_id,
                 value,
             } => {
                 let player = player
                     .read()
                     .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                let first_value = match value[0] {
-                    StringNumber::String(ref name) => engine
-                        .inputs
-                        .resolve_numeric(name)
-                        .ok_or(StateMachineActionError::ExecuteError)?,
-                    StringNumber::F32(v) => v,
-                };
+                if value.len() >= 3 {
+                    let first_value = match value[0] {
+                        StringNumber::String(ref name) => engine
+                            .inputs
+                            .resolve_numeric(name)
+                            .ok_or(StateMachineActionError::ExecuteError)?,
+                        StringNumber::F32(v) => v,
+                    };
 
-                let second_value = match value[1] {
-                    StringNumber::String(ref name) => engine
-                        .inputs
-                        .resolve_numeric(name)
-                        .ok_or(StateMachineActionError::ExecuteError)?,
-                    StringNumber::F32(v) => v,
-                };
+                    let second_value = match value[1] {
+                        StringNumber::String(ref name) => engine
+                            .inputs
+                            .resolve_numeric(name)
+                            .ok_or(StateMachineActionError::ExecuteError)?,
+                        StringNumber::F32(v) => v,
+                    };
 
-                let third_value = match value[2] {
-                    StringNumber::String(ref name) => engine
-                        .inputs
-                        .resolve_numeric(name)
-                        .ok_or(StateMachineActionError::ExecuteError)?,
-                    StringNumber::F32(v) => v,
-                };
+                    let third_value = match value[2] {
+                        StringNumber::String(ref name) => engine
+                            .inputs
+                            .resolve_numeric(name)
+                            .ok_or(StateMachineActionError::ExecuteError)?,
+                        StringNumber::F32(v) => v,
+                    };
 
-                let fourth_value = match value[3] {
-                    StringNumber::String(ref name) => engine
-                        .inputs
-                        .resolve_numeric(name)
-                        .ok_or(StateMachineActionError::ExecuteError)?,
-                    StringNumber::F32(v) => v,
-                };
-
-                player.global_inputs_set_color(
-                    &global_var_name,
-                    &vec![first_value, second_value, third_value, fourth_value],
-                );
+                    let fourth_value = if value.len() >= 4 {
+                        match &value[3] {
+                            StringNumber::String(name) => engine
+                                .inputs
+                                .resolve_numeric(name)
+                                .ok_or(StateMachineActionError::ExecuteError)?,
+                            StringNumber::F32(v) => *v,
+                        }
+                    } else {
+                        1.0
+                    };
+                    player.global_inputs_set_color(
+                        &global_input_id,
+                        &vec![first_value, second_value, third_value, fourth_value],
+                    );
+                }
                 Ok(())
             }
             Action::SetGlobalGradient {
-                global_var_name,
+                global_input_id,
                 value,
             } => {
                 let player = player
                     .read()
                     .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                player.global_inputs_set_gradient(&global_var_name, value);
+                player.global_inputs_set_gradient(&global_input_id, value);
                 Ok(())
             }
-            Action::SetGlobalImage {
-                global_var_name,
+            Action::SetGlobalString {
+                global_input_id,
                 value,
             } => {
                 let player = player
                     .read()
                     .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                player.global_inputs_set_image(&global_var_name, value);
+                player.global_inputs_set_string(&global_input_id, value);
+                Ok(())
+            }
+            Action::SetGlobalNumeric {
+                global_input_id,
+                value,
+            } => {
+                let player = player
+                    .read()
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
+
+                player.global_inputs_set_numeric(&global_input_id, *value);
+                Ok(())
+            }
+            Action::SetGlobalBoolean {
+                global_input_id,
+                value,
+            } => {
+                let player = player
+                    .read()
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
+
+                player.global_inputs_set_boolean(&global_input_id, *value);
                 Ok(())
             }
         }

@@ -30,7 +30,7 @@ pub trait InputTrait {
     fn set_initial_string(&mut self, key: &str, value: String);
     fn set_initial_numeric(&mut self, key: &str, value: f32);
     fn set_initial_event(&mut self, key: &str, value: &str);
-    fn new(player: Option<Rc<RwLock<DotLottiePlayerContainer>>>) -> Self;
+    fn new() -> Self;
     fn set_boolean(&mut self, key: &str, value: bool) -> Option<InputValue>;
     fn set_string(&mut self, key: &str, value: String) -> Option<InputValue>;
     fn set_numeric(&mut self, key: &str, value: f32) -> Option<InputValue>;
@@ -46,11 +46,10 @@ pub trait InputTrait {
 pub struct InputManager {
     pub inputs: HashMap<String, InputValue>,
     default_values: HashMap<String, InputValue>,
-    pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
 }
 
 impl InputTrait for InputManager {
-    fn new(player: Option<Rc<RwLock<DotLottiePlayerContainer>>>) -> Self {
+    fn new() -> Self {
         let inputs = HashMap::new();
 
         // Store defaults
@@ -59,7 +58,6 @@ impl InputTrait for InputManager {
         InputManager {
             inputs,
             default_values,
-            player,
         }
     }
 
@@ -79,12 +77,7 @@ impl InputTrait for InputManager {
     // Resolve a string input either from the State machine inputs or the data bindings
     // Return value: If neither the input or data bind was found, returns the key
     fn resolve_string(&self, key: &str) -> Option<String> {
-        if let Some(binding_name) = key.strip_prefix('@') {
-            self.player
-                .as_ref()
-                .and_then(|p| p.try_read().ok())
-                .and_then(|p| p.global_inputs_get_string(binding_name))
-        } else if let Some(binding_name) = key.strip_prefix('$') {
+        if let Some(binding_name) = key.strip_prefix('$') {
             self.get_string(binding_name)
         } else {
             self.get_string(key)
@@ -94,12 +87,7 @@ impl InputTrait for InputManager {
     // Resolve a boolean input either from the State machine inputs or the data bindings
     // Return value: If neither the input or data bind was found, returns None
     fn resolve_boolean(&self, key: &str) -> Option<bool> {
-        if let Some(binding_name) = key.strip_prefix('@') {
-            self.player
-                .as_ref()
-                .and_then(|p| p.try_read().ok())
-                .and_then(|p| p.global_inputs_get_boolean(binding_name))
-        } else if let Some(binding_name) = key.strip_prefix('$') {
+        if let Some(binding_name) = key.strip_prefix('$') {
             self.get_boolean(binding_name)
         } else {
             self.get_boolean(key)
@@ -109,13 +97,7 @@ impl InputTrait for InputManager {
     // Resolve a numeric input either from the State machine inputs or the data bindings
     // Return value: If neither the input or data bind was found, returns None
     fn resolve_numeric(&self, key: &str) -> Option<f32> {
-        if let Some(binding_name) = key.strip_prefix('@') {
-            self.player
-                .as_ref()
-                .and_then(|p| p.try_read().ok())
-                .and_then(|p| p.global_inputs_get_numeric(binding_name))
-                .map(|v| v as f32)
-        } else if let Some(binding_name) = key.strip_prefix('$') {
+        if let Some(binding_name) = key.strip_prefix('$') {
             self.get_numeric(binding_name)
         } else {
             self.get_numeric(key)

@@ -1,0 +1,63 @@
+[package]
+name = "demo-player"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+minifb = "0.27"
+dotlottie-rs = { path = "../../dotlottie-rs", features = ["dev"] }
+sysinfo = "0.30"
+rand = "0.8"
+rapier2d = "0.22"
+
+[[bin]]
+name = "magic-wand"
+path = "src/bin/magic-wand/main.rs"
+
+[[bin]]
+name = "numeric"
+path = "src/bin/numeric/main.rs"
+
+[[bin]]
+name = "color"
+path = "src/bin/color/main.rs"
+
+[[bin]]
+name = "string"
+path = "src/bin/string/main.rs"
+
+[[bin]]
+name = "gradient"
+path = "src/bin/gradient/main.rs"
+
+[[bin]]
+name = "boolean"
+path = "src/bin/boolean/main.rs"
+
+[[bin]]
+name = "numeric-star-rating"
+path = "src/bin/numeric-star-rating/main.rs"
+
+[[bin]]
+name = "physics"
+path = "src/bin/physics/main.rs"
+
+[[bin]]
+name = "star-rating"
+path = "src/bin/star-rating/main.rs"
+
+[[bin]]
+name = "ball-gradient"
+path = "src/bin/ball-gradient/main.rs"
+
+[[bin]]
+name = "text-input"
+path = "src/bin/text-input/main.rs"
+
+[[bin]]
+name = "image-replacement"
+path = "src/bin/image-replacement/main.rs"
+
+[[bin]]
+name = "choose-your-dev"
+path = "src/bin/choose-your-dev/main.rs"

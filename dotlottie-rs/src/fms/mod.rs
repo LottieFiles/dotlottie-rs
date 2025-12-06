@@ -192,6 +192,47 @@ impl DotLottieManager {
     }
 
     #[inline]
+    pub fn get_image(&self, image_id: &str) -> Result<String, DotLottieError> {
+        let mut archive = self.archive.borrow_mut();
+        let image_prefix = if self.version == 2 { "i/" } else { "images/" };
+
+        let path = format!("{image_prefix}{image_id}.png");
+        let p_str = "png";
+        let mut asset_path = String::with_capacity(128); // Larger initial capacity
+
+        asset_path.push_str(&path);
+
+        let by_name_result = archive.by_name(&asset_path);
+        if let Ok(mut result) = by_name_result {
+            let mut content = Vec::with_capacity(result.size() as usize);
+            if result.read_to_end(&mut content).is_ok() {
+                let image_ext = p_str
+                    .rfind('.')
+                    .map(|i| &p_str[i + 1..])
+                    .unwrap_or(DEFAULT_EXT);
+                let image_data_base64 = Self::encode_base64(&content);
+
+                let data_url =
+                    format!("{DATA_IMAGE_PREFIX}{image_ext}{BASE64_PREFIX}{image_data_base64}");
+
+                Ok(data_url)
+            } else {
+                Err(DotLottieError::AssetNotFound)
+            }
+        } else {
+            Err(DotLottieError::AssetNotFound)
+        }
+    }
+
+    #[inline]
+    pub fn get_global_input(&self, id: &str) -> Result<String, DotLottieError> {
+        let mut archive = self.archive.borrow_mut();
+        let path = format!("g/{id}.json");
+        let content = Self::read_zip_file(&mut archive, &path)?;
+        String::from_utf8(content).map_err(|_| DotLottieError::InvalidUtf8Error)
+    }
+
+    #[inline]
     pub fn manifest(&self) -> &Manifest {
         &self.manifest
     }
@@ -206,8 +247,11 @@ impl DotLottieManager {
         let mut archive = self.archive.borrow_mut();
         let path = format!("t/{theme_id}.json");
         let content = Self::read_zip_file(&mut archive, &path)?;
-        let theme_str = std::str::from_utf8(&content).map_err(|_| DotLottieError::InvalidUtf8Error)?;
-        theme_str.parse::<Theme>().map_err(|_| DotLottieError::ReadContentError)
+        let theme_str =
+            std::str::from_utf8(&content).map_err(|_| DotLottieError::InvalidUtf8Error)?;
+        theme_str
+            .parse::<Theme>()
+            .map_err(|_| DotLottieError::ReadContentError)
     }
 
     #[inline]

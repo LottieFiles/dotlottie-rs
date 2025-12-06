@@ -5,7 +5,6 @@
 /// a slot with ID "gradient_fill" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-
 use dotlottie_rs::{Config, DotLottiePlayer, GradientSlot, GradientStop, LottieKeyframe};
 use minifb::{Key, Window, WindowOptions};
 
@@ -49,50 +48,107 @@ fn main() {
         (
             "Sunset",
             vec![
-                GradientStop { offset: 0.0, color: [1.0, 0.4, 0.0, 1.0] },  // Orange
-                GradientStop { offset: 0.5, color: [1.0, 0.6, 0.2, 1.0] },  // Light Orange
-                GradientStop { offset: 1.0, color: [1.0, 0.8, 0.0, 1.0] },  // Yellow
+                GradientStop {
+                    offset: 0.0,
+                    color: [1.0, 0.4, 0.0, 1.0],
+                }, // Orange
+                GradientStop {
+                    offset: 0.5,
+                    color: [1.0, 0.6, 0.2, 1.0],
+                }, // Light Orange
+                GradientStop {
+                    offset: 1.0,
+                    color: [1.0, 0.8, 0.0, 1.0],
+                }, // Yellow
             ],
         ),
         (
             "Ocean",
             vec![
-                GradientStop { offset: 0.0, color: [0.0, 0.3, 0.6, 1.0] },  // Deep Blue
-                GradientStop { offset: 0.5, color: [0.0, 0.5, 0.8, 1.0] },  // Ocean Blue
-                GradientStop { offset: 1.0, color: [0.0, 0.8, 1.0, 1.0] },  // Light Blue
+                GradientStop {
+                    offset: 0.0,
+                    color: [0.0, 0.3, 0.6, 1.0],
+                }, // Deep Blue
+                GradientStop {
+                    offset: 0.5,
+                    color: [0.0, 0.5, 0.8, 1.0],
+                }, // Ocean Blue
+                GradientStop {
+                    offset: 1.0,
+                    color: [0.0, 0.8, 1.0, 1.0],
+                }, // Light Blue
             ],
         ),
         (
             "Forest",
             vec![
-                GradientStop { offset: 0.0, color: [0.1, 0.3, 0.1, 1.0] },  // Dark Green
-                GradientStop { offset: 0.5, color: [0.2, 0.6, 0.2, 1.0] },  // Green
-                GradientStop { offset: 1.0, color: [0.5, 0.8, 0.3, 1.0] },  // Light Green
+                GradientStop {
+                    offset: 0.0,
+                    color: [0.1, 0.3, 0.1, 1.0],
+                }, // Dark Green
+                GradientStop {
+                    offset: 0.5,
+                    color: [0.2, 0.6, 0.2, 1.0],
+                }, // Green
+                GradientStop {
+                    offset: 1.0,
+                    color: [0.5, 0.8, 0.3, 1.0],
+                }, // Light Green
             ],
         ),
         (
             "Fire",
             vec![
-                GradientStop { offset: 0.0, color: [1.0, 0.0, 0.0, 1.0] },  // Red
-                GradientStop { offset: 0.33, color: [1.0, 0.5, 0.0, 1.0] }, // Orange
-                GradientStop { offset: 0.66, color: [1.0, 1.0, 0.0, 1.0] }, // Yellow
-                GradientStop { offset: 1.0, color: [1.0, 1.0, 1.0, 1.0] },  // White
+                GradientStop {
+                    offset: 0.0,
+                    color: [1.0, 0.0, 0.0, 1.0],
+                }, // Red
+                GradientStop {
+                    offset: 0.33,
+                    color: [1.0, 0.5, 0.0, 1.0],
+                }, // Orange
+                GradientStop {
+                    offset: 0.66,
+                    color: [1.0, 1.0, 0.0, 1.0],
+                }, // Yellow
+                GradientStop {
+                    offset: 1.0,
+                    color: [1.0, 1.0, 1.0, 1.0],
+                }, // White
             ],
         ),
         (
             "Purple Haze",
             vec![
-                GradientStop { offset: 0.0, color: [0.3, 0.0, 0.5, 1.0] },  // Deep Purple
-                GradientStop { offset: 0.5, color: [0.6, 0.2, 0.8, 1.0] },  // Purple
-                GradientStop { offset: 1.0, color: [1.0, 0.4, 1.0, 1.0] },  // Pink
+                GradientStop {
+                    offset: 0.0,
+                    color: [0.3, 0.0, 0.5, 1.0],
+                }, // Deep Purple
+                GradientStop {
+                    offset: 0.5,
+                    color: [0.6, 0.2, 0.8, 1.0],
+                }, // Purple
+                GradientStop {
+                    offset: 1.0,
+                    color: [1.0, 0.4, 1.0, 1.0],
+                }, // Pink
             ],
         ),
         (
             "Grayscale",
             vec![
-                GradientStop { offset: 0.0, color: [0.0, 0.0, 0.0, 1.0] },  // Black
-                GradientStop { offset: 0.5, color: [0.5, 0.5, 0.5, 1.0] },  // Gray
-                GradientStop { offset: 1.0, color: [1.0, 1.0, 1.0, 1.0] },  // White
+                GradientStop {
+                    offset: 0.0,
+                    color: [0.0, 0.0, 0.0, 1.0],
+                }, // Black
+                GradientStop {
+                    offset: 0.5,
+                    color: [0.5, 0.5, 0.5, 1.0],
+                }, // Gray
+                GradientStop {
+                    offset: 1.0,
+                    color: [1.0, 1.0, 1.0, 1.0],
+                }, // White
             ],
         ),
     ];
@@ -105,7 +161,10 @@ fn main() {
     // Set initial gradient (static)
     let gradient_slot = GradientSlot::new(gradients[current_gradient_index].1.clone());
     player.set_gradient_slot("gradient_fill", gradient_slot);
-    println!("Mode: STATIC | Current gradient: {}", gradients[current_gradient_index].0);
+    println!(
+        "Mode: STATIC | Current gradient: {}",
+        gradients[current_gradient_index].0
+    );
 
     // Main render loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
@@ -122,9 +181,18 @@ fn main() {
                         LottieKeyframe {
                             frame: 0,
                             start_value: vec![
-                                GradientStop { offset: 0.0, color: [1.0, 0.4, 0.0, 1.0] },
-                                GradientStop { offset: 0.5, color: [1.0, 0.6, 0.2, 1.0] },
-                                GradientStop { offset: 1.0, color: [1.0, 0.8, 0.0, 1.0] },
+                                GradientStop {
+                                    offset: 0.0,
+                                    color: [1.0, 0.4, 0.0, 1.0],
+                                },
+                                GradientStop {
+                                    offset: 0.5,
+                                    color: [1.0, 0.6, 0.2, 1.0],
+                                },
+                                GradientStop {
+                                    offset: 1.0,
+                                    color: [1.0, 0.8, 0.0, 1.0],
+                                },
                             ],
                             in_tangent: None,
                             out_tangent: None,
@@ -135,9 +203,18 @@ fn main() {
                         LottieKeyframe {
                             frame: 60,
                             start_value: vec![
-                                GradientStop { offset: 0.0, color: [0.0, 0.3, 0.6, 1.0] },
-                                GradientStop { offset: 0.5, color: [0.0, 0.5, 0.8, 1.0] },
-                                GradientStop { offset: 1.0, color: [0.0, 0.8, 1.0, 1.0] },
+                                GradientStop {
+                                    offset: 0.0,
+                                    color: [0.0, 0.3, 0.6, 1.0],
+                                },
+                                GradientStop {
+                                    offset: 0.5,
+                                    color: [0.0, 0.5, 0.8, 1.0],
+                                },
+                                GradientStop {
+                                    offset: 1.0,
+                                    color: [0.0, 0.8, 1.0, 1.0],
+                                },
                             ],
                             in_tangent: None,
                             out_tangent: None,
@@ -150,9 +227,13 @@ fn main() {
                     println!("Mode: ANIMATED (Sunset -> Ocean)");
                 } else {
                     // Switch back to static mode
-                    let gradient_slot = GradientSlot::new(gradients[current_gradient_index].1.clone());
+                    let gradient_slot =
+                        GradientSlot::new(gradients[current_gradient_index].1.clone());
                     player.set_gradient_slot("gradient_fill", gradient_slot);
-                    println!("Mode: STATIC | Current gradient: {}", gradients[current_gradient_index].0);
+                    println!(
+                        "Mode: STATIC | Current gradient: {}",
+                        gradients[current_gradient_index].0
+                    );
                 }
 
                 last_toggle_press = now;
@@ -168,7 +249,10 @@ fn main() {
                 let gradient_slot = GradientSlot::new(gradients[current_gradient_index].1.clone());
                 player.set_gradient_slot("gradient_fill", gradient_slot);
 
-                println!("Mode: STATIC | Current gradient: {}", gradients[current_gradient_index].0);
+                println!(
+                    "Mode: STATIC | Current gradient: {}",
+                    gradients[current_gradient_index].0
+                );
                 last_space_press = now;
             }
         }

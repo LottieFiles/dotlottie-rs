@@ -21,6 +21,9 @@ pub enum InputValue {
 }
 
 pub trait InputTrait {
+    fn resolve_numeric(&self, key: &str) -> Option<f32>;
+    fn resolve_boolean(&self, key: &str) -> Option<bool>;
+    fn resolve_string(&self, key: &str) -> Option<String>;
     fn set_initial_boolean(&mut self, key: &str, value: bool);
     fn set_initial_string(&mut self, key: &str, value: String);
     fn set_initial_numeric(&mut self, key: &str, value: f32);
@@ -67,6 +70,36 @@ impl InputTrait for InputManager {
         }
 
         None
+    }
+
+    // Resolve a string input either from the State machine inputs or the data bindings
+    // Return value: If neither the input or data bind was found, returns the key
+    fn resolve_string(&self, key: &str) -> Option<String> {
+        if let Some(binding_name) = key.strip_prefix('$') {
+            self.get_string(binding_name)
+        } else {
+            self.get_string(key)
+        }
+    }
+
+    // Resolve a boolean input either from the State machine inputs or the data bindings
+    // Return value: If neither the input or data bind was found, returns None
+    fn resolve_boolean(&self, key: &str) -> Option<bool> {
+        if let Some(binding_name) = key.strip_prefix('$') {
+            self.get_boolean(binding_name)
+        } else {
+            self.get_boolean(key)
+        }
+    }
+
+    // Resolve a numeric input either from the State machine inputs or the data bindings
+    // Return value: If neither the input or data bind was found, returns None
+    fn resolve_numeric(&self, key: &str) -> Option<f32> {
+        if let Some(binding_name) = key.strip_prefix('$') {
+            self.get_numeric(binding_name)
+        } else {
+            self.get_numeric(key)
+        }
     }
 
     fn reset_all(&mut self) {

@@ -81,24 +81,45 @@ pub trait LottieRenderer {
 
     fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot)
         -> Result<(), LottieRendererError>;
+    fn get_color_slot(&mut self, slot_id: &str) -> Option<&mut ColorSlot>;
 
-    fn set_gradient_slot(&mut self, slot_id: &str, slot: GradientSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_gradient_slot(
+        &mut self,
+        slot_id: &str,
+        slot: GradientSlot,
+    ) -> Result<(), LottieRendererError>;
+    fn get_gradient_slot(&mut self, slot_id: &str) -> Option<&mut GradientSlot>;
 
     fn set_image_slot(&mut self, slot_id: &str, slot: ImageSlot)
         -> Result<(), LottieRendererError>;
+    fn get_image_slot(&self, slot_id: &str) -> Option<&ImageSlot>;
 
-    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot) -> Result<(), LottieRendererError>;
+    fn get_text_slot(&mut self, slot_id: &str) -> Option<&mut TextSlot>;
 
-    fn set_scalar_slot(&mut self, slot_id: &str, slot: ScalarSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_scalar_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ScalarSlot,
+    ) -> Result<(), LottieRendererError>;
+    fn get_scalar_slot(&mut self, slot_id: &str) -> Option<&mut ScalarSlot>;
 
-    fn set_vector_slot(&mut self, slot_id: &str, slot: VectorSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_vector_slot(
+        &mut self,
+        slot_id: &str,
+        slot: VectorSlot,
+    ) -> Result<(), LottieRendererError>;
+    fn get_vector_slot(&mut self, slot_id: &str) -> Option<&mut VectorSlot>;
 
-    fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_position_slot(
+        &mut self,
+        slot_id: &str,
+        slot: PositionSlot,
+    ) -> Result<(), LottieRendererError>;
+
+    fn apply_all_slots(&mut self) -> Result<(), LottieRendererError>;
+
+    fn get_position_slot(&self, slot_id: &str) -> Option<&PositionSlot>;
 
     fn clear_slots(&mut self) -> Result<(), LottieRendererError>;
 
@@ -324,7 +345,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
             .ok_or(LottieRendererError::BackgroundShapeNotInitialized)
     }
 
-    fn apply_all_slots(&mut self) -> Result<(), LottieRendererError> {
+    pub fn apply_all_slots(&mut self) -> Result<(), LottieRendererError> {
         let slots_json = slots::slots_to_json_string(&self.slots)
             .map_err(|_| LottieRendererError::InvalidArgument)?;
 
@@ -547,19 +568,64 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         set_background
     }
 
-    fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Color(slot));
+    fn set_color_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ColorSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Color(slot));
         self.apply_all_slots()
     }
 
-    fn set_gradient_slot(&mut self, slot_id: &str, slot: GradientSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Gradient(slot));
+    fn get_color_slot(&mut self, slot_id: &str) -> Option<&mut ColorSlot> {
+        self.slots.get_mut(slot_id).and_then(|slot_type| {
+            if let SlotType::Color(ref mut color_slot) = slot_type {
+                Some(color_slot)
+            } else {
+                None
+            }
+        })
+    }
+
+    fn set_gradient_slot(
+        &mut self,
+        slot_id: &str,
+        slot: GradientSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Gradient(slot));
         self.apply_all_slots()
     }
 
-    fn set_image_slot(&mut self, slot_id: &str, slot: ImageSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Image(slot));
+    fn get_gradient_slot(&mut self, slot_id: &str) -> Option<&mut GradientSlot> {
+        self.slots.get_mut(slot_id).and_then(|slot_type| {
+            if let SlotType::Gradient(ref mut gradient_slot) = slot_type {
+                Some(gradient_slot)
+            } else {
+                None
+            }
+        })
+    }
+
+    fn set_image_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ImageSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Image(slot));
         self.apply_all_slots()
+    }
+
+    fn get_image_slot(&self, slot_id: &str) -> Option<&ImageSlot> {
+        self.slots.get(slot_id).and_then(|slot_type| {
+            if let SlotType::Image(ref image_slot) = slot_type {
+                Some(image_slot)
+            } else {
+                None
+            }
+        })
     }
 
     fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot) -> Result<(), LottieRendererError> {
@@ -567,19 +633,73 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.apply_all_slots()
     }
 
-    fn set_scalar_slot(&mut self, slot_id: &str, slot: ScalarSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Scalar(slot));
+    fn get_text_slot(&mut self, slot_id: &str) -> Option<&mut TextSlot> {
+        self.slots.get_mut(slot_id).and_then(|slot_type| {
+            if let SlotType::Text(ref mut text_slot) = slot_type {
+                Some(text_slot)
+            } else {
+                None
+            }
+        })
+    }
+
+    fn set_scalar_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ScalarSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Scalar(slot));
         self.apply_all_slots()
     }
 
-    fn set_vector_slot(&mut self, slot_id: &str, slot: VectorSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Vector(slot));
+    fn get_scalar_slot(&mut self, slot_id: &str) -> Option<&mut ScalarSlot> {
+        self.slots.get_mut(slot_id).and_then(|slot_type| {
+            if let SlotType::Scalar(ref mut scalar_slot) = slot_type {
+                Some(scalar_slot)
+            } else {
+                None
+            }
+        })
+    }
+    fn set_vector_slot(
+        &mut self,
+        slot_id: &str,
+        slot: VectorSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Vector(slot));
         self.apply_all_slots()
     }
 
-    fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Position(slot));
+    fn get_vector_slot(&mut self, slot_id: &str) -> Option<&mut VectorSlot> {
+        self.slots.get_mut(slot_id).and_then(|slot_type| {
+            if let SlotType::Vector(ref mut vector_slot) = slot_type {
+                Some(vector_slot)
+            } else {
+                None
+            }
+        })
+    }
+
+    fn set_position_slot(
+        &mut self,
+        slot_id: &str,
+        slot: PositionSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Position(slot));
         self.apply_all_slots()
+    }
+
+    fn get_position_slot(&self, slot_id: &str) -> Option<&PositionSlot> {
+        self.slots.get(slot_id).and_then(|slot_type| {
+            if let SlotType::Position(ref position_slot) = slot_type {
+                Some(position_slot)
+            } else {
+                None
+            }
+        })
     }
 
     fn clear_slots(&mut self) -> Result<(), LottieRendererError> {
@@ -684,6 +804,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
         Ok(())
     }
+
+    fn apply_all_slots(&mut self) -> Result<(), LottieRendererError> {
+        self.apply_all_slots()
+    }
 }
 
 #[inline]
@@ -705,7 +829,7 @@ fn get_color_space_for_target() -> ColorSpace {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        ColorSpace::ABGR8888
+        ColorSpace::ARGB8888S
     }
 }
 

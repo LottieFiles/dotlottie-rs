@@ -95,6 +95,7 @@ impl Default for PointerData {
 }
 
 pub struct StateMachineEngine {
+    pub id: String,
     // For resetting the player config after state machine is stopped
     cached_player_config: Config,
 
@@ -133,6 +134,7 @@ pub struct StateMachineEngine {
 impl Default for StateMachineEngine {
     fn default() -> StateMachineEngine {
         StateMachineEngine {
+            id: "".to_string(),
             cached_player_config: Config::default(),
             global_state: None,
             state_machine: StateMachine::default(),
@@ -157,12 +159,14 @@ impl Default for StateMachineEngine {
 
 impl StateMachineEngine {
     pub fn new(
+        state_machine_id: &str,
         state_machine_definition: &str,
         player: Rc<RwLock<DotLottiePlayerContainer>>,
         max_cycle_count: Option<usize>,
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
         // Create an empty state machine object that we'll use to boot up the parser from
         let mut state_machine = StateMachineEngine {
+            id: state_machine_id.to_string(),
             cached_player_config: Config::default(),
             global_state: None,
             state_machine: StateMachine::default(),
@@ -183,7 +187,7 @@ impl StateMachineEngine {
             tween_transition_target_state: None,
         };
 
-        state_machine.create_state_machine(state_machine_definition, &player)
+        state_machine.create_state_machine(state_machine_id, state_machine_definition, &player)
     }
 
     pub fn subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
@@ -294,7 +298,6 @@ impl StateMachineEngine {
         }
 
         let ret = self.inputs.set_boolean(key, value);
-
         if let Some(InputValue::Boolean(old_value)) = ret.clone() {
             self.observe_boolean_input_value_change(key, old_value, value);
         }
@@ -302,6 +305,7 @@ impl StateMachineEngine {
         if called_from_action {
             self.action_mutated_inputs = true;
         }
+
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
         }
@@ -371,11 +375,15 @@ impl StateMachineEngine {
     // Parses the JSON of the state machine definition and creates the states and transitions
     pub fn create_state_machine(
         &mut self,
+        sm_id: &str,
         sm_definition: &str,
         player: &Rc<RwLock<DotLottiePlayerContainer>>,
     ) -> Result<StateMachineEngine, StateMachineEngineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
-        let mut new_state_machine = StateMachineEngine::default();
+        let mut new_state_machine = StateMachineEngine {
+            id: sm_id.to_string(),
+            ..Default::default()
+        };
         if parsed_state_machine.is_err() {
             let message = match parsed_state_machine.err() {
                 Some(e) => format!("Parsing error: {e:?}"),
@@ -666,95 +674,85 @@ impl StateMachineEngine {
         called_from_global: bool,
     ) -> Result<(), StateMachineEngineError> {
         let new_state = self.get_state(state_name);
-        // We have a new state
-        if let Some(new_state) = new_state {
-            // Emit transtion occured event
-            self.observe_on_transition(&self.get_current_state_name(), &new_state.name());
-            // Perform exit actions on the current state if there is one.
-            if self.current_state.is_some() {
-                let state = self.current_state.take();
-                let player = self.player.take();
-                // Now use the extracted information
-                if let (Some(state), Some(player)) = (state, player) {
-                    if !called_from_global {
-                        let _ = state.exit(self, &player);
-                    }
-                    // Don't forget to put things back
-                    // new_state becomes the current state
-                    self.current_state = Some(state);
-                    self.player = Some(player);
+        if new_state.is_none() {
+            return Err(StateMachineEngineError::CreationError);
+        }
+
+        let new_state = new_state.unwrap();
+
+        // Emit transition occured event
+        self.observe_on_transition(&self.get_current_state_name(), &new_state.name());
+
+        // Perform exit actions on the current state if there is one.
+        if self.current_state.is_some() {
+            let state = self.current_state.take();
+            let player = self.player.take();
+            if let (Some(state), Some(player)) = (state, player) {
+                if !called_from_global {
+                    let _ = state.exit(self, &player);
                 }
+                // Don't forget to put things back
+                self.current_state = Some(state);
+                self.player = Some(player);
             }
-            // Emit transtion occured event
-            self.observe_on_state_exit(&self.get_current_state_name());
+        }
 
-            // Since the blended transition will take time
-            // We have to save the target state and do the final transition when tweening has completed
-            // The state machine is alerted of tweening finishing because the player calls the resume_from_tweening() method
-            //  Note: If the tweened transition targets a State without a segment, it will not tween and the target state is treated it usually would.
-            if let Some(causing_transition) = causing_transition {
-                // If we dealing with a tweened transition
-                if let Transition::Tweened { .. } = causing_transition {
-                    if let Some(unwrapped_player) = &self.player {
-                        let read_lock = &unwrapped_player.try_read();
+        // Emit transition occured event for state exit
+        self.observe_on_state_exit(&self.get_current_state_name());
 
-                        if let Ok(player) = read_lock {
-                            // Clone segment before match to avoid partial move
-                            let segment_clone = match &new_state {
-                                State::PlaybackState { segment, .. } => segment.clone(),
-                                _ => None,
-                            };
-                            match &new_state {
-                                // If we're transitioning to a PlaybackState, grab the start segment
-                                State::PlaybackState { .. } => {
-                                    if let Some(target_segment) = segment_clone {
-                                        self.tween_transition_target_state =
-                                            Some(new_state.clone());
-                                        // Tweening is activated and the state machine has been paused whilst it transitions
-                                        self.status = StateMachineEngineStatus::Tweening;
+        // Handle tweened transitions
+        if let Some(causing_transition) = causing_transition {
+            if let Transition::Tweened { .. } = causing_transition {
+                if let Some(unwrapped_player) = &self.player {
+                    let read_lock = &unwrapped_player.try_read();
 
-                                        player.tween_to_marker(
-                                            &target_segment,
-                                            Some(causing_transition.duration()),
-                                            Some(causing_transition.easing().to_vec()),
-                                        );
-
-                                        return Ok(());
-                                    }
-                                }
-                                // If we're transitioning to a GlobalState, do nothing
-                                State::GlobalState { .. } => {
+                    if let Ok(player) = read_lock {
+                        // Clone segment for match
+                        let segment_clone = match &new_state {
+                            State::PlaybackState { segment, .. } => segment.clone(),
+                            _ => None,
+                        };
+                        match &new_state {
+                            State::PlaybackState { .. } => {
+                                if let Some(target_segment) = segment_clone {
+                                    self.tween_transition_target_state = Some(new_state.clone());
+                                    self.status = StateMachineEngineStatus::Tweening;
+                                    player.tween_to_marker(
+                                        &target_segment,
+                                        Some(causing_transition.duration()),
+                                        Some(causing_transition.easing().to_vec()),
+                                    );
                                     return Ok(());
                                 }
+                            }
+                            State::GlobalState { .. } => {
+                                return Ok(());
                             }
                         }
                     }
                 }
             }
-
-            // Assign the new state to the current_state
-            self.current_state = Some(new_state);
-
-            // Emit transtion occured event
-            self.observe_on_state_entered(&self.get_current_state_name());
-            // Perform entry actions
-            // Execute its type of state
-            let state = self.current_state.take();
-            let player = self.player.take();
-            // Now use the extracted information
-            if let (Some(state), Some(player)) = (state, player) {
-                // Enter the state
-                let _ = state.enter(self, &player);
-                // Don't forget to put things back
-                // new_state becomes the current state
-                self.current_state = Some(state);
-                self.player = Some(player);
-            } else {
-                return Err(StateMachineEngineError::SetStateError);
-            }
-            return Ok(());
         }
-        Err(StateMachineEngineError::CreationError)
+
+        // Assign the new state to the current_state
+        self.current_state = Some(new_state);
+
+        // Emit transition occured event for state entry
+        self.observe_on_state_entered(&self.get_current_state_name());
+
+        // Perform entry actions
+        let state = self.current_state.take();
+        let player = self.player.take();
+
+        if let (Some(state), Some(player)) = (state, player) {
+            let _ = state.enter(self, &player);
+            // Don't forget to put things back
+            self.current_state = Some(state);
+            self.player = Some(player);
+        } else {
+            return Err(StateMachineEngineError::SetStateError);
+        }
+        Ok(())
     }
 
     // Returns: The target state and the causing transition
@@ -878,7 +876,6 @@ impl StateMachineEngine {
         }
 
         let mut tick = true;
-
         let mut ignore_global = false;
 
         while tick {

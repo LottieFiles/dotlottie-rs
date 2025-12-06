@@ -5,6 +5,7 @@ use crate::lottie_renderer::slots::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::fmt;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +19,15 @@ impl FromStr for Theme {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_str(s)
+    }
+}
+
+impl fmt::Display for Theme {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match serde_json::to_string(self) {
+            Ok(s) => write!(f, "{s}"),
+            Err(e) => write!(f, "Error serializing theme: {e}"),
+        }
     }
 }
 
@@ -48,7 +58,11 @@ impl Theme {
 
     pub fn set_rule(&mut self, rule: ThemeRule) {
         let rule_id = rule.id().to_string();
-        if let Some(pos) = self.rules.iter().position(|existing| existing.id() == rule_id) {
+        if let Some(pos) = self
+            .rules
+            .iter()
+            .position(|existing| existing.id() == rule_id)
+        {
             self.rules[pos] = rule;
         } else {
             self.rules.push(rule);
@@ -357,10 +371,7 @@ impl ThemeRule {
     }
 }
 
-pub fn transform_theme_to_lottie_slots(
-    theme_json: &str,
-    active_animation_id: &str,
-) -> String {
+pub fn transform_theme_to_lottie_slots(theme_json: &str, active_animation_id: &str) -> String {
     match theme_json.parse::<Theme>() {
         Ok(theme) => {
             let slots = theme.to_slot_types(active_animation_id);
@@ -375,14 +386,16 @@ pub fn transform_theme_to_lottie_slots(
 impl From<&ColorRule> for ColorSlot {
     fn from(rule: &ColorRule) -> Self {
         if let Some(keyframes) = &rule.keyframes {
-            let lottie_keyframes: Vec<LottieKeyframe<[f32; 3]>> = keyframes
+            let lottie_keyframes: Vec<LottieKeyframe<[f32; 4]>> = keyframes
                 .iter()
                 .map(|kf| {
                     // Support both RGB (3) and RGBA (4) formats, extract RGB
-                    let rgb = if kf.value.len() >= 3 {
-                        [kf.value[0], kf.value[1], kf.value[2]]
+                    let rgb = if kf.value.len() >= 4 {
+                        [kf.value[0], kf.value[1], kf.value[2], kf.value[3]]
+                    } else if kf.value.len() >= 3 {
+                        [kf.value[0], kf.value[1], kf.value[2], 1.0]
                     } else {
-                        [0.0, 0.0, 0.0]
+                        [0.0, 0.0, 0.0, 1.0]
                     };
 
                     LottieKeyframe {
@@ -404,19 +417,21 @@ impl From<&ColorRule> for ColorSlot {
             slot
         } else if let Some(value) = &rule.value {
             // Support both RGB (3) and RGBA (4) formats, extract RGB
-            let rgb_value = if value.len() >= 3 {
-                [value[0], value[1], value[2]]
+            let rgba_value = if value.len() >= 4 {
+                [value[0], value[1], value[2], value[3]]
+            } else if value.len() >= 3 {
+                [value[0], value[1], value[2], 1.0]
             } else {
-                [0.0, 0.0, 0.0]
+                [0.0, 0.0, 0.0, 1.0]
             };
 
-            let mut slot = LottieProperty::static_value(rgb_value);
+            let mut slot = LottieProperty::static_value(rgba_value);
             if let Some(expr) = &rule.expression {
                 slot = slot.with_expression(expr.clone());
             }
             slot
         } else {
-            LottieProperty::static_value([0.0, 0.0, 0.0])
+            LottieProperty::static_value([0.0, 0.0, 0.0, 1.0])
         }
     }
 }
@@ -650,8 +665,16 @@ fn text_value_to_document(value: &TextValue) -> TextDocument {
         stroke_over_fill: value.stroke_over_fill,
         line_height: value.line_height,
         tracking: value.tracking,
-        justify: value.justify.as_ref().and_then(|j| parse_justify(j)).map(|j| j.to_number()),
-        text_caps: value.text_caps.as_ref().and_then(|c| parse_caps(c)).map(|c| c.to_number()),
+        justify: value
+            .justify
+            .as_ref()
+            .and_then(|j| parse_justify(j))
+            .map(|j| j.to_number()),
+        text_caps: value
+            .text_caps
+            .as_ref()
+            .and_then(|c| parse_caps(c))
+            .map(|c| c.to_number()),
         baseline_shift: value.baseline_shift,
         wrap_size: value.wrap_size,
         wrap_position: value.wrap_position,

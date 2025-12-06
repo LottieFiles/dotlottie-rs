@@ -1,7 +1,9 @@
 use serde::Deserialize;
 use std::{rc::Rc, sync::RwLock};
 
-use crate::{state_machine::StringBool, DotLottiePlayerContainer, Event};
+use crate::{
+    inputs::InputTrait, state_machine::StringBool, DotLottiePlayerContainer, Event, GradientStop,
+};
 
 use super::{state_machine::StringNumber, StateMachineEngine};
 
@@ -55,6 +57,34 @@ pub enum Action {
         input_name: String,
         value: StringNumber,
     },
+    SetGlobalColor {
+        global_input_id: String,
+        value: Vec<StringNumber>,
+    },
+    SetGlobalGradient {
+        global_input_id: String,
+        value: Vec<GradientStop>,
+    },
+    // SetGlobalImage {
+    //     global_input_id: String,
+    //     value: ImageValue,
+    // },
+    SetGlobalString {
+        global_input_id: String,
+        value: String,
+    },
+    SetGlobalNumeric {
+        global_input_id: String,
+        value: f32,
+    },
+    SetGlobalBoolean {
+        global_input_id: String,
+        value: bool,
+    },
+    SetGlobalVector {
+        global_input_id: String,
+        value: [StringNumber; 2],
+    },
     Fire {
         input_name: String,
     },
@@ -85,258 +115,153 @@ impl ActionTrait for Action {
     ) -> Result<(), StateMachineActionError> {
         match self {
             Action::Increment { input_name, value } => {
-                let val = engine.get_numeric_input(input_name);
+                let current_val = engine
+                    .inputs
+                    .resolve_numeric(input_name)
+                    .ok_or(StateMachineActionError::ExecuteError)?;
 
-                if let Some(val) = val {
-                    if let Some(value) = value {
-                        match value {
-                            StringNumber::String(value) => {
-                                let trimmed_value = value.trim_start_matches('$');
-                                let opt_input_value = engine.get_numeric_input(trimmed_value);
-                                if let Some(input_value) = opt_input_value {
-                                    engine.set_numeric_input(
-                                        input_name,
-                                        val + input_value,
-                                        run_pipeline,
-                                        called_from_action,
-                                    );
-                                } else {
-                                    engine.set_numeric_input(
-                                        input_name,
-                                        val + 1.0,
-                                        run_pipeline,
-                                        called_from_action,
-                                    );
-                                }
-                            }
-                            StringNumber::F32(value) => {
-                                engine.set_numeric_input(
-                                    input_name,
-                                    val + value,
-                                    run_pipeline,
-                                    called_from_action,
-                                );
-                            }
-                        }
-                    } else {
-                        engine.set_numeric_input(input_name, val + 1.0, run_pipeline, true);
+                let increment_amount = match value {
+                    Some(StringNumber::String(ref name)) => {
+                        engine.inputs.resolve_numeric(name).unwrap_or(1.0)
                     }
-                }
+                    Some(StringNumber::F32(v)) => *v,
+                    None => 1.0,
+                };
+
+                let new_value = current_val + increment_amount;
+
+                engine.set_numeric_input(input_name, new_value, run_pipeline, called_from_action);
 
                 Ok(())
             }
             Action::Decrement { input_name, value } => {
-                let val = engine.get_numeric_input(input_name);
+                let current_val = engine
+                    .inputs
+                    .resolve_numeric(input_name)
+                    .ok_or(StateMachineActionError::ExecuteError)?;
 
-                if let Some(val) = val {
-                    if let Some(value) = value {
-                        match value {
-                            StringNumber::String(value) => {
-                                let trimmed_value = value.trim_start_matches('$');
-                                let opt_input_value = engine.get_numeric_input(trimmed_value);
-                                if let Some(input_value) = opt_input_value {
-                                    engine.set_numeric_input(
-                                        input_name,
-                                        val - input_value,
-                                        run_pipeline,
-                                        called_from_action,
-                                    );
-                                } else {
-                                    engine.set_numeric_input(
-                                        input_name,
-                                        val - 1.0,
-                                        run_pipeline,
-                                        called_from_action,
-                                    );
-                                }
-                            }
-                            StringNumber::F32(value) => {
-                                engine.set_numeric_input(
-                                    input_name,
-                                    val - value,
-                                    run_pipeline,
-                                    called_from_action,
-                                );
-                            }
-                        }
-                    } else {
-                        engine.set_numeric_input(
-                            input_name,
-                            val - 1.0,
-                            run_pipeline,
-                            called_from_action,
-                        );
+                let increment_amount = match value {
+                    Some(StringNumber::String(ref name)) => {
+                        engine.inputs.resolve_numeric(name).unwrap_or(1.0)
                     }
-                }
+                    Some(StringNumber::F32(v)) => *v,
+                    None => 1.0,
+                };
+
+                let new_value = current_val - increment_amount;
+
+                engine.set_numeric_input(input_name, new_value, run_pipeline, called_from_action);
+
                 Ok(())
             }
             Action::Toggle { input_name } => {
-                let val = engine.get_boolean_input(input_name);
-
-                if let Some(val) = val {
+                if let Some(val) = engine.get_boolean_input(input_name) {
                     engine.set_boolean_input(input_name, !val, run_pipeline, called_from_action);
                 }
 
                 Ok(())
             }
             Action::SetBoolean { input_name, value } => {
-                let val = engine.get_boolean_input(input_name);
+                let new_value = match value {
+                    StringBool::String(ref name) => engine
+                        .inputs
+                        .resolve_boolean(name)
+                        .ok_or(StateMachineActionError::ExecuteError)?,
+                    StringBool::Bool(v) => *v,
+                };
 
-                if val.is_some() {
-                    match value {
-                        StringBool::String(string_value) => {
-                            let trimmed_value = string_value.trim_start_matches('$');
-                            let opt_input_value = engine.get_boolean_input(trimmed_value);
+                engine.set_boolean_input(input_name, new_value, run_pipeline, called_from_action);
 
-                            // In case of failure, don't change the input_name's value
-                            if let Some(input_value) = opt_input_value {
-                                engine.set_boolean_input(
-                                    input_name,
-                                    input_value,
-                                    run_pipeline,
-                                    called_from_action,
-                                );
-                            }
-                        }
-                        StringBool::Bool(bool_value) => {
-                            engine.set_boolean_input(
-                                input_name,
-                                *bool_value,
-                                run_pipeline,
-                                called_from_action,
-                            );
-                        }
-                    }
-                }
                 Ok(())
             }
             Action::SetNumeric { input_name, value } => {
-                let val = engine.get_numeric_input(input_name);
+                let new_value = match value {
+                    StringNumber::String(ref name) => engine
+                        .inputs
+                        .resolve_numeric(name)
+                        .ok_or(StateMachineActionError::ExecuteError)?,
+                    StringNumber::F32(v) => *v,
+                };
 
-                if val.is_some() {
-                    match value {
-                        StringNumber::String(string_value) => {
-                            let trimmed_value = string_value.trim_start_matches('$');
-                            let opt_input_value = engine.get_numeric_input(trimmed_value);
+                engine.set_numeric_input(input_name, new_value, run_pipeline, called_from_action);
 
-                            // In case of failure, don't change the input_name's value
-                            if let Some(input_value) = opt_input_value {
-                                engine.set_numeric_input(
-                                    input_name,
-                                    input_value,
-                                    run_pipeline,
-                                    called_from_action,
-                                );
-                            }
-                        }
-                        StringNumber::F32(numeric_value) => {
-                            engine.set_numeric_input(
-                                input_name,
-                                *numeric_value,
-                                run_pipeline,
-                                called_from_action,
-                            );
-                        }
-                    }
-                }
                 Ok(())
             }
             Action::SetString { input_name, value } => {
-                let val = engine.get_string_input(input_name);
+                let new_value = engine
+                    .inputs
+                    .resolve_string(input_name)
+                    .unwrap_or_else(|| value.clone());
 
-                if val.is_some() {
-                    let trimmed_value = value.trim_start_matches('$');
-                    let opt_input_value = engine.get_string_input(trimmed_value);
-                    if let Some(input_value) = opt_input_value {
-                        engine.set_string_input(
-                            input_name,
-                            &input_value,
-                            run_pipeline,
-                            called_from_action,
-                        );
-                    } else {
-                        engine.set_string_input(
-                            input_name,
-                            value,
-                            run_pipeline,
-                            called_from_action,
-                        );
-                    }
-                }
+                engine.set_string_input(input_name, &new_value, run_pipeline, called_from_action);
+
                 Ok(())
             }
             Action::Fire { input_name } => {
-                let _ = engine.fire(input_name, run_pipeline);
+                let new_value = engine
+                    .inputs
+                    .resolve_string(input_name)
+                    .unwrap_or_else(|| input_name.clone());
+
+                let _ = engine.fire(&new_value, run_pipeline);
                 Ok(())
             }
             Action::Reset { input_name } => {
-                engine.reset_input(input_name, run_pipeline, called_from_action);
+                let new_value = engine
+                    .inputs
+                    .resolve_string(input_name)
+                    .unwrap_or_else(|| input_name.clone());
+
+                engine.reset_input(&new_value, run_pipeline, called_from_action);
 
                 Ok(())
             }
             Action::SetTheme { value } => {
-                let read_lock = player.try_read();
+                let player = player
+                    .try_read()
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                match read_lock {
-                    Ok(player) => {
-                        let resolved_value = if value.starts_with('$') {
-                            let trimmed_value = value.trim_start_matches('$');
-                            engine
-                                .get_string_input(trimmed_value)
-                                .unwrap_or_else(|| value.clone())
-                        } else {
-                            value.clone()
-                        };
+                let resolved_value = engine
+                    .inputs
+                    .resolve_string(value)
+                    .unwrap_or_else(|| value.clone());
 
-                        if !player.set_theme(&resolved_value) {
-                            return Err(StateMachineActionError::ExecuteError);
-                        }
-                    }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError);
-                    }
-                }
-                Ok(())
-            }
-            Action::OpenUrl { url, target } => {
-                let whitelist = &engine.open_url_whitelist;
-                let user_interaction_required = &engine.open_url_requires_user_interaction;
-
-                let resolved_url = if url.starts_with('$') {
-                    let trimmed_value = url.trim_start_matches('$');
-                    engine
-                        .get_string_input(trimmed_value)
-                        .unwrap_or_else(|| url.clone())
-                } else {
-                    url.clone()
-                };
-
-                // Urls are only opened if they are strictly inside the whitelist
-                if let Ok(false) | Err(_) = whitelist.is_allowed(&resolved_url) {
+                if !player.set_theme(&resolved_value) {
                     return Err(StateMachineActionError::ExecuteError);
                 }
 
-                let _ = target.to_lowercase();
+                Ok(())
+            }
+            Action::OpenUrl { url, target } => {
+                let resolved_url = engine
+                    .inputs
+                    .resolve_string(url)
+                    .unwrap_or_else(|| url.clone());
+
+                // Urls are only opened if they are strictly inside the whitelist
+                if !engine
+                    .open_url_whitelist
+                    .is_allowed(&resolved_url)
+                    .unwrap_or(false)
+                {
+                    return Err(StateMachineActionError::ExecuteError);
+                }
+
+                // User has configured the player to only open urls based on click or pointer down events
+                if engine.open_url_requires_user_interaction {
+                    match engine.pointer_management.most_recent_event {
+                        Some(Event::PointerDown { .. } | Event::Click { .. }) => {}
+                        _ => return Err(StateMachineActionError::ExecuteError),
+                    }
+                }
+
                 let command = if target.is_empty() {
                     format!("OpenUrl: {resolved_url}")
                 } else {
                     format!("OpenUrl: {resolved_url} | Target: {target}")
                 };
 
-                // User has configured the player to only open urls based on click or pointer down events
-                if *user_interaction_required {
-                    let interaction = &engine.pointer_management.most_recent_event;
-
-                    if let Some(Event::PointerDown { .. } | Event::Click { .. }) = interaction {
-                        engine.observe_internal_event(&command);
-
-                        return Ok(());
-                    }
-                    return Err(StateMachineActionError::ExecuteError);
-                }
-
                 engine.observe_internal_event(&command);
-
                 Ok(())
             }
             Action::FireCustomEvent { value } => {
@@ -345,74 +270,162 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::SetFrame { value } => {
-                let read_lock = player.read();
+                let player = player
+                    .read()
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                match value {
-                    StringNumber::String(value) => {
-                        if let Ok(player) = read_lock {
-                            // Get the frame number from the input
-                            // Remove the "$" prefix from the value
-                            let value = value.trim_start_matches('$');
-                            let frame = engine.get_numeric_input(value);
-                            if let Some(frame) = frame {
-                                let clamped_frame = frame.clamp(0.0, player.total_frames() - 1.0);
+                let frame = match value {
+                    StringNumber::String(ref name) => engine
+                        .inputs
+                        .resolve_numeric(name)
+                        .ok_or(StateMachineActionError::ExecuteError)?,
+                    StringNumber::F32(v) => *v,
+                };
 
-                                player.set_frame(clamped_frame);
-                            } else {
-                                return Err(StateMachineActionError::ExecuteError);
-                            }
-                            return Ok(());
-                        } else {
-                            return Err(StateMachineActionError::ExecuteError);
-                        }
-                    }
-                    StringNumber::F32(value) => {
-                        if let Ok(player) = read_lock {
-                            let clamped_frame = value.clamp(0.0, player.total_frames() - 1.0);
+                let clamped_frame = frame.clamp(0.0, player.total_frames() - 1.0);
+                player.set_frame(clamped_frame);
 
-                            player.set_frame(clamped_frame);
-                        } else {
-                            return Err(StateMachineActionError::ExecuteError);
-                        }
-                    }
-                }
                 Ok(())
             }
             Action::SetProgress { value } => {
-                let read_lock = player.read();
+                let player = player
+                    .read()
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                match read_lock {
-                    Ok(player) => {
-                        match value {
-                            StringNumber::String(value) => {
-                                // Get the frame number from the input
-                                // Remove the "$" prefix from the value
-                                let value = value.trim_start_matches('$');
-                                let percentage = engine.get_numeric_input(value);
-                                if let Some(percentage) = percentage {
-                                    let clamped_value = percentage.clamp(0.0, 100.0);
-                                    let new_perc = clamped_value / 100.0;
-                                    let frame = (player.total_frames() - 1.0) * new_perc;
+                let percentage = match value {
+                    StringNumber::String(ref name) => engine
+                        .inputs
+                        .resolve_numeric(name)
+                        .ok_or(StateMachineActionError::ExecuteError)?,
+                    StringNumber::F32(v) => *v,
+                };
 
-                                    player.set_frame(frame);
-                                }
+                let clamped_percentage = percentage.clamp(0.0, 100.0);
+                let frame = (player.total_frames() - 1.0) * (clamped_percentage / 100.0);
+                player.set_frame(frame);
 
-                                return Ok(());
-                            }
-                            StringNumber::F32(value) => {
-                                let clamped_value = value.clamp(0.0, 100.0);
-                                let new_perc = clamped_value / 100.0;
-                                let frame = (player.total_frames() - 1.0) * new_perc;
+                Ok(())
+            }
+            Action::SetGlobalVector {
+                global_input_id,
+                value,
+            } => {
+                let player = player
+                    .read()
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
 
-                                player.set_frame(frame);
-                            }
+                let first_value = match value[0] {
+                    StringNumber::String(ref name) => engine
+                        .inputs
+                        .resolve_numeric(name)
+                        .ok_or(StateMachineActionError::ExecuteError)?,
+                    StringNumber::F32(v) => v,
+                };
+
+                let second_value = match value[1] {
+                    StringNumber::String(ref name) => engine
+                        .inputs
+                        .resolve_numeric(name)
+                        .ok_or(StateMachineActionError::ExecuteError)?,
+                    StringNumber::F32(v) => v,
+                };
+
+                player.global_inputs_set_vector(global_input_id, &[first_value, second_value]);
+                Ok(())
+            }
+            Action::SetGlobalColor {
+                global_input_id,
+                value,
+            } => {
+                let player = player
+                    .read()
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
+
+                if value.len() >= 3 {
+                    let first_value = match value[0] {
+                        StringNumber::String(ref name) => engine
+                            .inputs
+                            .resolve_numeric(name)
+                            .ok_or(StateMachineActionError::ExecuteError)?,
+                        StringNumber::F32(v) => v,
+                    };
+
+                    let second_value = match value[1] {
+                        StringNumber::String(ref name) => engine
+                            .inputs
+                            .resolve_numeric(name)
+                            .ok_or(StateMachineActionError::ExecuteError)?,
+                        StringNumber::F32(v) => v,
+                    };
+
+                    let third_value = match value[2] {
+                        StringNumber::String(ref name) => engine
+                            .inputs
+                            .resolve_numeric(name)
+                            .ok_or(StateMachineActionError::ExecuteError)?,
+                        StringNumber::F32(v) => v,
+                    };
+
+                    let fourth_value = if value.len() >= 4 {
+                        match &value[3] {
+                            StringNumber::String(name) => engine
+                                .inputs
+                                .resolve_numeric(name)
+                                .ok_or(StateMachineActionError::ExecuteError)?,
+                            StringNumber::F32(v) => *v,
                         }
-                    }
-                    Err(_) => {
-                        return Err(StateMachineActionError::ExecuteError);
-                    }
+                    } else {
+                        1.0
+                    };
+                    player.global_inputs_set_color(
+                        global_input_id,
+                        &vec![first_value, second_value, third_value, fourth_value],
+                    );
                 }
+                Ok(())
+            }
+            Action::SetGlobalGradient {
+                global_input_id,
+                value,
+            } => {
+                let player = player
+                    .read()
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
 
+                player.global_inputs_set_gradient(global_input_id, value);
+                Ok(())
+            }
+            Action::SetGlobalString {
+                global_input_id,
+                value,
+            } => {
+                let player = player
+                    .read()
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
+
+                player.global_inputs_set_string(global_input_id, value);
+                Ok(())
+            }
+            Action::SetGlobalNumeric {
+                global_input_id,
+                value,
+            } => {
+                let player = player
+                    .read()
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
+
+                player.global_inputs_set_numeric(global_input_id, *value);
+                Ok(())
+            }
+            Action::SetGlobalBoolean {
+                global_input_id,
+                value,
+            } => {
+                let player = player
+                    .read()
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
+
+                player.global_inputs_set_boolean(global_input_id, *value);
                 Ok(())
             }
         }

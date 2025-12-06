@@ -7,7 +7,7 @@ mod text;
 mod vector;
 
 pub use color::ColorSlot;
-pub use gradient::{GradientSlot, GradientStop};
+pub use gradient::{GradientSlot, GradientStop, GradientValue};
 pub use image::ImageSlot;
 pub use position::PositionSlot;
 pub use scalar::ScalarSlot;
@@ -38,7 +38,6 @@ pub struct Bezier {
     pub x: BezierValue,
     pub y: BezierValue,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LottieKeyframe<T> {
@@ -110,7 +109,9 @@ pub enum SlotType {
     Position(PositionSlot),
 }
 
-pub(crate) fn slots_to_json_string(slots: &BTreeMap<String, SlotType>) -> Result<String, serde_json::Error> {
+pub(crate) fn slots_to_json_string(
+    slots: &BTreeMap<String, SlotType>,
+) -> Result<String, serde_json::Error> {
     use serde_json::json;
 
     let mut lottie_slots = serde_json::Map::new();
@@ -122,7 +123,9 @@ pub(crate) fn slots_to_json_string(slots: &BTreeMap<String, SlotType>) -> Result
     serde_json::to_string(&lottie_slots)
 }
 
-pub fn slots_from_json_string(json_str: &str) -> Result<BTreeMap<String, SlotType>, serde_json::Error> {
+pub fn slots_from_json_string(
+    json_str: &str,
+) -> Result<BTreeMap<String, SlotType>, serde_json::Error> {
     use serde_json::Value;
 
     let slots_map: BTreeMap<String, Value> = serde_json::from_str(json_str)?;
@@ -141,12 +144,18 @@ pub fn slots_from_json_string(json_str: &str) -> Result<BTreeMap<String, SlotTyp
 
 fn parse_slot_type(value: &serde_json::Value) -> Option<SlotType> {
     if value.get("w").is_some() || value.get("h").is_some() || value.get("u").is_some() {
-        serde_json::from_value::<ImageSlot>(value.clone()).ok().map(SlotType::Image)
+        serde_json::from_value::<ImageSlot>(value.clone())
+            .ok()
+            .map(SlotType::Image)
     } else if value.get("p").is_some() {
-        serde_json::from_value::<GradientSlot>(value.clone()).ok().map(SlotType::Gradient)
+        serde_json::from_value::<GradientSlot>(value.clone())
+            .ok()
+            .map(SlotType::Gradient)
     } else if let Some(k) = value.get("k") {
         if k.is_array() {
-            serde_json::from_value::<TextSlot>(value.clone()).ok().map(SlotType::Text)
+            serde_json::from_value::<TextSlot>(value.clone())
+                .ok()
+                .map(SlotType::Text)
         } else if let Some(k_obj) = k.as_object() {
             parse_animated_slot(k_obj)
         } else {

@@ -1,0 +1,80 @@
+{
+  "start_0": {
+    "type": "Gradient",
+    "value": [{ "color": [0.1, 0.1, 0.1, 1], "offset": 0.1 }],
+    "bindings": {
+      "themes": [
+        {
+          "themeId": "theme",
+          "ruleId": "gradient_color",
+          "path": "keyframes/0/value"
+        }
+      ]
+    }
+  },
+  "end_0": {
+    "type": "Gradient",
+    "value": [{ "color": [0.2, 0.2, 0.2, 1], "offset": 0.2 }],
+    "bindings": {
+      "themes": [
+        {
+          "themeId": "theme",
+          "ruleId": "gradient_color",
+          "path": "keyframes/0/value"
+        }
+      ]
+    }
+  },
+  "start_1": {
+    "type": "Gradient",
+    "value": [{ "color": [0.1, 0.1, 0.1, 1], "offset": 0.1 }],
+    "bindings": {
+      "themes": [
+        {
+          "themeId": "theme",
+          "ruleId": "gradient_color",
+          "path": "keyframes/1/value"
+        }
+      ]
+    }
+  },
+  "end_1": {
+    "type": "Gradient",
+    "value": [{ "color": [0.4, 0.4, 0.4, 1], "offset": 0.4 }],
+    "bindings": {
+      "themes": [
+        {
+          "themeId": "theme",
+          "ruleId": "gradient_color",
+          "path": "keyframes/1/value"
+        }
+      ]
+    }
+  },
+  "start_2": {
+    "type": "Gradient",
+    "value": [{ "color": [0.2, 0.4, 0.2, 1], "offset": 0.5 }],
+    "bindings": {
+      "themes": [
+        {
+          "themeId": "theme",
+          "ruleId": "gradient_color",
+          "path": "keyframes/2/value"
+        }
+      ]
+    }
+  },
+  "end_2": {
+    "type": "Gradient",
+    "value": [{ "color": [0.1, 0.8, 0.1, 1], "offset": 0.5 }],
+    "bindings": {
+      "themes": [
+        {
+          "themeId": "theme",
+          "ruleId": "gradient_color",
+          "path": "keyframes/2/value"
+        }
+      ]
+    }
+  }
+}

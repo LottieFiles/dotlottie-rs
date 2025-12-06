@@ -86,11 +86,21 @@ impl StateTrait for State {
 
                 if let Some(new_mode) = mode {
                     match new_mode.as_str() {
-                        "Forward" => defined_mode = Mode::Forward,
-                        "Reverse" => defined_mode = Mode::Reverse,
-                        "Bounce" => defined_mode = Mode::Bounce,
-                        "ReverseBounce" => defined_mode = Mode::ReverseBounce,
-                        _ => return Err(StateMachineActionError::ParsingError),
+                        "Forward" => {
+                            defined_mode = Mode::Forward;
+                        }
+                        "Reverse" => {
+                            defined_mode = Mode::Reverse;
+                        }
+                        "Bounce" => {
+                            defined_mode = Mode::Bounce;
+                        }
+                        "ReverseBounce" => {
+                            defined_mode = Mode::ReverseBounce;
+                        }
+                        _ => {
+                            return Err(StateMachineActionError::ParsingError);
+                        }
                     }
                 }
 
@@ -112,7 +122,7 @@ impl StateTrait for State {
                         speed: speed.unwrap_or(default_config.speed),
                         use_frame_interpolation: uses_frame_interpolation,
                         autoplay: autoplay.unwrap_or(default_config.autoplay),
-                        marker: defined_segment,
+                        marker: defined_segment.clone(),
                         background_color: background_color
                             .unwrap_or(default_config.background_color),
                         layout: current_layout,

@@ -1,0 +1,11 @@
+{
+  "text": {
+    "type": "String",
+    "value": "First Try!",
+    "bindings": {
+      "themes": [
+        { "themeId": "theme", "ruleId": "my_text", "path": "value/text" }
+      ]
+    }
+  }
+}

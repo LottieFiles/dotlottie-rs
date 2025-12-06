@@ -57,7 +57,7 @@ impl GuardTrait for Guard {
                 condition_type,
                 compare_to,
             } => {
-                if let Some(input_value) = input.get_boolean(input_name) {
+                if let Some(input_value) = input.resolve_boolean(input_name) {
                     match compare_to {
                         StringBool::Bool(compare_to) => match condition_type {
                             TransitionGuardConditionType::Equal => {
@@ -69,11 +69,9 @@ impl GuardTrait for Guard {
                             _ => return false,
                         },
                         StringBool::String(compare_to) => {
-                            // Get the number from the input
-                            // Remove the "$" prefix from the value
-                            let value = compare_to.trim_start_matches('$');
-                            let opt_bool_value = input.get_boolean(value);
-                            if let Some(bool_value) = opt_bool_value {
+                            let resolved_bool = input.resolve_boolean(compare_to);
+
+                            if let Some(bool_value) = resolved_bool {
                                 match condition_type {
                                     TransitionGuardConditionType::Equal => {
                                         return input_value == bool_value;
@@ -105,33 +103,26 @@ impl GuardTrait for Guard {
                 condition_type,
                 compare_to,
             } => {
-                if let Some(input_value) = input.get_string(input_name) {
+                if let Some(input_value) = input.resolve_string(input_name) {
                     match compare_to {
                         StringNumberBool::String(compare_to) => {
-                            let mut mut_compare_to = compare_to.clone();
+                            let extracted_string = input
+                                .resolve_string(compare_to)
+                                .or(Some(compare_to.clone()));
 
-                            if mut_compare_to.starts_with("$") {
-                                // Get the string from the input
-                                // Remove the "$" prefix from the value
-                                let value = mut_compare_to.trim_start_matches('$');
-                                let opt_string_value = input.get_string(value);
-                                if let Some(string_value) = opt_string_value {
-                                    mut_compare_to = string_value.clone();
-                                } else {
-                                    // Failed to get value from inputs
-                                    return false;
+                            if let Some(string_value) = extracted_string {
+                                match condition_type {
+                                    TransitionGuardConditionType::Equal => {
+                                        return input_value == *string_value;
+                                    }
+                                    TransitionGuardConditionType::NotEqual => {
+                                        return input_value != *string_value;
+                                    }
+                                    _ => return false,
                                 }
                             }
 
-                            match condition_type {
-                                TransitionGuardConditionType::Equal => {
-                                    return input_value == *mut_compare_to;
-                                }
-                                TransitionGuardConditionType::NotEqual => {
-                                    return input_value != *mut_compare_to;
-                                }
-                                _ => return false,
-                            }
+                            false
                         }
                         StringNumberBool::F32(_) => false,
                         StringNumberBool::Bool(_) => false,
@@ -152,39 +143,33 @@ impl GuardTrait for Guard {
                 condition_type,
                 compare_to,
             } => {
-                if let Some(input_value) = input.get_numeric(input_name) {
+                if let Some(input_value) = input.resolve_numeric(input_name) {
                     match compare_to {
                         StringNumberBool::String(compare_to) => {
-                            if compare_to.starts_with("$") {
-                                // Remove the "$" prefix from the value
-                                let value = compare_to.trim_start_matches('$');
-                                let opt_numeric_value = input.get_numeric(value);
-                                if let Some(numeric_value) = opt_numeric_value {
-                                    match condition_type {
-                                        TransitionGuardConditionType::GreaterThan => {
-                                            input_value > numeric_value
-                                        }
-                                        TransitionGuardConditionType::GreaterThanOrEqual => {
-                                            input_value >= numeric_value
-                                        }
-                                        TransitionGuardConditionType::LessThan => {
-                                            input_value < numeric_value
-                                        }
-                                        TransitionGuardConditionType::LessThanOrEqual => {
-                                            input_value <= numeric_value
-                                        }
-                                        TransitionGuardConditionType::Equal => {
-                                            input_value == numeric_value
-                                        }
-                                        TransitionGuardConditionType::NotEqual => {
-                                            input_value != numeric_value
-                                        }
+                            let resolved_numeric = input.resolve_numeric(compare_to);
+                            if let Some(numeric_value) = resolved_numeric {
+                                match condition_type {
+                                    TransitionGuardConditionType::GreaterThan => {
+                                        input_value > numeric_value
                                     }
-                                } else {
-                                    // Failed to get value from inputs
-                                    false
+                                    TransitionGuardConditionType::GreaterThanOrEqual => {
+                                        input_value >= numeric_value
+                                    }
+                                    TransitionGuardConditionType::LessThan => {
+                                        input_value < numeric_value
+                                    }
+                                    TransitionGuardConditionType::LessThanOrEqual => {
+                                        input_value <= numeric_value
+                                    }
+                                    TransitionGuardConditionType::Equal => {
+                                        input_value == numeric_value
+                                    }
+                                    TransitionGuardConditionType::NotEqual => {
+                                        input_value != numeric_value
+                                    }
                                 }
                             } else {
+                                // Failed to get value from inputs
                                 false
                             }
                         }

@@ -35,6 +35,8 @@ cc = "1.2"
 criterion = "0.5.1"
 # This is a workaround to enable this feature only on dev.
 dotlottie-rs = { path = ".", features = ["dev"] }
+png = "0.17"
+image = "0.24"
 
 [[bench]]
 name = "benchmarks"

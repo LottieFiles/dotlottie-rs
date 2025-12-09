@@ -98,7 +98,9 @@ fn main() {
             let binding_file_path = format!("./src/bin/string/{}.json", binding_file_name);
             let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
             let load = player.player.global_inputs_load_data(&binding_file_data);
+            let apply = player.player.global_inputs_apply();
             println!("[Debug]: Loaded inputs: {}", load);
+            println!("[Debug]: Applied inputs: {}", apply);
         }
 
         // S: Switch between animated and static mode

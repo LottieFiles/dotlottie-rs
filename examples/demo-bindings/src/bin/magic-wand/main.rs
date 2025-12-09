@@ -1,6 +1,6 @@
 use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event};
 use minifb::{Key, KeyRepeat, MouseButton, Window, WindowOptions};
-use std::time::Instant;
+use std::{string::ParseError, time::Instant};
 
 const WIDTH: usize = 512;
 const HEIGHT: usize = 512;
@@ -72,6 +72,10 @@ fn main() {
     ));
 
     let parse = player.player.global_inputs_load_data(&binding_file_data);
+    let apply = player.player.global_inputs_apply();
+    println!("[Debug]: Loaded inputs: {}", parse);
+    println!("[Debug]: Applied inputs: {}", apply);
+
     println!("Parse succeeded: {}", parse);
 
     let loaded = player.player.state_machine_load("wand_sm");

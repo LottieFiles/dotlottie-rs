@@ -24,14 +24,6 @@ impl std::fmt::Display for GlobalInputsParserError {
     }
 }
 
-// impl GlobalInputsParserError {
-//     pub(crate) fn to_string(&self) -> String {
-//         match self {
-//             GlobalInputsParserError::ParseError(msg) => format!("Parse error: {msg}"),
-//         }
-//     }
-// }
-
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ThemeBinding {

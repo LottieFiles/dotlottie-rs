@@ -31,7 +31,7 @@ impl BindingPath {
         &self,
         renderer: &mut Box<dyn LottieRenderer>,
         rule_id: &str,
-        value: BindingValue,
+        value: &BindingValue,
     ) -> Result<(), String> {
         match self {
             BindingPath::Color(path) => {
@@ -51,11 +51,11 @@ impl BindingPath {
             BindingPath::Numeric(path) => {
                 let numeric_value = match value {
                     BindingValue::Numeric(v) => v,
-                    BindingValue::Vector(v) => v.first().copied().unwrap_or(0.0),
-                    BindingValue::Color(v) => v.first().copied().unwrap_or(0.0),
+                    BindingValue::Vector(v) => &v.first().copied().unwrap_or(0.0),
+                    BindingValue::Color(v) => &v.first().copied().unwrap_or(0.0),
                     _ => return Err("expected numeric value for numeric path".to_string()),
                 };
-                path.apply(renderer, rule_id, numeric_value)
+                path.apply(renderer, rule_id, *numeric_value)
             }
             BindingPath::String(path) => {
                 let string_value = match value {
@@ -69,7 +69,7 @@ impl BindingPath {
                     BindingValue::Boolean(v) => v,
                     _ => return Err("expected boolean value for boolean path".to_string()),
                 };
-                path.apply(renderer, rule_id, bool_value)
+                path.apply(renderer, rule_id, *bool_value)
             }
             BindingPath::Gradient(path) => {
                 let gradient_value = match value {

@@ -115,10 +115,16 @@ impl GlobalInputsEngineBuilder {
         let parsed_bindings = parse_global_inputs(&self.bindings_definition)
             .map_err(|e| GlobalInputsEngineError::ParseError(e.to_string()))?;
 
-        Ok(GlobalInputsEngine {
+        let mut engine = GlobalInputsEngine {
             global_inputs_container: parsed_bindings,
             observers: RwLock::new(Vec::new()),
-        })
+        };
+
+        engine.resolve_slot_paths().map_err(|_| {
+            GlobalInputsEngineError::ParseError("Error mapping global inputs.".to_string())
+        })?;
+
+        Ok(engine)
     }
 }
 
@@ -193,7 +199,6 @@ impl GlobalInputsEngine {
     // Getters
     // ============================================================================
 
-    // impl_getter!(global_inputs_get_color, Color, vec<f, "Color", copy);
     impl_getter!(global_inputs_get_vector, Vector, [f32; 2], "Vector", copy);
     impl_getter!(global_inputs_get_numeric, Numeric, f32, "Numeric", copy);
     impl_getter!(global_inputs_get_boolean, Boolean, bool, "Boolean", copy);
@@ -300,7 +305,7 @@ impl GlobalInputsEngine {
                 .apply(
                     renderer,
                     &resolved.rule_id,
-                    BindingValue::Boolean(new_value),
+                    &BindingValue::Boolean(new_value),
                 )
                 .is_err()
             {
@@ -337,7 +342,7 @@ impl GlobalInputsEngine {
                 .apply(
                     renderer,
                     &resolved.rule_id,
-                    BindingValue::Numeric(new_value),
+                    &BindingValue::Numeric(new_value),
                 )
                 .is_err()
             {
@@ -371,7 +376,11 @@ impl GlobalInputsEngine {
         for resolved in &binding.resolved_theme_bindings {
             if resolved
                 .path
-                .apply(renderer, &resolved.rule_id, BindingValue::String(new_value))
+                .apply(
+                    renderer,
+                    &resolved.rule_id,
+                    &BindingValue::String(new_value),
+                )
                 .is_err()
             {
                 return false;
@@ -407,7 +416,7 @@ impl GlobalInputsEngine {
                 .apply(
                     renderer,
                     &resolved.rule_id,
-                    BindingValue::Color(new_value.as_slice()),
+                    &BindingValue::Color(new_value.as_slice()),
                 )
                 .is_err()
             {
@@ -444,7 +453,7 @@ impl GlobalInputsEngine {
                 .apply(
                     renderer,
                     &resolved.rule_id,
-                    BindingValue::Vector(&new_value),
+                    &BindingValue::Vector(&new_value),
                 )
                 .is_err()
             {
@@ -482,7 +491,7 @@ impl GlobalInputsEngine {
                 .apply(
                     renderer,
                     &resolved.rule_id,
-                    BindingValue::Gradient(new_value.as_slice()),
+                    &BindingValue::Gradient(new_value.as_slice()),
                 )
                 .is_err()
             {
@@ -596,70 +605,100 @@ impl GlobalInputsEngine {
         }
     }
 
+    pub fn resolve_slot_paths(&mut self) -> Result<(), GlobalInputsEngineError> {
+        for (_, global_input) in self.global_inputs_container.iter_mut() {
+            if let Some(themes) = &global_input.bindings.themes {
+                for theme_binding in themes {
+                    let binding_path: BindingPath = match &global_input.r#type {
+                        GlobalInputValue::Color { .. } => {
+                            let parsed = ColorPath::parse(&theme_binding.path)?;
+                            parsed.into()
+                        }
+                        GlobalInputValue::Vector { .. } => {
+                            let parsed = VectorPath::parse(&theme_binding.path)?;
+                            parsed.into()
+                        }
+                        GlobalInputValue::Numeric { .. } => {
+                            let parsed = NumericPath::parse(&theme_binding.path)?;
+                            parsed.into()
+                        }
+                        GlobalInputValue::String { .. } => {
+                            let parsed = StringPath::parse(&theme_binding.path)?;
+                            parsed.into()
+                        }
+                        GlobalInputValue::Boolean { .. } => {
+                            let parsed = BooleanPath::parse(&theme_binding.path)?;
+                            parsed.into()
+                        }
+                        GlobalInputValue::Gradient { .. } => {
+                            let parsed = GradientPath::parse(&theme_binding.path)?;
+                            parsed.into()
+                        }
+                        // Skip unimplemented types for now
+                        // missing image
+                        _ => {
+                            continue;
+                        }
+                    };
+
+                    global_input
+                        .resolved_theme_bindings
+                        .push(ResolvedThemeBinding {
+                            rule_id: theme_binding.rule_id.clone(),
+                            theme_id: theme_binding.theme_id.clone(),
+                            path: binding_path,
+                        });
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn apply_to_slots(
         &mut self,
         theme_id: &str,
         renderer: &mut Box<dyn LottieRenderer>,
-    ) -> Result<String, GlobalInputsEngineError> {
+    ) -> Result<(), GlobalInputsEngineError> {
         for (_, global_input) in self.global_inputs_container.iter_mut() {
             if let Some(themes) = &global_input.bindings.themes {
                 for theme_binding in themes {
                     if theme_binding.theme_id == theme_id || theme_binding.theme_id == "*" {
-                        let (binding_path, binding_value): (BindingPath, BindingValue) =
-                            match &global_input.r#type {
-                                GlobalInputValue::Color { value } => {
-                                    let parsed = ColorPath::parse(&theme_binding.path)?;
-                                    (parsed.into(), BindingValue::Color(value.as_slice()))
-                                }
-                                GlobalInputValue::Vector { value } => {
-                                    let parsed = VectorPath::parse(&theme_binding.path)?;
-                                    (parsed.into(), BindingValue::Vector(value.as_slice()))
-                                }
-                                GlobalInputValue::Numeric { value } => {
-                                    let parsed = NumericPath::parse(&theme_binding.path)?;
-                                    (parsed.into(), BindingValue::Numeric(*value))
-                                }
-                                GlobalInputValue::String { value } => {
-                                    let parsed = StringPath::parse(&theme_binding.path)?;
-                                    (parsed.into(), BindingValue::String(value.as_str()))
-                                }
-                                GlobalInputValue::Boolean { value } => {
-                                    let parsed = BooleanPath::parse(&theme_binding.path)?;
-                                    (parsed.into(), BindingValue::Boolean(*value))
-                                }
-                                GlobalInputValue::Gradient { value } => {
-                                    let parsed = GradientPath::parse(&theme_binding.path)?;
-                                    (parsed.into(), BindingValue::Gradient(value))
-                                }
-                                // Skip unimplemented types for now
-                                // missing image
-                                _ => {
-                                    continue;
-                                }
-                            };
+                        let binding_value: BindingValue = match &global_input.r#type {
+                            GlobalInputValue::Color { value } => {
+                                BindingValue::Color(value.as_slice())
+                            }
+                            GlobalInputValue::Vector { value } => {
+                                BindingValue::Vector(value.as_slice())
+                            }
+                            GlobalInputValue::Numeric { value } => BindingValue::Numeric(*value),
+                            GlobalInputValue::String { value } => {
+                                BindingValue::String(value.as_str())
+                            }
+                            GlobalInputValue::Boolean { value } => BindingValue::Boolean(*value),
+                            GlobalInputValue::Gradient { value } => BindingValue::Gradient(value),
+                            // Skip unimplemented types for now
+                            // missing image
+                            _ => {
+                                continue;
+                            }
+                        };
 
-                        let r = binding_path.apply(renderer, &theme_binding.rule_id, binding_value);
-                        r.map_err(|_| {
-                            GlobalInputsEngineError::ParseError(
-                                "Failed to apply global inputs on to current slots.".to_string(),
-                            )
-                        })?;
-
-                        //todo: This doesnt detect duplicates
-                        global_input
-                            .resolved_theme_bindings
-                            .push(ResolvedThemeBinding {
-                                rule_id: theme_binding.rule_id.clone(),
-                                theme_id: theme_binding.theme_id.clone(),
-                                path: binding_path,
-                            });
+                        for resolved_path in global_input.resolved_theme_bindings.iter() {
+                            let _ = resolved_path.path.apply(
+                                renderer,
+                                &resolved_path.rule_id,
+                                &binding_value,
+                            );
+                        }
 
                         let _ = renderer.apply_all_slots();
                     }
                 }
             }
         }
-        Ok("".to_string())
+
+        Ok(())
     }
 
     pub fn clear_resolved_theme_bindings(&mut self) {

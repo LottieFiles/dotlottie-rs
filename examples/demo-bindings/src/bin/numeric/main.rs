@@ -71,6 +71,9 @@ fn main() {
     ));
 
     let binding_load = player.player.global_inputs_load_data(&binding_file_data);
+    let apply = player.player.global_inputs_apply();
+    println!("[Debug]: Loaded inputs: {}", binding_load);
+    println!("[Debug]: Applied inputs: {}", apply);
 
     let theme_load = player.player.set_theme("theme");
 
@@ -121,8 +124,10 @@ fn main() {
                 .player
                 .global_inputs_load_data(&static_binding_file_data);
             let static_theme_load = player.player.set_theme("theme");
-            println!("[Debug] (Switch) Parse succeeded: {}", static_binding_load);
-            println!("[Debug] (Switch) Load succeeded: {}", static_theme_load);
+            let apply = player.player.global_inputs_apply();
+            println!("[Debug]: Loaded inputs: {}", static_binding_load);
+            println!("[Debug]: Applied inputs: {}", apply);
+            println!("[Debug]: Load succeeded: {}", static_theme_load);
         }
         space_was_down = space_down;
 

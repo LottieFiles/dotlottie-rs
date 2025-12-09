@@ -3,53 +3,15 @@ mod test_utils;
 #[cfg(test)]
 mod tests {
 
+    use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
     use dotlottie_rs::Config;
     use dotlottie_rs::DotLottiePlayer;
 
     use crate::test_utils::compare_with_snapshot;
+    // use crate::test_utils::snapshot_to_png;
+    // use crate::test_utils::write_buffer_snapshot;
     use crate::test_utils::HEIGHT;
     use crate::test_utils::WIDTH;
-
-    // #[test]
-    // fn test_writing_snapshot_jpg() {
-    //     let player = DotLottiePlayer::new(Config::default());
-    //     player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), WIDTH, HEIGHT);
-    //     player.set_frame(42.0);
-    //     player.render();
-    //     let buffer = player.buffer(); // Returns *const u32
-    //     let snapshot_path = "./tests/snapshots/frame_42.bin";
-    //     assert!(
-    //         compare_or_create_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
-    //         "Buffer at frame 42 doesn't match snapshot"
-    //     );
-    //     snapshot_to_png(snapshot_path, "./tests/snapshots/frame_42.jpg").unwrap();
-    // }
-
-    // #[test]
-    // fn test_frame_rendering_with_diff() {
-    //     let player = DotLottiePlayer::new(Config::default());
-    //     player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), WIDTH, HEIGHT);
-
-    //     player.set_frame(42.0);
-    //     player.render();
-
-    //     let buffer = player.buffer();
-    //     let snapshot_path = "./tests/snapshots/frame_42.bin";
-
-    //     match get_buffer_diff(buffer, WIDTH, HEIGHT, snapshot_path) {
-    //         Ok(diff) if diff.is_empty() => {
-    //             // Test passed
-    //         }
-    //         Ok(diff) => {
-    //             panic!(
-    //                 "Found {} pixel differences. First few: {:?}",
-    //                 diff.len(),
-    //                 &diff[..diff.len().min(5)]
-    //             );
-    //         }
-    //         Err(e) => panic!("Failed to compare: {}", e),
-    //     }
-    // }
 
     #[test]
     pub fn numeric_static_global_input_test() {
@@ -63,8 +25,8 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
 
-        let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
+        let inputs_loaded = player.global_inputs_load("inputs");
         let inputs_apply = player.global_inputs_apply();
 
         assert!(inputs_apply);
@@ -151,8 +113,8 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
 
-        let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
+        let inputs_loaded = player.global_inputs_load("inputs");
         let inputs_apply = player.global_inputs_apply();
 
         assert!(inputs_apply);
@@ -191,8 +153,9 @@ mod tests {
 
         let player = DotLottiePlayer::new(Config::default());
         let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
-        let inputs_loaded = player.global_inputs_load("inputs");
+
         let set_theme = player.set_theme("theme");
+        let inputs_loaded = player.global_inputs_load("inputs");
         let inputs_apply = player.global_inputs_apply();
 
         assert!(load);
@@ -233,8 +196,8 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
 
-        let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
+        let inputs_loaded = player.global_inputs_load("inputs");
         let inputs_apply = player.global_inputs_apply();
 
         assert!(inputs_apply);
@@ -284,8 +247,8 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
 
-        let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
+        let inputs_loaded = player.global_inputs_load("inputs");
         let inputs_apply = player.global_inputs_apply();
 
         assert!(inputs_apply);
@@ -350,8 +313,8 @@ mod tests {
         let player = DotLottiePlayer::new(Config::default());
         let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
 
-        let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
+        let inputs_loaded = player.global_inputs_load("inputs");
         let inputs_apply = player.global_inputs_apply();
 
         assert!(inputs_apply);
@@ -385,195 +348,284 @@ mod tests {
         // .unwrap();
     }
 
-    // #[test]
-    // pub fn boolean_global_input_test() {
-    //     // Description:
-    //     // The boolean data binding is used inside the toggle state machine
-    //     // Changing the value of the data binding makes the toggle state machine go from day to night
-    //     let animation_data = include_bytes!("fixtures/global_inputs/test_inputs_toggle_sm.lottie");
+    #[test]
+    pub fn boolean_global_input_test() {
+        // Description:
+        // The boolean data binding is used inside the toggle state machine
+        // Changing the value of the data binding makes the toggle state machine go from day to night
+        let animation_data = include_bytes!("fixtures/global_inputs/test_inputs_toggle_sm.lottie");
 
-    //     let player = DotLottiePlayer::new(Config::default());
-    //     let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
+        let player = DotLottiePlayer::new(Config::default());
+        let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
 
-    //     let inputs_loaded = player.global_inputs_load("inputs");
-    //     let sm = player.state_machine_load("toggleButton");
-    //     player.state_machine_start(OpenUrlPolicy::default());
+        let inputs_loaded = player.global_inputs_load("inputs");
+        let sm = player.state_machine_load("toggleButton");
+        player.state_machine_start(OpenUrlPolicy::default());
+        let inputs_apply = player.global_inputs_apply();
 
-    //     assert!(load);
-    //     assert!(inputs_loaded);
-    //     assert!(sm);
+        assert!(inputs_apply);
+        assert!(load);
+        assert!(inputs_loaded);
+        assert!(sm);
 
-    //     assert_eq!(player.global_inputs_get_boolean("OnOffSwitch"), Some(false));
+        assert_eq!(
+            player.global_inputs_get_boolean("toggle_global_input"),
+            Some(false)
+        );
 
-    //     player.set_frame(0.0);
-    //     player.render();
+        player.set_frame(0.0);
+        player.render();
 
-    //     // ⚠️ Uncomment block to generate initial snapshot
-    //     // let buffer = player.buffer();
-    //     // write_buffer_snapshot(
-    //     //     buffer,
-    //     //     WIDTH,
-    //     //     HEIGHT,
-    //     //     "./tests/snapshots/boolean_global_input_snapshot_before.bin",
-    //     // )
-    //     // .unwrap();
-    //     // snapshot_to_png(
-    //     //     "./tests/snapshots/boolean_global_input_snapshot_before.bin",
-    //     //     "./tests/snapshots/boolean_global_input_snapshot_before.png",
-    //     // )
-    //     // .unwrap();
-    //     let buffer = player.buffer();
+        // ⚠️ Uncomment block to generate initial snapshot
+        // let buffer = player.buffer();
+        // write_buffer_snapshot(
+        //     buffer,
+        //     WIDTH,
+        //     HEIGHT,
+        //     "./tests/snapshots/boolean_global_input_snapshot_before.bin",
+        // )
+        // .unwrap();
+        // snapshot_to_png(
+        //     "./tests/snapshots/boolean_global_input_snapshot_before.bin",
+        //     "./tests/snapshots/boolean_global_input_snapshot_before.png",
+        // )
+        // .unwrap();
 
-    //     assert!(
-    //         compare_with_snapshot(
-    //             buffer,
-    //             WIDTH,
-    //             HEIGHT,
-    //             "./tests/snapshots/boolean_global_input_snapshot_before.bin"
-    //         )
-    //         .unwrap(),
-    //         "Buffer at frame 0 doesn't match snapshot"
-    //     );
+        let buffer = player.buffer();
+        assert!(
+            unsafe {
+                compare_with_snapshot(
+                    buffer,
+                    WIDTH,
+                    HEIGHT,
+                    "./tests/snapshots/boolean_global_input_snapshot_before.bin",
+                )
+                .unwrap()
+            },
+            "Buffer at frame 0 doesn't match snapshot"
+        );
 
-    //     player.global_inputs_set_boolean("OnOffSwitch", true);
-    //     assert_eq!(player.global_inputs_get_boolean("OnOffSwitch"), Some(true));
+        player.global_inputs_set_boolean("toggle_global_input", true);
+        assert_eq!(
+            player.global_inputs_get_boolean("toggle_global_input"),
+            Some(true)
+        );
 
-    //     player.set_frame(50.0);
-    //     player.render();
+        player.set_frame(50.0);
+        player.render();
 
-    //     assert!(
-    //         compare_with_snapshot(
-    //             buffer,
-    //             WIDTH,
-    //             HEIGHT,
-    //             "./tests/snapshots/boolean_global_input_snapshot_after.bin"
-    //         )
-    //         .unwrap(),
-    //         "Buffer at frame 50 doesn't match snapshot"
-    //     );
+        assert!(
+            unsafe {
+                compare_with_snapshot(
+                    buffer,
+                    WIDTH,
+                    HEIGHT,
+                    "./tests/snapshots/boolean_global_input_snapshot_after.bin",
+                )
+                .unwrap()
+            },
+            "Buffer at frame 50 doesn't match snapshot"
+        );
 
-    //     // ⚠️ Uncomment block to generate initial snapshot
-    //     // let buffer = player.buffer();
-    //     // write_buffer_snapshot(
-    //     //     buffer,
-    //     //     WIDTH,
-    //     //     HEIGHT,
-    //     //     "./tests/snapshots/boolean_global_input_snapshot_after.bin",
-    //     // )
-    //     // .unwrap();
-    //     // snapshot_to_png(
-    //     //     "./tests/snapshots/boolean_global_input_snapshot_after.bin",
-    //     //     "./tests/snapshots/boolean_global_input_snapshot_after.png",
-    //     // )
-    //     // .unwrap();
-    // }
+        // ⚠️ Uncomment block to generate initial snapshot
+        // let buffer = player.buffer();
+        // write_buffer_snapshot(
+        //     buffer,
+        //     WIDTH,
+        //     HEIGHT,
+        //     "./tests/snapshots/boolean_global_input_snapshot_after.bin",
+        // )
+        // .unwrap();
+        // snapshot_to_png(
+        //     "./tests/snapshots/boolean_global_input_snapshot_after.bin",
+        //     "./tests/snapshots/boolean_global_input_snapshot_after.png",
+        // )
+        // .unwrap();
+    }
 
-    // #[test]
-    // pub fn image_global_input_test() {
-    //     // Description:
-    //     // The image data binding is used to replace an image with another inside the dotLottie
-    //     let animation_data = include_bytes!("fixtures/global_inputs/test_inputs_bull_image.lottie");
+    #[test]
+    pub fn text_global_input_test_static() {
+        // Description:
+        let animation_data =
+            include_bytes!("fixtures/global_inputs/test_inputs_text_static.lottie");
 
-    //     let player = DotLottiePlayer::new(Config::default());
-    //     let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
+        let player = DotLottiePlayer::new(Config::default());
+        let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
 
-    //     let inputs_loaded = player.global_inputs_load("inputs");
+        let inputs_loaded = player.global_inputs_load("inputs");
+        let set_theme = player.set_theme("theme");
+        let apply = player.global_inputs_apply();
 
-    //     let set_theme = player.set_theme("theme");
+        assert!(apply);
+        assert!(load);
+        assert!(inputs_loaded);
+        assert!(set_theme);
+        assert_eq!(
+            player.global_inputs_get_string("text"),
+            Some("First Try!".to_string())
+        );
 
-    //     assert!(load);
-    //     assert!(inputs_loaded);
-    //     assert!(set_theme);
+        player.set_frame(30.0);
+        player.render();
 
-    //     player.set_frame(30.0);
-    //     player.render();
+        let snapshot_path = "./tests/snapshots/text_global_input_static_snapshot_before.bin";
+        let buffer = player.buffer();
 
-    //     assert_eq!(
-    //         player.global_inputs_get_image("image").unwrap().id,
-    //         Some("test".to_string())
-    //     );
+        assert!(
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
+            "Buffer at frame 30 doesn't match snapshot"
+        );
 
-    //     let buffer = player.buffer();
-    //     let snapshot_path = "./tests/snapshots/image_global_input_snapshot_after.bin";
+        // ⚠️ Uncomment block to generate initial snapshot
+        // let buffer = player.buffer();
+        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+        // snapshot_to_png(
+        //     snapshot_path,
+        //     "./tests/snapshots/text_global_input_static_snapshot_before.png",
+        // )
+        // .unwrap();
 
-    //     assert!(
-    //         compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
-    //         "Buffer at frame 30 doesn't match snapshot"
-    //     );
+        player.global_inputs_set_string("text", "New Value");
+        assert_eq!(
+            player.global_inputs_get_string("text"),
+            Some("New Value".to_string())
+        );
 
-    //     // ⚠️ Uncomment block to generate initial snapshot
-    //     // let buffer = player.buffer();
-    //     // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
-    //     // snapshot_to_png(
-    //     //     snapshot_path,
-    //     //     "./tests/snapshots/image_global_input_snapshot_after.png",
-    //     // )
-    //     // .unwrap();
-    // }
+        player.set_frame(10.0);
+        player.render();
 
-    // #[test]
-    // pub fn text_global_input_test() {
-    //     // Description:
-    //     // The image data binding is used to replace an image with another inside the dotLottie
-    //     let animation_data = include_bytes!("fixtures/global_inputs/test_inputs_text.lottie");
+        let buffer = player.buffer();
+        let snapshot_path = "./tests/snapshots/text_global_input_static_snapshot_after.bin";
 
-    //     let player = DotLottiePlayer::new(Config::default());
-    //     let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
+        assert!(
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
+            "Buffer at frame 30 doesn't match snapshot"
+        );
 
-    //     let inputs_loaded = player.global_inputs_load("inputs");
+        // ⚠️ Uncomment block to generate initial snapshot
+        // let buffer = player.buffer();
+        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+        // snapshot_to_png(
+        //     snapshot_path,
+        //     "./tests/snapshots/text_global_input_static_snapshot_after.png",
+        // )
+        // .unwrap();
+    }
 
-    //     let set_theme = player.set_theme("theme");
+    #[test]
+    pub fn text_global_input_test_animated() {
+        // Description:
+        let animation_data =
+            include_bytes!("fixtures/global_inputs/test_inputs_text_animated.lottie");
 
-    //     assert!(load);
-    //     assert!(inputs_loaded);
-    //     assert!(set_theme);
+        let player = DotLottiePlayer::new(Config::default());
+        let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
 
-    //     player.render();
+        let inputs_loaded = player.global_inputs_load("inputs");
+        let set_theme = player.set_theme("theme");
+        let apply = player.global_inputs_apply();
 
-    //     assert_eq!(
-    //         player.global_inputs_get_string("text_input"),
-    //         Some("First Try!".to_string())
-    //     );
+        assert!(apply);
+        assert!(load);
+        assert!(inputs_loaded);
+        assert!(set_theme);
+        assert_eq!(
+            player.global_inputs_get_string("text"),
+            Some("START REPLACED WITH BINDING".to_string())
+        );
+        assert_eq!(
+            player.global_inputs_get_string("second_text"),
+            Some("END REPLACED WITH BINDING".to_string())
+        );
 
-    //     let buffer = player.buffer();
-    //     let snapshot_path = "./tests/snapshots/text_global_input_snapshot_before.bin";
+        player.set_frame(0.0);
+        player.render();
 
-    //     assert!(
-    //         compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
-    //         "Buffer at frame 30 doesn't match snapshot"
-    //     );
+        let snapshot_path =
+            "./tests/snapshots/text_global_input_animated_snapshot_start_before.bin";
+        let buffer = player.buffer();
 
-    //     // ⚠️ Uncomment block to generate initial snapshot
-    //     // let buffer = player.buffer();
-    //     // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
-    //     // snapshot_to_png(
-    //     //     snapshot_path,
-    //     //     "./tests/snapshots/text_global_input_snapshot_before.png",
-    //     // )
-    //     // .unwrap();
+        assert!(
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
+            "Buffer at frame 0 doesn't match snapshot"
+        );
 
-    //     player.global_inputs_set_string("text_input", "New Value");
-    //     assert_eq!(
-    //         player.global_inputs_get_string("text_input"),
-    //         Some("New Value".to_string())
-    //     );
+        // ⚠️ Uncomment block to generate initial snapshot
+        // let buffer = player.buffer();
+        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+        // snapshot_to_png(
+        //     snapshot_path,
+        //     "./tests/snapshots/text_global_input_animated_snapshot_start_before.png",
+        // )
+        // .unwrap();
 
-    //     player.render();
+        player.set_frame(40.0);
+        player.render();
 
-    //     let buffer = player.buffer();
-    //     let snapshot_path = "./tests/snapshots/text_global_input_snapshot_after.bin";
+        let snapshot_path = "./tests/snapshots/text_global_input_animated_snapshot_end_before.bin";
+        let buffer = player.buffer();
+        assert!(
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
+            "Buffer at frame 0 doesn't match snapshot"
+        );
 
-    //     assert!(
-    //         compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap(),
-    //         "Buffer at frame 30 doesn't match snapshot"
-    //     );
+        // ⚠️ Uncomment block to generate initial snapshot
+        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+        // snapshot_to_png(
+        //     snapshot_path,
+        //     "./tests/snapshots/text_global_input_animated_snapshot_end_before.png",
+        // )
+        // .unwrap();
 
-    //     // ⚠️ Uncomment block to generate initial snapshot
-    //     // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
-    //     // snapshot_to_png(
-    //     //     snapshot_path,
-    //     //     "./tests/snapshots/text_global_input_snapshot_after.png",
-    //     // )
-    //     // .unwrap();
-    // }
+        player.global_inputs_set_string("text", "New Start");
+        assert_eq!(
+            player.global_inputs_get_string("text"),
+            Some("New Start".to_string())
+        );
+        player.global_inputs_set_string("second_text", "New End");
+        assert_eq!(
+            player.global_inputs_get_string("second_text"),
+            Some("New End".to_string())
+        );
+
+        player.set_frame(10.0);
+        player.render();
+
+        let buffer = player.buffer();
+        let snapshot_path = "./tests/snapshots/text_global_input_animated_snapshot_after.bin";
+
+        assert!(
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
+            "Buffer at frame 20 doesn't match snapshot"
+        );
+
+        // ⚠️ Uncomment block to generate initial snapshot
+        // let buffer = player.buffer();
+        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+        // snapshot_to_png(
+        //     snapshot_path,
+        //     "./tests/snapshots/text_global_input_animated_snapshot_after.png",
+        // )
+        // .unwrap();
+
+        player.set_frame(40.0);
+        player.render();
+
+        let snapshot_path = "./tests/snapshots/text_global_input_animated_snapshot_end_after.bin";
+        let buffer = player.buffer();
+
+        assert!(
+            unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
+            "Buffer at frame 20 doesn't match snapshot"
+        );
+
+        // ⚠️ Uncomment block to generate initial snapshot
+        // let buffer = player.buffer();
+        // write_buffer_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap();
+        // snapshot_to_png(
+        //     snapshot_path,
+        //     "./tests/snapshots/text_global_input_animated_snapshot_end_after.png",
+        // )
+        // .unwrap();
+    }
 }

@@ -134,7 +134,9 @@ fn main() {
     // ));
 
     let parse = player.player.global_inputs_load(BINDING_FILE_NAME);
-    println!("[Player] Binding Parse succeeded: {}", parse);
+    let apply = player.player.global_inputs_apply();
+    println!("[Debug]: Loaded inputs: {}", parse);
+    println!("[Debug]: Applied inputs: {}", apply);
 
     // let theme_file_path = format!("./src/bin/text-input/{}.json", THEMING_FILE_NAME);
     // let theme_file_data = std::fs::read_to_string(&theme_file_path)

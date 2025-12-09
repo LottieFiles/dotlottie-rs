@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GradientStop {
     pub offset: f32,
-    pub color: [f32; 4],
+    pub color: Vec<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

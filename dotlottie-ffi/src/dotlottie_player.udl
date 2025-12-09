@@ -34,6 +34,21 @@ interface StateMachineObserver {
     void on_input_fired(string input_name);
 };
 
+dictionary GradientStop {
+    f32 offset;
+    sequence<f32> color;
+};
+
+[Trait, WithForeign]
+interface GlobalInputsObserver {
+    void on_color_global_input_value_change(string global_input_name, sequence<f32> old_value, sequence<f32> new_value);
+    void on_gradient_global_input_value_change(string global_input_name, sequence<f32> old_value, sequence<f32> new_value);
+    void on_numeric_global_input_value_change(string global_input_name, f32 old_value, f32 new_value);
+    void on_boolean_global_input_value_change(string global_input_name, boolean old_value, boolean new_value);
+    void on_string_global_input_value_change(string global_input_name, string old_value, string new_value);
+    void on_vector_global_input_value_change(string global_input_name, sequence<f32> old_value, sequence<f32> new_value);
+};
+
 [Trait, WithForeign]
 interface StateMachineInternalObserver {
     void on_message(string message);
@@ -84,6 +99,7 @@ dictionary Config {
 dictionary ManifestInitial {
     string? animation;
     string? state_machine;
+    string? bindings;
 };
 
 dictionary ManifestAnimation {
@@ -104,6 +120,11 @@ dictionary ManifestStateMachine {
     string? name;
 };
 
+dictionary ManifestGlobalInputs {
+    string id;
+    string? name;
+};
+
 dictionary Manifest {
     string? version;
     string? generator;
@@ -111,6 +132,7 @@ dictionary Manifest {
     sequence<ManifestAnimation> animations;
     sequence<ManifestTheme>? themes;
     sequence<ManifestStateMachine>? state_machines;
+    sequence<ManifestGlobalInputs>? global_inputs;
 };
 
 dictionary Marker {
@@ -219,4 +241,22 @@ interface DotLottiePlayer {
     boolean state_machine_internal_unsubscribe([ByRef] StateMachineInternalObserver observer);
     boolean state_machine_override_current_state([ByRef] string state_name, boolean do_tick);
     string state_machine_status();
+
+    boolean global_inputs_load([ByRef] string id);
+    boolean global_inputs_load_data([ByRef] string data);
+    boolean global_inputs_apply();
+    boolean global_inputs_remove();
+    boolean global_inputs_subscribe(GlobalInputsObserver observer);
+    boolean global_inputs_unsubscribe([ByRef] GlobalInputsObserver observer);
+    boolean global_inputs_set_string([ByRef] string binding_name, [ByRef] string new_value);
+    boolean global_inputs_set_color([ByRef] string binding_name, [ByRef] sequence<f32> new_value);
+    boolean global_inputs_set_vector([ByRef] string binding_name, [ByRef] sequence<f32> new_value);
+    boolean global_inputs_set_numeric([ByRef] string binding_name, f32 new_value);
+    boolean global_inputs_set_boolean([ByRef] string binding_name, boolean new_value);
+    boolean global_inputs_set_gradient([ByRef] string binding_name, [ByRef] sequence<GradientStop> new_value);    
+    string? global_inputs_get_string([ByRef] string binding_name);
+    sequence<f32> global_inputs_get_color([ByRef] string binding_name);
+    sequence<f32> global_inputs_get_vector([ByRef] string binding_name);
+    f32? global_inputs_get_numeric([ByRef] string binding_name);
+    sequence<GradientStop> global_inputs_get_gradient([ByRef] string binding_name);
 };

@@ -49,8 +49,8 @@ pub trait GlobalInputsObserver: Send + Sync {
     fn on_vector_global_input_value_change(
         &self,
         global_input_name: String,
-        old_value: [f32; 2],
-        new_value: [f32; 2],
+        old_value: Vec<f32>,
+        new_value: Vec<f32>,
     );
 }
 
@@ -462,7 +462,11 @@ impl GlobalInputsEngine {
         }
         let _ = renderer.apply_all_slots();
 
-        self.observe_vector_global_input_value_change(global_input_name, old_value, new_value);
+        self.observe_vector_global_input_value_change(
+            global_input_name,
+            &old_value.to_vec(),
+            &new_value.to_vec(),
+        );
 
         true
     }
@@ -810,8 +814,8 @@ impl GlobalInputsEngine {
     pub fn observe_vector_global_input_value_change(
         &self,
         input_name: &str,
-        old_value: [f32; 2],
-        new_value: [f32; 2],
+        old_value: &Vec<f32>,
+        new_value: &Vec<f32>,
     ) {
         if old_value == new_value {
             return;
@@ -820,8 +824,8 @@ impl GlobalInputsEngine {
             for observer in observers.iter() {
                 observer.on_vector_global_input_value_change(
                     input_name.to_string(),
-                    old_value,
-                    new_value,
+                    old_value.to_vec(),
+                    new_value.to_vec(),
                 );
             }
         }

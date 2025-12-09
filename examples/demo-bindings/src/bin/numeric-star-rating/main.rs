@@ -123,8 +123,8 @@ impl GlobalInputsObserver for DummyGlobalInputsObserver {
     fn on_vector_global_input_value_change(
         &self,
         global_input_name: String,
-        old_value: [f32; 2],
-        new_value: [f32; 2],
+        old_value: Vec<f32>,
+        new_value: Vec<f32>,
     ) {
         println!(
             "[global input event] vector_input_value_change ==> {} : [{}, {}] -> [{}, {}]",

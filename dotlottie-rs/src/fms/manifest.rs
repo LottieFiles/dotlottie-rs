@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct ManifestInitial {
     pub animation: Option<String>,
     pub state_machine: Option<String>,
+    pub bindings: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -23,8 +24,9 @@ pub struct ManifestStateMachine {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct ManifestBinding {
+pub struct ManifestGlobalInputs {
     pub id: String,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -48,5 +50,5 @@ pub struct Manifest {
     pub animations: Vec<ManifestAnimation>,
     pub themes: Option<Vec<ManifestTheme>>,
     pub state_machines: Option<Vec<ManifestStateMachine>>,
-    pub bindings: Option<Vec<ManifestBinding>>,
+    pub global_inputs: Option<Vec<ManifestGlobalInputs>>,
 }

@@ -163,8 +163,8 @@ mod tests {
         assert!(inputs_loaded);
         assert!(set_theme);
 
-        player.set_frame(50.0);
-        player.render();
+        assert!(player.set_frame(50.0));
+        assert!(player.render());
 
         let buffer = player.buffer();
         let snapshot_path = "./tests/snapshots/gradient_global_input_animated_snapshot.bin";
@@ -203,11 +203,11 @@ mod tests {
         assert!(inputs_apply);
         assert_eq!(
             player.global_inputs_get_color("start_0"),
-            Some([0.9, 0.9, 0.9, 1.0])
+            ([0.9, 0.9, 0.9, 1.0])
         );
         assert_eq!(
             player.global_inputs_get_color("end_0"),
-            Some([0.1, 0.1, 0.1, 1.0])
+            ([0.1, 0.1, 0.1, 1.0])
         );
 
         assert!(load);
@@ -254,35 +254,35 @@ mod tests {
         assert!(inputs_apply);
         assert_eq!(
             player.global_inputs_get_color("start_0"),
-            Some([0.1, 0.1, 0.1, 1.0])
+            ([0.1, 0.1, 0.1, 1.0].to_vec())
         );
         assert_eq!(
             player.global_inputs_get_color("end_0"),
-            Some([0.2, 0.2, 0.2, 1.0])
+            ([0.2, 0.2, 0.2, 1.0].to_vec())
         );
         assert_eq!(
             player.global_inputs_get_color("start_1"),
-            Some([0.3, 0.3, 0.3, 1.0])
+            ([0.3, 0.3, 0.3, 1.0].to_vec())
         );
         assert_eq!(
             player.global_inputs_get_color("end_1"),
-            Some([0.4, 0.4, 0.4, 1.0])
+            ([0.4, 0.4, 0.4, 1.0].to_vec())
         );
         assert_eq!(
             player.global_inputs_get_color("start_2"),
-            Some([0.4, 0.4, 0.4, 1.0])
+            ([0.4, 0.4, 0.4, 1.0].to_vec())
         );
         assert_eq!(
             player.global_inputs_get_color("end_2"),
-            Some([0.5, 0.5, 0.5, 1.0])
+            ([0.5, 0.5, 0.5, 1.0].to_vec())
         );
 
         assert!(load);
         assert!(inputs_loaded);
         assert!(set_theme);
 
-        player.set_frame(30.0);
-        player.render();
+        assert!(player.set_frame(30.0));
+        assert!(player.render());
 
         let buffer = player.buffer();
         let snapshot_path = "./tests/snapshots/color_global_input_animated_snapshot.bin";
@@ -324,7 +324,7 @@ mod tests {
 
         assert_eq!(
             player.global_inputs_get_vector("wand_pos"),
-            Some([50.0, 50.0])
+            ([50.0, 50.0].to_vec())
         );
 
         player.set_frame(30.0);

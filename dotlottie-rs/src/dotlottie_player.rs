@@ -1857,10 +1857,13 @@ impl DotLottiePlayerContainer {
         self.runtime.write().unwrap().set_transform(transform)
     }
 
-    pub fn global_inputs_remove(&self) {
+    pub fn global_inputs_remove(&self) -> bool {
         if let Ok(mut engine_guard) = self.global_inputs_engine.write() {
             *engine_guard = None;
+            return true;
         }
+
+        false
     }
 
     pub fn global_inputs_load(&self, id: &str) -> bool {
@@ -2112,7 +2115,11 @@ impl DotLottiePlayerContainer {
         engine.global_inputs_set_color(binding_name, new_value, runtime_guard.renderer_mut())
     }
 
-    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f32; 2]) -> bool {
+    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f32]) -> bool {
+        if new_value.len() != 2 {
+            return false;
+        }
+
         let mut engine_guard = match self.global_inputs_engine.write() {
             Ok(g) => g,
             Err(_) => return false,
@@ -2128,7 +2135,9 @@ impl DotLottiePlayerContainer {
             Err(_) => return false,
         };
 
-        engine.global_inputs_set_vector(binding_name, *new_value, runtime_guard.renderer_mut())
+        let arr: [f32; 2] = [new_value[0], new_value[1]];
+
+        engine.global_inputs_set_vector(binding_name, arr, runtime_guard.renderer_mut())
     }
 
     pub fn global_inputs_set_gradient(
@@ -2311,21 +2320,30 @@ impl DotLottiePlayerContainer {
             .ok()
     }
 
-    pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f32; 4]> {
-        self.global_inputs_engine
-            .read()
-            .ok()?
-            .as_ref()?
+    pub fn global_inputs_get_color(&self, binding_name: &str) -> Vec<f32> {
+        let Some(guard) = self.global_inputs_engine.read().ok() else {
+            return vec![];
+        };
+        let Some(engine) = guard.as_ref() else {
+            return vec![];
+        };
+        engine
             .global_inputs_get_color(binding_name)
+            .map(|arr| arr.to_vec())
+            .unwrap_or_default()
     }
 
-    pub fn global_inputs_get_vector(&self, binding_name: &str) -> Option<[f32; 2]> {
-        self.global_inputs_engine
-            .read()
-            .ok()?
-            .as_ref()?
+    pub fn global_inputs_get_vector(&self, binding_name: &str) -> Vec<f32> {
+        let Some(guard) = self.global_inputs_engine.read().ok() else {
+            return vec![];
+        };
+        let Some(engine) = guard.as_ref() else {
+            return vec![];
+        };
+        engine
             .global_inputs_get_vector(binding_name)
-            .ok()
+            .map(|arr| arr.to_vec())
+            .unwrap_or_default()
     }
 
     pub fn global_inputs_get_numeric(&self, binding_name: &str) -> Option<f32> {
@@ -2346,13 +2364,16 @@ impl DotLottiePlayerContainer {
             .ok()
     }
 
-    pub fn global_inputs_get_gradient(&self, binding_name: &str) -> Option<Vec<GradientStop>> {
-        self.global_inputs_engine
-            .read()
-            .ok()?
-            .as_ref()?
+    pub fn global_inputs_get_gradient(&self, binding_name: &str) -> Vec<GradientStop> {
+        let Some(guard) = self.global_inputs_engine.read().ok() else {
+            return vec![];
+        };
+        let Some(engine) = guard.as_ref() else {
+            return vec![];
+        };
+        engine
             .global_inputs_get_gradient(binding_name)
-            .ok()
+            .unwrap_or_default()
     }
 
     pub fn global_inputs_get_image(&self, binding_name: &str) -> Option<ImageValue> {
@@ -3009,7 +3030,7 @@ impl DotLottiePlayer {
         self.player.write().unwrap().reset_theme()
     }
 
-    pub fn global_inputs_remove(&self) {
+    pub fn global_inputs_remove(&self) -> bool {
         self.player.read().unwrap().global_inputs_remove()
     }
 
@@ -3042,7 +3063,7 @@ impl DotLottiePlayer {
             .unwrap_or(false)
     }
 
-    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f32; 2]) -> bool {
+    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &Vec<f32>) -> bool {
         self.player
             .read()
             .map(|p| p.global_inputs_set_vector(binding_name, new_value))
@@ -3081,14 +3102,14 @@ impl DotLottiePlayer {
             .global_inputs_get_string(binding_name)
     }
 
-    pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f32; 4]> {
+    pub fn global_inputs_get_color(&self, binding_name: &str) -> Vec<f32> {
         self.player
             .read()
             .unwrap()
             .global_inputs_get_color(binding_name)
     }
 
-    pub fn global_inputs_get_vector(&self, binding_name: &str) -> Option<[f32; 2]> {
+    pub fn global_inputs_get_vector(&self, binding_name: &str) -> Vec<f32> {
         self.player
             .read()
             .unwrap()
@@ -3109,7 +3130,7 @@ impl DotLottiePlayer {
             .global_inputs_get_boolean(binding_name)
     }
 
-    pub fn global_inputs_get_gradient(&self, binding_name: &str) -> Option<Vec<GradientStop>> {
+    pub fn global_inputs_get_gradient(&self, binding_name: &str) -> Vec<GradientStop> {
         self.player
             .read()
             .unwrap()

@@ -319,6 +319,105 @@ private:
     StateMachineObserverCallbacks callbacks_;
 };
 
+struct GlobalInputsObserverCallbacks
+{
+    std::function<void(const std::string &, const std::vector<float> &, const std::vector<float> &)> on_color_global_input_value_change;
+    std::function<void(const std::string &, const std::vector<float> &, const std::vector<float> &)> on_gradient_global_input_value_change;
+    std::function<void(const std::string &, float, float)> on_numeric_global_input_value_change;
+    std::function<void(const std::string &, bool, bool)> on_boolean_global_input_value_change;
+    std::function<void(const std::string &, const std::string &, const std::string &)> on_string_global_input_value_change;
+    std::function<void(const std::string &, const std::vector<float> &, const std::vector<float> &)> on_vector_global_input_value_change;
+};
+
+class CallbackGlobalInputsObserver : public GlobalInputsObserver
+{
+public:
+    CallbackGlobalInputsObserver() = default;
+
+    void setOnColorGlobalInputValueChange(val cb)
+    {
+        callbacks_.on_color_global_input_value_change = [cb](const std::string &name, const std::vector<float> &oldv, const std::vector<float> &newv)
+        {
+            if (cb != val::undefined())
+                cb(name, oldv, newv);
+        };
+    }
+    void setOnGradientGlobalInputValueChange(val cb)
+    {
+        callbacks_.on_gradient_global_input_value_change = [cb](const std::string &name, const std::vector<float> &oldv, const std::vector<float> &newv)
+        {
+            if (cb != val::undefined())
+                cb(name, oldv, newv);
+        };
+    }
+    void setOnNumericGlobalInputValueChange(val cb)
+    {
+        callbacks_.on_numeric_global_input_value_change = [cb](const std::string &name, float oldv, float newv)
+        {
+            if (cb != val::undefined())
+                cb(name, oldv, newv);
+        };
+    }
+    void setOnBooleanGlobalInputValueChange(val cb)
+    {
+        callbacks_.on_boolean_global_input_value_change = [cb](const std::string &name, bool oldv, bool newv)
+        {
+            if (cb != val::undefined())
+                cb(name, oldv, newv);
+        };
+    }
+    void setOnStringGlobalInputValueChange(val cb)
+    {
+        callbacks_.on_string_global_input_value_change = [cb](const std::string &name, const std::string &oldv, const std::string &newv)
+        {
+            if (cb != val::undefined())
+                cb(name, oldv, newv);
+        };
+    }
+    void setOnVectorGlobalInputValueChange(val cb)
+    {
+        callbacks_.on_vector_global_input_value_change = [cb](const std::string &name, const std::vector<float> &oldv, const std::vector<float> &newv)
+        {
+            if (cb != val::undefined())
+                cb(name, oldv, newv);
+        };
+    }
+
+    void on_color_global_input_value_change(const std::string &name, const std::vector<float> &oldv, const std::vector<float> &newv) override
+    {
+        if (callbacks_.on_color_global_input_value_change)
+            callbacks_.on_color_global_input_value_change(name, oldv, newv);
+    }
+    void on_gradient_global_input_value_change(const std::string &name, const std::vector<float> &oldv, const std::vector<float> &newv) override
+    {
+        if (callbacks_.on_gradient_global_input_value_change)
+            callbacks_.on_gradient_global_input_value_change(name, oldv, newv);
+    }
+    void on_numeric_global_input_value_change(const std::string &name, float oldv, float newv) override
+    {
+        if (callbacks_.on_numeric_global_input_value_change)
+            callbacks_.on_numeric_global_input_value_change(name, oldv, newv);
+    }
+    void on_boolean_global_input_value_change(const std::string &name, bool oldv, bool newv) override
+    {
+        if (callbacks_.on_boolean_global_input_value_change)
+            callbacks_.on_boolean_global_input_value_change(name, oldv, newv);
+    }
+    void on_string_global_input_value_change(const std::string &name, const std::string &oldv, const std::string &newv) override
+    {
+        if (callbacks_.on_string_global_input_value_change)
+            callbacks_.on_string_global_input_value_change(name, oldv, newv);
+    }
+    void on_vector_global_input_value_change(const std::string &name, const std::vector<float> &oldv, const std::vector<float> &newv) override
+    {
+        if (callbacks_.on_vector_global_input_value_change)
+            callbacks_.on_vector_global_input_value_change(name, oldv, newv);
+    }
+
+private:
+    GlobalInputsObserverCallbacks callbacks_;
+};
+
 std::shared_ptr<Observer> subscribe(DotLottiePlayer &player, Observer *observer)
 {
     // Create shared_ptr from raw pointer (without taking ownership)
@@ -356,6 +455,18 @@ std::shared_ptr<StateMachineInternalObserver> stateMachineInternalSubscribe(DotL
 void stateMachineInternalUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachineInternalObserver> observer)
 {
     player.state_machine_internal_unsubscribe(observer);
+}
+
+std::shared_ptr<GlobalInputsObserver> globalInputsSubscribe(DotLottiePlayer &player, GlobalInputsObserver *observer)
+{
+    std::shared_ptr<GlobalInputsObserver> shared_observer(observer, [](GlobalInputsObserver *) {});
+    player.global_inputs_subscribe(shared_observer);
+    return shared_observer;
+}
+
+void globalInputsUnsubscribe(DotLottiePlayer &player, std::shared_ptr<GlobalInputsObserver> observer)
+{
+    player.global_inputs_unsubscribe(observer);
 }
 
 EMSCRIPTEN_BINDINGS(observer_callbacks)
@@ -397,12 +508,25 @@ EMSCRIPTEN_BINDINGS(state_machine_observer_callbacks)
         .function("setOnError", &CallbackStateMachineObserver::setOnError);
 }
 
+EMSCRIPTEN_BINDINGS(global_inputs_observer_callbacks)
+{
+    class_<CallbackGlobalInputsObserver, base<GlobalInputsObserver>>("CallbackGlobalInputsObserver")
+        .constructor<>()
+        .function("setOnColorGlobalInputValueChange", &CallbackGlobalInputsObserver::setOnColorGlobalInputValueChange)
+        .function("setOnGradientGlobalInputValueChange", &CallbackGlobalInputsObserver::setOnGradientGlobalInputValueChange)
+        .function("setOnNumericGlobalInputValueChange", &CallbackGlobalInputsObserver::setOnNumericGlobalInputValueChange)
+        .function("setOnBooleanGlobalInputValueChange", &CallbackGlobalInputsObserver::setOnBooleanGlobalInputValueChange)
+        .function("setOnStringGlobalInputValueChange", &CallbackGlobalInputsObserver::setOnStringGlobalInputValueChange)
+        .function("setOnVectorGlobalInputValueChange", &CallbackGlobalInputsObserver::setOnVectorGlobalInputValueChange);
+}
+
 EMSCRIPTEN_BINDINGS(DotLottiePlayer)
 {
     register_vector<float>("VectorFloat");
     register_vector<std::string>("VectorString");
     register_vector<Marker>("VectorMarker");
     register_vector<char>("VectorChar");
+    register_vector<GradientStop>("VectorGradientStop");
 
     register_optional<std::vector<float>>();
     register_optional<std::string>();
@@ -411,6 +535,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     register_optional<bool>();
     register_optional<Mode>();
     register_optional<float>();
+    register_optional<std::vector<GradientStop>>();
 
     enum_<Mode>("Mode")
         .value("Forward", Mode::kForward)
@@ -442,6 +567,10 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .field("name", &Marker::name)
         .field("time", &Marker::time)
         .field("duration", &Marker::duration);
+
+    value_object<GradientStop>("GradientStop")
+        .field("offset", &GradientStop::offset)
+        .field("color", &GradientStop::color);
 
     value_object<Config>("Config")
         .field("autoplay", &Config::autoplay)
@@ -491,6 +620,15 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     class_<StateMachineInternalObserver>("StateMachineInternalObserver")
         .smart_ptr<std::shared_ptr<StateMachineInternalObserver>>("StateMachineInternalObserver")
         .function("on_message", &StateMachineInternalObserver::on_message, pure_virtual());
+
+    class_<GlobalInputsObserver>("GlobalInputsObserver")
+        .smart_ptr<std::shared_ptr<GlobalInputsObserver>>("GlobalInputsObserver")
+        .function("on_color_global_input_value_change", &GlobalInputsObserver::on_color_global_input_value_change, pure_virtual())
+        .function("on_gradient_global_input_value_change", &GlobalInputsObserver::on_gradient_global_input_value_change, pure_virtual())
+        .function("on_numeric_global_input_value_change", &GlobalInputsObserver::on_numeric_global_input_value_change, pure_virtual())
+        .function("on_boolean_global_input_value_change", &GlobalInputsObserver::on_boolean_global_input_value_change, pure_virtual())
+        .function("on_string_global_input_value_change", &GlobalInputsObserver::on_string_global_input_value_change, pure_virtual())
+        .function("on_vector_global_input_value_change", &GlobalInputsObserver::on_vector_global_input_value_change, pure_virtual());
 
     class_<DotLottiePlayer>("DotLottiePlayer")
         .smart_ptr<std::shared_ptr<DotLottiePlayer>>("DotLottiePlayer")
@@ -575,5 +713,22 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("stateMachineUnsubscribe", &stateMachineUnsubscribe)
         .function("stateMachineInternalSubscribe", &stateMachineInternalSubscribe, allow_raw_pointers())
         .function("stateMachineInternalUnsubscribe", &stateMachineInternalUnsubscribe)
-        .function("stateMachineStatus", &DotLottiePlayer::state_machine_status);
+        .function("stateMachineStatus", &DotLottiePlayer::state_machine_status)
+
+        .function("globalInputsLoad", &DotLottiePlayer::global_inputs_load)
+        .function("globalInputsLoadData", &DotLottiePlayer::global_inputs_load_data)
+        .function("globalInputsApply", &DotLottiePlayer::global_inputs_apply)
+        .function("globalInputsRemove", &DotLottiePlayer::global_inputs_remove)
+        .function("globalInputsSubscribe", &globalInputsSubscribe, allow_raw_pointers())
+        .function("globalInputsUnsubscribe", &globalInputsUnsubscribe)
+        .function("globalInputsSetString", &DotLottiePlayer::global_inputs_set_string)
+        .function("globalInputsSetColor", &DotLottiePlayer::global_inputs_set_color)
+        .function("globalInputsSetVector", &DotLottiePlayer::global_inputs_set_vector)
+        .function("globalInputsSetNumeric", &DotLottiePlayer::global_inputs_set_numeric)
+        .function("globalInputsSetBoolean", &DotLottiePlayer::global_inputs_set_boolean)
+        .function("globalInputsGetString", &DotLottiePlayer::global_inputs_get_string)
+        .function("globalInputsGetColor", &DotLottiePlayer::global_inputs_get_color)
+        .function("globalInputsGetVector", &DotLottiePlayer::global_inputs_get_vector)
+        .function("globalInputsGetNumeric", &DotLottiePlayer::global_inputs_get_numeric)
+        .function("globalInputsGetGradient", &DotLottiePlayer::global_inputs_get_gradient);
 }

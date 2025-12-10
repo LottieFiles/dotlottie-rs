@@ -66,6 +66,7 @@ fn main() {
     let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
     player.player.global_inputs_load_data(&binding_file_data);
     player.player.set_theme("theme");
+    player.player.global_inputs_apply();
 
     println!("[Info] Controls:");
     println!("  S - Switch between animated/static mode");
@@ -127,7 +128,7 @@ fn main() {
             let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
             player.player.global_inputs_load_data(&binding_file_data);
             player.player.set_theme("theme");
-
+            player.player.global_inputs_apply();
             let mode_str = if using_animated { "ANIMATED" } else { "STATIC" };
             println!("[Info] Switched to {} mode", mode_str);
         }

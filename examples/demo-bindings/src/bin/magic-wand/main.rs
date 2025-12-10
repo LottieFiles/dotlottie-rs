@@ -1,10 +1,9 @@
 use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event};
-use minifb::{Key, KeyRepeat, MouseButton, Window, WindowOptions};
-use std::{string::ParseError, time::Instant};
+use minifb::{Key, MouseButton, Window, WindowOptions};
+use std::time::Instant;
 
 const WIDTH: usize = 512;
 const HEIGHT: usize = 512;
-const EASE_LINEAR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
 struct Player {
     player: DotLottiePlayer,
@@ -86,6 +85,8 @@ fn main() {
 
     let st = player.player.set_theme("wand");
     println!("Set theme: {}", st);
+
+    player.player.global_inputs_apply();
 
     let mut mx = 0.0;
     let mut my = 0.0;

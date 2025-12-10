@@ -1919,6 +1919,7 @@ impl DotLottiePlayerContainer {
         true
     }
 
+    // Once this is called, any time a global input is modified it will apply itself to the mapped slots and/or state machine
     pub fn global_inputs_apply(&self) -> bool {
         let has_engine = self
             .global_inputs_engine
@@ -1942,7 +1943,24 @@ impl DotLottiePlayerContainer {
         }
     }
 
-    pub fn global_inputs_apply_to_slots(&self) -> bool {
+    // Global inputs can continue to be updated, but they won't apply themselves to their mapped slot / state machine
+    pub fn global_inputs_un_apply(&self) -> bool {
+        let mut engine_guard = match self.global_inputs_engine.write() {
+            Ok(g) => g,
+            Err(_) => return false,
+        };
+
+        let engine = match engine_guard.as_mut() {
+            Some(e) => e,
+            None => return false,
+        };
+
+        engine.set_write_mode(false);
+
+        true
+    }
+
+    fn global_inputs_apply_to_slots(&self) -> bool {
         let mut engine_guard = match self.global_inputs_engine.write() {
             Ok(g) => g,
             Err(_) => return false,
@@ -1960,20 +1978,25 @@ impl DotLottiePlayerContainer {
 
         let current_theme = runtime_guard.active_theme_id().to_string();
 
+        engine.set_write_mode(true);
+
         engine
             .apply_to_slots(&current_theme, runtime_guard.renderer_mut())
             .is_ok()
     }
 
-    pub fn global_inputs_apply_to_state_machine(&self) -> bool {
+    fn global_inputs_apply_to_state_machine(&self) -> bool {
         let updates = {
-            let engine_guard = match self.global_inputs_engine.read() {
+            let mut engine_guard = match self.global_inputs_engine.write() {
                 Ok(g) => g,
                 Err(_) => return false,
             };
 
-            match engine_guard.as_ref() {
-                Some(e) => e.collect_all_state_machine_updates(),
+            match engine_guard.as_mut() {
+                Some(e) => {
+                    e.set_write_mode(true);
+                    e.collect_all_state_machine_updates()
+                }
                 None => return false,
             }
         };
@@ -2016,6 +2039,10 @@ impl DotLottiePlayerContainer {
                 return false;
             }
 
+            if !engine.get_write_mode() {
+                return false;
+            }
+
             engine.get_state_machine_input_names_for_boolean(binding_name)
         };
 
@@ -2051,6 +2078,10 @@ impl DotLottiePlayerContainer {
                 return false;
             }
 
+            if !engine.get_write_mode() {
+                return false;
+            }
+
             engine.get_state_machine_input_names_for_numeric(binding_name)
         };
 
@@ -2083,6 +2114,10 @@ impl DotLottiePlayerContainer {
                 new_value,
                 runtime_guard.renderer_mut(),
             ) {
+                return false;
+            }
+
+            if !engine.get_write_mode() {
                 return false;
             }
 
@@ -3047,6 +3082,10 @@ impl DotLottiePlayer {
 
     pub fn global_inputs_apply(&self) -> bool {
         self.player.read().unwrap().global_inputs_apply()
+    }
+
+    pub fn global_inputs_un_apply(&self) -> bool {
+        self.player.read().unwrap().global_inputs_un_apply()
     }
 
     pub fn global_inputs_set_string(&self, binding_name: &str, new_value: &str) -> bool {

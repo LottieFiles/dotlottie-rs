@@ -245,6 +245,7 @@ interface DotLottiePlayer {
     boolean global_inputs_load([ByRef] string id);
     boolean global_inputs_load_data([ByRef] string data);
     boolean global_inputs_apply();
+    boolean global_inputs_un_apply();
     boolean global_inputs_remove();
     boolean global_inputs_subscribe(GlobalInputsObserver observer);
     boolean global_inputs_unsubscribe([ByRef] GlobalInputsObserver observer);

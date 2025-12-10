@@ -149,6 +149,7 @@ fn main() {
     let s = player.player.state_machine_start(OpenUrlPolicy::default());
     player.player.global_inputs_load_data(&binding_file_data);
     player.player.set_theme("theme");
+    player.player.global_inputs_apply();
 
     let observer: Arc<dyn GlobalInputsObserver + 'static> = Arc::new(DummyGlobalInputsObserver {});
     player.player.global_inputs_subscribe(observer.clone());
@@ -190,27 +191,20 @@ fn main() {
 
         // R: Remove theme
         if window.is_key_pressed(Key::R, minifb::KeyRepeat::No) {
-            player.player.reset_theme();
-            player.player.global_inputs_remove();
-            player.player.set_theme("theme");
-            println!("[Debug] Theme removed");
+            let u = player.player.global_inputs_remove();
         }
 
-        // T: Apply theme
-        if window.is_key_pressed(Key::T, minifb::KeyRepeat::Yes) {
-            let binding_file_name = if using_animated {
-                "inputs_animated"
-            } else {
-                "inputs_static"
-            };
+        if window.is_key_pressed(Key::A, minifb::KeyRepeat::Yes) {
+            player.player.global_inputs_apply();
+        }
 
-            player.player.set_theme("theme");
+        if window.is_key_pressed(Key::U, minifb::KeyRepeat::No) {
+            let u = player.player.global_inputs_un_apply();
+        }
 
-            // Load corresponding binding and apply theme
-            let binding_file_path = format!("./src/bin/boolean/{}.json", binding_file_name);
-            let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
-            let load = player.player.global_inputs_load_data(&binding_file_data);
-            println!("[Debug]: Loaded inputs: {}", load);
+        if window.is_key_pressed(Key::L, minifb::KeyRepeat::No) {
+            let u = player.player.global_inputs_load_data(&binding_file_data);
+            player.player.global_inputs_apply();
         }
 
         // S: Switch between animated and static mode

@@ -118,6 +118,7 @@ impl GlobalInputsEngineBuilder {
         let mut engine = GlobalInputsEngine {
             global_inputs_container: parsed_bindings,
             observers: RwLock::new(Vec::new()),
+            write_mode: false,
         };
 
         engine.resolve_slot_paths().map_err(|_| {
@@ -130,6 +131,7 @@ impl GlobalInputsEngineBuilder {
 
 pub struct GlobalInputsEngine {
     global_inputs_container: GlobalInputs,
+    write_mode: bool,
     pub observers: RwLock<Vec<Arc<dyn GlobalInputsObserver>>>,
 }
 
@@ -192,6 +194,7 @@ impl GlobalInputsEngine {
         Ok(GlobalInputsEngine {
             global_inputs_container: parsed_bindings,
             observers: RwLock::new(Vec::new()),
+            write_mode: false,
         })
     }
 
@@ -240,6 +243,14 @@ impl GlobalInputsEngine {
             });
         }
         result
+    }
+
+    pub fn set_write_mode(&mut self, new_value: bool) {
+        self.write_mode = new_value;
+    }
+
+    pub fn get_write_mode(&self) -> bool {
+        self.write_mode
     }
 
     pub fn global_inputs_get_color(&self, binding_name: &str) -> Option<[f32; 4]> {
@@ -299,6 +310,10 @@ impl GlobalInputsEngine {
         let old_value = *value;
         *value = new_value;
 
+        if !self.write_mode {
+            return true;
+        }
+
         for resolved in &binding.resolved_theme_bindings {
             if resolved
                 .path
@@ -335,6 +350,10 @@ impl GlobalInputsEngine {
 
         let old_value = *value;
         *value = new_value;
+
+        if !self.write_mode {
+            return true;
+        }
 
         for resolved in &binding.resolved_theme_bindings {
             if resolved
@@ -373,6 +392,10 @@ impl GlobalInputsEngine {
         let old_value = value.clone();
         *value = new_value.to_string();
 
+        if !self.write_mode {
+            return true;
+        }
+
         for resolved in &binding.resolved_theme_bindings {
             if resolved
                 .path
@@ -410,6 +433,10 @@ impl GlobalInputsEngine {
         let old_value = value.clone();
         *value = new_value.clone();
 
+        if !self.write_mode {
+            return true;
+        }
+
         for resolved in &binding.resolved_theme_bindings {
             if resolved
                 .path
@@ -446,6 +473,10 @@ impl GlobalInputsEngine {
 
         let old_value = *value;
         *value = new_value;
+
+        if !self.write_mode {
+            return true;
+        }
 
         for resolved in &binding.resolved_theme_bindings {
             if resolved
@@ -487,6 +518,11 @@ impl GlobalInputsEngine {
 
         let old_value = Self::gradient_stops_to_vec(value);
         *value = new_value.clone();
+
+        if !self.write_mode {
+            return true;
+        }
+
         let new_value_vec = Self::gradient_stops_to_vec(new_value);
 
         for resolved in &binding.resolved_theme_bindings {
@@ -517,6 +553,7 @@ impl GlobalInputsEngine {
         &mut self,
         global_input_name: &str,
         new_value: &ImageValue,
+        _: bool,
     ) -> Result<(), GlobalInputsEngineError> {
         let Some(binding) = self.global_inputs_container.get_mut(global_input_name) else {
             return Err(GlobalInputsEngineError::BindingNotFound(

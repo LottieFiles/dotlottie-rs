@@ -3102,7 +3102,7 @@ impl DotLottiePlayer {
             .unwrap_or(false)
     }
 
-    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &Vec<f32>) -> bool {
+    pub fn global_inputs_set_vector(&self, binding_name: &str, new_value: &[f32]) -> bool {
         self.player
             .read()
             .map(|p| p.global_inputs_set_vector(binding_name, new_value))

@@ -71,7 +71,7 @@ fn main() {
     ));
 
     let binding_load = player.player.global_inputs_load_data(&binding_file_data);
-    let apply = player.player.global_inputs_apply();
+    let apply = player.player.global_inputs_start();
     println!("[Debug]: Loaded inputs: {}", binding_load);
     println!("[Debug]: Applied inputs: {}", apply);
 
@@ -124,7 +124,7 @@ fn main() {
                 .player
                 .global_inputs_load_data(&static_binding_file_data);
             let static_theme_load = player.player.set_theme("theme");
-            let apply = player.player.global_inputs_apply();
+            let apply = player.player.global_inputs_start();
             println!("[Debug]: Loaded inputs: {}", static_binding_load);
             println!("[Debug]: Applied inputs: {}", apply);
             println!("[Debug]: Load succeeded: {}", static_theme_load);

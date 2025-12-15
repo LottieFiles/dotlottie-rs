@@ -70,7 +70,7 @@ fn main() {
     let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
     player.player.global_inputs_load_data(&binding_file_data);
     player.player.set_theme("theme");
-    player.player.global_inputs_apply();
+    player.player.global_inputs_start();
 
     println!("[Info] Controls:");
     println!("  S - Switch between animated/static mode");
@@ -102,7 +102,7 @@ fn main() {
             let binding_file_path = format!("./src/bin/color/{}.json", binding_file_name);
             let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
             let load = player.player.global_inputs_load_data(&binding_file_data);
-            let apply = player.player.global_inputs_apply();
+            let apply = player.player.global_inputs_start();
             println!("[Debug]: Loaded inputs: {}", load);
             println!("[Debug]: Applied inputs: {}", apply);
         }

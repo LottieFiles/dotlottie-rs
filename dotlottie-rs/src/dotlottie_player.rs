@@ -1920,7 +1920,7 @@ impl DotLottiePlayerContainer {
     }
 
     // Once this is called, any time a global input is modified it will apply itself to the mapped slots and/or state machine
-    pub fn global_inputs_apply(&self) -> bool {
+    pub fn global_inputs_start(&self) -> bool {
         let has_engine = self
             .global_inputs_engine
             .read()
@@ -1944,7 +1944,7 @@ impl DotLottiePlayerContainer {
     }
 
     // Global inputs can continue to be updated, but they won't apply themselves to their mapped slot / state machine
-    pub fn global_inputs_un_apply(&self) -> bool {
+    pub fn global_inputs_stop(&self) -> bool {
         let mut engine_guard = match self.global_inputs_engine.write() {
             Ok(g) => g,
             Err(_) => return false,
@@ -3080,12 +3080,12 @@ impl DotLottiePlayer {
         self.player.read().unwrap().global_inputs_load(id)
     }
 
-    pub fn global_inputs_apply(&self) -> bool {
-        self.player.read().unwrap().global_inputs_apply()
+    pub fn global_inputs_start(&self) -> bool {
+        self.player.read().unwrap().global_inputs_start()
     }
 
-    pub fn global_inputs_un_apply(&self) -> bool {
-        self.player.read().unwrap().global_inputs_un_apply()
+    pub fn global_inputs_stop(&self) -> bool {
+        self.player.read().unwrap().global_inputs_stop()
     }
 
     pub fn global_inputs_set_string(&self, binding_name: &str, new_value: &str) -> bool {

@@ -71,7 +71,7 @@ fn main() {
     ));
 
     let parse = player.player.global_inputs_load_data(&binding_file_data);
-    let apply = player.player.global_inputs_apply();
+    let apply = player.player.global_inputs_start();
     println!("[Debug]: Loaded inputs: {}", parse);
     println!("[Debug]: Applied inputs: {}", apply);
 
@@ -86,7 +86,7 @@ fn main() {
     let st = player.player.set_theme("wand");
     println!("Set theme: {}", st);
 
-    player.player.global_inputs_apply();
+    player.player.global_inputs_start();
 
     let mut mx = 0.0;
     let mut my = 0.0;

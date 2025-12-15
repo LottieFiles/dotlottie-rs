@@ -145,11 +145,14 @@ fn main() {
     // Load binding and set theme on startup
     let binding_file_path = format!("./src/bin/boolean/{}.json", BINDING_FILE_NAME);
     let binding_file_data = std::fs::read_to_string(&binding_file_path).unwrap();
+
     let l = player.player.state_machine_load(SM_FILE_NAME);
     let s = player.player.state_machine_start(OpenUrlPolicy::default());
+
+    // player.player.set_theme("theme");
     player.player.global_inputs_load_data(&binding_file_data);
-    player.player.set_theme("theme");
-    player.player.global_inputs_apply();
+
+    player.player.global_inputs_start();
 
     let observer: Arc<dyn GlobalInputsObserver + 'static> = Arc::new(DummyGlobalInputsObserver {});
     player.player.global_inputs_subscribe(observer.clone());
@@ -195,16 +198,16 @@ fn main() {
         }
 
         if window.is_key_pressed(Key::A, minifb::KeyRepeat::Yes) {
-            player.player.global_inputs_apply();
+            player.player.global_inputs_start();
         }
 
         if window.is_key_pressed(Key::U, minifb::KeyRepeat::No) {
-            let u = player.player.global_inputs_un_apply();
+            let u = player.player.global_inputs_stop();
         }
 
         if window.is_key_pressed(Key::L, minifb::KeyRepeat::No) {
             let u = player.player.global_inputs_load_data(&binding_file_data);
-            player.player.global_inputs_apply();
+            player.player.global_inputs_start();
         }
 
         // S: Switch between animated and static mode

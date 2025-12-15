@@ -145,7 +145,7 @@ fn main() {
     let parse = player.player.set_theme(THEMING_FILE_NAME);
     println!("[Player] Theme Parse succeeded: {}", parse);
 
-    let apply = player.player.global_inputs_apply();
+    let apply = player.player.global_inputs_start();
     println!("[Debug]: Applied inputs: {}", apply);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {

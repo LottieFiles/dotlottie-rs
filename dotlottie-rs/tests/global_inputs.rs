@@ -27,7 +27,7 @@ mod tests {
 
         let set_theme = player.set_theme("theme");
         let inputs_loaded = player.global_inputs_load("inputs");
-        let inputs_apply = player.global_inputs_apply();
+        let inputs_apply = player.global_inputs_start();
 
         assert!(inputs_apply);
         assert!(load);
@@ -71,7 +71,7 @@ mod tests {
 
         let set_theme = player.set_theme("theme");
         let inputs_loaded = player.global_inputs_load("inputs");
-        let inputs_apply = player.global_inputs_apply();
+        let inputs_apply = player.global_inputs_start();
 
         assert!(inputs_apply);
         assert!(load);
@@ -115,7 +115,7 @@ mod tests {
 
         let set_theme = player.set_theme("theme");
         let inputs_loaded = player.global_inputs_load("inputs");
-        let inputs_apply = player.global_inputs_apply();
+        let inputs_apply = player.global_inputs_start();
 
         assert!(inputs_apply);
         assert!(load);
@@ -156,7 +156,7 @@ mod tests {
 
         let set_theme = player.set_theme("theme");
         let inputs_loaded = player.global_inputs_load("inputs");
-        let inputs_apply = player.global_inputs_apply();
+        let inputs_apply = player.global_inputs_start();
 
         assert!(load);
         assert!(inputs_apply);
@@ -198,7 +198,7 @@ mod tests {
 
         let set_theme = player.set_theme("theme");
         let inputs_loaded = player.global_inputs_load("inputs");
-        let inputs_apply = player.global_inputs_apply();
+        let inputs_apply = player.global_inputs_start();
 
         assert!(inputs_apply);
         assert_eq!(
@@ -249,7 +249,7 @@ mod tests {
 
         let set_theme = player.set_theme("theme");
         let inputs_loaded = player.global_inputs_load("inputs");
-        let inputs_apply = player.global_inputs_apply();
+        let inputs_apply = player.global_inputs_start();
 
         assert!(inputs_apply);
         assert_eq!(
@@ -315,7 +315,7 @@ mod tests {
 
         let set_theme = player.set_theme("theme");
         let inputs_loaded = player.global_inputs_load("inputs");
-        let inputs_apply = player.global_inputs_apply();
+        let inputs_apply = player.global_inputs_start();
 
         assert!(inputs_apply);
         assert!(load);
@@ -361,7 +361,7 @@ mod tests {
         let inputs_loaded = player.global_inputs_load("inputs");
         let sm = player.state_machine_load("toggleButton");
         player.state_machine_start(OpenUrlPolicy::default());
-        let inputs_apply = player.global_inputs_apply();
+        let inputs_apply = player.global_inputs_start();
 
         assert!(inputs_apply);
         assert!(load);
@@ -454,7 +454,7 @@ mod tests {
 
         let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
-        let apply = player.global_inputs_apply();
+        let apply = player.global_inputs_start();
 
         assert!(apply);
         assert!(load);
@@ -523,7 +523,7 @@ mod tests {
 
         let inputs_loaded = player.global_inputs_load("inputs");
         let set_theme = player.set_theme("theme");
-        let apply = player.global_inputs_apply();
+        let apply = player.global_inputs_start();
 
         assert!(apply);
         assert!(load);

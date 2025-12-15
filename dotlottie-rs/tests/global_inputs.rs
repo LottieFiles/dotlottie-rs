@@ -444,7 +444,7 @@ mod tests {
     }
 
     #[test]
-    pub fn text_global_input_test_static() {
+    pub fn string_global_input_test_static() {
         // Description:
         let animation_data =
             include_bytes!("fixtures/global_inputs/test_inputs_text_static.lottie");
@@ -513,7 +513,7 @@ mod tests {
     }
 
     #[test]
-    pub fn text_global_input_test_animated() {
+    pub fn string_global_input_test_animated() {
         // Description:
         let animation_data =
             include_bytes!("fixtures/global_inputs/test_inputs_text_animated.lottie");

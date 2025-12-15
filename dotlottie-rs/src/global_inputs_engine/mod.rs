@@ -1,8 +1,5 @@
 use std::sync::{Arc, RwLock};
 
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-
 use crate::parser::binding_path::{BindingPath, BindingValue};
 use crate::parser::boolean_path::BooleanPath;
 use crate::parser::color_path::ColorPath;
@@ -85,19 +82,6 @@ pub struct StateMachineUpdates {
     pub boolean_updates: Vec<(Vec<String>, bool)>,
     pub numeric_updates: Vec<(Vec<String>, f32)>,
     pub string_updates: Vec<(Vec<String>, String)>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct Rule {
-    id: String,
-    #[serde(rename = "type")]
-    rule_type: String,
-    value: Value,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct Theme {
-    rules: Vec<Rule>,
 }
 
 pub struct GlobalInputsEngineBuilder {

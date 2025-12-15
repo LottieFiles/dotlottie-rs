@@ -1,9 +1,0 @@
-{
-  "ball": {
-    "type": "Numeric",
-    "value": 25,
-    "bindings": {
-      "themes": [{ "themeId": "theme", "ruleId": "ball", "path": "value" }]
-    }
-  }
-}

@@ -159,6 +159,7 @@ fn main() {
     println!("State machine started: {}", sms);
 
     player.player.global_inputs_load(BINDING_FILE_NAME);
+    player.player.global_inputs_start();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if window.is_key_pressed(Key::Key1, KeyRepeat::No) {

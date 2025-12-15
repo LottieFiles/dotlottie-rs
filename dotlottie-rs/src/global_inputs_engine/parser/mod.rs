@@ -63,9 +63,6 @@ pub struct GlobalInput {
 
     #[serde(skip)]
     pub resolved_theme_bindings: Vec<ResolvedThemeBinding>,
-    // Disabled for stage 1
-    // #[serde(skip_serializing_if = "Option::is_none")]
-    // pub source: Option<BindingSource>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -94,90 +91,6 @@ impl GlobalInputValue {
         .unwrap_or(serde_json::Value::Null)
     }
 }
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(tag = "type")]
-#[serde(rename_all = "PascalCase")]
-pub enum BindingSource {
-    Mapped {
-        #[serde(rename = "bindFrom")]
-        bind_from: String,
-        #[serde(rename = "bindMethod")]
-        bind_method: BindMethod,
-        converters: Vec<Converter>,
-    },
-    Property {
-        scope: PropertyScope,
-        #[serde(flatten)]
-        property_type: PropertyType,
-        #[serde(default = "default_update_frequency")]
-        #[serde(rename = "updateFrequency")]
-        update_frequency: UpdateFrequency,
-        converters: Vec<Converter>,
-    },
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub enum BindMethod {
-    Sync,
-    Once,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub enum PropertyScope {
-    Animation,
-    Layer,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(untagged)]
-pub enum PropertyType {
-    Animation {
-        property: AnimationProperty,
-    },
-    Layer {
-        #[serde(rename = "layerName")]
-        layer_name: String,
-        property: LayerProperty,
-    },
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub enum AnimationProperty {
-    CurrentFrame,
-    LoopCount,
-    Speed,
-    Direction,
-    CanvasSize,
-    BackgrondColor,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub enum LayerProperty {
-    FillColor,
-    BorderColor,
-    Position,
-    Scale,
-    Rotation,
-    Opacity,
-    Text,
-    StrokeColor,
-    StrokeWidth,
-    Anchor,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub enum UpdateFrequency {
-    OnChange,
-    OnTick,
-}
-
-fn default_update_frequency() -> UpdateFrequency {
-    UpdateFrequency::OnChange
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct Converter {}
 
 pub type GlobalInputs = HashMap<String, GlobalInput>;
 

@@ -730,6 +730,7 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
         .function("globalInputsSetGradient", &DotLottiePlayer::global_inputs_set_gradient)
         .function("globalInputsGetString", &DotLottiePlayer::global_inputs_get_string)
         .function("globalInputsGetColor", &DotLottiePlayer::global_inputs_get_color)
+        .function("globalInputsGetBoolean", &DotLottiePlayer::global_inputs_get_boolean)
         .function("globalInputsGetVector", &DotLottiePlayer::global_inputs_get_vector)
         .function("globalInputsGetNumeric", &DotLottiePlayer::global_inputs_get_numeric)
         .function("globalInputsGetGradient", &DotLottiePlayer::global_inputs_get_gradient);

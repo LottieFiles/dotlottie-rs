@@ -258,6 +258,7 @@ interface DotLottiePlayer {
     string? global_inputs_get_string([ByRef] string binding_name);
     sequence<f32> global_inputs_get_color([ByRef] string binding_name);
     sequence<f32> global_inputs_get_vector([ByRef] string binding_name);
+    boolean? global_inputs_get_boolean([ByRef] string binding_name);
     f32? global_inputs_get_numeric([ByRef] string binding_name);
     sequence<GradientStop> global_inputs_get_gradient([ByRef] string binding_name);
 };

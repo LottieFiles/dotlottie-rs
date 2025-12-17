@@ -2074,10 +2074,6 @@ impl DotLottiePlayerContainer {
                 return false;
             }
 
-            if !engine.get_write_mode() {
-                return false;
-            }
-
             engine.get_state_machine_input_names_for_numeric(binding_name)
         };
 

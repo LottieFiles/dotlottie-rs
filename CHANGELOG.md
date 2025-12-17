@@ -1,3 +1,9 @@
+## 0.1.54 (2025-12-17)
+
+### Fixes
+
+#### missing number glyphs in fallback font (#437)
+
 ## 0.1.53 (2025-12-08)
 
 ### Features

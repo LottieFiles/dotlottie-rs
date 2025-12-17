@@ -6,12 +6,170 @@ mod tests {
     use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
     use dotlottie_rs::Config;
     use dotlottie_rs::DotLottiePlayer;
+    use dotlottie_rs::GradientStop;
 
     use crate::test_utils::compare_with_snapshot;
     // use crate::test_utils::snapshot_to_png;
     // use crate::test_utils::write_buffer_snapshot;
     use crate::test_utils::HEIGHT;
     use crate::test_utils::WIDTH;
+
+    #[test]
+    pub fn test_getters() {
+        // Description:
+        // Test fetching the current value of the global inputs
+
+        let animation_data = include_bytes!("fixtures/global_inputs/all_global_inputs.lottie");
+
+        let player = DotLottiePlayer::new(Config::default());
+        let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
+
+        let set_theme = player.set_theme("theme");
+        let inputs_loaded = player.global_inputs_load("big_inputs_file");
+        let inputs_apply = player.global_inputs_start();
+
+        assert!(set_theme);
+        assert!(inputs_apply);
+        assert!(load);
+        assert!(inputs_loaded);
+
+        assert_eq!(
+            player.global_inputs_get_numeric("numeric_static"),
+            Some(50.0)
+        );
+        assert_eq!(
+            player.global_inputs_get_numeric("numeric_animated"),
+            Some(100.0)
+        );
+
+        assert_eq!(
+            player.global_inputs_get_color("color_static"),
+            (vec![0.9, 0.9, 0.9, 1.0])
+        );
+
+        assert_eq!(
+            player.global_inputs_get_color("color_animated"),
+            (vec![0.1, 0.1, 0.1, 1.0])
+        );
+        assert_eq!(
+            player.global_inputs_get_gradient("gradient_static"),
+            (vec![
+                GradientStop {
+                    color: vec![0.0, 0.0, 0.0, 1.0],
+                    offset: 0.0
+                },
+                GradientStop {
+                    color: vec![1.0, 1.0, 1.0, 1.0],
+                    offset: 1.0
+                }
+            ])
+        );
+
+        assert_eq!(
+            player.global_inputs_get_gradient("gradient_animated"),
+            ([GradientStop {
+                color: vec![0.1, 0.1, 0.1, 1.0],
+                offset: 0.1
+            }])
+        );
+        assert_eq!(
+            player.global_inputs_get_string("string_static"),
+            Some("First Try!".to_string())
+        );
+        assert_eq!(
+            player.global_inputs_get_string("string_animated"),
+            Some("START REPLACED WITH BINDING".to_string())
+        );
+        assert_eq!(
+            player.global_inputs_get_boolean("boolean_static"),
+            Some(false)
+        );
+        assert_eq!(
+            player.global_inputs_get_vector("vector_static"),
+            (vec![50.0, 50.0])
+        );
+    }
+
+    #[test]
+    pub fn test_setters() {
+        // Description:
+        // Test setting values for global inputs and verifying they update correctly
+
+        let animation_data = include_bytes!("fixtures/global_inputs/all_global_inputs.lottie");
+
+        let player = DotLottiePlayer::new(Config::default());
+        let load = player.load_dotlottie_data(animation_data, WIDTH, HEIGHT);
+
+        let set_theme = player.set_theme("theme");
+        let inputs_loaded = player.global_inputs_load("big_inputs_file");
+
+        // We don't start the engine, because this is just a test file with placeholder paths, changing binding values that don't have valid paths will fail
+
+        assert!(load);
+        assert!(set_theme);
+        assert!(inputs_loaded);
+
+        assert!(player.global_inputs_set_numeric("numeric_static", 123.0));
+        assert_eq!(
+            player.global_inputs_get_numeric("numeric_static"),
+            Some(123.0)
+        );
+
+        assert!(player.global_inputs_set_color("color_static", &vec![0.5, 0.6, 0.7, 0.8]));
+        assert_eq!(
+            player.global_inputs_get_color("color_static"),
+            vec![0.5, 0.6, 0.7, 0.8]
+        );
+
+        let new_gradient = vec![
+            GradientStop {
+                color: vec![1.0, 0.0, 0.0, 1.0],
+                offset: 0.0,
+            },
+            GradientStop {
+                color: vec![0.0, 0.0, 1.0, 1.0],
+                offset: 0.5,
+            },
+            GradientStop {
+                color: vec![0.0, 1.0, 0.0, 1.0],
+                offset: 1.0,
+            },
+        ];
+        assert!(player.global_inputs_set_gradient("gradient_static", &new_gradient));
+        assert_eq!(
+            player.global_inputs_get_gradient("gradient_static"),
+            new_gradient
+        );
+
+        // Test string setter
+        assert!(player.global_inputs_set_string("string_static", "Updated String!"));
+        assert_eq!(
+            player.global_inputs_get_string("string_static"),
+            Some("Updated String!".to_string())
+        );
+
+        // Test boolean setter
+        assert!(player.global_inputs_set_boolean("boolean_static", true));
+        assert_eq!(
+            player.global_inputs_get_boolean("boolean_static"),
+            Some(true)
+        );
+
+        // Test vector setter
+        assert!(player.global_inputs_set_vector("vector_static", &[100.0, 200.0]));
+        assert_eq!(
+            player.global_inputs_get_vector("vector_static"),
+            vec![100.0, 200.0]
+        );
+
+        // Test setting non-existent inputs returns false
+        assert!(!player.global_inputs_set_numeric("non_existent", 999.0));
+        assert!(!player.global_inputs_set_color("non_existent", &vec![1.0, 1.0, 1.0, 1.0]));
+        assert!(!player.global_inputs_set_string("non_existent", "test"));
+        assert!(!player.global_inputs_set_boolean("non_existent", true));
+        assert!(!player.global_inputs_set_vector("non_existent", &[0.0, 0.0]));
+        assert!(!player.global_inputs_set_gradient("non_existent", &vec![]));
+    }
 
     #[test]
     pub fn numeric_static_global_input_test() {

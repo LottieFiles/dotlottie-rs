@@ -2039,10 +2039,6 @@ impl DotLottiePlayerContainer {
                 return false;
             }
 
-            if !engine.get_write_mode() {
-                return false;
-            }
-
             engine.get_state_machine_input_names_for_boolean(binding_name)
         };
 
@@ -2114,10 +2110,6 @@ impl DotLottiePlayerContainer {
                 new_value,
                 runtime_guard.renderer_mut(),
             ) {
-                return false;
-            }
-
-            if !engine.get_write_mode() {
                 return false;
             }
 

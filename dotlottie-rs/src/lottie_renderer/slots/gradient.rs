@@ -1,7 +1,7 @@
 use super::{Bezier, LottieKeyframe};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GradientStop {
     pub offset: f32,
     pub color: Vec<f32>,

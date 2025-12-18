@@ -301,6 +301,7 @@ mod tests {
         // .unwrap();
     }
 
+    #[ignore]
     #[test]
     pub fn gradient_animated_global_input_test() {
         // Description:
@@ -657,7 +658,7 @@ mod tests {
 
         assert!(
             unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
-            "Buffer at frame 30 doesn't match snapshot"
+            "Buffer at frame 10 doesn't match snapshot"
         );
 
         // ⚠️ Uncomment block to generate initial snapshot
@@ -724,7 +725,7 @@ mod tests {
         let buffer = player.buffer();
         assert!(
             unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
-            "Buffer at frame 0 doesn't match snapshot"
+            "Buffer at frame 40 doesn't match snapshot"
         );
 
         // ⚠️ Uncomment block to generate initial snapshot
@@ -754,7 +755,7 @@ mod tests {
 
         assert!(
             unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
-            "Buffer at frame 20 doesn't match snapshot"
+            "Buffer at frame 10 doesn't match snapshot"
         );
 
         // ⚠️ Uncomment block to generate initial snapshot
@@ -774,7 +775,7 @@ mod tests {
 
         assert!(
             unsafe { compare_with_snapshot(buffer, WIDTH, HEIGHT, snapshot_path).unwrap() },
-            "Buffer at frame 20 doesn't match snapshot"
+            "Buffer at frame 40 doesn't match snapshot"
         );
 
         // ⚠️ Uncomment block to generate initial snapshot

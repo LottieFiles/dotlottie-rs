@@ -59,6 +59,16 @@ impl Direction {
     }
 }
 
+struct TickResult {
+    rendered: bool,
+    current_frame: f32,
+    is_complete: bool,
+    loop_count: u32,
+    loop_animation: bool,
+    loop_count_config: u32,
+    is_tweening: bool,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 #[repr(C)]
 pub struct Config {
@@ -929,6 +939,80 @@ impl DotLottieRuntime {
         }
     }
 
+    fn is_complete_inner(&self, start_frame: f32, end_frame: f32) -> bool {
+        if !self.is_loaded {
+            return false;
+        }
+        match self.config.mode {
+            Mode::Forward => self.current_frame() >= end_frame,
+            Mode::Reverse => self.current_frame() <= start_frame,
+            Mode::Bounce => {
+                if self.config.loop_animation && self.config.loop_count > 0 {
+                    self.loop_count > 0 && self.current_frame() <= start_frame
+                } else {
+                    self.current_frame() <= start_frame && self.direction == Direction::Reverse
+                }
+            }
+            Mode::ReverseBounce => {
+                if self.config.loop_animation && self.config.loop_count > 0 {
+                    self.loop_count > 0 && self.current_frame() >= end_frame
+                } else {
+                    self.current_frame() >= end_frame && self.direction == Direction::Forward
+                }
+            }
+        }
+    }
+
+    fn render_inner(&mut self) -> bool {
+        self.renderer.render().is_ok()
+    }
+
+    fn tick_inner(&mut self) -> TickResult {
+        let is_tweening = self.renderer.is_tweening();
+
+        if is_tweening {
+            let ok = self.renderer.tween_update(None).is_ok();
+            if !ok {
+                self.start_time = Instant::now();
+            }
+            let rendered = self.render_inner();
+            return TickResult {
+                rendered: ok && rendered,
+                current_frame: self.current_frame(),
+                is_complete: false,
+                loop_count: self.loop_count,
+                loop_animation: self.config.loop_animation,
+                loop_count_config: self.config.loop_count,
+                is_tweening: true,
+            };
+        }
+
+        let next_frame = self.request_frame();
+        let start = self.start_frame();
+        let end = self.end_frame();
+
+        if next_frame >= start && next_frame <= end {
+            let _ = self.renderer.set_frame(next_frame);
+        }
+
+        let rendered = self.render_inner();
+        let is_complete = self.is_complete_inner(start, end);
+
+        if rendered && is_complete && !self.config.loop_animation {
+            self.playback_state = PlaybackState::Stopped;
+        }
+
+        TickResult {
+            rendered,
+            current_frame: self.current_frame(),
+            is_complete,
+            loop_count: self.loop_count,
+            loop_animation: self.config.loop_animation,
+            loop_count_config: self.config.loop_count,
+            is_tweening: false,
+        }
+    }
+
     pub fn set_theme(&mut self, theme_id: &str) -> bool {
         if self.active_theme_id == theme_id {
             return true;
@@ -1517,6 +1601,50 @@ impl DotLottiePlayerContainer {
         ok
     }
 
+    fn handle_tick_completion(&self, result: &TickResult) {
+        if result.loop_animation {
+            let count_complete =
+                result.loop_count_config > 0 && result.loop_count >= result.loop_count_config;
+
+            if count_complete {
+                if let Ok(mut runtime) = self.runtime.try_write() {
+                    runtime.playback_state = PlaybackState::Stopped;
+                }
+                self.emit_on_stop();
+            }
+
+            self.emit_on_loop(result.loop_count);
+
+            if count_complete {
+                self.emit_on_complete();
+                if let Ok(mut runtime) = self.runtime.try_write() {
+                    runtime.loop_count = 0;
+                }
+            }
+        } else {
+            self.emit_on_complete();
+        }
+    }
+
+    fn check_state_machine_resume(&self, cached_is_tweening: bool) {
+        if let Ok(state_machine) = self.state_machine.try_read() {
+            let needs_resume = state_machine
+                .as_ref()
+                .is_some_and(|sm| sm.status == StateMachineEngineStatus::Tweening)
+                && !cached_is_tweening;
+
+            if needs_resume {
+                drop(state_machine);
+
+                if let Ok(mut state_machine) = self.state_machine.try_write() {
+                    if let Some(sm) = state_machine.as_mut() {
+                        sm.resume_from_tweening();
+                    }
+                }
+            }
+        }
+    }
+
     pub fn set_viewport(&self, x: i32, y: i32, w: i32, h: i32) -> bool {
         match self.runtime.try_write() {
             Ok(mut runtime) => runtime.set_viewport(x, y, w, h),
@@ -1683,35 +1811,25 @@ impl DotLottiePlayerContainer {
     }
 
     pub fn tick(&self) -> bool {
-        if self.is_tweening() {
-            self.tween_update(None) && self.render()
-        } else {
-            let next_frame = self.request_frame();
+        let result = {
+            let mut runtime = self.runtime.write().unwrap();
+            runtime.tick_inner()
+        };
 
-            let _ = self.set_frame(next_frame);
+        if result.rendered {
+            self.emit_on_frame(result.current_frame);
+            self.emit_on_render(result.current_frame);
 
-            let rendered = self.render();
-
-            if let Ok(state_machine) = self.state_machine.try_read() {
-                let needs_resume = state_machine
-                    .as_ref()
-                    .is_some_and(|sm| sm.status == StateMachineEngineStatus::Tweening)
-                    && !self.is_tweening();
-
-                if needs_resume {
-                    // release read lock before acquiring write lock
-                    drop(state_machine);
-
-                    if let Ok(mut state_machine) = self.state_machine.try_write() {
-                        if let Some(sm) = state_machine.as_mut() {
-                            sm.resume_from_tweening();
-                        }
-                    }
-                }
+            if result.is_complete {
+                self.handle_tick_completion(&result);
             }
-
-            rendered
         }
+
+        if !result.is_tweening {
+            self.check_state_machine_resume(result.is_tweening);
+        }
+
+        result.rendered
     }
 
     pub fn tween(&self, to: f32, duration: Option<f32>, easing: Option<Vec<f32>>) -> bool {

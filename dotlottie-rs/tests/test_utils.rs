@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub const WIDTH: u32 = 512;
 pub const HEIGHT: u32 = 512;
 
@@ -83,6 +85,9 @@ pub fn read_buffer_snapshot<P: AsRef<Path>>(path: P) -> io::Result<(Vec<u32>, u3
 // * `width` - Width of the images
 // * `height` - Height of the images
 //
+/// # Safety
+/// Caller must ensure `buffer` points to at least `width * height` valid `u32` pixels.
+/// The snapshot file at `snapshot_path` must be trusted input.
 // # Returns
 // true if buffers are identical, false otherwise
 pub unsafe fn compare_buffers(
@@ -106,6 +111,9 @@ pub unsafe fn compare_buffers(
 // * `height` - Height of the current buffer
 // * `snapshot_path` - Path to the snapshot file to compare against
 //
+/// # Safety
+/// Caller must ensure `buffer` points to at least `width * height` valid `u32` pixels.
+/// The snapshot file at `snapshot_path` must be trusted input.
 // # Returns
 // Result indicating if buffers match, or an error if reading fails
 pub unsafe fn compare_with_snapshot<P: AsRef<Path>>(

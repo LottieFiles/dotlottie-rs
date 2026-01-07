@@ -189,7 +189,6 @@ impl DotLottieRuntime {
     ) -> Result<(), LottieRendererError> {
         self.renderer
             .set_wg_target(device, instance, target, width, height, color_space, _type)
-        Self::with_renderer(config, crate::TvgRenderer::new(threads))
     }
 
     pub fn with_renderer<R: Renderer>(config: Config, renderer: R) -> Self {
@@ -1891,67 +1890,6 @@ impl DotLottiePlayer {
             player: Rc::new(RwLock::new(DotLottiePlayerContainer::new(config, 0))),
             state_machine: Rc::new(RwLock::new(None)),
         }
-    }
-
-    pub fn set_sw_target(
-        &self,
-        buffer_ptr: u64,
-        stride: u32,
-        width: u32,
-        height: u32,
-        color_space: ColorSpace,
-    ) -> bool {
-        self.player
-            .write()
-            .unwrap()
-            .set_sw_target(buffer_ptr as *mut u32, stride, width, height, color_space)
-            .is_ok()
-    }
-
-    pub fn set_gl_target(
-        &self,
-        context: u64,
-        id: i32,
-        width: u32,
-        height: u32,
-        color_space: ColorSpace,
-    ) -> bool {
-        self.player
-            .write()
-            .unwrap()
-            .set_gl_target(
-                context as *mut std::ffi::c_void,
-                id,
-                width,
-                height,
-                color_space,
-            )
-            .is_ok()
-    }
-
-    pub fn set_wg_target(
-        &self,
-        device: u64,
-        instance: u64,
-        target: u64,
-        width: u32,
-        height: u32,
-        color_space: ColorSpace,
-        _type: i32,
-    ) -> bool {
-        self.player
-            .write()
-            .unwrap()
-            .set_wg_target(
-                device as *mut std::ffi::c_void,
-                instance as *mut std::ffi::c_void,
-                target as *mut std::ffi::c_void,
-                width,
-                height,
-                color_space,
-                _type,
-            )
-            .is_ok()
     }
 
     pub fn set_sw_target(

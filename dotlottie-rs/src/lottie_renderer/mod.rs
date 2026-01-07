@@ -16,7 +16,7 @@ pub use slots::{
     TextJustify, TextKeyframe, TextSlot, VectorSlot,
 };
 #[cfg(feature = "tvg")]
-pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
+pub use thorvg::{TvgAnimation, TvgError, TvgRenderer, TvgShape};
 
 use std::collections::BTreeMap;
 use std::{error::Error, fmt};
@@ -103,23 +103,34 @@ pub trait LottieRenderer {
     fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot)
         -> Result<(), LottieRendererError>;
 
-    fn set_gradient_slot(&mut self, slot_id: &str, slot: GradientSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_gradient_slot(
+        &mut self,
+        slot_id: &str,
+        slot: GradientSlot,
+    ) -> Result<(), LottieRendererError>;
 
     fn set_image_slot(&mut self, slot_id: &str, slot: ImageSlot)
         -> Result<(), LottieRendererError>;
 
-    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot) -> Result<(), LottieRendererError>;
 
-    fn set_scalar_slot(&mut self, slot_id: &str, slot: ScalarSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_scalar_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ScalarSlot,
+    ) -> Result<(), LottieRendererError>;
 
-    fn set_vector_slot(&mut self, slot_id: &str, slot: VectorSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_vector_slot(
+        &mut self,
+        slot_id: &str,
+        slot: VectorSlot,
+    ) -> Result<(), LottieRendererError>;
 
-    fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_position_slot(
+        &mut self,
+        slot_id: &str,
+        slot: PositionSlot,
+    ) -> Result<(), LottieRendererError>;
 
     fn clear_slots(&mut self) -> Result<(), LottieRendererError>;
 
@@ -201,7 +212,7 @@ struct LottieRendererImpl<R: Renderer> {
 impl<R: Renderer> LottieRendererImpl<R> {
     fn clear(&mut self) -> Result<(), LottieRendererError> {
         if self.animation.is_some() || self.background_shape.is_some() {
-            self.renderer.clear().map_err(into_lottie::<R>)?;
+            self.renderer.clear(true).map_err(into_lottie::<R>)?;
             self.animation = None;
             self.background_shape = None;
         }
@@ -537,18 +548,33 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         set_background
     }
 
-    fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Color(slot));
+    fn set_color_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ColorSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Color(slot));
         self.apply_all_slots()
     }
 
-    fn set_gradient_slot(&mut self, slot_id: &str, slot: GradientSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Gradient(slot));
+    fn set_gradient_slot(
+        &mut self,
+        slot_id: &str,
+        slot: GradientSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Gradient(slot));
         self.apply_all_slots()
     }
 
-    fn set_image_slot(&mut self, slot_id: &str, slot: ImageSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Image(slot));
+    fn set_image_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ImageSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Image(slot));
         self.apply_all_slots()
     }
 
@@ -557,18 +583,33 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.apply_all_slots()
     }
 
-    fn set_scalar_slot(&mut self, slot_id: &str, slot: ScalarSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Scalar(slot));
+    fn set_scalar_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ScalarSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Scalar(slot));
         self.apply_all_slots()
     }
 
-    fn set_vector_slot(&mut self, slot_id: &str, slot: VectorSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Vector(slot));
+    fn set_vector_slot(
+        &mut self,
+        slot_id: &str,
+        slot: VectorSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Vector(slot));
         self.apply_all_slots()
     }
 
-    fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Position(slot));
+    fn set_position_slot(
+        &mut self,
+        slot_id: &str,
+        slot: PositionSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Position(slot));
         self.apply_all_slots()
     }
 
@@ -684,4 +725,31 @@ fn hex_to_rgba(hex_color: u32) -> (u8, u8, u8, u8) {
     let alpha = (hex_color & 0xFF) as u8;
 
     (red, green, blue, alpha)
+}
+
+#[inline]
+fn get_color_space_for_target() -> ColorSpace {
+    #[cfg(target_arch = "wasm32")]
+    {
+        ColorSpace::ABGR8888S
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        ColorSpace::ABGR8888
+    }
+}
+
+fn multiply_matrices(a: &[f32; 9], b: &[f32; 9]) -> [f32; 9] {
+    [
+        a[0] * b[0] + a[1] * b[3] + a[2] * b[6], // e11
+        a[0] * b[1] + a[1] * b[4] + a[2] * b[7], // e12
+        a[0] * b[2] + a[1] * b[5] + a[2] * b[8], // e13
+        a[3] * b[0] + a[4] * b[3] + a[5] * b[6], // e21
+        a[3] * b[1] + a[4] * b[4] + a[5] * b[7], // e22
+        a[3] * b[2] + a[4] * b[5] + a[5] * b[8], // e23
+        a[6] * b[0] + a[7] * b[3] + a[8] * b[6], // e31
+        a[6] * b[1] + a[7] * b[4] + a[8] * b[7], // e32
+        a[6] * b[2] + a[7] * b[5] + a[8] * b[8], // e33
+    ]
 }

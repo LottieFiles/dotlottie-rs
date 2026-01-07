@@ -115,26 +115,6 @@ pub trait Renderer: Sized + 'static {
         _type: i32,
     ) -> Result<(), Self::Error>;
 
-    fn set_gl_target(
-        &mut self,
-        context: *mut std::ffi::c_void,
-        id: i32,
-        width: u32,
-        height: u32,
-        color_space: ColorSpace,
-    ) -> Result<(), Self::Error>;
-
-    fn set_wg_target(
-        &mut self,
-        device: *mut std::ffi::c_void,
-        instance: *mut std::ffi::c_void,
-        target: *mut std::ffi::c_void,
-        width: u32,
-        height: u32,
-        color_space: ColorSpace,
-        _type: i32,
-    ) -> Result<(), Self::Error>;
-
     fn clear(&self, free: bool) -> Result<(), Self::Error>;
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), Self::Error>;

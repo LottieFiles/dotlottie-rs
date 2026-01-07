@@ -27,13 +27,6 @@
 
 #define LISTENER_TYPE_UNSET 0
 
-typedef enum ColorSpace {
-  ABGR8888,
-  ABGR8888S,
-  ARGB8888,
-  ARGB8888S,
-} ColorSpace;
-
 typedef enum Mode {
   Forward,
   Reverse,
@@ -49,6 +42,13 @@ typedef enum DotLottieFit {
   FitHeight,
   Void,
 } DotLottieFit;
+
+typedef enum ColorSpace {
+  ABGR8888,
+  ABGR8888S,
+  ARGB8888,
+  ARGB8888S,
+} ColorSpace;
 
 typedef struct DotLottiePlayer DotLottiePlayer;
 

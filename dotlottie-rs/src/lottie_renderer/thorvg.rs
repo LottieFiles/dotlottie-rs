@@ -1,4 +1,5 @@
 use crate::time::Instant;
+use std::ffi::c_void;
 
 use std::{
     error::Error,
@@ -37,6 +38,91 @@ impl fmt::Display for TvgError {
 }
 
 impl Error for TvgError {}
+
+#[cfg(target_os = "macos")]
+mod gl_context {
+    use std::ffi::c_void;
+
+    #[link(name = "OpenGL", kind = "framework")]
+    extern "C" {
+        fn CGLChoosePixelFormat(attribs: *const i32, pix: *mut *mut c_void, npix: *mut i32) -> i32;
+        fn CGLCreateContext(pix: *mut c_void, share: *mut c_void, ctx: *mut *mut c_void) -> i32;
+        fn CGLSetCurrentContext(ctx: *mut c_void) -> i32;
+        fn CGLDestroyContext(ctx: *mut c_void) -> i32;
+        fn CGLDestroyPixelFormat(pix: *mut c_void) -> i32;
+    }
+
+    const K_CGL_PFA_OPENGL_PROFILE: i32 = 99;
+    const K_CGL_OPENGL_PROFILE_3_2_CORE: i32 = 0x3200;
+    const K_CGL_PFA_COLOR_SIZE: i32 = 8;
+    const K_CGL_PFA_DEPTH_SIZE: i32 = 11;
+    const K_CGL_PFA_DOUBLE_BUFFER: i32 = 5;
+    const K_CGL_PFA_ACCELERATED: i32 = 73;
+
+    pub struct MacGLContext {
+        context: *mut c_void,
+        pixel_format: *mut c_void,
+    }
+
+    impl MacGLContext {
+        pub fn new() -> Result<Self, &'static str> {
+            let attribs: [i32; 9] = [
+                K_CGL_PFA_OPENGL_PROFILE,
+                K_CGL_OPENGL_PROFILE_3_2_CORE,
+                K_CGL_PFA_COLOR_SIZE,
+                24,
+                K_CGL_PFA_DEPTH_SIZE,
+                24,
+                K_CGL_PFA_ACCELERATED,
+                K_CGL_PFA_DOUBLE_BUFFER,
+                0,
+            ];
+
+            let mut pixel_format: *mut c_void = std::ptr::null_mut();
+            let mut npix: i32 = 0;
+
+            unsafe {
+                let err = CGLChoosePixelFormat(attribs.as_ptr(), &mut pixel_format, &mut npix);
+                if err != 0 || pixel_format.is_null() {
+                    return Err("Failed to choose pixel format");
+                }
+
+                let mut context: *mut c_void = std::ptr::null_mut();
+                let err = CGLCreateContext(pixel_format, std::ptr::null_mut(), &mut context);
+                if err != 0 || context.is_null() {
+                    CGLDestroyPixelFormat(pixel_format);
+                    return Err("Failed to create CGL context");
+                }
+
+                let err = CGLSetCurrentContext(context);
+                if err != 0 {
+                    CGLDestroyContext(context);
+                    CGLDestroyPixelFormat(pixel_format);
+                    return Err("Failed to make context current");
+                }
+
+                Ok(Self {
+                    context,
+                    pixel_format,
+                })
+            }
+        }
+
+        pub fn as_ptr(&self) -> *mut c_void {
+            self.context
+        }
+    }
+
+    impl Drop for MacGLContext {
+        fn drop(&mut self) {
+            unsafe {
+                CGLSetCurrentContext(std::ptr::null_mut());
+                CGLDestroyContext(self.context);
+                CGLDestroyPixelFormat(self.pixel_format);
+            }
+        }
+    }
+}
 
 pub trait IntoResult {
     fn into_result(self) -> Result<(), TvgError>;
@@ -82,6 +168,7 @@ static FONT_LOADED: std::sync::Once = std::sync::Once::new();
 
 pub struct TvgRenderer {
     raw_canvas: tvg::Tvg_Canvas,
+    gl_context: Option<*mut std::ffi::c_void>,
 }
 
 impl TvgRenderer {
@@ -94,7 +181,6 @@ impl TvgRenderer {
             #[cfg(feature = "tvg-ttf")]
             FONT_LOADED.call_once(|| {
                 let (font_name, font_data) = fallback_font::font();
-
                 Self::register_font(font_name, &font_data).unwrap();
             });
         }
@@ -102,9 +188,8 @@ impl TvgRenderer {
         *count += 1;
 
         TvgRenderer {
-            raw_canvas: unsafe {
-                tvg::tvg_swcanvas_create(tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_NONE)
-            },
+            raw_canvas: unsafe { tvg::tvg_glcanvas_create() },
+            gl_context: None,
         }
     }
 }
@@ -139,22 +224,43 @@ impl Renderer for TvgRenderer {
 
     fn set_target(
         &mut self,
-        buffer: &mut [u32],
-        stride: u32,
+        context: *mut std::ffi::c_void,
+        fbo_id: i32,
         width: u32,
         height: u32,
         color_space: ColorSpace,
     ) -> Result<(), TvgError> {
+        println!(">> set_target called");
+        println!("   canvas: {:?}", self.raw_canvas);
+        println!("   context: {:?}", context);
+        println!("   fbo_id: {}", fbo_id);
+        println!("   width: {}, height: {}", width, height);
+        // println!("   colorspace: {:?}", color_space);
+
+        if self.raw_canvas.is_null() {
+            println!("   ERROR: canvas is null!");
+            return Err(TvgError::InvalidArgument);
+        }
+
+        if context.is_null() {
+            println!("   ERROR: context is null!");
+            return Err(TvgError::InvalidArgument);
+        }
+
+        self.gl_context = Some(context);
+
         unsafe {
-            tvg::tvg_swcanvas_set_target(
+            let r = tvg::tvg_glcanvas_set_target(
                 self.raw_canvas,
-                buffer.as_mut_ptr(),
-                stride,
+                context,
+                fbo_id,
                 width,
                 height,
                 color_space.into(),
-            )
-            .into_result()
+            );
+
+            println!("   result: {}", r);
+            r.into_result()
         }
     }
 

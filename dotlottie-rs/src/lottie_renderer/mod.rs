@@ -82,23 +82,34 @@ pub trait LottieRenderer {
     fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot)
         -> Result<(), LottieRendererError>;
 
-    fn set_gradient_slot(&mut self, slot_id: &str, slot: GradientSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_gradient_slot(
+        &mut self,
+        slot_id: &str,
+        slot: GradientSlot,
+    ) -> Result<(), LottieRendererError>;
 
     fn set_image_slot(&mut self, slot_id: &str, slot: ImageSlot)
         -> Result<(), LottieRendererError>;
 
-    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot) -> Result<(), LottieRendererError>;
 
-    fn set_scalar_slot(&mut self, slot_id: &str, slot: ScalarSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_scalar_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ScalarSlot,
+    ) -> Result<(), LottieRendererError>;
 
-    fn set_vector_slot(&mut self, slot_id: &str, slot: VectorSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_vector_slot(
+        &mut self,
+        slot_id: &str,
+        slot: VectorSlot,
+    ) -> Result<(), LottieRendererError>;
 
-    fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_position_slot(
+        &mut self,
+        slot_id: &str,
+        slot: PositionSlot,
+    ) -> Result<(), LottieRendererError>;
 
     fn clear_slots(&mut self) -> Result<(), LottieRendererError>;
 
@@ -115,6 +126,15 @@ pub trait LottieRenderer {
     fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, LottieRendererError>;
 
     fn updated(&self) -> bool;
+
+    fn set_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        fbo_id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError>;
 
     fn tween(
         &mut self,
@@ -217,15 +237,10 @@ impl<R: Renderer> LottieRendererImpl<R> {
 
         self.resize_buffer(width, height)?;
 
-        self.renderer
-            .set_target(
-                &mut self.buffer,
-                self.width,
-                self.width,
-                self.height,
-                get_color_space_for_target(),
-            )
-            .map_err(into_lottie::<R>)
+        // self.renderer
+        //     .set_target(self.width, self.height, get_color_space_for_target())
+        //     .map_err(into_lottie::<R>)
+        Ok(())
     }
 
     fn load_animation(&mut self, data: &str) -> Result<R::Animation, LottieRendererError> {
@@ -285,6 +300,18 @@ impl<R: Renderer> LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)?;
 
         Ok(background_shape)
+    }
+
+    fn set_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        fbo_id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) {
+        self.renderer
+            .set_target(context, fbo_id, width, height, color_space);
     }
 
     fn setup_drawables(
@@ -488,15 +515,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
         self.resize_buffer(width, height)?;
 
-        self.renderer
-            .set_target(
-                &mut self.buffer,
-                self.width,
-                self.width,
-                self.height,
-                get_color_space_for_target(),
-            )
-            .map_err(into_lottie::<R>)?;
+        // self.renderer
+        //     .set_target(self.width, self.height, get_color_space_for_target())
+        //     .map_err(into_lottie::<R>)?;
 
         if self.animation.is_some() {
             self.apply_user_transform()?;
@@ -547,18 +568,33 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         set_background
     }
 
-    fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Color(slot));
+    fn set_color_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ColorSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Color(slot));
         self.apply_all_slots()
     }
 
-    fn set_gradient_slot(&mut self, slot_id: &str, slot: GradientSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Gradient(slot));
+    fn set_gradient_slot(
+        &mut self,
+        slot_id: &str,
+        slot: GradientSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Gradient(slot));
         self.apply_all_slots()
     }
 
-    fn set_image_slot(&mut self, slot_id: &str, slot: ImageSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Image(slot));
+    fn set_image_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ImageSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Image(slot));
         self.apply_all_slots()
     }
 
@@ -567,18 +603,33 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.apply_all_slots()
     }
 
-    fn set_scalar_slot(&mut self, slot_id: &str, slot: ScalarSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Scalar(slot));
+    fn set_scalar_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ScalarSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Scalar(slot));
         self.apply_all_slots()
     }
 
-    fn set_vector_slot(&mut self, slot_id: &str, slot: VectorSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Vector(slot));
+    fn set_vector_slot(
+        &mut self,
+        slot_id: &str,
+        slot: VectorSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Vector(slot));
         self.apply_all_slots()
     }
 
-    fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Position(slot));
+    fn set_position_slot(
+        &mut self,
+        slot_id: &str,
+        slot: PositionSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Position(slot));
         self.apply_all_slots()
     }
 
@@ -682,6 +733,19 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             self.apply_user_transform()?;
         }
 
+        Ok(())
+    }
+
+    fn set_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        fbo_id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.renderer
+            .set_target(context, fbo_id, width, height, color_space);
         Ok(())
     }
 }

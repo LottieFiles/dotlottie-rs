@@ -8,3 +8,7 @@ minifb = "0.27"
 dotlottie-rs = { path = "../../dotlottie-rs", features = ["dev"] }
 sysinfo = "0.30"
 rand = "0.8"
+winit = "0.29"
+glutin = "0.31"
+glutin-winit = "0.4"
+raw-window-handle = "0.5"

@@ -1,10 +1,32 @@
 use dotlottie_rs::{Config, DotLottiePlayer};
-use minifb::{Key, KeyRepeat, Window, WindowOptions};
+use glutin::config::ConfigTemplateBuilder;
+use glutin::context::ContextAttributesBuilder;
+use glutin::display::GetGlDisplay;
+use glutin::prelude::*;
+use glutin::surface::{SurfaceAttributesBuilder, SwapInterval, WindowSurface};
+use glutin_winit::DisplayBuilder;
+use raw_window_handle::HasRawWindowHandle;
+use winit::event::{Event, KeyEvent, WindowEvent};
+use winit::event_loop::{ControlFlow, EventLoop};
+use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::window::WindowBuilder;
+
+use std::ffi::c_void;
+use std::num::NonZeroU32;
 use std::time::Instant;
 
-const WIDTH: usize = 600;
-const HEIGHT: usize = 600;
+const WIDTH: u32 = 600;
+const HEIGHT: u32 = 600;
 const EASE_LINEAR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+
+#[cfg(target_os = "macos")]
+fn get_cgl_context(context: &impl glutin::context::AsRawContext) -> *mut c_void {
+    use glutin::context::RawContext;
+    match context.raw_context() {
+        RawContext::Cgl(cgl) => cgl as *mut c_void,
+        _ => std::ptr::null_mut(),
+    }
+}
 
 struct Player {
     player: DotLottiePlayer,
@@ -13,27 +35,23 @@ struct Player {
 }
 
 impl Player {
-    fn new(animation_path: &str) -> Self {
-        let threads = std::thread::available_parallelism().unwrap().get() as u32;
+    fn new(animation_path: &str, gl_context_ptr: *mut c_void) -> Self {
+        let player = DotLottiePlayer::new(Config {
+            autoplay: true,
+            loop_animation: true,
+            ..Default::default()
+        });
 
-        println!("Using {} threads", threads);
-
-        let player = DotLottiePlayer::with_threads(
-            Config {
-                autoplay: true,
-                loop_animation: true,
-                ..Default::default()
-            },
-            threads,
-        );
+        // Set the GL context BEFORE loading
+        player.set_gl_context(gl_context_ptr, 0, WIDTH, HEIGHT);
 
         let is_dotlottie = animation_path.ends_with(".lottie");
 
         if is_dotlottie {
             let data = std::fs::read(animation_path).unwrap();
-            player.load_dotlottie_data(&data, WIDTH as u32, HEIGHT as u32);
+            player.load_dotlottie_data(&data, WIDTH, HEIGHT);
         } else {
-            player.load_animation_path(animation_path, WIDTH as u32, HEIGHT as u32);
+            player.load_animation_path(animation_path, WIDTH, HEIGHT);
         }
 
         for marker in player.markers() {
@@ -54,9 +72,7 @@ impl Player {
     }
 
     fn update(&mut self) -> bool {
-        let updated = self.player.tick();
-        self.last_update = Instant::now();
-        updated
+        self.player.tick()
     }
 
     fn play_marker(&mut self, index: usize) {
@@ -66,7 +82,6 @@ impl Player {
         }
 
         let marker = &markers[index];
-        // self.player.tween_to(marker.time, 1.0, EASE_LINEAR);
         self.player
             .tween_to_marker(&marker.name, Some(1.0), Some(EASE_LINEAR.to_vec()));
         println!("Playing marker: '{}'", marker.name);
@@ -84,53 +99,114 @@ impl Player {
         let next = (self.current_marker + 1) % self.player.markers().len();
         self.play_marker(next);
     }
-
-    fn frame_buffer(&self) -> &[u32] {
-        let (ptr, len) = (self.player.buffer_ptr(), self.player.buffer_len());
-        unsafe { std::slice::from_raw_parts(ptr as *const u32, len as usize) }
-    }
 }
 
 fn main() {
     println!("\nDemo Player Controls:");
-    println!("  T - Apply text override slot (test set_slots fix)");
-    println!("  U - Clear slots (reset to original)");
     println!("  P - Play");
     println!("  S - Stop");
     println!("  → - Next marker");
     println!("  ESC - Exit\n");
 
-    let mut window = Window::new(
-        "Lottie Player Demo (ESC to exit, ←/→ to change markers, P to play, S to stop)",
-        WIDTH,
-        HEIGHT,
-        WindowOptions::default(),
-    )
-    .expect("Failed to create window");
+    let event_loop = EventLoop::new().unwrap();
+    event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut player = Player::new("src/text.json");
+    let window_builder = WindowBuilder::new()
+        .with_title("DotLottie GL Demo (ESC to exit)")
+        .with_inner_size(winit::dpi::LogicalSize::new(WIDTH, HEIGHT));
 
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        if window.is_key_pressed(Key::U, KeyRepeat::No) {
-            player.player.set_slots("");
-        }
-        if window.is_key_pressed(Key::T, KeyRepeat::No) {
-            player.player.set_slots(r#"{"my_text": { "p": { "k": [{ "s": { "f": "cartoon", "fc": [0, 1, 0, 1], "s": 50, "t": "overridden", "j": 0 }, "t": 0 }] } } }"#);
-        }
-        if window.is_key_pressed(Key::P, KeyRepeat::No) {
-            player.player.play();
-        }
-        if window.is_key_pressed(Key::S, KeyRepeat::No) {
-            player.player.stop();
-        }
-        if window.is_key_pressed(Key::Right, KeyRepeat::No) {
-            player.next_marker();
-        }
+    let template = ConfigTemplateBuilder::new().with_alpha_size(8);
 
-        if player.update() {
-            window
-                .update_with_buffer(player.frame_buffer(), WIDTH, HEIGHT)
-                .expect("Failed to update window");
-        }
-    }
+    let display_builder = DisplayBuilder::new().with_window_builder(Some(window_builder));
+
+    let (window, gl_config) = display_builder
+        .build(&event_loop, template, |configs| {
+            configs
+                .reduce(|accum, config| {
+                    if config.num_samples() > accum.num_samples() {
+                        config
+                    } else {
+                        accum
+                    }
+                })
+                .unwrap()
+        })
+        .unwrap();
+
+    let window = window.unwrap();
+    let raw_window_handle = window.raw_window_handle();
+    let gl_display = gl_config.display();
+
+    let context_attrs = ContextAttributesBuilder::new().build(Some(raw_window_handle));
+
+    let gl_context = unsafe {
+        gl_display
+            .create_context(&gl_config, &context_attrs)
+            .unwrap()
+    };
+
+    let surface_attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(
+        raw_window_handle,
+        NonZeroU32::new(WIDTH).unwrap(),
+        NonZeroU32::new(HEIGHT).unwrap(),
+    );
+
+    let gl_surface = unsafe {
+        gl_display
+            .create_window_surface(&gl_config, &surface_attrs)
+            .unwrap()
+    };
+
+    let gl_context = gl_context.make_current(&gl_surface).unwrap();
+    gl_surface
+        .set_swap_interval(&gl_context, SwapInterval::DontWait)
+        .ok();
+
+    #[cfg(target_os = "macos")]
+    let cgl_context_ptr = get_cgl_context(&gl_context);
+
+    #[cfg(not(target_os = "macos"))]
+    let cgl_context_ptr: *mut c_void = std::ptr::null_mut();
+
+    println!("GL Context pointer: {:?}", cgl_context_ptr);
+
+    let mut player = Player::new("src/cartoon.json", cgl_context_ptr);
+
+    event_loop
+        .run(move |event, elwt| match event {
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::CloseRequested => {
+                    elwt.exit();
+                }
+                WindowEvent::KeyboardInput {
+                    event:
+                        KeyEvent {
+                            physical_key: PhysicalKey::Code(key),
+                            ..
+                        },
+                    ..
+                } => match key {
+                    KeyCode::Escape => elwt.exit(),
+                    KeyCode::KeyP => {
+                        player.player.play();
+                    }
+                    KeyCode::KeyS => {
+                        player.player.stop();
+                    }
+                    KeyCode::ArrowRight => player.next_marker(),
+                    _ => {}
+                },
+                WindowEvent::RedrawRequested => {
+                    player.update();
+                    gl_surface.swap_buffers(&gl_context).unwrap();
+                    window.request_redraw();
+                }
+                _ => {}
+            },
+            Event::AboutToWait => {
+                window.request_redraw();
+            }
+            _ => {}
+        })
+        .unwrap();
 }

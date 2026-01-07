@@ -86,8 +86,8 @@ pub trait Renderer: Sized + 'static {
 
     fn set_target(
         &mut self,
-        buffer: &mut [u32],
-        stride: u32,
+        context: *mut std::ffi::c_void,
+        fbo_id: i32,
         width: u32,
         height: u32,
         color_space: ColorSpace,

@@ -89,9 +89,12 @@ mod thorvg {
 
         let tvg_sw_enabled = cfg!(feature = "tvg-sw");
         if tvg_sw_enabled {
-            writeln!(thorvg_config_h, "#define THORVG_SW_RASTER_SUPPORT")?;
-            src.push("deps/thorvg/src/renderer/sw_engine");
+            // writeln!(thorvg_config_h, "#define THORVG_SW_RASTER_SUPPORT")?;
+            // src.push("deps/thorvg/src/renderer/sw_engine");
         }
+
+        writeln!(thorvg_config_h, "#define THORVG_GL_RASTER_SUPPORT")?;
+        src.push("deps/thorvg/src/renderer/gl_engine");
 
         if cfg!(feature = "tvg-jpg") {
             writeln!(thorvg_config_h, "#define THORVG_JPG_LOADER_SUPPORT")?;

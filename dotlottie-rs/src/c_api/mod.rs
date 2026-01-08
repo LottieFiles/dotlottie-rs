@@ -1,6 +1,9 @@
 use std::{ffi::c_char, slice};
 
 use crate::actions::open_url_policy::OpenUrlPolicy;
+use crate::lottie_renderer::{
+    ColorSlot, ImageSlot, PositionSlot, ScalarSlot, TextDocument, TextSlot, VectorSlot,
+};
 use crate::state_machine_engine::events::Event;
 use crate::{Config, DotLottiePlayer, LayerBoundingBox, StateMachineEngine};
 
@@ -475,6 +478,189 @@ pub unsafe extern "C" fn dotlottie_set_theme_data(
             to_exit_status(dotlottie_player.set_theme_data(&theme_data))
         } else {
             DOTLOTTIE_INVALID_PARAMETER
+        }
+    })
+}
+
+// ============================================================================
+// SLOTS C API
+// Functions for manipulating animation slots
+// ============================================================================
+
+/// Set slots using a JSON string
+///
+/// This is the most flexible way to set slots, supporting all slot types
+/// including complex gradients and animated keyframes.
+///
+/// # Example JSON format
+/// ```json
+/// {
+///     "color_slot_id": {"p": {"a": 0, "k": [1.0, 0.0, 0.0]}},
+///     "text_slot_id": {"p": {"k": [{"t": 0, "s": {"t": "Hello"}}]}}
+/// }
+/// ```
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_slots_str(
+    ptr: *mut DotLottiePlayer,
+    slots_json: *const c_char,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        if let Ok(slots_json) = DotLottieString::read(slots_json) {
+            to_exit_status(dotlottie_player.set_slots_str(&slots_json))
+        } else {
+            DOTLOTTIE_INVALID_PARAMETER
+        }
+    })
+}
+
+/// Clear all slots
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_clear_slots(ptr: *mut DotLottiePlayer) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        to_exit_status(dotlottie_player.clear_slots())
+    })
+}
+
+/// Clear a specific slot by ID
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_clear_slot(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        if let Ok(slot_id) = DotLottieString::read(slot_id) {
+            to_exit_status(dotlottie_player.clear_slot(&slot_id))
+        } else {
+            DOTLOTTIE_INVALID_PARAMETER
+        }
+    })
+}
+
+/// Set a color slot with RGB values (0.0 to 1.0)
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_color_slot(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+    r: f32,
+    g: f32,
+    b: f32,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        if let Ok(slot_id) = DotLottieString::read(slot_id) {
+            let slot = ColorSlot::static_value([r, g, b]);
+            to_exit_status(dotlottie_player.set_color_slot(&slot_id, slot))
+        } else {
+            DOTLOTTIE_INVALID_PARAMETER
+        }
+    })
+}
+
+/// Set a scalar slot with a single float value
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_scalar_slot(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+    value: f32,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        if let Ok(slot_id) = DotLottieString::read(slot_id) {
+            let slot = ScalarSlot::static_value(value);
+            to_exit_status(dotlottie_player.set_scalar_slot(&slot_id, slot))
+        } else {
+            DOTLOTTIE_INVALID_PARAMETER
+        }
+    })
+}
+
+/// Set a text slot with a text string
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_text_slot(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+    text: *const c_char,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        match (DotLottieString::read(slot_id), DotLottieString::read(text)) {
+            (Ok(slot_id), Ok(text)) => {
+                let slot = TextSlot::with_document(TextDocument::new(text));
+                to_exit_status(dotlottie_player.set_text_slot(&slot_id, slot))
+            }
+            _ => DOTLOTTIE_INVALID_PARAMETER,
+        }
+    })
+}
+
+/// Set a 2D vector slot
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_vector_slot(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+    x: f32,
+    y: f32,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        if let Ok(slot_id) = DotLottieString::read(slot_id) {
+            let slot = VectorSlot::static_value([x, y]);
+            to_exit_status(dotlottie_player.set_vector_slot(&slot_id, slot))
+        } else {
+            DOTLOTTIE_INVALID_PARAMETER
+        }
+    })
+}
+
+/// Set a 2D position slot
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_position_slot(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+    x: f32,
+    y: f32,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        if let Ok(slot_id) = DotLottieString::read(slot_id) {
+            let slot = PositionSlot::static_value([x, y]);
+            to_exit_status(dotlottie_player.set_position_slot(&slot_id, slot))
+        } else {
+            DOTLOTTIE_INVALID_PARAMETER
+        }
+    })
+}
+
+/// Set an image slot from a file path
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_image_slot_path(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+    path: *const c_char,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        match (DotLottieString::read(slot_id), DotLottieString::read(path)) {
+            (Ok(slot_id), Ok(path)) => {
+                let slot = ImageSlot::from_path(path);
+                to_exit_status(dotlottie_player.set_image_slot(&slot_id, slot))
+            }
+            _ => DOTLOTTIE_INVALID_PARAMETER,
+        }
+    })
+}
+
+/// Set an image slot from a data URL (base64 encoded)
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_image_slot_data_url(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+    data_url: *const c_char,
+) -> i32 {
+    exec_dotlottie_player_op(ptr, |dotlottie_player| {
+        match (
+            DotLottieString::read(slot_id),
+            DotLottieString::read(data_url),
+        ) {
+            (Ok(slot_id), Ok(data_url)) => {
+                let slot = ImageSlot::from_data_url(data_url);
+                to_exit_status(dotlottie_player.set_image_slot(&slot_id, slot))
+            }
+            _ => DOTLOTTIE_INVALID_PARAMETER,
         }
     })
 }

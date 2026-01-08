@@ -52,23 +52,21 @@ mod tests {
 
     #[test]
     pub fn pointer_down_up_test() {
-        #[cfg(feature = "tvg-v1")]
-        {
-            let global_state =
-                include_str!("fixtures/statemachines/interaction_tests/pointer_down_up.json");
-            let player = DotLottiePlayer::new(Config::default());
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/pointer_down_up.json");
+        let player = DotLottiePlayer::new(Config::default());
 
-            let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
-            player.set_sw_target(
-                buffer.as_ptr() as u64,
-                WIDTH as u32,
-                WIDTH as u32,
-                HEIGHT as u32,
-                ColorSpace::ARGB8888,
-            );
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-            let l = player.state_machine_load_data(global_state);
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
 
         let s = player.state_machine_start(OpenUrlPolicy::default());
 
@@ -162,24 +160,22 @@ mod tests {
 
     #[test]
     pub fn pointer_enter_test() {
-        #[cfg(feature = "tvg-v1")]
-        {
-            let global_state =
-                include_str!("fixtures/statemachines/interaction_tests/pointer_enter.json");
-            let player = DotLottiePlayer::new(Config::default());
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/pointer_enter.json");
+        let player = DotLottiePlayer::new(Config::default());
 
-            let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
-            player.set_sw_target(
-                buffer.as_ptr() as u64,
-                WIDTH as u32,
-                WIDTH as u32,
-                HEIGHT as u32,
-                ColorSpace::ARGB8888,
-            );
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-            let l = player.state_machine_load_data(global_state);
-            let s = player.state_machine_start(OpenUrlPolicy::default());
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -210,24 +206,22 @@ mod tests {
 
     #[test]
     pub fn pointer_enter_via_move_test() {
-        #[cfg(feature = "tvg-v1")]
-        {
-            let global_state =
-                include_str!("fixtures/statemachines/interaction_tests/pointer_enter.json");
-            let player = DotLottiePlayer::new(Config::default());
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/pointer_enter.json");
+        let player = DotLottiePlayer::new(Config::default());
 
-            let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
-            player.set_sw_target(
-                buffer.as_ptr() as u64,
-                WIDTH as u32,
-                WIDTH as u32,
-                HEIGHT as u32,
-                ColorSpace::ARGB8888,
-            );
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-            let l = player.state_machine_load_data(global_state);
-            let s = player.state_machine_start(OpenUrlPolicy::default());
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -258,24 +252,22 @@ mod tests {
 
     #[test]
     pub fn pointer_exit_test() {
-        #[cfg(feature = "tvg-v1")]
-        {
-            let global_state =
-                include_str!("fixtures/statemachines/interaction_tests/pointer_exit.json");
-            let player = DotLottiePlayer::new(Config::default());
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/pointer_exit.json");
+        let player = DotLottiePlayer::new(Config::default());
 
-            let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
-            player.set_sw_target(
-                buffer.as_ptr() as u64,
-                WIDTH as u32,
-                WIDTH as u32,
-                HEIGHT as u32,
-                ColorSpace::ARGB8888,
-            );
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-            let l = player.state_machine_load_data(global_state);
-            let s = player.state_machine_start(OpenUrlPolicy::default());
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);
@@ -293,24 +285,22 @@ mod tests {
 
     #[test]
     pub fn pointer_exit_via_move_test() {
-        #[cfg(feature = "tvg-v1")]
-        {
-            let global_state =
-                include_str!("fixtures/statemachines/interaction_tests/pointer_exit.json");
-            let player = DotLottiePlayer::new(Config::default());
+        let global_state =
+            include_str!("fixtures/statemachines/interaction_tests/pointer_exit.json");
+        let player = DotLottiePlayer::new(Config::default());
 
-            let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
-            player.set_sw_target(
-                buffer.as_ptr() as u64,
-                WIDTH as u32,
-                WIDTH as u32,
-                HEIGHT as u32,
-                ColorSpace::ARGB8888,
-            );
+        let buffer = vec![0u32; (WIDTH * HEIGHT) as usize];
+        player.set_sw_target(
+            buffer.as_ptr() as u64,
+            WIDTH as u32,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ARGB8888,
+        );
 
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
-            let l = player.state_machine_load_data(global_state);
-            let s = player.state_machine_start(OpenUrlPolicy::default());
+        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        let l = player.state_machine_load_data(global_state);
+        let s = player.state_machine_start(OpenUrlPolicy::default());
 
         assert!(l);
         assert!(s);

@@ -112,10 +112,10 @@ fn main() {
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if window.is_key_pressed(Key::U, KeyRepeat::No) {
-            player.player.set_slots("");
+            player.player.clear_slots();
         }
         if window.is_key_pressed(Key::T, KeyRepeat::No) {
-            player.player.set_slots(r#"{"my_text": { "p": { "k": [{ "s": { "f": "cartoon", "fc": [0, 1, 0, 1], "s": 50, "t": "overridden", "j": 0 }, "t": 0 }] } } }"#);
+            player.player.set_slots_str(r#"{"my_text": { "p": { "k": [{ "s": { "f": "cartoon", "fc": [0, 1, 0, 1], "s": 50, "t": "overridden", "j": 0 }, "t": 0 }] } } }"#);
         }
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
             player.player.play();

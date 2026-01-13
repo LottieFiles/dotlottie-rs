@@ -177,8 +177,6 @@ fn main() {
 
         // Update animation frame and render
         if player.tick() {
-            player.render();
-
             // Get buffer as a slice
             let buffer = player.buffer();
 

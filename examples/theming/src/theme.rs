@@ -26,11 +26,14 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
     // Create player and load .lottie file
-    let mut player = DotLottiePlayer::new(Config {
-        loop_animation: true,
-        autoplay: true,
-        ..Config::default()
-    });
+    let mut player = DotLottiePlayer::new(
+        Config {
+            loop_animation: true,
+            autoplay: true,
+            ..Config::default()
+        },
+        0, // threads (0 = auto)
+    );
 
     let dotlottie_data = include_bytes!("../../demo-player/src/v2/multi_themes.lottie");
 
@@ -90,10 +93,10 @@ fn main() {
 
         // Update animation frame and render
         if player.tick() {
+            player.render();
+
             // Get buffer as a slice
-            let buffer_ptr = player.buffer();
-            let buffer_len = player.buffer_len();
-            let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, buffer_len as usize) };
+            let buffer = player.buffer();
 
             window
                 .update_with_buffer(buffer, WIDTH as usize, HEIGHT as usize)

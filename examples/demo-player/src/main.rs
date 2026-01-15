@@ -84,11 +84,6 @@ impl Player {
         let next = (self.current_marker + 1) % self.player.markers().len();
         self.play_marker(next);
     }
-
-    fn frame_buffer(&self) -> &[u32] {
-        let (ptr, len) = (self.player.buffer().as_ptr(), self.player.buffer().len());
-        unsafe { std::slice::from_raw_parts(ptr as *const u32, len as usize) }
-    }
 }
 
 fn main() {
@@ -108,7 +103,7 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = Player::new("src/text.json");
+    let mut player = Player::new("src/cartoon.json");
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if window.is_key_pressed(Key::U, KeyRepeat::No) {
@@ -129,7 +124,7 @@ fn main() {
 
         if player.update() {
             window
-                .update_with_buffer(player.frame_buffer(), WIDTH, HEIGHT)
+                .update_with_buffer(player.player.buffer(), WIDTH, HEIGHT)
                 .expect("Failed to update window");
         }
     }

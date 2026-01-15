@@ -1,77 +1,119 @@
-import createDotLottiePlayerModule from "./release/wasm/DotLottiePlayer.mjs";
+import createDotLottiePlayerModule from "./release/wasm/dotlottie_player.js";
 import fs from "fs";
 import path from "path";
 
 const wasmBinary = fs.readFileSync(
-  path.join("./release/wasm/DotLottiePlayer.wasm")
+  path.join("./release/wasm/dotlottie_player.wasm")
 );
 
 const Module = await createDotLottiePlayerModule({
   wasmBinary,
 });
 
+const DOTLOTTIE_SUCCESS = Module._dotlottie_success();
+
+function withString(str, callback) {
+  const size = Module.lengthBytesUTF8(str) + 1;
+  const ptr = Module._malloc(size);
+  Module.stringToUTF8(str, ptr, size);
+  try {
+    return callback(ptr);
+  } finally {
+    Module._free(ptr);
+  }
+}
+
+function getBufferPtr(playerPtr) {
+  const resultPtr = Module._malloc(4);
+  Module._dotlottie_buffer_ptr(playerPtr, resultPtr);
+  const bufferPtr = Module.getValue(resultPtr, "i32");
+  Module._free(resultPtr);
+  return bufferPtr;
+}
+
+function createPlayerWithConfig(options = {}) {
+  const configPtr = Module._dotlottie_config_new();
+
+  if (options.autoplay !== undefined)
+    Module._dotlottie_config_set_autoplay(configPtr, options.autoplay);
+  if (options.loopAnimation !== undefined)
+    Module._dotlottie_config_set_loop_animation(configPtr, options.loopAnimation);
+  if (options.backgroundColor !== undefined)
+    Module._dotlottie_config_set_background_color(configPtr, options.backgroundColor);
+
+  const playerPtr = Module._dotlottie_new_player(configPtr);
+  Module._dotlottie_config_free(configPtr);
+
+  return playerPtr;
+}
+
 const WIDTH = 200;
 const HEIGHT = 200;
 
-function createSegments(startFrame, endFrame) {
-  const vector = new Module.VectorFloat();
-
-  if (startFrame && endFrame) {
-    vector.push_back(startFrame);
-    vector.push_back(endFrame);
-  }
-
-  return vector;
-}
-
-const dotLottiePlayer = new Module.DotLottiePlayer({
-  ...Module.createDefaultConfig(),
+const playerPtr = createPlayerWithConfig({
   backgroundColor: 0xff009aff,
 });
+
+if (!playerPtr) {
+  console.log("Failed to create player");
+  process.exit(1);
+}
 
 const data = await fetch(
   "https://lottie.host/647eb023-6040-4b60-a275-e2546994dd7f/zDCfp5lhLe.json"
 ).then((res) => res.text());
 
-const loaded = dotLottiePlayer.loadAnimationData(data, WIDTH, HEIGHT);
+const loaded = withString(data, (dataPtr) =>
+  Module._dotlottie_load_animation_data(playerPtr, dataPtr, WIDTH, HEIGHT)
+);
 
-if (!loaded) {
-  console.log("failed to load animation data");
+if (loaded !== DOTLOTTIE_SUCCESS) {
+  console.log("Failed to load animation data");
+  process.exit(1);
 }
 
-dotLottiePlayer.setFrame(10.0);
-const rendered = dotLottiePlayer.render();
+Module._dotlottie_set_frame(playerPtr, 10.0);
+const rendered = Module._dotlottie_render(playerPtr);
 
-if (!rendered) {
-  console.log("failed to render");
+if (rendered !== DOTLOTTIE_SUCCESS) {
+  console.log("Failed to render");
+  process.exit(1);
 }
 
-const frameBuffer = dotLottiePlayer.buffer();
+const bufferPtr = getBufferPtr(playerPtr);
+const bufferLen = WIDTH * HEIGHT * 4;
+const frameBuffer = new Uint8ClampedArray(
+  Module.HEAPU8.buffer,
+  bufferPtr,
+  bufferLen
+);
 
-const bmpBuffer = createBMP(WIDTH, WIDTH, frameBuffer);
-
+const bmpBuffer = createBMP(WIDTH, HEIGHT, frameBuffer);
 fs.writeFileSync("./output.bmp", bmpBuffer);
 
-// This is for demonstration purposes only. to avoid adding a dependency
+console.log("Successfully rendered frame to output.bmp");
+
+Module._dotlottie_destroy(playerPtr);
+
+
 function createBMP(width, height, frameBuffer) {
-  // Each pixel in BMP is 4 bytes (BGRA)
   const bmpDataSize = width * height * 4;
   const headerSize = 54;
   const fileSize = bmpDataSize + headerSize;
   const bmpBuffer = Buffer.alloc(fileSize);
 
   // Bitmap file header
-  bmpBuffer.write("BM", 0); // Signature
-  bmpBuffer.writeInt32LE(fileSize, 2); // File size
-  bmpBuffer.writeInt32LE(headerSize, 10); // Pixel data offset
+  bmpBuffer.write("BM", 0);
+  bmpBuffer.writeInt32LE(fileSize, 2);
+  bmpBuffer.writeInt32LE(headerSize, 10);
 
   // DIB header
-  bmpBuffer.writeInt32LE(40, 14); // DIB header size
-  bmpBuffer.writeInt32LE(width, 18); // Width
-  bmpBuffer.writeInt32LE(-height, 22); // Height (negative for top-down bitmap)
-  bmpBuffer.writeInt16LE(1, 26); // Color planes
-  bmpBuffer.writeInt16LE(32, 28); // Bits per pixel
-  bmpBuffer.writeInt32LE(0, 30); // Compression (0 for none)
+  bmpBuffer.writeInt32LE(40, 14);
+  bmpBuffer.writeInt32LE(width, 18);
+  bmpBuffer.writeInt32LE(-height, 22); // Negative for top-down bitmap
+  bmpBuffer.writeInt16LE(1, 26);
+  bmpBuffer.writeInt16LE(32, 28);
+  bmpBuffer.writeInt32LE(0, 30);
 
   // Convert RGBA to BGRA and write pixel data
   for (let i = 0; i < width * height; i++) {

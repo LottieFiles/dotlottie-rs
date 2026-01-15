@@ -8,90 +8,14 @@
 </head>
 
 <body>
-  <h1>Test</h1>
-  <div style="width: 800px">
-    <label for="fit">Fit:</label>
-    <select id="fit">
-      <option value="1" selected>Contain</option>
-      <option value="2">Fill</option>
-      <option value="3">Cover</option>
-      <option value="4">FitWidth</option>
-      <option value="5">FitHeight</option>
-      <option value="6">None</option>
-    </select>
-    <label for="align">Align:</label>
-    <select id="align">
-      <option value="0,0">top-left</option>
-      <option value="0.5,0">top-center</option>
-      <option value="1,0">top-right</option>
-
-      <option value="0,0.5">center-left</option>
-      <option value="0.5,0.5" selected>center</option>
-      <option value="1,0.5">center-right</option>
-
-      <option value="0,1">bottom-left</option>
-      <option value="0.5,1">bottom-center</option>
-      <option value="1,1">bottom-right</option>
-    </select>
+  <div style="width: 200px">
     <canvas style="width: 100%; height: 100%; border: 1px solid black"></canvas>
-    <button id="play">play</button>
-    <button id="pause">pause</button>
-    <button id="resize">resize</button>
-    <select id="theme-select">
-      <option value="">None</option>
-      <option value="theme">Theme</option>
-    </select>
-    <input id="progress-bar" type="range" min="0" max="100" defaultValue="0" step="0.01" />
-    <select id="mode">
-      <option value="1">Forward</option>
-      <option value="2">Reverse</option>
-      <option value="3">Bounce</option>
-      <option value="4">ReverseBounce</option>
-    </select>
   </div>
-  <button id="jump">Jump</button>
-  <button id="speed-up">speed +</button>
-  <button id="speed-down">speed -</button>
-  <button id="loop">loopToggle</button>
-  <button id="next">Next</button>
-  <input id="bg-color" type="color" />
-  <div>
-    <label for="width">Rendering Area Width:</label>
-    <input id="width" type="range" min="0" max="1" step="0.01" value="1" />
-    <label for="height">Rendering Area Height:</label>
-    <input id="height" type="range" min="0" max="1" step="0.01" value="1" />
-  </div>
-  <div style="margin-top: 10px;">
-    <h3>Pan & Zoom Controls</h3>
-    <p><strong>Zoom:</strong> Cmd/Ctrl + Scroll wheel</p>
-    <p><strong>Pan:</strong> Scroll wheel (or Shift + Mouse drag, or two-finger touch drag)</p>
-    <button id="reset-transform">Reset Pan & Zoom</button>
-    <div>
-      <span>Transform: </span>
-      <span id="transform-display">Identity</span>
-    </div>
-  </div>
-  <script type="module">
-    import createDotLottiePlayerModule from "./release/wasm/DotLottiePlayer.js";
-
-    const playBtn = document.querySelector("#play");
-    const pauseBtn = document.querySelector("#pause");
-    const resizeBtn = document.querySelector("#resize");
-    const progressBar = document.querySelector("#progress-bar");
-    const jumpBtn = document.querySelector("#jump");
-    const modeSelect = document.querySelector("#mode");
-    const speedUpBtn = document.querySelector("#speed-up");
-    const speedDownBtn = document.querySelector("#speed-down");
-    const loopToggle = document.querySelector("#loop");
-    const nextBtn = document.querySelector("#next");
-    const bgColorInput = document.querySelector("#bg-color");
-    const fitSelect = document.querySelector("#fit");
-    const alignSelect = document.querySelector("#align");
-    const themeSelect = document.querySelector("#theme-select");
-    const renderAreaWidthInput = document.querySelector("#width");
-    const renderAreaHeightInput = document.querySelector("#height");
-    const resetTransformBtn = document.querySelector("#reset-transform");
-    const transformDisplay = document.querySelector("#transform-display");
+  <script src="./release/wasm/dotlottie_player.js"></script>
+  <script>
+    (async () => {
+    const EVENT_SIZE = 12;
+    const LAYER_BOUNDS_SIZE = 32; // 8 floats * 4 bytes
 
     const Module = await createDotLottiePlayerModule({
       locateFile: (path, prefix) => {
@@ -102,561 +26,405 @@
       },
     });
 
-    function createSegment(startFrame, endFrame) {
-      const vector = new Module.VectorFloat();
+    console.log("Module loaded:", Module);
 
-      if (typeof startFrame === "number" && typeof endFrame === "number") {
-        vector.push_back(startFrame);
-        vector.push_back(endFrame);
+    // ============================================================================
+    // Constants from WASM bindings (no hardcoding!)
+    // ============================================================================
+
+    // Return codes
+    const DOTLOTTIE_SUCCESS = Module._dotlottie_success();
+    const DOTLOTTIE_ERROR = Module._dotlottie_error();
+    const DOTLOTTIE_INVALID_PARAMETER = Module._dotlottie_invalid_parameter();
+    const DOTLOTTIE_MANIFEST_NOT_AVAILABLE = Module._dotlottie_manifest_not_available();
+
+    // Mode enum values
+    const MODE = {
+      Forward: Module._dotlottie_mode_forward(),
+      Reverse: Module._dotlottie_mode_reverse(),
+      Bounce: Module._dotlottie_mode_bounce(),
+      ReverseBounce: Module._dotlottie_mode_reverse_bounce()
+    };
+
+    // Fit enum values
+    const FIT = {
+      Contain: Module._dotlottie_fit_contain(),
+      Fill: Module._dotlottie_fit_fill(),
+      Cover: Module._dotlottie_fit_cover(),
+      FitWidth: Module._dotlottie_fit_width(),
+      FitHeight: Module._dotlottie_fit_height(),
+      None: Module._dotlottie_fit_none()
+    };
+
+    // Player event types
+    const PlayerEventType = {
+      Load: Module._dotlottie_event_load(),
+      LoadError: Module._dotlottie_event_load_error(),
+      Play: Module._dotlottie_event_play(),
+      Pause: Module._dotlottie_event_pause(),
+      Stop: Module._dotlottie_event_stop(),
+      Frame: Module._dotlottie_event_frame(),
+      Render: Module._dotlottie_event_render(),
+      Loop: Module._dotlottie_event_loop(),
+      Complete: Module._dotlottie_event_complete()
+    };
+
+    function withString(str, callback) {
+      const size = Module.lengthBytesUTF8(str) + 1; // +1 for null terminator
+      const ptr = Module._malloc(size);
+      Module.stringToUTF8(str, ptr, size);
+      try {
+        return callback(ptr);
+      } finally {
+        Module._free(ptr);
       }
-
-      return vector;
     }
 
-    function createAlign(x, y) {
-      const vector = new Module.VectorFloat();
+    // ============================================================================
+    // Direct C API Functions (from WasmModule interface)
+    // ============================================================================
 
-      if (typeof x === "number" && typeof y === "number") {
-        vector.push_back(x);
-        vector.push_back(y);
-      }
+    const api = {
+      // Config allocation
+      configNew: () => Module._dotlottie_config_new(),
+      configFree: (ptr) => Module._dotlottie_config_free(ptr),
+      initConfig: (ptr) => Module._dotlottie_init_config(ptr),  // legacy
 
-      return vector;
+      // Player lifecycle
+      newPlayer: (ptr) => Module._dotlottie_new_player(ptr),
+      destroy: (ptr) => Module._dotlottie_destroy(ptr),
+
+      // Loading (string params need special handling)
+      loadAnimationData: (playerPtr, data, width, height) =>
+        withString(data, (dataPtr) => Module._dotlottie_load_animation_data(playerPtr, dataPtr, width, height)),
+      loadAnimationPath: (playerPtr, path, width, height) =>
+        withString(path, (pathPtr) => Module._dotlottie_load_animation_path(playerPtr, pathPtr, width, height)),
+      loadAnimation: (playerPtr, animId, width, height) =>
+        withString(animId, (idPtr) => Module._dotlottie_load_animation(playerPtr, idPtr, width, height)),
+
+      // Playback control
+      play: (ptr) => Module._dotlottie_play(ptr),
+      pause: (ptr) => Module._dotlottie_pause(ptr),
+      stop: (ptr) => Module._dotlottie_stop(ptr),
+      seek: (ptr, frame) => Module._dotlottie_seek(ptr, frame),
+      setFrame: (ptr, frame) => Module._dotlottie_set_frame(ptr, frame),
+
+      // Rendering
+      tick: (ptr) => Module._dotlottie_tick(ptr),
+      render: (ptr) => Module._dotlottie_render(ptr),
+      resize: (ptr, w, h) => Module._dotlottie_resize(ptr, w, h),
+      clear: (ptr) => Module._dotlottie_clear(ptr),
+
+      // Buffer access
+      bufferPtr: (ptr, resultPtr) => Module._dotlottie_buffer_ptr(ptr, resultPtr),
+      bufferLen: (ptr, resultPtr) => Module._dotlottie_buffer_len(ptr, resultPtr),
+
+      // State queries
+      isLoaded: (ptr) => Module._dotlottie_is_loaded(ptr),
+      isPlaying: (ptr) => Module._dotlottie_is_playing(ptr),
+      isPaused: (ptr) => Module._dotlottie_is_paused(ptr),
+      isStopped: (ptr) => Module._dotlottie_is_stopped(ptr),
+      isComplete: (ptr) => Module._dotlottie_is_complete(ptr),
+
+      // Animation info
+      totalFrames: (ptr, resultPtr) => Module._dotlottie_total_frames(ptr, resultPtr),
+      duration: (ptr, resultPtr) => Module._dotlottie_duration(ptr, resultPtr),
+      currentFrame: (ptr, resultPtr) => Module._dotlottie_current_frame(ptr, resultPtr),
+      loopCount: (ptr, resultPtr) => Module._dotlottie_loop_count(ptr, resultPtr),
+      animationSize: (ptr, wPtr, hPtr) => Module._dotlottie_animation_size(ptr, wPtr, hPtr),
+      segmentDuration: (ptr, resultPtr) => Module._dotlottie_segment_duration(ptr, resultPtr),
+
+      // Config
+      config: (ptr, resultPtr) => Module._dotlottie_config(ptr, resultPtr),
+
+      // Viewport
+      setViewport: (ptr, x, y, w, h) => Module._dotlottie_set_viewport(ptr, x, y, w, h),
+
+      // Theme & Slots (string params)
+      setTheme: (ptr, themeId) => withString(themeId, (strPtr) => Module._dotlottie_set_theme(ptr, strPtr)),
+      resetTheme: (ptr) => Module._dotlottie_reset_theme(ptr),
+      setSlotsStr: (ptr, json) => withString(json, (strPtr) => Module._dotlottie_set_slots_str(ptr, strPtr)),
+      clearSlots: (ptr) => Module._dotlottie_clear_slots(ptr),
+
+      // Layer bounds (string param)
+      getLayerBounds: (ptr, layerName, resultPtr) =>
+        withString(layerName, (strPtr) => Module._dotlottie_get_layer_bounds(ptr, strPtr, resultPtr)),
+
+      // Markers
+      markers: (ptr, resultPtr, sizePtr) => Module._dotlottie_markers(ptr, resultPtr, sizePtr),
+
+      // Events
+      pollEvent: (ptr, eventPtr) => Module._dotlottie_poll_event(ptr, eventPtr),
+
+      // Manifest
+      manifest: (ptr, resultPtr) => Module._dotlottie_manifest(ptr, resultPtr),
+      manifestAnimations: (ptr, resultPtr, sizePtr) => Module._dotlottie_manifest_animations(ptr, resultPtr, sizePtr),
+
+      // Config helpers (ABI-stable - no hardcoded offsets needed!)
+      configSetMode: (ptr, mode) => Module._dotlottie_config_set_mode(ptr, mode),
+      configSetLoopAnimation: (ptr, loop) => Module._dotlottie_config_set_loop_animation(ptr, loop),
+      configSetLoopCount: (ptr, count) => Module._dotlottie_config_set_loop_count(ptr, count),
+      configSetSpeed: (ptr, speed) => Module._dotlottie_config_set_speed(ptr, speed),
+      configSetUseFrameInterpolation: (ptr, use) => Module._dotlottie_config_set_use_frame_interpolation(ptr, use),
+      configSetAutoplay: (ptr, autoplay) => Module._dotlottie_config_set_autoplay(ptr, autoplay),
+      configSetSegment: (ptr, start, end) => Module._dotlottie_config_set_segment(ptr, start, end),
+      configSetSegmentStart: (ptr, start) => Module._dotlottie_config_set_segment_start(ptr, start),
+      configSetSegmentEnd: (ptr, end) => Module._dotlottie_config_set_segment_end(ptr, end),
+      configSetBackgroundColor: (ptr, color) => Module._dotlottie_config_set_background_color(ptr, color),
+      configSetLayoutFit: (ptr, fit) => Module._dotlottie_config_set_layout_fit(ptr, fit),
+      configSetLayoutAlign: (ptr, x, y) => Module._dotlottie_config_set_layout_align(ptr, x, y),
+      configSetMarker: (ptr, marker) => withString(marker, (strPtr) => Module._dotlottie_config_set_marker(ptr, strPtr)),
+      configSetThemeId: (ptr, themeId) => withString(themeId, (strPtr) => Module._dotlottie_config_set_theme_id(ptr, strPtr)),
+      configSetStateMachineId: (ptr, smId) => withString(smId, (strPtr) => Module._dotlottie_config_set_state_machine_id(ptr, strPtr)),
+      configSetAnimationId: (ptr, animId) => withString(animId, (strPtr) => Module._dotlottie_config_set_animation_id(ptr, strPtr)),
+    };
+
+    // ============================================================================
+    // Helper Functions
+    // ============================================================================
+
+    /**
+     * Allocate and initialize a config struct.
+     * Uses api.configNew() - no manual malloc or size calculation needed!
+     */
+    function allocateConfig() {
+      return api.configNew();
     }
 
-    const dotLottiePlayer = new Module.DotLottiePlayer({
-      ...Module.createDefaultConfig(),
+    function getFloat(ptr) {
+      const resultPtr = Module._malloc(4);
+      const status = ptr(resultPtr);
+      const value = Module.getValue(resultPtr, 'float');
+      Module._free(resultPtr);
+      return value;
+    }
+
+    function getTotalFrames(playerPtr) {
+      const resultPtr = Module._malloc(4);
+      api.totalFrames(playerPtr, resultPtr);
+      const value = Module.getValue(resultPtr, 'float');
+      Module._free(resultPtr);
+      return value;
+    }
+
+    function getCurrentFrame(playerPtr) {
+      const resultPtr = Module._malloc(4);
+      api.currentFrame(playerPtr, resultPtr);
+      const value = Module.getValue(resultPtr, 'float');
+      Module._free(resultPtr);
+      return value;
+    }
+
+    function getAnimationSize(playerPtr) {
+      const widthPtr = Module._malloc(4);
+      const heightPtr = Module._malloc(4);
+      api.animationSize(playerPtr, widthPtr, heightPtr);
+      const width = Module.getValue(widthPtr, 'float');
+      const height = Module.getValue(heightPtr, 'float');
+      Module._free(widthPtr);
+      Module._free(heightPtr);
+      return { width, height };
+    }
+
+    function getBufferPtr(playerPtr) {
+      const resultPtr = Module._malloc(4);
+      api.bufferPtr(playerPtr, resultPtr);
+      const bufferPtr = Module.getValue(resultPtr, 'i32');
+      Module._free(resultPtr);
+      return bufferPtr;
+    }
+
+    /**
+     * Create a new player with the given config options.
+     * Uses the C API helper functions - no hardcoded offsets!
+     */
+    function createPlayerWithConfig(options = {}) {
+      const configPtr = allocateConfig();
+
+      // Apply options using the type-safe C API functions
+      if (options.mode !== undefined) api.configSetMode(configPtr, options.mode);
+      if (options.loopAnimation !== undefined) api.configSetLoopAnimation(configPtr, options.loopAnimation);
+      if (options.loopCount !== undefined) api.configSetLoopCount(configPtr, options.loopCount);
+      if (options.speed !== undefined) api.configSetSpeed(configPtr, options.speed);
+      if (options.useFrameInterpolation !== undefined) api.configSetUseFrameInterpolation(configPtr, options.useFrameInterpolation);
+      if (options.autoplay !== undefined) api.configSetAutoplay(configPtr, options.autoplay);
+      if (options.segmentStart !== undefined && options.segmentEnd !== undefined) {
+        api.configSetSegment(configPtr, options.segmentStart, options.segmentEnd);
+      }
+      if (options.backgroundColor !== undefined) api.configSetBackgroundColor(configPtr, options.backgroundColor);
+      if (options.layoutFit !== undefined) api.configSetLayoutFit(configPtr, options.layoutFit);
+      if (options.layoutAlignX !== undefined && options.layoutAlignY !== undefined) {
+        api.configSetLayoutAlign(configPtr, options.layoutAlignX, options.layoutAlignY);
+      }
+      if (options.marker !== undefined) api.configSetMarker(configPtr, options.marker);
+      if (options.themeId !== undefined) api.configSetThemeId(configPtr, options.themeId);
+      if (options.stateMachineId !== undefined) api.configSetStateMachineId(configPtr, options.stateMachineId);
+      if (options.animationId !== undefined) api.configSetAnimationId(configPtr, options.animationId);
+
+      const playerPtr = api.newPlayer(configPtr);
+      api.configFree(configPtr);
+
+      return playerPtr;
+    }
+
+    function getLayerBounds(playerPtr, layerName) {
+      const boundsPtr = Module._malloc(LAYER_BOUNDS_SIZE);
+      const result = api.getLayerBounds(playerPtr, layerName, boundsPtr);
+
+      if (result !== DOTLOTTIE_SUCCESS) {
+        Module._free(boundsPtr);
+        return [0, 0, 0, 0, 0, 0, 0, 0];
+      }
+
+      const bounds = [];
+      for (let i = 0; i < 8; i++) {
+        bounds.push(Module.getValue(boundsPtr + i * 4, 'float'));
+      }
+      Module._free(boundsPtr);
+      return bounds;
+    }
+
+    // Process player events
+    function processEvents(playerPtr) {
+      const eventPtr = Module._malloc(EVENT_SIZE);
+
+      while (api.pollEvent(playerPtr, eventPtr) === 1) {
+        const eventType = Module.getValue(eventPtr, 'i32');
+        const eventDataFloat = Module.getValue(eventPtr + 4, 'float');
+        const eventDataInt = Module.getValue(eventPtr + 4, 'i32');
+
+        switch (eventType) {
+          case PlayerEventType.Load:
+            console.log("Animation loaded!");
+            break;
+          case PlayerEventType.LoadError:
+            console.error("Animation load error!");
+            break;
+          case PlayerEventType.Play:
+            console.log("Animation started playing");
+            break;
+          case PlayerEventType.Pause:
+            console.log("Animation paused");
+            break;
+          case PlayerEventType.Stop:
+            console.log("Animation stopped");
+            break;
+          case PlayerEventType.Frame:
+            // Uncomment to log frames: console.log(`Current frame: ${eventDataFloat}`);
+            break;
+          case PlayerEventType.Render:
+            // Uncomment to log renders: console.log(`Rendered frame: ${eventDataFloat}`);
+            break;
+          case PlayerEventType.Loop:
+            console.log(`Loop completed! Loop count: ${eventDataInt}`);
+            break;
+          case PlayerEventType.Complete:
+            console.log("Animation completed!");
+            break;
+        }
+      }
+
+      Module._free(eventPtr);
+    }
+
+    // ============================================================================
+    // Create Player
+    // ============================================================================
+
+    // Create player with config using the type-safe C API helpers
+    // No hardcoded struct offsets needed!
+    const playerPtr = createPlayerWithConfig({
       autoplay: true,
       loopAnimation: true,
-      mode: Module.Mode.values[3],
-      segment: createSegment(0, 40),
-      marker: "feather",
     });
 
-    const observer = new Module.CallbackObserver();
-
-    observer.setOnLoad(() => {
-      console.log("Animation loaded!");
-    });
-
-    observer.setOnPlay(() => {
-      console.log("Animation started playing");
-    });
-
-    observer.setOnPause(() => {
-      console.log("Animation paused");
-    });
-
-    observer.setOnStop(() => {
-      console.log("Animation stopped");
-    });
-
-    observer.setOnComplete(() => {
-      console.log("Animation completed!");
-    });
-
-    observer.setOnFrame((frameNo) => {
-      // console.log(`Current frame: ${frameNo}`);
-    });
-
-    observer.setOnRender((frameNo) => {
-      // console.log(`Rendered frame: ${frameNo}`);
-    });
-
-    observer.setOnLoop((loopCount) => {
-      console.log(`Loop completed! Loop count: ${loopCount}`);
-    });
-
-    const observerHandle = dotLottiePlayer.subscribe(observer);
-
-
-    async function registerSystemFont(fullFontName, registerAs = null) {
-      try {
-        if (!window.queryLocalFonts) {
-          console.warn("Local Font Access API not available. Font:", fullFontName);
-          return false;
-        }
-
-        const fonts = await window.queryLocalFonts();
-
-        const fontData = fonts.find(f => f.fullName === fullFontName || f.family === fullFontName);
-
-        if (!fontData) {
-          console.warn(`Font "${fullFontName}" not found in system fonts`);
-          return false;
-        }
-
-        const fontBlob = await fontData.blob();
-
-        const buf = await fontBlob.arrayBuffer();
-
-        const byteArray = new Uint8Array(buf);
-        const vectorChar = new Module.VectorChar();
-        for (let i = 0; i < byteArray.length; i++) {
-          vectorChar.push_back(byteArray[i]);
-        }
-
-        const fontName = registerAs || fullFontName;
-        const loaded = Module.registerFont(fontName, vectorChar);
-
-        if (loaded) {
-          console.log(`✓ Font "${fontName}" loaded successfully`);
-        } else {
-          console.error(`✗ Failed to register font "${fontName}"`);
-        }
-
-        return loaded;
-      } catch (error) {
-        console.error(`Error loading system font "${fullFontName}":`, error);
-        return false;
-      }
+    if (!playerPtr) {
+      console.error("Failed to create dotlottie player");
+      throw new Error("Failed to create player");
     }
 
-    await registerSystemFont("Arial", "Arial");
-    await registerSystemFont("Impact", "Impact");
+    console.log("Player created:", playerPtr);
+
+    // ============================================================================
+    // Load Animation
+    // ============================================================================
 
     const data = await fetch(
-      "./examples/demo-player/src/text.json"
+      // "./examples/demo-player/src/text.json"
       // "./examples/demo-player/src/optimized.lottie"
-      // "./examples/demo-player/src/v2/gradient.json"
+      "./examples/demo-player/src/v2/gradient.json"
       // "https://lottie.host/294b684d-d6b4-4116-ab35-85ef566d4379/VkGHcqcMUI.lottie"
-      // "https://lottie.host/edff17eb-9a84-41f7-810a-22b94fbf9143/uYveqJ1Kqn.lottie"
-      // "./examples/demo-player/src/v2/bouncy-ball-lot.lottie"
     ).then((res) => res.text());
 
     const canvas = document.querySelector("canvas");
 
-    const loaded = dotLottiePlayer.loadAnimationData(
+    const loaded = api.loadAnimationData(
+      playerPtr,
       data,
       canvas.width,
       canvas.height
     );
 
-
-    // const manifest = JSON.parse(dotLottiePlayer.manifestString());
-
-    // console.log(manifest);
-
-    if (loaded) {
-      console.log({
-        width: dotLottiePlayer.animationSize().get(0),
-        height: dotLottiePlayer.animationSize().get(1),
-      });
-
+    if (loaded === DOTLOTTIE_SUCCESS) {
+      const size = getAnimationSize(playerPtr);
+      console.log({ width: size.width, height: size.height });
       resize();
-      updateTransformDisplay();
+    } else {
+      console.error("Failed to load animation");
     }
-
-    dotLottiePlayer.setConfig({
-      ...dotLottiePlayer.config(),
-      mode: Module.Mode.values[1],
-      segment: createSegment(),
-    });
-
-    console.log(dotLottiePlayer.markers());
 
     const ctx = canvas.getContext("2d");
-
     let animationFrameId = null;
 
-    // Pan and zoom state
-    let currentZoom = 1.0;
-    let panX = 0.0;
-    let panY = 0.0;
-    let isPanning = false;
-    let lastTouchX = 0;
-    let lastTouchY = 0;
 
-    function updateTransformDisplay() {
-      const transform = dotLottiePlayer.getTransform();
-      const scale = transform.get(0).toFixed(2);
-      const tx = transform.get(2).toFixed(1);
-      const ty = transform.get(5).toFixed(1);
-      transformDisplay.textContent = `Scale: ${scale}, Pan: (${tx}, ${ty})`;
+    // ============================================================================
+    // Render Functions
+    // ============================================================================
+
+    function resize() {
+      const { width: clientWidth, height: clientHeight } = canvas.getBoundingClientRect();
+      const width = Math.floor(clientWidth * (window.devicePixelRatio || 1));
+      const height = Math.floor(clientHeight * (window.devicePixelRatio || 1));
+
+      canvas.width = width;
+      canvas.height = height;
+
+      api.resize(playerPtr, width, height);
     }
 
-    function applyPanZoom() {
-      // Create a 3x3 transformation matrix: [scaleX, 0, translateX, 0, scaleY, translateY, 0, 0, 1]
-      const transform = new Module.VectorFloat();
-      transform.push_back(currentZoom); // scaleX
-      transform.push_back(0);           // skewX
-      transform.push_back(panX);        // translateX
-      transform.push_back(0);           // skewY
-      transform.push_back(currentZoom); // scaleY
-      transform.push_back(panY);        // translateY
-      transform.push_back(0);           // perspectiveX
-      transform.push_back(0);           // perspectiveY
-      transform.push_back(1);           // perspectiveW
+    function render() {
+      const tickResult = api.tick(playerPtr);
+      processEvents(playerPtr);
 
-      dotLottiePlayer.setTransform(transform);
-      updateTransformDisplay();
-      render();
-    }
+      if (tickResult === DOTLOTTIE_SUCCESS) {
+        const bufferPtr = getBufferPtr(playerPtr);
+        const bufferLen = canvas.width * canvas.height * 4;
 
-    function resetPanZoom() {
-      currentZoom = 1.0;
-      panX = 0.0;
-      panY = 0.0;
+        const frameBuffer = new Uint8ClampedArray(
+          Module.HEAPU8.buffer,
+          bufferPtr,
+          bufferLen
+        );
 
-      // Set identity matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1]
-      const identityTransform = new Module.VectorFloat();
-      identityTransform.push_back(1.0); // scaleX
-      identityTransform.push_back(0.0); // skewX
-      identityTransform.push_back(0.0); // translateX
-      identityTransform.push_back(0.0); // skewY
-      identityTransform.push_back(1.0); // scaleY
-      identityTransform.push_back(0.0); // translateY
-      identityTransform.push_back(0.0); // perspectiveX
-      identityTransform.push_back(0.0); // perspectiveY
-      identityTransform.push_back(1.0); // perspectiveW
+        const imageData = ctx.createImageData(canvas.width, canvas.height);
+        imageData.data.set(frameBuffer);
+        ctx.putImageData(imageData, 0, 0);
 
-      dotLottiePlayer.setTransform(identityTransform);
-      updateTransformDisplay();
-      render();
+        return true;
+      }
+      return false;
     }
 
     function animationLoop() {
       if (render()) {
         animationFrameId = requestAnimationFrame(animationLoop);
+      } else {
+        animationFrameId = requestAnimationFrame(animationLoop);
       }
     }
 
     animationFrameId = requestAnimationFrame(animationLoop);
-
-    playBtn.addEventListener("click", () => {
-      dotLottiePlayer.play();
-    });
-
-    pauseBtn.addEventListener("click", () => {
-      dotLottiePlayer.pause();
-    });
-
-    jumpBtn.addEventListener("click", () => {
-      dotLottiePlayer.seek(44);
-    });
-
-    resizeBtn.addEventListener("click", () => {
-      resize();
-    });
-
-    progressBar.addEventListener("mousedown", () => {
-      cancelAnimationFrame(animationFrameId);
-    });
-
-    progressBar.addEventListener("mouseup", () => {
-      animationFrameId = requestAnimationFrame(animationLoop);
-    });
-
-    progressBar.addEventListener("input", (event) => {
-      const newFrame =
-        (event.target.value / 100) * dotLottiePlayer.totalFrames();
-
-      if (dotLottiePlayer.seek(newFrame)) {
-        render();
-      }
-    });
-
-    function resize() {
-      const { width: clientWidth, height: clientHeight } =
-        canvas.getBoundingClientRect();
-
-      const width = clientWidth * (window.devicePixelRatio || 1);
-      const height = clientHeight * (window.devicePixelRatio || 1);
-
-      canvas.width = width;
-      canvas.height = height;
-
-      dotLottiePlayer.resize(width, height);
-    }
-
-    function setViewport() {
-      const width = Number(renderAreaWidthInput.value) * canvas.width;
-      const height = Number(renderAreaHeightInput.value) * canvas.height;
-      dotLottiePlayer.setViewport(0, 0, width, height);
-    }
-
-    function render() {
-      setViewport();
-      if (dotLottiePlayer.tick()) {
-        const frameBuffer = dotLottiePlayer.buffer();
-        const imageData = ctx.createImageData(canvas.width, canvas.height);
-        imageData.data.set(frameBuffer);
-        ctx.putImageData(imageData, 0, 0);
-
-        const layerOBB = dotLottiePlayer.getLayerBounds("S");
-        const x1 = layerOBB.get(0);
-        const y1 = layerOBB.get(1);
-        const x2 = layerOBB.get(2);
-        const y2 = layerOBB.get(3);
-        const x3 = layerOBB.get(4);
-        const y3 = layerOBB.get(5);
-        const x4 = layerOBB.get(6);
-        const y4 = layerOBB.get(7);
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.lineTo(x3, y3);
-        ctx.lineTo(x4, y4);
-        ctx.closePath();
-        ctx.lineWidth = 10;
-        ctx.strokeStyle = "black";
-        ctx.stroke();
-        return true;
-      } else {
-        return false;
-      }
-    }
-
-    modeSelect.addEventListener("change", (event) => {
-      const mode = Module.Mode.values[event.target.value];
-      dotLottiePlayer.setConfig({
-        ...dotLottiePlayer.config(),
-        mode,
-      });
-    });
-
-    speedUpBtn.addEventListener("click", () => {
-      const speed = dotLottiePlayer.config().speed + 0.1;
-      dotLottiePlayer.setConfig({
-        ...dotLottiePlayer.config(),
-        speed,
-      });
-    });
-
-    speedDownBtn.addEventListener("click", () => {
-      const speed = dotLottiePlayer.config().speed - 0.1;
-
-      dotLottiePlayer.setConfig({
-        ...dotLottiePlayer.config(),
-        speed: speed <= 0 ? 0.001 : speed,
-      });
-    });
-
-    loopToggle.addEventListener("click", () => {
-      const loopAnimation = !dotLottiePlayer.config().loopAnimation;
-
-      dotLottiePlayer.setConfig({
-        ...dotLottiePlayer.config(),
-        loopAnimation,
-      });
-    });
-
-    let i = 0;
-    nextBtn.addEventListener("click", () => {
-      const manifest = dotLottiePlayer.manifestString();
-
-      if (manifest) {
-        const animations = JSON.parse(manifest).animations;
-
-        if (i < animations.length) {
-          const animation = animations[i];
-          dotLottiePlayer.loadAnimation(
-            animation.id,
-            canvas.width,
-            canvas.height
-          );
-          i++;
-        } else {
-          i = 0;
-        }
-      }
-    });
-
-    bgColorInput.addEventListener("input", (event) => {
-      const color = parseInt(event.target.value.slice(1) + "ff", 16);
-
-      dotLottiePlayer.setConfig({
-        ...dotLottiePlayer.config(),
-        // the expected color is in the format of 0xRRGGBBAA and the alpha component is not provided by the input element
-        backgroundColor: (color << 8) | 0xff,
-      });
-    });
-
-    fitSelect.addEventListener("change", (event) => {
-      const fit = Module.Fit.values[event.target.value];
-      const layout = dotLottiePlayer.config().layout;
-      layout.fit = fit;
-      dotLottiePlayer.setConfig({
-        ...dotLottiePlayer.config(),
-        layout,
-      });
-    });
-
-    alignSelect.addEventListener("change", (event) => {
-      const [x, y] = event.target.value.split(",").map(Number);
-      const layout = dotLottiePlayer.config().layout;
-      layout.align = createAlign(x, y);
-      dotLottiePlayer.setConfig({
-        ...dotLottiePlayer.config(),
-        layout,
-      });
-    });
-
-    themeSelect.addEventListener("change", (event) => {
-      const theme = event.target.value;
-
-      if (theme) {
-        const slots = Module.transformThemeToLottieSlots(
-          JSON.stringify({
-            rules: [
-              {
-                id: "my_text",
-                type: "Text",
-                value: {
-                  text: "Updated Text!",
-                  fontName: "Impact",
-                  fillColor: [0, 0, 1],
-                  fontSize: 60,
-                  justify: "Left",
-                }
-              }
-            ],
-          }),
-          ""
-        );
-
-        console.log(slots);
-
-        dotLottiePlayer.setSlots(slots);
-      } else {
-        dotLottiePlayer.setSlots("");
-      }
-    });
-
-    // Pan and zoom event listeners
-    resetTransformBtn.addEventListener("click", resetPanZoom);
-
-    // Pan and zoom sensitivity constants
-    const zoomMouseSensitivity = 1.1;
-    const zoomTrackpadSensitivity = 1.02;
-    const panSensitivity = 1.0;
-
-    // Enhanced wheel handler for both panning and zooming
-    canvas.addEventListener("wheel", (event) => {
-      event.preventDefault();
-
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = event.clientX - rect.left;
-      const mouseY = event.clientY - rect.top;
-
-      // Convert to canvas coordinates
-      const canvasMouseX = (mouseX / rect.width) * canvas.width;
-      const canvasMouseY = (mouseY / rect.height) * canvas.height;
-
-      const isPinchZoom = event.ctrlKey || event.metaKey;
-
-      if (isPinchZoom) {
-        // Zoom behavior (Cmd/Ctrl + wheel)
-        const usingTrackpad = event.ctrlKey || event.metaKey;
-        const zoomSensitivity = usingTrackpad ? zoomTrackpadSensitivity : zoomMouseSensitivity;
-        const zoomFactor = event.deltaY > 0 ? 1 / zoomSensitivity : zoomSensitivity;
-        const newZoom = Math.max(0.1, Math.min(5.0, currentZoom * zoomFactor));
-
-        // Calculate the point in world space before zoom
-        const worldX = (canvasMouseX - panX) / currentZoom;
-        const worldY = (canvasMouseY - panY) / currentZoom;
-
-        // Update zoom
-        currentZoom = newZoom;
-
-        // Calculate new pan to keep the same world point under the mouse
-        panX = canvasMouseX - worldX * currentZoom;
-        panY = canvasMouseY - worldY * currentZoom;
-
-        applyPanZoom();
-      } else {
-        // Pan behavior (regular wheel scroll)
-        panX -= event.deltaX * panSensitivity;
-        panY -= event.deltaY * panSensitivity;
-
-        applyPanZoom();
-      }
-    });
-
-    // Pan with trackpad (two-finger drag)
-    let isTrackpadPanning = false;
-    let lastPanX = 0;
-    let lastPanY = 0;
-
-    canvas.addEventListener("touchstart", (event) => {
-      if (event.touches.length === 2) {
-        event.preventDefault();
-        isTrackpadPanning = true;
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        lastPanX = (touch1.clientX + touch2.clientX) / 2;
-        lastPanY = (touch1.clientY + touch2.clientY) / 2;
-      }
-    });
-
-    canvas.addEventListener("touchmove", (event) => {
-      if (isTrackpadPanning && event.touches.length === 2) {
-        event.preventDefault();
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        const currentPanX = (touch1.clientX + touch2.clientX) / 2;
-        const currentPanY = (touch1.clientY + touch2.clientY) / 2;
-
-        const deltaX = currentPanX - lastPanX;
-        const deltaY = currentPanY - lastPanY;
-
-        panX += deltaX / currentZoom; // Adjust pan sensitivity based on zoom
-        panY += deltaY / currentZoom;
-
-        lastPanX = currentPanX;
-        lastPanY = currentPanY;
-
-        applyPanZoom();
-      }
-    });
-
-    canvas.addEventListener("touchend", (event) => {
-      if (event.touches.length < 2) {
-        isTrackpadPanning = false;
-      }
-    });
-
-    // Alternative pan with mouse drag (while holding Shift)
-    let isMousePanning = false;
-    let mouseLastX = 0;
-    let mouseLastY = 0;
-
-    canvas.addEventListener("mousedown", (event) => {
-      if (event.shiftKey) {
-        isMousePanning = true;
-        mouseLastX = event.clientX;
-        mouseLastY = event.clientY;
-        canvas.style.cursor = "move";
-        event.preventDefault();
-      }
-    });
-
-    canvas.addEventListener("mousemove", (event) => {
-      if (isMousePanning) {
-        const deltaX = event.clientX - mouseLastX;
-        const deltaY = event.clientY - mouseLastY;
-
-        panX += deltaX / currentZoom;
-        panY += deltaY / currentZoom;
-
-        mouseLastX = event.clientX;
-        mouseLastY = event.clientY;
-
-        applyPanZoom();
-      }
-    });
-
-    canvas.addEventListener("mouseup", () => {
-      if (isMousePanning) {
-        isMousePanning = false;
-        canvas.style.cursor = "default";
-      }
-    });
-
-    // Prevent context menu on canvas
-    canvas.addEventListener("contextmenu", (event) => {
-      event.preventDefault();
-    });
+    })();
   </script>
 </body>
 

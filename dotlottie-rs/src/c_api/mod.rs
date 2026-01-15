@@ -51,6 +51,122 @@ fn to_bool_i32(result: bool) -> i32 {
     }
 }
 
+
+#[no_mangle]
+pub extern "C" fn dotlottie_success() -> i32 {
+    DOTLOTTIE_SUCCESS
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_error() -> i32 {
+    DOTLOTTIE_ERROR
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_invalid_parameter() -> i32 {
+    DOTLOTTIE_INVALID_PARAMETER
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_manifest_not_available() -> i32 {
+    DOTLOTTIE_MANIFEST_NOT_AVAILABLE
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_mode_forward() -> i32 {
+    crate::Mode::Forward as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_mode_reverse() -> i32 {
+    crate::Mode::Reverse as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_mode_bounce() -> i32 {
+    crate::Mode::Bounce as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_mode_reverse_bounce() -> i32 {
+    crate::Mode::ReverseBounce as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_fit_contain() -> i32 {
+    crate::Fit::Contain as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_fit_fill() -> i32 {
+    crate::Fit::Fill as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_fit_cover() -> i32 {
+    crate::Fit::Cover as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_fit_width() -> i32 {
+    crate::Fit::FitWidth as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_fit_height() -> i32 {
+    crate::Fit::FitHeight as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_fit_none() -> i32 {
+    crate::Fit::None as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_event_load() -> i32 {
+    DotLottiePlayerEventType::Load as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_event_load_error() -> i32 {
+    DotLottiePlayerEventType::LoadError as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_event_play() -> i32 {
+    DotLottiePlayerEventType::Play as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_event_pause() -> i32 {
+    DotLottiePlayerEventType::Pause as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_event_stop() -> i32 {
+    DotLottiePlayerEventType::Stop as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_event_frame() -> i32 {
+    DotLottiePlayerEventType::Frame as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_event_render() -> i32 {
+    DotLottiePlayerEventType::Render as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_event_loop() -> i32 {
+    DotLottiePlayerEventType::Loop as i32
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_event_complete() -> i32 {
+    DotLottiePlayerEventType::Complete as i32
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_new_player(ptr: *const DotLottieConfig) -> *mut DotLottiePlayer {
     if let Some(dotlottie_config) = ptr.as_ref() {
@@ -1408,4 +1524,266 @@ pub unsafe extern "C" fn dotlottie_get_state_machine(
             Err(_) => DOTLOTTIE_INVALID_PARAMETER,
         }
     })
+}
+
+#[no_mangle]
+pub extern "C" fn dotlottie_config_new() -> *mut DotLottieConfig {
+    match unsafe { DotLottieConfig::new(&Config::default()) } {
+        Ok(config) => Box::into_raw(Box::new(config)),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_free(config: *mut DotLottieConfig) {
+    if !config.is_null() {
+        let _ = Box::from_raw(config);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_mode(config: *mut DotLottieConfig, mode: i32) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.mode = match mode {
+            0 => crate::Mode::Forward,
+            1 => crate::Mode::Reverse,
+            2 => crate::Mode::Bounce,
+            3 => crate::Mode::ReverseBounce,
+            _ => return DOTLOTTIE_INVALID_PARAMETER,
+        };
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_loop_animation(
+    config: *mut DotLottieConfig,
+    loop_animation: bool,
+) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.loop_animation = loop_animation;
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_loop_count(
+    config: *mut DotLottieConfig,
+    loop_count: u32,
+) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.loop_count = loop_count;
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_speed(
+    config: *mut DotLottieConfig,
+    speed: f32,
+) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.speed = speed;
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_use_frame_interpolation(
+    config: *mut DotLottieConfig,
+    use_frame_interpolation: bool,
+) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.use_frame_interpolation = use_frame_interpolation;
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_autoplay(
+    config: *mut DotLottieConfig,
+    autoplay: bool,
+) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.autoplay = autoplay;
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_segment_start(
+    config: *mut DotLottieConfig,
+    segment_start: f32,
+) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.segment_start = segment_start;
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_segment_end(
+    config: *mut DotLottieConfig,
+    segment_end: f32,
+) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.segment_end = segment_end;
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_segment(
+    config: *mut DotLottieConfig,
+    start: f32,
+    end: f32,
+) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.segment_start = start;
+        cfg.segment_end = end;
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_background_color(
+    config: *mut DotLottieConfig,
+    color: u32,
+) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.background_color = color;
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_layout_fit(
+    config: *mut DotLottieConfig,
+    fit: i32,
+) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.layout.fit = match fit {
+            0 => DotLottieFit::Contain,
+            1 => DotLottieFit::Fill,
+            2 => DotLottieFit::Cover,
+            3 => DotLottieFit::FitWidth,
+            4 => DotLottieFit::FitHeight,
+            5 => DotLottieFit::Void,
+            _ => return DOTLOTTIE_INVALID_PARAMETER,
+        };
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_layout_align(
+    config: *mut DotLottieConfig,
+    align_x: f32,
+    align_y: f32,
+) -> i32 {
+    if let Some(cfg) = config.as_mut() {
+        cfg.layout.align_x = align_x;
+        cfg.layout.align_y = align_y;
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_marker(
+    config: *mut DotLottieConfig,
+    marker: *const c_char,
+) -> i32 {
+    if config.is_null() {
+        return DOTLOTTIE_INVALID_PARAMETER;
+    }
+
+    let cfg = &mut *config;
+    if let Ok(marker_str) = DotLottieString::read(marker) {
+        if let Ok(marker_value) = DotLottieString::new(&marker_str) {
+            cfg.marker = marker_value;
+            return DOTLOTTIE_SUCCESS;
+        }
+    }
+    DOTLOTTIE_ERROR
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_theme_id(
+    config: *mut DotLottieConfig,
+    theme_id: *const c_char,
+) -> i32 {
+    if config.is_null() {
+        return DOTLOTTIE_INVALID_PARAMETER;
+    }
+
+    let cfg = &mut *config;
+    if let Ok(theme_str) = DotLottieString::read(theme_id) {
+        if let Ok(theme_value) = DotLottieString::new(&theme_str) {
+            cfg.theme_id = theme_value;
+            return DOTLOTTIE_SUCCESS;
+        }
+    }
+    DOTLOTTIE_ERROR
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_state_machine_id(
+    config: *mut DotLottieConfig,
+    state_machine_id: *const c_char,
+) -> i32 {
+    if config.is_null() {
+        return DOTLOTTIE_INVALID_PARAMETER;
+    }
+
+    let cfg = &mut *config;
+    if let Ok(sm_str) = DotLottieString::read(state_machine_id) {
+        if let Ok(sm_value) = DotLottieString::new(&sm_str) {
+            cfg.state_machine_id = sm_value;
+            return DOTLOTTIE_SUCCESS;
+        }
+    }
+    DOTLOTTIE_ERROR
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_config_set_animation_id(
+    config: *mut DotLottieConfig,
+    animation_id: *const c_char,
+) -> i32 {
+    if config.is_null() {
+        return DOTLOTTIE_INVALID_PARAMETER;
+    }
+
+    let cfg = &mut *config;
+    if let Ok(anim_str) = DotLottieString::read(animation_id) {
+        if let Ok(anim_value) = DotLottieString::new(&anim_str) {
+            cfg.animation_id = anim_value;
+            return DOTLOTTIE_SUCCESS;
+        }
+    }
+    DOTLOTTIE_ERROR
 }

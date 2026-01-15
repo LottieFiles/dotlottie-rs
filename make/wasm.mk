@@ -1,8 +1,6 @@
 EMSDK_VERSION ?= 3.1.74
-UNIFFI_BINDGEN_CPP ?= uniffi-bindgen-cpp
-UNIFFI_BINDGEN_CPP_VERSION ?= v0.7.3+v0.28.3
 
-RUST_TOOLCHAIN ?= nightly-2025-08-01
+RUST_TOOLCHAIN ?= nightly
 
 # Default Rust features for WASM builds
 WASM_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
@@ -54,12 +52,6 @@ wasm-install-emsdk: wasm-init-submodule
 		./emsdk activate $(EMSDK_VERSION) >/dev/null
 	@echo "✓ emsdk $(EMSDK_VERSION) installed and activated"
 
-# ============================================================================
-# Old UniFFI-based WASM targets (deprecated)
-# Preserved for reference - old builds moved to wasm.mk.bak
-# Use 'make wasm' for new C API build
-# ============================================================================
-
 # Check WASM build environment
 wasm-check-env:
 	@echo "Checking WASM build environment..."
@@ -73,14 +65,10 @@ wasm-check-env:
 		echo "Run 'make wasm-install-emsdk' to install emsdk"; \
 		exit 1; \
 	fi
-	@if ! command -v $(UNIFFI_BINDGEN_CPP) >/dev/null 2>&1; then \
-		echo "Warning: $(UNIFFI_BINDGEN_CPP) not found in PATH"; \
-		echo "C++ bindings generation may fail"; \
-	fi
-	@if ! rustup toolchain list | grep -q nightly; then \
-		echo "Warning: Rust nightly toolchain not found"; \
-		echo "Install with: rustup toolchain install nightly"; \
-		echo "WASM build requires nightly for aggressive size optimizations"; \
+	@if ! rustup toolchain list | grep -q $(RUST_TOOLCHAIN); then \
+		echo "Error: Rust $(RUST_TOOLCHAIN) toolchain not found"; \
+		echo "Run 'make wasm-setup' to install it"; \
+		exit 1; \
 	fi
 
 # Install WASM Rust target and all dependencies
@@ -89,22 +77,9 @@ wasm-setup: wasm-init-submodule wasm-install-emsdk
 	@rustup toolchain install $(RUST_TOOLCHAIN) >/dev/null
 	@rustup component add rust-src --toolchain $(RUST_TOOLCHAIN) >/dev/null
 	@rustup target add --toolchain $(RUST_TOOLCHAIN) $(WASM_TARGET) >/dev/null
-	@echo "✓ WASM targets and nightly toolchain installed"
-	@echo "→ Installing uniffi-bindgen-cpp..."
-	@cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag $(UNIFFI_BINDGEN_CPP_VERSION) >/dev/null
-	@echo "✓ uniffi-bindgen-cpp installed"
-
-
-
-# ============================================================================
-# New WASM C API Build (Direct C function exports - No C++ wrapper)
-# ============================================================================
-
-# New WASM configuration
+	@echo "✓ WASM target and nightly toolchain installed"
 
 # Note: C API function export list is auto-generated from the C header during link step
-
-# Build Rust library for WASM with C API (NO C++ wrapper needed!)
 wasm-build-rust: wasm-check-env
 	@echo "→ Building Rust library for WASM (C API - direct export)..."
 	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
@@ -114,11 +89,10 @@ wasm-build-rust: wasm-check-env
 	CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
 	CXXFLAGS='-isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/c++/v1 -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include' \
 	BINDGEN_EXTRA_CLANG_ARGS='-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot' \
-	RUSTFLAGS='-C panic=abort -C link-arg=--no-entry -C link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0' \
+	RUSTFLAGS='-Zunstable-options -Cpanic=immediate-abort -C link-arg=--no-entry -C link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0' \
 	cargo +$(RUST_TOOLCHAIN) build \
 		--manifest-path dotlottie-rs/Cargo.toml \
-		-Z build-std=std,panic_abort \
-		-Z build-std-features=panic_immediate_abort \
+		-Z build-std=std,core \
 		--target $(WASM_TARGET) \
 		--no-default-features \
 		--features $(WASM_DEFAULT_FEATURES),$(WASM_FEATURES) \
@@ -135,7 +109,6 @@ wasm-install-npm-deps:
 		fi"
 	@echo "✓ npm dependencies installed"
 
-# Link WASM module - Direct C API
 wasm-link: wasm-build-rust  wasm-install-npm-deps
 	@echo "→ Linking WASM module (direct C API)..."
 	@mkdir -p $(WASM_BUILD_DIR)
@@ -150,7 +123,7 @@ wasm-link: wasm-build-rust  wasm-install-npm-deps
 			-Wl,-u,ntohs \
 			-Wl,-u,htonl \
 			-flto \
-			-Oz \
+			-O3 \
 			-sWASM=1 \
 			-sALLOW_MEMORY_GROWTH=1 \
 			-sFORCE_FILESYSTEM=0 \
@@ -163,10 +136,11 @@ wasm-link: wasm-build-rust  wasm-install-npm-deps
 			-sMIN_SAFARI_VERSION=130000 \
 			-sFILESYSTEM=0 \
 			-sEXPORTED_FUNCTIONS=\"[\$$C_API_EXPORTED_FUNCTIONS]\" \
-			-sEXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"getValue\",\"setValue\",\"HEAPU8\",\"HEAPU32\"]' \
+			-sEXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"getValue\",\"setValue\",\"HEAPU8\",\"HEAPU32\",\"stringToUTF8\",\"lengthBytesUTF8\"]' \
 			--no-entry \
 			--strip-all \
-			--closure=1"
+			--closure=1 \
+			--emit-tsd $(WASM_MODULE).d.ts"
 	@echo "✓ WASM module linked (direct C API)"
 
 # Package new WASM build
@@ -177,10 +151,10 @@ wasm-package: wasm-link
 	# Copy WASM module files
 	@cp $(WASM_BUILD_DIR)/$(WASM_MODULE).wasm $(WASM_RELEASE_DIR)/
 	@cp $(WASM_BUILD_DIR)/$(WASM_MODULE).js $(WASM_RELEASE_DIR)/
+	@cp $(WASM_BUILD_DIR)/$(WASM_MODULE).d.ts $(WASM_RELEASE_DIR)/
 
 	# Create version file
 	@echo "dlplayer-version=$(WASM_NEW_CRATE_VERSION)-$(COMMIT_HASH)" > $(WASM_RELEASE_DIR)/version.txt
-	@echo "api-type=c-api" >> $(WASM_RELEASE_DIR)/version.txt
 
 	@echo "✓ WASM release package created: $(WASM_RELEASE_DIR)/"
 	@echo ""
@@ -188,12 +162,9 @@ wasm-package: wasm-link
 	@echo "  $(WASM_RELEASE_DIR)/"
 	@echo "    ├── $(WASM_MODULE).wasm"
 	@echo "    ├── $(WASM_MODULE).js"
+	@echo "    ├── $(WASM_MODULE).d.ts"
 	@echo "    └── version.txt"
 	@echo ""
-	@echo "Usage in JavaScript:"
-	@echo "  import createModule from './$(WASM_MODULE).js';"
-	@echo "  const Module = await createModule();"
-	@echo "  const newPlayer = Module.cwrap('dotlottie_new_player', 'number', ['number']);"
 
 # Main WASM build target (C API - direct export)
 wasm: wasm-link wasm-package

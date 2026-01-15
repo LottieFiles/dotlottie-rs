@@ -1,7 +1,7 @@
 use crate::lottie_renderer::slots::{
-    Bezier, ColorSlot, GradientSlot, GradientStop, ImageSlot, LottieKeyframe, LottieProperty,
-    PositionSlot, ScalarSlot, SlotType, TextCaps, TextDocument, TextJustify, TextKeyframe,
-    TextSlot, VectorSlot,
+    Bezier, ColorSlot, ColorValue, GradientSlot, GradientStop, ImageSlot, LottieKeyframe,
+    LottieProperty, PositionSlot, ScalarSlot, ScalarValue, SlotType, TextCaps, TextDocument,
+    TextJustify, TextKeyframe, TextSlot, VectorSlot,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -375,7 +375,7 @@ pub fn transform_theme_to_lottie_slots(
 impl From<&ColorRule> for ColorSlot {
     fn from(rule: &ColorRule) -> Self {
         if let Some(keyframes) = &rule.keyframes {
-            let lottie_keyframes: Vec<LottieKeyframe<[f32; 3]>> = keyframes
+            let lottie_keyframes: Vec<LottieKeyframe<ColorValue>> = keyframes
                 .iter()
                 .map(|kf| {
                     // Support both RGB (3) and RGBA (4) formats, extract RGB
@@ -387,7 +387,7 @@ impl From<&ColorRule> for ColorSlot {
 
                     LottieKeyframe {
                         frame: kf.frame,
-                        start_value: rgb,
+                        start_value: ColorValue(rgb),
                         in_tangent: kf.in_tangent.clone(),
                         out_tangent: kf.out_tangent.clone(),
                         value_in_tangent: kf.value_in_tangent.clone(),
@@ -410,13 +410,13 @@ impl From<&ColorRule> for ColorSlot {
                 [0.0, 0.0, 0.0]
             };
 
-            let mut slot = LottieProperty::static_value(rgb_value);
+            let mut slot = LottieProperty::static_value(ColorValue(rgb_value));
             if let Some(expr) = &rule.expression {
                 slot = slot.with_expression(expr.clone());
             }
             slot
         } else {
-            LottieProperty::static_value([0.0, 0.0, 0.0])
+            LottieProperty::static_value(ColorValue([0.0, 0.0, 0.0]))
         }
     }
 }
@@ -424,11 +424,11 @@ impl From<&ColorRule> for ColorSlot {
 impl From<&ScalarRule> for ScalarSlot {
     fn from(rule: &ScalarRule) -> Self {
         if let Some(keyframes) = &rule.keyframes {
-            let lottie_keyframes: Vec<LottieKeyframe<f32>> = keyframes
+            let lottie_keyframes: Vec<LottieKeyframe<ScalarValue>> = keyframes
                 .iter()
                 .map(|kf| LottieKeyframe {
                     frame: kf.frame,
-                    start_value: kf.value,
+                    start_value: ScalarValue(kf.value),
                     in_tangent: kf.in_tangent.clone(),
                     out_tangent: kf.out_tangent.clone(),
                     value_in_tangent: kf.value_in_tangent.clone(),
@@ -443,13 +443,13 @@ impl From<&ScalarRule> for ScalarSlot {
             }
             slot
         } else if let Some(value) = rule.value {
-            let mut slot = LottieProperty::static_value(value);
+            let mut slot = LottieProperty::static_value(ScalarValue(value));
             if let Some(expr) = &rule.expression {
                 slot = slot.with_expression(expr.clone());
             }
             slot
         } else {
-            LottieProperty::static_value(0.0)
+            LottieProperty::static_value(ScalarValue(0.0))
         }
     }
 }

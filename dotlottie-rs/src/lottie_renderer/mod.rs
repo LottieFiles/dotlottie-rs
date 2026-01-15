@@ -11,9 +11,9 @@ mod thorvg;
 
 pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
 pub use slots::{
-    slots_from_json_string, Bezier, BezierValue, ColorSlot, GradientSlot, GradientStop, ImageSlot,
-    LottieKeyframe, LottieProperty, PositionSlot, ScalarSlot, SlotType, TextCaps, TextDocument,
-    TextJustify, TextKeyframe, TextSlot, VectorSlot,
+    slots_from_json_string, Bezier, BezierValue, ColorSlot, ColorValue, GradientSlot, GradientStop,
+    ImageSlot, LottieKeyframe, LottieProperty, PositionSlot, ScalarSlot, ScalarValue, SlotType,
+    TextCaps, TextDocument, TextJustify, TextKeyframe, TextSlot, VectorSlot,
 };
 #[cfg(feature = "tvg")]
 pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
@@ -28,6 +28,8 @@ pub enum LottieRendererError {
     InvalidArgument,
     AnimationNotLoaded,
     BackgroundShapeNotInitialized,
+    SlotNotFound,
+    InvalidSlotValue,
 }
 
 impl fmt::Display for LottieRendererError {
@@ -106,6 +108,30 @@ pub trait LottieRenderer {
 
     fn set_slots(&mut self, slots: BTreeMap<String, SlotType>) -> Result<(), LottieRendererError>;
 
+    /// Get all slot IDs
+    fn get_slot_ids(&self) -> Vec<String>;
+
+    /// Get the type of a slot
+    fn get_slot_type(&self, slot_id: &str) -> String;
+
+    /// Get slot value as JSON string
+    fn get_slot_str(&self, slot_id: &str) -> String;
+
+    /// Get all slots as JSON string (same format passed to ThorVG runtime)
+    fn get_slots_str(&self) -> String;
+
+    /// Set slot from JSON string
+    fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), LottieRendererError>;
+
+    /// Store default slots (called during load)
+    fn store_default_slots(&mut self, slots: BTreeMap<String, SlotType>);
+
+    /// Reset a single slot to its default value
+    fn reset_slot(&mut self, slot_id: &str) -> Result<(), LottieRendererError>;
+
+    /// Reset all slots to their default values
+    fn reset_slots(&mut self) -> bool;
+
     fn set_quality(&mut self, quality: u8) -> Result<(), LottieRendererError>;
 
     fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError>;
@@ -157,6 +183,7 @@ impl dyn LottieRenderer {
             layout: Layout::default(),
             user_transform: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
             slots: BTreeMap::new(),
+            default_slots: BTreeMap::new(),
         })
     }
 }
@@ -177,6 +204,7 @@ struct LottieRendererImpl<R: Renderer> {
     layout: Layout,
     user_transform: [f32; 9],
     slots: BTreeMap<String, SlotType>,
+    default_slots: BTreeMap<String, SlotType>,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -389,6 +417,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.background_shape = Some(background_shape);
         self.updated = true;
 
+        let default_slots = slots::extract_slots_from_animation(data);
+        self.store_default_slots(default_slots);
+
         Ok(())
     }
 
@@ -599,6 +630,90 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     fn set_slots(&mut self, slots: BTreeMap<String, SlotType>) -> Result<(), LottieRendererError> {
         self.slots = slots;
         self.apply_all_slots()
+    }
+
+    fn get_slot_ids(&self) -> Vec<String> {
+        self.slots.keys().cloned().collect()
+    }
+
+    fn get_slot_type(&self, slot_id: &str) -> String {
+        self.slots
+            .get(slot_id)
+            .map(|s| slots::slot_type_name(s).to_string())
+            .unwrap_or_default()
+    }
+
+    fn get_slot_str(&self, slot_id: &str) -> String {
+        self.slots
+            .get(slot_id)
+            .and_then(|s| slots::slot_to_json_string(s).ok())
+            .unwrap_or_default()
+    }
+
+    fn get_slots_str(&self) -> String {
+        slots::slots_to_json_string(&self.slots).unwrap_or_default()
+    }
+
+    fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), LottieRendererError> {
+        let slot_type = self.get_slot_type(slot_id);
+        if slot_type.is_empty() {
+            return Err(LottieRendererError::SlotNotFound);
+        }
+
+        match slots::parse_slot_from_json(&slot_type, json) {
+            Some(slot) => {
+                match slot {
+                    SlotType::Color(s) => self.set_color_slot(slot_id, s),
+                    SlotType::Scalar(s) => self.set_scalar_slot(slot_id, s),
+                    SlotType::Vector(s) => self.set_vector_slot(slot_id, s),
+                    SlotType::Position(s) => self.set_position_slot(slot_id, s),
+                    SlotType::Gradient(s) => self.set_gradient_slot(slot_id, s),
+                    SlotType::Image(s) => self.set_image_slot(slot_id, s),
+                    SlotType::Text(s) => self.set_text_slot(slot_id, s),
+                }
+            }
+            None => Err(LottieRendererError::InvalidSlotValue),
+        }
+    }
+
+    fn store_default_slots(&mut self, slots: BTreeMap<String, SlotType>) {
+        self.default_slots = slots.clone();
+        self.slots = slots;
+    }
+
+    fn reset_slot(&mut self, slot_id: &str) -> Result<(), LottieRendererError> {
+        match self.default_slots.get(slot_id).cloned() {
+            Some(slot) => {
+                match slot {
+                    SlotType::Color(s) => self.set_color_slot(slot_id, s),
+                    SlotType::Scalar(s) => self.set_scalar_slot(slot_id, s),
+                    SlotType::Vector(s) => self.set_vector_slot(slot_id, s),
+                    SlotType::Position(s) => self.set_position_slot(slot_id, s),
+                    SlotType::Gradient(s) => self.set_gradient_slot(slot_id, s),
+                    SlotType::Image(s) => self.set_image_slot(slot_id, s),
+                    SlotType::Text(s) => self.set_text_slot(slot_id, s),
+                }
+            }
+            None => Err(LottieRendererError::SlotNotFound),
+        }
+    }
+
+    fn reset_slots(&mut self) -> bool {
+        for (slot_id, slot) in self.default_slots.clone() {
+            let result = match slot {
+                SlotType::Color(s) => self.set_color_slot(&slot_id, s),
+                SlotType::Scalar(s) => self.set_scalar_slot(&slot_id, s),
+                SlotType::Vector(s) => self.set_vector_slot(&slot_id, s),
+                SlotType::Position(s) => self.set_position_slot(&slot_id, s),
+                SlotType::Gradient(s) => self.set_gradient_slot(&slot_id, s),
+                SlotType::Image(s) => self.set_image_slot(&slot_id, s),
+                SlotType::Text(s) => self.set_text_slot(&slot_id, s),
+            };
+            if result.is_err() {
+                return false;
+            }
+        }
+        true
     }
 
     fn set_quality(&mut self, quality: u8) -> Result<(), LottieRendererError> {

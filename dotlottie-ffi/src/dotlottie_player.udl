@@ -171,6 +171,16 @@ interface DotLottiePlayer {
     boolean set_theme_data([ByRef] string theme_data);
     boolean reset_theme();
     boolean set_slots_str([ByRef] string slots);
+    sequence<string> get_slot_ids();
+    string get_slot_type([ByRef] string slot_id);
+    string get_slot_str([ByRef] string slot_id);
+    string get_slots_str();
+    boolean set_slot_str([ByRef] string slot_id, [ByRef] string json);
+    boolean reset_slot([ByRef] string slot_id);
+    boolean reset_slots();
+    boolean clear_slots();
+    boolean clear_slot([ByRef] string slot_id);
+
     boolean set_quality(u8 quality);
     sequence<Marker> markers();
     string active_animation_id();

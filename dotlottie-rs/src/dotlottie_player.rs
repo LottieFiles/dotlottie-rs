@@ -1101,6 +1101,34 @@ impl DotLottieRuntime {
         }
     }
 
+    pub fn get_slot_ids(&self) -> Vec<String> {
+        self.renderer.get_slot_ids()
+    }
+
+    pub fn get_slot_type(&self, slot_id: &str) -> String {
+        self.renderer.get_slot_type(slot_id)
+    }
+
+    pub fn get_slot_str(&self, slot_id: &str) -> String {
+        self.renderer.get_slot_str(slot_id)
+    }
+
+    pub fn get_slots_str(&self) -> String {
+        self.renderer.get_slots_str()
+    }
+
+    pub fn set_slot_str(&mut self, slot_id: &str, json: &str) -> bool {
+        self.renderer.set_slot_str(slot_id, json).is_ok()
+    }
+
+    pub fn reset_slot(&mut self, slot_id: &str) -> bool {
+        self.renderer.reset_slot(slot_id).is_ok()
+    }
+
+    pub fn reset_slots(&mut self) -> bool {
+        self.renderer.reset_slots()
+    }
+
     pub fn active_animation_id(&self) -> &str {
         &self.active_animation_id
     }
@@ -1611,6 +1639,34 @@ impl DotLottiePlayerContainer {
 
     pub fn set_slots_str(&self, slots_json: &str) -> bool {
         self.runtime.write().unwrap().set_slots_str(slots_json)
+    }
+
+    pub fn get_slot_ids(&self) -> Vec<String> {
+        self.runtime.read().unwrap().get_slot_ids()
+    }
+
+    pub fn get_slot_type(&self, slot_id: &str) -> String {
+        self.runtime.read().unwrap().get_slot_type(slot_id)
+    }
+
+    pub fn get_slot_str(&self, slot_id: &str) -> String {
+        self.runtime.read().unwrap().get_slot_str(slot_id)
+    }
+
+    pub fn get_slots_str(&self) -> String {
+        self.runtime.read().unwrap().get_slots_str()
+    }
+
+    pub fn set_slot_str(&self, slot_id: &str, json: &str) -> bool {
+        self.runtime.write().unwrap().set_slot_str(slot_id, json)
+    }
+
+    pub fn reset_slot(&self, slot_id: &str) -> bool {
+        self.runtime.write().unwrap().reset_slot(slot_id)
+    }
+
+    pub fn reset_slots(&self) -> bool {
+        self.runtime.write().unwrap().reset_slots()
     }
 
     pub fn set_quality(&self, quality: u8) -> bool {
@@ -2542,6 +2598,34 @@ impl DotLottiePlayer {
 
     pub fn set_slots_str(&self, slots_json: &str) -> bool {
         self.player.write().unwrap().set_slots_str(slots_json)
+    }
+
+     pub fn get_slot_ids(&self) -> Vec<String> {
+        self.player.read().unwrap().get_slot_ids()
+    }
+
+    pub fn get_slot_type(&self, slot_id: &str) -> String {
+        self.player.read().unwrap().get_slot_type(slot_id)
+    }
+
+    pub fn get_slot_str(&self, slot_id: &str) -> String {
+        self.player.read().unwrap().get_slot_str(slot_id)
+    }
+
+    pub fn get_slots_str(&self) -> String {
+        self.player.read().unwrap().get_slots_str()
+    }
+
+    pub fn set_slot_str(&self, slot_id: &str, json: &str) -> bool {
+        self.player.write().unwrap().set_slot_str(slot_id, json)
+    }
+
+    pub fn reset_slot(&self, slot_id: &str) -> bool {
+        self.player.write().unwrap().reset_slot(slot_id)
+    }
+
+    pub fn reset_slots(&self) -> bool {
+        self.player.write().unwrap().reset_slots()
     }
 
     pub fn set_quality(&self, quality: u8) -> bool {

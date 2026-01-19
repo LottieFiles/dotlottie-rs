@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 
-/// SDL-style events for DotLottie player
 #[derive(Debug, Clone, PartialEq)]
 pub enum DotLottieEvent {
     // Player lifecycle events
@@ -114,7 +113,6 @@ impl CoalescableEvent for StateMachineInternalEvent {
 
 /// Event queue with bounded size and coalescing support
 ///
-/// This queue follows SDL's event system design:
 /// - Fixed maximum size (MAX_EVENTS events)
 /// - When full, oldest events are dropped
 /// - Consecutive frame/render events coalesce to save space
@@ -158,7 +156,6 @@ impl<T: CoalescableEvent + Clone> EventQueue<T> {
     /// Poll for the next event (removes it from the queue)
     ///
     /// Returns Some(event) if an event is available, None if queue is empty.
-    /// This follows SDL's SDL_PollEvent pattern.
     pub fn poll(&mut self) -> Option<T> {
         self.queue.pop_front()
     }

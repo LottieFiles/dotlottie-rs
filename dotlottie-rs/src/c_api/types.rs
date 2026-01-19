@@ -151,18 +151,11 @@ pub struct DotLottieString {
 }
 
 impl DotLottieString {
-    // Read a C string into a rust string
-    pub unsafe fn read(value: *const c_char) -> Result<String, io::Error> {
+    pub unsafe fn read(value: *const c_char) -> Result<CString, io::Error> {
         if value.is_null() {
             return Err(io::Error::new(io::ErrorKind::InvalidInput, "null pointer"));
         }
-        match CStr::from_ptr(value).to_str() {
-            Ok(s) => Ok(s.to_owned()),
-            Err(_) => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "invalid utf8 sequence",
-            )),
-        }
+        Ok(CStr::from_ptr(value).to_owned())
     }
 
     // Copy a rust string out into a C string
@@ -195,9 +188,10 @@ impl Transferable<String> for DotLottieString {
 
 impl fmt::Display for DotLottieString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let value = unsafe {
+        let cstring = unsafe {
             DotLottieString::read(self.value.as_ptr() as *const c_char).map_err(|_| fmt::Error)?
         };
+        let value = cstring.to_str().map_err(|_| fmt::Error)?;
         write!(f, "{value}")
     }
 }
@@ -489,7 +483,10 @@ pub struct DotLottieOpenUrlPolicy {
 
 impl DotLottieOpenUrlPolicy {
     pub unsafe fn to_policy(&self) -> Result<OpenUrlPolicy, io::Error> {
-        let whitelist_str = DotLottieString::read(self.whitelist.value.as_ptr())?;
+        let cstring = DotLottieString::read(self.whitelist.value.as_ptr())?;
+        let whitelist_str = cstring
+            .to_str()
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid utf8 sequence"))?;
         let whitelist = if whitelist_str.is_empty() {
             vec![]
         } else {

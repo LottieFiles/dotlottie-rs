@@ -1,4 +1,5 @@
 use crate::Layout;
+use std::ffi::{CStr, CString};
 
 mod renderer;
 pub mod slots;
@@ -44,8 +45,12 @@ fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {
 }
 
 pub trait LottieRenderer {
-    fn load_data(&mut self, data: &str, width: u32, height: u32)
-        -> Result<(), LottieRendererError>;
+    fn load_data(
+        &mut self,
+        data: &CStr,
+        width: u32,
+        height: u32,
+    ) -> Result<(), LottieRendererError>;
 
     fn picture_width(&self) -> f32;
 
@@ -82,23 +87,34 @@ pub trait LottieRenderer {
     fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot)
         -> Result<(), LottieRendererError>;
 
-    fn set_gradient_slot(&mut self, slot_id: &str, slot: GradientSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_gradient_slot(
+        &mut self,
+        slot_id: &str,
+        slot: GradientSlot,
+    ) -> Result<(), LottieRendererError>;
 
     fn set_image_slot(&mut self, slot_id: &str, slot: ImageSlot)
         -> Result<(), LottieRendererError>;
 
-    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot) -> Result<(), LottieRendererError>;
 
-    fn set_scalar_slot(&mut self, slot_id: &str, slot: ScalarSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_scalar_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ScalarSlot,
+    ) -> Result<(), LottieRendererError>;
 
-    fn set_vector_slot(&mut self, slot_id: &str, slot: VectorSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_vector_slot(
+        &mut self,
+        slot_id: &str,
+        slot: VectorSlot,
+    ) -> Result<(), LottieRendererError>;
 
-    fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_position_slot(
+        &mut self,
+        slot_id: &str,
+        slot: PositionSlot,
+    ) -> Result<(), LottieRendererError>;
 
     fn clear_slots(&mut self) -> Result<(), LottieRendererError>;
 
@@ -228,11 +244,12 @@ impl<R: Renderer> LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)
     }
 
-    fn load_animation(&mut self, data: &str) -> Result<R::Animation, LottieRendererError> {
+    fn load_animation(&mut self, data: &CStr) -> Result<R::Animation, LottieRendererError> {
         let mut animation = R::Animation::default();
 
+        let mimetype = CStr::from_bytes_with_nul(b"lottie+json\0").unwrap();
         animation
-            .load_data(data, "lottie+json")
+            .load_data(data, mimetype)
             .map_err(into_lottie::<R>)?;
 
         let (pw, ph) = animation.get_size().map_err(into_lottie::<R>)?;
@@ -328,8 +345,11 @@ impl<R: Renderer> LottieRendererImpl<R> {
         let slots_json = slots::slots_to_json_string(&self.slots)
             .map_err(|_| LottieRendererError::InvalidArgument)?;
 
+        let slots_cstr =
+            CString::new(slots_json).map_err(|_| LottieRendererError::InvalidArgument)?;
+
         self.get_animation_mut()?
-            .set_slots_str(&slots_json)
+            .set_slots_str(&slots_cstr)
             .map_err(into_lottie::<R>)?;
 
         self.updated = true;
@@ -371,7 +391,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn load_data(
         &mut self,
-        data: &str,
+        data: &CStr,
         width: u32,
         height: u32,
     ) -> Result<(), LottieRendererError> {
@@ -547,18 +567,33 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         set_background
     }
 
-    fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Color(slot));
+    fn set_color_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ColorSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Color(slot));
         self.apply_all_slots()
     }
 
-    fn set_gradient_slot(&mut self, slot_id: &str, slot: GradientSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Gradient(slot));
+    fn set_gradient_slot(
+        &mut self,
+        slot_id: &str,
+        slot: GradientSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Gradient(slot));
         self.apply_all_slots()
     }
 
-    fn set_image_slot(&mut self, slot_id: &str, slot: ImageSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Image(slot));
+    fn set_image_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ImageSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Image(slot));
         self.apply_all_slots()
     }
 
@@ -567,25 +602,41 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.apply_all_slots()
     }
 
-    fn set_scalar_slot(&mut self, slot_id: &str, slot: ScalarSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Scalar(slot));
+    fn set_scalar_slot(
+        &mut self,
+        slot_id: &str,
+        slot: ScalarSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Scalar(slot));
         self.apply_all_slots()
     }
 
-    fn set_vector_slot(&mut self, slot_id: &str, slot: VectorSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Vector(slot));
+    fn set_vector_slot(
+        &mut self,
+        slot_id: &str,
+        slot: VectorSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Vector(slot));
         self.apply_all_slots()
     }
 
-    fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot) -> Result<(), LottieRendererError> {
-        self.slots.insert(slot_id.to_string(), SlotType::Position(slot));
+    fn set_position_slot(
+        &mut self,
+        slot_id: &str,
+        slot: PositionSlot,
+    ) -> Result<(), LottieRendererError> {
+        self.slots
+            .insert(slot_id.to_string(), SlotType::Position(slot));
         self.apply_all_slots()
     }
 
     fn clear_slots(&mut self) -> Result<(), LottieRendererError> {
         self.slots.clear();
+        let empty_cstr = CStr::from_bytes_with_nul(b"\0").unwrap();
         self.get_animation_mut()?
-            .set_slots_str("")
+            .set_slots_str(empty_cstr)
             .map_err(into_lottie::<R>)?;
         self.updated = true;
         Ok(())

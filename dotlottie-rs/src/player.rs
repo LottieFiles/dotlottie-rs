@@ -1,4 +1,5 @@
 use crate::time::{Duration, Instant};
+use std::ffi::{CStr, CString};
 use std::{fs, mem};
 
 use crate::poll_events::{DotLottieEvent, EventQueue};
@@ -861,12 +862,15 @@ impl DotLottiePlayer {
         loaded
     }
 
-    pub fn load_animation_data(&mut self, animation_data: &str, width: u32, height: u32) -> bool {
+    pub fn load_animation_data(&mut self, animation_data: &CStr, width: u32, height: u32) -> bool {
         self.dotlottie_manager = None;
         self.active_animation_id.clear();
         self.active_theme_id.clear();
 
-        self.markers = extract_markers(animation_data);
+        // Convert to &str only for marker extraction (JSON parsing)
+        if let Ok(data_str) = animation_data.to_str() {
+            self.markers = extract_markers(data_str);
+        }
 
         let animation_loaded = self.load_animation_common(
             |renderer, w, h| renderer.load_data(animation_data, w, h),
@@ -901,7 +905,10 @@ impl DotLottiePlayer {
         self.active_theme_id.clear();
 
         let load_status = match fs::read_to_string(file_path) {
-            Ok(data) => self.load_animation_data(&data, width, height),
+            Ok(data) => {
+                let cstr = CString::new(data).expect("Failed to create CString");
+                self.load_animation_data(&cstr, width, height)
+            }
             Err(_) => {
                 self.event_queue.push(DotLottieEvent::LoadError);
                 false
@@ -935,8 +942,10 @@ impl DotLottiePlayer {
                     // Returns this result
                     if let Ok(animation_data) = active_animation {
                         self.markers = extract_markers(animation_data.as_str());
+                        let animation_data_cstr =
+                            CString::new(animation_data).expect("Failed to create CString");
                         let animation_loaded = self.load_animation_common(
-                            |renderer, w, h| renderer.load_data(&animation_data, w, h),
+                            |renderer, w, h| renderer.load_data(&animation_data_cstr, w, h),
                             width,
                             height,
                         );
@@ -981,11 +990,15 @@ impl DotLottiePlayer {
             let animation_data = manager.get_animation(animation_id);
 
             let ok = match animation_data {
-                Ok(animation_data) => self.load_animation_common(
-                    |renderer, w, h| renderer.load_data(&animation_data, w, h),
-                    width,
-                    height,
-                ),
+                Ok(animation_data) => {
+                    let animation_data_cstr =
+                        CString::new(animation_data).expect("Failed to create CString");
+                    self.load_animation_common(
+                        |renderer, w, h| renderer.load_data(&animation_data_cstr, w, h),
+                        width,
+                        height,
+                    )
+                }
                 Err(_error) => false,
             };
 

@@ -1722,10 +1722,12 @@ pub unsafe extern "C" fn dotlottie_config_set_marker(
     }
 
     let cfg = &mut *config;
-    if let Ok(marker_str) = DotLottieString::read(marker) {
-        if let Ok(marker_value) = DotLottieString::new(&marker_str) {
-            cfg.marker = marker_value;
-            return DOTLOTTIE_SUCCESS;
+    if let Ok(marker_cstr) = DotLottieString::read(marker) {
+        if let Ok(marker_string) = marker_cstr.into_string() {
+            if let Ok(marker_value) = DotLottieString::new(&marker_string) {
+                cfg.marker = marker_value;
+                return DOTLOTTIE_SUCCESS;
+            }
         }
     }
     DOTLOTTIE_ERROR
@@ -1741,10 +1743,12 @@ pub unsafe extern "C" fn dotlottie_config_set_theme_id(
     }
 
     let cfg = &mut *config;
-    if let Ok(theme_str) = DotLottieString::read(theme_id) {
-        if let Ok(theme_value) = DotLottieString::new(&theme_str) {
-            cfg.theme_id = theme_value;
-            return DOTLOTTIE_SUCCESS;
+    if let Ok(theme_cstr) = DotLottieString::read(theme_id) {
+        if let Ok(theme_string) = theme_cstr.into_string() {
+            if let Ok(theme_value) = DotLottieString::new(&theme_string) {
+                cfg.theme_id = theme_value;
+                return DOTLOTTIE_SUCCESS;
+            }
         }
     }
     DOTLOTTIE_ERROR
@@ -1760,10 +1764,12 @@ pub unsafe extern "C" fn dotlottie_config_set_state_machine_id(
     }
 
     let cfg = &mut *config;
-    if let Ok(sm_str) = DotLottieString::read(state_machine_id) {
-        if let Ok(sm_value) = DotLottieString::new(&sm_str) {
-            cfg.state_machine_id = sm_value;
-            return DOTLOTTIE_SUCCESS;
+    if let Ok(sm_cstr) = DotLottieString::read(state_machine_id) {
+        if let Ok(sm_string) = sm_cstr.into_string() {
+            if let Ok(sm_value) = DotLottieString::new(&sm_string) {
+                cfg.state_machine_id = sm_value;
+                return DOTLOTTIE_SUCCESS;
+            }
         }
     }
     DOTLOTTIE_ERROR
@@ -1779,10 +1785,12 @@ pub unsafe extern "C" fn dotlottie_config_set_animation_id(
     }
 
     let cfg = &mut *config;
-    if let Ok(anim_str) = DotLottieString::read(animation_id) {
-        if let Ok(anim_value) = DotLottieString::new(&anim_str) {
-            cfg.animation_id = anim_value;
-            return DOTLOTTIE_SUCCESS;
+    if let Ok(anim_cstr) = DotLottieString::read(animation_id) {
+        if let Ok(anim_string) = anim_cstr.into_string() {
+            if let Ok(anim_value) = DotLottieString::new(&anim_string) {
+                cfg.animation_id = anim_value;
+                return DOTLOTTIE_SUCCESS;
+            }
         }
     }
     DOTLOTTIE_ERROR

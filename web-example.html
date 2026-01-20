@@ -11,9 +11,8 @@
   <div style="width: 200px">
     <canvas style="width: 100%; height: 100%; border: 1px solid black"></canvas>
   </div>
-  <script src="./release/wasm/dotlottie_player.js"></script>
-  <script>
-    (async () => {
+  <script type="module">
+    import createDotLottiePlayerModule from './release/wasm/dotlottie_player.js';
     const EVENT_SIZE = 12;
     const LAYER_BOUNDS_SIZE = 32; // 8 floats * 4 bytes
 
@@ -424,7 +423,6 @@
     }
 
     animationFrameId = requestAnimationFrame(animationLoop);
-    })();
   </script>
 </body>
 

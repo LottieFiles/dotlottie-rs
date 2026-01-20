@@ -25,8 +25,6 @@ where
 }
 
 // Helper macro for StateMachineEngine operations
-// Note: Using 'static here is safe because we manage the lifetime manually
-// The actual lifetime is tied to the DotLottiePlayer, enforced by Rust's ownership
 macro_rules! exec_state_machine_op {
     ($ptr:expr, |$sm:ident| $body:expr) => {{
         match $ptr.as_mut() {

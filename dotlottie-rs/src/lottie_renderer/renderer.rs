@@ -1,4 +1,5 @@
 use core::error;
+use std::ffi::CStr;
 
 pub enum ColorSpace {
     ABGR8888,
@@ -33,7 +34,7 @@ pub trait Shape: Default {
 pub trait Animation: Default {
     type Error: error::Error;
 
-    fn load_data(&mut self, data: &str, mimetype: &str) -> Result<(), Self::Error>;
+    fn load_data(&mut self, data: &CStr, mimetype: &CStr) -> Result<(), Self::Error>;
 
     fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, Self::Error>;
 
@@ -55,7 +56,7 @@ pub trait Animation: Default {
 
     fn get_frame(&self) -> Result<f32, Self::Error>;
 
-    fn set_slots_str(&mut self, slots: &str) -> Result<(), Self::Error>;
+    fn set_slots_str(&mut self, slots: &CStr) -> Result<(), Self::Error>;
 
     fn set_quality(&mut self, quality: u8) -> Result<(), Self::Error>;
 

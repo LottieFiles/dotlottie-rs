@@ -151,18 +151,11 @@ pub struct DotLottieString {
 }
 
 impl DotLottieString {
-    // Read a C string into a rust string
-    pub unsafe fn read(value: *const c_char) -> Result<String, io::Error> {
+    pub unsafe fn read(value: *const c_char) -> Result<CString, io::Error> {
         if value.is_null() {
             return Err(io::Error::new(io::ErrorKind::InvalidInput, "null pointer"));
         }
-        match CStr::from_ptr(value).to_str() {
-            Ok(s) => Ok(s.to_owned()),
-            Err(_) => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "invalid utf8 sequence",
-            )),
-        }
+        Ok(CStr::from_ptr(value).to_owned())
     }
 
     // Copy a rust string out into a C string
@@ -170,18 +163,31 @@ impl DotLottieString {
         if buffer.is_null() {
             return Err(io::Error::new(io::ErrorKind::InvalidInput, "null buffer"));
         }
-        let native_string = CString::new(value)
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "null pointer"))?;
-        let bytes = native_string.as_bytes_with_nul();
-        if bytes.len() <= size {
-            std::ptr::copy_nonoverlapping(bytes.as_ptr(), buffer as *mut u8, bytes.len());
-            Ok(())
-        } else {
-            Err(io::Error::new(
+
+        let bytes = value.as_bytes();
+
+        // Check for interior null bytes (same check CString::new does)
+        if bytes.contains(&0) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "interior null byte",
+            ));
+        }
+
+        let required_len = bytes.len() + 1; // +1 for null terminator
+        if required_len > size {
+            return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "value too large",
-            ))
+            ));
         }
+
+        // Direct copy - no intermediate allocation
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), buffer as *mut u8, bytes.len());
+        // Add null terminator
+        *buffer.add(bytes.len()) = 0;
+
+        Ok(())
     }
 }
 
@@ -195,9 +201,10 @@ impl Transferable<String> for DotLottieString {
 
 impl fmt::Display for DotLottieString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let value = unsafe {
+        let cstring = unsafe {
             DotLottieString::read(self.value.as_ptr() as *const c_char).map_err(|_| fmt::Error)?
         };
+        let value = cstring.to_str().map_err(|_| fmt::Error)?;
         write!(f, "{value}")
     }
 }
@@ -489,7 +496,10 @@ pub struct DotLottieOpenUrlPolicy {
 
 impl DotLottieOpenUrlPolicy {
     pub unsafe fn to_policy(&self) -> Result<OpenUrlPolicy, io::Error> {
-        let whitelist_str = DotLottieString::read(self.whitelist.value.as_ptr())?;
+        let cstring = DotLottieString::read(self.whitelist.value.as_ptr())?;
+        let whitelist_str = cstring
+            .to_str()
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid utf8 sequence"))?;
         let whitelist = if whitelist_str.is_empty() {
             vec![]
         } else {

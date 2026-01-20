@@ -1,4 +1,5 @@
 use dotlottie_rs::{Config, DotLottiePlayer};
+use std::ffi::CString;
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -101,9 +102,10 @@ mod tests {
         assert!(player.set_theme(valid_theme_id), "Expected theme to load");
         assert_eq!(player.active_theme_id(), valid_theme_id);
 
-        let data =
+        let data_str =
             std::str::from_utf8(include_bytes!("fixtures/test.json")).expect("Invalid data.");
-        assert!(player.load_animation_data(data, WIDTH, HEIGHT));
+        let data = CString::new(data_str).expect("Failed to create CString");
+        assert!(player.load_animation_data(&data, WIDTH, HEIGHT));
         assert!(player.active_theme_id().is_empty());
 
         assert!(player.is_playing());

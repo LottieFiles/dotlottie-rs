@@ -24,17 +24,16 @@ where
     }
 }
 
-// Helper for StateMachineEngine operations
+// Helper macro for StateMachineEngine operations
 // Note: Using 'static here is safe because we manage the lifetime manually
 // The actual lifetime is tied to the DotLottiePlayer, enforced by Rust's ownership
-unsafe fn exec_state_machine_op<Op>(ptr: *mut StateMachineEngine<'static>, op: Op) -> i32
-where
-    Op: Fn(&mut StateMachineEngine<'static>) -> i32,
-{
-    match ptr.as_mut() {
-        Some(state_machine) => op(state_machine),
-        _ => DOTLOTTIE_INVALID_PARAMETER,
-    }
+macro_rules! exec_state_machine_op {
+    ($ptr:expr, |$sm:ident| $body:expr) => {{
+        match $ptr.as_mut() {
+            Some($sm) => $body,
+            _ => DOTLOTTIE_INVALID_PARAMETER,
+        }
+    }};
 }
 
 // Translates rust boolean results into C return codes
@@ -955,7 +954,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_start(
     sm: *mut StateMachineEngine<'static>,
     policy: *const types::DotLottieOpenUrlPolicy,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         let open_url_policy = if policy.is_null() {
             OpenUrlPolicy::default()
         } else {
@@ -975,7 +974,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_start(
 /// and release the runtime borrow.
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_stop(sm: *mut StateMachineEngine<'static>) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         state_machine.stop();
         DOTLOTTIE_SUCCESS
     })
@@ -1000,7 +999,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_release(sm: *mut StateMachineEn
 /// Tick the state machine (advances animation and processes state logic)
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_tick(sm: *mut StateMachineEngine<'static>) -> i32 {
-    exec_state_machine_op(sm, |state_machine| to_exit_status(state_machine.tick()))
+    exec_state_machine_op!(sm, |state_machine| to_exit_status(state_machine.tick()))
 }
 
 /// Post a pointer/click event to the state machine
@@ -1009,7 +1008,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_event(
     sm: *mut StateMachineEngine<'static>,
     event: *const DotLottieEvent,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         if let Some(event) = event.as_ref() {
             state_machine.post_event(&event.to_event());
             DOTLOTTIE_SUCCESS
@@ -1026,7 +1025,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_click(
     x: f32,
     y: f32,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         let event = Event::Click { x, y };
         state_machine.post_event(&event);
         DOTLOTTIE_SUCCESS
@@ -1039,7 +1038,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_down(
     x: f32,
     y: f32,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         let event = Event::PointerDown { x, y };
         state_machine.post_event(&event);
         DOTLOTTIE_SUCCESS
@@ -1052,7 +1051,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_up(
     x: f32,
     y: f32,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         let event = Event::PointerUp { x, y };
         state_machine.post_event(&event);
         DOTLOTTIE_SUCCESS
@@ -1065,7 +1064,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_move(
     x: f32,
     y: f32,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         let event = Event::PointerMove { x, y };
         state_machine.post_event(&event);
         DOTLOTTIE_SUCCESS
@@ -1078,7 +1077,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_enter(
     x: f32,
     y: f32,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         let event = Event::PointerEnter { x, y };
         state_machine.post_event(&event);
         DOTLOTTIE_SUCCESS
@@ -1091,7 +1090,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_exit(
     x: f32,
     y: f32,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         let event = Event::PointerExit { x, y };
         state_machine.post_event(&event);
         DOTLOTTIE_SUCCESS
@@ -1104,7 +1103,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_fire_event(
     sm: *mut StateMachineEngine<'static>,
     event_name: *const c_char,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         if event_name.is_null() {
             return DOTLOTTIE_INVALID_PARAMETER;
         }
@@ -1129,7 +1128,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_input(
     key: *const c_char,
     value: f32,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() {
             return DOTLOTTIE_INVALID_PARAMETER;
         }
@@ -1156,7 +1155,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_string_input(
     key: *const c_char,
     value: *const c_char,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() || value.is_null() {
             return DOTLOTTIE_INVALID_PARAMETER;
         }
@@ -1184,7 +1183,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_input(
     key: *const c_char,
     value: bool,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() {
             return DOTLOTTIE_INVALID_PARAMETER;
         }
@@ -1211,7 +1210,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_numeric_input(
     key: *const c_char,
     result: *mut f32,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() || result.is_null() {
             return DOTLOTTIE_INVALID_PARAMETER;
         }
@@ -1237,7 +1236,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_string_input(
     key: *const c_char,
     result: *mut c_char,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() || result.is_null() {
             return DOTLOTTIE_INVALID_PARAMETER;
         }
@@ -1264,7 +1263,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_boolean_input(
     key: *const c_char,
     result: *mut bool,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() || result.is_null() {
             return DOTLOTTIE_INVALID_PARAMETER;
         }
@@ -1289,7 +1288,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_current_state(
     sm: *mut StateMachineEngine<'static>,
     result: *mut c_char,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         let current_state = state_machine.get_current_state_name();
         to_exit_status(
             DotLottieString::copy(&current_state, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
@@ -1303,7 +1302,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_status(
     sm: *mut StateMachineEngine<'static>,
     result: *mut c_char,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         let status = state_machine.status();
         to_exit_status(DotLottieString::copy(&status, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok())
     })
@@ -1318,7 +1317,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
     sm: *mut StateMachineEngine<'static>,
     result: *mut u16,
 ) -> i32 {
-    exec_state_machine_op(sm, |state_machine| {
+    exec_state_machine_op!(sm, |state_machine| {
         if result.is_null() {
             return DOTLOTTIE_INVALID_PARAMETER;
         }

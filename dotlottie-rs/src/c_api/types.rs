@@ -163,18 +163,31 @@ impl DotLottieString {
         if buffer.is_null() {
             return Err(io::Error::new(io::ErrorKind::InvalidInput, "null buffer"));
         }
-        let native_string = CString::new(value)
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "null pointer"))?;
-        let bytes = native_string.as_bytes_with_nul();
-        if bytes.len() <= size {
-            std::ptr::copy_nonoverlapping(bytes.as_ptr(), buffer as *mut u8, bytes.len());
-            Ok(())
-        } else {
-            Err(io::Error::new(
+
+        let bytes = value.as_bytes();
+
+        // Check for interior null bytes (same check CString::new does)
+        if bytes.contains(&0) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "interior null byte",
+            ));
+        }
+
+        let required_len = bytes.len() + 1; // +1 for null terminator
+        if required_len > size {
+            return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "value too large",
-            ))
+            ));
         }
+
+        // Direct copy - no intermediate allocation
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), buffer as *mut u8, bytes.len());
+        // Add null terminator
+        *buffer.add(bytes.len()) = 0;
+
+        Ok(())
     }
 }
 

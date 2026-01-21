@@ -1299,6 +1299,7 @@ impl DotLottiePlayer {
         if let Some(marker) = markers.iter().find(|m| m.name == marker) {
             self.tween(marker.time, duration, easing);
             self.config.marker = marker.name.clone();
+            self.invalidate_frame_cache();
             true
         } else {
             false

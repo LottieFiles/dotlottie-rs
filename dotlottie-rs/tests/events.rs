@@ -107,8 +107,6 @@ mod tests {
             events.push(event_str.to_string());
         }
 
-        println!("Events: {:?}", events);
-
         for (i, event) in events.iter().enumerate() {
             assert_eq!(
                 event, &expected_events[i],

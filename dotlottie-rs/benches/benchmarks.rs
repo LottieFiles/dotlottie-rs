@@ -1,3 +1,5 @@
+use std::ffi::CString;
+
 use criterion::{criterion_group, criterion_main, Criterion};
 use dotlottie_rs::{Config, DotLottiePlayer};
 
@@ -6,11 +8,12 @@ const HEIGHT: u32 = 1000;
 
 fn load_animation_data_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(Config::default(), 0);
-    let data = std::str::from_utf8(include_bytes!("../tests/fixtures/test.json")).unwrap();
+    let data_str = std::str::from_utf8(include_bytes!("../tests/fixtures/test.json")).unwrap();
 
     c.bench_function("load_animation_data", |b| {
         b.iter(|| {
-            assert!(player.load_animation_data(data, WIDTH, HEIGHT));
+            let data = CString::new(data_str).expect("Failed to create CString");
+            assert!(player.load_animation_data(&data, WIDTH, HEIGHT));
         });
     });
 }

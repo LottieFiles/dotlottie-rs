@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 use bitflags::bitflags;
 use core::fmt;
 use core::str::FromStr;

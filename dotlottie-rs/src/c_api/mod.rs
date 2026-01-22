@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 use std::ffi::{c_char, CStr};
 use std::slice;
 
@@ -163,7 +165,7 @@ pub unsafe extern "C" fn dotlottie_manifest(
 ) -> i32 {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if let Some(manifest) = dotlottie_player.manifest() {
-            DotLottieManifest::transfer(&manifest, result)
+            DotLottieManifest::transfer(manifest, result)
         } else {
             DOTLOTTIE_MANIFEST_NOT_AVAILABLE
         }
@@ -733,7 +735,7 @@ pub unsafe extern "C" fn dotlottie_active_animation_id(
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         let active_animation_id = dotlottie_player.active_animation_id();
         to_exit_status(
-            DotLottieString::copy(&active_animation_id, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
+            DotLottieString::copy(active_animation_id, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
         )
     })
 }
@@ -746,7 +748,7 @@ pub unsafe extern "C" fn dotlottie_active_theme_id(
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         let active_theme_id = dotlottie_player.active_theme_id();
         to_exit_status(
-            DotLottieString::copy(&active_theme_id, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
+            DotLottieString::copy(active_theme_id, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
         )
     })
 }

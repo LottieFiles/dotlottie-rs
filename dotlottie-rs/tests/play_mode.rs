@@ -90,11 +90,8 @@ mod play_mode_tests {
         }
 
         while let Some(event) = player.poll_event() {
-            match event {
-                DotLottieEvent::Loop { loop_count } => {
-                    observed_loops = loop_count;
-                }
-                _ => {}
+            if let DotLottieEvent::Loop { loop_count } = event {
+                observed_loops = loop_count;
             }
         }
 

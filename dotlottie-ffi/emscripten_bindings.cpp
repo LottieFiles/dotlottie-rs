@@ -2,7 +2,7 @@
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
 #ifdef USE_WEBGPU
-#include <emscripten/html5_webgpu.h>
+#include <webgpu/webgpu.h>
 #endif
 #ifdef USE_WEBGL
 #include <emscripten/html5_webgl.h>
@@ -35,82 +35,57 @@ struct ObserverCallbacks
 
 class CallbackObserver : public Observer
 {
-class CallbackObserver : public Observer
-{
 public:
     CallbackObserver() = default;
-    void setOnComplete(val cb)
-    {
-        callbacks_.on_complete = [cb]()
-        { if (cb != val::undefined()) cb(); };
+
     void setOnComplete(val cb)
     {
         callbacks_.on_complete = [cb]()
         { if (cb != val::undefined()) cb(); };
     }
-    void setOnLoad(val cb)
-    {
-        callbacks_.on_load = [cb]()
-        { if (cb != val::undefined()) cb(); };
+
     void setOnLoad(val cb)
     {
         callbacks_.on_load = [cb]()
         { if (cb != val::undefined()) cb(); };
     }
-    void setOnLoadError(val cb)
-    {
-        callbacks_.on_load_error = [cb]()
-        { if (cb != val::undefined()) cb(); };
+
     void setOnLoadError(val cb)
     {
         callbacks_.on_load_error = [cb]()
         { if (cb != val::undefined()) cb(); };
     }
-    void setOnPlay(val cb)
-    {
-        callbacks_.on_play = [cb]()
-        { if (cb != val::undefined()) cb(); };
+
     void setOnPlay(val cb)
     {
         callbacks_.on_play = [cb]()
         { if (cb != val::undefined()) cb(); };
     }
-    void setOnPause(val cb)
-    {
-        callbacks_.on_pause = [cb]()
-        { if (cb != val::undefined()) cb(); };
+
     void setOnPause(val cb)
     {
         callbacks_.on_pause = [cb]()
         { if (cb != val::undefined()) cb(); };
     }
+
     void setOnStop(val cb)
     {
         callbacks_.on_stop = [cb]()
         { if (cb != val::undefined()) cb(); };
     }
-    void setOnFrame(val cb)
-    {
-        callbacks_.on_frame = [cb](float frame_no)
-        { if (cb != val::undefined()) cb(frame_no); };
+
     void setOnFrame(val cb)
     {
         callbacks_.on_frame = [cb](float frame_no)
         { if (cb != val::undefined()) cb(frame_no); };
     }
-    void setOnRender(val cb)
-    {
-        callbacks_.on_render = [cb](float frame_no)
-        { if (cb != val::undefined()) cb(frame_no); };
+
     void setOnRender(val cb)
     {
         callbacks_.on_render = [cb](float frame_no)
         { if (cb != val::undefined()) cb(frame_no); };
     }
-    void setOnLoop(val cb)
-    {
-        callbacks_.on_loop = [cb](uint32_t loop_count)
-        { if (cb != val::undefined()) cb(loop_count); };
+
     void setOnLoop(val cb)
     {
         callbacks_.on_loop = [cb](uint32_t loop_count)
@@ -122,87 +97,49 @@ public:
         if (callbacks_.on_complete)
             callbacks_.on_complete();
     }
+
     void on_load() override
     {
         if (callbacks_.on_load)
             callbacks_.on_load();
-    }
-    void on_load_error() override
-    {
-        if (callbacks_.on_load_error)
-            callbacks_.on_load_error();
-    }
-    void on_play() override
-    {
-        if (callbacks_.on_play)
-            callbacks_.on_play();
-    }
-    void on_pause() override
-    {
-        if (callbacks_.on_pause)
-            callbacks_.on_pause();
-    }
-    void on_stop() override
-    {
-        if (callbacks_.on_stop)
-            callbacks_.on_stop();
-    }
-    void on_frame(float frame_no) override
-    {
-        if (callbacks_.on_frame)
-            callbacks_.on_frame(frame_no);
-    }
-    void on_render(float frame_no) override
-    {
-        if (callbacks_.on_render)
-            callbacks_.on_render(frame_no);
-    }
-    void on_loop(uint32_t loop_count) override
-    {
-        if (callbacks_.on_loop)
-            callbacks_.on_loop(loop_count);
     }
 
-    void on_complete() override
-    {
-        if (callbacks_.on_complete)
-            callbacks_.on_complete();
-    }
-    void on_load() override
-    {
-        if (callbacks_.on_load)
-            callbacks_.on_load();
-    }
     void on_load_error() override
     {
         if (callbacks_.on_load_error)
             callbacks_.on_load_error();
     }
+
     void on_play() override
     {
         if (callbacks_.on_play)
             callbacks_.on_play();
     }
+
     void on_pause() override
     {
         if (callbacks_.on_pause)
             callbacks_.on_pause();
     }
+
     void on_stop() override
     {
         if (callbacks_.on_stop)
             callbacks_.on_stop();
     }
+
     void on_frame(float frame_no) override
     {
         if (callbacks_.on_frame)
             callbacks_.on_frame(frame_no);
     }
+
     void on_render(float frame_no) override
     {
         if (callbacks_.on_render)
             callbacks_.on_render(frame_no);
     }
+
     void on_loop(uint32_t loop_count) override
     {
         if (callbacks_.on_loop)
@@ -213,16 +150,12 @@ private:
     ObserverCallbacks callbacks_;
 };
 
-struct StateMachineInternalObserverCallbacks
-{
-    std::function<void(const std::string &)> on_message;
+
 struct StateMachineInternalObserverCallbacks
 {
     std::function<void(const std::string &)> on_message;
 };
 
-class CallbackStateMachineInternalObserver : public StateMachineInternalObserver
-{
 class CallbackStateMachineInternalObserver : public StateMachineInternalObserver
 {
 public:
@@ -234,19 +167,7 @@ public:
         {
             if (cb != val::undefined())
                 cb(message);
-    void setOnMessage(val cb)
-    {
-        callbacks_.on_message = [cb](const std::string &message)
-        {
-            if (cb != val::undefined())
-                cb(message);
         };
-    }
-
-    void on_message(const std::string &message) override
-    {
-        if (callbacks_.on_message)
-            callbacks_.on_message(message);
     }
 
     void on_message(const std::string &message) override
@@ -261,8 +182,6 @@ private:
 
 struct StateMachineObserverCallbacks
 {
-struct StateMachineObserverCallbacks
-{
     std::function<void()> on_start;
     std::function<void()> on_stop;
     std::function<void(const std::string &, const std::string &)> on_transition;
@@ -274,19 +193,8 @@ struct StateMachineObserverCallbacks
     std::function<void(const std::string &, bool, bool)> on_boolean_input_value_change;
     std::function<void(const std::string &)> on_input_fired;
     std::function<void(const std::string &)> on_error;
-    std::function<void(const std::string &, const std::string &)> on_transition;
-    std::function<void(const std::string &)> on_state_entered;
-    std::function<void(const std::string &)> on_state_exit;
-    std::function<void(const std::string &)> on_custom_event;
-    std::function<void(const std::string &, const std::string &, const std::string &)> on_string_input_value_change;
-    std::function<void(const std::string &, float, float)> on_numeric_input_value_change;
-    std::function<void(const std::string &, bool, bool)> on_boolean_input_value_change;
-    std::function<void(const std::string &)> on_input_fired;
-    std::function<void(const std::string &)> on_error;
 };
 
-class CallbackStateMachineObserver : public StateMachineObserver
-{
 class CallbackStateMachineObserver : public StateMachineObserver
 {
 public:
@@ -296,27 +204,14 @@ public:
     {
         callbacks_.on_start = [cb]()
         { if (cb != val::undefined()) cb(); };
+    }
 
-    void setOnStart(val cb)
-    {
-        callbacks_.on_start = [cb]()
-        { if (cb != val::undefined()) cb(); };
-    }
-    void setOnStop(val cb)
-    {
-        callbacks_.on_stop = [cb]()
-        { if (cb != val::undefined()) cb(); };
     void setOnStop(val cb)
     {
         callbacks_.on_stop = [cb]()
         { if (cb != val::undefined()) cb(); };
     }
-    void setOnTransition(val cb)
-    {
-        callbacks_.on_transition = [cb](const std::string &prev, const std::string &next)
-        {
-            if (cb != val::undefined())
-                cb(prev, next);
+
     void setOnTransition(val cb)
     {
         callbacks_.on_transition = [cb](const std::string &prev, const std::string &next)
@@ -325,12 +220,7 @@ public:
                 cb(prev, next);
         };
     }
-    void setOnStateEntered(val cb)
-    {
-        callbacks_.on_state_entered = [cb](const std::string &state)
-        {
-            if (cb != val::undefined())
-                cb(state);
+
     void setOnStateEntered(val cb)
     {
         callbacks_.on_state_entered = [cb](const std::string &state)
@@ -339,12 +229,7 @@ public:
                 cb(state);
         };
     }
-    void setOnStateExit(val cb)
-    {
-        callbacks_.on_state_exit = [cb](const std::string &state)
-        {
-            if (cb != val::undefined())
-                cb(state);
+
     void setOnStateExit(val cb)
     {
         callbacks_.on_state_exit = [cb](const std::string &state)
@@ -353,12 +238,7 @@ public:
                 cb(state);
         };
     }
-    void setOnCustomEvent(val cb)
-    {
-        callbacks_.on_custom_event = [cb](const std::string &event)
-        {
-            if (cb != val::undefined())
-                cb(event);
+
     void setOnCustomEvent(val cb)
     {
         callbacks_.on_custom_event = [cb](const std::string &event)
@@ -367,12 +247,7 @@ public:
                 cb(event);
         };
     }
-    void setOnStringInputValueChange(val cb)
-    {
-        callbacks_.on_string_input_value_change = [cb](const std::string &input, const std::string &oldv, const std::string &newv)
-        {
-            if (cb != val::undefined())
-                cb(input, oldv, newv);
+
     void setOnStringInputValueChange(val cb)
     {
         callbacks_.on_string_input_value_change = [cb](const std::string &input, const std::string &oldv, const std::string &newv)
@@ -381,12 +256,7 @@ public:
                 cb(input, oldv, newv);
         };
     }
-    void setOnNumericInputValueChange(val cb)
-    {
-        callbacks_.on_numeric_input_value_change = [cb](const std::string &input, float oldv, float newv)
-        {
-            if (cb != val::undefined())
-                cb(input, oldv, newv);
+
     void setOnNumericInputValueChange(val cb)
     {
         callbacks_.on_numeric_input_value_change = [cb](const std::string &input, float oldv, float newv)
@@ -395,12 +265,7 @@ public:
                 cb(input, oldv, newv);
         };
     }
-    void setOnBooleanInputValueChange(val cb)
-    {
-        callbacks_.on_boolean_input_value_change = [cb](const std::string &input, bool oldv, bool newv)
-        {
-            if (cb != val::undefined())
-                cb(input, oldv, newv);
+
     void setOnBooleanInputValueChange(val cb)
     {
         callbacks_.on_boolean_input_value_change = [cb](const std::string &input, bool oldv, bool newv)
@@ -409,12 +274,7 @@ public:
                 cb(input, oldv, newv);
         };
     }
-    void setOnInputFired(val cb)
-    {
-        callbacks_.on_input_fired = [cb](const std::string &input)
-        {
-            if (cb != val::undefined())
-                cb(input);
+
     void setOnInputFired(val cb)
     {
         callbacks_.on_input_fired = [cb](const std::string &input)
@@ -423,12 +283,7 @@ public:
                 cb(input);
         };
     }
-    void setOnError(val cb)
-    {
-        callbacks_.on_error = [cb](const std::string &err)
-        {
-            if (cb != val::undefined())
-                cb(err);
+
     void setOnError(val cb)
     {
         callbacks_.on_error = [cb](const std::string &err)
@@ -443,107 +298,61 @@ public:
         if (callbacks_.on_start)
             callbacks_.on_start();
     }
+
     void on_stop() override
     {
         if (callbacks_.on_stop)
             callbacks_.on_stop();
-    }
-    void on_transition(const std::string &prev, const std::string &next) override
-    {
-        if (callbacks_.on_transition)
-            callbacks_.on_transition(prev, next);
-    }
-    void on_state_entered(const std::string &state) override
-    {
-        if (callbacks_.on_state_entered)
-            callbacks_.on_state_entered(state);
-    }
-    void on_state_exit(const std::string &state) override
-    {
-        if (callbacks_.on_state_exit)
-            callbacks_.on_state_exit(state);
-    }
-    void on_custom_event(const std::string &event) override
-    {
-        if (callbacks_.on_custom_event)
-            callbacks_.on_custom_event(event);
-    }
-    void on_string_input_value_change(const std::string &input, const std::string &oldv, const std::string &newv) override
-    {
-        if (callbacks_.on_string_input_value_change)
-            callbacks_.on_string_input_value_change(input, oldv, newv);
-    }
-    void on_numeric_input_value_change(const std::string &input, float oldv, float newv) override
-    {
-        if (callbacks_.on_numeric_input_value_change)
-            callbacks_.on_numeric_input_value_change(input, oldv, newv);
-    }
-    void on_boolean_input_value_change(const std::string &input, bool oldv, bool newv) override
-    {
-        if (callbacks_.on_boolean_input_value_change)
-            callbacks_.on_boolean_input_value_change(input, oldv, newv);
-    }
-    void on_input_fired(const std::string &input) override
-    {
-        if (callbacks_.on_input_fired)
-            callbacks_.on_input_fired(input);
-    }
-    void on_error(const std::string &err) override
-    {
-        if (callbacks_.on_error)
-            callbacks_.on_error(err);
     }
 
-    void on_start() override
-    {
-        if (callbacks_.on_start)
-            callbacks_.on_start();
-    }
-    void on_stop() override
-    {
-        if (callbacks_.on_stop)
-            callbacks_.on_stop();
-    }
     void on_transition(const std::string &prev, const std::string &next) override
     {
         if (callbacks_.on_transition)
             callbacks_.on_transition(prev, next);
     }
+
     void on_state_entered(const std::string &state) override
     {
         if (callbacks_.on_state_entered)
             callbacks_.on_state_entered(state);
     }
+
     void on_state_exit(const std::string &state) override
     {
         if (callbacks_.on_state_exit)
             callbacks_.on_state_exit(state);
     }
+
     void on_custom_event(const std::string &event) override
     {
         if (callbacks_.on_custom_event)
             callbacks_.on_custom_event(event);
     }
+
     void on_string_input_value_change(const std::string &input, const std::string &oldv, const std::string &newv) override
     {
         if (callbacks_.on_string_input_value_change)
             callbacks_.on_string_input_value_change(input, oldv, newv);
     }
+
     void on_numeric_input_value_change(const std::string &input, float oldv, float newv) override
     {
         if (callbacks_.on_numeric_input_value_change)
             callbacks_.on_numeric_input_value_change(input, oldv, newv);
     }
+
     void on_boolean_input_value_change(const std::string &input, bool oldv, bool newv) override
     {
         if (callbacks_.on_boolean_input_value_change)
             callbacks_.on_boolean_input_value_change(input, oldv, newv);
     }
+
     void on_input_fired(const std::string &input) override
     {
         if (callbacks_.on_input_fired)
             callbacks_.on_input_fired(input);
     }
+
     void on_error(const std::string &err) override
     {
         if (callbacks_.on_error)
@@ -555,10 +364,8 @@ private:
 };
 
 std::shared_ptr<Observer> subscribe(DotLottiePlayer &player, Observer *observer)
-std::shared_ptr<Observer> subscribe(DotLottiePlayer &player, Observer *observer)
 {
     // Create shared_ptr from raw pointer (without taking ownership)
-    std::shared_ptr<Observer> shared_observer(observer, [](Observer *) {});
     std::shared_ptr<Observer> shared_observer(observer, [](Observer *) {});
     player.subscribe(shared_observer);
     return shared_observer;
@@ -570,10 +377,8 @@ void unsubscribe(DotLottiePlayer &player, std::shared_ptr<Observer> observer)
 }
 
 std::shared_ptr<StateMachineObserver> stateMachineSubscribe(DotLottiePlayer &player, StateMachineObserver *observer)
-std::shared_ptr<StateMachineObserver> stateMachineSubscribe(DotLottiePlayer &player, StateMachineObserver *observer)
 {
     // Create shared_ptr from raw pointer (without taking ownership)
-    std::shared_ptr<StateMachineObserver> shared_observer(observer, [](StateMachineObserver *) {});
     std::shared_ptr<StateMachineObserver> shared_observer(observer, [](StateMachineObserver *) {});
     player.state_machine_subscribe(shared_observer);
     return shared_observer;
@@ -585,10 +390,8 @@ void stateMachineUnsubscribe(DotLottiePlayer &player, std::shared_ptr<StateMachi
 }
 
 std::shared_ptr<StateMachineInternalObserver> stateMachineInternalSubscribe(DotLottiePlayer &player, StateMachineInternalObserver *observer)
-std::shared_ptr<StateMachineInternalObserver> stateMachineInternalSubscribe(DotLottiePlayer &player, StateMachineInternalObserver *observer)
 {
     // Create shared_ptr from raw pointer (without taking ownership)
-    std::shared_ptr<StateMachineInternalObserver> shared_observer(observer, [](StateMachineInternalObserver *) {});
     std::shared_ptr<StateMachineInternalObserver> shared_observer(observer, [](StateMachineInternalObserver *) {});
     player.state_machine_internal_subscribe(shared_observer);
     return shared_observer;
@@ -600,59 +403,218 @@ void stateMachineInternalUnsubscribe(DotLottiePlayer &player, std::shared_ptr<St
 }
 
 #ifdef USE_WEBGPU
-static WGPUDevice g_webgpu_device = nullptr;
-static WGPUInstance g_webgpu_instance = nullptr;
+#include <emscripten.h>
 
-uintptr_t webgpu_get_device()
-{
-    if (!g_webgpu_device)
-    {
-        g_webgpu_device = emscripten_webgpu_get_device();
-    }
-    return reinterpret_cast<uintptr_t>(g_webgpu_device);
-}
+  static WGPUDevice g_webgpu_device = nullptr;
+  static WGPUInstance g_webgpu_instance = nullptr;
+  static WGPUAdapter g_webgpu_adapter = nullptr;
+  static bool g_adapter_requested = false;
+  static bool g_device_requested = false;
+  static bool g_initialization_failed = false;
 
-uintptr_t webgpu_get_instance()
-{
-    if (!g_webgpu_instance)
-    {
-        g_webgpu_instance = wgpuCreateInstance(nullptr);
-    }
-    return reinterpret_cast<uintptr_t>(g_webgpu_instance);
-}
+  // Adapter generation function with async callback handling
+  int webgpu_request_adapter()
+  {
+      if (g_initialization_failed) return 1;
 
-uintptr_t webgpu_get_surface(const std::string &canvas_selector)
-{
-    if (!g_webgpu_instance)
-    {
-        webgpu_get_instance();
-    }
+      // Ensure instance exists
+      if (!g_webgpu_instance) {
+          g_webgpu_instance = wgpuCreateInstance(nullptr);
+          printf("[WASM] wgpuCreateInstance() returned: %p\n", (void*)g_webgpu_instance);
+          if (!g_webgpu_instance) {
+              g_initialization_failed = true;
+              return 1;
+          }
+      }
 
-    WGPUSurfaceDescriptorFromCanvasHTMLSelector canvasDesc{};
-    canvasDesc.chain.next = nullptr;
-    canvasDesc.chain.sType = WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector;
-    canvasDesc.selector = canvas_selector.c_str();
+      // Request adapter if not already requested
+      if (!g_webgpu_adapter) {
+          if (g_adapter_requested) return 2; // Already in progress
 
-    WGPUSurfaceDescriptor surfaceDesc{};
-    surfaceDesc.nextInChain = &canvasDesc.chain;
+          auto onAdapterRequestEnded = [](WGPURequestAdapterStatus status, WGPUAdapter adapter,
+                                         WGPUStringView message, WGPU_NULLABLE void* userdata1,
+                                         WGPU_NULLABLE void* userdata2) {
+              if (status != WGPURequestAdapterStatus_Success) {
+                  printf("[WASM] Adapter request failed: %.*s\n", (int)message.length, message.data);
+                  g_initialization_failed = true;
+                  return;
+              }
+              *((WGPUAdapter*)userdata1) = adapter;
+              printf("[WASM] Adapter request succeeded: %p\n", (void*)adapter);
+          };
 
-    WGPUSurface nativeSurface =
-        wgpuInstanceCreateSurface(g_webgpu_instance, &surfaceDesc);
+          const WGPURequestAdapterOptions requestAdapterOptions{
+              .powerPreference = WGPUPowerPreference_HighPerformance
+          };
+          const WGPURequestAdapterCallbackInfo requestAdapterCallback{
+              .mode = WGPUCallbackMode_AllowSpontaneous,
+              .callback = onAdapterRequestEnded,
+              .userdata1 = &g_webgpu_adapter
+          };
+          wgpuInstanceRequestAdapter(g_webgpu_instance, &requestAdapterOptions, requestAdapterCallback);
 
-    return reinterpret_cast<uintptr_t>(nativeSurface);
-}
+          g_adapter_requested = true;
+          printf("[WASM] Adapter request initiated\n");
+          return 2; // In progress
+      }
 
-void wgpu_instance_release(uintptr_t instance)
-{
+      return 0; // Success
+  }
 
-    wgpuInstanceRelease(reinterpret_cast<WGPUInstance>(instance));
-}
+  int webgpu_request_device()
+  {
+      if (g_initialization_failed) return 1;
 
-void wgpu_device_release(uintptr_t device)
-{
+      // Ensure adapter exists first
+      int adapter_status = webgpu_request_adapter();
+      if (adapter_status != 0) return adapter_status;
 
-    wgpuDeviceRelease(reinterpret_cast<WGPUDevice>(device));
-}
+      // Request device if not already requested
+      if (g_device_requested) return g_webgpu_device == nullptr ? 2 : 0;
+
+      if (!g_webgpu_device) {
+          auto onDeviceError = [](WGPUDevice const * device, WGPUErrorType type,
+                                 WGPUStringView message, void* userdata1, void* userdata2) {
+              printf("[WASM] Device error: type=%d, message=%.*s\n", type, (int)message.length, message.data);
+          };
+
+          auto onDeviceRequestEnded = [](WGPURequestDeviceStatus status, WGPUDevice device,
+                                        WGPUStringView message, void* userdata1, void* userdata2) {
+              if (status != WGPURequestDeviceStatus_Success) {
+                  printf("[WASM] Device request failed: %.*s\n", (int)message.length, message.data);
+                  g_initialization_failed = true;
+                  return;
+              }
+              *((WGPUDevice*)userdata1) = device;
+              printf("[WASM] Device request succeeded: %p\n", (void*)device);
+          };
+
+          const WGPUDeviceDescriptor deviceDesc {
+              .label = { "DotLottie Device", WGPU_STRLEN },
+              .uncapturedErrorCallbackInfo = { .callback = onDeviceError }
+          };
+          const WGPURequestDeviceCallbackInfo requestDeviceCallback {
+              .mode = WGPUCallbackMode_AllowSpontaneous,
+              .callback = onDeviceRequestEnded,
+              .userdata1 = &g_webgpu_device
+          };
+          wgpuAdapterRequestDevice(g_webgpu_adapter, &deviceDesc, requestDeviceCallback);
+
+          g_device_requested = true;
+          printf("[WASM] Device request initiated\n");
+          return 2; // In progress
+      }
+
+      return 0; // Success
+  }
+
+  uintptr_t webgpu_get_adapter()
+  {
+      webgpu_request_adapter();
+      printf("[WASM] webgpu_get_adapter() returned: %p\n", (void*)g_webgpu_adapter);
+      return reinterpret_cast<uintptr_t>(g_webgpu_adapter);
+  }
+
+  uintptr_t webgpu_get_device()
+  {
+      // Try to request device through adapter
+      webgpu_request_device();
+
+      // Fall back to emscripten's device if our request hasn't completed
+      if (!g_webgpu_device) {
+          WGPUDevice device = emscripten_webgpu_get_device();
+          printf("[WASM] emscripten_webgpu_get_device() returned: %p\n", (void*)device);
+          return reinterpret_cast<uintptr_t>(device);
+      }
+
+      printf("[WASM] webgpu_get_device() returned: %p\n", (void*)g_webgpu_device);
+      return reinterpret_cast<uintptr_t>(g_webgpu_device);
+  }
+
+  uintptr_t webgpu_get_instance()
+  {
+      if (!g_webgpu_instance) {
+          g_webgpu_instance = wgpuCreateInstance(nullptr);
+          printf("[WASM] wgpuCreateInstance() returned: %p\n", (void*)g_webgpu_instance);
+      }
+      return reinterpret_cast<uintptr_t>(g_webgpu_instance);
+  }
+
+  uintptr_t webgpu_get_surface(const std::string &canvas_selector)
+  {
+      printf("[WASM] Creating surface for canvas selector: %s\n", canvas_selector.c_str());
+
+      // Ensure instance exists (also ensures adapter is requested)
+      if (!g_webgpu_instance) {
+          webgpu_get_instance();
+      }
+
+      // Request adapter to ensure initialization pipeline starts
+      webgpu_request_adapter();
+
+      // Create surface using Dawn's Emscripten-specific API
+      WGPUEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc{};
+      canvasDesc.chain.next = nullptr;
+      canvasDesc.chain.sType = WGPUSType_EmscriptenSurfaceSourceCanvasHTMLSelector;
+      canvasDesc.selector.data = canvas_selector.c_str();
+      canvasDesc.selector.length = WGPU_STRLEN;
+
+      WGPUSurfaceDescriptor surfaceDesc{};
+      surfaceDesc.nextInChain = &canvasDesc.chain;
+
+      WGPUSurface surface = wgpuInstanceCreateSurface(g_webgpu_instance, &surfaceDesc);
+
+      printf("[WASM] Created surface: %p\n", (void*)surface);
+      return reinterpret_cast<uintptr_t>(surface);
+  }
+
+  void webgpu_cleanup()
+  {
+      if (g_webgpu_device) {
+          wgpuDeviceRelease(g_webgpu_device);
+          g_webgpu_device = nullptr;
+      }
+      if (g_webgpu_adapter) {
+          wgpuAdapterRelease(g_webgpu_adapter);
+          g_webgpu_adapter = nullptr;
+      }
+      if (g_webgpu_instance) {
+          wgpuInstanceRelease(g_webgpu_instance);
+          g_webgpu_instance = nullptr;
+      }
+      g_adapter_requested = false;
+      g_device_requested = false;
+      g_initialization_failed = false;
+      printf("[WASM] WebGPU cleanup completed\n");
+  }
+
+  void wgpu_instance_release(uintptr_t instance)
+  {
+      if (instance) {
+          wgpuInstanceRelease(reinterpret_cast<WGPUInstance>(instance));
+      }
+  }
+
+  void wgpu_adapter_release(uintptr_t adapter)
+  {
+      if (adapter) {
+          wgpuAdapterRelease(reinterpret_cast<WGPUAdapter>(adapter));
+      }
+  }
+
+  void wgpu_device_release(uintptr_t device)
+  {
+      if (device) {
+          wgpuDeviceRelease(reinterpret_cast<WGPUDevice>(device));
+      }
+  }
+
+  void wgpu_surface_release(uintptr_t surface)
+  {
+      if (surface) {
+          wgpuSurfaceRelease(reinterpret_cast<WGPUSurface>(surface));
+      }
+  }
 #endif
 
 #ifdef USE_WEBGL
@@ -706,15 +668,11 @@ EMSCRIPTEN_BINDINGS(observer_callbacks)
 
 EMSCRIPTEN_BINDINGS(state_machine_internal_observer_callbacks)
 {
-EMSCRIPTEN_BINDINGS(state_machine_internal_observer_callbacks)
-{
     class_<CallbackStateMachineInternalObserver, base<StateMachineInternalObserver>>("CallbackStateMachineInternalObserver")
         .constructor<>()
         .function("setOnMessage", &CallbackStateMachineInternalObserver::setOnMessage);
 }
 
-EMSCRIPTEN_BINDINGS(state_machine_observer_callbacks)
-{
 EMSCRIPTEN_BINDINGS(state_machine_observer_callbacks)
 {
     class_<CallbackStateMachineObserver, base<StateMachineObserver>>("CallbackStateMachineObserver")
@@ -738,7 +696,6 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     register_vector<std::string>("VectorString");
     register_vector<Marker>("VectorMarker");
     register_vector<char>("VectorChar");
-
 
     register_optional<std::vector<float>>();
     register_optional<std::string>();
@@ -808,9 +765,15 @@ EMSCRIPTEN_BINDINGS(DotLottiePlayer)
     // WebGPU helper functions
     function("webgpu_get_device", &webgpu_get_device, allow_raw_pointers());
     function("webgpu_get_instance", &webgpu_get_instance, allow_raw_pointers());
+    function("webgpu_get_adapter", &webgpu_get_adapter, allow_raw_pointers());
     function("webgpu_get_surface", &webgpu_get_surface, allow_raw_pointers());
+    function("webgpu_request_adapter", &webgpu_request_adapter);
+    function("webgpu_request_device", &webgpu_request_device);
+    function("webgpu_cleanup", &webgpu_cleanup);
     function("wgpu_instance_release", &wgpu_instance_release, allow_raw_pointers());
+    function("wgpu_adapter_release", &wgpu_adapter_release, allow_raw_pointers());
     function("wgpu_device_release", &wgpu_device_release, allow_raw_pointers());
+    function("wgpu_surface_release", &wgpu_surface_release, allow_raw_pointers());
 #endif
 
 #ifdef USE_WEBGL

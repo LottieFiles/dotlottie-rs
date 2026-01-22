@@ -138,6 +138,26 @@ enum ColorSpace {
     "ARGB8888S",
 };
 
+[Error]
+enum DotLottieError {
+    "WebGpuContextCreationFailed",
+};
+
+// WebGPU Context Helper for iOS/macOS
+// Simplifies WebGPU setup by handling all the complexity internally
+// Only available on macOS/iOS with tvg-wg feature
+interface WgpuContext {
+    // Create a new WebGPU context from a Metal layer
+    // metal_layer_ptr: Pointer to CAMetalLayer (as u64)
+    // Returns: WgpuContext or throws error
+    [Throws=DotLottieError, Name=from_metal_layer]
+    constructor(u64 metal_layer_ptr);
+
+    // Get device, instance, and surface pointers for passing to set_wg_target
+    // Returns: [device, instance, surface] as sequence of u64
+    sequence<u64> get_pointers();
+};
+
 interface DotLottiePlayer {
     constructor(Config config);
 

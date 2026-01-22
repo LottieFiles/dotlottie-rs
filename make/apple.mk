@@ -6,8 +6,17 @@ MIN_VISIONOS_VERSION ?= 1.0
 MIN_MACCATALYST_VERSION ?= 13.1
 
 # Default Rust features for Apple builds
-FEATURES ?= tvg-sw,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-DEFAULT_FEATURES = tvg-v1,uniffi
+# FEATURES ?= tvg-sw,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+# DEFAULT_FEATURES = tvg,uniffi
+
+# FEATURES ?= tvg-sw,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+# DEFAULT_FEATURES = tvg,uniffi
+
+APPLE_FEATURES ?= tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+APPLE_DEFAULT_FEATURES = tvg,tvg-sw,uniffi
+ifdef FEATURES
+	APPLE_FEATURES = $(FEATURES)
+endif
 
 # UniFFI Bindings
 BINDINGS_DIR ?= dotlottie-ffi/uniffi-bindings

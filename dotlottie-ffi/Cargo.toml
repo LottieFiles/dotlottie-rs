@@ -41,6 +41,7 @@ uniffi = { version = "0.28", features = ["cli"] }
 dotlottie-rs = { path = "../dotlottie-rs" }
 cfg-if = "1.0"
 bitflags = "2.6.0"
+thiserror = "1.0"
 
 [build-dependencies]
 uniffi = { version = "0.28", features = ["build"] }

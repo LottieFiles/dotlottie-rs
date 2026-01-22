@@ -22,7 +22,7 @@ MIN_NDK_VERSION = 28
 
 # Default Rust features for Android builds
 FEATURES ?= tvg-sw,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-DEFAULT_FEATURES = tvg-v1,uniffi
+DEFAULT_FEATURES = tvg,uniffi
 
 # UniFFI Bindings
 BINDINGS_DIR ?= dotlottie-ffi/uniffi-bindings

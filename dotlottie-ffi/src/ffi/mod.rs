@@ -923,3 +923,57 @@ pub unsafe extern "C" fn dotlottie_register_font(
         DOTLOTTIE_INVALID_PARAMETER
     }
 }
+
+// WebGPU Context Helper API for iOS/macOS
+// These functions simplify WebGPU setup by handling all the complexity internally
+
+#[cfg(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios")))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_wgpu_context_new(
+    metal_layer: *mut std::ffi::c_void,
+) -> *mut dotlottie_rs::WgpuContext {
+    if metal_layer.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    match dotlottie_rs::WgpuContext::new_from_metal_layer(metal_layer) {
+        Ok(context) => Box::into_raw(Box::new(context)),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[cfg(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios")))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_wgpu_context_get_pointers(
+    ptr: *const dotlottie_rs::WgpuContext,
+    device: *mut u64,
+    instance: *mut u64,
+    surface: *mut u64,
+) -> i32 {
+    if ptr.is_null() || device.is_null() || instance.is_null() || surface.is_null() {
+        return DOTLOTTIE_INVALID_PARAMETER;
+    }
+
+    if let Some(context) = ptr.as_ref() {
+        let (dev, inst, surf) = context.as_pointers();
+        *device = dev;
+        *instance = inst;
+        *surface = surf;
+        DOTLOTTIE_SUCCESS
+    } else {
+        DOTLOTTIE_INVALID_PARAMETER
+    }
+}
+
+#[cfg(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios")))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_wgpu_context_destroy(
+    ptr: *mut dotlottie_rs::WgpuContext,
+) -> i32 {
+    if ptr.is_null() {
+        return DOTLOTTIE_INVALID_PARAMETER;
+    }
+
+    std::mem::drop(Box::from_raw(ptr));
+    DOTLOTTIE_SUCCESS
+}

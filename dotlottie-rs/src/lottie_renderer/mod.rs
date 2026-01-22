@@ -459,14 +459,24 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn render(&mut self) -> Result<(), LottieRendererError> {
         if self.updated {
-            self.renderer.update().map_err(into_lottie::<R>)?;
-            self.renderer.draw(true).map_err(into_lottie::<R>)?;
-            self.renderer.sync().map_err(into_lottie::<R>)?;
+            if let Err(e) = self.renderer.update().map_err(into_lottie::<R>) {
+                println!("[LottieRenderer] render() -> update() failed: {:?}", e);
+                return Err(e);
+            }
+            if let Err(e) = self.renderer.draw(true).map_err(into_lottie::<R>) {
+                println!("[LottieRenderer] render() -> draw(true) failed: {:?}", e);
+                return Err(e);
+            }
+            if let Err(e) = self.renderer.sync().map_err(into_lottie::<R>) {
+                println!("[LottieRenderer] render() -> sync() failed: {:?}", e);
+                return Err(e);
+            }
             self.updated = false;
 
             return Ok(());
         }
 
+        println!("[LottieRenderer] render() called but nothing updated");
         Err(LottieRendererError::RendererError)
     }
 

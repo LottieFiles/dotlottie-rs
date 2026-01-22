@@ -52,6 +52,9 @@ mod thorvg {
     }
 
     pub fn build() -> std::io::Result<()> {
+        eprintln!("cargo:warning=tvg-wg enabled: {}", cfg!(feature = "tvg-wg"));
+        eprintln!("cargo:warning=tvg-gl enabled: {}", cfg!(feature = "tvg-gl"));
+        eprintln!("cargo:warning=tvg-sw enabled: {}", cfg!(feature = "tvg-sw"));
         let target_triple = env::var("TARGET").unwrap_or_default();
 
         get_cpp_standard_library()
@@ -104,9 +107,49 @@ mod thorvg {
             }
         }
 
-        if cfg!(feature = "tvg-wg") {
+        // Check if tvg-wg should be enabled for this target
+        // Only enable if feature is on AND we have wgpu binaries for the target OR it's Emscripten
+        let tvg_wg_requested = cfg!(feature = "tvg-wg");
+
+        let tvg_wg_enabled = if tvg_wg_requested {
+            let target = env::var("TARGET").unwrap_or_default();
+
+            // Enable for Emscripten (uses browser WebGPU, no wgpu-native needed)
+            if target == "wasm32-unknown-emscripten" {
+                eprintln!("cargo:warning=Enabling WebGPU for Emscripten target");
+                true
+            } else {
+                // Native targets need wgpu-native binaries
+                matches!(
+                    target.as_str(),
+                    "aarch64-apple-darwin"
+                        | "x86_64-apple-darwin"
+                        | "aarch64-apple-ios"
+                        | "aarch64-apple-ios-sim"
+                        | "x86_64-apple-ios"
+                )
+            }
+        } else {
+            false
+        };
+
+        if tvg_wg_enabled {
             writeln!(thorvg_config_h, "#define THORVG_WG_RASTER_SUPPORT")?;
             src.push("deps/thorvg/src/renderer/wg_engine");
+
+            let target = env::var("TARGET").unwrap_or_default();
+
+            if target != "wasm32-unknown-emscripten" {
+                println!("cargo:rustc-cfg=has_wgpu_binaries");
+            } else {
+                eprintln!("cargo:warning=Using Emscripten WebGPU (browser-based, no wgpu-native)");
+            }
+        } else if tvg_wg_requested {
+            eprintln!(
+                "cargo:warning=tvg-wg requested but target {} doesn't have wgpu binaries",
+                target_triple
+            );
+            eprintln!("cargo:warning=Building without WebGPU support");
         }
 
         if cfg!(feature = "tvg-jpg") {
@@ -180,6 +223,14 @@ mod thorvg {
         }
 
         thorvg_config_h.flush()?;
+        eprintln!(
+            "cargo:warning=config.h path: {}",
+            out_dir.join("config.h").display()
+        );
+        eprintln!(
+            "cargo:warning=config.h exists: {}",
+            out_dir.join("config.h").exists()
+        );
 
         let compiler = env::var("CXX").unwrap_or("clang++".to_string());
 
@@ -197,6 +248,18 @@ mod thorvg {
             )
             .warnings(false);
 
+        // Add wgpu headers for type definitions on Emscripten (no linking)
+        if tvg_wg_enabled && target_triple == "wasm32-unknown-emscripten" {
+            // Use any wgpu include dir - they all have the same webgpu.h with type definitions
+            let wgpu_include = PathBuf::from("deps/wgpu/wgpu-macos-aarch64-release/include");
+            if wgpu_include.exists() {
+                cc_build.include(&wgpu_include);
+                eprintln!(
+                    "cargo:warning=Using wgpu-native headers for type definitions (Emscripten)"
+                );
+            }
+        }
+
         for flag in simd_flags {
             cc_build.flag(flag);
         }
@@ -208,6 +271,125 @@ mod thorvg {
                 println!("cargo:rustc-link-lib=pthread");
             }
         }
+
+        // Add wgpu_native include path and linking if tvg-wg is enabled (native targets only)
+        if tvg_wg_enabled {
+            let target = env::var("TARGET").unwrap_or_default();
+
+            // Emscripten uses browser WebGPU - skip wgpu-native linking entirely
+            if target != "wasm32-unknown-emscripten" {
+                // Map target triple to wgpu library directory
+                // Only support targets with matching wgpu-native binaries
+                let wgpu_arch_dir = match target.as_str() {
+                    "aarch64-apple-darwin" => Some("wgpu-macos-aarch64-release"),
+                    "x86_64-apple-darwin" => Some("wgpu-macos-x86_64-release"),
+                    "aarch64-apple-ios" => Some("wgpu-ios-aarch64-release"),
+                    "aarch64-apple-ios-sim" => Some("wgpu-ios-aarch64-simulator-release"),
+                    "x86_64-apple-ios" => Some("wgpu-ios-x86_64-simulator-release"),
+                    // Mac Catalyst, tvOS, visionOS need their own wgpu builds
+                    // Skipping wgpu for these targets until specific builds are available
+                    _ => {
+                        eprintln!(
+                            "cargo:warning=Target {} doesn't have matching wgpu-native binaries",
+                            target
+                        );
+                        eprintln!("cargo:warning=Skipping wgpu linking. WebGPU features will not be available for this target");
+                        eprintln!("cargo:warning=Supported targets: macOS (x86_64, aarch64), iOS device (aarch64), iOS simulator (x86_64, aarch64)");
+                        None
+                    }
+                };
+
+                if let Some(wgpu_arch_dir) = wgpu_arch_dir {
+                    // Use architecture-specific path to wgpu-native in deps/wgpu
+                    let wgpu_base_path = PathBuf::from("deps/wgpu").join(wgpu_arch_dir);
+                    let wgpu_lib_path = wgpu_base_path.join("lib");
+                    let wgpu_include_path = wgpu_base_path.join("include");
+
+                    // Add include path if it exists
+                    if wgpu_include_path.exists() {
+                        cc_build.include(&wgpu_include_path);
+                        eprintln!(
+                            "cargo:warning=Added WGPU include path: {}",
+                            wgpu_include_path.display()
+                        );
+                    }
+
+                    // Try static library first, then dynamic
+                    let static_lib = wgpu_lib_path.join("libwgpu_native.a");
+                    let dynamic_lib = wgpu_lib_path.join("libwgpu_native.dylib");
+
+                    if static_lib.exists() {
+                        // Link static library
+                        // We need to tell cargo where to find it and to link it statically
+                        let abs_lib_path = wgpu_lib_path
+                            .canonicalize()
+                            .expect("Failed to canonicalize wgpu lib path");
+
+                        println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
+                        println!("cargo:rustc-link-lib=static=wgpu_native");
+
+                        eprintln!(
+                            "cargo:warning=Linking wgpu_native statically from: {}",
+                            static_lib.display()
+                        );
+
+                        // Link required system frameworks for wgpu-native
+                        // Note: Must check TARGET env var, not cfg!, for cross-compilation
+                        println!("cargo:rustc-link-lib=framework=Metal");
+                        println!("cargo:rustc-link-lib=framework=QuartzCore");
+                        println!("cargo:rustc-link-lib=framework=Foundation");
+                        if target.contains("-darwin") && !target.contains("macabi") {
+                            // macOS (but not Mac Catalyst)
+                            println!("cargo:rustc-link-lib=framework=AppKit");
+                        } else if target.contains("ios")
+                            || target.contains("tvos")
+                            || target.contains("visionos")
+                            || target.contains("macabi")
+                        {
+                            // iOS, tvOS, visionOS, or Mac Catalyst
+                            println!("cargo:rustc-link-lib=framework=UIKit");
+                        }
+                    } else if dynamic_lib.exists() {
+                        // Link dynamic library and set rpath
+                        let abs_lib_path = wgpu_lib_path
+                            .canonicalize()
+                            .expect("Failed to canonicalize wgpu lib path");
+                        println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
+                        println!("cargo:rustc-link-lib=dylib=wgpu_native");
+                        println!("cargo:rustc-link-arg=-Wl,-rpath,{}", abs_lib_path.display());
+                        eprintln!(
+                            "cargo:warning=Linking wgpu_native dynamically from: {}",
+                            abs_lib_path.display()
+                        );
+
+                        // Also link required system frameworks for wgpu-native
+                        // Note: Must check TARGET env var, not cfg!, for cross-compilation
+                        println!("cargo:rustc-link-lib=framework=Metal");
+                        println!("cargo:rustc-link-lib=framework=QuartzCore");
+                        println!("cargo:rustc-link-lib=framework=Foundation");
+                        if target.contains("-darwin") && !target.contains("macabi") {
+                            // macOS (but not Mac Catalyst)
+                            println!("cargo:rustc-link-lib=framework=AppKit");
+                        } else if target.contains("ios")
+                            || target.contains("tvos")
+                            || target.contains("visionos")
+                            || target.contains("macabi")
+                        {
+                            // iOS, tvOS, visionOS, or Mac Catalyst
+                            println!("cargo:rustc-link-lib=framework=UIKit");
+                        }
+                    } else {
+                        eprintln!(
+                            "cargo:warning=WGPU library not found at: {} or {}\n\
+                             Make sure to place wgpu-native binaries in deps/wgpu/{}/lib/",
+                            static_lib.display(),
+                            dynamic_lib.display(),
+                            wgpu_arch_dir
+                        );
+                    }
+                } // end if let Some(wgpu_arch_dir)
+            } // end if target != "wasm32-unknown-emscripten"
+        } // end if tvg_wg_enabled
 
         cc_build.compile("thorvg");
 

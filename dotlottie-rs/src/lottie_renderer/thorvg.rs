@@ -126,15 +126,18 @@ impl TvgRenderer {
     }
 
     pub fn create_wg_canvas(&mut self) -> Result<(), TvgError> {
-        {
-            let canvas = unsafe { tvg::tvg_wgcanvas_create() };
+        unsafe {
+            println!("[Rust] Calling tvg_wgcanvas_create()...");
+            let canvas = tvg::tvg_wgcanvas_create();
+            println!("[Rust] tvg_wgcanvas_create() returned: {:?}", canvas);
 
             if canvas.is_null() {
+                println!("[Rust] Canvas is NULL - WebGPU canvas creation failed!");
                 return Err(TvgError::FailedAllocation);
             }
 
+            println!("[Rust] Canvas created successfully");
             self.raw_canvas = Some(canvas);
-
             Ok(())
         }
     }
@@ -243,28 +246,50 @@ impl Renderer for TvgRenderer {
         color_space: ColorSpace,
         _type: i32,
     ) -> Result<(), Self::Error> {
-        {
-            if self.raw_canvas.is_none() {
-                self.create_wg_canvas()?;
+        if self.raw_canvas.is_none() {
+            self.create_wg_canvas()?;
+        }
+
+        if let Some(raw_canvas) = self.raw_canvas {
+            // If device is null, let ThorVG create its own device
+            // This matches how ThorVG Web works
+            let actual_device = if device.is_null() {
+                std::ptr::null_mut()
+            } else {
+                device
+            };
+
+            println!("[Rust] Calling tvg_wgcanvas_set_target with device={:?}, instance={:?}, target={:?}, {}x{}",
+                     actual_device, instance, target, width, height);
+
+            let result = unsafe {
+                tvg::tvg_wgcanvas_set_target(
+                    raw_canvas,
+                    actual_device,
+                    instance,
+                    target,
+                    width,
+                    height,
+                    tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
+                    0,
+                )
+            };
+
+            println!("[Rust] tvg_wgcanvas_set_target returned: {:?}", result);
+
+            let set_target_result = result.into_result();
+            if set_target_result.is_err() {
+                return set_target_result;
             }
 
-            if let Some(raw_canvas) = self.raw_canvas {
-                unsafe {
-                    tvg::tvg_wgcanvas_set_target(
-                        raw_canvas,
-                        device,
-                        instance,
-                        target,
-                        width,
-                        height,
-                        color_space.into(),
-                        _type,
-                    )
-                    .into_result()
-                }
-            } else {
-                Err(TvgError::InvalidArgument)
-            }
+            // After setting target, sync to ensure canvas is properly initialized
+            println!("[Rust] Syncing canvas after set_target");
+            let sync_result = unsafe { tvg::tvg_canvas_sync(raw_canvas).into_result() };
+            println!("[Rust] Post-set_target sync result: {:?}", sync_result);
+
+            set_target_result
+        } else {
+            Err(TvgError::InvalidArgument)
         }
     }
 
@@ -307,7 +332,14 @@ impl Renderer for TvgRenderer {
 
     fn update(&mut self) -> Result<(), TvgError> {
         if let Some(raw_canvas) = self.raw_canvas {
-            unsafe { tvg::tvg_canvas_update(raw_canvas).into_result() }
+            unsafe {
+                let res = tvg::tvg_canvas_update(raw_canvas);
+                let result = res.into_result();
+                if let Err(ref e) = result {
+                    println!("[TvgRenderer] tvg_canvas_update error: {:?}", e);
+                }
+                return result;
+            }
         } else {
             Err(TvgError::InvalidArgument)
         }

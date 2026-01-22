@@ -1,12 +1,12 @@
-EMSDK_VERSION ?= 3.1.74
+EMSDK_VERSION ?= 4.0.15
 UNIFFI_BINDGEN_CPP ?= uniffi-bindgen-cpp
 UNIFFI_BINDGEN_CPP_VERSION ?= v0.7.3+v0.28.3
 
 RUST_TOOLCHAIN ?= nightly-2025-08-01
 
 # Default Rust features for WASM builds
-FEATURES = tvg-sw,tvg-gl,tvg-simd,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
-DEFAULT_FEATURES = tvg-v1,uniffi
+WASM_FEATURES ?= tvg-sw,tvg-gl,tvg-simd,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
+WASM_DEFAULT_FEATURES = tvg,uniffi
 
 # WASM/Emscripten configuration
 EMSDK := emsdk
@@ -29,17 +29,17 @@ COMMIT_HASH := $(shell git rev-parse --short HEAD)
 # Release directories
 WASM_RELEASE_DIR ?= release/wasm
 
-ifneq (,$(findstring tvg-simd,$(FEATURES)))
+ifneq (,$(findstring tvg-simd,$(WASM_FEATURES)))
   EMSIMD_FLAGS += -msimd128
 endif
 
-ifneq (,$(findstring tvg-wg,$(FEATURES)))
-  WEBGPU_RUSTFLAGS += -C link-arg=-sUSE_WEBGPU=1
-  WEBGPU_EMFLAGS += -sUSE_WEBGPU=1
-  WEBGPU_CPPFLAGS += -DUSE_WEBGPU
+ifneq (,$(findstring tvg-wg,$(WASM_FEATURES)))
+WEBGPU_RUSTFLAGS += -C link-arg=--use-port=emdawnwebgpu
+WEBGPU_EMFLAGS += --use-port=emdawnwebgpu
+WEBGPU_CPPFLAGS += -DUSE_WEBGPU
 endif
 
-ifneq (,$(findstring tvg-gl,$(FEATURES)))
+ifneq (,$(findstring tvg-gl,$(WASM_FEATURES)))
   WEBGL_RUSTFLAGS += -C link-arg=-sMAX_WEBGL_VERSION=2 -C link-arg=-sFULL_ES3
   WEBGL_EMFLAGS += -sMAX_WEBGL_VERSION=2 -sFULL_ES3
   WEBGL_CPPFLAGS += -DUSE_WEBGL
@@ -50,7 +50,7 @@ endif
 
 
 # WASM-specific phony targets
-.PHONY: wasm wasm-setup wasm-install-emsdk wasm-package wasm-clean
+.PHONY: wasm wasm-setup wasm-install-emsdk wasm-package wasm-clean wasm-webgl wasm-webgpu wasm-software wasm-all
 
 
 # Initialize emsdk submodule
@@ -73,7 +73,7 @@ wasm-install-emsdk: wasm-init-submodule
 wasm-cpp-bindings:
 	@echo "→ Generating C++ UniFFI bindings..."
 	#   print the flags
-	@echo "FEATURES: $(FEATURES)"
+	@echo "WASM_FEATURES: $(WASM_FEATURES)"
 	@echo "WEBGPU_RUSTFLAGS: $(WEBGPU_RUSTFLAGS)"
 	@echo "WEBGPU_EMFLAGS: $(WEBGPU_EMFLAGS)"
 	@echo "WEBGPU_CPPFLAGS: $(WEBGPU_CPPFLAGS)"
@@ -113,7 +113,9 @@ wasm-compile-cpp: wasm-cpp-bindings
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 			-std=c++20 \
 			$(EMSIMD_FLAGS) \
+			$(WEBGPU_EMFLAGS) \
 			$(WEBGPU_CPPFLAGS) \
+			$(WEBGL_EMFLAGS) \
 			$(WEBGL_CPPFLAGS) \
 			-I$(CPP_BINDINGS_DIR) \
 			-Wshift-negative-value \
@@ -126,7 +128,9 @@ wasm-compile-cpp: wasm-cpp-bindings
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 			-std=c++20 \
 			$(EMSIMD_FLAGS) \
+			$(WEBGPU_EMFLAGS) \
 			$(WEBGPU_CPPFLAGS) \
+			$(WEBGL_EMFLAGS) \
 			$(WEBGL_CPPFLAGS) \
 			-I$(CPP_BINDINGS_DIR) \
 			-Wshift-negative-value \
@@ -199,7 +203,6 @@ wasm-link-module: wasm-build-rust wasm-compile-cpp wasm-install-npm-deps
 			-sMODULARIZE=1 \
 			-sEXPORT_NAME=create$(WASM_MODULE)Module \
 			-sEXPORT_ES6=1 \
-			-sUSE_ES6_IMPORT_META=0 \
 			-sDYNAMIC_EXECUTION=0 \
 			-sENVIRONMENT=web,worker \
 			-sMIN_SAFARI_VERSION=130000 \
@@ -208,6 +211,7 @@ wasm-link-module: wasm-build-rust wasm-compile-cpp wasm-install-npm-deps
 			$(WEBGPU_EMFLAGS) \
 			$(WEBGL_EMFLAGS) \
 			-sEXPORTED_FUNCTIONS=['_malloc','_free'] \
+			-sEXPORTED_RUNTIME_METHODS=['HEAPF32','HEAPF64','HEAP8','HEAPU8','HEAP16','HEAPU16','HEAP32','HEAPU32','HEAP64','HEAPU64'] \
 			--no-entry \
 			--strip-all \
 			--closure=1"
@@ -279,4 +283,35 @@ wasm-clean:
 	@rm -rf $(CPP_BINDINGS_DIR)
 	@rm -rf $(WASM_BUILD_DIR)
 	@rm -rf $(WASM_RELEASE_DIR)
+	@rm -rf release/wasm-webgl
+	@rm -rf release/wasm-webgpu
+	@rm -rf release/wasm-software
 	@echo "✓ WASM builds cleaned"
+
+# Build WebGL-only variant
+wasm-webgl:
+	@echo "→ Building WebGL-only variant..."
+	@$(MAKE) wasm \
+		WASM_FEATURES=tvg-gl,tvg-simd,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions \
+		WASM_RELEASE_DIR=release/wasm-webgl
+	@echo "✓ WebGL variant built: release/wasm-webgl/"
+
+# Build WebGPU-only variant
+wasm-webgpu:
+	@echo "→ Building WebGPU-only variant..."
+	@$(MAKE) wasm \
+		WASM_FEATURES=tvg-wg,tvg-simd,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions \
+		WASM_RELEASE_DIR=release/wasm-webgpu
+	@echo "✓ WebGPU variant built: release/wasm-webgpu/"
+
+# Build Software-only variant
+wasm-software:
+	@echo "→ Building Software-only variant..."
+	@$(MAKE) wasm \
+		WASM_FEATURES=tvg-sw,tvg-simd,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions \
+		WASM_RELEASE_DIR=release/wasm-software
+	@echo "✓ Software variant built: release/wasm-software/"
+
+# Build all variants
+wasm-all: wasm-webgl wasm-webgpu wasm-software
+	@echo "✓ All WASM variants built successfully"

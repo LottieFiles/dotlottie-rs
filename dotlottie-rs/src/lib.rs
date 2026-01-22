@@ -7,6 +7,11 @@ mod state_machine_engine;
 mod theme;
 pub(crate) mod time;
 
+// Only include wgpu_helpers when we have wgpu binaries for the target
+// This cfg is set by build.rs when tvg-wg is enabled and wgpu binaries are available
+#[cfg(has_wgpu_binaries)]
+pub mod wgpu_helpers;
+
 pub use dotlottie_player::*;
 pub use fms::*;
 pub use layout::*;
@@ -16,6 +21,9 @@ pub use state_machine_engine::events::*;
 pub use state_machine_engine::security::*;
 pub use state_machine_engine::*;
 pub use theme::*;
+
+#[cfg(has_wgpu_binaries)]
+pub use wgpu_helpers::WgpuContext;
 
 #[cfg(feature = "tvg")]
 pub fn register_font(font_name: &str, font_data: &[u8]) -> bool {

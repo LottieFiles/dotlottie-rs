@@ -52,6 +52,11 @@ typedef enum ColorSpace {
 
 typedef struct DotLottiePlayer DotLottiePlayer;
 
+/**
+ * WebGPU context that owns the instance, device, and surface
+ */
+typedef struct WgpuContext WgpuContext;
+
 typedef struct DotLottieLayout {
   enum DotLottieFit fit;
   float align_x;
@@ -421,6 +426,15 @@ int32_t dotlottie_subscribe(struct DotLottiePlayer *ptr, struct Observer *observ
 int32_t dotlottie_total_frames(struct DotLottiePlayer *ptr, float *result);
 
 int32_t dotlottie_unsubscribe(struct DotLottiePlayer *ptr, struct Observer *observer);
+
+int32_t dotlottie_wgpu_context_destroy(struct WgpuContext *ptr);
+
+int32_t dotlottie_wgpu_context_get_pointers(const struct WgpuContext *ptr,
+                                            uint64_t *device,
+                                            uint64_t *instance,
+                                            uint64_t *surface);
+
+struct WgpuContext *dotlottie_wgpu_context_new(void *metal_layer);
 
 #ifdef __cplusplus
 }  // extern "C"

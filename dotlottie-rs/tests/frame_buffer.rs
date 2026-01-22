@@ -15,8 +15,8 @@ mod tests {
         assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
         let frame = unsafe {
             slice::from_raw_parts(
-                player.buffer().as_ptr() as *const u32,
-                player.buffer().len() as usize,
+                player.buffer().as_ptr(),
+                player.buffer().len(),
             )
         };
         assert_eq!(frame.len(), (WIDTH * HEIGHT) as usize);
@@ -30,12 +30,12 @@ mod tests {
         let test_data = CString::new(test_data_str).expect("Failed to create CString");
         assert!(player.load_animation_data(&test_data, WIDTH, HEIGHT));
 
-        assert_eq!(player.buffer().len() as usize, (WIDTH * HEIGHT) as usize);
+        assert_eq!(player.buffer().len(), (WIDTH * HEIGHT) as usize);
 
         let frame = unsafe {
             slice::from_raw_parts(
-                player.buffer().as_ptr() as *const u32,
-                player.buffer().len() as usize,
+                player.buffer().as_ptr(),
+                player.buffer().len(),
             )
         };
         assert_eq!(frame.len(), (WIDTH * HEIGHT) as usize);

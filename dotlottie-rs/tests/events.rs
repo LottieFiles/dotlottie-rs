@@ -75,36 +75,18 @@ mod tests {
 
         while let Some(event) = player.poll_event() {
             let event_str = match event {
-                DotLottieEvent::Load => {
-                    format!("on_load")
-                }
-                DotLottieEvent::LoadError => {
-                    format!("on_load_error")
-                }
-                DotLottieEvent::Play => {
-                    format!("on_play")
-                }
-                DotLottieEvent::Pause => {
-                    format!("on_pause")
-                }
-                DotLottieEvent::Stop => {
-                    format!("on_stop")
-                }
-                DotLottieEvent::Frame { frame_no } => {
-                    format!("on_frame: {}", frame_no)
-                }
-                DotLottieEvent::Render { frame_no } => {
-                    format!("on_render: {}", frame_no)
-                }
-                DotLottieEvent::Loop { loop_count } => {
-                    format!("on_loop: {}", loop_count)
-                }
-                DotLottieEvent::Complete => {
-                    format!("on_complete")
-                }
+                DotLottieEvent::Load => "on_load".to_string(),
+                DotLottieEvent::LoadError => "on_load_error".to_string(),
+                DotLottieEvent::Play => "on_play".to_string(),
+                DotLottieEvent::Pause => "on_pause".to_string(),
+                DotLottieEvent::Stop => "on_stop".to_string(),
+                DotLottieEvent::Frame { frame_no } => format!("on_frame: {}", frame_no),
+                DotLottieEvent::Render { frame_no } => format!("on_render: {}", frame_no),
+                DotLottieEvent::Loop { loop_count } => format!("on_loop: {}", loop_count),
+                DotLottieEvent::Complete => "on_complete".to_string(),
             };
 
-            events.push(event_str.to_string());
+            events.push(event_str);
         }
 
         for (i, event) in events.iter().enumerate() {

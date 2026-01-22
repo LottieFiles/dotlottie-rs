@@ -247,7 +247,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
     fn load_animation(&mut self, data: &CStr) -> Result<R::Animation, LottieRendererError> {
         let mut animation = R::Animation::default();
 
-        let mimetype = CStr::from_bytes_with_nul(b"lottie+json\0").unwrap();
+        let mimetype = c"lottie+json";
         animation
             .load_data(data, mimetype)
             .map_err(into_lottie::<R>)?;
@@ -634,7 +634,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn clear_slots(&mut self) -> Result<(), LottieRendererError> {
         self.slots.clear();
-        let empty_cstr = CStr::from_bytes_with_nul(b"\0").unwrap();
+        let empty_cstr = c"";
         self.get_animation_mut()?
             .set_slots_str(empty_cstr)
             .map_err(into_lottie::<R>)?;

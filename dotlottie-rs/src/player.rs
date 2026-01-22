@@ -904,7 +904,7 @@ impl DotLottiePlayer {
         self.active_animation_id.clear();
         self.active_theme_id.clear();
 
-        let load_status = match fs::read_to_string(file_path) {
+        match fs::read_to_string(file_path) {
             Ok(data) => {
                 let cstr = CString::new(data).expect("Failed to create CString");
                 self.load_animation_data(&cstr, width, height)
@@ -913,9 +913,7 @@ impl DotLottiePlayer {
                 self.event_queue.push(DotLottieEvent::LoadError);
                 false
             }
-        };
-
-        load_status
+        }
     }
 
     pub fn load_dotlottie_data(&mut self, file_data: &[u8], width: u32, height: u32) -> bool {
@@ -1359,9 +1357,7 @@ impl DotLottiePlayer {
 
             let _ = self.set_frame(next_frame);
 
-            let rendered = self.render();
-
-            rendered
+            self.render()
         }
     }
 

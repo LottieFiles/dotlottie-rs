@@ -331,7 +331,7 @@ mod tests {
 
         loop {
             sm.tick();
-            if sm.status() == "Stopped".to_string() {
+            if sm.status() == "Stopped" {
                 break;
             }
         }

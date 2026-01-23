@@ -476,14 +476,16 @@ impl Animation for TvgAnimation {
     fn tween_update(&mut self, _given_progress: Option<f32>) -> Result<bool, TvgError> {
         if let Some(tween_state) = self.tween_state.as_ref() {
             if tween_state.duration.is_none() {
-                let progress = _given_progress.ok_or(TvgError::InvalidArgument)?;
+                if _given_progress.is_none() {
+                    return Err(TvgError::InvalidArgument);
+                }
 
                 unsafe {
                     tvg::tvg_lottie_animation_tween(
                         self.raw_animation,
                         tween_state.from,
                         tween_state.to,
-                        progress,
+                        _given_progress.unwrap(),
                     );
                 };
 

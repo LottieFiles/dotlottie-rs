@@ -3,7 +3,7 @@ owner = 'LottieFiles'
 repo = 'dotlottie-rs'
 
 [package]
-versioned_files = ["dotlottie-ffi/Cargo.toml"]
+versioned_files = ["dotlottie-rs/Cargo.toml"]
 changelog = "CHANGELOG.md"
 
 [[package.assets]]

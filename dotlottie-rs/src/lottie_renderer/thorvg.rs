@@ -474,21 +474,23 @@ impl Animation for TvgAnimation {
     }
 
     fn tween_update(&mut self, _given_progress: Option<f32>) -> Result<bool, TvgError> {
-        if self.tween_state.is_some() && self.tween_state.as_ref().unwrap().duration.is_none() {
-            if _given_progress.is_none() {
-                return Err(TvgError::InvalidArgument);
+        if let Some(tween_state) = self.tween_state.as_ref() {
+            if tween_state.duration.is_none() {
+                if _given_progress.is_none() {
+                    return Err(TvgError::InvalidArgument);
+                }
+
+                unsafe {
+                    tvg::tvg_lottie_animation_tween(
+                        self.raw_animation,
+                        tween_state.from,
+                        tween_state.to,
+                        _given_progress.unwrap(),
+                    );
+                };
+
+                return Ok(true);
             }
-
-            unsafe {
-                tvg::tvg_lottie_animation_tween(
-                    self.raw_animation,
-                    self.tween_state.as_ref().unwrap().from,
-                    self.tween_state.as_ref().unwrap().to,
-                    _given_progress.unwrap(),
-                );
-            };
-
-            return Ok(true);
         }
 
         if let Some(tween_state) = self.tween_state.as_mut() {

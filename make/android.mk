@@ -267,18 +267,15 @@ android-armv7: android-check-ndk
 android-package:
 	@echo "→ Creating Android  release package..."
 	@mkdir -p $(ANDROID_RELEASE_DIR)/include
-	@echo "→ Generating C header with cbindgen..."
-	@cbindgen --config dotlottie-rs/cbindgen.toml \
-		--crate dotlottie-rs \
-		--output $(ANDROID_RELEASE_DIR)/include/dotlottie_player.h \
-		dotlottie-rs
+	@echo "→ Copying C header from build..."
+	@cp dotlottie-rs/build/dotlottie_player.h $(ANDROID_RELEASE_DIR)/include/
 	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(ANDROID_RELEASE_DIR)/version.txt
 	@echo "api-type=c-api" >> $(ANDROID_RELEASE_DIR)/version.txt
 	@echo "✓ Android release package created: $(ANDROID_RELEASE_DIR)/"
 	@echo ""
 	@echo "Output structure:"
 	@echo "  $(ANDROID_RELEASE_DIR)/"
-	@echo "    ├── include/dotlottie_player.h   (C header - generated with cbindgen)"
+	@echo "    ├── include/dotlottie_player.h   (C header - generated during build)"
 	@echo "    ├── jniLibs/"
 	@echo "    │   ├── arm64-v8a/libdotlottie_player.so"
 	@echo "    │   ├── armeabi-v7a/libdotlottie_player.so"

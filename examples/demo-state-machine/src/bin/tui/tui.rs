@@ -4,8 +4,9 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use dotlottie_rs::{
-    inputs::Input, interactions::Interaction, states::StateTrait, transitions::TransitionTrait,
-    Config, DotLottiePlayer,
+    actions::open_url_policy::OpenUrlPolicy, events::Event as LottieEvent, inputs::Input,
+    interactions::Interaction, states::StateTrait, transitions::TransitionTrait, Config,
+    DotLottiePlayer, StateMachineEngine,
 };
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use ratatui::{
@@ -19,7 +20,6 @@ use ratatui::{
 use std::{
     fs::{self, File},
     io::{self, Read},
-    process,
     sync::mpsc::{self, Receiver, Sender},
     time::{Duration, Instant},
 };
@@ -67,7 +67,7 @@ impl Timer {
         }
     }
 
-    fn tick(&mut self, animation: &DotLottiePlayer) {
+    fn tick(&mut self, animation: &mut DotLottiePlayer) {
         let next_frame = animation.request_frame();
 
         animation.set_frame(next_frame);
@@ -134,110 +134,72 @@ struct Graph {
 }
 
 impl Graph {
-    fn new(player: &DotLottiePlayer) -> Self {
-        let sm = player.get_state_machine();
-        let read_lock = sm.try_read();
+    fn new(engine: &StateMachineEngine) -> Self {
+        let machine = engine.get_state_machine();
+        let states = machine.states();
+        let mut nodes = Vec::new();
+        let mut edges = Vec::new();
 
-        match read_lock {
-            Ok(locked_machine) => {
-                let optional_machine = &*locked_machine;
+        for (i, state) in states.iter().enumerate() {
+            let x = (i % 3) as f64 * 0.3 + 0.2;
+            let y = (i / 3) as f64 * 0.3 + 0.2;
+            nodes.push(Node {
+                x,
+                y,
+                label: state.name(),
+                active: engine.get_current_state_name() == state.name(),
+            });
 
-                if let Some(machine_engine) = optional_machine {
-                    let machine = machine_engine.get_state_machine();
-
-                    let states = machine.states();
-                    let mut nodes = Vec::new();
-                    let mut edges = Vec::new();
-
-                    for (i, state) in states.iter().enumerate() {
-                        let x = (i % 3) as f64 * 0.3 + 0.2;
-                        let y = (i / 3) as f64 * 0.3 + 0.2;
-                        nodes.push(Node {
-                            x,
-                            y,
-                            label: state.name(),
-                            active: machine_engine.get_current_state_name() == state.name(),
-                        });
-
-                        for transition in state.transitions() {
-                            let target = machine.get_state_by_name(&transition.target_state());
-                            if let Some(target) = target {
-                                let target_index = states
-                                    .iter()
-                                    .position(|s| s.name() == target.name())
-                                    .unwrap();
-                                edges.push(Edge {
-                                    from: i,
-                                    to: target_index,
-                                });
-                            }
-                        }
-                    }
-
-                    return Graph { nodes, edges };
-                } else {
-                    println!("Error: State machine is None");
-                    process::abort();
+            for transition in state.transitions() {
+                let target = machine.get_state_by_name(&transition.target_state());
+                if let Some(target) = target {
+                    let target_index = states
+                        .iter()
+                        .position(|s| s.name() == target.name())
+                        .unwrap();
+                    edges.push(Edge {
+                        from: i,
+                        to: target_index,
+                    });
                 }
             }
-            Err(err) => {
-                println!("Error: {}", err);
-                process::abort();
-            }
         }
+
+        Graph { nodes, edges }
     }
 
-    fn update(&self, player: &DotLottiePlayer) -> Graph {
-        let sm = player.get_state_machine();
-        let read_lock = sm.try_read();
+    fn update(&self, engine: &StateMachineEngine) -> Graph {
+        let machine = engine.get_state_machine();
+        let states = machine.states();
+        let mut nodes = Vec::new();
+        let mut edges = Vec::new();
 
-        match read_lock {
-            Ok(locked_machine) => {
-                let optional_machine = &*locked_machine;
+        for (i, state) in states.iter().enumerate() {
+            let x = (i % 3) as f64 * 0.3 + 0.2;
+            let y = (i / 3) as f64 * 0.3 + 0.2;
+            nodes.push(Node {
+                x,
+                y,
+                label: state.name(),
+                active: engine.get_current_state_name() == state.name(),
+            });
 
-                if let Some(machine_engine) = optional_machine {
-                    let machine = machine_engine.get_state_machine();
-
-                    let states = machine.states();
-                    let mut nodes = Vec::new();
-                    let mut edges = Vec::new();
-
-                    for (i, state) in states.iter().enumerate() {
-                        let x = (i % 3) as f64 * 0.3 + 0.2;
-                        let y = (i / 3) as f64 * 0.3 + 0.2;
-                        nodes.push(Node {
-                            x,
-                            y,
-                            label: state.name(),
-                            active: machine_engine.get_current_state_name() == state.name(),
-                        });
-
-                        for transition in state.transitions() {
-                            let target = machine.get_state_by_name(&transition.target_state());
-                            if let Some(target) = target {
-                                let target_index = states
-                                    .iter()
-                                    .position(|s| s.name() == target.name())
-                                    .unwrap();
-                                edges.push(Edge {
-                                    from: i,
-                                    to: target_index,
-                                });
-                            }
-                        }
-                    }
-
-                    return Graph { nodes, edges };
-                } else {
-                    println!("Error: State machine is None");
-                    process::abort();
+            for transition in state.transitions() {
+                let target = machine.get_state_by_name(&transition.target_state());
+                if let Some(target) = target {
+                    let target_index = states
+                        .iter()
+                        .position(|s| s.name() == target.name())
+                        .unwrap();
+                    edges.push(Edge {
+                        from: i,
+                        to: target_index,
+                    });
                 }
             }
-            Err(err) => {
-                println!("Error: {}", err);
-                process::abort();
-            }
         }
+
+        Graph { nodes, edges }
     }
 }
 
@@ -403,86 +365,6 @@ impl Logger {
         }
     }
 }
-fn load_state_machine(
-    player: &DotLottiePlayer,
-    state_machine_name: &str,
-    log_sender: &Sender<LogMessage>,
-) -> (bool, bool) {
-    let cleaned_name = state_machine_name.replace("[State Machine]", "");
-
-    // remove whitespace
-    let cleaned_name = cleaned_name.trim();
-    println!("Loading state machine: {}", cleaned_name);
-
-    let message: String =
-        fs::read_to_string(format!("./src/bin/shared/statemachines/{}", cleaned_name)).unwrap();
-
-    log_sender
-        .send(LogMessage {
-            content: format!("Loading state machine: {}", cleaned_name),
-            level: LogLevel::Info,
-        })
-        .unwrap();
-
-    let r = player.state_machine_load_data(&message);
-
-    if !r {
-        log_sender
-            .send(LogMessage {
-                content: format!("Failed to load state machine."),
-                level: LogLevel::Info,
-            })
-            .unwrap();
-    }
-
-    let s = player.state_machine_start();
-
-    // let rs = player.state_machine_set_playback_actions_active(true);
-
-    // if !rs {
-    //     log_sender
-    //         .send(LogMessage {
-    //             content: format!("Failed to reset config."),
-    //             level: LogLevel::Info,
-    //         })
-    //         .unwrap();
-    // }
-
-    if !s {
-        log_sender
-            .send(LogMessage {
-                content: format!("Failed to start state machine."),
-                level: LogLevel::Info,
-            })
-            .unwrap();
-    }
-
-    (r, s)
-}
-
-fn load_animation(player: &DotLottiePlayer, animation_name: &str, log_sender: &Sender<LogMessage>) {
-    // let mut cleaned_name = animation_name.replace("[Animation] ", "");
-    let cleaned_name = animation_name.replace("[Animation]", "").trim().to_string();
-
-    log_sender
-        .send(LogMessage {
-            content: format!("Loading animation: {}", cleaned_name),
-            level: LogLevel::Info,
-        })
-        .unwrap();
-
-    let mut markers =
-        File::open(format!("./src/bin/shared/animations/{}", cleaned_name)).expect("no file found");
-    let metadatamarkers = fs::metadata(format!("./src/bin/shared/animations/{}", cleaned_name))
-        .expect("unable to read metadata");
-    let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
-    markers.read(&mut markers_buffer).expect("buffer overflow");
-
-    player.load_dotlottie_data(&markers_buffer, WIDTH as u32, HEIGHT as u32);
-    player.pause();
-    player.render();
-}
-
 fn main() -> Result<(), io::Error> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -501,10 +383,13 @@ fn main() -> Result<(), io::Error> {
     });
 
     /* Dotlottie stuff ---------------------------------------------------------------------------------------- */
-    let lottie_player: DotLottiePlayer = DotLottiePlayer::new(Config {
-        background_color: 0xffffffff,
-        ..Config::default()
-    });
+    let mut lottie_player: DotLottiePlayer = DotLottiePlayer::new(
+        Config {
+            background_color: 0xffffffff,
+            ..Config::default()
+        },
+        0, // threads (0 = auto)
+    );
 
     let mut markers = File::open(format!(
         "./src/bin/shared/animations/{}.lottie",
@@ -529,13 +414,19 @@ fn main() -> Result<(), io::Error> {
     ))
     .unwrap();
 
-    let r = lottie_player.state_machine_load_data(&message);
+    // Create state machine engine (borrows player)
+    let mut engine = match lottie_player.state_machine_load_data(&message) {
+        Ok(e) => e,
+        Err(e) => {
+            eprintln!("Failed to load state machine: {:?}", e);
+            return Ok(());
+        }
+    };
 
-    let s = lottie_player.state_machine_start();
+    // Start the state machine
+    let s = engine.start(&OpenUrlPolicy::default());
 
-    // let rs = lottie_player.state_machine_set_playback_actions_active(true);
-
-    lottie_player.render();
+    engine.player.render();
 
     /* Dotlottie stuff ---------------------------------------------------------------------------------------- */
 
@@ -546,7 +437,7 @@ fn main() -> Result<(), io::Error> {
 
     log_sender
         .send(LogMessage {
-            content: format!("Load state machine data returned: {}", r),
+            content: "State machine loaded successfully".to_string(),
             level: LogLevel::Info,
         })
         .unwrap();
@@ -556,12 +447,6 @@ fn main() -> Result<(), io::Error> {
             level: LogLevel::Info,
         })
         .unwrap();
-    // log_sender
-    //     .send(LogMessage {
-    //         content: format!("Reset config returned: {}", rs),
-    //         level: LogLevel::Info,
-    //     })
-    //     .unwrap();
 
     run_app(
         &mut terminal,
@@ -570,8 +455,10 @@ fn main() -> Result<(), io::Error> {
         logger,
         log_sender,
         &mut timer,
-        &lottie_player,
+        &mut engine,
     )?;
+
+    engine.release();
 
     disable_raw_mode()?;
     execute!(
@@ -584,11 +471,9 @@ fn main() -> Result<(), io::Error> {
     Ok(())
 }
 
-fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
-    let sm = player.get_state_machine();
-    let read_lock = sm.try_read();
+fn refresh_menus(engine: &StateMachineEngine) -> Vec<Menu> {
+    let machine = engine.get_state_machine();
 
-    let mut inputs: Vec<Input> = Vec::new();
     let mut input_buttons: Vec<MenuItemType> = Vec::new();
     let mut interaction_buttons: Vec<MenuItemType> = Vec::new();
 
@@ -605,132 +490,98 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
         .collect::<Result<Vec<_>, io::Error>>()
         .unwrap();
 
-    match read_lock {
-        Ok(locked_machine) => {
-            let optional_machine = &*locked_machine;
-
-            if let Some(machine_engine) = optional_machine {
-                let machine = machine_engine.get_state_machine();
-
-                // Load the inputs in to the input menu vec
-                let inputs_opt = machine.inputs();
-                if let Some(inputs_opt) = inputs_opt {
-                    inputs = inputs_opt.to_vec();
-
-                    for input in &inputs {
-                        match input {
-                            Input::String { name, value } => {
-                                let mut new_name = name.clone();
-                                new_name = format!("[String] {}", new_name);
-
-                                input_buttons.push(MenuItemType::StringInput {
-                                    name: new_name.to_string(),
-                                    value: value.to_string(),
-                                });
-                            }
-                            Input::Boolean { name, value } => {
-                                let mut new_name = name.clone();
-                                new_name = format!("[Bool] {}", new_name);
-
-                                input_buttons.push(MenuItemType::BooleanToggle {
-                                    name: new_name.to_string(),
-                                    value: *value,
-                                });
-                            }
-                            Input::Numeric { name, value } => {
-                                let mut new_name = name.clone();
-                                new_name = format!("[Numeric] {}", new_name);
-
-                                input_buttons.push(MenuItemType::NumberInput {
-                                    name: new_name.to_string(),
-                                    value: *value,
-                                    buffer: value.to_string(),
-                                });
-                            }
-                            Input::Event { name } => {
-                                let mut new_name = name.clone();
-                                new_name = format!("[Event] {}", new_name);
-
-                                input_buttons.push(MenuItemType::Button {
-                                    name: new_name.to_string(),
-                                    color: 0x00ff00,
-                                });
-                            }
-                        }
-                    }
+    // Load the inputs in to the input menu vec
+    let inputs_opt = machine.inputs();
+    if let Some(inputs) = inputs_opt {
+        for input in inputs {
+            match input {
+                Input::String { name, value } => {
+                    input_buttons.push(MenuItemType::StringInput {
+                        name: format!("[String] {}", name),
+                        value: value.to_string(),
+                    });
                 }
-
-                // Load the interactions in to interaction menu vec
-                let interactions_opt = machine.interactions();
-                if let Some(interactions) = interactions_opt {
-                    for interaction in interactions {
-                        match interaction {
-                            Interaction::PointerUp { .. } => {
-                                let mut new_name = "PointerUp".to_string();
-                                new_name = format!("[Interaction] {}", new_name);
-
-                                interaction_buttons.push(MenuItemType::Button {
-                                    name: new_name.to_string(),
-                                    color: 0x00ff00,
-                                });
-                            }
-                            Interaction::PointerDown { .. } => {
-                                let mut new_name = "PointerDown".to_string();
-                                new_name = format!("[Interaction] {}", new_name);
-
-                                interaction_buttons.push(MenuItemType::Button {
-                                    name: new_name.to_string(),
-                                    color: 0x00ff00,
-                                });
-                            }
-                            Interaction::PointerEnter { .. } => {
-                                let mut new_name = "PointerEnter".to_string();
-                                new_name = format!("[Interaction] {}", new_name);
-
-                                interaction_buttons.push(MenuItemType::Button {
-                                    name: new_name.to_string(),
-                                    color: 0x00ff00,
-                                });
-                            }
-                            Interaction::PointerMove { .. } => {
-                                let mut new_name = "PointerMove".to_string();
-                                new_name = format!("[Interaction] {}", new_name);
-
-                                interaction_buttons.push(MenuItemType::Button {
-                                    name: new_name.to_string(),
-                                    color: 0x00ff00,
-                                });
-                            }
-                            Interaction::PointerExit { .. } => {
-                                let mut new_name = "PointerExit".to_string();
-                                new_name = format!("[Interaction] {}", new_name);
-
-                                interaction_buttons.push(MenuItemType::Button {
-                                    name: new_name.to_string(),
-                                    color: 0x00ff00,
-                                });
-                            }
-                            Interaction::OnComplete { .. } => {
-                                let mut new_name = "OnComplete".to_string();
-                                new_name = format!("[Interaction] {}", new_name);
-
-                                interaction_buttons.push(MenuItemType::Button {
-                                    name: new_name.to_string(),
-                                    color: 0x00ff00,
-                                });
-                            }
-                        }
-                    }
+                Input::Boolean { name, value } => {
+                    input_buttons.push(MenuItemType::BooleanToggle {
+                        name: format!("[Bool] {}", name),
+                        value: *value,
+                    });
+                }
+                Input::Numeric { name, value } => {
+                    input_buttons.push(MenuItemType::NumberInput {
+                        name: format!("[Numeric] {}", name),
+                        value: *value,
+                        buffer: value.to_string(),
+                    });
+                }
+                Input::Event { name } => {
+                    input_buttons.push(MenuItemType::Button {
+                        name: format!("[Event] {}", name),
+                        color: 0x00ff00,
+                    });
                 }
             }
         }
-        Err(err) => {
-            println!("Error: {}", err);
-            process::abort();
+    }
+
+    // Load the interactions in to interaction menu vec
+    let interactions_opt = machine.interactions();
+    if let Some(interactions) = interactions_opt {
+        for interaction in interactions {
+            match interaction {
+                Interaction::PointerUp { .. } => {
+                    interaction_buttons.push(MenuItemType::Button {
+                        name: "[Interaction] PointerUp".to_string(),
+                        color: 0x00ff00,
+                    });
+                }
+                Interaction::PointerDown { .. } => {
+                    interaction_buttons.push(MenuItemType::Button {
+                        name: "[Interaction] PointerDown".to_string(),
+                        color: 0x00ff00,
+                    });
+                }
+                Interaction::PointerEnter { .. } => {
+                    interaction_buttons.push(MenuItemType::Button {
+                        name: "[Interaction] PointerEnter".to_string(),
+                        color: 0x00ff00,
+                    });
+                }
+                Interaction::PointerMove { .. } => {
+                    interaction_buttons.push(MenuItemType::Button {
+                        name: "[Interaction] PointerMove".to_string(),
+                        color: 0x00ff00,
+                    });
+                }
+                Interaction::PointerExit { .. } => {
+                    interaction_buttons.push(MenuItemType::Button {
+                        name: "[Interaction] PointerExit".to_string(),
+                        color: 0x00ff00,
+                    });
+                }
+                Interaction::OnComplete { .. } => {
+                    interaction_buttons.push(MenuItemType::Button {
+                        name: "[Interaction] OnComplete".to_string(),
+                        color: 0x00ff00,
+                    });
+                }
+                Interaction::Click { .. } => {
+                    interaction_buttons.push(MenuItemType::Button {
+                        name: "[Interaction] Click".to_string(),
+                        color: 0x00ff00,
+                    });
+                }
+                Interaction::OnLoopComplete { .. } => {
+                    interaction_buttons.push(MenuItemType::Button {
+                        name: "[Interaction] OnLoopComplete".to_string(),
+                        color: 0x00ff00,
+                    });
+                }
+            }
         }
     }
 
-    let menus = vec![
+    vec![
         Menu::new(
             "[Load Animation]".to_string(),
             animation_files
@@ -753,25 +604,23 @@ fn refresh_menus(player: &DotLottiePlayer) -> Vec<Menu> {
         ),
         Menu::new("Inputs".to_string(), input_buttons),
         Menu::new("Interactions".to_string(), interaction_buttons),
-    ];
-
-    menus
+    ]
 }
 
 fn run_app<B: ratatui::backend::Backend>(
     terminal: &mut Terminal<B>,
     window: &mut Window,
-    buffer: &mut Vec<u32>,
+    _buffer: &mut Vec<u32>,
     mut logger: Logger,
     log_sender: Sender<LogMessage>,
     timer: &mut Timer,
-    player: &DotLottiePlayer,
+    engine: &mut StateMachineEngine,
 ) -> io::Result<()> {
-    let mut menus = refresh_menus(player);
-    let mut graph = Graph::new(&player);
+    let mut menus = refresh_menus(engine);
+    let mut graph = Graph::new(engine);
 
     let mut current_menu = 0;
-    let mut selected_color = 0xFF0000;
+    let selected_color = 0xFF0000;
     let mut last_update = Instant::now();
     let mut input_mode = false;
 
@@ -784,7 +633,7 @@ fn run_app<B: ratatui::backend::Backend>(
 
     loop {
         logger.update();
-        graph = graph.update(player);
+        graph = graph.update(engine);
 
         terminal.draw(|f| {
             let chunks = Layout::default()
@@ -845,7 +694,7 @@ fn run_app<B: ratatui::backend::Backend>(
                             }
                             MenuItemType::NumberInput {
                                 name,
-                                value,
+                                value: _,
                                 buffer,
                             } => {
                                 let style = if i == current_menu
@@ -929,13 +778,9 @@ fn run_app<B: ratatui::backend::Backend>(
         })?;
 
         if last_update.elapsed() >= Duration::from_millis(16) {
-            timer.tick(player);
+            timer.tick(&mut engine.player);
 
-            let (buffer_ptr, buffer_len) = (player.buffer_ptr(), player.buffer_len());
-
-            let buffer = unsafe {
-                std::slice::from_raw_parts(buffer_ptr as *const u32, buffer_len as usize)
-            };
+            let buffer = engine.player.buffer();
 
             window.update_with_buffer(buffer, WIDTH, HEIGHT).unwrap();
             last_update = Instant::now();
@@ -946,7 +791,7 @@ fn run_app<B: ratatui::backend::Backend>(
                 if input_mode {
                     handle_input_mode(&mut menus[current_menu], key);
                     if key.code == KeyCode::Esc || key.code == KeyCode::Enter {
-                        send_input_to_state_machine(&mut menus[current_menu], key, player);
+                        send_input_to_state_machine(&mut menus[current_menu], key, engine);
 
                         log_sender
                             .send(LogMessage {
@@ -978,7 +823,7 @@ fn run_app<B: ratatui::backend::Backend>(
                             let i = menu.state.selected().unwrap_or(0);
 
                             match &mut menu.items[i] {
-                                MenuItemType::Button { name, color } => match name.as_str() {
+                                MenuItemType::Button { name, color: _ } => match name.as_str() {
                                     "[Interaction] PointerDown" => {
                                         log_sender
                                             .send(LogMessage {
@@ -986,9 +831,10 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.state_machine_post_event(
-                                            &dotlottie_rs::Event::PointerDown { x: 0.0, y: 0.0 },
-                                        );
+                                        engine.post_event(&LottieEvent::PointerDown {
+                                            x: 0.0,
+                                            y: 0.0,
+                                        });
                                     }
                                     "[Interaction] PointerUp" => {
                                         log_sender
@@ -997,9 +843,8 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.state_machine_post_event(
-                                            &dotlottie_rs::Event::PointerUp { x: 0.0, y: 0.0 },
-                                        );
+                                        engine
+                                            .post_event(&LottieEvent::PointerUp { x: 0.0, y: 0.0 });
                                     }
                                     "[Interaction] PointerEnter" => {
                                         log_sender
@@ -1008,9 +853,10 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.state_machine_post_event(
-                                            &dotlottie_rs::Event::PointerEnter { x: 0.0, y: 0.0 },
-                                        );
+                                        engine.post_event(&LottieEvent::PointerEnter {
+                                            x: 0.0,
+                                            y: 0.0,
+                                        });
                                     }
                                     "[Interaction] PointerExit" => {
                                         log_sender
@@ -1019,9 +865,10 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.state_machine_post_event(
-                                            &dotlottie_rs::Event::PointerExit { x: 0.0, y: 0.0 },
-                                        );
+                                        engine.post_event(&LottieEvent::PointerExit {
+                                            x: 0.0,
+                                            y: 0.0,
+                                        });
                                     }
                                     "[Interaction] PointerMove" => {
                                         log_sender
@@ -1030,9 +877,10 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.state_machine_post_event(
-                                            &dotlottie_rs::Event::PointerMove { x: 0.0, y: 0.0 },
-                                        );
+                                        engine.post_event(&LottieEvent::PointerMove {
+                                            x: 0.0,
+                                            y: 0.0,
+                                        });
                                     }
                                     "[Interaction] OnComplete" => {
                                         log_sender
@@ -1041,9 +889,26 @@ fn run_app<B: ratatui::backend::Backend>(
                                                 level: LogLevel::Info,
                                             })
                                             .unwrap();
-                                        player.state_machine_post_event(
-                                            &dotlottie_rs::Event::OnComplete,
-                                        );
+                                        engine.post_event(&LottieEvent::OnComplete);
+                                    }
+                                    "[Interaction] Click" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [Click]".to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        engine.post_event(&LottieEvent::Click { x: 0.0, y: 0.0 });
+                                    }
+                                    "[Interaction] OnLoopComplete" => {
+                                        log_sender
+                                            .send(LogMessage {
+                                                content: "User selected [OnLoopComplete]"
+                                                    .to_string(),
+                                                level: LogLevel::Info,
+                                            })
+                                            .unwrap();
+                                        engine.post_event(&LottieEvent::OnLoopComplete);
                                     }
                                     _ => {
                                         if name.contains("[Interaction]") {
@@ -1057,17 +922,29 @@ fn run_app<B: ratatui::backend::Backend>(
                                                     level: LogLevel::Info,
                                                 })
                                                 .unwrap();
-                                            player.state_machine_fire_event(&new_name);
+                                            let _ = engine.fire(&new_name, true);
                                         } else if name.contains("[Animation]") {
-                                            load_animation(player, name, &log_sender);
-                                            menus = refresh_menus(player);
+                                            // Note: Loading animations would require reloading the state machine
+                                            // This is not supported with the current engine borrow
+                                            log_sender
+                                                .send(LogMessage {
+                                                    content: "Animation loading not supported in this mode".to_string(),
+                                                    level: LogLevel::Warning,
+                                                })
+                                                .unwrap();
                                         } else if name.contains("[State Machine]") {
-                                            load_state_machine(player, name, &log_sender);
-                                            menus = refresh_menus(player);
+                                            // Note: Loading state machines would require releasing and recreating the engine
+                                            // This is not supported with the current engine borrow
+                                            log_sender
+                                                .send(LogMessage {
+                                                    content: "State machine loading not supported in this mode".to_string(),
+                                                    level: LogLevel::Warning,
+                                                })
+                                                .unwrap();
                                         }
                                     }
                                 },
-                                MenuItemType::StringInput { name, value } => {
+                                MenuItemType::StringInput { name: _, value: _ } => {
                                     log_sender
                                         .send(LogMessage {
                                             content: "Entered input mode".to_string(),
@@ -1077,9 +954,9 @@ fn run_app<B: ratatui::backend::Backend>(
                                     input_mode = true;
                                 }
                                 MenuItemType::NumberInput {
-                                    name,
-                                    value,
-                                    buffer,
+                                    name: _,
+                                    value: _,
+                                    buffer: _,
                                 } => {
                                     log_sender
                                         .send(LogMessage {
@@ -1116,7 +993,7 @@ fn run_app<B: ratatui::backend::Backend>(
                 // Get the coordinates
                 let (x, y) = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap();
 
-                player.state_machine_post_event(&dotlottie_rs::Event::PointerDown { x, y });
+                engine.post_event(&LottieEvent::PointerDown { x, y });
             }
         }
     }
@@ -1165,24 +1042,28 @@ fn handle_input_mode(menu: &mut Menu, key: event::KeyEvent) {
     }
 }
 
-fn send_input_to_state_machine(menu: &mut Menu, key: event::KeyEvent, player: &DotLottiePlayer) {
+fn send_input_to_state_machine(
+    menu: &mut Menu,
+    _key: event::KeyEvent,
+    engine: &mut StateMachineEngine,
+) {
     let i = menu.state.selected().unwrap_or(0);
     match &mut menu.items[i] {
         MenuItemType::StringInput { value, name } => {
             let new_name = name.replace("[String] ", "");
-            player.state_machine_set_string_input(&new_name, value);
+            engine.set_string_input(&new_name, value, true, false);
         }
         MenuItemType::NumberInput {
             value,
             name,
-            buffer,
+            buffer: _,
         } => {
             let new_name = name.replace("[Numeric] ", "");
-            player.state_machine_set_numeric_input(&new_name, *value);
+            engine.set_numeric_input(&new_name, *value, true, false);
         }
         MenuItemType::BooleanToggle { value, name } => {
             let new_name = name.replace("[Bool] ", "");
-            player.state_machine_set_boolean_input(&new_name, *value);
+            engine.set_boolean_input(&new_name, *value, true, false);
         }
         _ => {}
     }

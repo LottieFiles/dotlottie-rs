@@ -12,3 +12,4 @@ wasm-pack.log
 /deps/artifacts
 /release
 .DS_Store
+/build

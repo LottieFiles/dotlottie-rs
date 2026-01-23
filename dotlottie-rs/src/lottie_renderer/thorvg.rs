@@ -2,7 +2,7 @@ use crate::time::Instant;
 
 use std::{
     error::Error,
-    ffi::{c_char, CString},
+    ffi::{c_char, CStr, CString},
     fmt, ptr,
     result::Result,
 };
@@ -268,25 +268,23 @@ impl TvgAnimation {
 impl Animation for TvgAnimation {
     type Error = TvgError;
 
-    fn load_data(&mut self, data: &str, mimetype: &str) -> Result<(), TvgError> {
-        let mimetype_cstr = CString::new(mimetype).map_err(|_| TvgError::InvalidArgument)?;
-        let data_cstr = CString::new(data).map_err(|_| TvgError::InvalidArgument)?;
+    fn load_data(&mut self, data: &CStr, mimetype: &CStr) -> Result<(), TvgError> {
         let data_len_u32 =
-            u32::try_from(data_cstr.as_bytes().len()).map_err(|_| TvgError::InvalidArgument)?;
+            u32::try_from(data.to_bytes().len()).map_err(|_| TvgError::InvalidArgument)?;
 
         let result = unsafe {
             TvgAnimation::tvg_load_data_dispatch(
                 self.raw_paint,
-                data_cstr.as_ptr(),
+                data.as_ptr(),
                 data_len_u32,
-                mimetype_cstr.as_ptr(),
+                mimetype.as_ptr(),
             )
         };
 
         match result {
             Ok(()) => {
                 // Keep the payload alive for ThorVG
-                self.data = Some(data_cstr);
+                self.data = Some(data.to_owned());
                 Ok(())
             }
             Err(e) => {
@@ -410,13 +408,12 @@ impl Animation for TvgAnimation {
         Ok(curr_frame)
     }
 
-    fn set_slots_str(&mut self, slots_json: &str) -> Result<(), TvgError> {
-        let result = if slots_json.is_empty() {
+    fn set_slots_str(&mut self, slots_json: &CStr) -> Result<(), TvgError> {
+        let result = if slots_json.to_bytes().is_empty() {
             unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, 0) }
         } else {
-            let slots_cstr = CString::new(slots_json).expect("Failed to create CString");
             let slot_id = unsafe {
-                tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slots_cstr.as_ptr())
+                tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slots_json.as_ptr())
             };
             if slot_id == 0 {
                 return Err(TvgError::InvalidArgument);

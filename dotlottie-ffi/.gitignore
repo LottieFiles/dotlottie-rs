@@ -1,7 +1,0 @@
-/uniffi-bindings
-/build
-/target
-**/*.rs.bk
-Cargo.lock
-bin/
-/artifacts

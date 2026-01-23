@@ -1,6 +1,6 @@
 mod thorvg {
     use std::env;
-    use std::fs::{self, OpenOptions};
+    use std::fs::{self, create_dir_all, OpenOptions};
     use std::io::Write;
     use std::path::PathBuf;
 
@@ -202,6 +202,21 @@ mod thorvg {
             .expect("Failed to generate bindings");
 
         bindings.write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
+
+        if cfg!(feature = "c_api") {
+            let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+            create_dir_all(PathBuf::from(&crate_dir).join("build")).unwrap();
+            let header_path = PathBuf::from(&crate_dir).join("build/dotlottie_player.h");
+            let config_path = PathBuf::from(&crate_dir).join("cbindgen.toml");
+            let config = cbindgen::Config::from_file(config_path).unwrap();
+
+            cbindgen::Builder::new()
+                .with_crate(crate_dir)
+                .with_config(config)
+                .generate()
+                .expect("Unable to generate bindings")
+                .write_to_file(header_path);
+        }
 
         Ok(())
     }

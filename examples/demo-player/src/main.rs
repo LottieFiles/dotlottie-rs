@@ -18,7 +18,7 @@ impl Player {
 
         println!("Using {} threads", threads);
 
-        let player = DotLottiePlayer::with_threads(
+        let mut player = DotLottiePlayer::new(
             Config {
                 autoplay: true,
                 loop_animation: true,
@@ -68,7 +68,7 @@ impl Player {
         let marker = &markers[index];
         // self.player.tween_to(marker.time, 1.0, EASE_LINEAR);
         self.player
-            .tween_to_marker(&marker.name, Some(1.0), Some(EASE_LINEAR.to_vec()));
+            .tween_to_marker(&marker.name, Some(1.0), Some(EASE_LINEAR));
         println!("Playing marker: '{}'", marker.name);
         let mut config = self.player.config();
         config.marker = marker.name.clone();
@@ -83,11 +83,6 @@ impl Player {
         }
         let next = (self.current_marker + 1) % self.player.markers().len();
         self.play_marker(next);
-    }
-
-    fn frame_buffer(&self) -> &[u32] {
-        let (ptr, len) = (self.player.buffer_ptr(), self.player.buffer_len());
-        unsafe { std::slice::from_raw_parts(ptr as *const u32, len as usize) }
     }
 }
 
@@ -108,14 +103,14 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = Player::new("src/text.json");
+    let mut player = Player::new("src/cartoon.json");
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if window.is_key_pressed(Key::U, KeyRepeat::No) {
-            player.player.set_slots("");
+            player.player.clear_slots();
         }
         if window.is_key_pressed(Key::T, KeyRepeat::No) {
-            player.player.set_slots(r#"{"my_text": { "p": { "k": [{ "s": { "f": "cartoon", "fc": [0, 1, 0, 1], "s": 50, "t": "overridden", "j": 0 }, "t": 0 }] } } }"#);
+            player.player.set_slots_str(r#"{"my_text": { "p": { "k": [{ "s": { "f": "cartoon", "fc": [0, 1, 0, 1], "s": 50, "t": "overridden", "j": 0 }, "t": 0 }] } } }"#);
         }
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
             player.player.play();
@@ -129,7 +124,7 @@ fn main() {
 
         if player.update() {
             window
-                .update_with_buffer(player.frame_buffer(), WIDTH, HEIGHT)
+                .update_with_buffer(player.player.buffer(), WIDTH, HEIGHT)
                 .expect("Failed to update window");
         }
     }

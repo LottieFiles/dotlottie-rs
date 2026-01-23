@@ -1,4 +1,5 @@
-mod dotlottie_player;
+mod poll_events;
+mod player;
 mod fms;
 mod layout;
 mod lottie_renderer;
@@ -7,7 +8,11 @@ mod state_machine_engine;
 mod theme;
 pub(crate) mod time;
 
-pub use dotlottie_player::*;
+#[cfg(feature = "c_api")]
+pub mod c_api;
+
+pub use poll_events::*;
+pub use player::*;
 pub use fms::*;
 pub use layout::*;
 pub use lottie_renderer::*;

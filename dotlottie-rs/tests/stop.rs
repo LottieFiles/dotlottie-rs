@@ -57,7 +57,7 @@ mod tests {
         ];
 
         for config in configs {
-            let player = DotLottiePlayer::new(config);
+            let mut player = DotLottiePlayer::new(config, 0);
 
             assert!(
                 player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),

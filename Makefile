@@ -2,7 +2,7 @@
 # Main build orchestrator for dotlottie-ffi across multiple platforms
 
 # Variables that can be overridden
-BINDINGS_DIR ?= dotlottie-ffi/uniffi-bindings
+BINDINGS_DIR ?= dotlottie-rs/build
 
 .PHONY: all clean help list-platforms test clippy native native-clean
 
@@ -94,7 +94,6 @@ setup: android-setup apple-setup wasm-setup linux-setup
 # Clean all build artifacts
 clean: native-clean
 	@echo "Cleaning all build artifacts..."
-	cargo clean --manifest-path dotlottie-ffi/Cargo.toml
 	cargo clean --manifest-path dotlottie-rs/Cargo.toml
 	rm -rf $(BINDINGS_DIR)
 	@echo "Clean complete."
@@ -113,8 +112,11 @@ clippy:
 NATIVE = native
 RELEASE = release
 RUNTIME_FFI = dotlottie-ffi
+DOTLOTTIE_ROOT = dotlottie-rs
+RELEASE_FILE_NAME = dotlottie_player
+RUNTIME_HEADER = $(RELEASE_FILE_NAME).h
+BUILD_DIR = $(DOTLOTTIE_ROOT)/build
 DOTLOTTIE_PLAYER = dotlottie-player
-RUNTIME_FFI_HEADER = dotlottie_player.h
 NATIVE_FEATURES = ffi,tvg,tvg-sw,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions
 
 DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR = $(RELEASE)/$(NATIVE)/$(DOTLOTTIE_PLAYER)
@@ -125,17 +127,28 @@ DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR = $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)
 define NATIVE_RELEASE
 	rm -rf $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)
 	mkdir -p $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR) $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)
-	cp $(RUNTIME_FFI)/bindings.h $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR)/$(RUNTIME_FFI_HEADER)
-	find $(RUNTIME_FFI)/target/release/ -maxdepth 1 \( -name '*.so' -or -name '*.dylib' -or -name "*.dll" \) \
-		-exec cp {} $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR) \;
+	cp $(BUILD_DIR)/$(RUNTIME_HEADER) $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR)/$(RUNTIME_HEADER)
+	find $(DOTLOTTIE_ROOT)/target/release/ -maxdepth 1 \( -name '*.so' -or -name '*.dylib' -or -name "*.dll" \) \
+		-exec sh -c 'cp "$$1" "$(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)/lib$(RELEASE_FILE_NAME).$${1##*.}"' _ {} \;
 endef
 
 # Build native libraries for the current platform
+# Native build variables (using dotlottie-rs c_api)
+NATIVE_FEATURES = tvg,tvg-sw,c_api
+NATIVE_RELEASE_DIR = $(RELEASE)/native
+NATIVE_LIB_DIR = $(NATIVE_RELEASE_DIR)/lib
+NATIVE_INCLUDE_DIR = $(NATIVE_RELEASE_DIR)/include
+
+# Build native libraries using dotlottie-rs c_api
 native:
-	@echo "Building native libraries for current platform..."
-	cargo build --manifest-path $(RUNTIME_FFI)/Cargo.toml --features $(NATIVE_FEATURES) --release
+	@echo "Building native libraries with dotlottie-rs c_api..."
+	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features $(NATIVE_FEATURES) --release
+
 	$(NATIVE_RELEASE)
-	@echo "✓ Native build complete. Artifacts available in $(RELEASE)/$(NATIVE)/"
+
+	@echo "✓ Native build complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
+	@echo "   Library: $(NATIVE_LIB_DIR)/"
+	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/$(RUNTIME_HEADER)"
 
 # Clean native artifacts
 native-clean:

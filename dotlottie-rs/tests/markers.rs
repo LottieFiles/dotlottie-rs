@@ -10,7 +10,7 @@ mod tests {
 
     #[test]
     fn test_default_marker() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = DotLottiePlayer::new(Config::default(), 0);
 
         assert!(
             player.config().marker.is_empty(),
@@ -20,10 +20,10 @@ mod tests {
 
     #[test]
     fn test_markers() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         assert!(
             player.markers().is_empty(),
@@ -79,10 +79,10 @@ mod tests {
 
     #[test]
     fn test_set_marker() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let marker_name = "Marker_3".to_string();
 

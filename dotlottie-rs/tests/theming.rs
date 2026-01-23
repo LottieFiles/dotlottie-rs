@@ -1,4 +1,5 @@
 use dotlottie_rs::{Config, DotLottiePlayer};
+use std::ffi::CString;
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -10,10 +11,10 @@ mod tests {
 
     #[test]
     fn test_load_valid_theme() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let valid_theme_id = "test_theme";
 
@@ -33,10 +34,10 @@ mod tests {
 
     #[test]
     fn test_load_invalid_theme() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let invalid_theme_id = "invalid_theme";
 
@@ -57,10 +58,10 @@ mod tests {
 
     #[test]
     fn test_unset_theme() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let theme_id = "test_theme";
 
@@ -72,10 +73,10 @@ mod tests {
 
     #[test]
     fn test_unset_theme_before_load() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         assert!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT));
 
@@ -84,10 +85,10 @@ mod tests {
 
     #[test]
     fn test_clear_active_theme_id_after_new_animation_data_is_loaded() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let valid_theme_id = "test_theme";
 
@@ -101,9 +102,10 @@ mod tests {
         assert!(player.set_theme(valid_theme_id), "Expected theme to load");
         assert_eq!(player.active_theme_id(), valid_theme_id);
 
-        let data =
+        let data_str =
             std::str::from_utf8(include_bytes!("fixtures/test.json")).expect("Invalid data.");
-        assert!(player.load_animation_data(data, WIDTH, HEIGHT));
+        let data = CString::new(data_str).expect("Failed to create CString");
+        assert!(player.load_animation_data(&data, WIDTH, HEIGHT));
         assert!(player.active_theme_id().is_empty());
 
         assert!(player.is_playing());
@@ -111,10 +113,10 @@ mod tests {
 
     #[test]
     fn test_clear_active_theme_id_after_new_animation_path_is_loaded() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let valid_theme_id = "test_theme";
 
@@ -136,10 +138,10 @@ mod tests {
 
     #[test]
     fn test_clear_active_theme_id_after_new_dotlottie_is_loaded() {
-        let player = DotLottiePlayer::new(Config {
+        let mut player = DotLottiePlayer::new(Config {
             autoplay: true,
             ..Config::default()
-        });
+        }, 0);
 
         let valid_theme_id = "test_theme";
 

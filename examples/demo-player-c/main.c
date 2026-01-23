@@ -8,7 +8,7 @@
 #include <string.h>
 #include <unistd.h> // For readlink
 
-#include "../../dotlottie-ffi/bindings.h"
+#include "dotlottie_player.h"
 
 #define WIDTH 1000
 #define HEIGHT 1000
@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
   config.layout.fit = Void;
   config.layout.align_x = 1.0;
   config.layout.align_y = 0.5;
+  config.autoplay = true;
   strcpy(config.marker.value, "feather");
 
   // Setup dotlottie player
@@ -85,7 +86,7 @@ int main(int argc, char **argv) {
 
   // Setup SDL window
   window = SDL_CreateWindow("demo-player-c", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                            WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
+                            WIDTH, HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_INPUT_FOCUS);
   if (!window) {
     fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
     ret = 1;
@@ -133,11 +134,9 @@ int main(int argc, char **argv) {
     }
 
     next_frame = 0;
-    dotlottie_request_frame(player, &next_frame);
+    dotlottie_tick(player);
+    dotlottie_current_frame(player, &next_frame);
     if (next_frame != current_frame) {
-      // Process the next frame
-      dotlottie_set_frame(player, next_frame);
-      dotlottie_render(player);
       // Render the image in the window
       SDL_UpdateTexture(texture, NULL, buffer, WIDTH * sizeof(Uint32));
       SDL_RenderCopy(renderer, texture, NULL, NULL);

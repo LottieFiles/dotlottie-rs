@@ -1,6 +1,6 @@
 [package]
 name = "dotlottie-rs"
-version = "0.1.0"
+version = "0.1.54"
 edition = "2021"
 links = "thorvg"
 

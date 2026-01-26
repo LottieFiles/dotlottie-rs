@@ -260,11 +260,6 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@nightly
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libc6-dev libclang-dev
-
       - name: Setup WASM
         run: make wasm-setup
 

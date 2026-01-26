@@ -113,7 +113,7 @@ wasm-build-rust: wasm-check-env
 	AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar \
 	CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
 	CXXFLAGS="-isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/c++/v1 -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include" \
-	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot" \
+	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot -nostdinc -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include" \
 	RUSTFLAGS="-C panic=abort -C link-arg=--no-entry -C link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0" \
 	cargo +$(RUST_TOOLCHAIN) build \
 		--manifest-path dotlottie-rs/Cargo.toml \

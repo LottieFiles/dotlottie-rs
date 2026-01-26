@@ -107,14 +107,14 @@ wasm-setup: wasm-init-submodule wasm-install-emsdk
 # Build Rust library for WASM with C API (NO C++ wrapper needed!)
 wasm-build-rust: wasm-check-env
 	@echo "→ Building Rust library for WASM (C API - direct export)..."
-	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
+	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV)" && \
 	CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
 	CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 	AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar \
 	CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
-	CXXFLAGS='-isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/c++/v1 -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include' \
-	BINDGEN_EXTRA_CLANG_ARGS='-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot' \
-	RUSTFLAGS='-C panic=abort -C link-arg=--no-entry -C link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0' \
+	CXXFLAGS="-isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/c++/v1 -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include" \
+	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot -nostdinc -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include" \
+	RUSTFLAGS="-C panic=abort -C link-arg=--no-entry -C link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0" \
 	cargo +$(RUST_TOOLCHAIN) build \
 		--manifest-path dotlottie-rs/Cargo.toml \
 		-Z build-std=std,panic_abort \
@@ -122,7 +122,7 @@ wasm-build-rust: wasm-check-env
 		--target $(WASM_TARGET) \
 		--no-default-features \
 		--features $(WASM_DEFAULT_FEATURES),$(WASM_FEATURES) \
-		--release"
+		--release
 	@echo "✓ Rust library built for WASM"
 
 # Install npm dependencies for TypeScript support
@@ -172,7 +172,7 @@ wasm-link: wasm-build-rust  wasm-install-npm-deps
 # Package new WASM build
 wasm-package: wasm-link
 	@echo "→ Creating WASM release package..."
-	@mkdir -p $(WASM_RELEASE_DIR)/include
+	@mkdir -p $(WASM_RELEASE_DIR)
 
 	# Copy WASM module files
 	@cp $(WASM_BUILD_DIR)/$(WASM_MODULE).wasm $(WASM_RELEASE_DIR)/

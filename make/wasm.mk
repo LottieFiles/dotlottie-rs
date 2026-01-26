@@ -172,7 +172,7 @@ wasm-link: wasm-build-rust  wasm-install-npm-deps
 # Package new WASM build
 wasm-package: wasm-link
 	@echo "→ Creating WASM release package..."
-	@mkdir -p $(WASM_RELEASE_DIR)/include
+	@mkdir -p $(WASM_RELEASE_DIR)
 
 	# Copy WASM module files
 	@cp $(WASM_BUILD_DIR)/$(WASM_MODULE).wasm $(WASM_RELEASE_DIR)/

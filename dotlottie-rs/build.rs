@@ -52,6 +52,8 @@ mod thorvg {
     }
 
     pub fn build() -> std::io::Result<()> {
+        let target_triple = env::var("TARGET").unwrap_or_default();
+
         get_cpp_standard_library()
             .iter()
             .for_each(|lib| println!("cargo:rustc-link-lib=dylib={lib}"));
@@ -91,6 +93,57 @@ mod thorvg {
         if tvg_sw_enabled {
             writeln!(thorvg_config_h, "#define THORVG_SW_RASTER_SUPPORT")?;
             src.push("deps/thorvg/src/renderer/sw_engine");
+        }
+
+        if cfg!(feature = "tvg-gl") {
+            writeln!(thorvg_config_h, "#define THORVG_GL_RASTER_SUPPORT")?;
+            src.push("deps/thorvg/src/renderer/gl_engine");
+
+            if target_triple == "wasm32-unknown-emscripten" {
+                writeln!(thorvg_config_h, "#define THORVG_GL_TARGET_GLES 1")?;
+            }
+        }
+
+        let tvg_wg_requested = cfg!(feature = "tvg-wg");
+
+        let tvg_wg_enabled = if tvg_wg_requested {
+            let target = env::var("TARGET").unwrap_or_default();
+
+            // For Emscripten: ENABLE ThorVG's wg_engine with newer Dawn
+            // The user has bumped Emscripten/Dawn version to support the newer API
+            if target == "wasm32-unknown-emscripten" {
+                eprintln!("cargo:warning=tvg-wg for WASM: Enabling ThorVG WebGPU renderer with Dawn");
+                true  // Enable ThorVG's wg_engine for WASM
+            } else {
+                // Native targets: compile ThorVG's wg_engine if wgpu binaries available
+                matches!(
+                    target.as_str(),
+                    "aarch64-apple-darwin"
+                        | "x86_64-apple-darwin"
+                        | "aarch64-apple-ios"
+                        | "aarch64-apple-ios-sim"
+                        | "x86_64-apple-ios"
+                )
+            }
+        } else {
+            false
+        };
+
+        if tvg_wg_enabled {
+            writeln!(thorvg_config_h, "#define THORVG_WG_RASTER_SUPPORT")?;
+            src.push("deps/thorvg/src/renderer/wg_engine");
+
+            println!("cargo:rustc-cfg=has_wgpu_binaries");
+        } else if tvg_wg_requested {
+            let target = env::var("TARGET").unwrap_or_default();
+            if target != "wasm32-unknown-emscripten" {
+                eprintln!(
+                    "cargo:warning=tvg-wg requested but target {} doesn't have wgpu binaries",
+                    target_triple
+                );
+                eprintln!("cargo:warning=Building without ThorVG WebGPU renderer");
+            }
+            // For Emscripten, not having ThorVG's renderer is expected and OK
         }
 
         if cfg!(feature = "tvg-jpg") {
@@ -181,6 +234,18 @@ mod thorvg {
                     .collect::<Vec<_>>(),
             )
             .warnings(false);
+
+        // Add WebGPU header include path for WASM builds
+        if tvg_wg_enabled && target_triple == "wasm32-unknown-emscripten" {
+            // Use absolute path to ensure it's found
+            let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+            let webgpu_include = PathBuf::from(&crate_dir)
+                .parent()
+                .unwrap()
+                .join("deps/modules/emsdk/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include");
+            cc_build.include(&webgpu_include);
+            eprintln!("cargo:warning=Adding WebGPU include path: {}", webgpu_include.display());
+        }
 
         for flag in simd_flags {
             cc_build.flag(flag);

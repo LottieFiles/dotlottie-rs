@@ -9,7 +9,9 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap,
 };
-use crate::{DotLottieManager, Manifest, Renderer, StateMachineEngine, StateMachineEngineError};
+use crate::{
+    ColorSpace, DotLottieManager, Manifest, Renderer, StateMachineEngine, StateMachineEngineError,
+};
 
 pub enum PlaybackState {
     Playing,
@@ -697,10 +699,6 @@ impl DotLottiePlayer {
         self.config.speed
     }
 
-    pub fn buffer(&self) -> &[u32] {
-        self.renderer.buffer()
-    }
-
     pub fn animation_size(&self) -> Vec<f32> {
         vec![
             self.renderer.picture_width(),
@@ -820,6 +818,59 @@ impl DotLottiePlayer {
             self.loop_count = 0;
             self.config.loop_count = new_config.loop_count;
         }
+    }
+
+    pub fn set_sw_target(
+        &mut self,
+        buffer: *mut u32,
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> bool {
+        let set_target = self
+            .renderer
+            .set_sw_target(buffer, stride, width, height, color_space);
+
+        set_target.is_ok()
+    }
+
+    pub fn set_gl_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> bool {
+        let set_target = self
+            .renderer
+            .set_gl_target(context, id, width, height, color_space);
+
+        set_target.is_ok()
+    }
+
+    pub fn set_wg_target(
+        &mut self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> bool {
+        let set_target = self.renderer.set_wg_target(
+            device,
+            instance,
+            target,
+            width,
+            height,
+            color_space,
+            _type,
+        );
+
+        set_target.is_ok()
     }
 
     fn load_animation_common<F>(&mut self, loader: F, width: u32, height: u32) -> bool

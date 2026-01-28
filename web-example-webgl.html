@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DotLottie C API - WebGL Renderer</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .container {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        max-width: 800px;
+        border: 2px solid #333;
+        border-radius: 4px;
+        background: #f0f0f0;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+      }
+      button {
+        padding: 8px 16px;
+        border: 1px solid #333;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:hover {
+        background: #f0f0f0;
+      }
+      button:active {
+        background: #e0e0e0;
+      }
+      .info {
+        margin-top: 10px;
+        padding: 10px;
+        background: #f9f9f9;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+      }
+      .status {
+        color: #666;
+        margin-bottom: 5px;
+      }
+      .error {
+        color: #d00;
+        font-weight: bold;
+      }
+      .success {
+        color: #090;
+        font-weight: bold;
+      }
+      select,
+      input[type="range"] {
+        padding: 6px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 DotLottie C API - WebGL Renderer Demo</h1>
+
+    <div class="container">
+      <h2>Animation Canvas</h2>
+      <canvas id="canvas" width="800" height="600"></canvas>
+
+      <div class="controls">
+        <button id="play">▶️ Play</button>
+        <button id="pause">⏸️ Pause</button>
+        <button id="stop">⏹️ Stop</button>
+        <button id="resize">🔄 Resize</button>
+
+        <label>
+          <span>Loop:</span>
+          <input type="checkbox" id="loop" checked />
+        </label>
+
+        <label>
+          <span>Speed:</span>
+          <input
+            type="range"
+            id="speed"
+            min="0.1"
+            max="3"
+            step="0.1"
+            value="1"
+          />
+          <span id="speed-value">1.0x</span>
+        </label>
+      </div>
+
+      <div class="info">
+        <div class="status" id="status">Checking WebGL support...</div>
+        <div id="frame-info">Frame: 0 / 0</div>
+        <div id="fps-info">FPS: 0</div>
+        <div id="webgl-info"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      // Import the C API WASM module
+      import createDotLottiePlayerModule from "./release/wasm-webgl/dotlottie_player.js";
+
+      const canvas = document.getElementById("canvas");
+      const statusEl = document.getElementById("status");
+      const frameInfoEl = document.getElementById("frame-info");
+      const fpsInfoEl = document.getElementById("fps-info");
+      const webglInfoEl = document.getElementById("webgl-info");
+
+      // Helper: Allocate a C string in WASM memory
+      function allocateUTF8(Module, str) {
+        const encoder = new TextEncoder();
+        const utf8Array = encoder.encode(str);
+        const len = utf8Array.length + 1; // +1 for null terminator
+
+        const ptr = Module._malloc(len);
+
+        // Copy string bytes to WASM memory
+        const heap = new Uint8Array(Module.HEAPU8.buffer, ptr, len);
+        heap.set(utf8Array);
+        heap[utf8Array.length] = 0; // Null terminator
+
+        return ptr;
+      }
+
+      async function main() {
+        try {
+          // ============================================================
+          // 1. Check WebGL Support
+          // ============================================================
+
+          const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+
+          if (!gl) {
+            throw new Error(
+              "WebGL is not supported in this browser. Please use a modern browser with WebGL support.",
+            );
+          }
+
+          statusEl.innerHTML =
+            '<span class="success">✓ WebGL supported!</span>';
+          console.log("✓ WebGL is supported");
+
+          // Display WebGL info
+          const glVersion = gl.getParameter(gl.VERSION);
+          const glRenderer = gl.getParameter(gl.RENDERER);
+          const glVendor = gl.getParameter(gl.VENDOR);
+
+          webglInfoEl.innerHTML = `
+            <strong>WebGL Info:</strong><br>
+            Version: ${glVersion}<br>
+            Renderer: ${glRenderer}<br>
+            Vendor: ${glVendor}
+          `;
+
+          // ============================================================
+          // 2. Load WASM Module
+          // ============================================================
+
+          statusEl.textContent = "Loading WASM module...";
+
+          const Module = await createDotLottiePlayerModule({
+            locateFile: (path) => {
+              if (path.endsWith(".wasm")) {
+                return "release/wasm-webgl/" + path;
+              }
+              return path;
+            },
+            // Provide canvas for Emscripten
+            canvas: canvas,
+          });
+
+          statusEl.textContent =
+            "WASM module loaded! Verifying WebGL support...";
+          console.log("✓ WASM Module loaded");
+
+          // Check if WebGL functions are available
+          const webglFunctions = [
+            "_dotlottie_webgl_context_create",
+            "_dotlottie_webgl_context_make_current",
+            "_dotlottie_webgl_is_context_lost",
+            "_dotlottie_webgl_context_destroy",
+            "_dotlottie_set_gl_target",
+          ];
+
+          const missingFunctions = webglFunctions.filter(
+            (fn) => typeof Module[fn] !== "function",
+          );
+
+          if (missingFunctions.length > 0) {
+            throw new Error(
+              "WebGL functions are missing from the WASM module: " +
+                missingFunctions.join(", ") +
+                ". This indicates the module was not built with WebGL support (tvg-gl feature). " +
+                "Please rebuild with 'make wasm-webgl'.",
+            );
+          }
+
+          console.log("✓ All WebGL C API functions are available");
+          statusEl.textContent = "Creating WebGL context...";
+
+          // ============================================================
+          // 3. Create WebGL Context via Emscripten
+          // ============================================================
+
+          // Ensure canvas has an ID for Emscripten
+          if (!canvas.id) {
+            canvas.id = "canvas";
+          }
+
+          const canvasSelector = "#" + canvas.id;
+          const canvasSelectorPtr = allocateUTF8(Module, canvasSelector);
+
+          const webglContext =
+            Module._dotlottie_webgl_context_create(canvasSelectorPtr);
+          Module._free(canvasSelectorPtr);
+
+          if (webglContext === 0) {
+            throw new Error("Failed to create WebGL context via Emscripten");
+          }
+
+          console.log("✓ WebGL context created:", webglContext);
+
+          // Make the context current
+          const makeCurrentResult =
+            Module._dotlottie_webgl_context_make_current(webglContext);
+          if (makeCurrentResult !== 0) {
+            throw new Error("Failed to make WebGL context current");
+          }
+
+          console.log("✓ WebGL context is current");
+          statusEl.textContent = "Creating player...";
+
+          // ============================================================
+          // 4. Initialize Player with Config
+          // ============================================================
+
+          const configPtr = Module._malloc(256);
+          Module._dotlottie_init_config(configPtr);
+
+          const player = Module._dotlottie_new_player(configPtr);
+
+          if (player === 0) {
+            throw new Error("Failed to create player (returned null)");
+          }
+
+          console.log("✓ Player created:", player);
+          statusEl.textContent = "Setting up WebGL rendering...";
+
+          // ============================================================
+          // 5. Set WebGL Rendering Target
+          // ============================================================
+
+          const width = canvas.width;
+          const height = canvas.height;
+          const colorSpace = 1; // ABGR8888S (sRGB - required for WebGL)
+
+          // Set WebGL target
+          // For Emscripten/WebGL, we pass:
+          // - context: The Emscripten WebGL context handle (cast as pointer)
+          // - id: The framebuffer ID (0 = main surface, or specific FBO ID)
+          // - width, height: canvas dimensions
+          // - colorSpace: color format
+          const setTargetResult = Module._dotlottie_set_gl_target(
+            player,
+            webglContext, // context: The Emscripten WebGL context handle
+            0, // id: 0 = main surface (default framebuffer)
+            width,
+            height,
+            colorSpace,
+          );
+
+          if (setTargetResult !== 0) {
+            throw new Error(
+              "Failed to set WebGL rendering target, error code: " +
+                setTargetResult,
+            );
+          }
+
+          console.log("✓ WebGL rendering target configured");
+          statusEl.textContent = "Loading animation...";
+
+          // ============================================================
+          // 6. Load Animation
+          // ============================================================
+
+          const animationUrl = "./examples/demo-player/src/bouncy_ball.json";
+          const animationData = await fetch(animationUrl).then((r) => r.text());
+          const animationPtr = allocateUTF8(Module, animationData);
+
+          const loadResult = Module._dotlottie_load_animation_data(
+            player,
+            animationPtr,
+            width,
+            height,
+          );
+
+          Module._free(animationPtr);
+
+          if (loadResult !== 0) {
+            throw new Error("Failed to load animation data");
+          }
+
+          console.log("✓ Animation loaded");
+          statusEl.textContent = "Animation loaded! Playing...";
+
+          // ============================================================
+          // 7. Query Animation Info
+          // ============================================================
+
+          const totalFramesPtr = Module._malloc(4);
+          Module._dotlottie_total_frames(player, totalFramesPtr);
+          const totalFrames = Module.HEAPF32[totalFramesPtr >> 2];
+          Module._free(totalFramesPtr);
+
+          const durationPtr = Module._malloc(4);
+          Module._dotlottie_duration(player, durationPtr);
+          const duration = Module.HEAPF32[durationPtr >> 2];
+          Module._free(durationPtr);
+
+          console.log(
+            `✓ Animation info: ${totalFrames} frames, ${duration.toFixed(2)}s`,
+          );
+
+          // ============================================================
+          // 8. Start Playing
+          // ============================================================
+
+          Module._dotlottie_play(player);
+
+          // ============================================================
+          // 9. Render Loop
+          // ============================================================
+
+          let lastFrameTime = performance.now();
+          let frameCount = 0;
+          let fps = 0;
+          let shouldLoop = true;
+          let speedMultiplier = 1.0;
+          let lastTickTime = performance.now();
+
+          function render() {
+            const now = performance.now();
+
+            // Check if context is lost
+            const isContextLost =
+              Module._dotlottie_webgl_is_context_lost(webglContext);
+            if (isContextLost === 1) {
+              console.error("WebGL context lost!");
+              statusEl.innerHTML =
+                '<span class="error">❌ WebGL context lost</span>';
+              return; // Stop rendering
+            }
+
+            // Check if animation is complete and should loop
+            const isComplete = Module._dotlottie_is_complete(player);
+            if (isComplete === 1 && shouldLoop) {
+              Module._dotlottie_seek(player, 0);
+              Module._dotlottie_play(player);
+            }
+
+            // Check if playing
+            const isPlaying = Module._dotlottie_is_playing(player);
+
+            // Apply speed control
+            const timeSinceLastTick = now - lastTickTime;
+            const tickInterval = 1000 / 60 / speedMultiplier;
+
+            let didTick = false;
+            if (isPlaying === 1 && timeSinceLastTick >= tickInterval) {
+              // Tick and render
+              const tickResult = Module._dotlottie_tick(player);
+              lastTickTime = now;
+              didTick = tickResult === 0; // 0 = SUCCESS
+            }
+
+            // Update frame info (even if we didn't tick)
+            if (didTick || isPlaying === 1) {
+              const currentFramePtr = Module._malloc(4);
+              Module._dotlottie_current_frame(player, currentFramePtr);
+              const currentFrame = Module.HEAPF32[currentFramePtr >> 2];
+              Module._free(currentFramePtr);
+
+              frameInfoEl.textContent = `Frame: ${currentFrame.toFixed(1)} / ${totalFrames.toFixed(1)}`;
+            }
+
+            // Calculate FPS
+            frameCount++;
+            if (now - lastFrameTime >= 1000) {
+              fps = Math.round((frameCount * 1000) / (now - lastFrameTime));
+              fpsInfoEl.textContent = `FPS: ${fps}`;
+              frameCount = 0;
+              lastFrameTime = now;
+            }
+
+            requestAnimationFrame(render);
+          }
+
+          // Start the render loop
+          requestAnimationFrame(render);
+
+          console.log("✓ Render loop started");
+          statusEl.innerHTML =
+            '<span class="success">✓ Playing animation with WebGL!</span>';
+
+          // ============================================================
+          // 10. UI Controls
+          // ============================================================
+
+          document.getElementById("play").addEventListener("click", () => {
+            Module._dotlottie_play(player);
+            statusEl.textContent = "▶️ Playing";
+          });
+
+          document.getElementById("pause").addEventListener("click", () => {
+            Module._dotlottie_pause(player);
+            statusEl.textContent = "⏸️ Paused";
+          });
+
+          document.getElementById("stop").addEventListener("click", () => {
+            Module._dotlottie_stop(player);
+            statusEl.textContent = "⏹️ Stopped";
+          });
+
+          document.getElementById("resize").addEventListener("click", () => {
+            const newWidth = canvas.width;
+            const newHeight = canvas.height;
+            Module._dotlottie_resize(player, newWidth, newHeight);
+            console.log(`Resized to ${newWidth}x${newHeight}`);
+          });
+
+          document.getElementById("loop").addEventListener("change", (e) => {
+            shouldLoop = e.target.checked;
+            console.log("Loop:", shouldLoop);
+            statusEl.textContent = shouldLoop
+              ? "Loop enabled"
+              : "Loop disabled";
+          });
+
+          document.getElementById("speed").addEventListener("input", (e) => {
+            speedMultiplier = parseFloat(e.target.value);
+            document.getElementById("speed-value").textContent =
+              `${speedMultiplier.toFixed(1)}x`;
+            console.log("Speed:", speedMultiplier);
+            statusEl.textContent = `Speed: ${speedMultiplier.toFixed(1)}x`;
+          });
+
+          // ============================================================
+          // 11. Cleanup on Page Unload
+          // ============================================================
+
+          window.addEventListener("beforeunload", () => {
+            Module._dotlottie_destroy(player);
+            Module._free(configPtr);
+            Module._dotlottie_webgl_context_destroy(webglContext);
+            console.log("✓ Cleaned up resources");
+          });
+        } catch (error) {
+          console.error("Error:", error);
+          statusEl.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+
+          // Show helpful error message for common issues
+          if (error.message.includes("WebGL is not supported")) {
+            statusEl.innerHTML += `<br><br>
+              <strong>WebGL Support:</strong><br>
+              • Make sure you're using a modern browser<br>
+              • Update your graphics drivers<br>
+              • Enable hardware acceleration in browser settings
+            `;
+          }
+        }
+      }
+
+      // Start the app
+      main();
+    </script>
+  </body>
+</html>

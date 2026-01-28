@@ -81,7 +81,7 @@ static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
 static FONT_LOADED: std::sync::Once = std::sync::Once::new();
 
 pub struct TvgRenderer {
-    raw_canvas: tvg::Tvg_Canvas,
+    raw_canvas: Option<tvg::Tvg_Canvas>,
 }
 
 impl TvgRenderer {
@@ -101,10 +101,49 @@ impl TvgRenderer {
 
         *count += 1;
 
-        TvgRenderer {
-            raw_canvas: unsafe {
-                tvg::tvg_swcanvas_create(tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_NONE)
-            },
+        TvgRenderer { raw_canvas: None }
+    }
+
+    pub fn create_sw_canvas(&mut self) -> Result<(), TvgError> {
+        let canvas = unsafe { tvg::tvg_swcanvas_create(1) };
+
+        if canvas.is_null() {
+            return Err(TvgError::FailedAllocation);
+        }
+
+        self.raw_canvas = Some(canvas);
+
+        Ok(())
+    }
+
+    pub fn create_gl_canvas(&mut self) -> Result<(), TvgError> {
+        {
+            let canvas = unsafe { tvg::tvg_glcanvas_create() };
+
+            if canvas.is_null() {
+                return Err(TvgError::FailedAllocation);
+            }
+
+            self.raw_canvas = Some(canvas);
+
+            return Ok(());
+        }
+    }
+
+    pub fn create_wg_canvas(&mut self) -> Result<(), TvgError> {
+        unsafe {
+            println!("[Rust] Calling tvg_wgcanvas_create()...");
+            let canvas = tvg::tvg_wgcanvas_create();
+            println!("[Rust] tvg_wgcanvas_create() returned: {:?}", canvas);
+
+            if canvas.is_null() {
+                println!("[Rust] Canvas is NULL - WebGPU canvas creation failed!");
+                return Err(TvgError::FailedAllocation);
+            }
+
+            println!("[Rust] Canvas created successfully");
+            self.raw_canvas = Some(canvas);
+            Ok(())
         }
     }
 }
@@ -134,53 +173,180 @@ impl Renderer for TvgRenderer {
     }
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_canvas_set_viewport(self.raw_canvas, x, y, w, h).into_result() }
+        if let Some(raw_canvas) = self.raw_canvas {
+            self.raw_canvas = Some(raw_canvas);
+            unsafe { tvg::tvg_canvas_set_viewport(raw_canvas, x, y, w, h).into_result() }
+        } else {
+            return Err(TvgError::InvalidArgument);
+        }
     }
 
-    fn set_target(
+    fn set_sw_target(
         &mut self,
-        buffer: &mut [u32],
+        frame_ptr: *mut u32,
         stride: u32,
         width: u32,
         height: u32,
         color_space: ColorSpace,
     ) -> Result<(), TvgError> {
-        unsafe {
-            tvg::tvg_swcanvas_set_target(
-                self.raw_canvas,
-                buffer.as_mut_ptr(),
-                stride,
-                width,
-                height,
-                color_space.into(),
-            )
-            .into_result()
+        if self.raw_canvas.is_none() {
+            self.create_sw_canvas()?;
+        }
+
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe {
+                tvg::tvg_swcanvas_set_target(
+                    raw_canvas,
+                    frame_ptr,
+                    stride,
+                    width,
+                    height,
+                    color_space.into(),
+                )
+                .into_result()
+            }
+        } else {
+            Err(TvgError::InvalidArgument)
         }
     }
 
-    fn clear(&self) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_canvas_remove(self.raw_canvas, ptr::null_mut()).into_result() }
+    fn set_gl_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+        _color_space: ColorSpace,
+    ) -> Result<(), Self::Error> {
+        {
+            if self.raw_canvas.is_none() {
+                self.create_gl_canvas()?;
+            }
+
+            if let Some(raw_canvas) = self.raw_canvas {
+                unsafe {
+                    tvg::tvg_glcanvas_set_target(
+                        raw_canvas,
+                        context,
+                        id,
+                        width,
+                        height,
+                        tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
+                    )
+                    .into_result()
+                }
+            } else {
+                Err(TvgError::InvalidArgument)
+            }
+        }
     }
 
+    fn set_wg_target(
+        &mut self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+        _color_space: ColorSpace,
+        _type: i32,
+    ) -> Result<(), Self::Error> {
+        if self.raw_canvas.is_none() {
+            self.create_wg_canvas()?;
+        }
+
+        if let Some(raw_canvas) = self.raw_canvas {
+            // If device is null, let ThorVG create its own device
+            // This matches how ThorVG Web works
+            let actual_device = if device.is_null() {
+                std::ptr::null_mut()
+            } else {
+                device
+            };
+
+            println!("[Rust] Calling tvg_wgcanvas_set_target with device={:?}, instance={:?}, target={:?}, {}x{}",
+                     actual_device, instance, target, width, height);
+
+            let result = unsafe {
+                tvg::tvg_wgcanvas_set_target(
+                    raw_canvas,
+                    actual_device,
+                    instance,
+                    target,
+                    width,
+                    height,
+                    tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
+                    0,
+                )
+            };
+
+            println!("[Rust] tvg_wgcanvas_set_target returned: {:?}", result);
+
+            let set_target_result = result.into_result();
+            if set_target_result.is_err() {
+                return set_target_result;
+            }
+
+            // After setting target, sync to ensure canvas is properly initialized
+            println!("[Rust] Syncing canvas after set_target");
+            let sync_result = unsafe { tvg::tvg_canvas_sync(raw_canvas).into_result() };
+            println!("[Rust] Post-set_target sync result: {:?}", sync_result);
+
+            set_target_result
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
+    }
+
+    fn clear(&self, _free: bool) -> Result<(), TvgError> {
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe { tvg::tvg_canvas_remove(raw_canvas, ptr::null_mut()).into_result() }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
+    }
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), TvgError> {
-        let raw_paint = match drawable {
-            Drawable::Animation(animation) => animation.raw_paint,
-            Drawable::Shape(shape) => shape.raw_shape,
-        };
+        if let Some(raw_canvas) = self.raw_canvas {
+            let raw_paint = match drawable {
+                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Shape(shape) => shape.raw_shape,
+            };
 
-        unsafe { tvg::tvg_canvas_push(self.raw_canvas, raw_paint).into_result() }
+            unsafe { tvg::tvg_canvas_push(raw_canvas, raw_paint).into_result() }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
     }
 
-    fn draw(&mut self, clear_buffer: bool) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_canvas_draw(self.raw_canvas, clear_buffer).into_result() }
+    fn draw(&mut self, _clear_buffer: bool) -> Result<(), TvgError> {
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe { tvg::tvg_canvas_draw(raw_canvas, _clear_buffer).into_result() }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
     }
 
     fn sync(&mut self) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_canvas_sync(self.raw_canvas).into_result() }
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe { tvg::tvg_canvas_sync(raw_canvas).into_result() }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
     }
 
     fn update(&mut self) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_canvas_update(self.raw_canvas).into_result() }
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe {
+                let res = tvg::tvg_canvas_update(raw_canvas);
+                let result = res.into_result();
+                if let Err(ref e) = result {
+                    println!("[TvgRenderer] tvg_canvas_update error: {:?}", e);
+                }
+                return result;
+            }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
     }
 }
 
@@ -188,8 +354,10 @@ impl Drop for TvgRenderer {
     fn drop(&mut self) {
         let mut count = RENDERERS_COUNT.lock().unwrap();
 
-        unsafe {
-            tvg::tvg_canvas_destroy(self.raw_canvas);
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe {
+                tvg::tvg_canvas_destroy(raw_canvas);
+            }
         }
 
         *count = count.checked_sub(1).unwrap();

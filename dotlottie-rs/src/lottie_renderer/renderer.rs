@@ -1,6 +1,8 @@
 use core::error;
 use std::ffi::CStr;
 
+#[derive(Debug, Copy, Clone)]
+#[repr(C)]
 pub enum ColorSpace {
     ABGR8888,
     ABGR8888S,
@@ -85,16 +87,36 @@ pub trait Renderer: Sized + 'static {
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), Self::Error>;
 
-    fn set_target(
+    fn set_sw_target(
         &mut self,
-        buffer: &mut [u32],
+        buffer: *mut u32,
         stride: u32,
         width: u32,
         height: u32,
         color_space: ColorSpace,
     ) -> Result<(), Self::Error>;
 
-    fn clear(&self) -> Result<(), Self::Error>;
+    fn set_gl_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), Self::Error>;
+
+    fn set_wg_target(
+        &mut self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+        _type: i32,
+    ) -> Result<(), Self::Error>;
+
+    fn clear(&self, free: bool) -> Result<(), Self::Error>;
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), Self::Error>;
 

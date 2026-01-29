@@ -247,6 +247,68 @@ mod thorvg {
             eprintln!("cargo:warning=Adding WebGPU include path: {}", webgpu_include.display());
         }
 
+        // Add WebGPU header include path and link wgpu-native for Apple platforms
+        if tvg_wg_enabled {
+            let target = env::var("TARGET").unwrap_or_default();
+
+            if matches!(target.as_str(),
+                "aarch64-apple-darwin" | "x86_64-apple-darwin" |
+                "aarch64-apple-ios" | "aarch64-apple-ios-sim" | "x86_64-apple-ios"
+            ) {
+                let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+                let wgpu_base = PathBuf::from(&crate_dir).join("deps/wgpu");
+
+                // Map target to wgpu library directory
+                let wgpu_arch_dir = match target.as_str() {
+                    "aarch64-apple-darwin" => "wgpu-macos-aarch64-release",
+                    "x86_64-apple-darwin" => "wgpu-macos-x86_64-release",
+                    "aarch64-apple-ios" => "wgpu-ios-aarch64-release",
+                    "aarch64-apple-ios-sim" => "wgpu-ios-aarch64-simulator-release",
+                    "x86_64-apple-ios" => "wgpu-ios-x86_64-simulator-release",
+                    _ => "",
+                };
+
+                if !wgpu_arch_dir.is_empty() {
+                    let wgpu_lib_path = wgpu_base.join(wgpu_arch_dir).join("lib");
+                    let wgpu_include_path = wgpu_base.join(wgpu_arch_dir).join("include");
+                    let static_lib = wgpu_lib_path.join("libwgpu_native.a");
+
+                    // Add include path for wgpu headers
+                    if wgpu_include_path.exists() {
+                        cc_build.include(&wgpu_include_path);
+                    }
+
+                    // Link wgpu-native static library
+                    if static_lib.exists() {
+                        let abs_lib_path = wgpu_lib_path.canonicalize()
+                            .expect("Failed to canonicalize wgpu lib path");
+
+                        println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
+                        println!("cargo:rustc-link-lib=static=wgpu_native");
+
+                        // Link required Apple frameworks
+                        println!("cargo:rustc-link-lib=framework=Metal");
+                        println!("cargo:rustc-link-lib=framework=QuartzCore");
+                        println!("cargo:rustc-link-lib=framework=Foundation");
+
+                        if target.contains("-darwin") && !target.contains("macabi") {
+                            println!("cargo:rustc-link-lib=framework=AppKit");
+                        } else if target.contains("ios") {
+                            println!("cargo:rustc-link-lib=framework=UIKit");
+                        }
+
+                        eprintln!("cargo:warning=Linked wgpu-native from {}", abs_lib_path.display());
+
+                        // Enable cfg flag for conditional compilation
+                        println!("cargo:rustc-cfg=wgpu_native_linked");
+                    } else {
+                        eprintln!("cargo:warning=wgpu-native library not found at {:?}", static_lib);
+                        eprintln!("cargo:warning=WebGPU rendering will not be available");
+                    }
+                }
+            }
+        }
+
         for flag in simd_flags {
             cc_build.flag(flag);
         }
@@ -288,6 +350,9 @@ mod thorvg {
 }
 
 fn main() -> std::io::Result<()> {
+    // Declare custom cfg names for conditional compilation
+    println!("cargo::rustc-check-cfg=cfg(wgpu_native_linked)");
+
     if cfg!(feature = "tvg") {
         thorvg::build()?;
     }

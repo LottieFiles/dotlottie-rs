@@ -14,6 +14,13 @@ use types::*;
 
 pub mod types;
 
+#[cfg(all(
+    feature = "tvg-wg",
+    any(target_os = "macos", target_os = "ios"),
+    wgpu_native_linked
+))]
+mod wgpu_helper;
+
 // Helper macro for DotLottiePlayer operations - wraps every C API call to check
 // if the dotlottie player pointer is valid or not
 macro_rules! exec_dotlottie_player_op {
@@ -476,6 +483,86 @@ pub unsafe extern "C" fn dotlottie_set_wg_target(
             _type,
         ))
     })
+}
+
+/// Create WebGPU context from Metal layer (macOS/iOS only)
+///
+/// # Arguments
+/// * `metal_layer` - Pointer to CAMetalLayer from Swift
+///
+/// # Returns
+/// * Opaque pointer to WgpuContext, or NULL on failure
+///
+/// # Safety
+/// The metal_layer pointer must be valid and point to a CAMetalLayer object
+#[cfg(all(
+    feature = "tvg-wg",
+    any(target_os = "macos", target_os = "ios"),
+    wgpu_native_linked
+))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_create_wgpu_context_from_metal_layer(
+    metal_layer: *mut std::ffi::c_void,
+) -> *mut std::ffi::c_void {
+    match wgpu_helper::WgpuContext::from_metal_layer(metal_layer) {
+        Ok(context) => Box::into_raw(Box::new(context)) as *mut std::ffi::c_void,
+        Err(e) => {
+            eprintln!("Failed to create WebGPU context: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// Get WebGPU pointers from context (device, instance, surface)
+///
+/// # Arguments
+/// * `context` - Opaque pointer from dotlottie_create_wgpu_context_from_metal_layer
+/// * `out_device` - Output pointer for device
+/// * `out_instance` - Output pointer for instance
+/// * `out_surface` - Output pointer for surface
+///
+/// # Safety
+/// context must be a valid pointer from dotlottie_create_wgpu_context_from_metal_layer
+#[cfg(all(
+    feature = "tvg-wg",
+    any(target_os = "macos", target_os = "ios"),
+    wgpu_native_linked
+))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_wgpu_context_get_pointers(
+    context: *const std::ffi::c_void,
+    out_device: *mut u64,
+    out_instance: *mut u64,
+    out_surface: *mut u64,
+) {
+    if context.is_null() || out_device.is_null() || out_instance.is_null() || out_surface.is_null() {
+        return;
+    }
+
+    let ctx = &*(context as *const wgpu_helper::WgpuContext);
+    let (device, instance, surface) = ctx.as_pointers();
+    *out_device = device;
+    *out_instance = instance;
+    *out_surface = surface;
+}
+
+/// Free WebGPU context
+///
+/// # Arguments 
+/// * `context` - Opaque pointer from dotlottie_create_wgpu_context_from_metal_layer
+///
+/// # Safety
+/// context must be a valid pointer and will be invalid after this call
+#[cfg(all(
+    feature = "tvg-wg",
+    any(target_os = "macos", target_os = "ios"),
+    wgpu_native_linked
+))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_free_wgpu_context(context: *mut std::ffi::c_void) {
+    if !context.is_null() {
+        let _ = Box::from_raw(context as *mut wgpu_helper::WgpuContext);
+    }
 }
 
 #[no_mangle]

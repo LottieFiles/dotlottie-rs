@@ -857,7 +857,7 @@ impl DotLottiePlayer {
         target: *mut std::ffi::c_void,
         width: u32,
         height: u32,
-        color_space: ColorSpace,
+        _color_space: ColorSpace,
         _type: i32,
     ) -> bool {
         let set_target = self.renderer.set_wg_target(
@@ -866,7 +866,7 @@ impl DotLottiePlayer {
             target,
             width,
             height,
-            color_space,
+            ColorSpace::ABGR8888S,
             _type,
         );
 

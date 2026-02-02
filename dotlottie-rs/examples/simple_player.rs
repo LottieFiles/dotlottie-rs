@@ -83,7 +83,6 @@ fn main() {
     let mut right_was_down = false;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        // Handle arrow key navigation (on release)
         let left_is_down = window.is_key_down(Key::Left);
         let right_is_down = window.is_key_down(Key::Right);
 
@@ -104,7 +103,6 @@ fn main() {
         left_was_down = left_is_down;
         right_was_down = right_is_down;
 
-        // Tick and render
         if player.tick() {
             window
                 .update_with_buffer(player.buffer(), WIDTH, HEIGHT)

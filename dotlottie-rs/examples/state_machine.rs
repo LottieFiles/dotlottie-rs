@@ -125,10 +125,8 @@ fn main() {
         panic!("{}", e);
     });
 
-    // Limit frame rate
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    // Create player
     let mut player = DotLottiePlayer::new(
         Config {
             background_color: 0xffffffff,
@@ -137,7 +135,6 @@ fn main() {
         0,
     );
 
-    // Load animation
     let animation_path = PathBuf::from(format!("./examples/shared/animations/{}", ANIMATION_NAME));
 
     if !load_animation(&mut player, &animation_path) {
@@ -145,12 +142,6 @@ fn main() {
         return;
     }
 
-    // Debug info
-    println!("Duration: {} frames", player.duration());
-    println!("Total frames: {}", player.total_frames());
-    println!("Is loaded: {}", player.is_loaded());
-
-    // Load state machine definition
     let state_machine_path = format!(
         "./examples/shared/statemachines/{}.json",
         STATE_MACHINE_NAME
@@ -162,16 +153,11 @@ fn main() {
         )
     });
 
-    // Create state machine engine
     let mut engine = player
         .state_machine_load_data(&state_machine_def)
         .expect("Failed to load state machine");
 
-    // Configure and start state machine
-    let open_url = OpenUrlPolicy {
-        whitelist: vec!["example.com/path/*/another_path/*".to_string()],
-        require_user_interaction: true,
-    };
+    let open_url = OpenUrlPolicy::default();
 
     let started = engine.start(&open_url);
     println!("State machine started: {}", started);
@@ -180,7 +166,6 @@ fn main() {
         eprintln!("Warning: State machine failed to start");
     }
 
-    // Force render the first frame
     engine.player.set_frame(0.0);
     engine.player.render();
 
@@ -215,12 +200,10 @@ fn main() {
             }
         }
 
-        // Click detection (on release)
         if !mouse_pressed && left_down {
             engine.post_event(&Event::Click { x: mx, y: my });
         }
 
-        // Pointer down/up
         if mouse_pressed && !left_down {
             engine.post_event(&Event::PointerDown { x: mx, y: my });
         } else if !mouse_pressed && left_down {

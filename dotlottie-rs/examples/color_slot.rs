@@ -51,7 +51,7 @@ fn main() {
     println!("Press ESC to quit");
 
     // Define some colors to cycle through [R, G, B] (normalized 0.0-1.0)
-    let colors = vec![
+    let colors = [
         ([1.0, 0.0, 0.0], "Red"),
         ([0.0, 1.0, 0.0], "Green"),
         ([0.0, 0.0, 1.0], "Blue"),
@@ -80,61 +80,62 @@ fn main() {
         let now = std::time::Instant::now();
 
         // Handle toggle between static and animated with T key
-        if window.is_key_down(Key::T)
-            && now.duration_since(last_toggle_press).as_millis() > 200 {
-                is_animated = !is_animated;
+        if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
+            is_animated = !is_animated;
 
-                if is_animated {
-                    // Create animated color slot: Red -> Blue (linear interpolation)
-                    let color_slot = ColorSlot::with_keyframes(vec![
-                        LottieKeyframe {
-                            frame: 0,
-                            start_value: [1.0, 0.0, 0.0], // Red
-                            in_tangent: None,
-                            out_tangent: None,
-                            value_in_tangent: None,
-                            value_out_tangent: None,
-                            hold: None,
-                        },
-                        LottieKeyframe {
-                            frame: 60,
-                            start_value: [0.0, 0.0, 1.0], // Blue
-                            in_tangent: None,
-                            out_tangent: None,
-                            value_in_tangent: None,
-                            value_out_tangent: None,
-                            hold: None,
-                        },
-                    ]);
-                    player.set_color_slot("ball_color", color_slot);
-                    println!("Mode: ANIMATED (Red -> Blue)");
-                } else {
-                    // Switch back to static mode
-                    let color_slot = ColorSlot::new(colors[current_color_index].0);
-                    player.set_color_slot("ball_color", color_slot);
-                    println!(
-                        "Mode: STATIC | Current color: {}",
-                        colors[current_color_index].1
-                    );
-                }
-
-                last_toggle_press = now;
-        }
-
-        // Handle color cycling with SPACE key (only in static mode)
-        if !is_animated && window.is_key_down(Key::Space)
-            && now.duration_since(last_space_press).as_millis() > 200 {
-                current_color_index = (current_color_index + 1) % colors.len();
-
-                // Create and set the new color slot
+            if is_animated {
+                // Create animated color slot: Red -> Blue (linear interpolation)
+                let color_slot = ColorSlot::with_keyframes(vec![
+                    LottieKeyframe {
+                        frame: 0,
+                        start_value: [1.0, 0.0, 0.0], // Red
+                        in_tangent: None,
+                        out_tangent: None,
+                        value_in_tangent: None,
+                        value_out_tangent: None,
+                        hold: None,
+                    },
+                    LottieKeyframe {
+                        frame: 60,
+                        start_value: [0.0, 0.0, 1.0], // Blue
+                        in_tangent: None,
+                        out_tangent: None,
+                        value_in_tangent: None,
+                        value_out_tangent: None,
+                        hold: None,
+                    },
+                ]);
+                player.set_color_slot("ball_color", color_slot);
+                println!("Mode: ANIMATED (Red -> Blue)");
+            } else {
+                // Switch back to static mode
                 let color_slot = ColorSlot::new(colors[current_color_index].0);
                 player.set_color_slot("ball_color", color_slot);
-
                 println!(
                     "Mode: STATIC | Current color: {}",
                     colors[current_color_index].1
                 );
-                last_space_press = now;
+            }
+
+            last_toggle_press = now;
+        }
+
+        // Handle color cycling with SPACE key (only in static mode)
+        if !is_animated
+            && window.is_key_down(Key::Space)
+            && now.duration_since(last_space_press).as_millis() > 200
+        {
+            current_color_index = (current_color_index + 1) % colors.len();
+
+            // Create and set the new color slot
+            let color_slot = ColorSlot::new(colors[current_color_index].0);
+            player.set_color_slot("ball_color", color_slot);
+
+            println!(
+                "Mode: STATIC | Current color: {}",
+                colors[current_color_index].1
+            );
+            last_space_press = now;
         }
 
         // Update animation frame and render

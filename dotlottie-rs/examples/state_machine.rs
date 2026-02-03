@@ -1,3 +1,5 @@
+#![allow(clippy::print_stdout)]
+
 use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
 use dotlottie_rs::events::Event;
 use dotlottie_rs::{Config, DotLottiePlayer, StateMachineEngine, StateMachineEvent};
@@ -27,21 +29,20 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_state,
             } => {
                 println!(
-                    "[state machine event] on_transition: {} -> {}",
-                    previous_state, new_state
+                    "[state machine event] on_transition: {previous_state} -> {new_state}"
                 );
             }
             StateMachineEvent::StateEntered { state } => {
-                println!("[state machine event] on_state_entered: {}", state);
+                println!("[state machine event] on_state_entered: {state}");
             }
             StateMachineEvent::StateExit { state } => {
-                println!("[state machine event] on_state_exit: {}", state);
+                println!("[state machine event] on_state_exit: {state}");
             }
             StateMachineEvent::CustomEvent { message } => {
-                println!("[state machine event] custom_event: {}", message);
+                println!("[state machine event] custom_event: {message}");
             }
             StateMachineEvent::Error { message } => {
-                println!("[state machine event] error: {}", message);
+                println!("[state machine event] error: {message}");
             }
             StateMachineEvent::StringInputChange {
                 name,
@@ -49,8 +50,7 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] string_input_value_change ==> {} : {} -> {}",
-                    name, old_value, new_value
+                    "[state machine event] string_input_value_change ==> {name} : {old_value} -> {new_value}"
                 );
             }
             StateMachineEvent::NumericInputChange {
@@ -59,8 +59,7 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] numeric_input_value_change ==> {} : {} -> {}",
-                    name, old_value, new_value
+                    "[state machine event] numeric_input_value_change ==> {name} : {old_value} -> {new_value}"
                 );
             }
             StateMachineEvent::BooleanInputChange {
@@ -69,12 +68,11 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] boolean_input_value_change ==> {} : {} -> {}",
-                    name, old_value, new_value
+                    "[state machine event] boolean_input_value_change ==> {name} : {old_value} -> {new_value}"
                 );
             }
             StateMachineEvent::InputFired { name } => {
-                println!("[state machine event] input_fired ==> {}", name);
+                println!("[state machine event] input_fired ==> {name}");
             }
         }
     }
@@ -88,7 +86,7 @@ fn load_animation(player: &mut DotLottiePlayer, path: &PathBuf) -> bool {
             let mut file = File::open(path).expect("Could not open file");
             let metadata = fs::metadata(path).expect("Could not read metadata");
             let mut buffer = vec![0; metadata.len() as usize];
-            file.read(&mut buffer).expect("Buffer overflow");
+            file.read_exact(&mut buffer).expect("Buffer overflow");
             player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32)
         }
         "json" => {
@@ -136,8 +134,7 @@ fn main() {
     );
 
     let animation_path = PathBuf::from(format!(
-        "./assets/animations/dotlottie/v1/{}",
-        ANIMATION_NAME
+        "./assets/animations/dotlottie/v1/{ANIMATION_NAME}"
     ));
 
     if !load_animation(&mut player, &animation_path) {
@@ -145,11 +142,10 @@ fn main() {
         return;
     }
 
-    let state_machine_path = format!("./assets/statemachines/{}.json", STATE_MACHINE_NAME);
+    let state_machine_path = format!("./assets/statemachines/{STATE_MACHINE_NAME}.json");
     let state_machine_def = fs::read_to_string(&state_machine_path).unwrap_or_else(|e| {
         panic!(
-            "Failed to read state machine file {}: {}",
-            state_machine_path, e
+            "Failed to read state machine file {state_machine_path}: {e}"
         )
     });
 
@@ -160,7 +156,7 @@ fn main() {
     let open_url = OpenUrlPolicy::default();
 
     let started = engine.start(&open_url);
-    println!("State machine started: {}", started);
+    println!("State machine started: {started}");
 
     if !started {
         eprintln!("Warning: State machine failed to start");

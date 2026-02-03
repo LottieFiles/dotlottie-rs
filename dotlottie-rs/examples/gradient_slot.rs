@@ -1,3 +1,5 @@
+#![allow(clippy::print_stdout)]
+
 /// Gradient Slot Example
 ///
 /// This example demonstrates how to use the `set_gradient_slot` API to dynamically
@@ -176,8 +178,8 @@ fn main() {
         let now = std::time::Instant::now();
 
         // Handle toggle between static and animated with T key
-        if window.is_key_down(Key::T) {
-            if now.duration_since(last_toggle_press).as_millis() > 200 {
+        if window.is_key_down(Key::T)
+            && now.duration_since(last_toggle_press).as_millis() > 200 {
                 is_animated = !is_animated;
 
                 if is_animated {
@@ -242,12 +244,11 @@ fn main() {
                 }
 
                 last_toggle_press = now;
-            }
         }
 
         // Handle gradient cycling with SPACE key (only in static mode)
-        if !is_animated && window.is_key_down(Key::Space) {
-            if now.duration_since(last_space_press).as_millis() > 200 {
+        if !is_animated && window.is_key_down(Key::Space)
+            && now.duration_since(last_space_press).as_millis() > 200 {
                 current_gradient_index = (current_gradient_index + 1) % gradients.len();
 
                 // Create and set the new gradient slot
@@ -259,7 +260,6 @@ fn main() {
                     gradients[current_gradient_index].0
                 );
                 last_space_press = now;
-            }
         }
 
         // Update animation frame and render

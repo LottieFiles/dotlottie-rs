@@ -1,3 +1,5 @@
+#![allow(clippy::print_stdout)]
+
 /// Scalar Slot Example
 ///
 /// This example demonstrates how to use the `set_scalar_slot` API to dynamically
@@ -57,15 +59,15 @@ fn main() {
     // Set initial opacity (static)
     let opacity_slot = ScalarSlot::new(opacity);
     player.set_scalar_slot("ball_opacity", opacity_slot);
-    println!("Mode: STATIC | Current opacity: {:.0}%", opacity);
+    println!("Mode: STATIC | Current opacity: {opacity:.0}%");
 
     // Main render loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now();
 
         // Handle toggle between static and animated with T key
-        if window.is_key_down(Key::T) {
-            if now.duration_since(last_toggle_press).as_millis() > 200 {
+        if window.is_key_down(Key::T)
+            && now.duration_since(last_toggle_press).as_millis() > 200 {
                 is_animated = !is_animated;
 
                 if is_animated {
@@ -96,11 +98,10 @@ fn main() {
                     // Switch back to static mode
                     let opacity_slot = ScalarSlot::new(opacity);
                     player.set_scalar_slot("ball_opacity", opacity_slot);
-                    println!("Mode: STATIC | Current opacity: {:.0}%", opacity);
+                    println!("Mode: STATIC | Current opacity: {opacity:.0}%");
                 }
 
                 last_toggle_press = now;
-            }
         }
 
         let mut opacity_changed = false;
@@ -122,7 +123,7 @@ fn main() {
             // Create and set the new scalar slot
             let opacity_slot = ScalarSlot::new(opacity);
             player.set_scalar_slot("ball_opacity", opacity_slot);
-            println!("Mode: STATIC | Current opacity: {:.0}%", opacity);
+            println!("Mode: STATIC | Current opacity: {opacity:.0}%");
         }
 
         // Update animation frame and render

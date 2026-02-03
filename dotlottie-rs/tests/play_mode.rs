@@ -31,7 +31,7 @@ mod play_mode_tests {
         let mut observed_completed = false;
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -76,7 +76,7 @@ mod play_mode_tests {
         let mut observed_loops = 0;
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -116,7 +116,7 @@ mod play_mode_tests {
         let mut observed_completed = false;
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -186,7 +186,7 @@ mod play_mode_tests {
         let mut observed_completed = false;
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -265,7 +265,7 @@ mod play_mode_tests {
             );
 
             assert!(
-                player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+                player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
                 "Animation should load"
             );
 
@@ -311,7 +311,7 @@ mod play_mode_tests {
         }, 0);
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -364,7 +364,7 @@ mod play_mode_tests {
         let mut observed_completed = false;
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -403,7 +403,7 @@ mod play_mode_tests {
         }, 0);
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 
@@ -454,7 +454,7 @@ mod play_mode_tests {
         let mut observed_completed = false;
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -494,7 +494,7 @@ mod play_mode_tests {
         }, 0);
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 
@@ -562,7 +562,7 @@ mod play_mode_tests {
         let mut observed_completed = false;
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -599,7 +599,7 @@ mod play_mode_tests {
         }, 0);
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 
@@ -667,7 +667,7 @@ mod play_mode_tests {
         let mut observed_completed = false;
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");

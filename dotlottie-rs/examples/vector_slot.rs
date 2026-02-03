@@ -1,3 +1,5 @@
+#![allow(clippy::print_stdout)]
+
 /// Vector Slot Example
 ///
 /// This example demonstrates how to use the `set_vector_slot` API to dynamically
@@ -60,8 +62,7 @@ fn main() {
     let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
     player.set_vector_slot("ball_scale", scale_slot);
     println!(
-        "Mode: STATIC | Current scale: X={:.0}%, Y={:.0}%",
-        scale_x, scale_y
+        "Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%"
     );
 
     // Main render loop
@@ -69,8 +70,8 @@ fn main() {
         let now = std::time::Instant::now();
 
         // Handle toggle between static and animated with T key
-        if window.is_key_down(Key::T) {
-            if now.duration_since(last_toggle_press).as_millis() > 200 {
+        if window.is_key_down(Key::T)
+            && now.duration_since(last_toggle_press).as_millis() > 200 {
                 is_animated = !is_animated;
 
                 if is_animated {
@@ -102,13 +103,11 @@ fn main() {
                     let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
                     player.set_vector_slot("ball_scale", scale_slot);
                     println!(
-                        "Mode: STATIC | Current scale: X={:.0}%, Y={:.0}%",
-                        scale_x, scale_y
+                        "Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%"
                     );
                 }
 
                 last_toggle_press = now;
-            }
         }
 
         let mut scale_changed = false;
@@ -145,8 +144,7 @@ fn main() {
             let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
             player.set_vector_slot("ball_scale", scale_slot);
             println!(
-                "Mode: STATIC | Current scale: X={:.0}%, Y={:.0}%",
-                scale_x, scale_y
+                "Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%"
             );
         }
 

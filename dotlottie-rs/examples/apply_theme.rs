@@ -1,3 +1,5 @@
+#![allow(clippy::print_stdout)]
+
 /// Theme Example
 ///
 /// This example demonstrates how to use the `set_theme` API to switch between
@@ -51,7 +53,7 @@ fn main() {
     println!();
 
     // Available themes from the multi_themes.lottie file
-    let themes = vec![
+    let themes = [
         "light",
         "dark",
         "sky",

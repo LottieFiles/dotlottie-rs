@@ -20,10 +20,13 @@ mod tests {
 
     #[test]
     fn test_markers() {
-        let mut player = DotLottiePlayer::new(Config {
-            autoplay: true,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                autoplay: true,
+                ..Config::default()
+            },
+            0,
+        );
 
         assert!(
             player.markers().is_empty(),
@@ -31,7 +34,7 @@ mod tests {
         );
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 
@@ -79,15 +82,18 @@ mod tests {
 
     #[test]
     fn test_set_marker() {
-        let mut player = DotLottiePlayer::new(Config {
-            autoplay: true,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                autoplay: true,
+                ..Config::default()
+            },
+            0,
+        );
 
         let marker_name = "Marker_3".to_string();
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 

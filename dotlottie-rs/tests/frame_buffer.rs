@@ -12,7 +12,7 @@ mod tests {
     #[test]
     fn buflen() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
+        assert!(player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT));
         let frame = unsafe {
             slice::from_raw_parts(
                 player.buffer().as_ptr(),

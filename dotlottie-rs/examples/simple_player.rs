@@ -1,3 +1,5 @@
+#![allow(clippy::print_stdout)]
+
 use dotlottie_rs::{Config, DotLottiePlayer};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
@@ -34,7 +36,7 @@ fn load_animation(player: &mut DotLottiePlayer, path: &PathBuf) {
             let mut file = File::open(path).expect("Could not open file");
             let metadata = fs::metadata(path).expect("Could not read metadata");
             let mut buffer = vec![0; metadata.len() as usize];
-            file.read(&mut buffer).expect("Buffer overflow");
+            file.read_exact(&mut buffer).expect("Buffer overflow");
             player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
         }
         "json" => {

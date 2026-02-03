@@ -1,3 +1,5 @@
+#![allow(clippy::print_stdout)]
+
 /// Position Slot Example
 ///
 /// This example demonstrates how to use the `set_position_slot` API to dynamically
@@ -60,8 +62,7 @@ fn main() {
     let position_slot = LottieProperty::static_value([pos_x, pos_y]);
     player.set_position_slot("ball_position", position_slot);
     println!(
-        "Mode: STATIC | Current position: X={:.0}, Y={:.0}",
-        pos_x, pos_y
+        "Mode: STATIC | Current position: X={pos_x:.0}, Y={pos_y:.0}"
     );
 
     // Main render loop
@@ -69,8 +70,8 @@ fn main() {
         let now = std::time::Instant::now();
 
         // Handle toggle between static and animated with T key
-        if window.is_key_down(Key::T) {
-            if now.duration_since(last_toggle_press).as_millis() > 200 {
+        if window.is_key_down(Key::T)
+            && now.duration_since(last_toggle_press).as_millis() > 200 {
                 is_animated = !is_animated;
 
                 if is_animated {
@@ -102,13 +103,11 @@ fn main() {
                     let position_slot = LottieProperty::static_value([pos_x, pos_y]);
                     player.set_position_slot("ball_position", position_slot);
                     println!(
-                        "Mode: STATIC | Current position: X={:.0}, Y={:.0}",
-                        pos_x, pos_y
+                        "Mode: STATIC | Current position: X={pos_x:.0}, Y={pos_y:.0}"
                     );
                 }
 
                 last_toggle_press = now;
-            }
         }
 
         let mut position_changed = false;
@@ -144,8 +143,7 @@ fn main() {
             let position_slot = LottieProperty::static_value([pos_x, pos_y]);
             player.set_position_slot("ball_position", position_slot);
             println!(
-                "Mode: STATIC | Current position: X={:.0}, Y={:.0}",
-                pos_x, pos_y
+                "Mode: STATIC | Current position: X={pos_x:.0}, Y={pos_y:.0}"
             );
         }
 

@@ -18,7 +18,7 @@ mod tests {
         let mut player = DotLottiePlayer::new(config, 0);
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 
@@ -52,7 +52,7 @@ mod tests {
         let mut player = DotLottiePlayer::new(config, 0);
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 
@@ -61,10 +61,7 @@ mod tests {
         for i in 0..20 {
             let frame = player.request_frame();
 
-            assert!(
-                frame.is_finite(),
-                "Frame should be finite at iteration {i}"
-            );
+            assert!(frame.is_finite(), "Frame should be finite at iteration {i}");
 
             assert!(
                 frame >= 0.0 && frame < total_frames,
@@ -93,7 +90,7 @@ mod tests {
             let mut player = DotLottiePlayer::new(config, 0);
 
             assert!(
-                player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+                player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
                 "Animation should load for mode {mode:?}"
             );
 
@@ -126,7 +123,7 @@ mod tests {
         let mut player = DotLottiePlayer::new(config, 0);
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load with valid segment"
         );
 
@@ -158,7 +155,7 @@ mod tests {
         let mut player = DotLottiePlayer::new(config, 0);
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
         );
 

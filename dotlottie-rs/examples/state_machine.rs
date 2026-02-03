@@ -135,17 +135,17 @@ fn main() {
         0,
     );
 
-    let animation_path = PathBuf::from(format!("./examples/shared/animations/{}", ANIMATION_NAME));
+    let animation_path = PathBuf::from(format!(
+        "./assets/animations/dotlottie/v1/{}",
+        ANIMATION_NAME
+    ));
 
     if !load_animation(&mut player, &animation_path) {
         eprintln!("Failed to load animation, exiting");
         return;
     }
 
-    let state_machine_path = format!(
-        "./examples/shared/statemachines/{}.json",
-        STATE_MACHINE_NAME
-    );
+    let state_machine_path = format!("./assets/statemachines/{}.json", STATE_MACHINE_NAME);
     let state_machine_def = fs::read_to_string(&state_machine_path).unwrap_or_else(|e| {
         panic!(
             "Failed to read state machine file {}: {}",

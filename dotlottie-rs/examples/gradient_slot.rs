@@ -34,7 +34,7 @@ fn main() {
         0, // threads (0 = auto)
     );
 
-    let animation_data = include_str!("../examples/shared/animations/gradient.json");
+    let animation_data = include_str!("../assets/animations/lottie/gradient.json");
     let c_data = CString::new(animation_data).expect("CString conversion failed");
 
     if !player.load_animation_data(&c_data, WIDTH, HEIGHT) {

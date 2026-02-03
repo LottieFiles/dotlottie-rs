@@ -9,7 +9,8 @@ pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
 fn get_animation_files() -> Vec<PathBuf> {
-    let dir = fs::read_dir("./examples/shared/animations").expect("Could not read animations dir");
+    let dir =
+        fs::read_dir("./assets/animations/dotlottie/v2/").expect("Could not read animations dir");
 
     let mut files: Vec<PathBuf> = dir
         .filter_map(|entry| entry.ok())

@@ -34,7 +34,7 @@ fn main() {
         0, // threads (0 = auto)
     );
 
-    let dotlottie_data = include_bytes!("../examples/shared/animations/multi_themes.lottie");
+    let dotlottie_data = include_bytes!("../assets/animations/dotlottie/v2/multi_themes.lottie");
 
     if !player.load_dotlottie_data(dotlottie_data, WIDTH, HEIGHT) {
         eprintln!("Failed to load .lottie file");

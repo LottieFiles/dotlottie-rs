@@ -51,7 +51,7 @@ fn main() {
 
     // Define some gradient presets
     // Each gradient is a vector of GradientStop { offset, color: [R, G, B, A] }
-    let gradients = vec![
+    let gradients = [
         (
             "Sunset",
             vec![
@@ -178,88 +178,88 @@ fn main() {
         let now = std::time::Instant::now();
 
         // Handle toggle between static and animated with T key
-        if window.is_key_down(Key::T)
-            && now.duration_since(last_toggle_press).as_millis() > 200 {
-                is_animated = !is_animated;
+        if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
+            is_animated = !is_animated;
 
-                if is_animated {
-                    // Create animated gradient slot: Sunset -> Ocean (linear interpolation)
-                    let gradient_slot = GradientSlot::with_keyframes(vec![
-                        LottieKeyframe {
-                            frame: 0,
-                            start_value: vec![
-                                GradientStop {
-                                    offset: 0.0,
-                                    color: [1.0, 0.4, 0.0, 1.0],
-                                },
-                                GradientStop {
-                                    offset: 0.5,
-                                    color: [1.0, 0.6, 0.2, 1.0],
-                                },
-                                GradientStop {
-                                    offset: 1.0,
-                                    color: [1.0, 0.8, 0.0, 1.0],
-                                },
-                            ],
-                            in_tangent: None,
-                            out_tangent: None,
-                            value_in_tangent: None,
-                            value_out_tangent: None,
-                            hold: None,
-                        },
-                        LottieKeyframe {
-                            frame: 60,
-                            start_value: vec![
-                                GradientStop {
-                                    offset: 0.0,
-                                    color: [0.0, 0.3, 0.6, 1.0],
-                                },
-                                GradientStop {
-                                    offset: 0.5,
-                                    color: [0.0, 0.5, 0.8, 1.0],
-                                },
-                                GradientStop {
-                                    offset: 1.0,
-                                    color: [0.0, 0.8, 1.0, 1.0],
-                                },
-                            ],
-                            in_tangent: None,
-                            out_tangent: None,
-                            value_in_tangent: None,
-                            value_out_tangent: None,
-                            hold: None,
-                        },
-                    ]);
-                    player.set_gradient_slot("gradient_fill", gradient_slot);
-                    println!("Mode: ANIMATED (Sunset -> Ocean)");
-                } else {
-                    // Switch back to static mode
-                    let gradient_slot =
-                        GradientSlot::new(gradients[current_gradient_index].1.clone());
-                    player.set_gradient_slot("gradient_fill", gradient_slot);
-                    println!(
-                        "Mode: STATIC | Current gradient: {}",
-                        gradients[current_gradient_index].0
-                    );
-                }
-
-                last_toggle_press = now;
-        }
-
-        // Handle gradient cycling with SPACE key (only in static mode)
-        if !is_animated && window.is_key_down(Key::Space)
-            && now.duration_since(last_space_press).as_millis() > 200 {
-                current_gradient_index = (current_gradient_index + 1) % gradients.len();
-
-                // Create and set the new gradient slot
+            if is_animated {
+                // Create animated gradient slot: Sunset -> Ocean (linear interpolation)
+                let gradient_slot = GradientSlot::with_keyframes(vec![
+                    LottieKeyframe {
+                        frame: 0,
+                        start_value: vec![
+                            GradientStop {
+                                offset: 0.0,
+                                color: [1.0, 0.4, 0.0, 1.0],
+                            },
+                            GradientStop {
+                                offset: 0.5,
+                                color: [1.0, 0.6, 0.2, 1.0],
+                            },
+                            GradientStop {
+                                offset: 1.0,
+                                color: [1.0, 0.8, 0.0, 1.0],
+                            },
+                        ],
+                        in_tangent: None,
+                        out_tangent: None,
+                        value_in_tangent: None,
+                        value_out_tangent: None,
+                        hold: None,
+                    },
+                    LottieKeyframe {
+                        frame: 60,
+                        start_value: vec![
+                            GradientStop {
+                                offset: 0.0,
+                                color: [0.0, 0.3, 0.6, 1.0],
+                            },
+                            GradientStop {
+                                offset: 0.5,
+                                color: [0.0, 0.5, 0.8, 1.0],
+                            },
+                            GradientStop {
+                                offset: 1.0,
+                                color: [0.0, 0.8, 1.0, 1.0],
+                            },
+                        ],
+                        in_tangent: None,
+                        out_tangent: None,
+                        value_in_tangent: None,
+                        value_out_tangent: None,
+                        hold: None,
+                    },
+                ]);
+                player.set_gradient_slot("gradient_fill", gradient_slot);
+                println!("Mode: ANIMATED (Sunset -> Ocean)");
+            } else {
+                // Switch back to static mode
                 let gradient_slot = GradientSlot::new(gradients[current_gradient_index].1.clone());
                 player.set_gradient_slot("gradient_fill", gradient_slot);
-
                 println!(
                     "Mode: STATIC | Current gradient: {}",
                     gradients[current_gradient_index].0
                 );
-                last_space_press = now;
+            }
+
+            last_toggle_press = now;
+        }
+
+        // Handle gradient cycling with SPACE key (only in static mode)
+        if !is_animated
+            && window.is_key_down(Key::Space)
+            && now.duration_since(last_space_press).as_millis() > 200
+        {
+            current_gradient_index = (current_gradient_index + 1) % gradients.len();
+
+            // Create and set the new gradient slot
+            let gradient_slot = GradientSlot::new(gradients[current_gradient_index].1.clone());
+            player.set_gradient_slot("gradient_fill", gradient_slot);
+
+            println!(
+                "Mode: STATIC | Current gradient: {}",
+                gradients[current_gradient_index].0
+            );
+            last_space_press = now;
         }
 
         // Update animation frame and render

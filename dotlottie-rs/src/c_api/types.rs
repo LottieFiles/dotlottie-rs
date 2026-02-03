@@ -13,25 +13,10 @@ use crate::{
     Mode,
 };
 
-// Function return codes
-pub const DOTLOTTIE_SUCCESS: i32 = 0;
-pub const DOTLOTTIE_ERROR: i32 = 1;
-pub const DOTLOTTIE_INVALID_PARAMETER: i32 = 2;
-pub const DOTLOTTIE_MANIFEST_NOT_AVAILABLE: i32 = 3;
+use crate::DotLottieResult;
 
 // Other constant(s)
 pub const DOTLOTTIE_MAX_STR_LENGTH: usize = 512;
-
-// Legacy - kept for compatibility (unused)
-pub const INTERACTION_TYPE_UNSET: u16 = 0;
-pub const INTERACTION_TYPE_POINTER_UP: u16 = 1 << 0; // Bit 0 (1)
-pub const INTERACTION_TYPE_POINTER_DOWN: u16 = 1 << 1; // Bit 1 (2)
-pub const INTERACTION_TYPE_POINTER_ENTER: u16 = 1 << 2; // Bit 2 (4)
-pub const INTERACTION_TYPE_POINTER_EXIT: u16 = 1 << 3; // Bit 3 (8)
-pub const INTERACTION_TYPE_POINTER_MOVE: u16 = 1 << 4; // Bit 4 (16)
-pub const INTERACTION_TYPE_CLICK: u16 = 1 << 5; // Bit 5 (32)
-pub const INTERACTION_TYPE_ON_COMPLETE: u16 = 1 << 6; // Bit 6 (64)
-pub const INTERACTION_TYPE_ON_LOOP_COMPLETE: u16 = 1 << 7; // Bit 7 (128)
 
 // This type allows us to work with Interaction Types as bit flags and easily communicate this
 // information to the C side
@@ -39,16 +24,16 @@ bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     #[repr(C)]
     pub(crate) struct InteractionType: u16 {
-        const UNSET = INTERACTION_TYPE_UNSET;
+        const UNSET = 0;
 
-        const POINTER_UP    = INTERACTION_TYPE_POINTER_UP;
-        const POINTER_DOWN  = INTERACTION_TYPE_POINTER_DOWN;
-        const POINTER_ENTER = INTERACTION_TYPE_POINTER_ENTER;
-        const POINTER_EXIT  = INTERACTION_TYPE_POINTER_EXIT;
-        const POINTER_MOVE  = INTERACTION_TYPE_POINTER_MOVE;
-        const CLICK         = INTERACTION_TYPE_CLICK;
-        const ON_COMPLETE   = INTERACTION_TYPE_ON_COMPLETE;
-        const ON_LOOP_COMPLETE = INTERACTION_TYPE_ON_LOOP_COMPLETE;
+        const POINTER_UP       = 1 << 0;
+        const POINTER_DOWN     = 1 << 1;
+        const POINTER_ENTER    = 1 << 2;
+        const POINTER_EXIT     = 1 << 3;
+        const POINTER_MOVE     = 1 << 4;
+        const CLICK            = 1 << 5;
+        const ON_COMPLETE      = 1 << 6;
+        const ON_LOOP_COMPLETE = 1 << 7;
     }
 }
 
@@ -109,37 +94,37 @@ where
     }
 
     // Perform a copy, returning the expected exit codes
-    unsafe fn transfer(value: &T, result: *mut Self) -> i32 {
+    unsafe fn transfer(value: &T, result: *mut Self) -> DotLottieResult {
         if result.is_null() {
             // No destination buffer provided
-            DOTLOTTIE_INVALID_PARAMETER
+            DotLottieResult::InvalidParameter
         } else if let Ok(value) = Self::new(value) {
             value.copy(result);
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_ERROR
+            DotLottieResult::Error
         }
     }
 
     // Perform a copy_all, returning the expected exit codes
-    unsafe fn transfer_all(values: &Vec<T>, result: *mut Self, size: *mut usize) -> i32 {
+    unsafe fn transfer_all(values: &Vec<T>, result: *mut Self, size: *mut usize) -> DotLottieResult {
         if size.is_null() {
             // Size must always be provided
-            DOTLOTTIE_INVALID_PARAMETER
+            DotLottieResult::InvalidParameter
         } else if result.is_null() {
             // No buffer provided: just return the size
             *size = values.len();
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else if *size < values.len() {
             // Both buffer & size have been provided, however,
             // The size of the buffer must be big enough to hold the result
-            DOTLOTTIE_INVALID_PARAMETER
+            DotLottieResult::InvalidParameter
         } else if Self::copy_all(values, result).is_ok() {
             // Return back to the user the actual number of items
             *size = values.len();
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_ERROR
+            DotLottieResult::Error
         }
     }
 }

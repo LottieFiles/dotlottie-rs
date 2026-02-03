@@ -443,7 +443,7 @@ fn main() -> Result<(), io::Error> {
         .unwrap();
     log_sender
         .send(LogMessage {
-            content: format!("Start state machine returned: {}", s),
+            content: format!("Start state machine returned: {}", s.is_ok()),
             level: LogLevel::Info,
         })
         .unwrap();

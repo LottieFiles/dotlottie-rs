@@ -281,7 +281,7 @@ impl ActionTrait for Action {
                     value.clone()
                 };
 
-                if !engine.player.set_theme(&resolved_value) {
+                if engine.player.set_theme(&resolved_value).is_err() {
                     return Err(StateMachineActionError::ExecuteError);
                 }
                 Ok(())

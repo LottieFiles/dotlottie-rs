@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult};
 
 mod test_utils;
 
@@ -25,13 +25,15 @@ mod tests {
             0,
         );
 
-        assert!(
-            !player.load_animation_path("invalid/path", WIDTH, HEIGHT),
+        assert_eq!(
+            player.load_animation_path("invalid/path", WIDTH, HEIGHT),
+            DotLottieResult::Error,
             "Invalid path should not load"
         );
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Valid path should load"
         );
 
@@ -44,9 +46,9 @@ mod tests {
         // animation loop
         loop {
             let next_frame = player.request_frame();
-            if player.set_frame(next_frame) {
+            if player.set_frame(next_frame) == DotLottieResult::Success {
                 expected_events.push(format!("on_frame: {}", player.current_frame()));
-                if player.render() {
+                if player.render() == DotLottieResult::Success {
                     expected_events.push(format!("on_render: {}", player.current_frame()));
                     if player.is_complete() {
                         if player.config().loop_animation {
@@ -97,8 +99,9 @@ mod tests {
             );
         }
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Valid path should load"
         );
 

@@ -1,7 +1,7 @@
 mod test_utils;
 
 use crate::test_utils::{HEIGHT, WIDTH};
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult};
 
 #[cfg(test)]
 mod tests {
@@ -11,15 +11,17 @@ mod tests {
     fn test_play_fail_when_animation_is_not_loaded() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        assert!(
-            !player.play(),
+        assert_eq!(
+            player.play(),
+            DotLottieResult::AnimationNotLoaded,
             "Expected play to fail when animation is not loaded"
         );
 
-        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
+        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), DotLottieResult::Success);
 
-        assert!(
+        assert_eq!(
             player.play(),
+            DotLottieResult::Success,
             "Expected play to succeed when animation is loaded"
         );
     }
@@ -28,13 +30,13 @@ mod tests {
     fn test_play_while_playing() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
+        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), DotLottieResult::Success);
 
-        assert!(player.play());
+        assert_eq!(player.play(), DotLottieResult::Success);
 
         assert!(player.is_playing(), "Expected player to be playing");
 
-        assert!(!player.play(), "Expected play to fail when already playing");
+        assert_eq!(player.play(), DotLottieResult::InsufficientCondition, "Expected play to fail when already playing");
     }
 
     #[test]
@@ -44,32 +46,32 @@ mod tests {
             ..Config::default()
         }, 0);
 
-        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
+        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), DotLottieResult::Success);
 
-        assert!(player.play());
+        assert_eq!(player.play(), DotLottieResult::Success);
 
         let mid_frame = player.total_frames() / 2.0;
 
         while player.current_frame() < mid_frame {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) {
+            if player.set_frame(next_frame) == DotLottieResult::Success {
                 player.render();
             }
         }
 
-        assert!(player.pause(), "Expected pause to succeed");
+        assert_eq!(player.pause(), DotLottieResult::Success, "Expected pause to succeed");
 
         let paused_at = player.current_frame();
 
-        assert!(player.play(), "Expected play to succeed after pause");
+        assert_eq!(player.play(), DotLottieResult::Success, "Expected play to succeed after pause");
 
         let mut rendered_frames = vec![];
 
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) {
+            if player.set_frame(next_frame) == DotLottieResult::Success {
                 player.render();
 
                 rendered_frames.push(player.current_frame());
@@ -89,14 +91,14 @@ mod tests {
             ..Config::default()
         }, 0);
 
-        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
+        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), DotLottieResult::Success);
 
-        assert!(player.play());
+        assert_eq!(player.play(), DotLottieResult::Success);
 
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) {
+            if player.set_frame(next_frame) == DotLottieResult::Success {
                 player.render();
             }
         }
@@ -110,7 +112,7 @@ mod tests {
             "Expected current frame to be total frames"
         );
 
-        assert!(player.play(), "Expected play to succeed after complete");
+        assert_eq!(player.play(), DotLottieResult::Success, "Expected play to succeed after complete");
 
         assert_eq!(
             player.current_frame(),
@@ -126,11 +128,11 @@ mod tests {
             ..Config::default()
         }, 0);
 
-        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
+        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), DotLottieResult::Success);
 
         let mid_frame = player.total_frames() / 2.0;
 
-        assert!(player.set_frame(mid_frame));
+        assert_eq!(player.set_frame(mid_frame), DotLottieResult::Success);
 
         assert_eq!(
             player.current_frame(),
@@ -138,7 +140,7 @@ mod tests {
             "Expected current frame to be mid frame"
         );
 
-        assert!(player.play());
+        assert_eq!(player.play(), DotLottieResult::Success);
 
         assert_eq!(
             player.current_frame(),
@@ -151,7 +153,7 @@ mod tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame) == DotLottieResult::Success && player.render() == DotLottieResult::Success {
                 rendered_frames.push(player.current_frame());
             }
         }

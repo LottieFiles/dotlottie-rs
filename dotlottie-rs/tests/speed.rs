@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -78,8 +78,9 @@ mod tests {
         for (config, expected_speed) in configs {
             let mut player = DotLottiePlayer::new(config, 0);
 
-            assert!(
+            assert_eq!(
                 player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+                DotLottieResult::Success,
                 "Animation should load"
             );
             assert!(player.is_playing(), "Animation should be playing");
@@ -91,7 +92,7 @@ mod tests {
             // animation loop
             while !player.is_complete() {
                 let next_frame = player.request_frame();
-                if player.set_frame(next_frame) {
+                if player.set_frame(next_frame) == DotLottieResult::Success {
                     player.render();
                 }
             }

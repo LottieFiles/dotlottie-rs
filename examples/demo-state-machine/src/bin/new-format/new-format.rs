@@ -142,7 +142,7 @@ fn main() {
     };
 
     let started = engine.start(&open_url);
-    println!("Start state machine -> {}", started);
+    println!("Start state machine -> {}", started.is_ok());
 
     let mut mx = 0.0;
     let mut my = 0.0;
@@ -203,7 +203,7 @@ fn main() {
         }
 
         // Tick the state machine (handles player.tick() internally)
-        if engine.tick() {
+        if engine.tick().is_ok() {
             window.update_with_buffer(engine.player.buffer(), WIDTH, HEIGHT).unwrap();
         }
     }

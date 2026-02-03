@@ -8,7 +8,7 @@ use crate::lottie_renderer::{
     ColorSlot, ImageSlot, PositionSlot, ScalarSlot, TextDocument, TextSlot, VectorSlot,
 };
 use crate::state_machine_engine::events::Event;
-use crate::{Config, DotLottiePlayer, LayerBoundingBox, StateMachineEngine};
+use crate::{Config, DotLottiePlayer, DotLottieResult, LayerBoundingBox, StateMachineEngine};
 
 use types::*;
 
@@ -20,7 +20,7 @@ macro_rules! exec_dotlottie_player_op {
     ($ptr:expr, |$player:ident| $body:expr) => {{
         match $ptr.as_mut() {
             Some($player) => $body,
-            _ => DOTLOTTIE_INVALID_PARAMETER,
+            _ => DotLottieResult::InvalidParameter,
         }
     }};
 }
@@ -30,18 +30,9 @@ macro_rules! exec_state_machine_op {
     ($ptr:expr, |$sm:ident| $body:expr) => {{
         match $ptr.as_mut() {
             Some($sm) => $body,
-            _ => DOTLOTTIE_INVALID_PARAMETER,
+            _ => DotLottieResult::InvalidParameter,
         }
     }};
-}
-
-// Translates rust boolean results into C return codes
-fn to_exit_status(result: bool) -> i32 {
-    if result {
-        DOTLOTTIE_SUCCESS
-    } else {
-        DOTLOTTIE_ERROR
-    }
 }
 
 // Translates rust boolean to C boolean (1 for true, 0 for false)
@@ -65,26 +56,26 @@ pub unsafe extern "C" fn dotlottie_new_player(ptr: *const DotLottieConfig) -> *m
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_destroy(ptr: *mut DotLottiePlayer) -> i32 {
+pub unsafe extern "C" fn dotlottie_destroy(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     if ptr.is_null() {
-        return DOTLOTTIE_INVALID_PARAMETER;
+        return DotLottieResult::InvalidParameter;
     }
 
     // Reconstruct the Box from raw pointer and drop it (frees memory)
     let _ = Box::from_raw(ptr);
-    DOTLOTTIE_SUCCESS
+    DotLottieResult::Success
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_init_config(config: *mut DotLottieConfig) -> i32 {
+pub unsafe extern "C" fn dotlottie_init_config(config: *mut DotLottieConfig) -> DotLottieResult {
     if config.is_null() {
-        return DOTLOTTIE_INVALID_PARAMETER;
+        return DotLottieResult::InvalidParameter;
     }
     if let Ok(default_config) = DotLottieConfig::new(&Config::default()) {
         default_config.copy(config);
-        DOTLOTTIE_SUCCESS
+        DotLottieResult::Success
     } else {
-        DOTLOTTIE_ERROR
+        DotLottieResult::Error
     }
 }
 
@@ -94,13 +85,13 @@ pub unsafe extern "C" fn dotlottie_load_animation_data(
     animation_data: *const c_char,
     width: u32,
     height: u32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if animation_data.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let data = CStr::from_ptr(animation_data);
-        to_exit_status(dotlottie_player.load_animation_data(data, width, height))
+        dotlottie_player.load_animation_data(data, width, height)
     })
 }
 
@@ -110,17 +101,15 @@ pub unsafe extern "C" fn dotlottie_load_animation_path(
     animation_path: *const c_char,
     width: u32,
     height: u32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if animation_path.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let path = CStr::from_ptr(animation_path);
         match path.to_str() {
-            Ok(path_str) => {
-                to_exit_status(dotlottie_player.load_animation_path(path_str, width, height))
-            }
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Ok(path_str) => dotlottie_player.load_animation_path(path_str, width, height),
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -131,15 +120,15 @@ pub unsafe extern "C" fn dotlottie_load_animation(
     animation_id: *const c_char,
     width: u32,
     height: u32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if animation_id.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let id = CStr::from_ptr(animation_id);
         match id.to_str() {
-            Ok(id_str) => to_exit_status(dotlottie_player.load_animation(id_str, width, height)),
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Ok(id_str) => dotlottie_player.load_animation(id_str, width, height),
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -151,10 +140,10 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     file_size: usize,
     width: u32,
     height: u32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         let file_slice = slice::from_raw_parts(file_data as *const u8, file_size);
-        to_exit_status(dotlottie_player.load_dotlottie_data(file_slice, width, height))
+        dotlottie_player.load_dotlottie_data(file_slice, width, height)
     })
 }
 
@@ -162,12 +151,12 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
 pub unsafe extern "C" fn dotlottie_manifest(
     ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieManifest,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if let Some(manifest) = dotlottie_player.manifest() {
             DotLottieManifest::transfer(manifest, result)
         } else {
-            DOTLOTTIE_MANIFEST_NOT_AVAILABLE
+            DotLottieResult::ManifestNotAvailable
         }
     })
 }
@@ -177,12 +166,12 @@ pub unsafe extern "C" fn dotlottie_manifest_animations(
     ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieManifestAnimation,
     size: *mut usize,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if let Some(manifest) = dotlottie_player.manifest() {
             DotLottieManifestAnimation::transfer_all(&manifest.animations, result, size)
         } else {
-            DOTLOTTIE_MANIFEST_NOT_AVAILABLE
+            DotLottieResult::ManifestNotAvailable
         }
     })
 }
@@ -192,17 +181,17 @@ pub unsafe extern "C" fn dotlottie_manifest_themes(
     ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieManifestTheme,
     size: *mut usize,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         let manifest = match dotlottie_player.manifest() {
             Some(v) => v,
-            None => return DOTLOTTIE_MANIFEST_NOT_AVAILABLE,
+            None => return DotLottieResult::ManifestNotAvailable,
         };
         if let Some(themes) = &manifest.themes {
             DotLottieManifestTheme::transfer_all(themes, result, size)
         } else {
             *size = 0;
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         }
     })
 }
@@ -212,17 +201,17 @@ pub unsafe extern "C" fn dotlottie_manifest_state_machines(
     ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieManifestStateMachine,
     size: *mut usize,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         let manifest = match dotlottie_player.manifest() {
             Some(v) => v,
-            None => return DOTLOTTIE_MANIFEST_NOT_AVAILABLE,
+            None => return DotLottieResult::ManifestNotAvailable,
         };
         if let Some(state_machines) = &manifest.state_machines {
             DotLottieManifestStateMachine::transfer_all(state_machines, result, size)
         } else {
             *size = 0;
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         }
     })
 }
@@ -231,25 +220,28 @@ pub unsafe extern "C" fn dotlottie_manifest_state_machines(
 pub unsafe extern "C" fn dotlottie_buffer_ptr(
     ptr: *mut DotLottiePlayer,
     result: *mut *const u32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.buffer().as_ptr();
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_INVALID_PARAMETER
+            DotLottieResult::InvalidParameter
         }
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_buffer_len(ptr: *mut DotLottiePlayer, result: *mut u64) -> i32 {
+pub unsafe extern "C" fn dotlottie_buffer_len(
+    ptr: *mut DotLottiePlayer,
+    result: *mut u64,
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.buffer().len() as u64;
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_INVALID_PARAMETER
+            DotLottieResult::InvalidParameter
         }
     })
 }
@@ -258,7 +250,7 @@ pub unsafe extern "C" fn dotlottie_buffer_len(ptr: *mut DotLottiePlayer, result:
 pub unsafe extern "C" fn dotlottie_config(
     ptr: *mut DotLottiePlayer,
     result: *mut DotLottieConfig,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         DotLottieConfig::transfer(&dotlottie_player.config(), result)
     })
@@ -268,25 +260,28 @@ pub unsafe extern "C" fn dotlottie_config(
 pub unsafe extern "C" fn dotlottie_total_frames(
     ptr: *mut DotLottiePlayer,
     result: *mut f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.total_frames();
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_INVALID_PARAMETER
+            DotLottieResult::InvalidParameter
         }
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_duration(ptr: *mut DotLottiePlayer, result: *mut f32) -> i32 {
+pub unsafe extern "C" fn dotlottie_duration(
+    ptr: *mut DotLottiePlayer,
+    result: *mut f32,
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.duration();
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_INVALID_PARAMETER
+            DotLottieResult::InvalidParameter
         }
     })
 }
@@ -295,75 +290,82 @@ pub unsafe extern "C" fn dotlottie_duration(ptr: *mut DotLottiePlayer, result: *
 pub unsafe extern "C" fn dotlottie_current_frame(
     ptr: *mut DotLottiePlayer,
     result: *mut f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.current_frame();
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_INVALID_PARAMETER
+            DotLottieResult::InvalidParameter
         }
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_loop_count(ptr: *mut DotLottiePlayer, result: *mut u32) -> i32 {
+pub unsafe extern "C" fn dotlottie_loop_count(
+    ptr: *mut DotLottiePlayer,
+    result: *mut u32,
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.loop_count();
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_INVALID_PARAMETER
+            DotLottieResult::InvalidParameter
         }
     })
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_is_loaded(ptr: *mut DotLottiePlayer) -> i32 {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_bool_i32(dotlottie_player.is_loaded())
-    })
+    match unsafe { ptr.as_mut() } {
+        Some(dotlottie_player) => to_bool_i32(dotlottie_player.is_loaded()),
+        _ => 0,
+    }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_is_playing(ptr: *mut DotLottiePlayer) -> i32 {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_bool_i32(dotlottie_player.is_playing())
-    })
+    match unsafe { ptr.as_mut() } {
+        Some(dotlottie_player) => to_bool_i32(dotlottie_player.is_playing()),
+        _ => 0,
+    }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_is_paused(ptr: *mut DotLottiePlayer) -> i32 {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_bool_i32(dotlottie_player.is_paused())
-    })
+    match unsafe { ptr.as_mut() } {
+        Some(dotlottie_player) => to_bool_i32(dotlottie_player.is_paused()),
+        _ => 0,
+    }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_is_stopped(ptr: *mut DotLottiePlayer) -> i32 {
+    match unsafe { ptr.as_mut() } {
+        Some(dotlottie_player) => to_bool_i32(dotlottie_player.is_stopped()),
+        _ => 0,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_play(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_bool_i32(dotlottie_player.is_stopped())
+        dotlottie_player.play()
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_play(ptr: *mut DotLottiePlayer) -> i32 {
+pub unsafe extern "C" fn dotlottie_pause(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.play())
+        dotlottie_player.pause()
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_pause(ptr: *mut DotLottiePlayer) -> i32 {
+pub unsafe extern "C" fn dotlottie_stop(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.pause())
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_stop(ptr: *mut DotLottiePlayer) -> i32 {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.stop())
+        dotlottie_player.stop()
     })
 }
 
@@ -371,35 +373,38 @@ pub unsafe extern "C" fn dotlottie_stop(ptr: *mut DotLottiePlayer) -> i32 {
 pub unsafe extern "C" fn dotlottie_request_frame(
     ptr: *mut DotLottiePlayer,
     result: *mut f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.request_frame();
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_INVALID_PARAMETER
+            DotLottieResult::InvalidParameter
         }
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_frame(ptr: *mut DotLottiePlayer, no: f32) -> i32 {
+pub unsafe extern "C" fn dotlottie_set_frame(
+    ptr: *mut DotLottiePlayer,
+    no: f32,
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.set_frame(no))
+        dotlottie_player.set_frame(no)
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_seek(ptr: *mut DotLottiePlayer, no: f32) -> i32 {
+pub unsafe extern "C" fn dotlottie_seek(ptr: *mut DotLottiePlayer, no: f32) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.seek(no))
+        dotlottie_player.seek(no)
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_render(ptr: *mut DotLottiePlayer) -> i32 {
+pub unsafe extern "C" fn dotlottie_render(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.render())
+        dotlottie_player.render()
     })
 }
 
@@ -422,9 +427,9 @@ pub unsafe extern "C" fn dotlottie_render(ptr: *mut DotLottiePlayer) -> i32 {
 ///     }
 /// ```
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_tick(ptr: *mut DotLottiePlayer) -> i32 {
+pub unsafe extern "C" fn dotlottie_tick(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.tick())
+        dotlottie_player.tick()
     })
 }
 
@@ -433,48 +438,49 @@ pub unsafe extern "C" fn dotlottie_resize(
     ptr: *mut DotLottiePlayer,
     width: u32,
     height: u32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.resize(width, height))
+        dotlottie_player.resize(width, height)
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_clear(ptr: *mut DotLottiePlayer) -> i32 {
+pub unsafe extern "C" fn dotlottie_clear(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         dotlottie_player.clear();
-        DOTLOTTIE_SUCCESS
+        DotLottieResult::Success
     })
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_is_complete(ptr: *mut DotLottiePlayer) -> i32 {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_bool_i32(dotlottie_player.is_complete())
-    })
+    match unsafe { ptr.as_mut() } {
+        Some(dotlottie_player) => to_bool_i32(dotlottie_player.is_complete()),
+        _ => 0,
+    }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_set_theme(
     ptr: *mut DotLottiePlayer,
     theme_id: *const c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if theme_id.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let id = CStr::from_ptr(theme_id);
         match id.to_str() {
-            Ok(id_str) => to_exit_status(dotlottie_player.set_theme(id_str)),
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Ok(id_str) => dotlottie_player.set_theme(id_str),
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut DotLottiePlayer) -> i32 {
+pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.reset_theme())
+        dotlottie_player.reset_theme()
     })
 }
 
@@ -482,15 +488,15 @@ pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut DotLottiePlayer) -> i32
 pub unsafe extern "C" fn dotlottie_set_theme_data(
     ptr: *mut DotLottiePlayer,
     theme_data: *const c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if theme_data.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let data = CStr::from_ptr(theme_data);
         match data.to_str() {
-            Ok(data_str) => to_exit_status(dotlottie_player.set_theme_data(data_str)),
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Ok(data_str) => dotlottie_player.set_theme_data(data_str),
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -516,24 +522,24 @@ pub unsafe extern "C" fn dotlottie_set_theme_data(
 pub unsafe extern "C" fn dotlottie_set_slots_str(
     ptr: *mut DotLottiePlayer,
     slots_json: *const c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if slots_json.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let json = CStr::from_ptr(slots_json);
         match json.to_str() {
-            Ok(json_str) => to_exit_status(dotlottie_player.set_slots_str(json_str)),
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Ok(json_str) => dotlottie_player.set_slots_str(json_str),
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
 
 /// Clear all slots
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_clear_slots(ptr: *mut DotLottiePlayer) -> i32 {
+pub unsafe extern "C" fn dotlottie_clear_slots(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.clear_slots())
+        dotlottie_player.clear_slots()
     })
 }
 
@@ -542,15 +548,15 @@ pub unsafe extern "C" fn dotlottie_clear_slots(ptr: *mut DotLottiePlayer) -> i32
 pub unsafe extern "C" fn dotlottie_clear_slot(
     ptr: *mut DotLottiePlayer,
     slot_id: *const c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if slot_id.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let id = CStr::from_ptr(slot_id);
         match id.to_str() {
-            Ok(id_str) => to_exit_status(dotlottie_player.clear_slot(id_str)),
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Ok(id_str) => dotlottie_player.clear_slot(id_str),
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -563,18 +569,18 @@ pub unsafe extern "C" fn dotlottie_set_color_slot(
     r: f32,
     g: f32,
     b: f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if slot_id.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let id = CStr::from_ptr(slot_id);
         match id.to_str() {
             Ok(id_str) => {
                 let slot = ColorSlot::static_value([r, g, b]);
-                to_exit_status(dotlottie_player.set_color_slot(id_str, slot))
+                dotlottie_player.set_color_slot(id_str, slot)
             }
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -585,18 +591,18 @@ pub unsafe extern "C" fn dotlottie_set_scalar_slot(
     ptr: *mut DotLottiePlayer,
     slot_id: *const c_char,
     value: f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if slot_id.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let id = CStr::from_ptr(slot_id);
         match id.to_str() {
             Ok(id_str) => {
                 let slot = ScalarSlot::static_value(value);
-                to_exit_status(dotlottie_player.set_scalar_slot(id_str, slot))
+                dotlottie_player.set_scalar_slot(id_str, slot)
             }
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -607,19 +613,19 @@ pub unsafe extern "C" fn dotlottie_set_text_slot(
     ptr: *mut DotLottiePlayer,
     slot_id: *const c_char,
     text: *const c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if slot_id.is_null() || text.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let id = CStr::from_ptr(slot_id);
         let text_cstr = CStr::from_ptr(text);
         match (id.to_str(), text_cstr.to_str()) {
             (Ok(id_str), Ok(text_str)) => {
                 let slot = TextSlot::with_document(TextDocument::new(text_str.to_string()));
-                to_exit_status(dotlottie_player.set_text_slot(id_str, slot))
+                dotlottie_player.set_text_slot(id_str, slot)
             }
-            _ => DOTLOTTIE_INVALID_PARAMETER,
+            _ => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -631,18 +637,18 @@ pub unsafe extern "C" fn dotlottie_set_vector_slot(
     slot_id: *const c_char,
     x: f32,
     y: f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if slot_id.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let id = CStr::from_ptr(slot_id);
         match id.to_str() {
             Ok(id_str) => {
                 let slot = VectorSlot::static_value([x, y]);
-                to_exit_status(dotlottie_player.set_vector_slot(id_str, slot))
+                dotlottie_player.set_vector_slot(id_str, slot)
             }
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -654,18 +660,18 @@ pub unsafe extern "C" fn dotlottie_set_position_slot(
     slot_id: *const c_char,
     x: f32,
     y: f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if slot_id.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let id = CStr::from_ptr(slot_id);
         match id.to_str() {
             Ok(id_str) => {
                 let slot = PositionSlot::static_value([x, y]);
-                to_exit_status(dotlottie_player.set_position_slot(id_str, slot))
+                dotlottie_player.set_position_slot(id_str, slot)
             }
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -676,19 +682,19 @@ pub unsafe extern "C" fn dotlottie_set_image_slot_path(
     ptr: *mut DotLottiePlayer,
     slot_id: *const c_char,
     path: *const c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if slot_id.is_null() || path.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let id = CStr::from_ptr(slot_id);
         let path_cstr = CStr::from_ptr(path);
         match (id.to_str(), path_cstr.to_str()) {
             (Ok(id_str), Ok(path_str)) => {
                 let slot = ImageSlot::from_path(path_str.to_string());
-                to_exit_status(dotlottie_player.set_image_slot(id_str, slot))
+                dotlottie_player.set_image_slot(id_str, slot)
             }
-            _ => DOTLOTTIE_INVALID_PARAMETER,
+            _ => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -699,19 +705,19 @@ pub unsafe extern "C" fn dotlottie_set_image_slot_data_url(
     ptr: *mut DotLottiePlayer,
     slot_id: *const c_char,
     data_url: *const c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if slot_id.is_null() || data_url.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let id = CStr::from_ptr(slot_id);
         let url = CStr::from_ptr(data_url);
         match (id.to_str(), url.to_str()) {
             (Ok(id_str), Ok(url_str)) => {
                 let slot = ImageSlot::from_data_url(url_str.to_string());
-                to_exit_status(dotlottie_player.set_image_slot(id_str, slot))
+                dotlottie_player.set_image_slot(id_str, slot)
             }
-            _ => DOTLOTTIE_INVALID_PARAMETER,
+            _ => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -721,7 +727,7 @@ pub unsafe extern "C" fn dotlottie_markers(
     ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieMarker,
     size: *mut usize,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         DotLottieMarker::transfer_all(&dotlottie_player.markers(), result, size)
     })
@@ -731,12 +737,14 @@ pub unsafe extern "C" fn dotlottie_markers(
 pub unsafe extern "C" fn dotlottie_active_animation_id(
     ptr: *mut DotLottiePlayer,
     result: *mut c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         let active_animation_id = dotlottie_player.active_animation_id();
-        to_exit_status(
-            DotLottieString::copy(active_animation_id, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
-        )
+        if DotLottieString::copy(active_animation_id, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok() {
+            DotLottieResult::Success
+        } else {
+            DotLottieResult::Error
+        }
     })
 }
 
@@ -744,12 +752,14 @@ pub unsafe extern "C" fn dotlottie_active_animation_id(
 pub unsafe extern "C" fn dotlottie_active_theme_id(
     ptr: *mut DotLottiePlayer,
     result: *mut c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         let active_theme_id = dotlottie_player.active_theme_id();
-        to_exit_status(
-            DotLottieString::copy(active_theme_id, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
-        )
+        if DotLottieString::copy(active_theme_id, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok() {
+            DotLottieResult::Success
+        } else {
+            DotLottieResult::Error
+        }
     })
 }
 
@@ -760,9 +770,9 @@ pub unsafe extern "C" fn dotlottie_set_viewport(
     y: i32,
     w: i32,
     h: i32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.set_viewport(x, y, w, h))
+        dotlottie_player.set_viewport(x, y, w, h)
     })
 }
 
@@ -770,13 +780,13 @@ pub unsafe extern "C" fn dotlottie_set_viewport(
 pub unsafe extern "C" fn dotlottie_segment_duration(
     ptr: *mut DotLottiePlayer,
     result: *mut f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.segment_duration();
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_INVALID_PARAMETER
+            DotLottieResult::InvalidParameter
         }
     })
 }
@@ -786,19 +796,19 @@ pub unsafe extern "C" fn dotlottie_animation_size(
     ptr: *mut DotLottiePlayer,
     picture_width: *mut f32,
     picture_height: *mut f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if picture_width.is_null() || picture_height.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
 
         if let [w, h] = dotlottie_player.animation_size().as_slice() {
             *picture_width = *w;
             *picture_height = *h;
-            return DOTLOTTIE_SUCCESS;
+            return DotLottieResult::Success;
         }
 
-        DOTLOTTIE_ERROR
+        DotLottieResult::Error
     })
 }
 
@@ -807,10 +817,10 @@ pub unsafe extern "C" fn dotlottie_get_layer_bounds(
     ptr: *mut DotLottiePlayer,
     layer_name: *const c_char,
     result: *mut LayerBoundingBox,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if layer_name.is_null() || result.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let name = CStr::from_ptr(layer_name);
         match name.to_str() {
@@ -826,11 +836,11 @@ pub unsafe extern "C" fn dotlottie_get_layer_bounds(
                         x4: *x4,
                         y4: *y4,
                     };
-                    DOTLOTTIE_SUCCESS
+                    DotLottieResult::Success
                 }
-                _ => DOTLOTTIE_ERROR,
+                _ => DotLottieResult::Error,
             },
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -947,23 +957,23 @@ pub unsafe extern "C" fn dotlottie_state_machine_load_data(
 /// Start the state machine with the specified URL policy
 ///
 /// # Returns
-/// DOTLOTTIE_SUCCESS if started, DOTLOTTIE_ERROR if failed
+/// DotLottieResult::Success if started, error variant if failed
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_start(
     sm: *mut StateMachineEngine<'static>,
     policy: *const types::DotLottieOpenUrlPolicy,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         let open_url_policy = if policy.is_null() {
             OpenUrlPolicy::default()
         } else {
             match (*policy).to_policy() {
                 Ok(p) => p,
-                Err(_) => return DOTLOTTIE_INVALID_PARAMETER,
+                Err(_) => return DotLottieResult::InvalidParameter,
             }
         };
 
-        to_exit_status(state_machine.start(&open_url_policy))
+        state_machine.start(&open_url_policy)
     })
 }
 
@@ -972,10 +982,12 @@ pub unsafe extern "C" fn dotlottie_state_machine_start(
 /// Call dotlottie_state_machine_release() to actually destroy the state machine
 /// and release the runtime borrow.
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_stop(sm: *mut StateMachineEngine<'static>) -> i32 {
+pub unsafe extern "C" fn dotlottie_state_machine_stop(
+    sm: *mut StateMachineEngine<'static>,
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         state_machine.stop();
-        DOTLOTTIE_SUCCESS
+        DotLottieResult::Success
     })
 }
 
@@ -997,8 +1009,10 @@ pub unsafe extern "C" fn dotlottie_state_machine_release(sm: *mut StateMachineEn
 
 /// Tick the state machine (advances animation and processes state logic)
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_tick(sm: *mut StateMachineEngine<'static>) -> i32 {
-    exec_state_machine_op!(sm, |state_machine| to_exit_status(state_machine.tick()))
+pub unsafe extern "C" fn dotlottie_state_machine_tick(
+    sm: *mut StateMachineEngine<'static>,
+) -> DotLottieResult {
+    exec_state_machine_op!(sm, |state_machine| state_machine.tick())
 }
 
 /// Post a pointer/click event to the state machine
@@ -1006,13 +1020,13 @@ pub unsafe extern "C" fn dotlottie_state_machine_tick(sm: *mut StateMachineEngin
 pub unsafe extern "C" fn dotlottie_state_machine_post_event(
     sm: *mut StateMachineEngine<'static>,
     event: *const DotLottieEvent,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         if let Some(event) = event.as_ref() {
             state_machine.post_event(&event.to_event());
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_ERROR
+            DotLottieResult::Error
         }
     })
 }
@@ -1023,11 +1037,11 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_click(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
     y: f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         let event = Event::Click { x, y };
         state_machine.post_event(&event);
-        DOTLOTTIE_SUCCESS
+        DotLottieResult::Success
     })
 }
 
@@ -1036,11 +1050,11 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_down(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
     y: f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         let event = Event::PointerDown { x, y };
         state_machine.post_event(&event);
-        DOTLOTTIE_SUCCESS
+        DotLottieResult::Success
     })
 }
 
@@ -1049,11 +1063,11 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_up(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
     y: f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         let event = Event::PointerUp { x, y };
         state_machine.post_event(&event);
-        DOTLOTTIE_SUCCESS
+        DotLottieResult::Success
     })
 }
 
@@ -1062,11 +1076,11 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_move(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
     y: f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         let event = Event::PointerMove { x, y };
         state_machine.post_event(&event);
-        DOTLOTTIE_SUCCESS
+        DotLottieResult::Success
     })
 }
 
@@ -1075,11 +1089,11 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_enter(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
     y: f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         let event = Event::PointerEnter { x, y };
         state_machine.post_event(&event);
-        DOTLOTTIE_SUCCESS
+        DotLottieResult::Success
     })
 }
 
@@ -1088,11 +1102,11 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_exit(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
     y: f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         let event = Event::PointerExit { x, y };
         state_machine.post_event(&event);
-        DOTLOTTIE_SUCCESS
+        DotLottieResult::Success
     })
 }
 
@@ -1101,21 +1115,21 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_exit(
 pub unsafe extern "C" fn dotlottie_state_machine_fire_event(
     sm: *mut StateMachineEngine<'static>,
     event_name: *const c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         if event_name.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let event = CStr::from_ptr(event_name);
         match event.to_str() {
             Ok(event_str) => match state_machine.fire(event_str, true) {
                 Ok(_) => {
                     let _ = state_machine.run_current_state_pipeline();
-                    DOTLOTTIE_SUCCESS
+                    DotLottieResult::Success
                 }
-                Err(_) => DOTLOTTIE_ERROR,
+                Err(_) => DotLottieResult::Error,
             },
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -1126,10 +1140,10 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
     value: f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let key_cstr = CStr::from_ptr(key);
         match key_cstr.to_str() {
@@ -1137,12 +1151,12 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_input(
                 let result = state_machine.set_numeric_input(key_str, value, true, false);
                 if result.is_some() {
                     let _ = state_machine.run_current_state_pipeline();
-                    DOTLOTTIE_SUCCESS
+                    DotLottieResult::Success
                 } else {
-                    DOTLOTTIE_ERROR
+                    DotLottieResult::Error
                 }
             }
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -1153,10 +1167,10 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_string_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
     value: *const c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() || value.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let key_cstr = CStr::from_ptr(key);
         let value_cstr = CStr::from_ptr(value);
@@ -1165,12 +1179,12 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_string_input(
                 let result = state_machine.set_string_input(key_str, value_str, true, false);
                 if result.is_some() {
                     let _ = state_machine.run_current_state_pipeline();
-                    DOTLOTTIE_SUCCESS
+                    DotLottieResult::Success
                 } else {
-                    DOTLOTTIE_ERROR
+                    DotLottieResult::Error
                 }
             }
-            _ => DOTLOTTIE_INVALID_PARAMETER,
+            _ => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -1181,10 +1195,10 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
     value: bool,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let key_cstr = CStr::from_ptr(key);
         match key_cstr.to_str() {
@@ -1192,12 +1206,12 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_input(
                 let result = state_machine.set_boolean_input(key_str, value, true, false);
                 if result.is_some() {
                     let _ = state_machine.run_current_state_pipeline();
-                    DOTLOTTIE_SUCCESS
+                    DotLottieResult::Success
                 } else {
-                    DOTLOTTIE_ERROR
+                    DotLottieResult::Error
                 }
             }
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -1208,22 +1222,22 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_numeric_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
     result: *mut f32,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() || result.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let key_cstr = CStr::from_ptr(key);
         match key_cstr.to_str() {
             Ok(key_str) => {
                 if let Some(value) = state_machine.get_numeric_input(key_str) {
                     *result = value;
-                    DOTLOTTIE_SUCCESS
+                    DotLottieResult::Success
                 } else {
-                    DOTLOTTIE_ERROR
+                    DotLottieResult::Error
                 }
             }
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -1234,23 +1248,25 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_string_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
     result: *mut c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() || result.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let key_cstr = CStr::from_ptr(key);
         match key_cstr.to_str() {
             Ok(key_str) => {
                 if let Some(value) = state_machine.get_string_input(key_str) {
-                    to_exit_status(
-                        DotLottieString::copy(&value, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
-                    )
+                    if DotLottieString::copy(&value, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok() {
+                        DotLottieResult::Success
+                    } else {
+                        DotLottieResult::Error
+                    }
                 } else {
-                    DOTLOTTIE_ERROR
+                    DotLottieResult::Error
                 }
             }
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -1261,22 +1277,22 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_boolean_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
     result: *mut bool,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         if key.is_null() || result.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let key_cstr = CStr::from_ptr(key);
         match key_cstr.to_str() {
             Ok(key_str) => {
                 if let Some(value) = state_machine.get_boolean_input(key_str) {
                     *result = value;
-                    DOTLOTTIE_SUCCESS
+                    DotLottieResult::Success
                 } else {
-                    DOTLOTTIE_ERROR
+                    DotLottieResult::Error
                 }
             }
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -1286,12 +1302,14 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_boolean_input(
 pub unsafe extern "C" fn dotlottie_state_machine_current_state(
     sm: *mut StateMachineEngine<'static>,
     result: *mut c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         let current_state = state_machine.get_current_state_name();
-        to_exit_status(
-            DotLottieString::copy(&current_state, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
-        )
+        if DotLottieString::copy(&current_state, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok() {
+            DotLottieResult::Success
+        } else {
+            DotLottieResult::Error
+        }
     })
 }
 
@@ -1300,10 +1318,14 @@ pub unsafe extern "C" fn dotlottie_state_machine_current_state(
 pub unsafe extern "C" fn dotlottie_state_machine_status(
     sm: *mut StateMachineEngine<'static>,
     result: *mut c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         let status = state_machine.status();
-        to_exit_status(DotLottieString::copy(&status, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok())
+        if DotLottieString::copy(&status, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok() {
+            DotLottieResult::Success
+        } else {
+            DotLottieResult::Error
+        }
     })
 }
 
@@ -1315,10 +1337,10 @@ pub unsafe extern "C" fn dotlottie_state_machine_status(
 pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
     sm: *mut StateMachineEngine<'static>,
     result: *mut u16,
-) -> i32 {
+) -> DotLottieResult {
     exec_state_machine_op!(sm, |state_machine| {
         if result.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
 
         let interaction_types = state_machine.framework_setup();
@@ -1326,9 +1348,9 @@ pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
         // Convert Vec<String> to bit flags using InteractionType
         if let Ok(interaction_type) = InteractionType::new(&interaction_types) {
             *result = interaction_type.bits();
-            DOTLOTTIE_SUCCESS
+            DotLottieResult::Success
         } else {
-            DOTLOTTIE_ERROR
+            DotLottieResult::Error
         }
     })
 }
@@ -1391,23 +1413,25 @@ pub unsafe extern "C" fn dotlottie_get_state_machine(
     runtime: *mut DotLottiePlayer,
     state_machine_id: *const c_char,
     result: *mut c_char,
-) -> i32 {
+) -> DotLottieResult {
     exec_dotlottie_player_op!(runtime, |dotlottie_player| {
         if state_machine_id.is_null() || result.is_null() {
-            return DOTLOTTIE_INVALID_PARAMETER;
+            return DotLottieResult::InvalidParameter;
         }
         let sm_id = CStr::from_ptr(state_machine_id);
         match sm_id.to_str() {
             Ok(id_str) => {
                 if let Some(sm_json) = dotlottie_player.get_state_machine(id_str) {
-                    to_exit_status(
-                        DotLottieString::copy(&sm_json, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
-                    )
+                    if DotLottieString::copy(&sm_json, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok() {
+                        DotLottieResult::Success
+                    } else {
+                        DotLottieResult::Error
+                    }
                 } else {
-                    DOTLOTTIE_ERROR
+                    DotLottieResult::Error
                 }
             }
-            Err(_) => DOTLOTTIE_INVALID_PARAMETER,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }

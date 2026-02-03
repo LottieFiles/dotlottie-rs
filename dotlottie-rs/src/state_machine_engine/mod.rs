@@ -396,7 +396,7 @@ impl<'a> StateMachineEngine<'a> {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> bool {
+    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> crate::DotLottieResult {
         // Reset to first frame
         self.player.stop();
         // Remove all playback settings but preserve use_frame_interpolation and layout
@@ -410,7 +410,7 @@ impl<'a> StateMachineEngine<'a> {
 
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
-            return false;
+            return crate::DotLottieResult::Error;
         }
 
         self.open_url_requires_user_interaction = open_url.require_user_interaction;
@@ -436,12 +436,12 @@ impl<'a> StateMachineEngine<'a> {
 
                 self.observe_on_error(message.as_str());
 
-                return false;
+                return crate::DotLottieResult::Error;
             }
         }
 
         if self.status == StateMachineEngineStatus::Running {
-            return true;
+            return crate::DotLottieResult::Success;
         }
 
         self.observe_on_start();
@@ -450,7 +450,7 @@ impl<'a> StateMachineEngine<'a> {
 
         let _ = self.run_current_state_pipeline();
 
-        true
+        crate::DotLottieResult::Success
     }
 
     pub fn stop(&mut self) {
@@ -1191,14 +1191,20 @@ impl<'a> StateMachineEngine<'a> {
      * @params state_name: The name of the state to change to.
      * @params do_tick: If true, the state machine will run the transition evaluation pipeline after changing the state.
      */
-    pub fn override_current_state(&mut self, state_name: &str, do_tick: bool) -> bool {
-        let r = self.set_current_state(state_name, None, false).is_ok();
-
-        if do_tick {
-            return self.run_current_state_pipeline().is_ok();
+    pub fn override_current_state(&mut self, state_name: &str, do_tick: bool) -> crate::DotLottieResult {
+        if self.set_current_state(state_name, None, false).is_err() {
+            return crate::DotLottieResult::Error;
         }
 
-        r
+        if do_tick {
+            return if self.run_current_state_pipeline().is_ok() {
+                crate::DotLottieResult::Success
+            } else {
+                crate::DotLottieResult::Error
+            };
+        }
+
+        crate::DotLottieResult::Success
     }
 
     pub fn get_state_machine(&self) -> &StateMachine {
@@ -1327,7 +1333,7 @@ impl<'a> StateMachineEngine<'a> {
         }
     }
 
-    pub fn tick(&mut self) -> bool {
+    pub fn tick(&mut self) -> crate::DotLottieResult {
         let ticked = self.player.tick();
 
         self.check_completion();

@@ -121,7 +121,7 @@ impl StateTrait for State {
 
                 if !animation.is_empty()
                     && engine.player.active_animation_id() != *animation
-                    && engine.player.render()
+                    && engine.player.render().is_ok()
                 {
                     engine.player.load_animation(animation, size.0, size.1);
                 }

@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer, Marker};
+use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult, Marker};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -30,8 +30,9 @@ mod tests {
             "Expected no markers before loading animation"
         );
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
 
@@ -86,8 +87,9 @@ mod tests {
 
         let marker_name = "Marker_3".to_string();
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
 
@@ -109,7 +111,7 @@ mod tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }

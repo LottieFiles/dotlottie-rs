@@ -1,7 +1,7 @@
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
 
-use dotlottie_rs::{Config, DotLottiePlayer, Mode};
+use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult, Mode};
 
 #[cfg(test)]
 mod tests {
@@ -59,8 +59,9 @@ mod tests {
         for config in configs {
             let mut player = DotLottiePlayer::new(config, 0);
 
-            assert!(
+            assert_eq!(
                 player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+                DotLottieResult::Success,
                 "Animation should load"
             );
 
@@ -75,11 +76,11 @@ mod tests {
             // wait until we're half way to the end
             let mid_frame = (start_frame + end_frame) / 2.0;
 
-            assert!(player.set_frame(mid_frame), "Frame should be set");
-            assert!(player.render(), "Frame should render");
+            assert_eq!(player.set_frame(mid_frame), DotLottieResult::Success, "Frame should be set");
+            assert_eq!(player.render(), DotLottieResult::Success, "Frame should render");
             assert!(player.is_playing(), "Animation should be playing");
 
-            assert!(player.stop(), "Animation should stop");
+            assert_eq!(player.stop(), DotLottieResult::Success, "Animation should stop");
 
             assert!(!player.is_playing(), "Animation should not be playing");
             assert!(player.is_stopped(), "Animation should be stopped");
@@ -101,7 +102,7 @@ mod tests {
                 }
             }
 
-            assert!(!player.stop(), "Animation should not stop again");
+            assert_eq!(player.stop(), DotLottieResult::InsufficientCondition, "Animation should not stop again");
         }
     }
 }

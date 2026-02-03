@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult};
 
 mod test_utils;
 
@@ -30,8 +30,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -41,7 +42,7 @@ mod play_mode_tests {
             if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
         while let Some(event) = player.poll_event() {
@@ -75,8 +76,9 @@ mod play_mode_tests {
 
         let mut observed_loops = 0;
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -86,7 +88,7 @@ mod play_mode_tests {
             if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
         while let Some(event) = player.poll_event() {
@@ -115,8 +117,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -126,7 +129,7 @@ mod play_mode_tests {
             if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
         while let Some(event) = player.poll_event() {
@@ -145,14 +148,14 @@ mod play_mode_tests {
         assert!(observed_completed);
 
         // Restart the player
-        player.play();
+        let _ = player.play();
         observed_completed = false;
 
         loop {
             if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
         while let Some(event) = player.poll_event() {
@@ -185,8 +188,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -196,7 +200,7 @@ mod play_mode_tests {
             if player.is_paused() || player.is_stopped() || player.loop_count() >= 3 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
         while let Some(event) = player.poll_event() {
             match event {
@@ -214,13 +218,13 @@ mod play_mode_tests {
         assert!(!observed_completed);
 
         // Restart the player
-        player.play();
+        let _ = player.play();
 
         loop {
             if player.is_paused() || player.is_stopped() || player.loop_count() > 10 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
         while let Some(event) = player.poll_event() {
@@ -264,8 +268,9 @@ mod play_mode_tests {
                 player.config().mode
             );
 
-            assert!(
+            assert_eq!(
                 player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+                DotLottieResult::Success,
                 "Animation should load"
             );
 
@@ -310,8 +315,9 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -323,7 +329,7 @@ mod play_mode_tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }
@@ -363,8 +369,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -374,7 +381,7 @@ mod play_mode_tests {
             if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
         while let Some(event) = player.poll_event() {
@@ -402,8 +409,9 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
 
@@ -416,7 +424,7 @@ mod play_mode_tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }
@@ -453,8 +461,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -464,7 +473,7 @@ mod play_mode_tests {
             if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
         while let Some(event) = player.poll_event() {
@@ -493,8 +502,9 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
 
@@ -506,7 +516,7 @@ mod play_mode_tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }
@@ -561,8 +571,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -571,7 +582,7 @@ mod play_mode_tests {
             if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
         while let Some(event) = player.poll_event() {
             match event {
@@ -598,8 +609,9 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
 
@@ -611,7 +623,7 @@ mod play_mode_tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }
@@ -666,8 +678,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert!(
+        assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            DotLottieResult::Success,
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -676,7 +689,7 @@ mod play_mode_tests {
             if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
         while let Some(event) = player.poll_event() {
             match event {

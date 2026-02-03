@@ -56,7 +56,7 @@ impl Player {
     fn update(&mut self) -> bool {
         let updated = self.player.tick();
         self.last_update = Instant::now();
-        updated
+        updated.is_ok()
     }
 
     fn play_marker(&mut self, index: usize) {

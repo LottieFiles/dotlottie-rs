@@ -1,18 +1,18 @@
 #[cfg(test)]
 mod tests {
     use dotlottie_rs::{
-        Config, DotLottiePlayer, StateMachineEvent, actions::open_url_policy::OpenUrlPolicy
+        Config, DotLottiePlayer, DotLottieResult, StateMachineEvent, actions::open_url_policy::OpenUrlPolicy
     };
 
     #[test]
     fn increment() {
         let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, DotLottieResult::Success);
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -42,11 +42,11 @@ mod tests {
     fn decrement() {
         let global_state = include_str!("fixtures/statemachines/action_tests/decr_rating.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, DotLottieResult::Success);
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -76,11 +76,11 @@ mod tests {
     fn toggle() {
         let global_state = include_str!("fixtures/statemachines/action_tests/toggle.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, DotLottieResult::Success);
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -103,11 +103,11 @@ mod tests {
     fn set_boolean() {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, DotLottieResult::Success);
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -124,11 +124,11 @@ mod tests {
     fn set_numeric() {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, DotLottieResult::Success);
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -145,11 +145,11 @@ mod tests {
     fn set_string() {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, DotLottieResult::Success);
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -166,11 +166,11 @@ mod tests {
     fn fire() {
         let global_state = include_str!("fixtures/statemachines/action_tests/fire.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, DotLottieResult::Success);
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -186,14 +186,14 @@ mod tests {
     fn set_frame() {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_frame.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
 
         assert_eq!(player.current_frame(), 0.0);
 
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, DotLottieResult::Success);
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -215,14 +215,14 @@ mod tests {
     fn set_progress() {
         let global_state = include_str!("fixtures/statemachines/action_tests/set_progress.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
 
         assert_eq!(player.current_frame(), 0.0);
 
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, DotLottieResult::Success);
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -244,14 +244,14 @@ mod tests {
     fn reset() {
         let reset_sm = include_str!("fixtures/statemachines/action_tests/reset.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
 
         assert_eq!(player.current_frame(), 0.0);
 
         let mut sm = player.state_machine_load_data(reset_sm).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, DotLottieResult::Success);
 
         sm.set_numeric_input("rating", 3.0, true, false).expect("input to set successfully");
 
@@ -268,14 +268,14 @@ mod tests {
     fn fire_custom_event() {
         let reset_sm = include_str!("fixtures/statemachines/action_tests/fire_custom_event.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
 
         assert_eq!(player.current_frame(), 0.0);
 
         let mut sm = player.state_machine_load_data(reset_sm).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, DotLottieResult::Success);
 
         sm.set_numeric_input("rating", 3.0, true, false).expect("input to set successfully");
 
@@ -315,7 +315,7 @@ mod tests {
                 StateMachineEvent::CustomEvent { message } => {
                     Some(format!("custom_event: {}", message))
                 }
-                _ => None            
+                _ => None
             };
 
             if let Some(event_str) = event_str {

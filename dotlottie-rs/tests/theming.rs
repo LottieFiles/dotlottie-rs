@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult};
 use std::ffi::CString;
 
 mod test_utils;
@@ -18,15 +18,16 @@ mod tests {
 
         let valid_theme_id = "test_theme";
 
-        assert!(
-            !player.set_theme(valid_theme_id),
+        assert_eq!(
+            player.set_theme(valid_theme_id),
+            DotLottieResult::InsufficientCondition,
             "Expected theme to not load"
         );
 
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT));
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT), DotLottieResult::Success);
         assert!(player.active_theme_id().is_empty());
 
-        assert!(player.set_theme(valid_theme_id), "Expected theme to load");
+        assert_eq!(player.set_theme(valid_theme_id), DotLottieResult::Success, "Expected theme to load");
         assert_eq!(player.active_theme_id(), valid_theme_id);
 
         assert!(player.is_playing());
@@ -41,15 +42,17 @@ mod tests {
 
         let invalid_theme_id = "invalid_theme";
 
-        assert!(
-            !player.set_theme(invalid_theme_id),
+        assert_eq!(
+            player.set_theme(invalid_theme_id),
+            DotLottieResult::InsufficientCondition,
             "Expected theme to not load"
         );
 
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT));
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT), DotLottieResult::Success);
 
-        assert!(
-            !player.set_theme(invalid_theme_id),
+        assert_ne!(
+            player.set_theme(invalid_theme_id),
+            DotLottieResult::Success,
             "Expected theme to not load"
         );
 
@@ -65,10 +68,10 @@ mod tests {
 
         let theme_id = "test_theme";
 
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT));
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT), DotLottieResult::Success);
 
-        assert!(player.set_theme(theme_id), "Expected theme to load");
-        assert!(player.set_theme(""), "Expected theme to unload");
+        assert_eq!(player.set_theme(theme_id), DotLottieResult::Success, "Expected theme to load");
+        assert_eq!(player.set_theme(""), DotLottieResult::Success, "Expected theme to unload");
     }
 
     #[test]
@@ -78,9 +81,9 @@ mod tests {
             ..Config::default()
         }, 0);
 
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT));
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT), DotLottieResult::Success);
 
-        assert!(player.set_theme(""), "Expected theme to unload");
+        assert_eq!(player.set_theme(""), DotLottieResult::Success, "Expected theme to unload");
     }
 
     #[test]
@@ -92,20 +95,21 @@ mod tests {
 
         let valid_theme_id = "test_theme";
 
-        assert!(
-            !player.set_theme(valid_theme_id),
+        assert_eq!(
+            player.set_theme(valid_theme_id),
+            DotLottieResult::InsufficientCondition,
             "Expected theme to not load"
         );
 
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT));
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT), DotLottieResult::Success);
 
-        assert!(player.set_theme(valid_theme_id), "Expected theme to load");
+        assert_eq!(player.set_theme(valid_theme_id), DotLottieResult::Success, "Expected theme to load");
         assert_eq!(player.active_theme_id(), valid_theme_id);
 
         let data_str =
             std::str::from_utf8(include_bytes!("fixtures/test.json")).expect("Invalid data.");
         let data = CString::new(data_str).expect("Failed to create CString");
-        assert!(player.load_animation_data(&data, WIDTH, HEIGHT));
+        assert_eq!(player.load_animation_data(&data, WIDTH, HEIGHT), DotLottieResult::Success);
         assert!(player.active_theme_id().is_empty());
 
         assert!(player.is_playing());
@@ -120,17 +124,18 @@ mod tests {
 
         let valid_theme_id = "test_theme";
 
-        assert!(
-            !player.set_theme(valid_theme_id),
+        assert_eq!(
+            player.set_theme(valid_theme_id),
+            DotLottieResult::InsufficientCondition,
             "Expected theme to not load"
         );
 
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT));
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT), DotLottieResult::Success);
 
-        assert!(player.set_theme(valid_theme_id), "Expected theme to load");
+        assert_eq!(player.set_theme(valid_theme_id), DotLottieResult::Success, "Expected theme to load");
         assert_eq!(player.active_theme_id(), valid_theme_id);
 
-        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
+        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), DotLottieResult::Success);
         assert!(player.active_theme_id().is_empty());
 
         assert!(player.is_playing());
@@ -145,13 +150,13 @@ mod tests {
 
         let valid_theme_id = "test_theme";
 
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT));
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/test.lottie"), WIDTH, HEIGHT), DotLottieResult::Success);
         assert!(player.active_theme_id().is_empty());
 
-        assert!(player.set_theme(valid_theme_id), "Expected theme to load");
+        assert_eq!(player.set_theme(valid_theme_id), DotLottieResult::Success, "Expected theme to load");
         assert_eq!(player.active_theme_id(), valid_theme_id);
 
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT), DotLottieResult::Success);
         assert!(player.active_theme_id().is_empty());
 
         assert!(player.is_playing());

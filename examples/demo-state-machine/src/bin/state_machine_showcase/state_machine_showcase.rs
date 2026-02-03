@@ -227,7 +227,7 @@ fn main() {
         };
 
         // Start the state machine
-        if !engine.start(&OpenUrlPolicy::default()) {
+        if !engine.start(&OpenUrlPolicy::default()).is_ok() {
             eprintln!("Failed to start state machine");
             engine.release();
             return;
@@ -321,7 +321,7 @@ fn main() {
             }
 
             // Tick and render
-            if engine.tick() {
+            if engine.tick().is_ok() {
                 let buffer = engine.player.buffer();
                 window.update_with_buffer(buffer, WIDTH, HEIGHT).unwrap();
             }

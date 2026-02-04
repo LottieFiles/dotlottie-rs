@@ -341,7 +341,7 @@ impl ActionTrait for Action {
                         let frame = engine.get_numeric_input(value);
                         if let Some(frame) = frame {
                             let clamped_frame = frame.clamp(0.0, engine.player.total_frames() - 1.0);
-                            engine.player.set_frame(clamped_frame);
+                            let _ = engine.player.set_frame(clamped_frame);
                         } else {
                             return Err(StateMachineActionError::ExecuteError);
                         }
@@ -349,7 +349,7 @@ impl ActionTrait for Action {
                     }
                     StringNumber::F32(value) => {
                         let clamped_frame = value.clamp(0.0, engine.player.total_frames() - 1.0);
-                        engine.player.set_frame(clamped_frame);
+                        let _ = engine.player.set_frame(clamped_frame);
                     }
                 }
                 Ok(())
@@ -366,7 +366,7 @@ impl ActionTrait for Action {
                             let new_perc = clamped_value / 100.0;
                             let frame = (engine.player.total_frames() - 1.0) * new_perc;
 
-                            engine.player.set_frame(frame);
+                            let _ = engine.player.set_frame(frame);
                         }
 
                         return Ok(());
@@ -376,7 +376,7 @@ impl ActionTrait for Action {
                         let new_perc = clamped_value / 100.0;
                         let frame = (engine.player.total_frames() - 1.0) * new_perc;
 
-                        engine.player.set_frame(frame);
+                        let _ = engine.player.set_frame(frame);
                     }
                 }
 

@@ -1,18 +1,18 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, DotLottieResult};
+    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer};
 
     #[test]
     pub fn global_and_guardless() {
         let global_state =
             include_str!("fixtures/statemachines/sanity_tests/test_global_and_guardless.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), Ok(()));
         let mut sm  = player.state_machine_load_data(global_state).expect("state machine to load successfully");
 
         let l = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(l, DotLottieResult::Success);
+        assert_eq!(l, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -32,12 +32,12 @@ mod tests {
         let global_state =
             include_str!("fixtures/statemachines/sanity_tests/test_guarded_and_guardless.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "a");
@@ -61,12 +61,12 @@ mod tests {
         let global_state =
             include_str!("fixtures/statemachines/sanity_tests/test_guardless_and_event.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -88,12 +88,12 @@ mod tests {
             "fixtures/statemachines/sanity_tests/test_exit_action_causes_global_to_transition.json"
         );
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "Initial");
@@ -131,12 +131,12 @@ mod tests {
             "fixtures/statemachines/sanity_tests/test_exit_action_global_ignored_if_non_valid.json"
         );
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "Initial");
@@ -171,12 +171,12 @@ mod tests {
             "fixtures/statemachines/sanity_tests/test_entry_action_causes_global_to_transition.json"
         );
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "Initial");
@@ -211,12 +211,12 @@ mod tests {
             "fixtures/statemachines/sanity_tests/test_entry_action_global_ignored_if_non_valid.json"
         );
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "Initial");

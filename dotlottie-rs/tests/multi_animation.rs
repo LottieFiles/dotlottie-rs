@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult};
+use dotlottie_rs::{Config, DotLottiePlayer};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -16,7 +16,7 @@ mod tests {
             ..Config::default()
         }, 0);
 
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT), Ok(()));
 
         assert_eq!(player.active_animation_id(), animation_id);
     }
@@ -24,7 +24,7 @@ mod tests {
     #[test]
     pub fn test_load_animation() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT), Ok(()));
 
         let manifest = player.manifest();
 
@@ -42,7 +42,7 @@ mod tests {
         for animation in animations {
             assert_eq!(
                 player.load_animation(&animation.id, WIDTH, HEIGHT),
-                DotLottieResult::Success,
+                Ok(()),
                 "Failed to load animation with id {}",
                 animation.id
             );
@@ -57,7 +57,7 @@ mod tests {
 
         assert_ne!(
             player.load_animation("invalid_id", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Loaded animation with invalid id"
         );
 

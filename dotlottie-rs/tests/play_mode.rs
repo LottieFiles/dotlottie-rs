@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult};
+use dotlottie_rs::{Config, DotLottiePlayer};
 
 mod test_utils;
 
@@ -32,7 +32,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -78,7 +78,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -119,7 +119,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -190,7 +190,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -270,7 +270,7 @@ mod play_mode_tests {
 
             assert_eq!(
                 player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-                DotLottieResult::Success,
+                Ok(()),
                 "Animation should load"
             );
 
@@ -317,7 +317,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -371,7 +371,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -411,7 +411,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
 
@@ -463,7 +463,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -504,7 +504,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
 
@@ -573,7 +573,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -611,7 +611,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
 
@@ -680,7 +680,7 @@ mod play_mode_tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");

@@ -1,7 +1,7 @@
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
 
-use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult, Mode};
+use dotlottie_rs::{Config, DotLottiePlayer, Mode};
 
 #[cfg(test)]
 mod tests {
@@ -19,7 +19,7 @@ mod tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
 
@@ -54,7 +54,7 @@ mod tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
 
@@ -96,7 +96,7 @@ mod tests {
 
             assert_eq!(
                 player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-                DotLottieResult::Success,
+                Ok(()),
                 "Animation should load for mode {mode:?}"
             );
 
@@ -130,7 +130,7 @@ mod tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load with valid segment"
         );
 
@@ -163,7 +163,7 @@ mod tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
 

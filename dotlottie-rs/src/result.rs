@@ -1,43 +1,22 @@
 use crate::LottieRendererError;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
-pub enum DotLottieResult {
-    Success = 0,
-    Error = 1,
-    InvalidParameter = 2,
-    ManifestNotAvailable = 3,
-    AnimationNotLoaded = 4,
-    InsufficientCondition = 5,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DotLottiePlayerError {
+    Unknown,
+    InvalidParameter,
+    ManifestNotAvailable,
+    AnimationNotLoaded,
+    InsufficientCondition,
 }
 
-impl DotLottieResult {
-    pub fn is_ok(self) -> bool {
-        self == DotLottieResult::Success
-    }
-
-    pub fn is_err(self) -> bool {
-        self != DotLottieResult::Success
-    }
-}
-
-impl From<LottieRendererError> for DotLottieResult {
+impl From<LottieRendererError> for DotLottiePlayerError {
     fn from(err: LottieRendererError) -> Self {
         match err {
             LottieRendererError::InvalidArgument | LottieRendererError::InvalidColor => {
-                DotLottieResult::InvalidParameter
+                DotLottiePlayerError::InvalidParameter
             }
-            LottieRendererError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
-            _ => DotLottieResult::Error,
-        }
-    }
-}
-
-impl<E: Into<DotLottieResult>> From<Result<(), E>> for DotLottieResult {
-    fn from(result: Result<(), E>) -> Self {
-        match result {
-            Ok(()) => DotLottieResult::Success,
-            Err(e) => e.into(),
+            LottieRendererError::AnimationNotLoaded => DotLottiePlayerError::AnimationNotLoaded,
+            _ => DotLottiePlayerError::Unknown,
         }
     }
 }

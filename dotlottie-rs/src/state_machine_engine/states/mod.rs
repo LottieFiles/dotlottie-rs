@@ -123,7 +123,7 @@ impl StateTrait for State {
                     && engine.player.active_animation_id() != *animation
                     && engine.player.render().is_ok()
                 {
-                    engine.player.load_animation(animation, size.0, size.1);
+                    let _ = engine.player.load_animation(animation, size.0, size.1);
                 }
 
                 /* Perform entry actions */
@@ -148,7 +148,7 @@ impl StateTrait for State {
 
                 if let Some(animation) = animation {
                     if engine.player.active_animation_id() != *animation {
-                        engine.player.load_animation(animation, size.0, size.1);
+                        let _ = engine.player.load_animation(animation, size.0, size.1);
                     }
                 }
 

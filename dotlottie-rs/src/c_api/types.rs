@@ -13,7 +13,39 @@ use crate::{
     Mode,
 };
 
-use crate::DotLottieResult;
+use crate::DotLottiePlayerError;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub enum DotLottieResult {
+    Success = 0,
+    Error = 1,
+    InvalidParameter = 2,
+    ManifestNotAvailable = 3,
+    AnimationNotLoaded = 4,
+    InsufficientCondition = 5,
+}
+
+impl From<DotLottiePlayerError> for DotLottieResult {
+    fn from(err: DotLottiePlayerError) -> Self {
+        match err {
+            DotLottiePlayerError::Unknown => DotLottieResult::Error,
+            DotLottiePlayerError::InvalidParameter => DotLottieResult::InvalidParameter,
+            DotLottiePlayerError::ManifestNotAvailable => DotLottieResult::ManifestNotAvailable,
+            DotLottiePlayerError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
+            DotLottiePlayerError::InsufficientCondition => DotLottieResult::InsufficientCondition,
+        }
+    }
+}
+
+impl<E: Into<DotLottieResult>> From<Result<(), E>> for DotLottieResult {
+    fn from(result: Result<(), E>) -> Self {
+        match result {
+            Ok(()) => DotLottieResult::Success,
+            Err(e) => e.into(),
+        }
+    }
+}
 
 // Other constant(s)
 pub const DOTLOTTIE_MAX_STR_LENGTH: usize = 512;

@@ -1,16 +1,16 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, DotLottieResult};
+    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer};
 
     #[test]
     pub fn not_equal_test() {
         let global_state = include_str!("fixtures/statemachines/guard_tests/equal_not_equal.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -25,11 +25,11 @@ mod tests {
     pub fn equal_test() {
         let global_state = include_str!("fixtures/statemachines/guard_tests/equal_not_equal.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -44,11 +44,11 @@ mod tests {
     pub fn greater_than() {
         let global_state = include_str!("fixtures/statemachines/guard_tests/greater_than.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -84,11 +84,11 @@ mod tests {
         let global_state =
             include_str!("fixtures/statemachines/guard_tests/greater_than_equal.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -113,11 +113,11 @@ mod tests {
     pub fn less_than_equal() {
         let global_state = include_str!("fixtures/statemachines/guard_tests/less_than_equal.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "star_3");
@@ -147,11 +147,11 @@ mod tests {
     pub fn less_than() {
         let global_state = include_str!("fixtures/statemachines/guard_tests/less_than.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100), Ok(()));
         let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert_eq!(s, DotLottieResult::Success);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "star_3");

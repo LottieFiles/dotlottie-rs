@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult, Marker};
+use dotlottie_rs::{Config, DotLottiePlayer, Marker};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -32,7 +32,7 @@ mod tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
 
@@ -89,7 +89,7 @@ mod tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Animation should load"
         );
 

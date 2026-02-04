@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult};
+use dotlottie_rs::{Config, DotLottiePlayer, DotLottiePlayerError};
 
 mod test_utils;
 
@@ -27,13 +27,13 @@ mod tests {
 
         assert_eq!(
             player.load_animation_path("invalid/path", WIDTH, HEIGHT),
-            DotLottieResult::Error,
+            Err(DotLottiePlayerError::Unknown),
             "Invalid path should not load"
         );
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Valid path should load"
         );
 
@@ -46,9 +46,9 @@ mod tests {
         // animation loop
         loop {
             let next_frame = player.request_frame();
-            if player.set_frame(next_frame) == DotLottieResult::Success {
+            if player.set_frame(next_frame).is_ok() {
                 expected_events.push(format!("on_frame: {}", player.current_frame()));
-                if player.render() == DotLottieResult::Success {
+                if player.render().is_ok() {
                     expected_events.push(format!("on_render: {}", player.current_frame()));
                     if player.is_complete() {
                         if player.config().loop_animation {
@@ -56,7 +56,7 @@ mod tests {
                             expected_events.push(format!("on_loop: {loop_count}"));
 
                             if loop_count == 1 {
-                                player.pause();
+                                let _ = player.pause();
                                 break;
                             }
                         } else {
@@ -68,7 +68,7 @@ mod tests {
             }
         }
 
-        player.stop();
+        let _ = player.stop();
 
         expected_events.push("on_pause".to_string());
         // Stop set_frame to 0.0 before seding stop event
@@ -101,7 +101,7 @@ mod tests {
 
         assert_eq!(
             player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            DotLottieResult::Success,
+            Ok(()),
             "Valid path should load"
         );
 

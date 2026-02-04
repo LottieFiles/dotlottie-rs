@@ -3,7 +3,7 @@ mod tests {
     use core::assert_eq;
     use std::fs::{self, File};
 
-    use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult, Event, StateMachineEngineStatus, actions::open_url_policy::OpenUrlPolicy};
+    use dotlottie_rs::{Config, DotLottiePlayer, Event, StateMachineEngineStatus, actions::open_url_policy::OpenUrlPolicy};
     use std::io::Read;
 
     #[test]
@@ -25,13 +25,13 @@ mod tests {
             .read_exact(&mut markers_buffer)
             .expect("buffer overflow");
 
-        assert_eq!(player.load_dotlottie_data(&markers_buffer, 500, 500), DotLottieResult::Success);
+        assert_eq!(player.load_dotlottie_data(&markers_buffer, 500, 500), Ok(()));
 
         assert!(player.is_playing());
 
         let mut sm = player.state_machine_load("Exploding Pigeon").expect("state machine to load successfully");
 
-        assert_eq!(sm.start(&OpenUrlPolicy::default()), DotLottieResult::Success);
+        assert_eq!(sm.start(&OpenUrlPolicy::default()), Ok(()));
 
         // Tests with a state machine loaded
         let global_state =
@@ -55,7 +55,7 @@ mod tests {
 
         let r = sm2.start(&OpenUrlPolicy::default());
 
-        assert_eq!(r, DotLottieResult::Success);
+        assert_eq!(r, Ok(()));
     }
 
     #[test]
@@ -73,7 +73,7 @@ mod tests {
         let r = sm2.start(&OpenUrlPolicy::default());
         sm2.stop();
 
-        assert_eq!(r, DotLottieResult::Success);
+        assert_eq!(r, Ok(()));
         assert!(sm2.status == StateMachineEngineStatus::Stopped);
     }
 
@@ -86,7 +86,7 @@ mod tests {
         let mut sm = player.state_machine_load_data(pointer_down).expect("state machine to load successfully");
 
         let r = sm.start(&OpenUrlPolicy::default());
-        assert_eq!(r, DotLottieResult::Success);
+        assert_eq!(r, Ok(()));
 
         let r = sm.framework_setup();
 
@@ -107,7 +107,7 @@ mod tests {
         let mut sm = player.state_machine_load_data(pointer_down).expect("state machine to load successfully");
 
         let r = sm.start(&OpenUrlPolicy::default());
-        assert_eq!(r, DotLottieResult::Success);
+        assert_eq!(r, Ok(()));
 
         let event = Event::PointerDown { x: 0.0, y: 0.0 };
         sm.post_event(&event);
@@ -142,7 +142,7 @@ mod tests {
         let mut sm = player.state_machine_load_data(rating).expect("state machine to load successfully");
 
         let r = sm.start(&OpenUrlPolicy::default());
-        assert_eq!(r, DotLottieResult::Success);
+        assert_eq!(r, Ok(()));
 
         // Setting the inputs
         sm.set_numeric_input("rating", 1.0, true, false);
@@ -164,7 +164,7 @@ mod tests {
         let mut sm = player.state_machine_load_data(sm).expect("state machine to load successfully");
 
         let r = sm.start(&OpenUrlPolicy::default());
-        assert_eq!(r, DotLottieResult::Success);
+        assert_eq!(r, Ok(()));
 
         assert!(!sm.get_boolean_input("OnOffSwitch").expect("to get boolean input"));
 
@@ -186,7 +186,7 @@ mod tests {
         let mut sm = player.state_machine_load_data(sm).expect("state machine to load successfully");
 
         let r = sm.start(&OpenUrlPolicy::default());
-        assert_eq!(r, DotLottieResult::Success);
+        assert_eq!(r, Ok(()));
 
         assert_eq!(
             sm.get_string_input("password").expect("to get string input"),
@@ -217,7 +217,7 @@ mod tests {
         let mut sm = player.state_machine_load_data(sm).expect("state machine to load successfully");
 
         let r = sm.start(&OpenUrlPolicy::default());
-        assert_eq!(r, DotLottieResult::Success);
+        assert_eq!(r, Ok(()));
 
         sm.fire("Step", true).expect("event to fire successfully");
         assert_eq!(sm.get_current_state_name(), "a".to_string());
@@ -234,7 +234,7 @@ mod tests {
         let mut sm = player.state_machine_load_data(sm).expect("state machine to load successfully");
 
         let r = sm.start(&OpenUrlPolicy::default());
-        assert_eq!(r, DotLottieResult::Success);
+        assert_eq!(r, Ok(()));
 
         assert_eq!(sm.get_current_state_name(), "star_0".to_string());
 
@@ -257,7 +257,7 @@ mod tests {
         let mut sm = player.state_machine_load_data(pointer_down).expect("state machine to load successfully");
 
         let r = sm.start(&OpenUrlPolicy::default());
-        assert_eq!(r, DotLottieResult::Success);
+        assert_eq!(r, Ok(()));
 
         let event = Event::PointerDown { x: 0.0, y: 0.0 };
         sm.post_event(&event);
@@ -293,7 +293,7 @@ mod tests {
         let mut sm = player.state_machine_load_data(pointer_down).expect("state machine to load successfully");
 
         let r = sm.start(&OpenUrlPolicy::default());
-        assert_eq!(r, DotLottieResult::Success);
+        assert_eq!(r, Ok(()));
 
         let predefined_inputs = [
             "a_exited", "Boolean", "Step", "Event", "rating", "Numeric", "b_exited", "String",

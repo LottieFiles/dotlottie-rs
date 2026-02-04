@@ -66,7 +66,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
             let next_frame = player.request_frame();
 
             if player.set_frame(next_frame).is_ok() {
-                player.render();
+                let _ = player.render();
             }
         });
     });
@@ -91,7 +91,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
             let next_frame = player.request_frame();
 
             if player.set_frame(next_frame).is_ok() {
-                player.render();
+                let _ = player.render();
             }
         });
     });
@@ -105,7 +105,7 @@ fn set_theme_benchmark(c: &mut Criterion) {
 
     c.bench_function("set_theme", |b| {
         b.iter(|| {
-            player.set_theme("test_theme");
+            let _ = player.set_theme("test_theme");
         });
     });
 }

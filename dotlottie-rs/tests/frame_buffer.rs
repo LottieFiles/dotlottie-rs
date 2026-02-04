@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult};
+use dotlottie_rs::{Config, DotLottiePlayer};
 use std::ffi::CString;
 use std::slice;
 
@@ -12,7 +12,7 @@ mod tests {
     #[test]
     fn buflen() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), DotLottieResult::Success);
+        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), Ok(()));
         let frame = unsafe {
             slice::from_raw_parts(
                 player.buffer().as_ptr(),
@@ -28,7 +28,7 @@ mod tests {
 
         let test_data_str = r#"{"v":"5.5.7","fr":60,"ip":0,"op":60,"w":100,"h":100,"nm":"Test","ddd":0,"assets":[],"layers":[],"markers":[]}"#;
         let test_data = CString::new(test_data_str).expect("Failed to create CString");
-        assert_eq!(player.load_animation_data(&test_data, WIDTH, HEIGHT), DotLottieResult::Success);
+        assert_eq!(player.load_animation_data(&test_data, WIDTH, HEIGHT), Ok(()));
 
         assert_eq!(player.buffer().len(), (WIDTH * HEIGHT) as usize);
 

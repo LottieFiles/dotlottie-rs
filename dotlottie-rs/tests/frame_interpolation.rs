@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer, DotLottieResult};
+use dotlottie_rs::{Config, DotLottiePlayer};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -37,14 +37,14 @@ mod tests {
             0,
         );
 
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT), DotLottieResult::Success);
+        assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT).is_ok());
 
         let mut rendered_frames: Vec<f32> = vec![];
 
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) == DotLottieResult::Success && player.render() == DotLottieResult::Success {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }

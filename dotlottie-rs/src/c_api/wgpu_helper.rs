@@ -8,7 +8,7 @@
 ))]
 
 use std::ffi::c_void;
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
 // Minimal FFI bindings to wgpu-native v25
@@ -202,6 +202,7 @@ mod ffi {
         ) -> WGPUFuture;
         pub fn wgpuDeviceGetQueue(device: WGPUDevice) -> WGPUQueue;
         pub fn wgpuSurfaceConfigure(surface: WGPUSurface, config: *const WGPUSurfaceConfiguration);
+        pub fn wgpuSurfacePresent(surface: WGPUSurface);
         pub fn wgpuInstanceRelease(instance: WGPUInstance);
         pub fn wgpuAdapterRelease(adapter: WGPUAdapter);
         pub fn wgpuDeviceRelease(device: WGPUDevice);
@@ -249,9 +250,6 @@ unsafe fn request_adapter_sync(
         userdata1: *mut c_void,
         _userdata2: *mut c_void,
     ) {
-        eprintln!("[RUST] Adapter callback fired! status={}, adapter={:?}, userdata1={:?}",
-                  status, adapter, userdata1);
-
         if !userdata1.is_null() {
             let result = &*(userdata1 as *const (Mutex<AdapterResult>, Condvar));
             let (lock, cvar) = result;
@@ -259,14 +257,13 @@ unsafe fn request_adapter_sync(
 
             if status == ffi::WGPU_REQUEST_ADAPTER_STATUS_SUCCESS {
                 data.adapter = Some(adapter);
-                eprintln!("[RUST] Adapter acquired successfully");
             } else {
-                eprintln!("[RUST] Adapter request failed with status: {}", status);
+                eprintln!("WebGPU adapter request failed with status: {}", status);
             }
             data.completed = true;
             cvar.notify_one();
         } else {
-            eprintln!("[RUST] WARNING: adapter callback userdata1 is null!");
+            eprintln!("WARNING: adapter callback userdata1 is null!");
         }
     }
 
@@ -290,9 +287,6 @@ unsafe fn request_adapter_sync(
 
     ffi::wgpuInstanceRequestAdapter(instance, &adapter_options, callback_info);
 
-    eprintln!("[RUST] Waiting for adapter callback...");
-    let start = std::time::Instant::now();
-
     // Wait with timeout using condvar (better than polling)
     let (lock, cvar) = &*result;
     let data = lock.lock().unwrap();
@@ -303,11 +297,8 @@ unsafe fn request_adapter_sync(
         .unwrap();
 
     if wait_result.1.timed_out() {
-        eprintln!("[RUST] Adapter request timed out after {:?}", start.elapsed());
         return Err("Adapter request timed out after 10 seconds".to_string());
     }
-
-    eprintln!("[RUST] Adapter wait completed in {:?}", start.elapsed());
 
     wait_result
         .0
@@ -337,12 +328,9 @@ unsafe fn request_device_sync(adapter: ffi::WGPUAdapter) -> Result<ffi::WGPUDevi
         status: ffi::WGPURequestDeviceStatus,
         device: ffi::WGPUDevice,
         _message: *const ffi::WGPUStringView,
-        userdata1: *mut c_void,
+        _userdata1: *mut c_void,
         _userdata2: *mut c_void,
     ) {
-        eprintln!("[RUST] Device callback fired! status={}, device={:?}, userdata1={:?}",
-                  status, device, userdata1);
-
         // Use thread_local because wgpu-native doesn't pass userdata1 correctly
         DEVICE_CALLBACK_RESULT.with(|r| {
             if let Some(result) = r.borrow().as_ref() {
@@ -351,14 +339,13 @@ unsafe fn request_device_sync(adapter: ffi::WGPUAdapter) -> Result<ffi::WGPUDevi
 
                 if status == ffi::WGPU_REQUEST_DEVICE_STATUS_SUCCESS {
                     data.device = Some(device);
-                    eprintln!("[RUST] Device acquired successfully");
                 } else {
-                    eprintln!("[RUST] Device request failed with status: {}", status);
+                    eprintln!("WebGPU device request failed with status: {}", status);
                 }
                 data.completed = true;
                 cvar.notify_one();
             } else {
-                eprintln!("[RUST] WARNING: device callback thread_local is empty!");
+                eprintln!("WARNING: device callback thread_local is empty!");
             }
         });
     }
@@ -386,9 +373,6 @@ unsafe fn request_device_sync(adapter: ffi::WGPUAdapter) -> Result<ffi::WGPUDevi
 
     ffi::wgpuAdapterRequestDevice(adapter, &device_descriptor, device_callback_info);
 
-    eprintln!("[RUST] Waiting for device callback...");
-    let start = std::time::Instant::now();
-
     // Wait with timeout using condvar
     let (lock, cvar) = &*result;
     let data = lock.lock().unwrap();
@@ -399,12 +383,9 @@ unsafe fn request_device_sync(adapter: ffi::WGPUAdapter) -> Result<ffi::WGPUDevi
         .unwrap();
 
     if wait_result.1.timed_out() {
-        eprintln!("[RUST] Device request timed out after {:?}", start.elapsed());
         DEVICE_CALLBACK_RESULT.with(|r| *r.borrow_mut() = None);
         return Err("Device request timed out after 10 seconds".to_string());
     }
-
-    eprintln!("[RUST] Device wait completed in {:?}", start.elapsed());
 
     // Clean up thread_local
     DEVICE_CALLBACK_RESULT.with(|r| *r.borrow_mut() = None);
@@ -450,7 +431,10 @@ impl WgpuContext {
             return Err("Metal layer pointer is null".to_string());
         }
 
-        eprintln!("[RUST] from_metal_layer called on thread: {:?}", std::thread::current().id());
+        eprintln!(
+            "[RUST] from_metal_layer called on thread: {:?}",
+            std::thread::current().id()
+        );
 
         // Create instance
         eprintln!("[RUST] Creating WebGPU instance...");
@@ -471,7 +455,10 @@ impl WgpuContext {
         eprintln!("[RUST] Instance created: {:?}", instance);
 
         // Create surface from Metal layer
-        eprintln!("[RUST] Creating surface from Metal layer {:?}...", metal_layer);
+        eprintln!(
+            "[RUST] Creating surface from Metal layer {:?}...",
+            metal_layer
+        );
         let metal_source = ffi::WGPUSurfaceSourceMetalLayer {
             chain: ffi::WGPUChainedStruct {
                 next: std::ptr::null(),
@@ -547,6 +534,18 @@ impl WgpuContext {
             self.instance as u64,
             self.surface as u64,
         )
+    }
+
+    /// Present the surface to display rendered content
+    /// MUST be called after rendering to actually show the frame on screen
+    pub fn present(&self) {
+        unsafe {
+            // Use a compiler fence to prevent reordering of this call
+            // This ensures present is called after all rendering is complete
+            std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
+            ffi::wgpuSurfacePresent(self.surface);
+            std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
+        }
     }
 }
 

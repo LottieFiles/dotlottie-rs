@@ -1,4 +1,4 @@
-EMSDK_VERSION ?= 4.0.18
+EMSDK_VERSION ?= 4.0.23
 UNIFFI_BINDGEN_CPP ?= uniffi-bindgen-cpp
 UNIFFI_BINDGEN_CPP_VERSION ?= v0.7.3+v0.28.3
 
@@ -20,7 +20,7 @@ WEBGPU_CPPFLAGS :=
 ifneq (,$(findstring tvg-wg,$(WASM_FEATURES)))
 WEBGPU_RUSTFLAGS += -C link-arg=--use-port=emdawnwebgpu
 WEBGPU_EMFLAGS += --use-port=emdawnwebgpu
-WEBGPU_CPPFLAGS += -DUSE_WEBGPU
+WEBGPU_CPPFLAGS += -DUSE_WEBGPU -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/webgpu
 endif
 
 # WASM/Emscripten configuration
@@ -115,8 +115,17 @@ wasm-setup: wasm-init-submodule wasm-install-emsdk
 
 # Note: C API function export list is auto-generated from the C header during link step
 
+# Pre-fetch WebGPU Dawn port if needed (so headers are available during Rust build)
+wasm-fetch-webgpu-port:
+ifneq (,$(findstring tvg-wg,$(WASM_FEATURES)))
+	@echo "→ Pre-fetching WebGPU Dawn port for headers..."
+	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
+		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc --version --use-port=emdawnwebgpu >/dev/null 2>&1"
+	@echo "✓ WebGPU Dawn port fetched (headers available)"
+endif
+
 # Build Rust library for WASM with C API (NO C++ wrapper needed!)
-wasm-build-rust: wasm-check-env
+wasm-build-rust: wasm-check-env wasm-fetch-webgpu-port
 	@echo "→ Building Rust library for WASM (C API - direct export)..."
 	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV)" && \
 	CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
@@ -154,6 +163,8 @@ wasm-link: wasm-build-rust  wasm-install-npm-deps
 	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
 		ALL_FUNCTIONS=\$$(grep -o 'dotlottie_[a-z_]*(' $(BUILD_DIR)/dotlottie_player.h | sed 's/(//g' | sort -u) && \
 		FILTERED_FUNCTIONS=\"\$$ALL_FUNCTIONS\" && \
+		echo \"  Filtering out native-only wgpu_context functions (not available in WASM)...\"; \
+		FILTERED_FUNCTIONS=\$$(echo \"\$$FILTERED_FUNCTIONS\" | grep -v \"wgpu_context\" | grep -v \"metal_layer\") && \
 		if ! echo \"$(WASM_FEATURES)\" | grep -q \"tvg-gl\"; then \
 			echo \"  Filtering out WebGL functions (tvg-gl not enabled)...\"; \
 			FILTERED_FUNCTIONS=\$$(echo \"\$$FILTERED_FUNCTIONS\" | grep -v \"webgl\"); \
@@ -237,7 +248,7 @@ wasm: wasm-link wasm-package
 wasm-webgl:
 	@echo "→ Building WebGL-only variant..."
 	@$(MAKE) wasm \
-		WASM_FEATURES=tvg-gl,tvg-simd,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions \
+		WASM_FEATURES=tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions \
 		WASM_RELEASE_DIR=release/wasm-webgl
 	@echo "✓ WebGL variant built: release/wasm-webgl/"
 	
@@ -246,7 +257,7 @@ wasm-webgl:
 wasm-webgpu:
 	@echo "→ Building WebGPU-only variant..."
 	@$(MAKE) wasm \
-		WASM_FEATURES=tvg-wg,tvg-simd,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions \
+		WASM_FEATURES=tvg-wg,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions \
 		WASM_RELEASE_DIR=release/wasm-webgpu
 	@echo "✓ WebGPU variant built: release/wasm-webgpu/"
 

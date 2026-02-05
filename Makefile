@@ -146,6 +146,28 @@ NATIVE_RELEASE_DIR = $(RELEASE)/native
 NATIVE_LIB_DIR = $(NATIVE_RELEASE_DIR)/lib
 NATIVE_INCLUDE_DIR = $(NATIVE_RELEASE_DIR)/include
 
+native-opengl:
+	@echo "→ Building OpenGL-only variant..."
+	@echo "Building native libraries with dotlottie-rs c_api and OpenGL..."
+	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features c_api,tvg,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
+
+	$(NATIVE_RELEASE)
+
+	@echo "✓ Native build with OpenGL complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
+	@echo "   Library: $(NATIVE_LIB_DIR)/"
+	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/$(RUNTIME_HEADER)"
+
+native-webgpu:
+	@echo "→ Building WebGPU-only variant..."
+	@echo "Building native libraries with dotlottie-rs c_api and WebGPU..."
+	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features c_api,tvg,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
+
+	$(NATIVE_RELEASE)
+
+	@echo "✓ Native build with WebGPU complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
+	@echo "   Library: $(NATIVE_LIB_DIR)/"
+	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/$(RUNTIME_HEADER)"
+	
 # Build native libraries using dotlottie-rs c_api
 native:
 	@echo "Building native libraries with dotlottie-rs c_api..."

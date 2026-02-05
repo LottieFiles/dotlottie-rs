@@ -132,16 +132,12 @@ impl TvgRenderer {
 
     pub fn create_wg_canvas(&mut self) -> Result<(), TvgError> {
         unsafe {
-            println!("[Rust] Calling tvg_wgcanvas_create()...");
             let canvas = tvg::tvg_wgcanvas_create();
-            println!("[Rust] tvg_wgcanvas_create() returned: {:?}", canvas);
 
             if canvas.is_null() {
-                println!("[Rust] Canvas is NULL - WebGPU canvas creation failed!");
                 return Err(TvgError::FailedAllocation);
             }
 
-            println!("[Rust] Canvas created successfully");
             self.raw_canvas = Some(canvas);
             Ok(())
         }
@@ -264,9 +260,6 @@ impl Renderer for TvgRenderer {
                 device
             };
 
-            println!("[Rust] Calling tvg_wgcanvas_set_target with device={:?}, instance={:?}, target={:?}, {}x{}",
-                     actual_device, instance, target, width, height);
-
             let result = unsafe {
                 tvg::tvg_wgcanvas_set_target(
                     raw_canvas,
@@ -280,19 +273,15 @@ impl Renderer for TvgRenderer {
                 )
             };
 
-            println!("[Rust] tvg_wgcanvas_set_target returned: {:?}", result);
-
             let set_target_result = result.into_result();
             if set_target_result.is_err() {
                 return set_target_result;
             }
 
             // After setting target, sync to ensure canvas is properly initialized
-            println!("[Rust] Syncing canvas after set_target");
-            let sync_result = unsafe { tvg::tvg_canvas_sync(raw_canvas).into_result() };
-            println!("[Rust] Post-set_target sync result: {:?}", sync_result);
+            unsafe { tvg::tvg_canvas_sync(raw_canvas).into_result() }?;
 
-            set_target_result
+            Ok(())
         } else {
             Err(TvgError::InvalidArgument)
         }

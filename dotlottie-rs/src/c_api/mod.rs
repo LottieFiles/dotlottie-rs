@@ -19,7 +19,7 @@ pub mod types;
     any(target_os = "macos", target_os = "ios"),
     wgpu_native_linked
 ))]
-mod wgpu_helper;
+pub mod wgpu_helper;
 
 // Helper macro for DotLottiePlayer operations - wraps every C API call to check
 // if the dotlottie player pointer is valid or not
@@ -548,7 +548,7 @@ pub unsafe extern "C" fn dotlottie_wgpu_context_get_pointers(
 
 /// Free WebGPU context
 ///
-/// # Arguments 
+/// # Arguments
 /// * `context` - Opaque pointer from dotlottie_create_wgpu_context_from_metal_layer
 ///
 /// # Safety
@@ -563,6 +563,31 @@ pub unsafe extern "C" fn dotlottie_free_wgpu_context(context: *mut std::ffi::c_v
     if !context.is_null() {
         let _ = Box::from_raw(context as *mut wgpu_helper::WgpuContext);
     }
+}
+
+/// Present WebGPU surface to display rendered frame
+///
+/// CRITICAL: Must be called after rendering to show the frame on screen.
+/// Without this call, rendering happens off-screen but never displays.
+///
+/// # Arguments
+/// * `context` - Opaque pointer from dotlottie_create_wgpu_context_from_metal_layer
+///
+/// # Safety
+/// context must be a valid pointer from dotlottie_create_wgpu_context_from_metal_layer
+#[cfg(all(
+    feature = "tvg-wg",
+    any(target_os = "macos", target_os = "ios"),
+    wgpu_native_linked
+))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_wgpu_context_present(context: *const std::ffi::c_void) {
+    if context.is_null() {
+        return;
+    }
+
+    let ctx = &*(context as *const wgpu_helper::WgpuContext);
+    ctx.present();
 }
 
 #[no_mangle]

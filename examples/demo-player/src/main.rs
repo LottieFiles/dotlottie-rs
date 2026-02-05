@@ -108,14 +108,97 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = Player::new("src/text.json");
+    let mut player = Player::new("src/text_theme_test.lottie");
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if window.is_key_pressed(Key::U, KeyRepeat::No) {
-            player.player.set_slots("");
+            player.player.set_slots_str("");
         }
         if window.is_key_pressed(Key::T, KeyRepeat::No) {
-            player.player.set_slots(r#"{"my_text": { "p": { "k": [{ "s": { "f": "cartoon", "fc": [0, 1, 0, 1], "s": 50, "t": "overridden", "j": 0 }, "t": 0 }] } } }"#);
+            player.player.set_slots_str(r#"{
+                "test1": {
+                    "p": {
+                        "a": 0,
+                        "k": [
+                            0.8863,
+                            0.2902,
+                            1
+                        ]
+                    }
+                },
+                "test2": {
+                    "p": {
+                        "a": 0,
+                        "k": [
+                            1,
+                            0.7059,
+                            0.4745
+                        ]
+                    }
+                },
+                "test3": {
+                    "p": {
+                        "a": 1,
+                        "k": [
+                            {
+                                "o": {
+                                    "x": 0.167,
+                                    "y": 0.167
+                                },
+                                "i": {
+                                    "x": 0.833,
+                                    "y": 0.833
+                                },
+                                "s": [
+                                    1,
+                                    0.4392,
+                                    0.9216
+                                ],
+                                "t": 0
+                            },
+                            {
+                                "s": [
+                                    1,
+                                    0.6863,
+                                    0.9059
+                                ],
+                                "t": 60
+                            }
+                        ]
+                    }
+                },
+                "test4": {
+                    "p": {
+                        "a": 1,
+                        "k": [
+                            {
+                                "o": {
+                                    "x": 0.167,
+                                    "y": 0.167
+                                },
+                                "i": {
+                                    "x": 0.833,
+                                    "y": 0.833
+                                },
+                                "s": [
+                                    0,
+                                    1,
+                                    1
+                                ],
+                                "t": 0
+                            },
+                            {
+                                "s": [
+                                    1,
+                                    0,
+                                    0
+                                ],
+                                "t": 60
+                            }
+                        ]
+                    }
+                }
+            }"#);
         }
         if window.is_key_pressed(Key::P, KeyRepeat::No) {
             player.player.play();

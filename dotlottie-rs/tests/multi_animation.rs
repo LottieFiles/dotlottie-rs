@@ -16,7 +16,7 @@ mod tests {
             ..Config::default()
         }, 0);
 
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
+        assert!(player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"), WIDTH, HEIGHT));
 
         assert_eq!(player.active_animation_id(), animation_id);
     }
@@ -24,7 +24,7 @@ mod tests {
     #[test]
     pub fn test_load_animation() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
+        assert!(player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"), WIDTH, HEIGHT));
 
         let manifest = player.manifest();
 

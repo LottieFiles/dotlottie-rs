@@ -31,7 +31,7 @@ mod tests {
         );
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Valid path should load"
         );
 
@@ -80,9 +80,9 @@ mod tests {
                 DotLottieEvent::Play => "on_play".to_string(),
                 DotLottieEvent::Pause => "on_pause".to_string(),
                 DotLottieEvent::Stop => "on_stop".to_string(),
-                DotLottieEvent::Frame { frame_no } => format!("on_frame: {}", frame_no),
-                DotLottieEvent::Render { frame_no } => format!("on_render: {}", frame_no),
-                DotLottieEvent::Loop { loop_count } => format!("on_loop: {}", loop_count),
+                DotLottieEvent::Frame { frame_no } => format!("on_frame: {frame_no}"),
+                DotLottieEvent::Render { frame_no } => format!("on_render: {frame_no}"),
+                DotLottieEvent::Loop { loop_count } => format!("on_loop: {loop_count}"),
                 DotLottieEvent::Complete => "on_complete".to_string(),
             };
 
@@ -98,7 +98,7 @@ mod tests {
         }
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Valid path should load"
         );
 

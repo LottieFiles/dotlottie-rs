@@ -38,6 +38,7 @@ cc = "1.2"
 criterion = "0.5.1"
 # This is a workaround to enable this feature only on dev.
 dotlottie-rs = { path = ".", features = ["dev"] }
+minifb = "0.25"
 
 [profile.release]
 lto = "fat"           # Full link-time optimization across all crates

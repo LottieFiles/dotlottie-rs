@@ -60,7 +60,7 @@ mod tests {
             let mut player = DotLottiePlayer::new(config, 0);
 
             assert!(
-                player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+                player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
                 "Animation should load"
             );
 

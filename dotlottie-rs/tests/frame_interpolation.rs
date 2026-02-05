@@ -37,7 +37,7 @@ mod tests {
             0,
         );
 
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
+        assert!(player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"), WIDTH, HEIGHT));
 
         let mut rendered_frames: Vec<f32> = vec![];
 

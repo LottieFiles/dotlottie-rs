@@ -841,11 +841,11 @@ impl DotLottiePlayer {
         id: i32,
         width: u32,
         height: u32,
-        color_space: ColorSpace,
+        _color_space: ColorSpace,
     ) -> bool {
-        let set_target = self
-            .renderer
-            .set_gl_target(context, id, width, height, color_space);
+        let set_target =
+            self.renderer
+                .set_gl_target(context, id, width, height, ColorSpace::ABGR8888S);
 
         set_target.is_ok()
     }

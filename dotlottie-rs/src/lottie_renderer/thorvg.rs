@@ -214,26 +214,24 @@ impl Renderer for TvgRenderer {
         height: u32,
         _color_space: ColorSpace,
     ) -> Result<(), Self::Error> {
-        {
-            if self.raw_canvas.is_none() {
-                self.create_gl_canvas()?;
-            }
+        if self.raw_canvas.is_none() {
+            self.create_gl_canvas()?;
+        }
 
-            if let Some(raw_canvas) = self.raw_canvas {
-                unsafe {
-                    tvg::tvg_glcanvas_set_target(
-                        raw_canvas,
-                        context,
-                        id,
-                        width,
-                        height,
-                        tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
-                    )
-                    .into_result()
-                }
-            } else {
-                Err(TvgError::InvalidArgument)
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe {
+                tvg::tvg_glcanvas_set_target(
+                    raw_canvas,
+                    context,
+                    id,
+                    width,
+                    height,
+                    tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
+                )
+                .into_result()
             }
+        } else {
+            Err(TvgError::InvalidArgument)
         }
     }
 

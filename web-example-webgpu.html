@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -6,10 +6,7 @@
     <title>DotLottie C API - WebGPU Renderer</title>
     <style>
       body {
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
+        font-family: system-ui, -apple-system, sans-serif;
         max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
@@ -155,7 +152,7 @@
 
           if (!navigator.gpu) {
             throw new Error(
-              "WebGPU is not supported in this browser. Please use Chrome 113+ or Edge 113+.",
+              "WebGPU is not supported in this browser. Please use Chrome 113+ or Edge 113+."
             );
           }
 
@@ -185,36 +182,36 @@
 
           // Display adapter info
           try {
-            let adapterInfoHtml = '<strong>WebGPU Info:</strong><br>';
+            let adapterInfoHtml = "<strong>WebGPU Info:</strong><br>";
 
             // Try newer API first
             if (adapter.requestAdapterInfo) {
               const adapterInfo = await adapter.requestAdapterInfo();
               adapterInfoHtml += `
-                Vendor: ${adapterInfo.vendor || 'N/A'}<br>
-                Architecture: ${adapterInfo.architecture || 'N/A'}<br>
-                Device: ${adapterInfo.device || 'N/A'}<br>
-                Description: ${adapterInfo.description || 'N/A'}
+                Vendor: ${adapterInfo.vendor || "N/A"}<br>
+                Architecture: ${adapterInfo.architecture || "N/A"}<br>
+                Device: ${adapterInfo.device || "N/A"}<br>
+                Description: ${adapterInfo.description || "N/A"}
               `;
             }
             // Fallback to older info property
             else if (adapter.info) {
               const info = adapter.info;
               adapterInfoHtml += `
-                Vendor: ${info.vendor || 'N/A'}<br>
-                Architecture: ${info.architecture || 'N/A'}<br>
-                Device: ${info.device || 'N/A'}<br>
-                Description: ${info.description || 'N/A'}
+                Vendor: ${info.vendor || "N/A"}<br>
+                Architecture: ${info.architecture || "N/A"}<br>
+                Device: ${info.device || "N/A"}<br>
+                Description: ${info.description || "N/A"}
               `;
-            }
-            else {
-              adapterInfoHtml += 'Adapter available but info not accessible';
+            } else {
+              adapterInfoHtml += "Adapter available but info not accessible";
             }
 
             webgpuInfoEl.innerHTML = adapterInfoHtml;
           } catch (e) {
             console.warn("Could not get adapter info:", e);
-            webgpuInfoEl.innerHTML = '<strong>WebGPU Info:</strong><br>Info not available';
+            webgpuInfoEl.innerHTML =
+              "<strong>WebGPU Info:</strong><br>Info not available";
           }
 
           // ============================================================
@@ -239,28 +236,31 @@
             preinitializedWebGPUDevice: device,
           });
 
-          statusEl.textContent = "WASM module loaded! Verifying WebGPU support...";
+          statusEl.textContent =
+            "WASM module loaded! Verifying WebGPU support...";
           console.log("✓ WASM Module loaded");
           console.log("✓ WebGPU device passed to Emscripten");
 
           // Check if WebGPU functions are available
           const webgpuFunctions = [
-            '_dotlottie_webgpu_get_device',
-            '_dotlottie_webgpu_get_instance',
-            '_dotlottie_webgpu_request_adapter',
-            '_dotlottie_webgpu_request_device',
-            '_dotlottie_webgpu_get_surface',
-            '_dotlottie_set_wg_target',
+            "_dotlottie_webgpu_get_device",
+            "_dotlottie_webgpu_get_instance",
+            "_dotlottie_webgpu_request_adapter",
+            "_dotlottie_webgpu_request_device",
+            "_dotlottie_webgpu_get_surface",
+            "_dotlottie_set_wg_target",
           ];
 
-          const missingFunctions = webgpuFunctions.filter(fn => typeof Module[fn] !== 'function');
+          const missingFunctions = webgpuFunctions.filter(
+            (fn) => typeof Module[fn] !== "function"
+          );
 
           if (missingFunctions.length > 0) {
             throw new Error(
               "WebGPU functions are missing from the WASM module: " +
-              missingFunctions.join(', ') +
-              ". This indicates the module was not built with WebGPU support (tvg-wg feature). " +
-              "Please rebuild with 'make wasm-webgpu'."
+                missingFunctions.join(", ") +
+                ". This indicates the module was not built with WebGPU support (tvg-wg feature). " +
+                "Please rebuild with 'make wasm-webgpu'."
             );
           }
 
@@ -302,8 +302,8 @@
           if (deviceHandle === 0) {
             throw new Error(
               "Failed to get WebGPU device from Emscripten. " +
-              "Emscripten may not have initialized the device properly. " +
-              "Ensure preinitializedWebGPUDevice was passed correctly."
+                "Emscripten may not have initialized the device properly. " +
+                "Ensure preinitializedWebGPUDevice was passed correctly."
             );
           }
 
@@ -318,7 +318,8 @@
           }
           const canvasSelector = "#" + canvas.id;
           const canvasSelectorPtr = allocateUTF8(Module, canvasSelector);
-          const surfaceHandle = Module._dotlottie_webgpu_get_surface(canvasSelectorPtr);
+          const surfaceHandle =
+            Module._dotlottie_webgpu_get_surface(canvasSelectorPtr);
           Module._free(canvasSelectorPtr);
 
           if (surfaceHandle === 0) {
@@ -336,12 +337,13 @@
             width,
             height,
             colorSpace,
-            0, // type
+            0 // type
           );
 
           if (setTargetResult !== 0) {
             throw new Error(
-              "Failed to set WebGPU rendering target, error code: " + setTargetResult
+              "Failed to set WebGPU rendering target, error code: " +
+                setTargetResult
             );
           }
 
@@ -352,7 +354,8 @@
           // 6. Load Animation
           // ============================================================
 
-          const animationUrl = "./examples/demo-player/src/bouncy_ball.json";
+          const animationUrl =
+            "./dotlottie-rs/assets/animations/lottie/bouncy_ball.json";
           statusEl.textContent = `Loading animation from ${animationUrl}...`;
 
           const animationData = await fetch(animationUrl).then((r) => r.text());
@@ -362,7 +365,7 @@
             player,
             animationPtr,
             width,
-            height,
+            height
           );
 
           Module._free(animationPtr);
@@ -389,7 +392,7 @@
           Module._free(durationPtr);
 
           console.log(
-            `✓ Animation info: ${totalFrames} frames, ${duration.toFixed(2)}s`,
+            `✓ Animation info: ${totalFrames} frames, ${duration.toFixed(2)}s`
           );
 
           // ============================================================
@@ -441,7 +444,9 @@
               const currentFrame = Module.HEAPF32[currentFramePtr >> 2];
               Module._free(currentFramePtr);
 
-              frameInfoEl.textContent = `Frame: ${currentFrame.toFixed(1)} / ${totalFrames.toFixed(1)}`;
+              frameInfoEl.textContent = `Frame: ${currentFrame.toFixed(
+                1
+              )} / ${totalFrames.toFixed(1)}`;
             }
 
             // Calculate FPS
@@ -499,8 +504,9 @@
 
           document.getElementById("speed").addEventListener("input", (e) => {
             speedMultiplier = parseFloat(e.target.value);
-            document.getElementById("speed-value").textContent =
-              `${speedMultiplier.toFixed(1)}x`;
+            document.getElementById(
+              "speed-value"
+            ).textContent = `${speedMultiplier.toFixed(1)}x`;
             console.log("Speed:", speedMultiplier);
             statusEl.textContent = `Speed: ${speedMultiplier.toFixed(1)}x`;
           });

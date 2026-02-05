@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -6,10 +6,7 @@
     <title>DotLottie C API - Software Renderer</title>
     <style>
       body {
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
+        font-family: system-ui, -apple-system, sans-serif;
         max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
@@ -212,7 +209,7 @@
           const bufferPtr = Module._malloc(bufferSize);
 
           console.log(
-            `✓ Allocated ${bufferSize} bytes for ${width}x${height} buffer`,
+            `✓ Allocated ${bufferSize} bytes for ${width}x${height} buffer`
           );
 
           // ============================================================
@@ -229,12 +226,12 @@
             stride,
             width,
             height,
-            colorSpace,
+            colorSpace
           );
 
           if (setTargetResult !== 0) {
             throw new Error(
-              `Failed to set software rendering target, error code: ${setTargetResult}`,
+              `Failed to set software rendering target, error code: ${setTargetResult}`
             );
           }
 
@@ -245,7 +242,8 @@
           // ============================================================
 
           // Fetch a sample Lottie animation
-          const animationUrl = "./examples/demo-player/src/bouncy_ball.json";
+          const animationUrl =
+            "./dotlottie-rs/assets/animations/lottie/bouncy_ball.json";
           statusEl.textContent = `Loading animation from ${animationUrl}...`;
 
           const animationData = await fetch(animationUrl).then((r) => r.text());
@@ -255,7 +253,7 @@
             player,
             animationPtr,
             width,
-            height,
+            height
           );
 
           Module._free(animationPtr);
@@ -283,7 +281,7 @@
           Module._free(durationPtr);
 
           console.log(
-            `✓ Animation info: ${totalFrames} frames, ${duration.toFixed(2)}s`,
+            `✓ Animation info: ${totalFrames} frames, ${duration.toFixed(2)}s`
           );
 
           // ============================================================
@@ -345,19 +343,21 @@
               const bufferView = new Uint8ClampedArray(
                 Module.HEAPU8.buffer,
                 bufferPtr,
-                bufferSize,
+                bufferSize
               );
 
               const imageData = new ImageData(
                 new Uint8ClampedArray(bufferView),
                 width,
-                height,
+                height
               );
 
               ctx.putImageData(imageData, 0, 0);
 
               // Update frame info
-              frameInfoEl.textContent = `Frame: ${currentFrame.toFixed(1)} / ${totalFrames.toFixed(1)}`;
+              frameInfoEl.textContent = `Frame: ${currentFrame.toFixed(
+                1
+              )} / ${totalFrames.toFixed(1)}`;
 
               // Calculate FPS
               frameCount++;
@@ -416,8 +416,9 @@
 
           document.getElementById("speed").addEventListener("input", (e) => {
             speedMultiplier = parseFloat(e.target.value);
-            document.getElementById("speed-value").textContent =
-              `${speedMultiplier.toFixed(1)}x`;
+            document.getElementById(
+              "speed-value"
+            ).textContent = `${speedMultiplier.toFixed(1)}x`;
             console.log("Speed:", speedMultiplier);
             statusEl.textContent = `Speed: ${speedMultiplier.toFixed(1)}x`;
           });

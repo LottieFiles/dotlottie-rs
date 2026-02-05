@@ -1,7 +1,7 @@
 mod test_utils;
 
 use crate::test_utils::{HEIGHT, WIDTH};
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 
 #[cfg(test)]
 mod tests {
@@ -10,6 +10,18 @@ mod tests {
     #[test]
     fn test_play_fail_when_animation_is_not_loaded() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
+
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         assert!(
             !player.play(),
@@ -28,6 +40,18 @@ mod tests {
     fn test_play_while_playing() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
+
         assert!(player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT));
 
         assert!(player.play());
@@ -43,6 +67,18 @@ mod tests {
             use_frame_interpolation: false,
             ..Config::default()
         }, 0);
+
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         assert!(player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT));
 
@@ -89,6 +125,18 @@ mod tests {
             ..Config::default()
         }, 0);
 
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
+
         assert!(player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT));
 
         assert!(player.play());
@@ -125,6 +173,18 @@ mod tests {
             use_frame_interpolation: false,
             ..Config::default()
         }, 0);
+
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         assert!(player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT));
 

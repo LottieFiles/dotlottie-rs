@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 use std::ffi::CString;
 
 mod test_utils;
@@ -18,6 +18,18 @@ mod tests {
             },
             0,
         );
+
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         let valid_theme_id = "test_theme";
 
@@ -48,6 +60,18 @@ mod tests {
             },
             0,
         );
+
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         let invalid_theme_id = "invalid_theme";
 
@@ -80,6 +104,18 @@ mod tests {
             0,
         );
 
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
+
         let theme_id = "test_theme";
 
         assert!(player.load_dotlottie_data(
@@ -102,6 +138,18 @@ mod tests {
             0,
         );
 
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
+
         assert!(player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
             WIDTH,
@@ -120,6 +168,18 @@ mod tests {
             },
             0,
         );
+
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         let valid_theme_id = "test_theme";
 
@@ -156,6 +216,18 @@ mod tests {
             0,
         );
 
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
+
         let valid_theme_id = "test_theme";
 
         assert!(
@@ -187,6 +259,18 @@ mod tests {
             },
             0,
         );
+
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            WIDTH,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         let valid_theme_id = "test_theme";
 

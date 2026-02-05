@@ -4,7 +4,7 @@ mod tests {
     use std::fs::{self, File};
 
     use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event,
+        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Config, DotLottiePlayer, Event,
         StateMachineEngineStatus,
     };
     use std::io::Read;
@@ -16,6 +16,18 @@ mod tests {
             ..Config::default()
         };
         let mut player = DotLottiePlayer::new(config, 0);
+
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (500 * 500) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target(
+            buffer.as_mut_ptr(),
+            500,
+            500,
+            500,
+            ColorSpace::ABGR8888,
+        ));
 
         let mut markers =
             File::open("assets/statemachines/normal_usecases/sm_exploding_pigeon.lottie")

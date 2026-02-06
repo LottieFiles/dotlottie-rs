@@ -7,7 +7,9 @@
 /// a slot with ID "gradient_fill" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{Config, DotLottiePlayer, GradientSlot, GradientStop, LottieKeyframe};
+use dotlottie_rs::{
+    ColorSpace, Config, DotLottiePlayer, GradientSlot, GradientStop, LottieKeyframe,
+};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -35,6 +37,18 @@ fn main() {
         },
         0, // threads (0 = auto)
     );
+
+    // Allocate buffer for software rendering
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+    // Set software rendering target
+
+        player.set_sw_target_buffer(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        );
 
     let animation_data = include_str!("../assets/animations/lottie/gradient.json");
     let c_data = CString::new(animation_data).expect("CString conversion failed");
@@ -264,11 +278,8 @@ fn main() {
 
         // Update animation frame and render
         if player.tick() {
-            // Get buffer as a slice
-            let buffer = player.buffer();
-
             window
-                .update_with_buffer(buffer, WIDTH as usize, HEIGHT as usize)
+                .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");
         }
     }

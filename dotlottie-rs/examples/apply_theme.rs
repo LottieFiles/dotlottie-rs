@@ -8,7 +8,7 @@
 ///
 /// Themes are a convenient way to bundle multiple slot changes together and switch
 /// between different visual styles of the same animation.
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 use minifb::{Key, Window, WindowOptions};
 
 const WIDTH: u32 = 512;
@@ -34,6 +34,17 @@ fn main() {
             ..Config::default()
         },
         0, // threads (0 = auto)
+    );
+
+    // Allocate buffer for software rendering
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+    // Set software rendering target
+    player.set_sw_target_buffer(
+        &mut buffer,
+        WIDTH,
+        HEIGHT,
+        ColorSpace::ABGR8888,
     );
 
     let dotlottie_data = include_bytes!("../assets/animations/dotlottie/v2/multi_themes.lottie");
@@ -94,11 +105,8 @@ fn main() {
 
         // Update animation frame and render
         if player.tick() {
-            // Get buffer as a slice
-            let buffer = player.buffer();
-
             window
-                .update_with_buffer(buffer, WIDTH as usize, HEIGHT as usize)
+                .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");
         }
     }

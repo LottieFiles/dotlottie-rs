@@ -8,7 +8,7 @@
 ///
 /// Vector slots are for 2D properties like scale [x, y] without spatial tangents.
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{Config, DotLottiePlayer, LottieKeyframe, LottieProperty};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, LottieKeyframe, LottieProperty};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -37,6 +37,18 @@ fn main() {
         0, // threads (0 = auto)
     );
 
+    // Allocate buffer for software rendering
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+    // Set software rendering target
+
+        player.set_sw_target_buffer(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        );
+
     let animation_data = include_str!("../assets/animations/lottie/bouncy_ball.json");
 
     let c_data = CString::new(animation_data).expect("CString conversion failed");
@@ -61,53 +73,48 @@ fn main() {
     // Set initial scale (static)
     let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
     player.set_vector_slot("ball_scale", scale_slot);
-    println!(
-        "Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%"
-    );
+    println!("Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%");
 
     // Main render loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now();
 
         // Handle toggle between static and animated with T key
-        if window.is_key_down(Key::T)
-            && now.duration_since(last_toggle_press).as_millis() > 200 {
-                is_animated = !is_animated;
+        if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
+            is_animated = !is_animated;
 
-                if is_animated {
-                    // Create animated scale slot: [50, 50] -> [150, 150] (linear interpolation)
-                    let scale_slot = LottieProperty::animated(vec![
-                        LottieKeyframe {
-                            frame: 0,
-                            start_value: [50.0, 50.0],
-                            in_tangent: None,
-                            out_tangent: None,
-                            value_in_tangent: None,
-                            value_out_tangent: None,
-                            hold: None,
-                        },
-                        LottieKeyframe {
-                            frame: 60,
-                            start_value: [150.0, 150.0],
-                            in_tangent: None,
-                            out_tangent: None,
-                            value_in_tangent: None,
-                            value_out_tangent: None,
-                            hold: None,
-                        },
-                    ]);
-                    player.set_vector_slot("ball_scale", scale_slot);
-                    println!("Mode: ANIMATED ([50%, 50%] -> [150%, 150%])");
-                } else {
-                    // Switch back to static mode
-                    let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
-                    player.set_vector_slot("ball_scale", scale_slot);
-                    println!(
-                        "Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%"
-                    );
-                }
+            if is_animated {
+                // Create animated scale slot: [50, 50] -> [150, 150] (linear interpolation)
+                let scale_slot = LottieProperty::animated(vec![
+                    LottieKeyframe {
+                        frame: 0,
+                        start_value: [50.0, 50.0],
+                        in_tangent: None,
+                        out_tangent: None,
+                        value_in_tangent: None,
+                        value_out_tangent: None,
+                        hold: None,
+                    },
+                    LottieKeyframe {
+                        frame: 60,
+                        start_value: [150.0, 150.0],
+                        in_tangent: None,
+                        out_tangent: None,
+                        value_in_tangent: None,
+                        value_out_tangent: None,
+                        hold: None,
+                    },
+                ]);
+                player.set_vector_slot("ball_scale", scale_slot);
+                println!("Mode: ANIMATED ([50%, 50%] -> [150%, 150%])");
+            } else {
+                // Switch back to static mode
+                let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
+                player.set_vector_slot("ball_scale", scale_slot);
+                println!("Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%");
+            }
 
-                last_toggle_press = now;
+            last_toggle_press = now;
         }
 
         let mut scale_changed = false;
@@ -143,18 +150,13 @@ fn main() {
             // Create and set the new vector slot
             let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
             player.set_vector_slot("ball_scale", scale_slot);
-            println!(
-                "Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%"
-            );
+            println!("Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%");
         }
 
         // Update animation frame and render
         if player.tick() {
-            // Get buffer as a slice
-            let buffer = player.buffer();
-
             window
-                .update_with_buffer(buffer, WIDTH as usize, HEIGHT as usize)
+                .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");
         }
     }

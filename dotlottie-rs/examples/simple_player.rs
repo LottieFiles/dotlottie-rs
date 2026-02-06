@@ -1,6 +1,6 @@
 #![allow(clippy::print_stdout)]
 
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -74,6 +74,19 @@ fn main() {
         0,
     );
 
+    // Allocate buffer for software rendering
+    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+
+    // Set software rendering target using the safe API
+    if !player.set_sw_target_buffer(
+        &mut buffer,
+        WIDTH as u32,
+        HEIGHT as u32,
+        ColorSpace::ABGR8888,
+    ) {
+        panic!("Failed to set software rendering target");
+    }
+
     let animations = get_animation_files();
     if animations.is_empty() {
         panic!("No animations found in ./examples/shared/animations/");
@@ -107,9 +120,7 @@ fn main() {
         right_was_down = right_is_down;
 
         if player.tick() {
-            window
-                .update_with_buffer(player.buffer(), WIDTH, HEIGHT)
-                .unwrap();
+            window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
         }
     }
 }

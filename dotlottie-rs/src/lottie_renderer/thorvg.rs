@@ -126,7 +126,7 @@ impl TvgRenderer {
 
             self.raw_canvas = Some(canvas);
 
-            return Ok(());
+            Ok(())
         }
     }
 
@@ -173,11 +173,11 @@ impl Renderer for TvgRenderer {
             self.raw_canvas = Some(raw_canvas);
             unsafe { tvg::tvg_canvas_set_viewport(raw_canvas, x, y, w, h).into_result() }
         } else {
-            return Err(TvgError::InvalidArgument);
+            Err(TvgError::InvalidArgument)
         }
     }
 
-    fn set_sw_target(
+    unsafe fn set_sw_target(
         &mut self,
         frame_ptr: *mut u32,
         stride: u32,
@@ -206,7 +206,7 @@ impl Renderer for TvgRenderer {
         }
     }
 
-    fn set_gl_target(
+    unsafe fn set_gl_target(
         &mut self,
         context: *mut std::ffi::c_void,
         id: i32,
@@ -237,7 +237,7 @@ impl Renderer for TvgRenderer {
         }
     }
 
-    fn set_wg_target(
+    unsafe fn set_wg_target(
         &mut self,
         device: *mut std::ffi::c_void,
         instance: *mut std::ffi::c_void,
@@ -327,11 +327,7 @@ impl Renderer for TvgRenderer {
         if let Some(raw_canvas) = self.raw_canvas {
             unsafe {
                 let res = tvg::tvg_canvas_update(raw_canvas);
-                let result = res.into_result();
-                if let Err(ref e) = result {
-                    println!("[TvgRenderer] tvg_canvas_update error: {:?}", e);
-                }
-                return result;
+                res.into_result()
             }
         } else {
             Err(TvgError::InvalidArgument)

@@ -41,6 +41,18 @@ criterion = "0.5.1"
 # This is a workaround to enable this feature only on dev.
 dotlottie-rs = { path = ".", features = ["dev"] }
 minifb = "0.25"
+winit = "0.30"
+raw-window-handle = "0.6"
+glutin = "0.32"
+glutin-winit = "0.5"
+gl = "0.14"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.9"
+objc2 = "0.5"
+objc2-foundation = { version = "0.2" }
+objc2-app-kit = { version = "0.2", features = ["NSWindow", "NSView", "NSOpenGL"] }
+objc2-quartz-core = { version = "0.2", features = ["CAMetalLayer", "CALayer"] }
 
 [profile.release]
 lto = "fat"           # Full link-time optimization across all crates

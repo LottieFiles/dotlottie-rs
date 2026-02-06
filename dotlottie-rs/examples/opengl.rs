@@ -1,3 +1,9 @@
+/*
+* 🚨 To run this example, use:
+ * cargo run --example webgpu --features c_api,tvg,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions
+*/
+#![allow(clippy::print_stdout)]
+
 use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 use glutin::config::ConfigTemplateBuilder;
 use glutin::context::{ContextAttributesBuilder, NotCurrentGlContext, PossiblyCurrentContext};
@@ -6,6 +12,7 @@ use glutin::prelude::*;
 use glutin::surface::{Surface, SurfaceAttributesBuilder, WindowSurface};
 use glutin_winit::DisplayBuilder;
 use raw_window_handle::HasWindowHandle;
+use std::ffi::CString;
 use std::num::NonZeroU32;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
@@ -134,17 +141,8 @@ impl App {
             }
         }
 
-        println!("✓ OpenGL initialized");
-        println!("  Vendor: {}", unsafe {
-            std::ffi::CStr::from_ptr(gl::GetString(gl::VENDOR) as *const i8).to_string_lossy()
-        });
-        println!("  Renderer: {}", unsafe {
-            std::ffi::CStr::from_ptr(gl::GetString(gl::RENDERER) as *const i8).to_string_lossy()
-        });
-
         // Initialize player with OpenGL renderer
         let threads = std::thread::available_parallelism().unwrap().get() as u32;
-        println!("Using {} threads", threads);
 
         let mut player = DotLottiePlayer::new(
             Config {
@@ -162,20 +160,28 @@ impl App {
         // This is critical for ThorVG's GL canvas initialization
         gl_context.make_current(&gl_surface).unwrap();
 
-        // Ensure all GL operations are complete before getting context
-        // This ensures the GL context is fully initialized and ready
-        unsafe {
-            gl::Flush();
-            gl::Finish();
+        // CRITICAL: Do MULTIPLE render cycles to ensure GL context is fully initialized
+        // On macOS, GL contexts can be flaky and need multiple swaps to be truly ready
+        for i in 0..3 {
+            unsafe {
+                gl::Clear(gl::COLOR_BUFFER_BIT);
+                gl::Flush();
+                gl::Finish();
+            }
+            gl_surface.swap_buffers(&gl_context).unwrap();
+            gl_context.make_current(&gl_surface).unwrap();
 
-            // Do a test render to ensure GL is working
-            gl::Clear(gl::COLOR_BUFFER_BIT);
+            // Small delay to let GL stabilize
+            std::thread::sleep(std::time::Duration::from_millis(16));
 
-            let err = gl::GetError();
-            if err != gl::NO_ERROR {
-                eprintln!("GL error before set_gl_target: 0x{:x}", err);
+            unsafe {
+                let err = gl::GetError();
+                if err != gl::NO_ERROR {
+                    eprintln!("GL error during warmup cycle {i}: 0x{err:x}");
+                }
             }
         }
+        println!("✓ GL context warmup complete");
 
         // Get the current OpenGL context pointer
         #[cfg(target_os = "macos")]
@@ -187,41 +193,71 @@ impl App {
         let fbo_id = unsafe {
             let mut fbo: i32 = -1;
             gl::GetIntegerv(gl::FRAMEBUFFER_BINDING, &mut fbo);
-            println!("Bound framebuffer during setup: {}", fbo);
+            println!("Bound framebuffer during setup: {fbo}");
             fbo
         };
 
-        println!("Setting GL target with context: {:?}, fbo: {}", context_ptr, fbo_id);
+        println!(
+            "Setting GL target with context: {context_ptr:?}, fbo: {fbo_id}"
+        );
 
         // Try multiple times if it fails - sometimes GL needs a moment
         let mut success = false;
-        for attempt in 1..=3 {
-            success = player.set_gl_target(
-                context_ptr,
-                fbo_id,
-                WIDTH,
-                HEIGHT,
-                ColorSpace::ABGR8888S, // Must be ABGR8888S for GL
-            );
+        for attempt in 1..=5 {
+            // Ensure context is current before each attempt
+            gl_context.make_current(&gl_surface).unwrap();
+
+            // Do a test render before each attempt
+            unsafe {
+                gl::Clear(gl::COLOR_BUFFER_BIT);
+                gl::Finish();
+            }
+
+            success = unsafe {
+                player.set_gl_target(
+                    context_ptr,
+                    fbo_id,
+                    WIDTH,
+                    HEIGHT,
+                    ColorSpace::ABGR8888S, // Must be ABGR8888S for GL
+                )
+            };
 
             if success {
+                println!("✓ OpenGL target set successfully on attempt {attempt}" );
+
+                // Verify it worked by doing a test render
+                unsafe {
+                    gl::Clear(gl::COLOR_BUFFER_BIT);
+                    gl::Finish();
+                }
+                gl_surface.swap_buffers(&gl_context).unwrap();
+                gl_context.make_current(&gl_surface).unwrap();
+
                 break;
             }
 
-            println!("Attempt {} failed, retrying...", attempt);
+            println!("⚠ Attempt {attempt} failed, retrying...");
             std::thread::sleep(std::time::Duration::from_millis(50));
         }
 
-        if success {
-            println!("✓ OpenGL target set successfully");
-        } else {
-            eprintln!("✗ Failed to set OpenGL target");
+        if !success {
+            eprintln!("✗ Failed to set OpenGL target after 5 attempts");
+            eprintln!("   This usually means GL context initialization failed");
+            return;
         }
 
-        // Now load the animation
-        player.load_animation_path("src/bouncy_ball.json", WIDTH, HEIGHT);
-        // Start playing (autoplay in config may not work immediately)
-        player.play();
+        let animation_data = include_str!("../assets/animations/lottie/bouncy_ball.json");
+
+        let c_data = CString::new(animation_data).expect("CString conversion failed");
+
+        if !player.load_animation_data(&c_data, WIDTH, HEIGHT) {
+            eprintln!("Failed to load animation");
+            return;
+        }
+
+        // DON'T call play() yet - wait until first render
+        // Otherwise animation advances during setup and we miss the first frames
 
         println!("✓ Animation loaded successfully");
         println!("   Total frames: {}", player.total_frames());
@@ -239,31 +275,14 @@ impl App {
             self.gl_context.as_ref(),
             self.gl_surface.as_ref(),
         ) {
-            // On first render, re-set the GL target to ensure context is properly bound
-            // This helps avoid flakiness from context initialization timing issues
+            // On first render, start playback
+            // No need to re-set GL target - we did aggressive initialization during setup
             if self.first_render {
-                println!("First render - ensuring GL context is bound...");
+                println!("First render - starting playback from frame 0...");
 
-                // Check current framebuffer
-                let mut fbo: i32 = -1;
-                unsafe {
-                    gl::GetIntegerv(gl::FRAMEBUFFER_BINDING, &mut fbo);
-                }
-                println!("Framebuffer at first render: {}", fbo);
-
-                #[cfg(target_os = "macos")]
-                let context_ptr = get_cgl_context(&gl_context);
-                #[cfg(not(target_os = "macos"))]
-                let context_ptr = get_gl_context(&gl_context);
-
-                // Use the actual bound framebuffer, not 0
-                player.set_gl_target(
-                    context_ptr,
-                    fbo,
-                    WIDTH,
-                    HEIGHT,
-                    ColorSpace::ABGR8888S,
-                );
+                // Start playing from the beginning
+                player.set_frame(0.0);
+                player.play();
 
                 self.first_render = false;
             }
@@ -272,6 +291,8 @@ impl App {
             // This ensures ThorVG renders to the window's framebuffer
             unsafe {
                 gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+                // CRITICAL: Clear the framebuffer before rendering to prevent flickering
+                gl::Clear(gl::COLOR_BUFFER_BIT);
             }
 
             let rendered = player.tick();
@@ -281,13 +302,17 @@ impl App {
             unsafe {
                 FRAME_COUNT += 1;
                 if FRAME_COUNT % 60 == 0 {
-                    println!("Frame {}: rendered={}, current_frame={:.1}",
-                             FRAME_COUNT, rendered, player.current_frame());
+                    println!(
+                        "Frame {}: rendered={}, current_frame={:.1}",
+                        FRAME_COUNT,
+                        rendered,
+                        player.current_frame()
+                    );
 
                     // Check for GL errors
                     let err = gl::GetError();
                     if err != gl::NO_ERROR {
-                        println!("OpenGL error: 0x{:x}", err);
+                        println!("OpenGL error: 0x{err:x}");
                     }
                 }
             }

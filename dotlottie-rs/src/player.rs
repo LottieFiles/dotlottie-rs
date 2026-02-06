@@ -820,7 +820,43 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn set_sw_target(
+    /// Set software rendering target using a safe Rust slice.
+    ///
+    /// This is the preferred safe API. The buffer must be large enough to hold
+    /// width * height pixels.
+    ///
+    /// # Returns
+    /// `false` if the buffer is too small or setup fails.
+    pub fn set_sw_target_buffer(
+        &mut self,
+        buffer: &mut [u32],
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> bool {
+        let required_size = (width * height) as usize;
+        if buffer.len() < required_size {
+            return false;
+        }
+
+        unsafe {
+            self.set_sw_target(
+                buffer.as_mut_ptr(),
+                width, // stride in pixels (u32 units), not bytes
+                width,
+                height,
+                color_space,
+            )
+        }
+    }
+
+    /// Set software rendering target using a raw pointer.
+    ///
+    /// # Safety
+    /// - `buffer` must point to valid memory for at least `width * height` pixels
+    /// - `buffer` must remain valid for the lifetime of the player or until a new target is set
+    /// - `stride` in pixels (u32 units), not bytes
+    pub unsafe fn set_sw_target(
         &mut self,
         buffer: *mut u32,
         stride: u32,
@@ -835,7 +871,18 @@ impl DotLottiePlayer {
         set_target.is_ok()
     }
 
-    pub fn set_gl_target(
+    /// Set OpenGL rendering target.
+    ///
+    /// # Safety
+    /// - `context` must be a valid OpenGL context pointer (e.g., CGLContextObj on macOS)
+    /// - `id` must be a valid framebuffer object ID
+    /// - The GL context must remain valid while the player is using it
+    /// - GL context must be current on the calling thread when rendering
+    ///
+    /// # Note
+    /// This function deals with opaque FFI types and cannot be made safe without
+    /// wrapping the entire OpenGL API, which is beyond the scope of this library.
+    pub unsafe fn set_gl_target(
         &mut self,
         context: *mut std::ffi::c_void,
         id: i32,
@@ -850,7 +897,19 @@ impl DotLottiePlayer {
         set_target.is_ok()
     }
 
-    pub fn set_wg_target(
+    /// Set WebGPU rendering target.
+    ///
+    /// # Safety
+    /// - `device` must be a valid WebGPU device pointer (WGPUDevice)
+    /// - `instance` must be a valid WebGPU instance pointer (WGPUInstance)
+    /// - `target` must be a valid WebGPU texture pointer (WGPUTexture)
+    /// - All pointers must remain valid while the player is using them
+    ///
+    /// # Note
+    /// This function deals with opaque WebGPU FFI types and cannot be made safe without
+    /// wrapping the entire WebGPU API. Use a safe WebGPU wrapper library (like wgpu-rs)
+    /// if you need type safety.
+    pub unsafe fn set_wg_target(
         &mut self,
         device: *mut std::ffi::c_void,
         instance: *mut std::ffi::c_void,

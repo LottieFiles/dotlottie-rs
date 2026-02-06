@@ -45,7 +45,7 @@ fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {
 }
 
 pub trait LottieRenderer {
-    fn set_sw_target(
+    unsafe fn set_sw_target(
         &mut self,
         buffer: *mut u32,
         stride: u32,
@@ -54,7 +54,7 @@ pub trait LottieRenderer {
         color_space: ColorSpace,
     ) -> Result<(), LottieRendererError>;
 
-    fn set_gl_target(
+    unsafe fn set_gl_target(
         &mut self,
         context: *mut std::ffi::c_void,
         id: i32,
@@ -63,7 +63,7 @@ pub trait LottieRenderer {
         color_space: ColorSpace,
     ) -> Result<(), LottieRendererError>;
 
-    fn set_wg_target(
+    unsafe fn set_wg_target(
         &mut self,
         device: *mut std::ffi::c_void,
         instance: *mut std::ffi::c_void,
@@ -375,7 +375,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         R::register_font(font_name, font_data).map_err(into_lottie::<R>)
     }
 
-    fn set_sw_target(
+    unsafe fn set_sw_target(
         &mut self,
         buffer_ptr: *mut u32,
         stride: u32,
@@ -388,7 +388,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)
     }
 
-    fn set_gl_target(
+    unsafe fn set_gl_target(
         &mut self,
         context: *mut std::ffi::c_void,
         id: i32,
@@ -401,7 +401,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)
     }
 
-    fn set_wg_target(
+    unsafe fn set_wg_target(
         &mut self,
         device: *mut std::ffi::c_void,
         instance: *mut std::ffi::c_void,
@@ -755,19 +755,6 @@ fn hex_to_rgba(hex_color: u32) -> (u8, u8, u8, u8) {
     let alpha = (hex_color & 0xFF) as u8;
 
     (red, green, blue, alpha)
-}
-
-#[inline]
-fn get_color_space_for_target() -> ColorSpace {
-    #[cfg(target_arch = "wasm32")]
-    {
-        ColorSpace::ABGR8888S
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        ColorSpace::ABGR8888
-    }
 }
 
 fn multiply_matrices(a: &[f32; 9], b: &[f32; 9]) -> [f32; 9] {

@@ -41,18 +41,6 @@ mod ffi {
     pub type WGPURequestDeviceStatus = u32;
     pub const WGPU_REQUEST_DEVICE_STATUS_SUCCESS: WGPURequestDeviceStatus = 0x00000001;
 
-    pub type WGPUTextureFormat = u32;
-    pub const WGPU_TEXTURE_FORMAT_BGRA8_UNORM: WGPUTextureFormat = 0x00000017;
-
-    pub type WGPUPresentMode = u32;
-    pub const WGPU_PRESENT_MODE_FIFO: WGPUPresentMode = 0x00000002;
-
-    pub type WGPUTextureUsage = u32;
-    pub const WGPU_TEXTURE_USAGE_RENDER_ATTACHMENT: WGPUTextureUsage = 0x00000010;
-
-    pub type WGPUCompositeAlphaMode = u32;
-    pub const WGPU_COMPOSITE_ALPHA_MODE_OPAQUE: WGPUCompositeAlphaMode = 0x00000001;
-
     #[repr(C)]
     pub struct WGPUChainedStruct {
         pub next: *const WGPUChainedStruct,
@@ -163,20 +151,6 @@ mod ffi {
         pub userdata2: *mut c_void,
     }
 
-    #[repr(C)]
-    pub struct WGPUSurfaceConfiguration {
-        pub next_in_chain: *const WGPUChainedStruct,
-        pub device: WGPUDevice,
-        pub format: WGPUTextureFormat,
-        pub usage: WGPUTextureUsage,
-        pub view_format_count: usize,
-        pub view_formats: *const WGPUTextureFormat,
-        pub alpha_mode: WGPUCompositeAlphaMode,
-        pub width: u32,
-        pub height: u32,
-        pub present_mode: WGPUPresentMode,
-    }
-
     extern "C" {
         pub fn wgpuCreateInstance(descriptor: *const WGPUInstanceDescriptor) -> WGPUInstance;
         pub fn wgpuInstanceCreateSurface(
@@ -201,7 +175,6 @@ mod ffi {
             callback_info: WGPURequestDeviceCallbackInfo,
         ) -> WGPUFuture;
         pub fn wgpuDeviceGetQueue(device: WGPUDevice) -> WGPUQueue;
-        pub fn wgpuSurfaceConfigure(surface: WGPUSurface, config: *const WGPUSurfaceConfiguration);
         pub fn wgpuSurfacePresent(surface: WGPUSurface);
         pub fn wgpuInstanceRelease(instance: WGPUInstance);
         pub fn wgpuAdapterRelease(adapter: WGPUAdapter);
@@ -431,13 +404,6 @@ impl WgpuContext {
             return Err("Metal layer pointer is null".to_string());
         }
 
-        eprintln!(
-            "[RUST] from_metal_layer called on thread: {:?}",
-            std::thread::current().id()
-        );
-
-        // Create instance
-        eprintln!("[RUST] Creating WebGPU instance...");
         let instance_desc = ffi::WGPUInstanceDescriptor {
             next_in_chain: std::ptr::null(),
             features: ffi::WGPUInstanceCapabilities {
@@ -452,7 +418,6 @@ impl WgpuContext {
             eprintln!("[RUST] ERROR: Failed to create WebGPU instance");
             return Err("Failed to create WebGPU instance".to_string());
         }
-        eprintln!("[RUST] Instance created: {:?}", instance);
 
         // Create surface from Metal layer
         eprintln!(
@@ -569,38 +534,4 @@ impl Drop for WgpuContext {
             }
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_wgpu_context_null_pointer() {
-        // Test that null pointer is rejected
-        let result = unsafe { WgpuContext::from_metal_layer(std::ptr::null_mut()) };
-        assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), "Metal layer pointer is null");
-    }
-
-    #[test]
-    fn test_condvar_timeout_calculation() {
-        // Verify timeout calculation works correctly
-        use std::time::Duration;
-
-        let timeout = Duration::from_secs(10);
-        assert_eq!(timeout.as_secs(), 10);
-        assert_eq!(timeout.as_millis(), 10000);
-    }
-
-    #[test]
-    #[cfg(any(target_os = "macos", target_os = "ios"))]
-    fn test_apple_dispatch_module_exists() {
-        // Verify the dispatch module compiles
-        // This is a compile-time test - if this builds, the FFI is correct
-        let _: fn() -> *mut std::ffi::c_void = || std::ptr::null_mut();
-    }
-
-    // Note: Cannot test actual WebGPU initialization without a valid Metal layer
-    // Integration tests should be done in Swift/Objective-C code with real CAMetalLayer
 }

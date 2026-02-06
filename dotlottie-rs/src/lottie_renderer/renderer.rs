@@ -87,7 +87,7 @@ pub trait Renderer: Sized + 'static {
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), Self::Error>;
 
-    fn set_sw_target(
+    unsafe fn set_sw_target(
         &mut self,
         buffer: *mut u32,
         stride: u32,
@@ -96,7 +96,7 @@ pub trait Renderer: Sized + 'static {
         color_space: ColorSpace,
     ) -> Result<(), Self::Error>;
 
-    fn set_gl_target(
+    unsafe fn set_gl_target(
         &mut self,
         context: *mut std::ffi::c_void,
         id: i32,
@@ -105,7 +105,7 @@ pub trait Renderer: Sized + 'static {
         color_space: ColorSpace,
     ) -> Result<(), Self::Error>;
 
-    fn set_wg_target(
+    unsafe fn set_wg_target(
         &mut self,
         device: *mut std::ffi::c_void,
         instance: *mut std::ffi::c_void,

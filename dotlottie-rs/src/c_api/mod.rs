@@ -443,7 +443,9 @@ pub unsafe extern "C" fn dotlottie_set_sw_target(
     color_space: ColorSpace,
 ) -> i32 {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.set_sw_target(buffer, stride, width, height, color_space))
+        to_exit_status(unsafe {
+            dotlottie_player.set_sw_target(buffer, stride, width, height, color_space)
+        })
     })
 }
 
@@ -457,7 +459,9 @@ pub unsafe extern "C" fn dotlottie_set_gl_target(
     color_space: ColorSpace,
 ) -> i32 {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.set_gl_target(context, id, width, height, color_space))
+        to_exit_status(unsafe {
+            dotlottie_player.set_gl_target(context, id, width, height, color_space)
+        })
     })
 }
 
@@ -473,15 +477,17 @@ pub unsafe extern "C" fn dotlottie_set_wg_target(
     _type: i32,
 ) -> i32 {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(dotlottie_player.set_wg_target(
-            device,
-            instance,
-            target,
-            width,
-            height,
-            color_space,
-            _type,
-        ))
+        to_exit_status(unsafe {
+            dotlottie_player.set_wg_target(
+                device,
+                instance,
+                target,
+                width,
+                height,
+                color_space,
+                _type,
+            )
+        })
     })
 }
 

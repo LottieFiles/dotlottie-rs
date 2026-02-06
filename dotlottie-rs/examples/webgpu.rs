@@ -1,26 +1,44 @@
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
-use winit::application::ApplicationHandler;
-use winit::event::WindowEvent;
-use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::window::{Window, WindowId};
+/*
+* 🚨 To run this example, use:
+ * cargo run --example webgpu --features c_api,tvg,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions
+*/
+#![allow(clippy::print_stdout)]
 
-#[cfg(target_os = "macos")]
-use objc2::rc::Retained;
-#[cfg(target_os = "macos")]
-use objc2::runtime::AnyObject;
-#[cfg(target_os = "macos")]
-use objc2::{msg_send, msg_send_id, ClassType};
-#[cfg(target_os = "macos")]
-use objc2_app_kit::{NSView, NSWindow};
-#[cfg(target_os = "macos")]
-use objc2_foundation::{CGRect, CGSize};
-#[cfg(target_os = "macos")]
-use objc2_quartz_core::CAMetalLayer;
-#[cfg(target_os = "macos")]
-use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+// This example requires WebGPU support, which is only available with specific features
+// ==============================================================================
+// WebGPU Implementation (only compiled when features are available)
+// ==============================================================================
+#[cfg(all(
+    feature = "tvg-wg",
+    any(target_os = "macos", target_os = "ios"),
+    wgpu_native_linked
+))]
+mod webgpu_impl {
+    use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
+    use dotlottie_rs::c_api::wgpu_helper::WgpuContext;
+    use std::ffi::CString;
 
-const WIDTH: u32 = 600;
-const HEIGHT: u32 = 600;
+    #[cfg(target_os = "macos")]
+    use objc2::rc::Retained;
+    #[cfg(target_os = "macos")]
+    use objc2::runtime::AnyObject;
+    #[cfg(target_os = "macos")]
+    use objc2::{msg_send, msg_send_id, ClassType};
+    #[cfg(target_os = "macos")]
+    use objc2_app_kit::{NSView, NSWindow};
+    #[cfg(target_os = "macos")]
+    use objc2_foundation::{CGRect, CGSize};
+    #[cfg(target_os = "macos")]
+    use objc2_quartz_core::CAMetalLayer;
+    #[cfg(target_os = "macos")]
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use winit::application::ApplicationHandler;
+    use winit::event::WindowEvent;
+    use winit::event_loop::{ActiveEventLoop};
+    use winit::window::{Window, WindowId};
+
+    pub const WIDTH: u32 = 600;
+    pub const HEIGHT: u32 = 600;
 
 #[cfg(target_os = "macos")]
 fn get_metal_layer(window: &Window) -> *mut std::ffi::c_void {
@@ -62,7 +80,10 @@ fn get_metal_layer(window: &Window) -> *mut std::ffi::c_void {
             let backing_scale_factor: f64 = msg_send![&ns_window, backingScaleFactor];
             let drawable_width = (bounds.size.width * backing_scale_factor) as f64;
             let drawable_height = (bounds.size.height * backing_scale_factor) as f64;
-            let drawable_size = CGSize { width: drawable_width, height: drawable_height };
+            let drawable_size = CGSize {
+                width: drawable_width,
+                height: drawable_height,
+            };
             let _: () = msg_send![&metal_layer, setDrawableSize: drawable_size];
 
             let _: () = msg_send![&content_view, setLayer: &*metal_layer];
@@ -84,13 +105,14 @@ fn get_metal_layer(_window: &Window) -> *mut std::ffi::c_void {
     std::ptr::null_mut()
 }
 
-#[cfg(target_os = "macos")]
-use dotlottie_rs::c_api::wgpu_helper::WgpuContext;
-
 struct App {
     window: Option<Window>,
     player: Option<DotLottiePlayer>,
-    #[cfg(target_os = "macos")]
+    #[cfg(all(
+        feature = "tvg-wg",
+        any(target_os = "macos", target_os = "ios"),
+        wgpu_native_linked
+    ))]
     wgpu_context: Option<WgpuContext>,
     current_width: u32,
     current_height: u32,
@@ -101,7 +123,11 @@ impl App {
         Self {
             window: None,
             player: None,
-            #[cfg(target_os = "macos")]
+            #[cfg(all(
+                feature = "tvg-wg",
+                any(target_os = "macos", target_os = "ios"),
+                wgpu_native_linked
+            ))]
             wgpu_context: None,
             current_width: 0,
             current_height: 0,
@@ -132,8 +158,10 @@ impl App {
         let width = window_size.width;
         let height = window_size.height;
 
-        println!("Window size: {}x{} (logical: {}x{})",
-                 width, height, WIDTH, HEIGHT);
+        println!(
+            "Window size: {}x{} (logical: {}x{})",
+            width, height, WIDTH, HEIGHT
+        );
 
         // Create WebGPU context using the helper from dotlottie-rs
         #[cfg(target_os = "macos")]
@@ -164,15 +192,17 @@ impl App {
 
             // IMPORTANT: Call set_wg_target BEFORE loading animation data
             // Use actual window size to handle DPI scaling
-            let success = player.set_wg_target(
-                device as *mut std::ffi::c_void,
-                instance as *mut std::ffi::c_void,
-                surface as *mut std::ffi::c_void,
-                width,
-                height,
-                ColorSpace::ABGR8888S,
-                0, // type parameter (0 for default)
-            );
+            let success = unsafe {
+                player.set_wg_target(
+                    device as *mut std::ffi::c_void,
+                    instance as *mut std::ffi::c_void,
+                    surface as *mut std::ffi::c_void,
+                    width,
+                    height,
+                    ColorSpace::ABGR8888S,
+                    0, // type parameter (0 for default)
+                )
+            };
 
             if success {
                 println!("✓ WebGPU target set successfully");
@@ -182,7 +212,15 @@ impl App {
             }
 
             // Load animation with actual window size
-            player.load_animation_path("src/bouncy_ball.json", width, height);
+            let animation_data = include_str!("../assets/animations/lottie/bouncy_ball.json");
+
+            let c_data = CString::new(animation_data).expect("CString conversion failed");
+
+            if !player.load_animation_data(&c_data, width, height) {
+                eprintln!("Failed to load animation");
+                return;
+            }
+
             player.play();
 
             println!("✓ Animation loaded successfully");
@@ -206,25 +244,11 @@ impl App {
         #[cfg(target_os = "macos")]
         {
             if let (Some(player), Some(wgpu_context)) = (self.player.as_mut(), &self.wgpu_context) {
-                let rendered = player.tick();
+                player.tick();
 
                 // CRITICAL: Present the surface to display the rendered frame
                 // Without this, rendering happens but nothing appears on screen
                 wgpu_context.present();
-
-                // Debug: Check if rendering actually happened
-                static mut FRAME_COUNT: u32 = 0;
-                unsafe {
-                    FRAME_COUNT += 1;
-                    if FRAME_COUNT % 60 == 0 {
-                        println!(
-                            "Frame {}: rendered={}, current_frame={:.1}",
-                            FRAME_COUNT,
-                            rendered,
-                            player.current_frame()
-                        );
-                    }
-                }
             }
         }
 
@@ -244,9 +268,10 @@ impl App {
             return;
         }
 
-        println!("Window resized: {}x{} -> {}x{}",
-                 self.current_width, self.current_height,
-                 new_width, new_height);
+        println!(
+            "Window resized: {}x{} -> {}x{}",
+            self.current_width, self.current_height, new_width, new_height
+        );
 
         #[cfg(target_os = "macos")]
         {
@@ -254,15 +279,17 @@ impl App {
                 let (device, instance, surface) = wgpu_context.as_pointers();
 
                 // Reconfigure WebGPU target with new size
-                let success = player.set_wg_target(
-                    device as *mut std::ffi::c_void,
-                    instance as *mut std::ffi::c_void,
-                    surface as *mut std::ffi::c_void,
-                    new_width,
-                    new_height,
-                    ColorSpace::ABGR8888S,
-                    0,
-                );
+                let success = unsafe {
+                    player.set_wg_target(
+                        device as *mut std::ffi::c_void,
+                        instance as *mut std::ffi::c_void,
+                        surface as *mut std::ffi::c_void,
+                        new_width,
+                        new_height,
+                        ColorSpace::ABGR8888S,
+                        0,
+                    )
+                };
 
                 if success {
                     // Reload animation with new size
@@ -314,22 +341,51 @@ impl ApplicationHandler for App {
     }
 }
 
+    pub fn run() {
+        use winit::event_loop::{EventLoop, ControlFlow};
+
+        println!("\n╔════════════════════════════════════════════════════╗");
+        println!("║     DotLottie WebGPU Renderer Example             ║");
+        println!("╚════════════════════════════════════════════════════╝");
+        println!("\nThis example demonstrates using set_wg_target() to");
+        println!("configure ThorVG to render using WebGPU instead of");
+        println!("the software renderer.\n");
+        println!("Key points:");
+        println!("  • set_wg_target() must be called BEFORE loading");
+        println!("    animation data");
+        println!("  • ThorVG renders using Metal backend via WebGPU");
+        println!("  • Better performance for complex animations\n");
+
+        let event_loop = EventLoop::new().unwrap();
+        event_loop.set_control_flow(ControlFlow::Poll);
+
+        let mut app = App::new();
+        event_loop.run_app(&mut app).unwrap();
+    }
+} // end of webgpu_impl module
+
+// ==============================================================================
+// Main functions (selected by feature gates)
+// ==============================================================================
+#[cfg(all(
+    feature = "tvg-wg",
+    any(target_os = "macos", target_os = "ios"),
+    wgpu_native_linked
+))]
 fn main() {
-    println!("\n╔════════════════════════════════════════════════════╗");
-    println!("║     DotLottie WebGPU Renderer Example             ║");
-    println!("╚════════════════════════════════════════════════════╝");
-    println!("\nThis example demonstrates using set_wg_target() to");
-    println!("configure ThorVG to render using WebGPU instead of");
-    println!("the software renderer.\n");
-    println!("Key points:");
-    println!("  • set_wg_target() must be called BEFORE loading");
-    println!("    animation data");
-    println!("  • ThorVG renders using Metal backend via WebGPU");
-    println!("  • Better performance for complex animations\n");
+    webgpu_impl::run();
+}
 
-    let event_loop = EventLoop::new().unwrap();
-    event_loop.set_control_flow(ControlFlow::Poll);
-
-    let mut app = App::new();
-    event_loop.run_app(&mut app).unwrap();
+#[cfg(not(all(
+    feature = "tvg-wg",
+    any(target_os = "macos", target_os = "ios"),
+    wgpu_native_linked
+)))]
+fn main() {
+    eprintln!("This example requires:");
+    eprintln!("  - Feature 'tvg-wg' to be enabled");
+    eprintln!("  - macOS or iOS target");
+    eprintln!("  - wgpu-native to be linked");
+    eprintln!("\nRun with:");
+    eprintln!("  cargo run --example webgpu --features c_api,tvg,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions");
 }

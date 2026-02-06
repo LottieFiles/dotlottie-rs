@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -6,10 +6,7 @@
     <title>DotLottie C API - WebGL Renderer</title>
     <style>
       body {
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
+        font-family: system-ui, -apple-system, sans-serif;
         max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
@@ -157,7 +154,7 @@
 
           if (!gl) {
             throw new Error(
-              "WebGL is not supported in this browser. Please use a modern browser with WebGL support.",
+              "WebGL is not supported in this browser. Please use a modern browser with WebGL support."
             );
           }
 
@@ -208,7 +205,7 @@
           ];
 
           const missingFunctions = webglFunctions.filter(
-            (fn) => typeof Module[fn] !== "function",
+            (fn) => typeof Module[fn] !== "function"
           );
 
           if (missingFunctions.length > 0) {
@@ -216,7 +213,7 @@
               "WebGL functions are missing from the WASM module: " +
                 missingFunctions.join(", ") +
                 ". This indicates the module was not built with WebGL support (tvg-gl feature). " +
-                "Please rebuild with 'make wasm-webgl'.",
+                "Please rebuild with 'make wasm-webgl'."
             );
           }
 
@@ -291,13 +288,13 @@
             0, // id: 0 = main surface (default framebuffer)
             width,
             height,
-            colorSpace,
+            colorSpace
           );
 
           if (setTargetResult !== 0) {
             throw new Error(
               "Failed to set WebGL rendering target, error code: " +
-                setTargetResult,
+                setTargetResult
             );
           }
 
@@ -308,7 +305,8 @@
           // 6. Load Animation
           // ============================================================
 
-          const animationUrl = "./examples/demo-player/src/bouncy_ball.json";
+          const animationUrl =
+            "./dotlottie-rs/assets/animations/lottie/bouncy_ball.json";
           const animationData = await fetch(animationUrl).then((r) => r.text());
           const animationPtr = allocateUTF8(Module, animationData);
 
@@ -316,7 +314,7 @@
             player,
             animationPtr,
             width,
-            height,
+            height
           );
 
           Module._free(animationPtr);
@@ -343,7 +341,7 @@
           Module._free(durationPtr);
 
           console.log(
-            `✓ Animation info: ${totalFrames} frames, ${duration.toFixed(2)}s`,
+            `✓ Animation info: ${totalFrames} frames, ${duration.toFixed(2)}s`
           );
 
           // ============================================================
@@ -405,7 +403,9 @@
               const currentFrame = Module.HEAPF32[currentFramePtr >> 2];
               Module._free(currentFramePtr);
 
-              frameInfoEl.textContent = `Frame: ${currentFrame.toFixed(1)} / ${totalFrames.toFixed(1)}`;
+              frameInfoEl.textContent = `Frame: ${currentFrame.toFixed(
+                1
+              )} / ${totalFrames.toFixed(1)}`;
             }
 
             // Calculate FPS
@@ -463,8 +463,9 @@
 
           document.getElementById("speed").addEventListener("input", (e) => {
             speedMultiplier = parseFloat(e.target.value);
-            document.getElementById("speed-value").textContent =
-              `${speedMultiplier.toFixed(1)}x`;
+            document.getElementById(
+              "speed-value"
+            ).textContent = `${speedMultiplier.toFixed(1)}x`;
             console.log("Speed:", speedMultiplier);
             statusEl.textContent = `Speed: ${speedMultiplier.toFixed(1)}x`;
           });

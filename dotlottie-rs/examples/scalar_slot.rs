@@ -8,7 +8,7 @@
 ///
 /// Note: Opacity values in Lottie are typically in the range 0-100 (percentage).
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{Config, DotLottiePlayer, LottieKeyframe, ScalarSlot};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, LottieKeyframe, ScalarSlot};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -36,6 +36,18 @@ fn main() {
         },
         0, // threads (0 = auto)
     );
+
+    // Allocate buffer for software rendering
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+    // Set software rendering target
+
+        player.set_sw_target_buffer(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        );
 
     let animation_data = include_str!("../assets/animations/lottie/bouncy_ball.json");
 
@@ -66,42 +78,41 @@ fn main() {
         let now = std::time::Instant::now();
 
         // Handle toggle between static and animated with T key
-        if window.is_key_down(Key::T)
-            && now.duration_since(last_toggle_press).as_millis() > 200 {
-                is_animated = !is_animated;
+        if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
+            is_animated = !is_animated;
 
-                if is_animated {
-                    // Create animated opacity slot: 100% -> 20% (linear interpolation)
-                    let opacity_slot = ScalarSlot::with_keyframes(vec![
-                        LottieKeyframe {
-                            frame: 0,
-                            start_value: 100.0,
-                            in_tangent: None,
-                            out_tangent: None,
-                            value_in_tangent: None,
-                            value_out_tangent: None,
-                            hold: None,
-                        },
-                        LottieKeyframe {
-                            frame: 60,
-                            start_value: 20.0,
-                            in_tangent: None,
-                            out_tangent: None,
-                            value_in_tangent: None,
-                            value_out_tangent: None,
-                            hold: None,
-                        },
-                    ]);
-                    player.set_scalar_slot("ball_opacity", opacity_slot);
-                    println!("Mode: ANIMATED (100% -> 20%)");
-                } else {
-                    // Switch back to static mode
-                    let opacity_slot = ScalarSlot::new(opacity);
-                    player.set_scalar_slot("ball_opacity", opacity_slot);
-                    println!("Mode: STATIC | Current opacity: {opacity:.0}%");
-                }
+            if is_animated {
+                // Create animated opacity slot: 100% -> 20% (linear interpolation)
+                let opacity_slot = ScalarSlot::with_keyframes(vec![
+                    LottieKeyframe {
+                        frame: 0,
+                        start_value: 100.0,
+                        in_tangent: None,
+                        out_tangent: None,
+                        value_in_tangent: None,
+                        value_out_tangent: None,
+                        hold: None,
+                    },
+                    LottieKeyframe {
+                        frame: 60,
+                        start_value: 20.0,
+                        in_tangent: None,
+                        out_tangent: None,
+                        value_in_tangent: None,
+                        value_out_tangent: None,
+                        hold: None,
+                    },
+                ]);
+                player.set_scalar_slot("ball_opacity", opacity_slot);
+                println!("Mode: ANIMATED (100% -> 20%)");
+            } else {
+                // Switch back to static mode
+                let opacity_slot = ScalarSlot::new(opacity);
+                player.set_scalar_slot("ball_opacity", opacity_slot);
+                println!("Mode: STATIC | Current opacity: {opacity:.0}%");
+            }
 
-                last_toggle_press = now;
+            last_toggle_press = now;
         }
 
         let mut opacity_changed = false;
@@ -128,11 +139,8 @@ fn main() {
 
         // Update animation frame and render
         if player.tick() {
-            // Get buffer as a slice
-            let buffer = player.buffer();
-
             window
-                .update_with_buffer(buffer, WIDTH as usize, HEIGHT as usize)
+                .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");
         }
     }

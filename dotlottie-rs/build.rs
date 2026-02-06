@@ -138,8 +138,7 @@ mod thorvg {
             let target = env::var("TARGET").unwrap_or_default();
             if target != "wasm32-unknown-emscripten" {
                 eprintln!(
-                    "cargo:warning=tvg-wg requested but target {} doesn't have wgpu binaries",
-                    target_triple
+                    "cargo:warning=tvg-wg requested but target {target_triple} doesn't have wgpu binaries"
                 );
                 eprintln!("cargo:warning=Building without ThorVG WebGPU renderer");
             }
@@ -302,7 +301,7 @@ mod thorvg {
                         // Enable cfg flag for conditional compilation
                         println!("cargo:rustc-cfg=wgpu_native_linked");
                     } else {
-                        eprintln!("cargo:warning=wgpu-native library not found at {:?}", static_lib);
+                        eprintln!("cargo:warning=wgpu-native library not found at {static_lib:?}");
                         eprintln!("cargo:warning=WebGPU rendering will not be available");
                     }
                 }

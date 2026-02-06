@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer, Marker};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, Marker};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -27,6 +27,17 @@ mod tests {
             },
             0,
         );
+
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target_buffer(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         assert!(
             player.markers().is_empty(),
@@ -89,6 +100,17 @@ mod tests {
             },
             0,
         );
+
+        // Allocate buffer for software rendering
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        // Set software rendering target
+        assert!(player.set_sw_target_buffer(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         let marker_name = "Marker_3".to_string();
 

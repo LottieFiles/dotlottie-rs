@@ -27,6 +27,8 @@ help:
 	@echo "  make wasm                                         - Build WASM module"
 	@echo "  make linux                                        - Build all Linux targets"
 	@echo "  make native                                       - Build native (current platform)"
+	@echo "  make native-opengl                                - Build native (current platform) with opengl renderer"
+	@echo "  make native-webgpu                                - Build native (current platform) with webgpu renderer"
 	@echo ""
 	@echo "Wasm Targets:"
 	@echo "==============="

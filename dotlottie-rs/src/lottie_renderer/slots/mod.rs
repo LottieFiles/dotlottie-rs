@@ -122,6 +122,15 @@ pub(crate) fn slots_to_json_string(slots: &BTreeMap<String, SlotType>) -> Result
     serde_json::to_string(&lottie_slots)
 }
 
+/// Serialize a single slot to JSON in ThorVG format: {"slot_id": {"p": value}}
+pub(crate) fn single_slot_to_json_string(slot_id: &str, slot_type: &SlotType) -> Result<String, serde_json::Error> {
+    use serde_json::json;
+
+    let mut map = serde_json::Map::new();
+    map.insert(slot_id.to_string(), json!({"p": slot_type}));
+    serde_json::to_string(&map)
+}
+
 pub fn slot_to_json_string(slot: &SlotType) -> Result<String, serde_json::Error> {
     match slot {
         SlotType::Color(s) => serde_json::to_string(s),

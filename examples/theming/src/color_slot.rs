@@ -79,7 +79,7 @@ fn main() {
                     let color_slot = ColorSlot::with_keyframes(vec![
                         LottieKeyframe {
                             frame: 0,
-                            start_value: [1.0, 0.0, 0.0], // Red
+                            start_value: dotlottie_rs::ColorValue([1.0, 0.0, 0.0]), // Red
                             in_tangent: None,
                             out_tangent: None,
                             value_in_tangent: None,
@@ -88,7 +88,7 @@ fn main() {
                         },
                         LottieKeyframe {
                             frame: 60,
-                            start_value: [0.0, 0.0, 1.0], // Blue
+                            start_value: dotlottie_rs::ColorValue([0.0, 0.0, 1.0]), // Blue
                             in_tangent: None,
                             out_tangent: None,
                             value_in_tangent: None,

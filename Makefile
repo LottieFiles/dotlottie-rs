@@ -72,6 +72,7 @@ help:
 	@echo "Setup Targets:"
 	@echo "=============="
 	@echo "  make setup                                        - Setup all platforms"
+	@echo "  make wgpu-setup                                   - Download wgpu-native dependencies"
 	@echo "  make android-setup                                - Setup Android environment"
 	@echo "  make apple-setup                                  - Setup Apple environment"
 	@echo "  make wasm-setup                                   - Setup WASM environment"
@@ -97,8 +98,44 @@ list-platforms:
 	@echo "  native      - Native (current platform)"
 	@echo ""
 
+# wgpu-native version to download
+WGPU_VERSION ?= v25.0.2.1
+WGPU_DEPS_DIR := dotlottie-rs/deps/wgpu
+WGPU_BASE_URL := https://github.com/gfx-rs/wgpu-native/releases/download/$(WGPU_VERSION)
+
+# wgpu platforms to download
+WGPU_PLATFORMS := \
+	macos-aarch64-release \
+	macos-x86_64-release \
+	ios-aarch64-release \
+	ios-aarch64-simulator-release \
+	ios-x86_64-simulator-release
+
+# Download and setup wgpu-native dependencies
+.PHONY: wgpu-setup wgpu-clean
+wgpu-setup:
+	@echo "→ Setting up wgpu-native dependencies ($(WGPU_VERSION))..."
+	@mkdir -p $(WGPU_DEPS_DIR)
+	@for platform in $(WGPU_PLATFORMS); do \
+		if [ ! -d "$(WGPU_DEPS_DIR)/wgpu-$$platform" ]; then \
+			echo "  Downloading wgpu-$$platform..."; \
+			curl -sL $(WGPU_BASE_URL)/wgpu-$$platform.zip -o /tmp/wgpu-$$platform.zip; \
+			unzip -q /tmp/wgpu-$$platform.zip -d $(WGPU_DEPS_DIR)/wgpu-$$platform; \
+			rm /tmp/wgpu-$$platform.zip; \
+		else \
+			echo "  ✓ wgpu-$$platform already exists"; \
+		fi; \
+	done
+	@echo "✓ wgpu-native dependencies installed"
+
+# Clean wgpu dependencies
+wgpu-clean:
+	@echo "→ Cleaning wgpu-native dependencies..."
+	@rm -rf $(WGPU_DEPS_DIR)
+	@echo "✓ wgpu-native dependencies cleaned"
+
 # Setup all platforms
-setup: android-setup apple-setup wasm-setup linux-setup
+setup: wgpu-setup android-setup apple-setup wasm-setup linux-setup
 	@echo "✓ All platform setup complete"
 
 # Clean all build artifacts

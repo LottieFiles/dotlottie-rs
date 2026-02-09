@@ -87,6 +87,11 @@ pub trait Renderer: Sized + 'static {
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), Self::Error>;
 
+    /// # Safety
+    ///
+    /// `buffer` must be a valid pointer to a mutable u32 array with at least
+    /// `stride (Width))` elements. The buffer must remain valid for the lifetime
+    /// of rendering operations using this target.
     unsafe fn set_sw_target(
         &mut self,
         buffer: *mut u32,
@@ -96,6 +101,10 @@ pub trait Renderer: Sized + 'static {
         color_space: ColorSpace,
     ) -> Result<(), Self::Error>;
 
+    /// # Safety
+    ///
+    /// `context` must be a valid pointer to an OpenGL context. The context must
+    /// remain valid for the lifetime of rendering operations using this target.
     unsafe fn set_gl_target(
         &mut self,
         context: *mut std::ffi::c_void,
@@ -105,6 +114,13 @@ pub trait Renderer: Sized + 'static {
         color_space: ColorSpace,
     ) -> Result<(), Self::Error>;
 
+    /// # Safety
+    ///
+    /// `device` must be a valid pointer to a WebGPU device, `instance` must be a valid
+    /// pointer to a WebGPU instance, and `target` must be a valid pointer to a WebGPU
+    /// render target. All pointers must remain valid for the lifetime of rendering
+    /// operations using this target.
+    #[allow(clippy::too_many_arguments)]
     unsafe fn set_wg_target(
         &mut self,
         device: *mut std::ffi::c_void,

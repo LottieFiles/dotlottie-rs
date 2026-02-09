@@ -45,6 +45,11 @@ fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {
 }
 
 pub trait LottieRenderer {
+    /// # Safety
+    ///
+    /// `buffer` must be a valid pointer to a mutable u32 array with at least
+    /// `stride (Width)` elements. The buffer must remain valid for the lifetime
+    /// of rendering operations using this target.
     unsafe fn set_sw_target(
         &mut self,
         buffer: *mut u32,
@@ -54,6 +59,10 @@ pub trait LottieRenderer {
         color_space: ColorSpace,
     ) -> Result<(), LottieRendererError>;
 
+    /// # Safety
+    ///
+    /// `context` must be a valid pointer to an OpenGL context. The context must
+    /// remain valid for the lifetime of rendering operations using this target.
     unsafe fn set_gl_target(
         &mut self,
         context: *mut std::ffi::c_void,
@@ -63,6 +72,13 @@ pub trait LottieRenderer {
         color_space: ColorSpace,
     ) -> Result<(), LottieRendererError>;
 
+    /// # Safety
+    ///
+    /// `device` must be a valid pointer to a WebGPU device, `instance` must be a valid
+    /// pointer to a WebGPU instance, and `target` must be a valid pointer to a WebGPU
+    /// render target. All pointers must remain valid for the lifetime of rendering
+    /// operations using this target.
+    #[allow(clippy::too_many_arguments)]
     unsafe fn set_wg_target(
         &mut self,
         device: *mut std::ffi::c_void,

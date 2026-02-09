@@ -273,10 +273,7 @@ impl Renderer for TvgRenderer {
                 )
             };
 
-            let set_target_result = result.into_result();
-            if set_target_result.is_err() {
-                return set_target_result;
-            }
+            result.into_result()?;
 
             // After setting target, sync to ensure canvas is properly initialized
             unsafe { tvg::tvg_canvas_sync(raw_canvas).into_result() }?;

@@ -132,12 +132,12 @@ impl App {
             // Check what framebuffer is bound
             let mut fbo: i32 = -1;
             gl::GetIntegerv(gl::FRAMEBUFFER_BINDING, &mut fbo);
-            println!("Current framebuffer binding: {}", fbo);
+            println!("Current framebuffer binding: {fbo}");
 
             // Check for GL errors
             let err = gl::GetError();
             if err != gl::NO_ERROR {
-                eprintln!("OpenGL error during setup: 0x{:x}", err);
+                eprintln!("OpenGL error during setup: 0x{err:x}");
             }
         }
 
@@ -301,11 +301,10 @@ impl App {
             static mut FRAME_COUNT: u32 = 0;
             unsafe {
                 FRAME_COUNT += 1;
-                if FRAME_COUNT % 60 == 0 {
+                let frame_count = FRAME_COUNT;
+                if frame_count % 60 == 0 {
                     println!(
-                        "Frame {}: rendered={}, current_frame={:.1}",
-                        FRAME_COUNT,
-                        rendered,
+                        "Frame {frame_count}: rendered={rendered}, current_frame={:.1}",
                         player.current_frame()
                     );
 

@@ -14,8 +14,8 @@ fn load_animation_data_benchmark(c: &mut Criterion) {
 
     player.set_sw_target_buffer(
         &mut buffer,
-        WIDTH as u32,
-        HEIGHT as u32,
+        WIDTH,
+        HEIGHT,
         ColorSpace::ABGR8888,
     );
 
@@ -33,8 +33,8 @@ fn load_animation_path_benchmark(c: &mut Criterion) {
 
     player.set_sw_target_buffer(
         &mut buffer,
-        WIDTH as u32,
-        HEIGHT as u32,
+        WIDTH,
+        HEIGHT,
         ColorSpace::ABGR8888,
     );
     let path = &format!(
@@ -55,8 +55,8 @@ fn load_dotlottie_data_benchmark(c: &mut Criterion) {
 
     player.set_sw_target_buffer(
         &mut buffer,
-        WIDTH as u32,
-        HEIGHT as u32,
+        WIDTH,
+        HEIGHT,
         ColorSpace::ABGR8888,
     );
     let data = include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie");
@@ -81,8 +81,8 @@ fn animation_loop_benchmark(c: &mut Criterion) {
 
     player.set_sw_target_buffer(
         &mut buffer,
-        WIDTH as u32,
-        HEIGHT as u32,
+        WIDTH,
+        HEIGHT,
         ColorSpace::ABGR8888,
     );
     assert!(player.load_dotlottie_data(
@@ -112,8 +112,8 @@ fn animation_loop_benchmark(c: &mut Criterion) {
     );
     player.set_sw_target_buffer(
         &mut buffer,
-        WIDTH as u32,
-        HEIGHT as u32,
+        WIDTH,
+        HEIGHT,
         ColorSpace::ABGR8888,
     );
     assert!(player.load_dotlottie_data(
@@ -144,8 +144,8 @@ fn set_theme_benchmark(c: &mut Criterion) {
 
     player.set_sw_target_buffer(
         &mut buffer,
-        WIDTH as u32,
-        HEIGHT as u32,
+        WIDTH,
+        HEIGHT,
         ColorSpace::ABGR8888,
     );
     let data = include_bytes!("../assets/animations/dotlottie/v2/themed.lottie");
@@ -164,8 +164,8 @@ fn state_machine_load_benchmark(c: &mut Criterion) {
 
     player.set_sw_target_buffer(
         &mut buffer,
-        WIDTH as u32,
-        HEIGHT as u32,
+        WIDTH,
+        HEIGHT,
         ColorSpace::ABGR8888,
     );
     let data = include_bytes!("../assets/statemachines/normal_usecases/sm_exploding_pigeon.lottie");
@@ -184,8 +184,8 @@ fn state_machine_load_data_benchmark(c: &mut Criterion) {
 
     player.set_sw_target_buffer(
         &mut buffer,
-        WIDTH as u32,
-        HEIGHT as u32,
+        WIDTH,
+        HEIGHT,
         ColorSpace::ABGR8888,
     );
     let state_machine_data = std::str::from_utf8(include_bytes!(

@@ -909,6 +909,7 @@ impl DotLottiePlayer {
     /// This function deals with opaque WebGPU FFI types and cannot be made safe without
     /// wrapping the entire WebGPU API. Use a safe WebGPU wrapper library (like wgpu-rs)
     /// if you need type safety.
+    #[allow(clippy::too_many_arguments)]
     pub unsafe fn set_wg_target(
         &mut self,
         device: *mut std::ffi::c_void,

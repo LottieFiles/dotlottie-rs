@@ -59,7 +59,6 @@ exclude = [
     "wgpuCreateInstance",
     "wgpuInstanceCreateSurface",
     "wgpuInstanceRequestAdapter",
-    "wgpuInstanceProcessEvents",
     "wgpuAdapterRequestDevice",
     "wgpuDeviceGetQueue",
     "wgpuSurfaceConfigure",

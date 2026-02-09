@@ -163,12 +163,6 @@ mod ffi {
             callback_info: WGPURequestAdapterCallbackInfo,
         ) -> WGPUFuture;
 
-        /// Process events on the instance
-        /// Note: Not used in the new condvar-based implementation,
-        /// but kept for potential future debugging or alternative approaches
-        #[allow(dead_code)]
-        pub fn wgpuInstanceProcessEvents(instance: WGPUInstance);
-
         pub fn wgpuAdapterRequestDevice(
             adapter: WGPUAdapter,
             descriptor: *const WGPUDeviceDescriptor,
@@ -415,15 +409,10 @@ impl WgpuContext {
 
         let instance = ffi::wgpuCreateInstance(&instance_desc);
         if instance.is_null() {
-            eprintln!("[RUST] ERROR: Failed to create WebGPU instance");
             return Err("Failed to create WebGPU instance".to_string());
         }
 
         // Create surface from Metal layer
-        eprintln!(
-            "[RUST] Creating surface from Metal layer {:?}...",
-            metal_layer
-        );
         let metal_source = ffi::WGPUSurfaceSourceMetalLayer {
             chain: ffi::WGPUChainedStruct {
                 next: std::ptr::null(),
@@ -439,16 +428,12 @@ impl WgpuContext {
 
         let surface = ffi::wgpuInstanceCreateSurface(instance, &surface_desc);
         if surface.is_null() {
-            eprintln!("[RUST] ERROR: Failed to create WebGPU surface");
             ffi::wgpuInstanceRelease(instance);
             return Err("Failed to create WebGPU surface".to_string());
         }
-        eprintln!("[RUST] Surface created: {:?}", surface);
 
         // Request adapter with condvar (no polling loop)
-        eprintln!("[RUST] Requesting adapter...");
         let adapter = request_adapter_sync(instance, surface)?;
-        eprintln!("[RUST] Adapter obtained: {:?}", adapter);
 
         if adapter.is_null() {
             ffi::wgpuSurfaceRelease(surface);
@@ -457,9 +442,7 @@ impl WgpuContext {
         }
 
         // Request device with condvar (no polling loop)
-        eprintln!("[RUST] Requesting device...");
         let device = request_device_sync(adapter)?;
-        eprintln!("[RUST] Device obtained: {:?}", device);
 
         if device.is_null() {
             ffi::wgpuAdapterRelease(adapter);
@@ -477,11 +460,9 @@ impl WgpuContext {
             ffi::wgpuInstanceRelease(instance);
             return Err("Failed to get WebGPU queue".to_string());
         }
-        eprintln!("[RUST] Queue obtained: {:?}", queue);
 
         // Note: Surface configuration is handled by ThorVG's wg_engine
         // We just provide the unconfigured surface, device, and instance
-        eprintln!("[RUST] WebGPU context ready (surface will be configured by ThorVG)");
 
         Ok(WgpuContext {
             instance,

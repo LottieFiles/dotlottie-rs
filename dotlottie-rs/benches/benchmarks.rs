@@ -12,7 +12,7 @@ fn load_animation_data_benchmark(c: &mut Criterion) {
         std::str::from_utf8(include_bytes!("../assets/animations/lottie/test.json")).unwrap();
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
-    player.set_sw_target_buffer(
+    player.set_sw_target(
         &mut buffer,
         WIDTH,
         HEIGHT,
@@ -31,7 +31,7 @@ fn load_animation_path_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(Config::default(), 0);
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
-    player.set_sw_target_buffer(
+    player.set_sw_target(
         &mut buffer,
         WIDTH,
         HEIGHT,
@@ -53,7 +53,7 @@ fn load_dotlottie_data_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(Config::default(), 0);
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
-    player.set_sw_target_buffer(
+    player.set_sw_target(
         &mut buffer,
         WIDTH,
         HEIGHT,
@@ -79,7 +79,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
     );
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
-    player.set_sw_target_buffer(
+    player.set_sw_target(
         &mut buffer,
         WIDTH,
         HEIGHT,
@@ -110,7 +110,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
         },
         0,
     );
-    player.set_sw_target_buffer(
+    player.set_sw_target(
         &mut buffer,
         WIDTH,
         HEIGHT,
@@ -142,7 +142,7 @@ fn set_theme_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(Config::default(), 0);
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
-    player.set_sw_target_buffer(
+    player.set_sw_target(
         &mut buffer,
         WIDTH,
         HEIGHT,
@@ -162,7 +162,7 @@ fn state_machine_load_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(Config::default(), 0);
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
-    player.set_sw_target_buffer(
+    player.set_sw_target(
         &mut buffer,
         WIDTH,
         HEIGHT,
@@ -182,7 +182,7 @@ fn state_machine_load_data_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(Config::default(), 0);
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
-    player.set_sw_target_buffer(
+    player.set_sw_target(
         &mut buffer,
         WIDTH,
         HEIGHT,

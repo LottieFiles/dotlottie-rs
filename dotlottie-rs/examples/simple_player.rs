@@ -74,11 +74,10 @@ fn main() {
         0,
     );
 
-    // Allocate buffer for software rendering
+
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
-    // Set software rendering target using the safe API
-    if !player.set_sw_target_buffer(
+    if !player.set_sw_target(
         &mut buffer,
         WIDTH as u32,
         HEIGHT as u32,

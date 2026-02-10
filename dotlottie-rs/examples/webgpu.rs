@@ -14,9 +14,31 @@
     wgpu_native_linked
 ))]
 mod webgpu_impl {
-    use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
+    use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, WgpuDevice, WgpuInstance, WgpuTarget};
     use dotlottie_rs::c_api::wgpu_helper::WgpuContext;
     use std::ffi::CString;
+
+    // Wrapper types for WebGPU pointers
+    struct WebGpuDevice(*mut std::ffi::c_void);
+    impl WgpuDevice for WebGpuDevice {
+        fn as_ptr(&self) -> *mut std::ffi::c_void {
+            self.0
+        }
+    }
+
+    struct WebGpuInstance(*mut std::ffi::c_void);
+    impl WgpuInstance for WebGpuInstance {
+        fn as_ptr(&self) -> *mut std::ffi::c_void {
+            self.0
+        }
+    }
+
+    struct WebGpuSurface(*mut std::ffi::c_void);
+    impl WgpuTarget for WebGpuSurface {
+        fn as_ptr(&self) -> *mut std::ffi::c_void {
+            self.0
+        }
+    }
 
     #[cfg(target_os = "macos")]
     use objc2::rc::Retained;
@@ -192,17 +214,19 @@ impl App {
 
             // IMPORTANT: Call set_wg_target BEFORE loading animation data
             // Use actual window size to handle DPI scaling
-            let success = unsafe {
-                player.set_wg_target(
-                    device as *mut std::ffi::c_void,
-                    instance as *mut std::ffi::c_void,
-                    surface as *mut std::ffi::c_void,
-                    width,
-                    height,
-                    ColorSpace::ABGR8888S,
-                    0, // type parameter (0 for default)
-                )
-            };
+            let wgpu_device = WebGpuDevice(device as *mut std::ffi::c_void);
+            let wgpu_instance = WebGpuInstance(instance as *mut std::ffi::c_void);
+            let wgpu_surface = WebGpuSurface(surface as *mut std::ffi::c_void);
+
+            let success = player.set_wg_target(
+                &wgpu_device,
+                &wgpu_instance,
+                &wgpu_surface,
+                width,
+                height,
+                ColorSpace::ABGR8888S,
+                0, // type parameter (0 for default)
+            );
 
             if success {
                 println!("✓ WebGPU target set successfully");
@@ -279,17 +303,19 @@ impl App {
                 let (device, instance, surface) = wgpu_context.as_pointers();
 
                 // Reconfigure WebGPU target with new size
-                let success = unsafe {
-                    player.set_wg_target(
-                        device as *mut std::ffi::c_void,
-                        instance as *mut std::ffi::c_void,
-                        surface as *mut std::ffi::c_void,
-                        new_width,
-                        new_height,
-                        ColorSpace::ABGR8888S,
-                        0,
-                    )
-                };
+                let wgpu_device = WebGpuDevice(device as *mut std::ffi::c_void);
+                let wgpu_instance = WebGpuInstance(instance as *mut std::ffi::c_void);
+                let wgpu_surface = WebGpuSurface(surface as *mut std::ffi::c_void);
+
+                let success = player.set_wg_target(
+                    &wgpu_device,
+                    &wgpu_instance,
+                    &wgpu_surface,
+                    new_width,
+                    new_height,
+                    ColorSpace::ABGR8888S,
+                    0,
+                );
 
                 if success {
                     // Reload animation with new size

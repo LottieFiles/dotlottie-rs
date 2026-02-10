@@ -59,16 +59,9 @@ mod tests {
         for config in configs {
             let mut player = DotLottiePlayer::new(config, 0);
 
-            // Allocate buffer for software rendering
             let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-            // Set software rendering target
-            assert!(player.set_sw_target_buffer(
-                &mut buffer,
-                WIDTH,
-                HEIGHT,
-                ColorSpace::ABGR8888,
-            ));
+            assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
             assert!(
                 player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),

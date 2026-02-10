@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use dotlottie_rs::{
-        ColorSpace, Config, DotLottiePlayer, Event, actions::open_url_policy::OpenUrlPolicy
+        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Config, DotLottiePlayer, Event,
     };
 
     const WIDTH: u32 = 100;
@@ -14,19 +14,18 @@ mod tests {
 
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+            100,
+            100,
+        );
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
@@ -93,19 +92,18 @@ mod tests {
             include_str!("../assets/statemachines/interaction_tests/pointer_down.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+            100,
+            100,
+        );
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
         assert!(s);
@@ -124,19 +122,18 @@ mod tests {
             include_str!("../assets/statemachines/interaction_tests/pointer_enter.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+            100,
+            100,
+        );
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
         assert!(s);
@@ -171,19 +168,18 @@ mod tests {
             include_str!("../assets/statemachines/interaction_tests/pointer_enter.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+            100,
+            100,
+        );
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
         assert!(s);
@@ -218,19 +214,18 @@ mod tests {
             include_str!("../assets/statemachines/interaction_tests/pointer_exit.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+            100,
+            100,
+        );
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
         assert!(s);
@@ -252,19 +247,18 @@ mod tests {
             include_str!("../assets/statemachines/interaction_tests/pointer_exit.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+            100,
+            100,
+        );
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
         assert!(s);
@@ -314,19 +308,18 @@ mod tests {
             include_str!("../assets/statemachines/interaction_tests/pointer_move.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+            100,
+            100,
+        );
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
         assert!(s);
@@ -354,19 +347,18 @@ mod tests {
             include_str!("../assets/statemachines/interaction_tests/on_complete.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+            100,
+            100,
+        );
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
         assert!(s);
@@ -390,22 +382,22 @@ mod tests {
 
     #[test]
     pub fn on_complete_player_test() {
-        let global_state = include_str!("../assets/statemachines/interaction_tests/pigeon_fsm.json");
+        let global_state =
+            include_str!("../assets/statemachines/interaction_tests/pigeon_fsm.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v2/pigeon.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v2/pigeon.lottie"),
+            100,
+            100,
+        );
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
         assert!(s);
@@ -418,7 +410,7 @@ mod tests {
         assert_eq!(curr_state_name, "Explosion");
         loop {
             sm.tick();
-            if sm.player.is_complete() { 
+            if sm.player.is_complete() {
                 break;
             }
         }
@@ -433,19 +425,18 @@ mod tests {
             include_str!("../assets/statemachines/interaction_tests/on_loop_complete.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v2/pigeon.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v2/pigeon.lottie"),
+            100,
+            100,
+        );
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
         assert!(s);

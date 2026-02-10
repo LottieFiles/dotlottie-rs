@@ -16,7 +16,7 @@ const WIDTH: u32 = 600;
 const HEIGHT: u32 = 600;
 
 fn main() {
-    // Create window
+    
     let mut window = Window::new(
         "Scalar Slot Example - Press T to toggle, UP/DOWN to adjust",
         WIDTH as usize,
@@ -27,7 +27,7 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    // Create player and load animation
+    
     let mut player = DotLottiePlayer::new(
         Config {
             loop_animation: true,
@@ -37,12 +37,12 @@ fn main() {
         0, // threads (0 = auto)
     );
 
-    // Allocate buffer for software rendering
+    
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-    // Set software rendering target
 
-        player.set_sw_target_buffer(
+
+        player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -68,21 +68,21 @@ fn main() {
     let mut last_toggle_press = std::time::Instant::now();
     let mut is_animated = false;
 
-    // Set initial opacity (static)
+    
     let opacity_slot = ScalarSlot::new(opacity);
     player.set_scalar_slot("ball_opacity", opacity_slot);
     println!("Mode: STATIC | Current opacity: {opacity:.0}%");
 
-    // Main render loop
+    
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now();
 
-        // Handle toggle between static and animated with T key
+        
         if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
             is_animated = !is_animated;
 
             if is_animated {
-                // Create animated opacity slot: 100% -> 20% (linear interpolation)
+                
                 let opacity_slot = ScalarSlot::with_keyframes(vec![
                     LottieKeyframe {
                         frame: 0,
@@ -106,7 +106,7 @@ fn main() {
                 player.set_scalar_slot("ball_opacity", opacity_slot);
                 println!("Mode: ANIMATED (100% -> 20%)");
             } else {
-                // Switch back to static mode
+                
                 let opacity_slot = ScalarSlot::new(opacity);
                 player.set_scalar_slot("ball_opacity", opacity_slot);
                 println!("Mode: STATIC | Current opacity: {opacity:.0}%");
@@ -117,7 +117,7 @@ fn main() {
 
         let mut opacity_changed = false;
 
-        // Handle opacity adjustment with UP/DOWN keys (only in static mode)
+        
         if !is_animated && now.duration_since(last_key_press).as_millis() > 100 {
             if window.is_key_down(Key::Up) && opacity < 100.0 {
                 opacity = (opacity + 5.0).min(100.0);
@@ -131,13 +131,13 @@ fn main() {
         }
 
         if opacity_changed {
-            // Create and set the new scalar slot
+            
             let opacity_slot = ScalarSlot::new(opacity);
             player.set_scalar_slot("ball_opacity", opacity_slot);
             println!("Mode: STATIC | Current opacity: {opacity:.0}%");
         }
 
-        // Update animation frame and render
+        
         if player.tick() {
             window
                 .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)

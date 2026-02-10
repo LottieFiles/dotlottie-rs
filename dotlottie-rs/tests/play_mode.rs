@@ -27,11 +27,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -84,11 +83,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -134,11 +132,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -215,11 +212,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -296,11 +292,11 @@ mod play_mode_tests {
         for mode in play_modes {
             let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-            // Allocate buffer for software rendering
+            
             let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
             // Set software rendering target
-            assert!(player.set_sw_target_buffer(
+            assert!(player.set_sw_target(
                 &mut buffer,
                 WIDTH,
                 HEIGHT,
@@ -365,11 +361,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -426,11 +421,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -479,11 +473,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -538,11 +531,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -592,11 +584,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -668,11 +659,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -719,11 +709,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -795,11 +784,10 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,

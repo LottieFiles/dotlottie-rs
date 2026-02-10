@@ -11,23 +11,23 @@ mod tests {
     pub fn test_load_animation_with_animation_id() {
         let animation_id = "crying".to_string();
 
-        let mut player = DotLottiePlayer::new(Config {
-            animation_id: animation_id.clone(),
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                animation_id: animation_id.clone(),
+                ..Config::default()
+            },
+            0,
+        );
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        assert!(player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"), WIDTH, HEIGHT));
+        assert!(player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
+            WIDTH,
+            HEIGHT
+        ));
 
         assert_eq!(player.active_animation_id(), animation_id);
     }
@@ -36,18 +36,15 @@ mod tests {
     pub fn test_load_animation() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        assert!(player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"), WIDTH, HEIGHT));
+        assert!(player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
+            WIDTH,
+            HEIGHT
+        ));
 
         let manifest = player.manifest();
 

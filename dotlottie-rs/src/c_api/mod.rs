@@ -5,7 +5,8 @@ use std::slice;
 
 use crate::actions::open_url_policy::OpenUrlPolicy;
 use crate::lottie_renderer::{
-    ColorSlot, ImageSlot, PositionSlot, ScalarSlot, TextDocument, TextSlot, VectorSlot,
+    ColorSlot, GlContext, ImageSlot, PositionSlot, ScalarSlot, TextDocument, TextSlot, VectorSlot,
+    WgpuDevice, WgpuInstance, WgpuTarget,
 };
 use crate::state_machine_engine::events::Event;
 use crate::ColorSpace;
@@ -13,6 +14,42 @@ use crate::{Config, DotLottiePlayer, LayerBoundingBox, StateMachineEngine};
 use types::*;
 
 pub mod types;
+
+/// Wrapper for raw OpenGL context pointer that implements GlContext trait
+struct RawGlContext(*mut std::ffi::c_void);
+
+impl GlContext for RawGlContext {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+}
+
+/// Wrapper for raw WebGPU device pointer that implements WgpuDevice trait
+struct RawWgpuDevice(*mut std::ffi::c_void);
+
+impl WgpuDevice for RawWgpuDevice {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+}
+
+/// Wrapper for raw WebGPU instance pointer that implements WgpuInstance trait
+struct RawWgpuInstance(*mut std::ffi::c_void);
+
+impl WgpuInstance for RawWgpuInstance {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+}
+
+/// Wrapper for raw WebGPU target pointer that implements WgpuTarget trait
+struct RawWgpuTarget(*mut std::ffi::c_void);
+
+impl WgpuTarget for RawWgpuTarget {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+}
 
 #[cfg(all(
     feature = "tvg-wg",
@@ -437,14 +474,14 @@ pub unsafe extern "C" fn dotlottie_is_complete(ptr: *mut DotLottiePlayer) -> i32
 pub unsafe extern "C" fn dotlottie_set_sw_target(
     ptr: *mut DotLottiePlayer,
     buffer: *mut u32,
-    stride: u32,
     width: u32,
     height: u32,
     color_space: ColorSpace,
 ) -> i32 {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         to_exit_status(unsafe {
-            dotlottie_player.set_sw_target(buffer, stride, width, height, color_space)
+            let buffer_slice = std::slice::from_raw_parts_mut(buffer, (width * height) as usize);
+            dotlottie_player.set_sw_target(buffer_slice, width, height, color_space)
         })
     })
 }
@@ -459,9 +496,10 @@ pub unsafe extern "C" fn dotlottie_set_gl_target(
     color_space: ColorSpace,
 ) -> i32 {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(unsafe {
-            dotlottie_player.set_gl_target(context, id, width, height, color_space)
-        })
+        let gl_context = RawGlContext(context);
+        to_exit_status(
+            dotlottie_player.set_gl_target(&gl_context, id, width, height, color_space)
+        )
     })
 }
 
@@ -477,17 +515,20 @@ pub unsafe extern "C" fn dotlottie_set_wg_target(
     _type: i32,
 ) -> i32 {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        to_exit_status(unsafe {
+        let wgpu_device = RawWgpuDevice(device);
+        let wgpu_instance = RawWgpuInstance(instance);
+        let wgpu_target = RawWgpuTarget(target);
+        to_exit_status(
             dotlottie_player.set_wg_target(
-                device,
-                instance,
-                target,
+                &wgpu_device,
+                &wgpu_instance,
+                &wgpu_target,
                 width,
                 height,
                 color_space,
                 _type,
             )
-        })
+        )
     })
 }
 

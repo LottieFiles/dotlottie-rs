@@ -112,8 +112,10 @@ mod thorvg {
             // For Emscripten: ENABLE ThorVG's wg_engine with newer Dawn
             // The user has bumped Emscripten/Dawn version to support the newer API
             if target == "wasm32-unknown-emscripten" {
-                eprintln!("cargo:warning=tvg-wg for WASM: Enabling ThorVG WebGPU renderer with Dawn");
-                true  // Enable ThorVG's wg_engine for WASM
+                eprintln!(
+                    "cargo:warning=tvg-wg for WASM: Enabling ThorVG WebGPU renderer with Dawn"
+                );
+                true // Enable ThorVG's wg_engine for WASM
             } else {
                 // Native targets: compile ThorVG's wg_engine if wgpu binaries available
                 matches!(
@@ -243,16 +245,23 @@ mod thorvg {
                 .unwrap()
                 .join("deps/modules/emsdk/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include");
             cc_build.include(&webgpu_include);
-            eprintln!("cargo:warning=Adding WebGPU include path: {}", webgpu_include.display());
+            eprintln!(
+                "cargo:warning=Adding WebGPU include path: {}",
+                webgpu_include.display()
+            );
         }
 
         // Add WebGPU header include path and link wgpu-native for Apple platforms
         if tvg_wg_enabled {
             let target = env::var("TARGET").unwrap_or_default();
 
-            if matches!(target.as_str(),
-                "aarch64-apple-darwin" | "x86_64-apple-darwin" |
-                "aarch64-apple-ios" | "aarch64-apple-ios-sim" | "x86_64-apple-ios"
+            if matches!(
+                target.as_str(),
+                "aarch64-apple-darwin"
+                    | "x86_64-apple-darwin"
+                    | "aarch64-apple-ios"
+                    | "aarch64-apple-ios-sim"
+                    | "x86_64-apple-ios"
             ) {
                 let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
                 let wgpu_base = PathBuf::from(&crate_dir).join("deps/wgpu");
@@ -279,7 +288,8 @@ mod thorvg {
 
                     // Link wgpu-native static library
                     if static_lib.exists() {
-                        let abs_lib_path = wgpu_lib_path.canonicalize()
+                        let abs_lib_path = wgpu_lib_path
+                            .canonicalize()
                             .expect("Failed to canonicalize wgpu lib path");
 
                         println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
@@ -296,7 +306,10 @@ mod thorvg {
                             println!("cargo:rustc-link-lib=framework=UIKit");
                         }
 
-                        eprintln!("cargo:warning=Linked wgpu-native from {}", abs_lib_path.display());
+                        eprintln!(
+                            "cargo:warning=Linked wgpu-native from {}",
+                            abs_lib_path.display()
+                        );
 
                         // Enable cfg flag for conditional compilation
                         println!("cargo:rustc-cfg=wgpu_native_linked");
@@ -333,9 +346,13 @@ mod thorvg {
         if tvg_wg_enabled {
             let target = env::var("TARGET").unwrap_or_default();
 
-            if matches!(target.as_str(),
-                "aarch64-apple-darwin" | "x86_64-apple-darwin" |
-                "aarch64-apple-ios" | "aarch64-apple-ios-sim" | "x86_64-apple-ios"
+            if matches!(
+                target.as_str(),
+                "aarch64-apple-darwin"
+                    | "x86_64-apple-darwin"
+                    | "aarch64-apple-ios"
+                    | "aarch64-apple-ios-sim"
+                    | "x86_64-apple-ios"
             ) {
                 let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
                 let wgpu_base = PathBuf::from(&crate_dir).join("deps/wgpu");
@@ -356,7 +373,10 @@ mod thorvg {
                         .join("include/webgpu/webgpu.h");
 
                     if wgpu_header.exists() {
-                        eprintln!("cargo:warning=Generating WebGPU bindings from {}", wgpu_header.display());
+                        eprintln!(
+                            "cargo:warning=Generating WebGPU bindings from {}",
+                            wgpu_header.display()
+                        );
 
                         let wgpu_bindings = bindgen::Builder::default()
                             .header(wgpu_header.to_str().unwrap())
@@ -374,7 +394,7 @@ mod thorvg {
                             .expect("Failed to generate wgpu bindings");
 
                         wgpu_bindings.write_to_file(
-                            PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs")
+                            PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs"),
                         )?;
 
                         eprintln!("cargo:warning=WebGPU bindings generated successfully");

@@ -131,11 +131,10 @@ fn main() {
         0,
     );
 
-    // Allocate buffer for software rendering
+
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
-    // Set software rendering target
-        player.set_sw_target_buffer(
+    player.set_sw_target(
             &mut buffer,
             WIDTH as u32,
             HEIGHT as u32,
@@ -218,7 +217,6 @@ fn main() {
             window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
             last_buffer_update = std::time::Instant::now();
         } else {
-            // Still need to call update to process window events
             window.update();
         }
     }

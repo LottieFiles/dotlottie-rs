@@ -37,18 +37,15 @@ mod tests {
             0,
         );
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
 
-        assert!(player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"), WIDTH, HEIGHT));
+        assert!(player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
+            WIDTH,
+            HEIGHT
+        ));
 
         let mut rendered_frames: Vec<f32> = vec![];
 

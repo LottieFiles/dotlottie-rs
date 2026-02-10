@@ -17,11 +17,10 @@ mod tests {
         };
         let mut player = DotLottiePlayer::new(config, 0);
 
-        // Allocate buffer for software rendering
+        
         let mut buffer: Vec<u32> = vec![0; (500 * 500) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
+        assert!(player.set_sw_target(
             &mut buffer,
             500,
             500,

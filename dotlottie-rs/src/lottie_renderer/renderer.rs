@@ -10,6 +10,55 @@ pub enum ColorSpace {
     ARGB8888S,
 }
 
+/// Trait for OpenGL context types that can be used with the renderer.
+///
+/// Implement this trait for your windowing library's OpenGL context type
+/// (e.g., glutin::Context, sdl2::video::GLContext, etc.)
+pub trait GlContext {
+    /// Returns the raw OpenGL context pointer.
+    ///
+    /// # Safety
+    /// The returned pointer must be valid for the lifetime of the context
+    /// and point to a valid OpenGL context.
+    fn as_ptr(&self) -> *mut std::ffi::c_void;
+}
+
+/// Trait for WebGPU device types that can be used with the renderer.
+///
+/// Implement this trait for your WebGPU device wrapper type.
+pub trait WgpuDevice {
+    /// Returns the raw WebGPU device pointer.
+    ///
+    /// # Safety
+    /// The returned pointer must be valid for the lifetime of the device
+    /// and point to a valid WebGPU device, or be null to let ThorVG create its own.
+    fn as_ptr(&self) -> *mut std::ffi::c_void;
+}
+
+/// Trait for WebGPU instance types that can be used with the renderer.
+///
+/// Implement this trait for your WebGPU instance wrapper type.
+pub trait WgpuInstance {
+    /// Returns the raw WebGPU instance pointer.
+    ///
+    /// # Safety
+    /// The returned pointer must be valid for the lifetime of the instance
+    /// and point to a valid WebGPU instance.
+    fn as_ptr(&self) -> *mut std::ffi::c_void;
+}
+
+/// Trait for WebGPU render target types that can be used with the renderer.
+///
+/// Implement this trait for your WebGPU surface/target wrapper type.
+pub trait WgpuTarget {
+    /// Returns the raw WebGPU target pointer.
+    ///
+    /// # Safety
+    /// The returned pointer must be valid for the lifetime of the target
+    /// and point to a valid WebGPU render target.
+    fn as_ptr(&self) -> *mut std::ffi::c_void;
+}
+
 pub enum Drawable<'d, R: Renderer> {
     Shape(&'d R::Shape),
     Animation(&'d R::Animation),
@@ -92,9 +141,9 @@ pub trait Renderer: Sized + 'static {
     /// `buffer` must be a valid pointer to a mutable u32 array with at least
     /// `stride (Width))` elements. The buffer must remain valid for the lifetime
     /// of rendering operations using this target.
-    unsafe fn set_sw_target(
+    fn set_sw_target(
         &mut self,
-        buffer: *mut u32,
+        buffer: &mut [u32],
         stride: u32,
         width: u32,
         height: u32,
@@ -105,7 +154,7 @@ pub trait Renderer: Sized + 'static {
     ///
     /// `context` must be a valid pointer to an OpenGL context. The context must
     /// remain valid for the lifetime of rendering operations using this target.
-    unsafe fn set_gl_target(
+    fn set_gl_target(
         &mut self,
         context: *mut std::ffi::c_void,
         id: i32,
@@ -121,7 +170,7 @@ pub trait Renderer: Sized + 'static {
     /// render target. All pointers must remain valid for the lifetime of rendering
     /// operations using this target.
     #[allow(clippy::too_many_arguments)]
-    unsafe fn set_wg_target(
+    fn set_wg_target(
         &mut self,
         device: *mut std::ffi::c_void,
         instance: *mut std::ffi::c_void,
@@ -132,7 +181,7 @@ pub trait Renderer: Sized + 'static {
         _type: i32,
     ) -> Result<(), Self::Error>;
 
-    fn clear(&self, free: bool) -> Result<(), Self::Error>;
+    fn clear(&self) -> Result<(), Self::Error>;
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), Self::Error>;
 

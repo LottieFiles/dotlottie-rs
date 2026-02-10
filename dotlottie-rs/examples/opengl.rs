@@ -10,7 +10,7 @@
 // ==============================================================================
 #[cfg(feature = "tvg-gl")]
 mod opengl_impl {
-    use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
+    use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, GlContext};
     use glutin::config::ConfigTemplateBuilder;
     use glutin::context::{ContextAttributesBuilder, NotCurrentGlContext, PossiblyCurrentContext};
     use glutin::display::GetGlDisplay;
@@ -37,6 +37,15 @@ mod opengl_impl {
     #[cfg(not(target_os = "macos"))]
     fn get_gl_context(_context: &PossiblyCurrentContext) -> *mut std::ffi::c_void {
         std::ptr::null_mut()
+    }
+
+    // Wrapper type for OpenGL context pointer
+    struct OpenGLContext(*mut std::ffi::c_void);
+
+    impl GlContext for OpenGLContext {
+        fn as_ptr(&self) -> *mut std::ffi::c_void {
+            self.0
+        }
     }
 
     const WIDTH: u32 = 600;
@@ -209,6 +218,8 @@ mod opengl_impl {
 
             // Try multiple times if it fails - sometimes GL needs a moment
             let mut success = false;
+            let gl_ctx = OpenGLContext(context_ptr);
+
             for attempt in 1..=5 {
                 // Ensure context is current before each attempt
                 gl_context.make_current(&gl_surface).unwrap();
@@ -219,15 +230,13 @@ mod opengl_impl {
                     gl::Finish();
                 }
 
-                success = unsafe {
-                    player.set_gl_target(
-                        context_ptr,
-                        fbo_id,
-                        WIDTH,
-                        HEIGHT,
-                        ColorSpace::ABGR8888S, // Must be ABGR8888S for GL
-                    )
-                };
+                success = player.set_gl_target(
+                    &gl_ctx,
+                    fbo_id,
+                    WIDTH,
+                    HEIGHT,
+                    ColorSpace::ABGR8888S, // Must be ABGR8888S for GL
+                );
 
                 if success {
                     println!("✓ OpenGL target set successfully on attempt {attempt}" );

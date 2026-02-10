@@ -17,7 +17,6 @@ const WIDTH: u32 = 550;
 const HEIGHT: u32 = 550;
 
 fn main() {
-    // Create window
     let mut window = Window::new(
         "Gradient Slot Example - Press T to toggle, SPACE to cycle",
         WIDTH as usize,
@@ -28,7 +27,6 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    // Create player and load animation
     let mut player = DotLottiePlayer::new(
         Config {
             loop_animation: true,
@@ -38,12 +36,10 @@ fn main() {
         0, // threads (0 = auto)
     );
 
-    // Allocate buffer for software rendering
+
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-    // Set software rendering target
-
-        player.set_sw_target_buffer(
+    player.set_sw_target(
             &mut buffer,
             WIDTH,
             HEIGHT,
@@ -63,8 +59,6 @@ fn main() {
     println!("Press SPACE to cycle through different gradients (static mode)");
     println!("Press ESC to quit");
 
-    // Define some gradient presets
-    // Each gradient is a vector of GradientStop { offset, color: [R, G, B, A] }
     let gradients = [
         (
             "Sunset",
@@ -179,7 +173,6 @@ fn main() {
     let mut last_toggle_press = std::time::Instant::now();
     let mut is_animated = false;
 
-    // Set initial gradient (static)
     let gradient_slot = GradientSlot::new(gradients[current_gradient_index].1.clone());
     player.set_gradient_slot("gradient_fill", gradient_slot);
     println!(
@@ -187,16 +180,13 @@ fn main() {
         gradients[current_gradient_index].0
     );
 
-    // Main render loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now();
 
-        // Handle toggle between static and animated with T key
         if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
             is_animated = !is_animated;
 
             if is_animated {
-                // Create animated gradient slot: Sunset -> Ocean (linear interpolation)
                 let gradient_slot = GradientSlot::with_keyframes(vec![
                     LottieKeyframe {
                         frame: 0,
@@ -246,7 +236,6 @@ fn main() {
                 player.set_gradient_slot("gradient_fill", gradient_slot);
                 println!("Mode: ANIMATED (Sunset -> Ocean)");
             } else {
-                // Switch back to static mode
                 let gradient_slot = GradientSlot::new(gradients[current_gradient_index].1.clone());
                 player.set_gradient_slot("gradient_fill", gradient_slot);
                 println!(
@@ -258,14 +247,12 @@ fn main() {
             last_toggle_press = now;
         }
 
-        // Handle gradient cycling with SPACE key (only in static mode)
         if !is_animated
             && window.is_key_down(Key::Space)
             && now.duration_since(last_space_press).as_millis() > 200
         {
             current_gradient_index = (current_gradient_index + 1) % gradients.len();
 
-            // Create and set the new gradient slot
             let gradient_slot = GradientSlot::new(gradients[current_gradient_index].1.clone());
             player.set_gradient_slot("gradient_fill", gradient_slot);
 
@@ -276,7 +263,6 @@ fn main() {
             last_space_press = now;
         }
 
-        // Update animation frame and render
         if player.tick() {
             window
                 .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)

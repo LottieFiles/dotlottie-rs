@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
     use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Config, DotLottiePlayer, StateMachineEvent,
+        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Config, DotLottiePlayer,
+        StateMachineEvent,
     };
 
     #[test]
@@ -9,16 +10,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/action_tests/inc_rating.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            100,
-            100,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
 
         player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -65,16 +59,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/action_tests/decr_rating.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            100,
-            100,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
 
         player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -121,16 +108,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/action_tests/toggle.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            100,
-            100,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
 
         player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -166,16 +146,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            100,
-            100,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
 
         player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -205,16 +178,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            100,
-            100,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
 
         player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -245,16 +211,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            100,
-            100,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
 
         player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -285,16 +244,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/action_tests/fire.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            100,
-            100,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
 
         player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -324,16 +276,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/action_tests/set_frame.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            100,
-            100,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
 
         player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -372,16 +317,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/action_tests/set_progress.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            100,
-            100,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
 
         player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -420,16 +358,9 @@ mod tests {
         let reset_sm = include_str!("../assets/statemachines/action_tests/reset.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            100,
-            100,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
 
         player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -464,16 +395,9 @@ mod tests {
         let reset_sm = include_str!("../assets/statemachines/normal_usecases/rating.json");
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        // Allocate buffer for software rendering
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        // Set software rendering target
-        assert!(player.set_sw_target_buffer(
-            &mut buffer,
-            100,
-            100,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
 
         player.load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),

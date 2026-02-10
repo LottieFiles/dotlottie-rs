@@ -10,7 +10,10 @@ mod fallback_font;
 #[cfg(feature = "tvg")]
 mod thorvg;
 
-pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
+pub use renderer::{
+    Animation, ColorSpace, Drawable, GlContext, Renderer, Shape, WgpuDevice, WgpuInstance,
+    WgpuTarget,
+};
 pub use slots::{
     slots_from_json_string, Bezier, BezierValue, ColorSlot, GradientSlot, GradientStop, ImageSlot,
     LottieKeyframe, LottieProperty, PositionSlot, ScalarSlot, SlotType, TextCaps, TextDocument,
@@ -50,9 +53,9 @@ pub trait LottieRenderer {
     /// `buffer` must be a valid pointer to a mutable u32 array with at least
     /// `stride (Width)` elements. The buffer must remain valid for the lifetime
     /// of rendering operations using this target.
-    unsafe fn set_sw_target(
+    fn set_sw_target(
         &mut self,
-        buffer: *mut u32,
+        buffer: &mut [u32],
         stride: u32,
         width: u32,
         height: u32,
@@ -239,7 +242,7 @@ struct LottieRendererImpl<R: Renderer> {
 impl<R: Renderer> LottieRendererImpl<R> {
     fn clear(&mut self) -> Result<(), LottieRendererError> {
         if self.animation.is_some() || self.background_shape.is_some() {
-            self.renderer.clear(true).map_err(into_lottie::<R>)?;
+            self.renderer.clear().map_err(into_lottie::<R>)?;
             self.animation = None;
             self.background_shape = None;
         }
@@ -391,9 +394,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         R::register_font(font_name, font_data).map_err(into_lottie::<R>)
     }
 
-    unsafe fn set_sw_target(
+    fn set_sw_target(
         &mut self,
-        buffer_ptr: *mut u32,
+        buffer_ptr: &mut [u32],
         stride: u32,
         width: u32,
         height: u32,

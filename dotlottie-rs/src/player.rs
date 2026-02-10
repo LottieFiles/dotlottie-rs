@@ -827,7 +827,7 @@ impl DotLottiePlayer {
     ///
     /// # Returns
     /// `false` if the buffer is too small or setup fails.
-    pub fn set_sw_target_buffer(
+    pub fn set_sw_target(
         &mut self,
         buffer: &mut [u32],
         width: u32,
@@ -839,96 +839,64 @@ impl DotLottiePlayer {
             return false;
         }
 
-        unsafe {
-            self.set_sw_target(
-                buffer.as_mut_ptr(),
-                width, // stride in pixels (u32 units), not bytes
-                width,
-                height,
-                color_space,
-            )
-        }
-    }
-
-    /// Set software rendering target using a raw pointer.
-    ///
-    /// # Safety
-    /// - `buffer` must point to valid memory for at least `width * height` pixels
-    /// - `buffer` must remain valid for the lifetime of the player or until a new target is set
-    /// - `stride` in pixels (u32 units), not bytes
-    pub unsafe fn set_sw_target(
-        &mut self,
-        buffer: *mut u32,
-        stride: u32,
-        width: u32,
-        height: u32,
-        color_space: ColorSpace,
-    ) -> bool {
-        let set_target = self
-            .renderer
-            .set_sw_target(buffer, stride, width, height, color_space);
+        let stride = width;
+        let set_target =  {
+            self.renderer
+                .set_sw_target(buffer, stride, width, height, color_space)
+        };
 
         set_target.is_ok()
     }
 
     /// Set OpenGL rendering target.
     ///
-    /// # Safety
-    /// - `context` must be a valid OpenGL context pointer (e.g., CGLContextObj on macOS)
-    /// - `id` must be a valid framebuffer object ID
-    /// - The GL context must remain valid while the player is using it
-    /// - GL context must be current on the calling thread when rendering
-    ///
-    /// # Note
-    /// This function deals with opaque FFI types and cannot be made safe without
-    /// wrapping the entire OpenGL API, which is beyond the scope of this library.
-    pub unsafe fn set_gl_target(
+    /// The GL context must remain valid while the player is using it and must be
+    /// current on the calling thread when rendering.
+    pub fn set_gl_target<C: crate::lottie_renderer::GlContext>(
         &mut self,
-        context: *mut std::ffi::c_void,
+        context: &C,
         id: i32,
         width: u32,
         height: u32,
         color_space: ColorSpace,
     ) -> bool {
-        let set_target = self
-            .renderer
-            .set_gl_target(context, id, width, height, color_space);
+        let set_target = unsafe {
+            self.renderer
+                .set_gl_target(context.as_ptr(), id, width, height, color_space)
+        };
 
         set_target.is_ok()
     }
 
     /// Set WebGPU rendering target.
     ///
-    /// # Safety
-    /// - `device` must be a valid WebGPU device pointer (WGPUDevice)
-    /// - `instance` must be a valid WebGPU instance pointer (WGPUInstance)
-    /// - `target` must be a valid WebGPU texture pointer (WGPUTexture)
-    /// - All pointers must remain valid while the player is using them
-    ///
-    /// # Note
-    /// This function deals with opaque WebGPU FFI types and cannot be made safe without
-    /// wrapping the entire WebGPU API. Use a safe WebGPU wrapper library (like wgpu-rs)
-    /// if you need type safety.
+    /// All WebGPU objects must remain valid while the player is using them.
     #[allow(clippy::too_many_arguments)]
-    pub unsafe fn set_wg_target(
+    pub fn set_wg_target<
+        D: crate::lottie_renderer::WgpuDevice,
+        I: crate::lottie_renderer::WgpuInstance,
+        T: crate::lottie_renderer::WgpuTarget,
+    >(
         &mut self,
-        device: *mut std::ffi::c_void,
-        instance: *mut std::ffi::c_void,
-        target: *mut std::ffi::c_void,
+        device: &D,
+        instance: &I,
+        target: &T,
         width: u32,
         height: u32,
         _color_space: ColorSpace,
         _type: i32,
     ) -> bool {
-        let set_target = self.renderer.set_wg_target(
-            device,
-            instance,
-            target,
-            width,
-            height,
-            ColorSpace::ABGR8888S,
-            _type,
-        );
+        let set_target = unsafe {
+            self.renderer.set_wg_target(
+                device.as_ptr(),
+                instance.as_ptr(),
+                target.as_ptr(),
+                width,
+                height,
+                ColorSpace::ABGR8888S,
+                _type,
+            )
+        };
 
         set_target.is_ok()
     }

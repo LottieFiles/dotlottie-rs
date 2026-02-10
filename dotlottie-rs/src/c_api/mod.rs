@@ -541,7 +541,8 @@ pub unsafe extern "C" fn dotlottie_wgpu_context_get_pointers(
     out_instance: *mut u64,
     out_surface: *mut u64,
 ) {
-    if context.is_null() || out_device.is_null() || out_instance.is_null() || out_surface.is_null() {
+    if context.is_null() || out_device.is_null() || out_instance.is_null() || out_surface.is_null()
+    {
         return;
     }
 
@@ -1571,9 +1572,7 @@ mod webgl_api {
     /// # Returns
     /// A handle (uintptr_t) to the WebGL context, or 0 on failure
     #[no_mangle]
-    pub unsafe extern "C" fn dotlottie_webgl_context_create(
-        selector: *const c_char,
-    ) -> usize {
+    pub unsafe extern "C" fn dotlottie_webgl_context_create(selector: *const c_char) -> usize {
         if selector.is_null() {
             return 0;
         }
@@ -1680,7 +1679,8 @@ mod webgpu_api {
     extern "C" {
         fn emscripten_webgpu_get_device() -> usize;
         fn wgpuCreateInstance(descriptor: *const std::ffi::c_void) -> usize;
-        fn wgpuInstanceCreateSurface(instance: usize, descriptor: *const std::ffi::c_void) -> usize;
+        fn wgpuInstanceCreateSurface(instance: usize, descriptor: *const std::ffi::c_void)
+            -> usize;
         fn wgpuInstanceRelease(instance: usize);
         fn wgpuAdapterRelease(adapter: usize);
         fn wgpuDeviceRelease(device: usize);
@@ -1700,7 +1700,7 @@ mod webgpu_api {
         stype: u32,
     }
 
-    const WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector: u32 = 0x00000004;
+    const WGPUSTYPE_SURFACE_DESCRIPTOR_FROM_CANVAS_HTMLSELECTOR: u32 = 0x00000004;
 
     // Global state for WebGPU
     static WEBGPU_STATE: Mutex<Option<WebGpuState>> = Mutex::new(None);
@@ -1709,9 +1709,6 @@ mod webgpu_api {
         instance: usize,
         adapter: usize,
         device: usize,
-        adapter_requested: bool,
-        device_requested: bool,
-        initialization_failed: bool,
     }
 
     impl Default for WebGpuState {
@@ -1720,33 +1717,8 @@ mod webgpu_api {
                 instance: 0,
                 adapter: 0,
                 device: 0,
-                adapter_requested: false,
-                device_requested: false,
-                initialization_failed: false,
             }
         }
-    }
-
-    /// Request a WebGPU adapter
-    ///
-    /// # Returns
-    /// 0 on success, 1 on failure, 2 if request is in progress
-    #[no_mangle]
-    pub unsafe extern "C" fn dotlottie_webgpu_request_adapter() -> i32 {
-        // Note: This is a simplified version - the full implementation would need
-        // to handle async callbacks as in your original C++ code
-        // For now, we'll use the emscripten helper function
-        0
-    }
-
-    /// Request a WebGPU device
-    ///
-    /// # Returns
-    /// 0 on success, 1 on failure, 2 if request is in progress
-    #[no_mangle]
-    pub unsafe extern "C" fn dotlottie_webgpu_request_device() -> i32 {
-        dotlottie_webgpu_request_adapter();
-        0
     }
 
     /// Get the WebGPU adapter handle
@@ -1768,8 +1740,6 @@ mod webgpu_api {
     /// Handle to the device, or fallback to emscripten's device
     #[no_mangle]
     pub unsafe extern "C" fn dotlottie_webgpu_get_device() -> usize {
-        dotlottie_webgpu_request_device();
-
         let state = WEBGPU_STATE.lock().unwrap();
         if let Some(ref s) = *state {
             if s.device != 0 {
@@ -1819,9 +1789,7 @@ mod webgpu_api {
     /// # Returns
     /// Handle to the surface (0 on failure)
     #[no_mangle]
-    pub unsafe extern "C" fn dotlottie_webgpu_get_surface(
-        canvas_selector: *const c_char,
-    ) -> usize {
+    pub unsafe extern "C" fn dotlottie_webgpu_get_surface(canvas_selector: *const c_char) -> usize {
         if canvas_selector.is_null() {
             eprintln!("[WebGPU] Cannot create surface: selector is null");
             return 0;
@@ -1838,7 +1806,7 @@ mod webgpu_api {
         let canvas_descriptor = WGPUSurfaceDescriptorFromCanvasHTMLSelector {
             chain: WGPUChainedStruct {
                 next: std::ptr::null(),
-                stype: WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector,
+                stype: WGPUSTYPE_SURFACE_DESCRIPTOR_FROM_CANVAS_HTMLSELECTOR,
             },
             selector: canvas_selector,
         };

@@ -329,6 +329,60 @@ mod thorvg {
 
         bindings.write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
 
+        // Generate WebGPU bindings if tvg-wg is enabled for Apple platforms
+        if tvg_wg_enabled {
+            let target = env::var("TARGET").unwrap_or_default();
+
+            if matches!(target.as_str(),
+                "aarch64-apple-darwin" | "x86_64-apple-darwin" |
+                "aarch64-apple-ios" | "aarch64-apple-ios-sim" | "x86_64-apple-ios"
+            ) {
+                let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+                let wgpu_base = PathBuf::from(&crate_dir).join("deps/wgpu");
+
+                // Map target to wgpu library directory
+                let wgpu_arch_dir = match target.as_str() {
+                    "aarch64-apple-darwin" => "wgpu-macos-aarch64-release",
+                    "x86_64-apple-darwin" => "wgpu-macos-x86_64-release",
+                    "aarch64-apple-ios" => "wgpu-ios-aarch64-release",
+                    "aarch64-apple-ios-sim" => "wgpu-ios-aarch64-simulator-release",
+                    "x86_64-apple-ios" => "wgpu-ios-x86_64-simulator-release",
+                    _ => "",
+                };
+
+                if !wgpu_arch_dir.is_empty() {
+                    let wgpu_header = wgpu_base
+                        .join(wgpu_arch_dir)
+                        .join("include/webgpu/webgpu.h");
+
+                    if wgpu_header.exists() {
+                        eprintln!("cargo:warning=Generating WebGPU bindings from {}", wgpu_header.display());
+
+                        let wgpu_bindings = bindgen::Builder::default()
+                            .header(wgpu_header.to_str().unwrap())
+                            // Only include WGPU types and functions
+                            .allowlist_type("WGPU.*")
+                            .allowlist_function("wgpu.*")
+                            .allowlist_var("WGPU_.*")
+                            // Use libc types
+                            .ctypes_prefix("std::os::raw")
+                            // Don't generate layout tests (they're huge and we don't need them)
+                            .layout_tests(false)
+                            // Disable default includes to avoid system header issues
+                            .use_core()
+                            .generate()
+                            .expect("Failed to generate wgpu bindings");
+
+                        wgpu_bindings.write_to_file(
+                            PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs")
+                        )?;
+
+                        eprintln!("cargo:warning=WebGPU bindings generated successfully");
+                    }
+                }
+            }
+        }
+
         if cfg!(feature = "c_api") {
             let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
             create_dir_all(PathBuf::from(&crate_dir).join("build")).unwrap();

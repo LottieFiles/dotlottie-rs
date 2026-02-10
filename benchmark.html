@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -12,8 +12,8 @@
       }
 
       body {
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
         background: #1a1a1a;
         color: #fff;
         padding: 20px;
@@ -314,10 +314,10 @@
       //   "https://lottie.host/9a5a6605-fc90-4935-8d10-9df4c83902ff/PFUKH53LJk.lottie",
       //   "https://lottie.host/9af07d1a-98f2-45ab-8c94-253ed29722a3/zSNNQBgkWu.json",
       //   "https://lottie.host/89a150dc-0830-44c3-9e00-f0caa36af94e/3UJmtNq2Nu.json",
-      // ];
+      // ]; 
       const ANIMATION_URLS = [
-        "./examples/demo-player/src/lottie_story.lottie",
-        // "./examples/demo-player/src/car_hud.lottie",
+        //"./examples/demo-player/src/lottie_story.lottie",
+        "/dotlottie-rs/assets/animations/lottie/bouncy_ball.json",
       ];
 
       // Module paths for each renderer
@@ -449,7 +449,9 @@
           Module.HEAPU8.fill(0, bufferPtr, bufferPtr + bufferSize);
 
           console.log(
-            `[SW ${index}] Buffer allocated: 0x${bufferPtr.toString(16)}, size: ${bufferSize}`,
+            `[SW ${index}] Buffer allocated: 0x${bufferPtr.toString(
+              16
+            )}, size: ${bufferSize}`
           );
 
           // Set software target
@@ -461,27 +463,29 @@
             stride,
             width,
             height,
-            colorSpace,
+            colorSpace
           );
 
           if (setTargetResult !== 0) {
             throw new Error(
-              `Failed to set software rendering target for canvas ${index}, error code: ${setTargetResult}`,
+              `Failed to set software rendering target for canvas ${index}, error code: ${setTargetResult}`
             );
           }
 
           console.log(`[SW ${index}] Software target set successfully`);
           console.log(
-            `[SW ${index}] Config: width=${width}, height=${height}, stride=${stride}, colorSpace=${colorSpace}, bufferSize=${bufferSize}`,
+            `[SW ${index}] Config: width=${width}, height=${height}, stride=${stride}, colorSpace=${colorSpace}, bufferSize=${bufferSize}`
           );
 
           // Randomly select an animation from the cache
           const animationIndex = Math.floor(
-            Math.random() * cachedAnimations.length,
+            Math.random() * cachedAnimations.length
           );
           const animation = cachedAnimations[animationIndex];
           console.log(
-            `[SW ${index}] Loading animation ${animationIndex + 1}/${cachedAnimations.length}`,
+            `[SW ${index}] Loading animation ${animationIndex + 1}/${
+              cachedAnimations.length
+            }`
           );
           console.log(`[SW ${index}] URL: ${animation.url}`);
 
@@ -491,13 +495,15 @@
           if (animation.isDotLottie) {
             // For .lottie files: allocate buffer and copy binary data
             console.log(
-              `[SW ${index}] Processing .lottie file, size: ${animation.data.byteLength} bytes`,
+              `[SW ${index}] Processing .lottie file, size: ${animation.data.byteLength} bytes`
             );
             const byteArray = new Uint8Array(animation.data);
             animationPtr = Module._malloc(byteArray.length);
             Module.HEAPU8.set(byteArray, animationPtr);
             console.log(
-              `[SW ${index}] Binary data copied to 0x${animationPtr.toString(16)}`,
+              `[SW ${index}] Binary data copied to 0x${animationPtr.toString(
+                16
+              )}`
             );
 
             // Returns exit status: 0 = success, non-zero = error
@@ -507,16 +513,16 @@
               animationPtr,
               byteArray.length,
               width,
-              height,
+              height
             );
             console.log(
-              `[SW ${index}] load_dotlottie_data returned: ${loadResult}`,
+              `[SW ${index}] load_dotlottie_data returned: ${loadResult}`
             );
 
             if (loadResult !== 0) {
               Module._free(animationPtr);
               throw new Error(
-                `Failed to load .lottie file for canvas ${index}, error code: ${loadResult}, URL: ${animation.url}`,
+                `Failed to load .lottie file for canvas ${index}, error code: ${loadResult}, URL: ${animation.url}`
               );
             }
 
@@ -524,11 +530,13 @@
           } else {
             // For .json files: allocate string and use animation data API
             console.log(
-              `[SW ${index}] Processing .json file, length: ${animation.data.length} chars`,
+              `[SW ${index}] Processing .json file, length: ${animation.data.length} chars`
             );
             animationPtr = allocateUTF8(Module, animation.data);
             console.log(
-              `[SW ${index}] JSON string copied to 0x${animationPtr.toString(16)}`,
+              `[SW ${index}] JSON string copied to 0x${animationPtr.toString(
+                16
+              )}`
             );
 
             // Returns exit status: 0 = success, non-zero = error
@@ -537,16 +545,16 @@
               player,
               animationPtr,
               width,
-              height,
+              height
             );
             console.log(
-              `[SW ${index}] load_animation_data returned: ${loadResult}`,
+              `[SW ${index}] load_animation_data returned: ${loadResult}`
             );
 
             if (loadResult !== 0) {
               Module._free(animationPtr);
               throw new Error(
-                `Failed to load animation data for canvas ${index}, error code: ${loadResult}`,
+                `Failed to load animation data for canvas ${index}, error code: ${loadResult}`
               );
             }
           }
@@ -564,14 +572,14 @@
           const playResult = Module._dotlottie_play(player);
           if (playResult !== 0) {
             throw new Error(
-              `Failed to start playback for canvas ${index}, error code: ${playResult}`,
+              `Failed to start playback for canvas ${index}, error code: ${playResult}`
             );
           }
 
           // Verify playing
           const isPlaying = Module._dotlottie_is_playing(player);
           console.log(
-            `[SW ${index}] Playback started, is_playing: ${isPlaying}`,
+            `[SW ${index}] Playback started, is_playing: ${isPlaying}`
           );
 
           return {
@@ -600,11 +608,13 @@
               if (fpsCounters[index].frames === 0) {
                 const bufferView = Module.HEAPU8.subarray(
                   bufferPtr,
-                  bufferPtr + Math.min(1000, bufferSize),
+                  bufferPtr + Math.min(1000, bufferSize)
                 );
                 const hasData = bufferView.some((byte) => byte !== 0);
                 console.log(
-                  `[SW ${index}] First frame - buffer has data: ${hasData}, first 10 bytes: [${Array.from(bufferView.slice(0, 10)).join(", ")}]`,
+                  `[SW ${index}] First frame - buffer has data: ${hasData}, first 10 bytes: [${Array.from(
+                    bufferView.slice(0, 10)
+                  ).join(", ")}]`
                 );
               }
 
@@ -613,7 +623,7 @@
               const bufferView = new Uint8ClampedArray(
                 Module.HEAPU8.buffer,
                 bufferPtr,
-                bufferSize,
+                bufferSize
               );
               const imageData = new ImageData(bufferView, width, height);
               ctx.putImageData(imageData, 0, 0);
@@ -669,22 +679,24 @@
           0,
           width,
           height,
-          colorSpace,
+          colorSpace
         );
 
         if (setTargetResult !== 0) {
           throw new Error(
-            `Failed to set WebGL rendering target for canvas ${index}, error code: ${setTargetResult}`,
+            `Failed to set WebGL rendering target for canvas ${index}, error code: ${setTargetResult}`
           );
         }
 
         // Randomly select an animation from the cache
         const animationIndex = Math.floor(
-          Math.random() * cachedAnimations.length,
+          Math.random() * cachedAnimations.length
         );
         const animation = cachedAnimations[animationIndex];
         console.log(
-          `[GL ${index}] Loading animation ${animationIndex + 1}/${cachedAnimations.length}`,
+          `[GL ${index}] Loading animation ${animationIndex + 1}/${
+            cachedAnimations.length
+          }`
         );
         console.log(`[GL ${index}] URL: ${animation.url}`);
 
@@ -703,13 +715,13 @@
             animationPtr,
             byteArray.length,
             width,
-            height,
+            height
           );
 
           if (loadResult !== 0) {
             Module._free(animationPtr);
             throw new Error(
-              `Failed to load .lottie file for canvas ${index}, error code: ${loadResult}`,
+              `Failed to load .lottie file for canvas ${index}, error code: ${loadResult}`
             );
           }
         } else {
@@ -721,13 +733,13 @@
             player,
             animationPtr,
             width,
-            height,
+            height
           );
 
           if (loadResult !== 0) {
             Module._free(animationPtr);
             throw new Error(
-              `Failed to load animation data for canvas ${index}, error code: ${loadResult}`,
+              `Failed to load animation data for canvas ${index}, error code: ${loadResult}`
             );
           }
         }
@@ -737,7 +749,7 @@
         if (playResult !== 0) {
           Module._free(animationPtr);
           throw new Error(
-            `Failed to start playback for canvas ${index}, error code: ${playResult}`,
+            `Failed to start playback for canvas ${index}, error code: ${playResult}`
           );
         }
 
@@ -786,7 +798,7 @@
 
         if (surface === 0) {
           throw new Error(
-            `Failed to create WebGPU surface for canvas ${index}`,
+            `Failed to create WebGPU surface for canvas ${index}`
           );
         }
 
@@ -810,22 +822,24 @@
           width,
           height,
           colorSpace,
-          0,
+          0
         );
 
         if (setTargetResult !== 0) {
           throw new Error(
-            `Failed to set WebGPU rendering target for canvas ${index}, error code: ${setTargetResult}`,
+            `Failed to set WebGPU rendering target for canvas ${index}, error code: ${setTargetResult}`
           );
         }
 
         // Randomly select an animation from the cache
         const animationIndex = Math.floor(
-          Math.random() * cachedAnimations.length,
+          Math.random() * cachedAnimations.length
         );
         const animation = cachedAnimations[animationIndex];
         console.log(
-          `[GPU ${index}] Loading animation ${animationIndex + 1}/${cachedAnimations.length}`,
+          `[GPU ${index}] Loading animation ${animationIndex + 1}/${
+            cachedAnimations.length
+          }`
         );
         console.log(`[GPU ${index}] URL: ${animation.url}`);
 
@@ -844,13 +858,13 @@
             animationPtr,
             byteArray.length,
             width,
-            height,
+            height
           );
 
           if (loadResult !== 0) {
             Module._free(animationPtr);
             throw new Error(
-              `Failed to load .lottie file for canvas ${index}, error code: ${loadResult}`,
+              `Failed to load .lottie file for canvas ${index}, error code: ${loadResult}`
             );
           }
         } else {
@@ -862,13 +876,13 @@
             player,
             animationPtr,
             width,
-            height,
+            height
           );
 
           if (loadResult !== 0) {
             Module._free(animationPtr);
             throw new Error(
-              `Failed to load animation data for canvas ${index}, error code: ${loadResult}`,
+              `Failed to load animation data for canvas ${index}, error code: ${loadResult}`
             );
           }
         }
@@ -878,7 +892,7 @@
         if (playResult !== 0) {
           Module._free(animationPtr);
           throw new Error(
-            `Failed to start playback for canvas ${index}, error code: ${playResult}`,
+            `Failed to start playback for canvas ${index}, error code: ${playResult}`
           );
         }
 
@@ -921,8 +935,9 @@
           counter.frames = 0;
           counter.lastTime = now;
 
-          document.getElementById(`fps-${index}`).textContent =
-            `${counter.fps} fps`;
+          document.getElementById(
+            `fps-${index}`
+          ).textContent = `${counter.fps} fps`;
         }
 
         // Track for aggregate stats
@@ -1015,7 +1030,7 @@
             if (renderer === "webgpu") {
               if (!navigator.gpu) {
                 throw new Error(
-                  "WebGPU is not supported in this browser. Please use Chrome 113+ or Edge 113+.",
+                  "WebGPU is not supported in this browser. Please use Chrome 113+ or Edge 113+."
                 );
               }
 
@@ -1080,7 +1095,7 @@
             const url = ANIMATION_URLS[i];
             setStatus(
               `Loading animation ${i + 1}/${ANIMATION_URLS.length}...`,
-              "info",
+              "info"
             );
 
             // Determine if it's a .lottie (binary) or .json (text) file
@@ -1089,7 +1104,7 @@
             const response = await fetch(url);
             if (!response.ok) {
               throw new Error(
-                `Failed to fetch animation from ${url}: ${response.status} ${response.statusText}`,
+                `Failed to fetch animation from ${url}: ${response.status} ${response.statusText}`
               );
             }
 
@@ -1098,13 +1113,17 @@
               // Fetch as binary ArrayBuffer for .lottie files
               data = await response.arrayBuffer();
               console.log(
-                `✓ Cached animation ${i + 1}: ${url} (.lottie, ${data.byteLength} bytes)`,
+                `✓ Cached animation ${i + 1}: ${url} (.lottie, ${
+                  data.byteLength
+                } bytes)`
               );
             } else {
               // Fetch as text for .json files
               data = await response.text();
               console.log(
-                `✓ Cached animation ${i + 1}: ${url} (.json, ${data.length} bytes)`,
+                `✓ Cached animation ${i + 1}: ${url} (.json, ${
+                  data.length
+                } bytes)`
               );
             }
 
@@ -1115,7 +1134,9 @@
 
           // Update UI to show animation count
           const animCountInput = document.getElementById("animationCount");
-          animCountInput.value = `${cachedAnimations.length} animation${cachedAnimations.length !== 1 ? "s" : ""} loaded`;
+          animCountInput.value = `${cachedAnimations.length} animation${
+            cachedAnimations.length !== 1 ? "s" : ""
+          } loaded`;
 
           // Reset stats
           stats = {
@@ -1127,7 +1148,7 @@
 
           setStatus(
             `Setting up ${numInstances} ${renderer} renderers...`,
-            "info",
+            "info"
           );
 
           // Setup renderers based on selection
@@ -1154,7 +1175,7 @@
           for (let i = 0; i < numInstances; i++) {
             setStatus(
               `Setting up ${renderer} renderer ${i + 1}/${numInstances}...`,
-              "info",
+              "info"
             );
             console.log(`Starting setup for instance ${i}...`);
 
@@ -1173,12 +1194,12 @@
           }
 
           console.log(
-            `Setup complete: ${successCount} succeeded, ${failCount} failed`,
+            `Setup complete: ${successCount} succeeded, ${failCount} failed`
           );
 
           if (successCount === 0) {
             throw new Error(
-              `All ${numInstances} instances failed to initialize`,
+              `All ${numInstances} instances failed to initialize`
             );
           }
 
@@ -1189,7 +1210,9 @@
           const statusMessage =
             failCount > 0
               ? `Benchmark running: ${successCount}/${numInstances} ${renderer} instances (${failCount} failed)`
-              : `Benchmark running with ${successCount} ${renderer} ${successCount === 1 ? "instance" : "instances"}`;
+              : `Benchmark running with ${successCount} ${renderer} ${
+                  successCount === 1 ? "instance" : "instances"
+                }`;
 
           setStatus(statusMessage, failCount > 0 ? "info" : "success");
 

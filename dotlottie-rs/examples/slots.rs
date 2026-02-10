@@ -1,15 +1,15 @@
 #![allow(clippy::print_stdout)]
 
+use base64::{engine::general_purpose::STANDARD, Engine};
 use dotlottie_rs::{
     ColorSlot, Config, DotLottiePlayer, GradientSlot, GradientStop, ImageSlot, PositionSlot,
     ScalarSlot, TextDocument, TextSlot, VectorSlot,
 };
-use base64::{engine::general_purpose::STANDARD, Engine};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
-const WIDTH: u32 = 300;
-const HEIGHT: u32 = 300;
+const WIDTH: u32 = 600;
+const HEIGHT: u32 = 600;
 
 fn png_to_data_url(png_bytes: &[u8]) -> String {
     format!("data:image/png;base64,{}", STANDARD.encode(png_bytes))
@@ -36,10 +36,10 @@ fn apply_combination(player: &mut DotLottiePlayer, index: usize) {
                 TextSlot::with_document(
                     TextDocument::new("Red Star!")
                         .with_font("Cal Sans Regular")
-                        .with_size(10.0)
-                        .with_fill_color(vec![1.0, 0.0, 0.0, 1.0]),
+                        .with_size(10.0),
                 ),
             );
+            player.set_color_slot("title_text_color", ColorSlot::new([1.0, 0.0, 0.0]));
         }
 
         1 => {
@@ -64,10 +64,7 @@ fn apply_combination(player: &mut DotLottiePlayer, index: usize) {
         }
 
         2 => {
-            player.set_position_slot(
-                "star_position",
-                PositionSlot::static_value([350.0, 200.0]),
-            );
+            player.set_position_slot("star_position", PositionSlot::static_value([350.0, 200.0]));
             player.set_scalar_slot("star_rotation", ScalarSlot::new(45.0));
             player.set_scalar_slot("star_opacity", ScalarSlot::new(50.0));
         }
@@ -78,10 +75,10 @@ fn apply_combination(player: &mut DotLottiePlayer, index: usize) {
                 TextSlot::with_document(
                     TextDocument::new("Image Swap")
                         .with_font("Cal Sans Regular")
-                        .with_size(40.0)
-                        .with_fill_color(vec![0.2, 0.4, 0.9]),
+                        .with_size(40.0),
                 ),
             );
+            player.set_color_slot("title_text_color", ColorSlot::new([0.2, 0.4, 0.9]));
             let png_bytes = include_bytes!("../assets/images/image.png");
             player.set_image_slot(
                 "img",
@@ -111,18 +108,20 @@ fn apply_combination(player: &mut DotLottiePlayer, index: usize) {
                     TextDocument::new("All Slots!")
                         .with_font("Cal Sans Regular")
                         .with_size(45.0)
-                        .with_fill_color(vec![0.0, 0.8, 0.3]),
                 ),
             );
+            player.set_color_slot("title_text_color", ColorSlot::new([0.0, 0.8, 0.3]));
             player.set_vector_slot("star_scale", VectorSlot::static_value([120.0, 120.0]));
-            player.set_position_slot(
-                "star_position",
-                PositionSlot::static_value([300.0, 220.0]),
-            );
+            player.set_position_slot("star_position", PositionSlot::static_value([300.0, 220.0]));
             player.set_scalar_slot("star_rotation", ScalarSlot::new(30.0));
             player.set_scalar_slot("star_opacity", ScalarSlot::new(10.0));
-            player.set_image_slot("img", ImageSlot::from_data_url(png_to_data_url(include_bytes!("../assets/images/image.png"))).with_dimensions(100, 100));
-
+            player.set_image_slot(
+                "img",
+                ImageSlot::from_data_url(png_to_data_url(include_bytes!(
+                    "../assets/images/image.png"
+                )))
+                .with_dimensions(100, 100),
+            );
         }
 
         _ => unreachable!(),

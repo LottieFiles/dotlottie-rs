@@ -21,6 +21,7 @@ fn png_to_data_url(png_bytes: &[u8]) -> String {
 ///   Color    : "star_color"
 ///   Gradient : "star_gradient_color"
 ///   Text     : "title_text"
+///   Color    : "title_text_color"
 ///   Vector   : "star_scale"
 ///   Position : "star_position"
 ///   Scalar   : "star_rotation", "star_opacity"

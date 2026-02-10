@@ -166,9 +166,13 @@ fn state_machine_load_benchmark(c: &mut Criterion) {
         &mut buffer,
         WIDTH,
         HEIGHT,
-        ColorSpace::ABGR8888,
+        ColorSpace::ABGR8888
     );
-    let data = include_bytes!("../assets/statemachines/normal_usecases/sm_exploding_pigeon.lottie");
+
+    let data = include_bytes!(
+        "../assets/animations/dotlottie/v2/pigeon.lottie"
+    );
+    
     assert!(player.load_dotlottie_data(data, WIDTH, HEIGHT));
 
     c.bench_function("state_machine_load", |b| {
@@ -193,8 +197,9 @@ fn state_machine_load_data_benchmark(c: &mut Criterion) {
     ))
     .unwrap();
 
-    let animation_data =
-        include_bytes!("../assets/statemachines/normal_usecases/sm_exploding_pigeon.lottie");
+    let animation_data = include_bytes!(
+        "../assets/animations/dotlottie/v2/pigeon.lottie"
+    );
     assert!(player.load_dotlottie_data(animation_data, WIDTH, HEIGHT));
 
     c.bench_function("state_machine_load_data", |b| {

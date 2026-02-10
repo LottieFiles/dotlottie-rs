@@ -426,6 +426,7 @@ pub struct TvgAnimation {
     raw_paint: tvg::Tvg_Paint,
     tween_state: Option<TweenState>,
     data: Option<CString>,
+    active_slot_id: u32,
 }
 
 impl Default for TvgAnimation {
@@ -438,6 +439,7 @@ impl Default for TvgAnimation {
             raw_paint,
             tween_state: None,
             data: None,
+            active_slot_id: 0,
         }
     }
 }
@@ -622,8 +624,15 @@ impl Animation for TvgAnimation {
     }
 
     fn set_slots_str(&mut self, slots_json: &CStr) -> Result<(), TvgError> {
-        let result = if slots_json.to_bytes().is_empty() {
-            unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, 0) }
+        // delete the previously generated slot to avoid leaking ThorVG slot objects
+        if self.active_slot_id != 0 {
+            unsafe { tvg::tvg_lottie_animation_del_slot(self.raw_animation, self.active_slot_id) };
+            self.active_slot_id = 0;
+        }
+
+        if slots_json.to_bytes().is_empty() {
+            // resets all slots to their original values
+            unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, 0) }.into_result()
         } else {
             let slot_id = unsafe {
                 tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slots_json.as_ptr())
@@ -631,10 +640,19 @@ impl Animation for TvgAnimation {
             if slot_id == 0 {
                 return Err(TvgError::InvalidArgument);
             }
-            unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_id) }
-        };
 
-        result.into_result()
+            let result =
+                unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_id) }
+                    .into_result();
+
+            if result.is_ok() {
+                self.active_slot_id = slot_id;
+            } else {
+                unsafe { tvg::tvg_lottie_animation_del_slot(self.raw_animation, slot_id) };
+            }
+
+            result
+        }
     }
 
     fn set_quality(&mut self, quality: u8) -> Result<(), TvgError> {

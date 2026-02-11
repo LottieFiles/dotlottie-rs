@@ -59,9 +59,10 @@ mod tests {
         for config in configs {
             let mut player = DotLottiePlayer::new(config, 0);
 
-            assert_eq!(
-                player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-                Ok(()),
+            assert!(
+                player
+                    .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                    .is_ok(),
                 "Animation should load"
             );
 
@@ -102,7 +103,11 @@ mod tests {
                 }
             }
 
-            assert_eq!(player.stop(), Err(DotLottiePlayerError::InsufficientCondition), "Animation should not stop again");
+            assert_eq!(
+                player.stop(),
+                Err(DotLottiePlayerError::InsufficientCondition),
+                "Animation should not stop again"
+            );
         }
     }
 }

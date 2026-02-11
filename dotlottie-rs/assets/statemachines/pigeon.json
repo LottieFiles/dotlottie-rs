@@ -1,0 +1,110 @@
+{
+  "initial": "pigeonRunning",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "pigeonRunning",
+      "animation": "",
+      "loop": true,
+      "autoplay": true,
+      "segment": "bird",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "explosion",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "explode"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "explosion",
+      "animation": "",
+      "loop": false,
+      "autoplay": true,
+      "segment": "explosion",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "feathersFalling",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "rainFeathers"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "feathersFalling",
+      "animation": "",
+      "loop": false,
+      "autoplay": true,
+      "segment": "feather",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "pigeonRunning",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "restart"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "type": "Event",
+      "name": "explode"
+    },
+    {
+      "type": "Event",
+      "name": "rainFeathers"
+    },
+    {
+      "type": "Event",
+      "name": "restart"
+    }
+  ],
+  "interactions": [
+    {
+      "type": "PointerDown",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "explode"
+        }
+      ]
+    },
+    {
+      "type": "OnComplete",
+      "stateName": "explosion",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "rainFeathers"
+        }
+      ]
+    },
+    {
+      "type": "OnComplete",
+      "stateName": "feathersFalling",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "restart"
+        }
+      ]
+    }
+  ]
+}

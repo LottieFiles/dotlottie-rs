@@ -168,7 +168,7 @@ impl Renderer for TvgRenderer {
             Drawable::Shape(shape) => shape.raw_shape,
         };
 
-        unsafe { tvg::tvg_canvas_push(self.raw_canvas, raw_paint).into_result() }
+        unsafe { tvg::tvg_canvas_add(self.raw_canvas, raw_paint).into_result() }
     }
 
     fn draw(&mut self, clear_buffer: bool) -> Result<(), TvgError> {

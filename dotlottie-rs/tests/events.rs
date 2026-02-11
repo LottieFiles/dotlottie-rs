@@ -31,9 +31,10 @@ mod tests {
             "Invalid path should not load"
         );
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Valid path should load"
         );
 
@@ -82,9 +83,9 @@ mod tests {
                 DotLottieEvent::Play => "on_play".to_string(),
                 DotLottieEvent::Pause => "on_pause".to_string(),
                 DotLottieEvent::Stop => "on_stop".to_string(),
-                DotLottieEvent::Frame { frame_no } => format!("on_frame: {}", frame_no),
-                DotLottieEvent::Render { frame_no } => format!("on_render: {}", frame_no),
-                DotLottieEvent::Loop { loop_count } => format!("on_loop: {}", loop_count),
+                DotLottieEvent::Frame { frame_no } => format!("on_frame: {frame_no}"),
+                DotLottieEvent::Render { frame_no } => format!("on_render: {frame_no}"),
+                DotLottieEvent::Loop { loop_count } => format!("on_loop: {loop_count}"),
                 DotLottieEvent::Complete => "on_complete".to_string(),
             };
 
@@ -99,9 +100,10 @@ mod tests {
             );
         }
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Valid path should load"
         );
 

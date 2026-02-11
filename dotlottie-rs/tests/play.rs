@@ -17,7 +17,9 @@ mod tests {
             "Expected play to fail when animation is not loaded"
         );
 
-        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), Ok(()));
+        assert!(player
+            .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+            .is_ok());
 
         assert_eq!(
             player.play(),
@@ -30,23 +32,34 @@ mod tests {
     fn test_play_while_playing() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
 
-        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), Ok(()));
+        assert!(player
+            .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+            .is_ok());
 
         assert_eq!(player.play(), Ok(()));
 
         assert!(player.is_playing(), "Expected player to be playing");
 
-        assert_eq!(player.play(), Err(DotLottiePlayerError::InsufficientCondition), "Expected play to fail when already playing");
+        assert_eq!(
+            player.play(),
+            Err(DotLottiePlayerError::InsufficientCondition),
+            "Expected play to fail when already playing"
+        );
     }
 
     #[test]
     fn test_play_after_pause() {
-        let mut player = DotLottiePlayer::new(Config {
-            use_frame_interpolation: false,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                use_frame_interpolation: false,
+                ..Config::default()
+            },
+            0,
+        );
 
-        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), Ok(()));
+        assert!(player
+            .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+            .is_ok());
 
         assert_eq!(player.play(), Ok(()));
 
@@ -64,7 +77,11 @@ mod tests {
 
         let paused_at = player.current_frame();
 
-        assert_eq!(player.play(), Ok(()), "Expected play to succeed after pause");
+        assert_eq!(
+            player.play(),
+            Ok(()),
+            "Expected play to succeed after pause"
+        );
 
         let mut rendered_frames = vec![];
 
@@ -86,12 +103,17 @@ mod tests {
 
     #[test]
     fn test_play_after_complete() {
-        let mut player = DotLottiePlayer::new(Config {
-            use_frame_interpolation: false,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                use_frame_interpolation: false,
+                ..Config::default()
+            },
+            0,
+        );
 
-        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), Ok(()));
+        assert!(player
+            .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+            .is_ok());
 
         assert_eq!(player.play(), Ok(()));
 
@@ -112,7 +134,11 @@ mod tests {
             "Expected current frame to be total frames"
         );
 
-        assert_eq!(player.play(), Ok(()), "Expected play to succeed after complete");
+        assert_eq!(
+            player.play(),
+            Ok(()),
+            "Expected play to succeed after complete"
+        );
 
         assert_eq!(
             player.current_frame(),
@@ -123,12 +149,17 @@ mod tests {
 
     #[test]
     fn test_play_after_setting_frame() {
-        let mut player = DotLottiePlayer::new(Config {
-            use_frame_interpolation: false,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                use_frame_interpolation: false,
+                ..Config::default()
+            },
+            0,
+        );
 
-        assert_eq!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT), Ok(()));
+        assert!(player
+            .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+            .is_ok());
 
         let mid_frame = player.total_frames() / 2.0;
 

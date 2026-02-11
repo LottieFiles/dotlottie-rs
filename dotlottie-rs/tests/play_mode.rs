@@ -19,20 +19,24 @@ mod play_mode_tests {
 
     #[test]
     fn test_loop_count_with_loop_animation_false() {
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            loop_animation: false,
-            loop_count: 3,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::Forward,
+                autoplay: true,
+                loop_animation: false,
+                loop_count: 3,
+                ..Config::default()
+            },
+            0,
+        );
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -65,20 +69,24 @@ mod play_mode_tests {
 
     #[test]
     fn test_zero_loop_count() {
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 0,
-            use_frame_interpolation: false,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::Forward,
+                autoplay: true,
+                loop_animation: true,
+                loop_count: 0,
+                use_frame_interpolation: false,
+                ..Config::default()
+            },
+            0,
+        );
 
         let mut observed_loops = 0;
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -97,7 +105,6 @@ mod play_mode_tests {
             }
         }
 
-
         assert_eq!(observed_loops, 6, "Will loop and ignore loop count");
 
         // Same behaviour before refactor. I think is_complete should be false but its true
@@ -106,20 +113,24 @@ mod play_mode_tests {
 
     #[test]
     fn test_playing_after_loop_has_completed() {
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 3,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::Forward,
+                autoplay: true,
+                loop_animation: true,
+                loop_count: 3,
+                ..Config::default()
+            },
+            0,
+        );
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -144,7 +155,10 @@ mod play_mode_tests {
             }
         }
 
-        assert_eq!(observed_loops, 3, "Should have looped 3 times, got {observed_loops}");
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
         assert!(observed_completed);
 
         // Restart the player
@@ -171,26 +185,33 @@ mod play_mode_tests {
         }
 
         // loop count resets on complete
-        assert_eq!(observed_loops, 3, "Should have looped 3 times, got {observed_loops}");
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
         assert!(observed_completed);
     }
 
     #[test]
     fn test_loop_count_paused_mid_play() {
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 5,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::Forward,
+                autoplay: true,
+                loop_animation: true,
+                loop_count: 5,
+                ..Config::default()
+            },
+            0,
+        );
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -214,7 +235,10 @@ mod play_mode_tests {
             }
         }
 
-        assert_eq!(observed_loops, 3, "Should have looped 3 times, got {observed_loops}");
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
         assert!(!observed_completed);
 
         // Restart the player
@@ -239,7 +263,10 @@ mod play_mode_tests {
             }
         }
 
-        assert_eq!(observed_loops, 5, "Should have looped 5 times, got {observed_loops}");
+        assert_eq!(
+            observed_loops, 5,
+            "Should have looped 5 times, got {observed_loops}"
+        );
 
         assert!(observed_completed);
     }
@@ -268,9 +295,10 @@ mod play_mode_tests {
                 player.config().mode
             );
 
-            assert_eq!(
-                player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-                Ok(()),
+            assert!(
+                player
+                    .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                    .is_ok(),
                 "Animation should load"
             );
 
@@ -309,15 +337,19 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode() {
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::Forward,
+                autoplay: true,
+                ..Config::default()
+            },
+            0,
+        );
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -358,20 +390,24 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 3,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::Forward,
+                autoplay: true,
+                loop_animation: true,
+                loop_count: 3,
+                ..Config::default()
+            },
+            0,
+        );
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -396,22 +432,29 @@ mod play_mode_tests {
             }
         }
 
-        assert_eq!(observed_loops, 3, "Should have looped 3 times, got {observed_loops}");
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
 
         assert!(observed_completed);
     }
 
     #[test]
     fn test_reverse_play_mode() {
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::Reverse,
-            autoplay: true,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::Reverse,
+                autoplay: true,
+                ..Config::default()
+            },
+            0,
+        );
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
 
@@ -450,20 +493,24 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::Reverse,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 3,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::Reverse,
+                autoplay: true,
+                loop_animation: true,
+                loop_count: 3,
+                ..Config::default()
+            },
+            0,
+        );
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -488,7 +535,10 @@ mod play_mode_tests {
             }
         }
 
-        assert_eq!(observed_loops, 3, "Should have looped 3 times, got {observed_loops}");
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
 
         assert!(observed_completed);
     }
@@ -496,15 +546,19 @@ mod play_mode_tests {
     #[test]
     fn test_bounce_play_mode() {
         // TODO: Sometimes this test fails.
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::Bounce,
-            autoplay: true,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::Bounce,
+                autoplay: true,
+                ..Config::default()
+            },
+            0,
+        );
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
 
@@ -560,20 +614,24 @@ mod play_mode_tests {
 
     #[test]
     fn test_bounce_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::Bounce,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 3,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::Bounce,
+                autoplay: true,
+                loop_animation: true,
+                loop_count: 3,
+                ..Config::default()
+            },
+            0,
+        );
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -596,22 +654,29 @@ mod play_mode_tests {
             }
         }
 
-        assert_eq!(observed_loops, 3, "Should have looped 3 times, got {observed_loops}");
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
 
         assert!(observed_completed);
     }
 
     #[test]
     fn test_reverse_bounce_play_mode() {
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::ReverseBounce,
-            autoplay: true,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::ReverseBounce,
+                autoplay: true,
+                ..Config::default()
+            },
+            0,
+        );
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
 
@@ -667,20 +732,24 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_bounce_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(Config {
-            mode: Mode::ReverseBounce,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 3,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                mode: Mode::ReverseBounce,
+                autoplay: true,
+                loop_animation: true,
+                loop_count: 3,
+                ..Config::default()
+            },
+            0,
+        );
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                .is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -703,7 +772,10 @@ mod play_mode_tests {
             }
         }
 
-        assert_eq!(observed_loops, 3, "Should have looped 3 times, got {observed_loops}");
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
 
         assert!(observed_completed);
     }

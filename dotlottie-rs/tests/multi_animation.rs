@@ -11,12 +11,21 @@ mod tests {
     pub fn test_load_animation_with_animation_id() {
         let animation_id = "crying".to_string();
 
-        let mut player = DotLottiePlayer::new(Config {
-            animation_id: animation_id.clone(),
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                animation_id: animation_id.clone(),
+                ..Config::default()
+            },
+            0,
+        );
 
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT), Ok(()));
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
+                WIDTH,
+                HEIGHT
+            )
+            .is_ok());
 
         assert_eq!(player.active_animation_id(), animation_id);
     }
@@ -24,7 +33,13 @@ mod tests {
     #[test]
     pub fn test_load_animation() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert_eq!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT), Ok(()));
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
+                WIDTH,
+                HEIGHT
+            )
+            .is_ok());
 
         let manifest = player.manifest();
 

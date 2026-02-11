@@ -78,9 +78,10 @@ mod tests {
         for (config, expected_speed) in configs {
             let mut player = DotLottiePlayer::new(config, 0);
 
-            assert_eq!(
-                player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
-                Ok(()),
+            assert!(
+                player
+                    .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
+                    .is_ok(),
                 "Animation should load"
             );
             assert!(player.is_playing(), "Animation should be playing");

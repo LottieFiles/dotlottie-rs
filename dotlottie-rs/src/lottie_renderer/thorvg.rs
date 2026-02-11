@@ -1,4 +1,4 @@
-use crate::time::Instant;
+use crate::{time::Instant, GlContext, WgpuDevice, WgpuInstance, WgpuTarget};
 
 use std::{
     error::Error,
@@ -11,6 +11,51 @@ use std::{
 use crate::lottie_renderer::fallback_font;
 
 use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
+
+pub struct TvgGlContext(*mut std::ffi::c_void);
+pub struct TvgWgpuDevice(*mut std::ffi::c_void);
+pub struct TvgWgpuInstance(*mut std::ffi::c_void);
+pub struct TvgWgpuTarget(*mut std::ffi::c_void);
+
+impl super::GlContext for TvgGlContext {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
+
+impl super::WgpuDevice for TvgWgpuDevice {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
+
+impl super::WgpuInstance for TvgWgpuInstance {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
+
+impl super::WgpuTarget for TvgWgpuTarget {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
 
 #[expect(non_upper_case_globals)]
 #[allow(non_snake_case)]
@@ -148,6 +193,10 @@ impl Renderer for TvgRenderer {
     type Animation = TvgAnimation;
     type Shape = TvgShape;
     type Error = TvgError;
+    type GlContext = TvgGlContext;
+    type WgpuDevice = TvgWgpuDevice;
+    type WgpuInstance = TvgWgpuInstance;
+    type WgpuTarget = TvgWgpuTarget;
 
     fn register_font(font_name: &str, font_data: &[u8]) -> Result<(), Self::Error> {
         let font_name_cstr = CString::new(font_name).map_err(|_| TvgError::InvalidArgument)?;
@@ -208,61 +257,76 @@ impl Renderer for TvgRenderer {
 
     fn set_gl_target(
         &mut self,
-        context: *mut std::ffi::c_void,
+        context: &Self::GlContext,
         id: i32,
         width: u32,
         height: u32,
-        color_space: ColorSpace,
+        _color_space: ColorSpace,
     ) -> Result<(), Self::Error> {
-        // Wrapper type to make the call safe internally
-        struct RawGlContext(*mut std::ffi::c_void);
-        impl super::GlContext for RawGlContext {
-            fn as_ptr(&self) -> *mut std::ffi::c_void {
-                self.0
-            }
+        if self.raw_canvas.is_none() {
+            self.create_gl_canvas()?;
         }
 
-        let gl_context = RawGlContext(context);
-        self.set_gl_target_impl(&gl_context, id, width, height, color_space)
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe {
+                tvg::tvg_glcanvas_set_target(
+                    raw_canvas,
+                    context.as_ptr(),
+                    id,
+                    width,
+                    height,
+                    tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
+                )
+                .into_result()
+            }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
     }
 
     fn set_wg_target(
         &mut self,
-        device: *mut std::ffi::c_void,
-        instance: *mut std::ffi::c_void,
-        target: *mut std::ffi::c_void,
+        device: &Self::WgpuDevice,
+        instance: &Self::WgpuInstance,
+        target: &Self::WgpuTarget,
         width: u32,
         height: u32,
-        color_space: ColorSpace,
+        _color_space: ColorSpace,
         _type: i32,
     ) -> Result<(), Self::Error> {
-        // Wrapper types to make the call safe internally
-        struct RawWgpuDevice(*mut std::ffi::c_void);
-        impl super::WgpuDevice for RawWgpuDevice {
-            fn as_ptr(&self) -> *mut std::ffi::c_void {
-                self.0
-            }
+        if self.raw_canvas.is_none() {
+            self.create_wg_canvas()?;
         }
 
-        struct RawWgpuInstance(*mut std::ffi::c_void);
-        impl super::WgpuInstance for RawWgpuInstance {
-            fn as_ptr(&self) -> *mut std::ffi::c_void {
-                self.0
-            }
+        if let Some(raw_canvas) = self.raw_canvas {
+            let device_ptr = device.as_ptr();
+            let actual_device = if device_ptr.is_null() {
+                std::ptr::null_mut()
+            } else {
+                device_ptr
+            };
+
+            let result = unsafe {
+                tvg::tvg_wgcanvas_set_target(
+                    raw_canvas,
+                    actual_device,
+                    instance.as_ptr(),
+                    target.as_ptr(),
+                    width,
+                    height,
+                    tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
+                    0,
+                )
+            };
+
+            result.into_result()?;
+
+            unsafe { tvg::tvg_canvas_sync(raw_canvas).into_result() }?;
+
+            Ok(())
+        } else {
+            Err(TvgError::InvalidArgument)
         }
-
-        struct RawWgpuTarget(*mut std::ffi::c_void);
-        impl super::WgpuTarget for RawWgpuTarget {
-            fn as_ptr(&self) -> *mut std::ffi::c_void {
-                self.0
-            }
-        }
-
-        let wgpu_device = RawWgpuDevice(device);
-        let wgpu_instance = RawWgpuInstance(instance);
-        let wgpu_target = RawWgpuTarget(target);
-
-        self.set_wg_target_impl(&wgpu_device, &wgpu_instance, &wgpu_target, width, height, color_space, _type)
     }
 
     fn clear(&self) -> Result<(), TvgError> {
@@ -311,130 +375,6 @@ impl Renderer for TvgRenderer {
         } else {
             Err(TvgError::InvalidArgument)
         }
-    }
-}
-
-impl TvgRenderer {
-    /// Safe internal implementation for setting OpenGL rendering target.
-    ///
-    /// The GL context must remain valid while the renderer is using it and must be
-    /// current on the calling thread when rendering.
-    fn set_gl_target_impl<C: super::GlContext>(
-        &mut self,
-        context: &C,
-        id: i32,
-        width: u32,
-        height: u32,
-        _color_space: ColorSpace,
-    ) -> Result<(), TvgError> {
-        if self.raw_canvas.is_none() {
-            self.create_gl_canvas()?;
-        }
-
-        if let Some(raw_canvas) = self.raw_canvas {
-            unsafe {
-                tvg::tvg_glcanvas_set_target(
-                    raw_canvas,
-                    context.as_ptr(),
-                    id,
-                    width,
-                    height,
-                    tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
-                )
-                .into_result()
-            }
-        } else {
-            Err(TvgError::InvalidArgument)
-        }
-    }
-
-    /// Safe internal implementation for setting WebGPU rendering target.
-    ///
-    /// All WebGPU objects must remain valid while the renderer is using them.
-    #[allow(clippy::too_many_arguments)]
-    fn set_wg_target_impl<
-        D: super::WgpuDevice,
-        I: super::WgpuInstance,
-        T: super::WgpuTarget,
-    >(
-        &mut self,
-        device: &D,
-        instance: &I,
-        target: &T,
-        width: u32,
-        height: u32,
-        _color_space: ColorSpace,
-        _type: i32,
-    ) -> Result<(), TvgError> {
-        if self.raw_canvas.is_none() {
-            self.create_wg_canvas()?;
-        }
-
-        if let Some(raw_canvas) = self.raw_canvas {
-            let device_ptr = device.as_ptr();
-            let actual_device = if device_ptr.is_null() {
-                std::ptr::null_mut()
-            } else {
-                device_ptr
-            };
-
-            let result = unsafe {
-                tvg::tvg_wgcanvas_set_target(
-                    raw_canvas,
-                    actual_device,
-                    instance.as_ptr(),
-                    target.as_ptr(),
-                    width,
-                    height,
-                    tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
-                    0,
-                )
-            };
-
-            result.into_result()?;
-
-            unsafe { tvg::tvg_canvas_sync(raw_canvas).into_result() }?;
-
-            Ok(())
-        } else {
-            Err(TvgError::InvalidArgument)
-        }
-    }
-
-    /// Safe public API for setting OpenGL rendering target.
-    ///
-    /// The GL context must remain valid while the renderer is using it and must be
-    /// current on the calling thread when rendering.
-    pub fn set_gl_target_safe<C: super::GlContext>(
-        &mut self,
-        context: &C,
-        id: i32,
-        width: u32,
-        height: u32,
-        color_space: ColorSpace,
-    ) -> Result<(), TvgError> {
-        self.set_gl_target_impl(context, id, width, height, color_space)
-    }
-
-    /// Safe public API for setting WebGPU rendering target.
-    ///
-    /// All WebGPU objects must remain valid while the renderer is using them.
-    #[allow(clippy::too_many_arguments)]
-    pub fn set_wg_target_safe<
-        D: super::WgpuDevice,
-        I: super::WgpuInstance,
-        T: super::WgpuTarget,
-    >(
-        &mut self,
-        device: &D,
-        instance: &I,
-        target: &T,
-        width: u32,
-        height: u32,
-        color_space: ColorSpace,
-        _type: i32,
-    ) -> Result<(), TvgError> {
-        self.set_wg_target_impl(device, instance, target, width, height, color_space, _type)
     }
 }
 

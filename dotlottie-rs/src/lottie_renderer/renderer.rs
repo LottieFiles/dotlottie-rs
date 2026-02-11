@@ -21,6 +21,13 @@ pub trait GlContext {
     /// The returned pointer must be valid for the lifetime of the context
     /// and point to a valid OpenGL context.
     fn as_ptr(&self) -> *mut std::ffi::c_void;
+
+    /// Creates a wrapper from a raw pointer.
+    ///
+    /// # Safety
+    /// The pointer must be valid for the lifetime of the resulting wrapper
+    /// and point to a valid OpenGL context.
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self;
 }
 
 /// Trait for WebGPU device types that can be used with the renderer.
@@ -33,6 +40,13 @@ pub trait WgpuDevice {
     /// The returned pointer must be valid for the lifetime of the device
     /// and point to a valid WebGPU device, or be null to let ThorVG create its own.
     fn as_ptr(&self) -> *mut std::ffi::c_void;
+
+    /// Creates a wrapper from a raw pointer.
+    ///
+    /// # Safety
+    /// The pointer must be valid for the lifetime of the resulting wrapper
+    /// and point to a valid WebGPU device, or be null.
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self;
 }
 
 /// Trait for WebGPU instance types that can be used with the renderer.
@@ -45,6 +59,13 @@ pub trait WgpuInstance {
     /// The returned pointer must be valid for the lifetime of the instance
     /// and point to a valid WebGPU instance.
     fn as_ptr(&self) -> *mut std::ffi::c_void;
+
+    /// Creates a wrapper from a raw pointer.
+    ///
+    /// # Safety
+    /// The pointer must be valid for the lifetime of the resulting wrapper
+    /// and point to a valid WebGPU instance.
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self;
 }
 
 /// Trait for WebGPU render target types that can be used with the renderer.
@@ -57,6 +78,13 @@ pub trait WgpuTarget {
     /// The returned pointer must be valid for the lifetime of the target
     /// and point to a valid WebGPU render target.
     fn as_ptr(&self) -> *mut std::ffi::c_void;
+
+    /// Creates a wrapper from a raw pointer.
+    ///
+    /// # Safety
+    /// The pointer must be valid for the lifetime of the resulting wrapper
+    /// and point to a valid WebGPU render target.
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self;
 }
 
 pub enum Drawable<'d, R: Renderer> {
@@ -133,6 +161,10 @@ pub trait Renderer: Sized + 'static {
     type Shape: Shape<Error = Self::Error>;
     type Animation: Animation<Error = Self::Error>;
     type Error: error::Error + 'static;
+    type GlContext: GlContext;
+    type WgpuDevice: WgpuDevice;
+    type WgpuInstance: WgpuInstance;
+    type WgpuTarget: WgpuTarget;
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), Self::Error>;
 
@@ -150,31 +182,27 @@ pub trait Renderer: Sized + 'static {
         color_space: ColorSpace,
     ) -> Result<(), Self::Error>;
 
-    /// # Safety
+    /// Sets an OpenGL rendering target using the associated context type.
     ///
-    /// `context` must be a valid pointer to an OpenGL context. The context must
-    /// remain valid for the lifetime of rendering operations using this target.
+    /// The GL context must remain valid for the lifetime of rendering operations.
     fn set_gl_target(
         &mut self,
-        context: *mut std::ffi::c_void,
+        context: &Self::GlContext,
         id: i32,
         width: u32,
         height: u32,
         color_space: ColorSpace,
     ) -> Result<(), Self::Error>;
 
-    /// # Safety
+    /// Sets a WebGPU rendering target using the associated types.
     ///
-    /// `device` must be a valid pointer to a WebGPU device, `instance` must be a valid
-    /// pointer to a WebGPU instance, and `target` must be a valid pointer to a WebGPU
-    /// render target. All pointers must remain valid for the lifetime of rendering
-    /// operations using this target.
+    /// All WebGPU objects must remain valid for the lifetime of rendering operations.
     #[allow(clippy::too_many_arguments)]
     fn set_wg_target(
         &mut self,
-        device: *mut std::ffi::c_void,
-        instance: *mut std::ffi::c_void,
-        target: *mut std::ffi::c_void,
+        device: &Self::WgpuDevice,
+        instance: &Self::WgpuInstance,
+        target: &Self::WgpuTarget,
         width: u32,
         height: u32,
         color_space: ColorSpace,

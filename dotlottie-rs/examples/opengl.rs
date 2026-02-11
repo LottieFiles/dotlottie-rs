@@ -46,6 +46,10 @@ mod opengl_impl {
         fn as_ptr(&self) -> *mut std::ffi::c_void {
             self.0
         }
+
+        unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+            Self(ptr)
+        }
     }
 
     const WIDTH: u32 = 600;
@@ -79,7 +83,8 @@ mod opengl_impl {
                 .with_alpha_size(8)
                 .with_transparency(false);
 
-            let display_builder = DisplayBuilder::new().with_window_attributes(Some(window_attributes));
+            let display_builder =
+                DisplayBuilder::new().with_window_attributes(Some(window_attributes));
 
             let (window, gl_config) = display_builder
                 .build(event_loop, template, |configs| {
@@ -212,9 +217,7 @@ mod opengl_impl {
                 fbo
             };
 
-            println!(
-                "Setting GL target with context: {context_ptr:?}, fbo: {fbo_id}"
-            );
+            println!("Setting GL target with context: {context_ptr:?}, fbo: {fbo_id}");
 
             // Try multiple times if it fails - sometimes GL needs a moment
             let mut success = false;
@@ -239,7 +242,7 @@ mod opengl_impl {
                 );
 
                 if success {
-                    println!("✓ OpenGL target set successfully on attempt {attempt}" );
+                    println!("✓ OpenGL target set successfully on attempt {attempt}");
 
                     // Verify it worked by doing a test render
                     unsafe {
@@ -349,7 +352,12 @@ mod opengl_impl {
             }
         }
 
-        fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        fn window_event(
+            &mut self,
+            event_loop: &ActiveEventLoop,
+            _id: WindowId,
+            event: WindowEvent,
+        ) {
             match event {
                 WindowEvent::CloseRequested => {
                     println!("Close requested, exiting...");
@@ -373,7 +381,7 @@ mod opengl_impl {
     }
 
     pub fn run() {
-        use winit::event_loop::{EventLoop, ControlFlow};
+        use winit::event_loop::{ControlFlow, EventLoop};
 
         println!("\n╔════════════════════════════════════════════════════╗");
         println!("║     DotLottie OpenGL Renderer Example             ║");

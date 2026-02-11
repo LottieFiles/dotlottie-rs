@@ -20,6 +20,10 @@ mod webgpu_impl {
         fn as_ptr(&self) -> *mut std::ffi::c_void {
             self.0
         }
+
+        unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+            Self(ptr)
+        }
     }
 
     struct WebGpuInstance(*mut std::ffi::c_void);
@@ -27,12 +31,20 @@ mod webgpu_impl {
         fn as_ptr(&self) -> *mut std::ffi::c_void {
             self.0
         }
+
+        unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+            Self(ptr)
+        }
     }
 
     struct WebGpuSurface(*mut std::ffi::c_void);
     impl WgpuTarget for WebGpuSurface {
         fn as_ptr(&self) -> *mut std::ffi::c_void {
             self.0
+        }
+
+        unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+            Self(ptr)
         }
     }
 

@@ -22,6 +22,10 @@ impl GlContext for RawGlContext {
     fn as_ptr(&self) -> *mut std::ffi::c_void {
         self.0
     }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
 }
 
 /// Wrapper for raw WebGPU device pointer that implements WgpuDevice trait
@@ -30,6 +34,10 @@ struct RawWgpuDevice(*mut std::ffi::c_void);
 impl WgpuDevice for RawWgpuDevice {
     fn as_ptr(&self) -> *mut std::ffi::c_void {
         self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
     }
 }
 
@@ -40,6 +48,10 @@ impl WgpuInstance for RawWgpuInstance {
     fn as_ptr(&self) -> *mut std::ffi::c_void {
         self.0
     }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
 }
 
 /// Wrapper for raw WebGPU target pointer that implements WgpuTarget trait
@@ -48,6 +60,10 @@ struct RawWgpuTarget(*mut std::ffi::c_void);
 impl WgpuTarget for RawWgpuTarget {
     fn as_ptr(&self) -> *mut std::ffi::c_void {
         self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
     }
 }
 

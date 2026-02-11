@@ -415,8 +415,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         height: u32,
         color_space: ColorSpace,
     ) -> Result<(), LottieRendererError> {
+        let gl_context = R::GlContext::from_ptr(context);
         self.renderer
-            .set_gl_target(context, id, width, height, color_space)
+            .set_gl_target(&gl_context, id, width, height, color_space)
             .map_err(into_lottie::<R>)
     }
 
@@ -430,8 +431,19 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         color_space: ColorSpace,
         _type: i32,
     ) -> Result<(), LottieRendererError> {
+        let wgpu_device = R::WgpuDevice::from_ptr(device);
+        let wgpu_instance = R::WgpuInstance::from_ptr(instance);
+        let wgpu_target = R::WgpuTarget::from_ptr(target);
         self.renderer
-            .set_wg_target(device, instance, target, width, height, color_space, _type)
+            .set_wg_target(
+                &wgpu_device,
+                &wgpu_instance,
+                &wgpu_target,
+                width,
+                height,
+                color_space,
+                _type,
+            )
             .map_err(into_lottie::<R>)
     }
 

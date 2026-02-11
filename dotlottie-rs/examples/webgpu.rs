@@ -233,8 +233,6 @@ mod webgpu_impl {
                     &wgpu_surface,
                     width,
                     height,
-                    ColorSpace::ABGR8888S,
-                    0, // type parameter (0 for default)
                 );
 
                 if success {
@@ -326,8 +324,6 @@ mod webgpu_impl {
                         &wgpu_surface,
                         new_width,
                         new_height,
-                        ColorSpace::ABGR8888S,
-                        0,
                     );
 
                     if success {

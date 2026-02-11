@@ -508,11 +508,10 @@ pub unsafe extern "C" fn dotlottie_set_gl_target(
     id: i32,
     width: u32,
     height: u32,
-    color_space: ColorSpace,
 ) -> i32 {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         let gl_context = RawGlContext(context);
-        to_exit_status(dotlottie_player.set_gl_target(&gl_context, id, width, height, color_space))
+        to_exit_status(dotlottie_player.set_gl_target(&gl_context, id, width, height))
     })
 }
 
@@ -524,8 +523,6 @@ pub unsafe extern "C" fn dotlottie_set_wg_target(
     target: *mut std::ffi::c_void,
     width: u32,
     height: u32,
-    color_space: ColorSpace,
-    _type: i32,
 ) -> i32 {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         let wgpu_device = RawWgpuDevice(device);
@@ -537,8 +534,6 @@ pub unsafe extern "C" fn dotlottie_set_wg_target(
             &wgpu_target,
             width,
             height,
-            color_space,
-            _type,
         ))
     })
 }

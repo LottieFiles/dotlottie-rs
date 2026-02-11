@@ -840,7 +840,7 @@ impl DotLottiePlayer {
         }
 
         let stride = width;
-        let set_target =  {
+        let set_target = {
             self.renderer
                 .set_sw_target(buffer, stride, width, height, color_space)
         };
@@ -858,11 +858,10 @@ impl DotLottiePlayer {
         id: i32,
         width: u32,
         height: u32,
-        color_space: ColorSpace,
     ) -> bool {
         let set_target = unsafe {
             self.renderer
-                .set_gl_target(context.as_ptr(), id, width, height, color_space)
+                .set_gl_target(context.as_ptr(), id, width, height)
         };
 
         set_target.is_ok()
@@ -883,8 +882,6 @@ impl DotLottiePlayer {
         target: &T,
         width: u32,
         height: u32,
-        _color_space: ColorSpace,
-        _type: i32,
     ) -> bool {
         let set_target = unsafe {
             self.renderer.set_wg_target(
@@ -893,8 +890,6 @@ impl DotLottiePlayer {
                 target.as_ptr(),
                 width,
                 height,
-                ColorSpace::ABGR8888S,
-                _type,
             )
         };
 

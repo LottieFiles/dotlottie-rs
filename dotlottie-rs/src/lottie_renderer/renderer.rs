@@ -191,7 +191,6 @@ pub trait Renderer: Sized + 'static {
         id: i32,
         width: u32,
         height: u32,
-        color_space: ColorSpace,
     ) -> Result<(), Self::Error>;
 
     /// Sets a WebGPU rendering target using the associated types.
@@ -205,8 +204,6 @@ pub trait Renderer: Sized + 'static {
         target: &Self::WgpuTarget,
         width: u32,
         height: u32,
-        color_space: ColorSpace,
-        _type: i32,
     ) -> Result<(), Self::Error>;
 
     fn clear(&self) -> Result<(), Self::Error>;

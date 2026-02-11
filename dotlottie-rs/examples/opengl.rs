@@ -233,13 +233,7 @@ mod opengl_impl {
                     gl::Finish();
                 }
 
-                success = player.set_gl_target(
-                    &gl_ctx,
-                    fbo_id,
-                    WIDTH,
-                    HEIGHT,
-                    ColorSpace::ABGR8888S, // Must be ABGR8888S for GL
-                );
+                success = player.set_gl_target(&gl_ctx, fbo_id, WIDTH, HEIGHT);
 
                 if success {
                     println!("✓ OpenGL target set successfully on attempt {attempt}");

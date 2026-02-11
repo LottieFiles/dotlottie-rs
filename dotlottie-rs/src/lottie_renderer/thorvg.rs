@@ -261,7 +261,6 @@ impl Renderer for TvgRenderer {
         id: i32,
         width: u32,
         height: u32,
-        _color_space: ColorSpace,
     ) -> Result<(), Self::Error> {
         if self.raw_canvas.is_none() {
             self.create_gl_canvas()?;
@@ -291,8 +290,6 @@ impl Renderer for TvgRenderer {
         target: &Self::WgpuTarget,
         width: u32,
         height: u32,
-        _color_space: ColorSpace,
-        _type: i32,
     ) -> Result<(), Self::Error> {
         if self.raw_canvas.is_none() {
             self.create_wg_canvas()?;

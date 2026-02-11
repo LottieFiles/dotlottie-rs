@@ -46,7 +46,7 @@ help:
 	@echo ""
 	@echo "Apple Targets:"
 	@echo "=============="
-	@echo "  make apple-webgpu                                 - Build all Apple targets ([Experimntal] WebGPU on macOS/iOS, software on others)"
+	@echo "  make apple-webgpu                                 - Build all Apple targets ([Experimntal] WebGPU on macOS, software on others)"
 	@echo "  make apple-macos                                  - Build all macOS targets (software)"
 	@echo "  make apple-ios                                    - Build all iOS targets (software)"
 	@echo "  make apple-visionos                               - Build all visionOS targets"
@@ -110,29 +110,6 @@ WGPU_PLATFORMS := \
 	ios-aarch64-release \
 	ios-aarch64-simulator-release \
 	ios-x86_64-simulator-release
-
-# Download and setup wgpu-native dependencies
-.PHONY: wgpu-setup wgpu-clean
-wgpu-setup:
-	@echo "→ Setting up wgpu-native dependencies ($(WGPU_VERSION))..."
-	@mkdir -p $(WGPU_DEPS_DIR)
-	@for platform in $(WGPU_PLATFORMS); do \
-		if [ ! -d "$(WGPU_DEPS_DIR)/wgpu-$$platform" ]; then \
-			echo "  Downloading wgpu-$$platform..."; \
-			curl -sL $(WGPU_BASE_URL)/wgpu-$$platform.zip -o /tmp/wgpu-$$platform.zip; \
-			unzip -q /tmp/wgpu-$$platform.zip -d $(WGPU_DEPS_DIR)/wgpu-$$platform; \
-			rm /tmp/wgpu-$$platform.zip; \
-		else \
-			echo "  ✓ wgpu-$$platform already exists"; \
-		fi; \
-	done
-	@echo "✓ wgpu-native dependencies installed"
-
-# Clean wgpu dependencies
-wgpu-clean:
-	@echo "→ Cleaning wgpu-native dependencies..."
-	@rm -rf $(WGPU_DEPS_DIR)
-	@echo "✓ wgpu-native dependencies cleaned"
 
 # Setup all platforms
 setup: wgpu-setup android-setup apple-setup wasm-setup linux-setup

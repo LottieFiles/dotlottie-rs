@@ -158,7 +158,7 @@ apple: $(addprefix apple-,macos ios maccatalyst visionos tvos) apple-package
 apple-webgpu: APPLE_FEATURES = $(APPLE_WEBGPU_FEATURES)
 apple-webgpu: APPLE_RELEASE_DIR = $(RELEASE_DIR)/apple-webgpu
 apple-webgpu: $(addprefix apple-,macos ios maccatalyst visionos tvos) apple-package
-	@echo "✓ Apple WebGPU build complete (WebGPU on macOS/iOS, software on other platforms)"
+	@echo "✓ Apple WebGPU build complete (WebGPU on macOS, software on other platforms)"
 
 # Build for all macOS architectures
 apple-macos: $(addprefix apple-macos-,arm64 x86_64) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)

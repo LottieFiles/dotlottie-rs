@@ -16,6 +16,7 @@ endif
 WEBGPU_RUSTFLAGS :=
 WEBGPU_EMFLAGS :=
 WEBGPU_CPPFLAGS :=
+WGPU_EMSCRIPTEN_INCLUDE := deps/modules/emsdk/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include
 
 ifneq (,$(findstring tvg-wg,$(WASM_FEATURES)))
 WEBGPU_RUSTFLAGS += -C link-arg=--use-port=emdawnwebgpu
@@ -132,6 +133,7 @@ wasm-build-rust: wasm-check-env wasm-fetch-webgpu-port
 	CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 	AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar \
 	CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
+	WGPU_EMSCRIPTEN_INCLUDE=$(WGPU_EMSCRIPTEN_INCLUDE) \
 	CXXFLAGS="-isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/c++/v1 -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include $(WEBGPU_CPPFLAGS)" \
 	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot -nostdinc -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include" \
 	RUSTFLAGS="-C panic=abort -C link-arg=--no-entry -C link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0 $(WEBGPU_RUSTFLAGS)" \

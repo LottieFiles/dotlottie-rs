@@ -13,4 +13,3 @@ wasm-pack.log
 /release
 .DS_Store
 /build
-dotlottie-rs/deps/wgpu

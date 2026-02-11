@@ -1,6 +1,6 @@
 /*
 * 🚨 To run this example, use:
- * cargo run --example opengl --features c_api,tvg,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions
+ * cargo run --example opengl --features dev,tvg-wgl
 */
 #![allow(clippy::print_stdout)]
 

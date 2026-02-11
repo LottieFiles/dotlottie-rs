@@ -1,4 +1,6 @@
-use dotlottie_rs::{Config, DotLottiePlayer, Marker};
+use std::ffi::CString;
+
+use dotlottie_rs::{DotLottiePlayer, Marker};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -10,28 +12,24 @@ mod tests {
 
     #[test]
     fn test_default_marker() {
-        let player = DotLottiePlayer::new(Config::default(), 0);
+        let player = DotLottiePlayer::new(0);
 
-        assert!(
-            player.config().marker.is_empty(),
-            "Expected no marker by default"
-        );
+        assert!(player.marker().is_none(), "Expected no marker by default");
     }
 
     #[test]
     fn test_markers() {
-        let mut player = DotLottiePlayer::new(Config {
-            autoplay: true,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(0);
+        player.set_autoplay(true);
 
         assert!(
             player.markers().is_empty(),
             "Expected no markers before loading animation"
         );
 
+        let path = CString::new("tests/fixtures/test.json").unwrap();
         assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT),
             Ok(()),
             "Animation should load"
         );
@@ -80,25 +78,21 @@ mod tests {
 
     #[test]
     fn test_set_marker() {
-        let mut player = DotLottiePlayer::new(Config {
-            autoplay: true,
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(0);
+        player.set_autoplay(true);
 
-        let marker_name = "Marker_3".to_string();
+        let marker_name = CString::new("Marker_3").unwrap();
 
+        let path = CString::new("tests/fixtures/test.json").unwrap();
         assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT),
             Ok(()),
             "Animation should load"
         );
 
-        player.set_config(Config {
-            marker: marker_name.clone(),
-            ..player.config()
-        });
+        player.set_marker(Some(&marker_name));
 
-        assert_eq!(player.config().marker, marker_name.clone());
+        assert_eq!(player.marker(), Some(marker_name.as_c_str()));
 
         assert!(player.is_playing(), "Animation should be playing");
 
@@ -121,7 +115,7 @@ mod tests {
         let marker = player
             .markers()
             .into_iter()
-            .find(|m| m.name == marker_name.clone())
+            .find(|m| m.name == "Marker_3")
             .unwrap();
 
         for frame in rendered_frames {

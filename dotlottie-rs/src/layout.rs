@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, PartialEq, Copy)]
+#[repr(C)]
 pub enum Fit {
     Contain,
     Fill,
@@ -8,23 +9,24 @@ pub enum Fit {
     None,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
+#[repr(C)]
 pub struct Layout {
     pub fit: Fit,
-    pub align: Vec<f32>,
+    pub align: [f32; 2],
 }
 
 impl Default for Layout {
     fn default() -> Self {
         Self {
             fit: Fit::Contain,
-            align: vec![0.5, 0.5],
+            align: [0.5, 0.5],
         }
     }
 }
 
 impl Layout {
-    pub fn new(fit: Fit, align: Vec<f32>) -> Self {
+    pub fn new(fit: Fit, align: [f32; 2]) -> Self {
         Self {
             fit,
             align: validate_normalize_align(align),
@@ -87,11 +89,11 @@ impl Layout {
     }
 }
 
-fn validate_normalize_align(align: Vec<f32>) -> Vec<f32> {
+fn validate_normalize_align(align: [f32; 2]) -> [f32; 2] {
     let mut align = align;
 
     if align.len() != 2 {
-        align = vec![0.5, 0.5];
+        align = [0.5, 0.5];
     }
 
     align[0] = align[0].clamp(0.0, 1.0);

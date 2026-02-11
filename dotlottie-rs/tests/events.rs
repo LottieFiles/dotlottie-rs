@@ -1,4 +1,6 @@
-use dotlottie_rs::{Config, DotLottiePlayer, DotLottiePlayerError};
+use std::ffi::CString;
+
+use dotlottie_rs::DotLottiePlayer;
 
 mod test_utils;
 
@@ -15,24 +17,23 @@ mod tests {
     fn test_subscribe_unsubscribe() {
         let mut events: Vec<String> = vec![];
 
-        let mut player = DotLottiePlayer::new(
-            Config {
-                autoplay: true,
-                loop_animation: true,
-                use_frame_interpolation: false,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_use_frame_interpolation(false);
 
-        assert_eq!(
-            player.load_animation_path("invalid/path", WIDTH, HEIGHT),
-            Err(DotLottiePlayerError::Unknown),
+        let invalid_path = CString::new("invalid/path").unwrap();
+        let valid_path = CString::new("tests/fixtures/test.json").unwrap();
+
+        assert!(
+            player
+                .load_animation_path(&invalid_path, WIDTH, HEIGHT)
+                .is_err(),
             "Invalid path should not load"
         );
 
         assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&valid_path, WIDTH, HEIGHT),
             Ok(()),
             "Valid path should load"
         );
@@ -51,7 +52,7 @@ mod tests {
                 if player.render().is_ok() {
                     expected_events.push(format!("on_render: {}", player.current_frame()));
                     if player.is_complete() {
-                        if player.config().loop_animation {
+                        if player.loop_animation() {
                             let loop_count = player.loop_count();
                             expected_events.push(format!("on_loop: {loop_count}"));
 
@@ -100,7 +101,7 @@ mod tests {
         }
 
         assert_eq!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&valid_path, WIDTH, HEIGHT),
             Ok(()),
             "Valid path should load"
         );

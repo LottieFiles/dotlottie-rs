@@ -6,13 +6,12 @@ use core::str::FromStr;
 use std::ffi::{c_char, CStr, CString};
 use std::io;
 
-use crate::actions::open_url_policy::OpenUrlPolicy;
 use crate::state_machine_engine::events::Event;
 use crate::{
-    Config, Fit, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme, Marker,
-    Mode,
+    Config, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme, Marker, Mode,
 };
 
+use crate::lottie_renderer::LottieRendererError;
 use crate::DotLottiePlayerError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +33,16 @@ impl From<DotLottiePlayerError> for DotLottieResult {
             DotLottiePlayerError::ManifestNotAvailable => DotLottieResult::ManifestNotAvailable,
             DotLottiePlayerError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
             DotLottiePlayerError::InsufficientCondition => DotLottieResult::InsufficientCondition,
+        }
+    }
+}
+
+impl From<LottieRendererError> for DotLottieResult {
+    fn from(err: LottieRendererError) -> Self {
+        match err {
+            LottieRendererError::InvalidArgument => DotLottieResult::InvalidParameter,
+            LottieRendererError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
+            _ => DotLottieResult::Error,
         }
     }
 }
@@ -139,7 +148,11 @@ where
     }
 
     // Perform a copy_all, returning the expected exit codes
-    unsafe fn transfer_all(values: &Vec<T>, result: *mut Self, size: *mut usize) -> DotLottieResult {
+    unsafe fn transfer_all(
+        values: &Vec<T>,
+        result: *mut Self,
+        size: *mut usize,
+    ) -> DotLottieResult {
         if size.is_null() {
             // Size must always be provided
             DotLottieResult::InvalidParameter
@@ -293,7 +306,7 @@ pub struct DotLottieConfig {
     pub segment_start: f32,
     pub segment_end: f32,
     pub background_color: u32,
-    pub layout: DotLottieLayout,
+    pub layout: Layout,
     pub marker: DotLottieString,
     pub theme_id: DotLottieString,
     pub state_machine_id: DotLottieString,
@@ -316,7 +329,7 @@ impl Transferable<Config> for DotLottieConfig {
             segment_start,
             segment_end,
             background_color: config.background_color,
-            layout: DotLottieLayout::new(&config.layout),
+            layout: config.layout,
             marker: DotLottieString::new(&config.marker)?,
             theme_id: DotLottieString::new(&config.theme_id)?,
             state_machine_id: DotLottieString::new(&config.state_machine_id)?,
@@ -340,7 +353,7 @@ impl DotLottieConfig {
                 vec![]
             },
             background_color: self.background_color,
-            layout: self.layout.to_layout(),
+            layout: self.layout,
             marker: self.marker.to_string(),
             theme_id: self.theme_id.to_string(),
             state_machine_id: self.state_machine_id.to_string(),
@@ -434,113 +447,6 @@ impl Transferable<Manifest> for DotLottieManifest {
             generator: DotLottieOption::new(&manifest.generator)?,
             version: DotLottieOption::new(&manifest.version)?,
         })
-    }
-}
-
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub enum DotLottieFit {
-    Contain,
-    Fill,
-    Cover,
-    FitWidth,
-    FitHeight,
-    Void,
-}
-
-impl DotLottieFit {
-    pub fn new(fit: Fit) -> DotLottieFit {
-        match fit {
-            Fit::Contain => DotLottieFit::Contain,
-            Fit::Fill => DotLottieFit::Fill,
-            Fit::Cover => DotLottieFit::Cover,
-            Fit::FitWidth => DotLottieFit::FitWidth,
-            Fit::FitHeight => DotLottieFit::FitHeight,
-            Fit::None => DotLottieFit::Void,
-        }
-    }
-
-    pub fn to_fit(&self) -> Fit {
-        match self {
-            DotLottieFit::Contain => Fit::Contain,
-            DotLottieFit::Fill => Fit::Fill,
-            DotLottieFit::Cover => Fit::Cover,
-            DotLottieFit::FitWidth => Fit::FitWidth,
-            DotLottieFit::FitHeight => Fit::FitHeight,
-            DotLottieFit::Void => Fit::None,
-        }
-    }
-}
-
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieLayout {
-    pub fit: DotLottieFit,
-    pub align_x: f32,
-    pub align_y: f32,
-}
-
-impl DotLottieLayout {
-    pub fn new(layout: &Layout) -> DotLottieLayout {
-        let (align_x, align_y) = match layout.align[..] {
-            [align_x, align_y] => (align_x, align_y),
-            _ => (-1.0, -1.0),
-        };
-        DotLottieLayout {
-            fit: DotLottieFit::new(layout.fit),
-            align_x,
-            align_y,
-        }
-    }
-
-    pub fn to_layout(&self) -> Layout {
-        Layout {
-            fit: self.fit.to_fit(),
-            align: if self.align_x >= 0f32 && self.align_y >= 0f32 {
-                vec![self.align_x, self.align_y]
-            } else {
-                vec![]
-            },
-        }
-    }
-}
-
-// OpenUrlPolicy for state machine URL opening control
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieOpenUrlPolicy {
-    pub whitelist: DotLottieString, // Comma-separated list of allowed URL patterns
-    pub require_user_interaction: bool,
-}
-
-impl DotLottieOpenUrlPolicy {
-    pub unsafe fn to_policy(&self) -> Result<OpenUrlPolicy, io::Error> {
-        let cstring = DotLottieString::read(self.whitelist.value.as_ptr())?;
-        let whitelist_str = cstring
-            .to_str()
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid utf8 sequence"))?;
-        let whitelist = if whitelist_str.is_empty() {
-            vec![]
-        } else {
-            whitelist_str
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect()
-        };
-
-        Ok(OpenUrlPolicy {
-            whitelist,
-            require_user_interaction: self.require_user_interaction,
-        })
-    }
-}
-
-impl Default for DotLottieOpenUrlPolicy {
-    fn default() -> Self {
-        DotLottieOpenUrlPolicy {
-            whitelist: DotLottieString::default(),
-            require_user_interaction: true,
-        }
     }
 }
 

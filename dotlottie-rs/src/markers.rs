@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ffi::CString};
 
 use serde::{Deserialize, Serialize};
 
@@ -17,10 +17,10 @@ struct Lottie {
     markers: Vec<Marker>,
 }
 
-pub type MarkersMap = HashMap<String, (f32, f32)>;
+pub type MarkersMap = HashMap<CString, (f32, f32)>;
 
 pub fn extract_markers(json_data: &str) -> MarkersMap {
-    let mut markers_map = HashMap::new();
+    let mut markers_map = MarkersMap::new();
 
     match serde_json::from_str::<Lottie>(json_data) {
         Ok(lottie) => {
@@ -31,7 +31,9 @@ pub fn extract_markers(json_data: &str) -> MarkersMap {
                     continue;
                 }
 
-                markers_map.insert(name.to_string(), (marker.time, marker.duration));
+                if let Ok(c_name) = CString::new(name) {
+                    markers_map.insert(c_name, (marker.time, marker.duration));
+                }
             }
 
             markers_map
@@ -44,6 +46,7 @@ pub fn extract_markers(json_data: &str) -> MarkersMap {
 mod tests {
     use super::*;
     use serde_json::json;
+    use std::ffi::CStr;
 
     #[test]
     fn test_extract_markers_normal() {
@@ -58,10 +61,10 @@ mod tests {
         let markers = extract_markers(&json_data);
 
         assert_eq!(markers.len(), 2);
-        assert!(markers.contains_key("Marker1"));
-        assert_eq!(markers["Marker1"], (0.5, 1.5));
-        assert!(markers.contains_key("Marker2"));
-        assert_eq!(markers["Marker2"], (1.5, 2.5));
+        assert!(markers.contains_key(c"Marker1"));
+        assert_eq!(markers[c"Marker1" as &CStr], (0.5, 1.5));
+        assert!(markers.contains_key(c"Marker2"));
+        assert_eq!(markers[c"Marker2" as &CStr], (1.5, 2.5));
     }
 
     #[test]
@@ -77,7 +80,7 @@ mod tests {
         let markers = extract_markers(&json_data);
 
         assert_eq!(markers.len(), 1);
-        assert!(markers.contains_key("Marker2"));
+        assert!(markers.contains_key(c"Marker2"));
     }
 
     #[test]
@@ -111,8 +114,8 @@ mod tests {
         let markers = extract_markers(&json_data);
 
         assert_eq!(markers.len(), 1);
-        assert!(markers.contains_key("Marker1"));
-        assert_eq!(markers["Marker1"], (1.5, 2.5));
+        assert!(markers.contains_key(c"Marker1"));
+        assert_eq!(markers[c"Marker1" as &CStr], (1.5, 2.5));
     }
 
     #[test]
@@ -128,8 +131,8 @@ mod tests {
         let markers = extract_markers(&json_data);
 
         assert_eq!(markers.len(), 1);
-        assert!(markers.contains_key("Marker2"));
-        assert_eq!(markers["Marker2"], (1.5, 2.5));
+        assert!(markers.contains_key(c"Marker2"));
+        assert_eq!(markers[c"Marker2" as &CStr], (1.5, 2.5));
     }
 
     #[test]
@@ -145,8 +148,8 @@ mod tests {
         let markers = extract_markers(&json_data);
 
         assert_eq!(markers.len(), 1);
-        assert!(markers.contains_key("Marker2"));
-        assert_eq!(markers["Marker2"], (1.5, 2.5));
+        assert!(markers.contains_key(c"Marker2"));
+        assert_eq!(markers[c"Marker2" as &CStr], (1.5, 2.5));
     }
 
     #[test]
@@ -162,10 +165,10 @@ mod tests {
         let markers = extract_markers(&json_data);
 
         assert_eq!(markers.len(), 2);
-        assert!(markers.contains_key("Marker1"));
-        assert_eq!(markers["Marker1"], (1e10, 1.5));
-        assert!(markers.contains_key("Marker2"));
-        assert_eq!(markers["Marker2"], (1.5, 2.5));
+        assert!(markers.contains_key(c"Marker1"));
+        assert_eq!(markers[c"Marker1" as &CStr], (1e10, 1.5));
+        assert!(markers.contains_key(c"Marker2"));
+        assert_eq!(markers[c"Marker2" as &CStr], (1.5, 2.5));
     }
 
     #[test]
@@ -181,9 +184,9 @@ mod tests {
         let markers = extract_markers(&json_data);
 
         assert_eq!(markers.len(), 2);
-        assert!(markers.contains_key("Marker1"));
-        assert_eq!(markers["Marker1"], (0.5, 1.5));
-        assert!(markers.contains_key("Marker2"));
-        assert_eq!(markers["Marker2"], (1.5, 2.5));
+        assert!(markers.contains_key(c"Marker1"));
+        assert_eq!(markers[c"Marker1" as &CStr], (0.5, 1.5));
+        assert!(markers.contains_key(c"Marker2"));
+        assert_eq!(markers[c"Marker2" as &CStr], (1.5, 2.5));
     }
 }

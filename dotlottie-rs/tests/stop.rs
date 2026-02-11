@@ -1,76 +1,88 @@
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
 
-use dotlottie_rs::{Config, DotLottiePlayer, DotLottiePlayerError, Mode};
+use std::ffi::CString;
+
+use dotlottie_rs::{DotLottiePlayer, DotLottiePlayerError, Mode};
 
 #[cfg(test)]
 mod tests {
 
     use super::*;
 
+    struct TestConfig {
+        mode: Mode,
+        autoplay: bool,
+        segment: Option<[f32; 2]>,
+    }
+
     #[test]
     fn test_stop() {
-        let configs: Vec<Config> = vec![
-            Config {
+        let configs: Vec<TestConfig> = vec![
+            TestConfig {
+                mode: Mode::Forward,
                 autoplay: true,
-                ..Config::default()
+                segment: None,
             },
-            Config {
+            TestConfig {
                 mode: Mode::Reverse,
                 autoplay: true,
-                ..Config::default()
+                segment: None,
             },
-            Config {
+            TestConfig {
                 mode: Mode::Bounce,
                 autoplay: true,
-                ..Config::default()
+                segment: None,
             },
-            Config {
+            TestConfig {
                 mode: Mode::ReverseBounce,
                 autoplay: true,
-                ..Config::default()
+                segment: None,
             },
             // test with different segments
-            Config {
+            TestConfig {
+                mode: Mode::Forward,
                 autoplay: true,
-                segment: vec![10.0, 30.0],
-                ..Config::default()
+                segment: Some([10.0, 30.0]),
             },
-            Config {
+            TestConfig {
                 mode: Mode::Reverse,
                 autoplay: true,
-                segment: vec![10.0, 30.0],
-                ..Config::default()
+                segment: Some([10.0, 30.0]),
             },
-            Config {
+            TestConfig {
                 mode: Mode::Bounce,
                 autoplay: true,
-                segment: vec![10.0, 30.0],
-                ..Config::default()
+                segment: Some([10.0, 30.0]),
             },
-            Config {
+            TestConfig {
                 mode: Mode::ReverseBounce,
                 autoplay: true,
-                segment: vec![10.0, 30.0],
-                ..Config::default()
+                segment: Some([10.0, 30.0]),
             },
         ];
 
+        let path = CString::new("tests/fixtures/test.json").unwrap();
+
         for config in configs {
-            let mut player = DotLottiePlayer::new(config, 0);
+            let mut player = DotLottiePlayer::new(0);
+            player.set_mode(config.mode);
+            player.set_autoplay(config.autoplay);
+            if let Some(seg) = config.segment {
+                let _ = player.set_segment(Some(seg));
+            }
 
             assert_eq!(
-                player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+                player.load_animation_path(&path, WIDTH, HEIGHT),
                 Ok(()),
                 "Animation should load"
             );
 
             assert!(player.is_playing(), "Animation should be playing");
 
-            let (start_frame, end_frame) = if player.config().segment.is_empty() {
-                (0.0, player.total_frames() - 1.0)
-            } else {
-                (player.config().segment[0], player.config().segment[1])
+            let (start_frame, end_frame) = match player.segment() {
+                Some(seg) => (seg[0], seg[1]),
+                None => (0.0, player.total_frames() - 1.0),
             };
 
             // wait until we're half way to the end
@@ -87,7 +99,7 @@ mod tests {
             assert!(!player.is_paused(), "Animation should not be paused");
 
             // based on the mode the current frame should be at the start or end
-            match player.config().mode {
+            match player.mode() {
                 Mode::Forward => {
                     assert_eq!(player.current_frame(), start_frame);
                 }
@@ -102,7 +114,11 @@ mod tests {
                 }
             }
 
-            assert_eq!(player.stop(), Err(DotLottiePlayerError::InsufficientCondition), "Animation should not stop again");
+            assert_eq!(
+                player.stop(),
+                Err(DotLottiePlayerError::InsufficientCondition),
+                "Animation should not stop again"
+            );
         }
     }
 }

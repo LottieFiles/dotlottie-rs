@@ -1,6 +1,9 @@
+use std::ffi::CString;
+
 use serde::Deserialize;
 
-use crate::{player::Mode, Config };
+use crate::player::Mode;
+use crate::DEFAULT_BACKGROUND_COLOR;
 
 use super::{actions::StateMachineActionError, transitions::Transition, StateMachineEngine};
 
@@ -12,14 +15,8 @@ pub enum StatesError {
 }
 
 pub trait StateTrait {
-    fn enter(
-        &self,
-        engine: &mut StateMachineEngine,
-    ) -> Result<(), StateMachineActionError>;
-    fn exit(
-        &self,
-        engine: &mut StateMachineEngine,
-    ) -> Result<(), StateMachineActionError>;
+    fn enter(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError>;
+    fn exit(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError>;
     fn animation(&self) -> &str;
     fn transitions(&self) -> &Vec<Transition>;
     fn entry_actions(&self) -> Option<&Vec<Action>>;
@@ -57,10 +54,7 @@ pub enum State {
 }
 
 impl StateTrait for State {
-    fn enter(
-        &self,
-        engine: &mut StateMachineEngine,
-    ) -> Result<(), StateMachineActionError> {
+    fn enter(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState {
                 animation,
@@ -75,9 +69,7 @@ impl StateTrait for State {
                 entry_actions,
                 ..
             } => {
-                let default_config = Config::default();
-                let mut defined_mode = default_config.mode;
-                let mut defined_segment = default_config.marker;
+                let mut defined_mode = Mode::Forward;
 
                 if let Some(new_mode) = mode {
                     match new_mode.as_str() {
@@ -89,41 +81,38 @@ impl StateTrait for State {
                     }
                 }
 
-                if let Some(new_segment) = segment {
-                    defined_segment = new_segment.clone();
-                }
-
                 let size = engine.player.size();
-                let current_config = engine.player.config();
 
-                let uses_frame_interpolation = current_config.use_frame_interpolation;
-                let current_layout = current_config.layout.clone();
+                // Apply individual settings, preserving layout and use_frame_interpolation
+                engine.player.set_mode(defined_mode);
+                engine.player.set_loop(r#loop.unwrap_or(false));
+                engine.player.set_loop_count(loop_count.unwrap_or(0));
+                engine.player.set_speed(speed.unwrap_or(1.0));
+                let _ = engine.player.set_background_color(Some(
+                    background_color.unwrap_or(DEFAULT_BACKGROUND_COLOR),
+                ));
+                let _ = engine.player.set_segment(None);
 
-                let playback_config = Config {
-                    mode: defined_mode,
-                    loop_animation: r#loop.unwrap_or(default_config.loop_animation),
-                    loop_count: loop_count.unwrap_or(default_config.loop_count),
-                    speed: speed.unwrap_or(default_config.speed),
-                    use_frame_interpolation: uses_frame_interpolation,
-                    autoplay: autoplay.unwrap_or(default_config.autoplay),
-                    marker: defined_segment,
-                    background_color: background_color
-                        .unwrap_or(default_config.background_color),
-                    layout: current_layout,
-                    segment: [].to_vec(),
-                    theme_id: current_config.theme_id,
-                    state_machine_id: "".to_string(),
-                    animation_id: "".to_string(),
+                let marker_cstr = segment
+                    .as_deref()
+                    .map(CString::new)
+                    .transpose()
+                    .map_err(|_| StateMachineActionError::ParsingError)?;
+
+                engine.player.set_marker(marker_cstr.as_deref());
+
+                // set_autoplay must be called last as it triggers play/pause
+                engine.player.set_autoplay(autoplay.unwrap_or(false));
+
+                let Ok(anim_cstr) = CString::new(animation.as_str()) else {
+                    return Err(StateMachineActionError::ParsingError);
                 };
 
-                // Set config first so that load_animation uses the preserved layout
-                engine.player.set_config(playback_config);
-
                 if !animation.is_empty()
-                    && engine.player.active_animation_id() != *animation
+                    && engine.player.active_animation_id() != Some(&anim_cstr)
                     && engine.player.render().is_ok()
                 {
-                    let _ = engine.player.load_animation(animation, size.0, size.1);
+                    let _ = engine.player.load_animation(&anim_cstr, size.0, size.1);
                 }
 
                 /* Perform entry actions */
@@ -146,9 +135,15 @@ impl StateTrait for State {
             } => {
                 let size = engine.player.size();
 
-                if let Some(animation) = animation {
-                    if engine.player.active_animation_id() != *animation {
-                        let _ = engine.player.load_animation(animation, size.0, size.1);
+                let anim_cstr = animation
+                    .as_deref()
+                    .map(CString::new)
+                    .transpose()
+                    .map_err(|_| StateMachineActionError::ParsingError)?;
+
+                if let Some(cstr) = anim_cstr {
+                    if engine.player.active_animation_id() != Some(&cstr) {
+                        let _ = engine.player.load_animation(&cstr, size.0, size.1);
                     }
                 }
 
@@ -192,10 +187,7 @@ impl StateTrait for State {
         }
     }
 
-    fn exit(
-        &self,
-        engine: &mut StateMachineEngine,
-    ) -> Result<(), StateMachineActionError> {
+    fn exit(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState { exit_actions, .. } => {
                 /* Perform exit actions */

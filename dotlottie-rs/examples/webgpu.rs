@@ -139,7 +139,7 @@ mod webgpu_impl {
     struct App {
         window: Option<Window>,
         player: Option<DotLottiePlayer>,
-        #[cfg(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios")))]
+        #[cfg(all(feature = "tvg-wg", any(target_os = "macos")))]
         wgpu_context: Option<WgpuContext>,
         current_width: u32,
         current_height: u32,
@@ -150,7 +150,7 @@ mod webgpu_impl {
             Self {
                 window: None,
                 player: None,
-                #[cfg(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios")))]
+                #[cfg(all(feature = "tvg-wg", any(target_os = "macos")))]
                 wgpu_context: None,
                 current_width: 0,
                 current_height: 0,
@@ -399,12 +399,12 @@ mod webgpu_impl {
 // ==============================================================================
 // Main functions (selected by feature gates)
 // ==============================================================================
-#[cfg(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios")))]
+#[cfg(all(feature = "tvg-wg", any(target_os = "macos")))]
 fn main() {
     webgpu_impl::run();
 }
 
-#[cfg(not(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios"))))]
+#[cfg(not(all(feature = "tvg-wg", any(target_os = "macos"))))]
 fn main() {
     eprintln!("This example requires:");
     eprintln!("  - Feature 'tvg-wg' to be enabled");

@@ -12,8 +12,8 @@ mod tests {
     #[test]
     fn buflen() {
         let mut player = DotLottiePlayer::new(0);
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
         let frame =
             unsafe { slice::from_raw_parts(player.buffer().as_ptr(), player.buffer().len()) };
         assert_eq!(frame.len(), (WIDTH * HEIGHT) as usize);

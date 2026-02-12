@@ -5,12 +5,15 @@ mod tests {
     #[test]
     pub fn global_and_guardless() {
         let global_state =
-            include_str!("fixtures/statemachines/sanity_tests/test_global_and_guardless.json");
+            include_str!("../assets/statemachines/sanity_tests/test_global_and_guardless.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -37,12 +40,15 @@ mod tests {
     #[test]
     pub fn guarded_and_guardless() {
         let global_state =
-            include_str!("fixtures/statemachines/sanity_tests/test_guarded_and_guardless.json");
+            include_str!("../assets/statemachines/sanity_tests/test_guarded_and_guardless.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -72,12 +78,15 @@ mod tests {
     #[test]
     pub fn guardless_and_event() {
         let global_state =
-            include_str!("fixtures/statemachines/sanity_tests/test_guardless_and_event.json");
+            include_str!("../assets/statemachines/sanity_tests/test_guardless_and_event.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -104,13 +113,16 @@ mod tests {
     #[test]
     pub fn exit_action_causes_global_to_transition() {
         let global_state = include_str!(
-            "fixtures/statemachines/sanity_tests/test_exit_action_causes_global_to_transition.json"
+            "../assets/statemachines/sanity_tests/test_exit_action_causes_global_to_transition.json"
         );
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -155,13 +167,16 @@ mod tests {
     #[test]
     pub fn exit_action_ignored_if_non_valid() {
         let global_state = include_str!(
-            "fixtures/statemachines/sanity_tests/test_exit_action_global_ignored_if_non_valid.json"
+            "../assets/statemachines/sanity_tests/test_exit_action_global_ignored_if_non_valid.json"
         );
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -202,13 +217,16 @@ mod tests {
     #[test]
     pub fn entry_action_causes_global_to_transition() {
         let global_state = include_str!(
-            "fixtures/statemachines/sanity_tests/test_entry_action_causes_global_to_transition.json"
+            "../assets/statemachines/sanity_tests/test_entry_action_causes_global_to_transition.json"
         );
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -249,13 +267,16 @@ mod tests {
     #[test]
     pub fn entry_action_ignored_if_non_valid() {
         let global_state = include_str!(
-            "fixtures/statemachines/sanity_tests/test_entry_action_global_ignored_if_non_valid.json"
+            "../assets/statemachines/sanity_tests/test_entry_action_global_ignored_if_non_valid.json"
         );
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/smileys.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");

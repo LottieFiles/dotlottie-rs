@@ -30,10 +30,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -75,10 +74,9 @@ mod play_mode_tests {
 
         let mut observed_loops = 0;
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -114,10 +112,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -190,10 +187,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -262,7 +258,7 @@ mod play_mode_tests {
             Mode::ReverseBounce,
         ];
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         for mode in play_modes {
             let mut player = DotLottiePlayer::new(0);
@@ -276,9 +272,8 @@ mod play_mode_tests {
                 player.mode()
             );
 
-            assert_eq!(
-                player.load_animation_path(&path, WIDTH, HEIGHT),
-                Ok(()),
+            assert!(
+                player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
                 "Animation should load"
             );
 
@@ -321,10 +316,9 @@ mod play_mode_tests {
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -374,10 +368,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -416,10 +409,9 @@ mod play_mode_tests {
         player.set_mode(Mode::Reverse);
         player.set_autoplay(true);
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -467,10 +459,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -509,7 +500,7 @@ mod play_mode_tests {
         player.set_mode(Mode::Bounce);
         player.set_autoplay(true);
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert_eq!(
             player.load_animation_path(&path, WIDTH, HEIGHT),
             Ok(()),
@@ -577,7 +568,7 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert_eq!(
             player.load_animation_path(&path, WIDTH, HEIGHT),
             Ok(()),
@@ -617,10 +608,9 @@ mod play_mode_tests {
         player.set_mode(Mode::ReverseBounce);
         player.set_autoplay(true);
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -685,10 +675,9 @@ mod play_mode_tests {
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");

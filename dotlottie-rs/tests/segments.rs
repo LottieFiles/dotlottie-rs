@@ -15,10 +15,9 @@ mod tests {
         player.set_autoplay(true);
         let _ = player.set_segment(Some([50.0, 30.0]));
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -47,10 +46,9 @@ mod tests {
         player.set_autoplay(true);
         let _ = player.set_segment(Some([0.0, 0.0]));
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -77,7 +75,7 @@ mod tests {
             Mode::ReverseBounce,
         ];
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         for mode in modes {
             let mut player = DotLottiePlayer::new(0);
@@ -85,9 +83,8 @@ mod tests {
             player.set_autoplay(true);
             let _ = player.set_segment(Some([50.0, 30.0]));
 
-            assert_eq!(
-                player.load_animation_path(&path, WIDTH, HEIGHT),
-                Ok(()),
+            assert!(
+                player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
                 "Animation should load for mode {mode:?}"
             );
 
@@ -115,10 +112,9 @@ mod tests {
         player.set_autoplay(true);
         let _ = player.set_segment(Some([30.0, 50.0]));
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load with valid segment"
         );
 
@@ -145,10 +141,9 @@ mod tests {
         player.set_autoplay(false);
         let _ = player.set_segment(Some([10.0, 20.0]));
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 

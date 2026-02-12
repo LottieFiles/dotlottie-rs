@@ -6,12 +6,15 @@ mod tests {
 
     #[test]
     fn increment() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/inc_rating.json");
+        let global_state = include_str!("../assets/statemachines/action_tests/inc_rating.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -49,12 +52,15 @@ mod tests {
 
     #[test]
     fn decrement() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/decr_rating.json");
+        let global_state = include_str!("../assets/statemachines/action_tests/decr_rating.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -92,12 +98,15 @@ mod tests {
 
     #[test]
     fn toggle() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/toggle.json");
+        let global_state = include_str!("../assets/statemachines/action_tests/toggle.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -124,10 +133,14 @@ mod tests {
 
     #[test]
     fn set_boolean() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
+        let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
         let mut player = DotLottiePlayer::new(0);
         assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100),
+            player.load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            ),
             Ok(())
         );
         let mut sm = player
@@ -150,12 +163,15 @@ mod tests {
 
     #[test]
     fn set_numeric() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
+        let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -177,12 +193,15 @@ mod tests {
 
     #[test]
     fn set_string() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/set_inputs.json");
+        let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -204,12 +223,15 @@ mod tests {
 
     #[test]
     fn fire() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/fire.json");
+        let global_state = include_str!("../assets/statemachines/action_tests/fire.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
@@ -230,12 +252,15 @@ mod tests {
 
     #[test]
     fn set_frame() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/set_frame.json");
+        let global_state = include_str!("../assets/statemachines/action_tests/set_frame.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
 
         assert_eq!(player.current_frame(), 0.0);
 
@@ -265,12 +290,15 @@ mod tests {
 
     #[test]
     fn set_progress() {
-        let global_state = include_str!("fixtures/statemachines/action_tests/set_progress.json");
+        let global_state = include_str!("../assets/statemachines/action_tests/set_progress.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
 
         assert_eq!(player.current_frame(), 0.0);
 
@@ -300,12 +328,15 @@ mod tests {
 
     #[test]
     fn reset() {
-        let reset_sm = include_str!("fixtures/statemachines/action_tests/reset.json");
+        let reset_sm = include_str!("../assets/statemachines/action_tests/reset.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
 
         assert_eq!(player.current_frame(), 0.0);
 
@@ -331,12 +362,15 @@ mod tests {
 
     #[test]
     fn fire_custom_event() {
-        let reset_sm = include_str!("fixtures/statemachines/action_tests/fire_custom_event.json");
+        let reset_sm = include_str!("../assets/statemachines/normal_usecases/rating.json");
         let mut player = DotLottiePlayer::new(0);
-        assert_eq!(
-            player.load_dotlottie_data(include_bytes!("fixtures/star_marked.lottie"), 100, 100),
-            Ok(())
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
 
         assert_eq!(player.current_frame(), 0.0);
 
@@ -385,7 +419,7 @@ mod tests {
                 }
                 StateMachineEvent::StateExit { state } => Some(format!("on_state_exit: {}", state)),
                 StateMachineEvent::CustomEvent { message } => {
-                    Some(format!("custom_event: {}", message))
+                    Some(format!("custom_event: {message}"))
                 }
                 _ => None,
             };

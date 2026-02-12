@@ -19,8 +19,8 @@ mod tests {
             "Expected play to fail when animation is not loaded"
         );
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
         assert_eq!(
             player.play(),
@@ -33,8 +33,8 @@ mod tests {
     fn test_play_while_playing() {
         let mut player = DotLottiePlayer::new(0);
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
         assert_eq!(player.play(), Ok(()));
 
@@ -52,8 +52,8 @@ mod tests {
         let mut player = DotLottiePlayer::new(0);
         player.set_use_frame_interpolation(false);
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
         assert_eq!(player.play(), Ok(()));
 
@@ -100,8 +100,8 @@ mod tests {
         let mut player = DotLottiePlayer::new(0);
         player.set_use_frame_interpolation(false);
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
         assert_eq!(player.play(), Ok(()));
 
@@ -140,7 +140,7 @@ mod tests {
         let mut player = DotLottiePlayer::new(0);
         player.set_use_frame_interpolation(false);
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));
 
         let mid_frame = player.total_frames() / 2.0;

@@ -31,7 +31,7 @@ mod tests {
         let mut player = DotLottiePlayer::new(0);
         player.set_autoplay(true);
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
         assert!(player.is_playing());
         assert!(!player.is_paused());
@@ -58,7 +58,7 @@ mod tests {
         let mut player = DotLottiePlayer::new(0);
         player.set_autoplay(false);
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         let loaded = player.load_animation_path(&path, WIDTH, HEIGHT);
 
         assert!(loaded.is_ok());

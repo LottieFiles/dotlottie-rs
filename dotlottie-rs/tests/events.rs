@@ -23,7 +23,7 @@ mod tests {
         player.set_use_frame_interpolation(false);
 
         let invalid_path = CString::new("invalid/path").unwrap();
-        let valid_path = CString::new("tests/fixtures/test.json").unwrap();
+        let valid_path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         assert!(
             player
@@ -32,9 +32,10 @@ mod tests {
             "Invalid path should not load"
         );
 
-        assert_eq!(
-            player.load_animation_path(&valid_path, WIDTH, HEIGHT),
-            Ok(()),
+        assert!(
+            player
+                .load_animation_path(&valid_path, WIDTH, HEIGHT)
+                .is_ok(),
             "Valid path should load"
         );
 
@@ -83,9 +84,9 @@ mod tests {
                 DotLottieEvent::Play => "on_play".to_string(),
                 DotLottieEvent::Pause => "on_pause".to_string(),
                 DotLottieEvent::Stop => "on_stop".to_string(),
-                DotLottieEvent::Frame { frame_no } => format!("on_frame: {}", frame_no),
-                DotLottieEvent::Render { frame_no } => format!("on_render: {}", frame_no),
-                DotLottieEvent::Loop { loop_count } => format!("on_loop: {}", loop_count),
+                DotLottieEvent::Frame { frame_no } => format!("on_frame: {frame_no}"),
+                DotLottieEvent::Render { frame_no } => format!("on_render: {frame_no}"),
+                DotLottieEvent::Loop { loop_count } => format!("on_loop: {loop_count}"),
                 DotLottieEvent::Complete => "on_complete".to_string(),
             };
 

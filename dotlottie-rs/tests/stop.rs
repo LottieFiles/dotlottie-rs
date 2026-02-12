@@ -62,7 +62,7 @@ mod tests {
             },
         ];
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         for config in configs {
             let mut player = DotLottiePlayer::new(0);
@@ -72,9 +72,8 @@ mod tests {
                 let _ = player.set_segment(Some(seg));
             }
 
-            assert_eq!(
-                player.load_animation_path(&path, WIDTH, HEIGHT),
-                Ok(()),
+            assert!(
+                player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
                 "Animation should load"
             );
 

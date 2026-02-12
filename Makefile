@@ -101,12 +101,10 @@ clean: native-clean
 # Run tests
 test:
 	cargo test --manifest-path dotlottie-rs/Cargo.toml -- --test-threads=1
-	cargo test --manifest-path dotlottie-ffi/Cargo.toml -- --test-threads=1
 
 # Run clippy
 clippy:
 	cargo clippy --manifest-path dotlottie-rs/Cargo.toml --all-targets -- -D clippy::print_stdout
-	cargo clippy --manifest-path dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
 
 # Native build variables
 NATIVE = native

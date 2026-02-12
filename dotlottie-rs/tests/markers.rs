@@ -27,10 +27,9 @@ mod tests {
             "Expected no markers before loading animation"
         );
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -83,10 +82,9 @@ mod tests {
 
         let marker_name = CString::new("Marker_3").unwrap();
 
-        let path = CString::new("tests/fixtures/test.json").unwrap();
-        assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
-            Ok(()),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 

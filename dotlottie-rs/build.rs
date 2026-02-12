@@ -238,7 +238,7 @@ mod thorvg {
         // Add WebGPU header include path for WASM builds
         if tvg_wg_enabled && target_triple == "wasm32-unknown-emscripten" {
             let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-            let wgpu_emscripten_include = env::var("WGPU_EMSCRIPTEN_INCLUDE").unwrap();
+            let wgpu_emscripten_include = env::var("WGPU_INCLUDE").unwrap();
             let webgpu_include = PathBuf::from(&crate_dir)
                 .parent()
                 .unwrap()
@@ -277,47 +277,56 @@ mod thorvg {
                 let wgpu_lib_path = env::var("WGPU_NATIVE_LIB")
                     .map(PathBuf::from)
                     .unwrap_or(default_lib_path);
-                let wgpu_include_path = env::var("WGPU_NATIVE_INCLUDE")
+                let wgpu_include_path = env::var("WGPU_INCLUDE")
                     .map(PathBuf::from)
                     .unwrap_or(default_include_path);
 
-                let static_lib = wgpu_lib_path.join("libwgpu_native.a");
+                // Verify paths exist
+                let lib_path_exists = wgpu_lib_path.exists();
+                let include_path_exists = wgpu_include_path.exists();
 
                 // Add include path for wgpu headers
-                if wgpu_include_path.exists() {
+                if include_path_exists {
                     cc_build.include(&wgpu_include_path);
                 }
 
                 // Link wgpu-native static library
-                if static_lib.exists() {
-                    let abs_lib_path = wgpu_lib_path
-                        .canonicalize()
-                        .expect("Failed to canonicalize wgpu lib path");
-
-                    println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
-                    println!("cargo:rustc-link-lib=static=wgpu_native");
-
-                    // Link platform-specific frameworks/libraries
-                    if target.contains("apple") {
-                        println!("cargo:rustc-link-lib=framework=Metal");
-                        println!("cargo:rustc-link-lib=framework=QuartzCore");
-                        println!("cargo:rustc-link-lib=framework=Foundation");
-                        println!("cargo:rustc-link-lib=framework=AppKit");
-                    } else if target.contains("linux") {
-                        println!("cargo:rustc-link-lib=vulkan");
-                    }
-
-                    eprintln!(
-                        "cargo:warning=Linked wgpu-native from {}",
-                        abs_lib_path.display()
+                if !lib_path_exists {
+                    panic!(
+                        "tvg-wg feature enabled but wgpu lib path not found: {}\n\
+                         Set WGPU_NATIVE_LIB environment variable or place library at default location.",
+                        wgpu_lib_path.display()
                     );
-
-                    // Enable cfg flag for conditional compilation
-                    println!("cargo:rustc-cfg=wgpu_native_linked");
-                } else {
-                    eprintln!("cargo:warning=wgpu-native library not found at {static_lib:?}");
-                    eprintln!("cargo:warning=WebGPU rendering will not be available");
                 }
+                if !include_path_exists {
+                    panic!(
+                        "tvg-wg feature enabled but wgpu include path not found: {}\n\
+                         Set WGPU_INCLUDE environment variable or place headers at default location.",
+                        wgpu_include_path.display()
+                    );
+                }
+
+                let abs_lib_path = wgpu_lib_path
+                    .canonicalize()
+                    .expect("Failed to canonicalize wgpu lib path");
+
+                println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
+                println!("cargo:rustc-link-lib=static=wgpu_native");
+
+                // Link platform-specific frameworks/libraries
+                if target.contains("apple") {
+                    println!("cargo:rustc-link-lib=framework=Metal");
+                    println!("cargo:rustc-link-lib=framework=QuartzCore");
+                    println!("cargo:rustc-link-lib=framework=Foundation");
+                    println!("cargo:rustc-link-lib=framework=AppKit");
+                } else if target.contains("linux") {
+                    println!("cargo:rustc-link-lib=vulkan");
+                }
+
+                eprintln!(
+                    "cargo:warning=Linked wgpu-native from {}",
+                    abs_lib_path.display()
+                );
             }
         }
 
@@ -359,41 +368,42 @@ mod thorvg {
                 let default_include_path = PathBuf::from(&crate_dir)
                     .join("deps/wgpu")
                     .join(&target)
-                    .join("include");
+                    .join("include")
+                    .join("webgpu/webgpu.h");
 
                 // Use environment variable or default
-                let wgpu_include_path = env::var("WGPU_NATIVE_INCLUDE")
+                let wgpu_include_path = env::var("WGPU_INCLUDE")
                     .map(PathBuf::from)
                     .unwrap_or(default_include_path);
 
-                let wgpu_header = wgpu_include_path.join("webgpu/webgpu.h");
+                let wgpu_header = wgpu_include_path;
 
                 if wgpu_header.exists() {
-                        eprintln!(
-                            "cargo:warning=Generating WebGPU bindings from {}",
-                            wgpu_header.display()
-                        );
+                    eprintln!(
+                        "cargo:warning=Generating WebGPU bindings from {}",
+                        wgpu_header.display()
+                    );
 
-                        let wgpu_bindings = bindgen::Builder::default()
-                            .header(wgpu_header.to_str().unwrap())
-                            // Only include WGPU types and functions
-                            .allowlist_type("WGPU.*")
-                            .allowlist_function("wgpu.*")
-                            .allowlist_var("WGPU_.*")
-                            // Use libc types
-                            .ctypes_prefix("std::os::raw")
-                            // Don't generate layout tests (they're huge and we don't need them)
-                            .layout_tests(false)
-                            // Disable default includes to avoid system header issues
-                            .use_core()
-                            .generate()
-                            .expect("Failed to generate wgpu bindings");
+                    let wgpu_bindings = bindgen::Builder::default()
+                        .header(wgpu_header.to_str().unwrap())
+                        // Only include WGPU types and functions
+                        .allowlist_type("WGPU.*")
+                        .allowlist_function("wgpu.*")
+                        .allowlist_var("WGPU_.*")
+                        // Use libc types
+                        .ctypes_prefix("std::os::raw")
+                        // Don't generate layout tests (they're huge and we don't need them)
+                        .layout_tests(false)
+                        // Disable default includes to avoid system header issues
+                        .use_core()
+                        .generate()
+                        .expect("Failed to generate wgpu bindings");
 
-                        wgpu_bindings.write_to_file(
-                            PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs"),
-                        )?;
+                    wgpu_bindings.write_to_file(
+                        PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs"),
+                    )?;
 
-                        eprintln!("cargo:warning=WebGPU bindings generated successfully");
+                    eprintln!("cargo:warning=WebGPU bindings generated successfully");
                 }
             }
         }
@@ -418,9 +428,6 @@ mod thorvg {
 }
 
 fn main() -> std::io::Result<()> {
-    // Declare custom cfg names for conditional compilation
-    println!("cargo::rustc-check-cfg=cfg(wgpu_native_linked)");
-
     if cfg!(feature = "tvg") {
         thorvg::build()?;
     }

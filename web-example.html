@@ -3,591 +3,744 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WASM test</title>
+    <title>DotLottie C API - Unified Renderer Demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #fafafa;
+      }
+
+      h1 {
+        margin-bottom: 10px;
+      }
+
+      .subtitle {
+        color: #666;
+        margin-bottom: 30px;
+      }
+
+      .main-controls {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .main-controls label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+      }
+
+      .main-controls select {
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+        min-width: 150px;
+      }
+
+      .main-controls button {
+        padding: 10px 20px;
+        border: 1px solid #333;
+        border-radius: 4px;
+        background: #333;
+        color: white;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .main-controls button:hover {
+        background: #555;
+      }
+
+      .instances-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 20px;
+      }
+
+      .instance {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        position: relative;
+      }
+
+      .instance-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .instance-title {
+        font-weight: 600;
+        font-size: 14px;
+        color: #333;
+      }
+
+      .instance-close {
+        background: #f44;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 10px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      .instance-close:hover {
+        background: #d33;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        border: 2px solid #333;
+        border-radius: 4px;
+        background: #f0f0f0;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .controls button {
+        padding: 6px 12px;
+        border: 1px solid #333;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      .controls button:hover {
+        background: #f0f0f0;
+      }
+
+      .controls label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+      }
+
+      .controls input[type="range"] {
+        width: 80px;
+      }
+
+      .info {
+        margin-top: 8px;
+        padding: 8px;
+        background: #f9f9f9;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 11px;
+      }
+
+      .status {
+        color: #666;
+        margin-bottom: 3px;
+      }
+
+      .error {
+        color: #d00;
+        font-weight: bold;
+      }
+
+      .success {
+        color: #090;
+        font-weight: bold;
+      }
+    </style>
   </head>
-
   <body>
-    <h1>Test</h1>
-    <div style="width: 800px">
-      <label for="fit">Fit:</label>
-      <select id="fit">
-        <option value="1" selected>Contain</option>
-        <option value="2">Fill</option>
-        <option value="3">Cover</option>
-        <option value="4">FitWidth</option>
-        <option value="5">FitHeight</option>
-        <option value="6">None</option>
-      </select>
-      <label for="align">Align:</label>
-      <select id="align">
-        <option value="0,0">top-left</option>
-        <option value="0.5,0">top-center</option>
-        <option value="1,0">top-right</option>
+    <h1>🎨 DotLottie C API - Unified Renderer Demo</h1>
+    <p class="subtitle">
+      Test different renderers and spawn multiple player instances
+    </p>
 
-        <option value="0,0.5">center-left</option>
-        <option value="0.5,0.5" selected>center</option>
-        <option value="1,0.5">center-right</option>
+    <div class="main-controls">
+      <label>
+        <span>Renderer:</span>
+        <select id="renderer-select">
+          <option value="software">Software Renderer</option>
+          <option value="webgl">WebGL Renderer</option>
+          <option value="webgpu">WebGPU Renderer</option>
+        </select>
+      </label>
 
-        <option value="0,1">bottom-left</option>
-        <option value="0.5,1">bottom-center</option>
-        <option value="1,1">bottom-right</option>
-      </select>
-      <canvas
-        style="width: 100%; height: 100%; border: 1px solid black"
-      ></canvas>
-      <button id="play">play</button>
-      <button id="pause">pause</button>
-      <button id="resize">resize</button>
-      <select id="theme-select">
-        <option value="">None</option>
-        <option value="theme">Theme</option>
-      </select>
-      <input
-        id="progress-bar"
-        type="range"
-        min="0"
-        max="100"
-        defaultValue="0"
-        step="0.01"
-      />
-      <select id="mode">
-        <option value="1">Forward</option>
-        <option value="2">Reverse</option>
-        <option value="3">Bounce</option>
-        <option value="4">ReverseBounce</option>
-      </select>
-    </div>
-    <button id="jump">Jump</button>
-    <button id="speed-up">speed +</button>
-    <button id="speed-down">speed -</button>
-    <button id="loop">loopToggle</button>
-    <button id="next">Next</button>
-    <input id="bg-color" type="color" />
-    <div>
-      <label for="width">Rendering Area Width:</label>
-      <input id="width" type="range" min="0" max="1" step="0.01" value="1" />
-      <label for="height">Rendering Area Height:</label>
-      <input id="height" type="range" min="0" max="1" step="0.01" value="1" />
-    </div>
-    <div style="margin-top: 10px">
-      <h3>Pan & Zoom Controls</h3>
-      <p><strong>Zoom:</strong> Cmd/Ctrl + Scroll wheel</p>
-      <p>
-        <strong>Pan:</strong> Scroll wheel (or Shift + Mouse drag, or two-finger
-        touch drag)
-      </p>
-      <button id="reset-transform">Reset Pan & Zoom</button>
-      <div>
-        <span>Transform: </span>
-        <span id="transform-display">Identity</span>
+      <button id="spawn-instance">➕ Spawn New Instance</button>
+
+      <div style="margin-left: auto; color: #666; font-size: 12px">
+        <span id="instance-count">0 instances</span>
       </div>
     </div>
-    <script type="module">
-      // Import the C API WASM module for software rendering
-      import createDotLottiePlayerModule from "./release/wasm/dotlottie_player.js";
 
-      const playBtn = document.querySelector("#play");
-      const pauseBtn = document.querySelector("#pause");
-      const resizeBtn = document.querySelector("#resize");
-      const progressBar = document.querySelector("#progress-bar");
-      const jumpBtn = document.querySelector("#jump");
-      const modeSelect = document.querySelector("#mode");
-      const speedUpBtn = document.querySelector("#speed-up");
-      const speedDownBtn = document.querySelector("#speed-down");
-      const loopToggle = document.querySelector("#loop");
-      const nextBtn = document.querySelector("#next");
-      const bgColorInput = document.querySelector("#bg-color");
-      const fitSelect = document.querySelector("#fit");
-      const alignSelect = document.querySelector("#align");
-      const themeSelect = document.querySelector("#theme-select");
-      const renderAreaWidthInput = document.querySelector("#width");
-      const renderAreaHeightInput = document.querySelector("#height");
-      const resetTransformBtn = document.querySelector("#reset-transform");
-      const transformDisplay = document.querySelector("#transform-display");
+    <div id="instances-grid" class="instances-grid"></div>
+
+    <script type="module">
+      let instanceCounter = 0;
+      const instances = new Map();
+
+      const rendererSelect = document.getElementById("renderer-select");
+      const spawnButton = document.getElementById("spawn-instance");
+      const instancesGrid = document.getElementById("instances-grid");
+      const instanceCountEl = document.getElementById("instance-count");
 
       // Helper: Allocate a C string in WASM memory
       function allocateUTF8(Module, str) {
         const encoder = new TextEncoder();
         const utf8Array = encoder.encode(str);
-        const len = utf8Array.length + 1; // +1 for null terminator
-
+        const len = utf8Array.length + 1;
         const ptr = Module._malloc(len);
-
-        // Copy string bytes to WASM memory
         const heap = new Uint8Array(Module.HEAPU8.buffer, ptr, len);
         heap.set(utf8Array);
-        heap[utf8Array.length] = 0; // Null terminator
-
+        heap[utf8Array.length] = 0;
         return ptr;
       }
 
-      const Module = await createDotLottiePlayerModule({
-        locateFile: (path) => {
-          if (path.endsWith(".wasm")) {
-            return "release/wasm/" + path;
+      function updateInstanceCount() {
+        const count = instances.size;
+        instanceCountEl.textContent = `${count} instance${
+          count !== 1 ? "s" : ""
+        }`;
+      }
+
+      async function createInstance() {
+        const renderer = rendererSelect.value;
+        const instanceId = ++instanceCounter;
+
+        // Create instance container
+        const instanceDiv = document.createElement("div");
+        instanceDiv.className = "instance";
+        instanceDiv.id = `instance-${instanceId}`;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 400;
+        canvas.height = 300;
+        canvas.id = `canvas-${instanceId}`;
+
+        instanceDiv.innerHTML = `
+          <div class="instance-header">
+            <div class="instance-title">Instance #${instanceId} - ${renderer.toUpperCase()}</div>
+            <button class="instance-close" data-id="${instanceId}">✕ Close</button>
+          </div>
+        `;
+        instanceDiv.appendChild(canvas);
+
+        const controlsDiv = document.createElement("div");
+        controlsDiv.innerHTML = `
+          <div class="controls">
+            <button class="play" data-id="${instanceId}">▶️</button>
+            <button class="pause" data-id="${instanceId}">⏸️</button>
+            <button class="stop" data-id="${instanceId}">⏹️</button>
+            <label>
+              <input type="checkbox" class="loop" data-id="${instanceId}" checked />
+              Loop
+            </label>
+          </div>
+          <div class="info">
+            <div class="status status-${instanceId}">Initializing...</div>
+            <div class="frame-info-${instanceId}">Frame: 0 / 0</div>
+            <div class="fps-info-${instanceId}">FPS: 0</div>
+          </div>
+        `;
+        while (controlsDiv.firstChild) {
+          instanceDiv.appendChild(controlsDiv.firstChild);
+        }
+
+        instancesGrid.appendChild(instanceDiv);
+
+        // Initialize player based on renderer
+        try {
+          let playerData;
+          switch (renderer) {
+            case "software":
+              playerData = await initSoftwareRenderer(instanceId, canvas);
+              break;
+            case "webgl":
+              playerData = await initWebGLRenderer(instanceId, canvas);
+              break;
+            case "webgpu":
+              playerData = await initWebGPURenderer(instanceId, canvas);
+              break;
           }
-          return path;
-        },
-      });
 
-      // ============================================================
-      // Initialize player with C API and software renderer
-      // ============================================================
+          instances.set(instanceId, playerData);
+          updateInstanceCount();
 
-      // Allocate config struct
-      const configPtr = Module._malloc(256);
-      Module._dotlottie_init_config(configPtr);
-      console.log("✓ Config initialized");
+          // Setup controls
+          setupControls(instanceId, playerData);
 
-      // Create the player
-      const player = Module._dotlottie_new_player(configPtr);
-      if (player === 0) {
-        throw new Error("Failed to create player");
-      }
-      console.log("✓ Player created");
-
-      const canvas = document.querySelector("canvas");
-
-      // Allocate frame buffer for software rendering
-      // Set explicit canvas dimensions
-      let canvasWidth = 800;
-      let canvasHeight = 600;
-      canvas.width = canvasWidth;
-      canvas.height = canvasHeight;
-
-      let bufferSize = canvasWidth * canvasHeight * 4; // RGBA = 4 bytes per pixel
-      let bufferPtr = Module._malloc(bufferSize);
-      console.log(
-        `✓ Allocated ${bufferSize} bytes for ${canvasWidth}x${canvasHeight} buffer`
-      );
-
-      // Set software rendering target
-      // ColorSpace enum: 0 = ABGR8888
-      const colorSpace = 0;
-      const stride = canvasWidth;
-
-      const setTargetResult = Module._dotlottie_set_sw_target(
-        player,
-        bufferPtr,
-        stride,
-        canvasWidth,
-        canvasHeight,
-        colorSpace
-      );
-
-      if (setTargetResult !== 0) {
-        throw new Error(
-          `Failed to set software rendering target, error code: ${setTargetResult}`
-        );
-      }
-      console.log("✓ Software rendering target set");
-
-      // Load animation data
-      const animationUrl =
-        "./dotlottie-rs/assets/animations/lottie/bouncy_ball.json";
-      const data = await fetch(animationUrl).then((res) => res.text());
-      const animationPtr = allocateUTF8(Module, data);
-
-      const loadResult = Module._dotlottie_load_animation_data(
-        player,
-        animationPtr,
-        canvasWidth,
-        canvasHeight
-      );
-
-      Module._free(animationPtr);
-
-      if (loadResult !== 0) {
-        throw new Error("Failed to load animation data");
-      }
-      console.log("✓ Animation loaded");
-
-      // Query animation info
-      const totalFramesPtr = Module._malloc(4);
-      Module._dotlottie_total_frames(player, totalFramesPtr);
-      const totalFrames = Module.HEAPF32[totalFramesPtr >> 2];
-      Module._free(totalFramesPtr);
-
-      const durationPtr = Module._malloc(4);
-      Module._dotlottie_duration(player, durationPtr);
-      const duration = Module.HEAPF32[durationPtr >> 2];
-      Module._free(durationPtr);
-
-      console.log(
-        `✓ Animation info: ${totalFrames} frames, ${duration.toFixed(2)}s`
-      );
-
-      // Start playing
-      Module._dotlottie_play(player);
-
-      resize();
-
-      const ctx = canvas.getContext("2d");
-
-      let animationFrameId = null;
-      let shouldLoop = true;
-      let lastTickTime = performance.now();
-      let speedMultiplier = 1.0;
-
-      // Pan and zoom state
-      let currentZoom = 1.0;
-      let panX = 0.0;
-      let panY = 0.0;
-      let isPanning = false;
-      let lastTouchX = 0;
-      let lastTouchY = 0;
-
-      function updateTransformDisplay() {
-        transformDisplay.textContent = `Scale: ${currentZoom.toFixed(
-          2
-        )}, Pan: (${panX.toFixed(1)}, ${panY.toFixed(1)})`;
-      }
-
-      function applyPanZoom() {
-        // Note: C API transform functions may need to be implemented
-        // For now, we'll just update the display
-        updateTransformDisplay();
-        // render() will be called by the animation loop
-      }
-
-      function resetPanZoom() {
-        currentZoom = 1.0;
-        panX = 0.0;
-        panY = 0.0;
-        updateTransformDisplay();
-      }
-
-      function animationLoop() {
-        const now = performance.now();
-
-        // Check if animation is complete and should loop
-        const isComplete = Module._dotlottie_is_complete(player);
-        if (isComplete === 1 && shouldLoop) {
-          Module._dotlottie_seek(player, 0);
-          Module._dotlottie_play(player);
+          // Start render loop
+          startRenderLoop(instanceId, playerData);
+        } catch (error) {
+          console.error(`Failed to create instance ${instanceId}:`, error);
+          const statusEl = document.querySelector(`.status-${instanceId}`);
+          statusEl.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
         }
-
-        // Check if we're playing before ticking
-        const isPlaying = Module._dotlottie_is_playing(player);
-
-        // Apply speed control
-        const timeSinceLastTick = now - lastTickTime;
-        const tickInterval = 1000 / 60 / speedMultiplier;
-
-        if (isPlaying === 1 && timeSinceLastTick >= tickInterval) {
-          Module._dotlottie_tick(player);
-          lastTickTime = now;
-        }
-
-        // Render the current frame
-        render();
-
-        animationFrameId = requestAnimationFrame(animationLoop);
       }
 
-      animationFrameId = requestAnimationFrame(animationLoop);
+      async function initSoftwareRenderer(instanceId, canvas) {
+        const statusEl = document.querySelector(`.status-${instanceId}`);
+        statusEl.textContent = "Loading WASM module...";
 
-      playBtn.addEventListener("click", () => {
-        Module._dotlottie_play(player);
-      });
+        const createModule = (
+          await import("./release/wasm/dotlottie_player.js")
+        ).default;
 
-      pauseBtn.addEventListener("click", () => {
-        Module._dotlottie_pause(player);
-      });
+        const Module = await createModule({
+          locateFile: (path) =>
+            path.endsWith(".wasm") ? "release/wasm/" + path : path,
+        });
 
-      jumpBtn.addEventListener("click", () => {
-        Module._dotlottie_seek(player, 44);
-      });
+        statusEl.textContent = "Creating player...";
 
-      resizeBtn.addEventListener("click", () => {
-        resize();
-      });
-
-      progressBar.addEventListener("mousedown", () => {
-        cancelAnimationFrame(animationFrameId);
-      });
-
-      progressBar.addEventListener("mouseup", () => {
-        animationFrameId = requestAnimationFrame(animationLoop);
-      });
-
-      progressBar.addEventListener("input", (event) => {
-        const newFrame = (event.target.value / 100) * totalFrames;
-        Module._dotlottie_seek(player, newFrame);
-        render();
-      });
-
-      function resize() {
-        const { width: clientWidth, height: clientHeight } =
-          canvas.getBoundingClientRect();
-
-        const newWidth = Math.floor(
-          clientWidth * (window.devicePixelRatio || 1)
-        );
-        const newHeight = Math.floor(
-          clientHeight * (window.devicePixelRatio || 1)
-        );
-
-        if (newWidth !== canvasWidth || newHeight !== canvasHeight) {
-          canvas.width = newWidth;
-          canvas.height = newHeight;
-
-          // Free old buffer and allocate new one
-          Module._free(bufferPtr);
-          canvasWidth = newWidth;
-          canvasHeight = newHeight;
-          bufferSize = canvasWidth * canvasHeight * 4;
-          bufferPtr = Module._malloc(bufferSize);
-
-          // Reset software rendering target with new buffer
-          const stride = canvasWidth;
-          const colorSpace = 0;
-          Module._dotlottie_set_sw_target(
-            player,
-            bufferPtr,
-            stride,
-            canvasWidth,
-            canvasHeight,
-            colorSpace
+        if (!Module._dotlottie_set_sw_target) {
+          throw new Error(
+            "WASM module missing _dotlottie_set_sw_target function"
           );
-
-          Module._dotlottie_resize(player, newWidth, newHeight);
         }
-      }
 
-      function setViewport() {
-        const viewportWidth = Number(renderAreaWidthInput.value) * canvas.width;
-        const viewportHeight =
-          Number(renderAreaHeightInput.value) * canvas.height;
-        // Note: C API viewport functions may need to be implemented
-        // For now, rendering uses the full canvas size
-      }
+        const ctx = canvas.getContext("2d");
+        const configPtr = Module._malloc(256);
+        Module._dotlottie_init_config(configPtr);
+        const player = Module._dotlottie_new_player(configPtr);
 
-      function render() {
-        setViewport();
+        if (player === 0) throw new Error("Failed to create player");
 
-        // Copy buffer from WASM memory to canvas
-        const bufferView = new Uint8ClampedArray(
-          Module.HEAPU8.buffer,
+        console.log(
+          `Instance ${instanceId}: Player created, setting up software target`
+        );
+
+        const width = canvas.width;
+        const height = canvas.height;
+        const bufferSize = width * height * 4;
+        const bufferPtr = Module._malloc(bufferSize);
+
+        if (bufferPtr === 0) throw new Error("Failed to allocate buffer");
+
+        console.log(
+          `Instance ${instanceId}: Allocated buffer ${bufferSize} bytes for ${width}x${height}`
+        );
+        console.log(
+          `Instance ${instanceId}: bufferPtr = ${bufferPtr}, player = ${player}`
+        );
+
+        // ColorSpace: 0 = ABGR8888 (matching the Rust forced colorspace)
+        const colorSpace = 0;
+        const stride = width; // stride in pixels
+
+        console.log(`Instance ${instanceId}: Calling set_sw_target with:`, {
+          player,
           bufferPtr,
-          bufferSize
+          stride,
+          width,
+          height,
+          colorSpace,
+        });
+
+        const setTargetResult = Module._dotlottie_set_sw_target(
+          player,
+          bufferPtr,
+          width,
+          height,
+          colorSpace
         );
 
-        const imageData = new ImageData(
-          new Uint8ClampedArray(bufferView),
-          canvasWidth,
-          canvasHeight
+        console.log(
+          `Instance ${instanceId}: set_sw_target returned: ${setTargetResult}`
         );
 
-        ctx.putImageData(imageData, 0, 0);
+        if (setTargetResult !== 0) {
+          throw new Error(
+            `Failed to set software target (error code: ${setTargetResult})`
+          );
+        }
 
-        // Note: Layer bounds drawing removed as C API may not have this function
-        // If needed, implement using Module._dotlottie_get_layer_bounds
+        console.log(`Instance ${instanceId}: Software target set successfully`);
+
+        // Load animation
+        const animationUrl =
+          "./dotlottie-rs/assets/animations/lottie/bouncy_ball.json";
+        const animationData = await fetch(animationUrl).then((r) => r.text());
+        const animationPtr = allocateUTF8(Module, animationData);
+
+        const loadResult = Module._dotlottie_load_animation_data(
+          player,
+          animationPtr,
+          width,
+          height
+        );
+
+        Module._free(animationPtr);
+        if (loadResult !== 0) throw new Error("Failed to load animation");
+
+        Module._dotlottie_play(player);
+        statusEl.innerHTML = '<span class="success">✓ Playing</span>';
+
+        return {
+          Module,
+          player,
+          canvas,
+          ctx,
+          bufferPtr,
+          bufferSize,
+          width,
+          height,
+          configPtr,
+          renderer: "software",
+        };
       }
 
-      modeSelect.addEventListener("change", (event) => {
-        const mode = parseInt(event.target.value);
-        // Note: C API mode setting may need implementation
-        // For now, mode changes are not supported in this version
-        console.log("Mode change requested:", mode);
-      });
+      async function initWebGLRenderer(instanceId, canvas) {
+        const statusEl = document.querySelector(`.status-${instanceId}`);
+        statusEl.textContent = "Checking WebGL support...";
 
-      speedUpBtn.addEventListener("click", () => {
-        speedMultiplier += 0.1;
-        console.log("Speed:", speedMultiplier.toFixed(1));
-      });
+        const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+        if (!gl) throw new Error("WebGL not supported");
 
-      speedDownBtn.addEventListener("click", () => {
-        speedMultiplier = Math.max(0.1, speedMultiplier - 0.1);
-        console.log("Speed:", speedMultiplier.toFixed(1));
-      });
+        statusEl.textContent = "Loading WASM module...";
 
-      loopToggle.addEventListener("click", () => {
-        shouldLoop = !shouldLoop;
-        console.log("Loop:", shouldLoop ? "enabled" : "disabled");
-      });
+        const createModule = (
+          await import("./release/wasm-webgl/dotlottie_player.js")
+        ).default;
 
-      let i = 0;
-      nextBtn.addEventListener("click", () => {
-        // Note: Manifest and multiple animation loading not implemented in C API version
-        console.log("Next animation button clicked (not implemented)");
-      });
+        const Module = await createModule({
+          locateFile: (path) =>
+            path.endsWith(".wasm") ? "release/wasm-webgl/" + path : path,
+          canvas: canvas,
+        });
 
-      bgColorInput.addEventListener("input", (event) => {
-        const color = parseInt(event.target.value.slice(1) + "ff", 16);
-        // Note: Background color setting not implemented in C API version
-        console.log("Background color:", event.target.value);
-      });
+        canvas.id = `canvas-${instanceId}`;
+        const canvasSelector = "#" + canvas.id;
+        const canvasSelectorPtr = allocateUTF8(Module, canvasSelector);
 
-      fitSelect.addEventListener("change", (event) => {
-        const fit = event.target.value;
-        // Note: Fit setting not implemented in C API version
-        console.log("Fit changed:", fit);
-      });
+        const webglContext =
+          Module._dotlottie_webgl_context_create(canvasSelectorPtr);
+        Module._free(canvasSelectorPtr);
 
-      alignSelect.addEventListener("change", (event) => {
-        const [x, y] = event.target.value.split(",").map(Number);
-        // Note: Align setting not implemented in C API version
-        console.log("Align changed:", x, y);
-      });
+        if (webglContext === 0)
+          throw new Error("Failed to create WebGL context");
 
-      themeSelect.addEventListener("change", (event) => {
-        const theme = event.target.value;
-        // Note: Theme/slots not implemented in C API version
-        console.log("Theme changed:", theme);
-      });
+        const makeCurrentResult =
+          Module._dotlottie_webgl_context_make_current(webglContext);
+        if (makeCurrentResult !== 0)
+          throw new Error("Failed to make WebGL context current");
 
-      // Pan and zoom event listeners
-      resetTransformBtn.addEventListener("click", resetPanZoom);
+        const configPtr = Module._malloc(256);
+        Module._dotlottie_init_config(configPtr);
+        const player = Module._dotlottie_new_player(configPtr);
 
-      // Pan and zoom sensitivity constants
-      const zoomMouseSensitivity = 1.1;
-      const zoomTrackpadSensitivity = 1.02;
-      const panSensitivity = 1.0;
+        if (player === 0) throw new Error("Failed to create player");
 
-      // Enhanced wheel handler for both panning and zooming
-      canvas.addEventListener("wheel", (event) => {
-        event.preventDefault();
+        const width = canvas.width;
+        const height = canvas.height;
 
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
+        const setTargetResult = Module._dotlottie_set_gl_target(
+          player,
+          webglContext,
+          0,
+          width,
+          height
+        );
 
-        // Convert to canvas coordinates
-        const canvasMouseX = (mouseX / rect.width) * canvas.width;
-        const canvasMouseY = (mouseY / rect.height) * canvas.height;
+        if (setTargetResult !== 0)
+          throw new Error("Failed to set WebGL target");
 
-        const isPinchZoom = event.ctrlKey || event.metaKey;
+        // Load animation
+        const animationUrl =
+          "./dotlottie-rs/assets/animations/lottie/bouncy_ball.json";
+        const animationData = await fetch(animationUrl).then((r) => r.text());
+        const animationPtr = allocateUTF8(Module, animationData);
 
-        if (isPinchZoom) {
-          // Zoom behavior (Cmd/Ctrl + wheel)
-          const usingTrackpad = event.ctrlKey || event.metaKey;
-          const zoomSensitivity = usingTrackpad
-            ? zoomTrackpadSensitivity
-            : zoomMouseSensitivity;
-          const zoomFactor =
-            event.deltaY > 0 ? 1 / zoomSensitivity : zoomSensitivity;
-          const newZoom = Math.max(
-            0.1,
-            Math.min(5.0, currentZoom * zoomFactor)
-          );
+        const loadResult = Module._dotlottie_load_animation_data(
+          player,
+          animationPtr,
+          width,
+          height
+        );
 
-          // Calculate the point in world space before zoom
-          const worldX = (canvasMouseX - panX) / currentZoom;
-          const worldY = (canvasMouseY - panY) / currentZoom;
+        Module._free(animationPtr);
+        if (loadResult !== 0) throw new Error("Failed to load animation");
 
-          // Update zoom
-          currentZoom = newZoom;
+        Module._dotlottie_play(player);
+        statusEl.innerHTML = '<span class="success">✓ Playing</span>';
 
-          // Calculate new pan to keep the same world point under the mouse
-          panX = canvasMouseX - worldX * currentZoom;
-          panY = canvasMouseY - worldY * currentZoom;
+        return {
+          Module,
+          player,
+          canvas,
+          webglContext,
+          width,
+          height,
+          configPtr,
+          renderer: "webgl",
+        };
+      }
 
-          applyPanZoom();
-        } else {
-          // Pan behavior (regular wheel scroll)
-          panX -= event.deltaX * panSensitivity;
-          panY -= event.deltaY * panSensitivity;
+      async function initWebGPURenderer(instanceId, canvas) {
+        const statusEl = document.querySelector(`.status-${instanceId}`);
+        statusEl.textContent = "Checking WebGPU support...";
 
-          applyPanZoom();
+        if (!navigator.gpu) throw new Error("WebGPU not supported");
+
+        const adapter = await navigator.gpu.requestAdapter({
+          powerPreference: "high-performance",
+        });
+        if (!adapter) throw new Error("Failed to get WebGPU adapter");
+
+        const device = await adapter.requestDevice();
+        statusEl.textContent = "Loading WASM module...";
+
+        const createModule = (
+          await import("./release/wasm-webgpu/dotlottie_player.js")
+        ).default;
+
+        const Module = await createModule({
+          locateFile: (path) =>
+            path.endsWith(".wasm") ? "release/wasm-webgpu/" + path : path,
+          canvas: canvas,
+          preinitializedWebGPUDevice: device,
+        });
+
+        const configPtr = Module._malloc(256);
+        Module._dotlottie_init_config(configPtr);
+        const player = Module._dotlottie_new_player(configPtr);
+
+        if (player === 0) throw new Error("Failed to create player");
+
+        const deviceHandle = Module._dotlottie_webgpu_get_device();
+        const instanceHandle = Module._dotlottie_webgpu_get_instance();
+
+        if (deviceHandle === 0)
+          throw new Error("Failed to get WebGPU device from Emscripten");
+
+        canvas.id = `canvas-${instanceId}`;
+        const canvasSelector = "#" + canvas.id;
+        const canvasSelectorPtr = allocateUTF8(Module, canvasSelector);
+        const surfaceHandle =
+          Module._dotlottie_webgpu_get_surface(canvasSelectorPtr);
+        Module._free(canvasSelectorPtr);
+
+        if (surfaceHandle === 0)
+          throw new Error("Failed to create WebGPU surface");
+
+        const width = canvas.width;
+        const height = canvas.height;
+
+        const setTargetResult = Module._dotlottie_set_wg_target(
+          player,
+          deviceHandle,
+          instanceHandle,
+          surfaceHandle,
+          width,
+          height
+        );
+
+        if (setTargetResult !== 0)
+          throw new Error("Failed to set WebGPU target");
+
+        // Load animation
+        const animationUrl =
+          "./dotlottie-rs/assets/animations/lottie/bouncy_ball.json";
+        const animationData = await fetch(animationUrl).then((r) => r.text());
+        const animationPtr = allocateUTF8(Module, animationData);
+
+        const loadResult = Module._dotlottie_load_animation_data(
+          player,
+          animationPtr,
+          width,
+          height
+        );
+
+        Module._free(animationPtr);
+        if (loadResult !== 0) throw new Error("Failed to load animation");
+
+        Module._dotlottie_play(player);
+        statusEl.innerHTML = '<span class="success">✓ Playing</span>';
+
+        return {
+          Module,
+          player,
+          canvas,
+          device,
+          deviceHandle,
+          instanceHandle,
+          surfaceHandle,
+          width,
+          height,
+          configPtr,
+          renderer: "webgpu",
+        };
+      }
+
+      function setupControls(instanceId, playerData) {
+        const { Module, player } = playerData;
+
+        document
+          .querySelector(`.play[data-id="${instanceId}"]`)
+          .addEventListener("click", () => Module._dotlottie_play(player));
+
+        document
+          .querySelector(`.pause[data-id="${instanceId}"]`)
+          .addEventListener("click", () => Module._dotlottie_pause(player));
+
+        document
+          .querySelector(`.stop[data-id="${instanceId}"]`)
+          .addEventListener("click", () => Module._dotlottie_stop(player));
+
+        const loopInput = document.querySelector(
+          `.loop[data-id="${instanceId}"]`
+        );
+        loopInput.addEventListener("change", (e) => {
+          playerData.shouldLoop = e.target.checked;
+        });
+
+        document
+          .querySelector(`.instance-close[data-id="${instanceId}"]`)
+          .addEventListener("click", () => destroyInstance(instanceId));
+      }
+
+      function startRenderLoop(instanceId, playerData) {
+        const { Module, player, renderer } = playerData;
+
+        playerData.shouldLoop = true;
+        playerData.lastTickTime = performance.now();
+        playerData.lastFrameTime = performance.now();
+        playerData.frameCount = 0;
+        playerData.fps = 0;
+
+        const frameInfoEl = document.querySelector(`.frame-info-${instanceId}`);
+        const fpsInfoEl = document.querySelector(`.fps-info-${instanceId}`);
+
+        // Get total frames once
+        const totalFramesPtr = Module._malloc(4);
+        Module._dotlottie_total_frames(player, totalFramesPtr);
+        playerData.totalFrames = Module.HEAPF32[totalFramesPtr >> 2];
+        Module._free(totalFramesPtr);
+
+        function render() {
+          if (!instances.has(instanceId)) return; // Instance was destroyed
+
+          const now = performance.now();
+          const isComplete = Module._dotlottie_is_complete(player);
+
+          if (isComplete === 1 && playerData.shouldLoop) {
+            Module._dotlottie_seek(player, 0);
+            Module._dotlottie_play(player);
+          }
+
+          const isPlaying = Module._dotlottie_is_playing(player);
+          const timeSinceLastTick = now - playerData.lastTickTime;
+          const tickInterval = 1000 / 60;
+
+          if (isPlaying === 1 && timeSinceLastTick >= tickInterval) {
+            Module._dotlottie_tick(player);
+            playerData.lastTickTime = now;
+
+            // For software renderer, blit to canvas
+            if (renderer === "software") {
+              const bufferView = new Uint8ClampedArray(
+                Module.HEAPU8.buffer,
+                playerData.bufferPtr,
+                playerData.bufferSize
+              );
+              const imageData = new ImageData(
+                new Uint8ClampedArray(bufferView),
+                playerData.width,
+                playerData.height
+              );
+              playerData.ctx.putImageData(imageData, 0, 0);
+            }
+
+            // Update frame info
+            const currentFramePtr = Module._malloc(4);
+            Module._dotlottie_current_frame(player, currentFramePtr);
+            const currentFrame = Module.HEAPF32[currentFramePtr >> 2];
+            Module._free(currentFramePtr);
+
+            frameInfoEl.textContent = `Frame: ${currentFrame.toFixed(
+              1
+            )} / ${playerData.totalFrames.toFixed(1)}`;
+          }
+
+          // Calculate FPS
+          playerData.frameCount++;
+          if (now - playerData.lastFrameTime >= 1000) {
+            playerData.fps = Math.round(
+              (playerData.frameCount * 1000) / (now - playerData.lastFrameTime)
+            );
+            fpsInfoEl.textContent = `FPS: ${playerData.fps}`;
+            playerData.frameCount = 0;
+            playerData.lastFrameTime = now;
+          }
+
+          requestAnimationFrame(render);
         }
-      });
 
-      // Pan with trackpad (two-finger drag)
-      let isTrackpadPanning = false;
-      let lastPanX = 0;
-      let lastPanY = 0;
+        requestAnimationFrame(render);
+      }
 
-      canvas.addEventListener("touchstart", (event) => {
-        if (event.touches.length === 2) {
-          event.preventDefault();
-          isTrackpadPanning = true;
-          const touch1 = event.touches[0];
-          const touch2 = event.touches[1];
-          lastPanX = (touch1.clientX + touch2.clientX) / 2;
-          lastPanY = (touch1.clientY + touch2.clientY) / 2;
-        }
-      });
+      function destroyInstance(instanceId) {
+        const playerData = instances.get(instanceId);
+        if (!playerData) return;
 
-      canvas.addEventListener("touchmove", (event) => {
-        if (isTrackpadPanning && event.touches.length === 2) {
-          event.preventDefault();
-          const touch1 = event.touches[0];
-          const touch2 = event.touches[1];
-          const currentPanX = (touch1.clientX + touch2.clientX) / 2;
-          const currentPanY = (touch1.clientY + touch2.clientY) / 2;
+        const { Module, player, configPtr, renderer } = playerData;
 
-          const deltaX = currentPanX - lastPanX;
-          const deltaY = currentPanY - lastPanY;
-
-          panX += deltaX / currentZoom; // Adjust pan sensitivity based on zoom
-          panY += deltaY / currentZoom;
-
-          lastPanX = currentPanX;
-          lastPanY = currentPanY;
-
-          applyPanZoom();
-        }
-      });
-
-      canvas.addEventListener("touchend", (event) => {
-        if (event.touches.length < 2) {
-          isTrackpadPanning = false;
-        }
-      });
-
-      // Alternative pan with mouse drag (while holding Shift)
-      let isMousePanning = false;
-      let mouseLastX = 0;
-      let mouseLastY = 0;
-
-      canvas.addEventListener("mousedown", (event) => {
-        if (event.shiftKey) {
-          isMousePanning = true;
-          mouseLastX = event.clientX;
-          mouseLastY = event.clientY;
-          canvas.style.cursor = "move";
-          event.preventDefault();
-        }
-      });
-
-      canvas.addEventListener("mousemove", (event) => {
-        if (isMousePanning) {
-          const deltaX = event.clientX - mouseLastX;
-          const deltaY = event.clientY - mouseLastY;
-
-          panX += deltaX / currentZoom;
-          panY += deltaY / currentZoom;
-
-          mouseLastX = event.clientX;
-          mouseLastY = event.clientY;
-
-          applyPanZoom();
-        }
-      });
-
-      canvas.addEventListener("mouseup", () => {
-        if (isMousePanning) {
-          isMousePanning = false;
-          canvas.style.cursor = "default";
-        }
-      });
-
-      // Prevent context menu on canvas
-      canvas.addEventListener("contextmenu", (event) => {
-        event.preventDefault();
-      });
-
-      // Cleanup on page unload
-      window.addEventListener("beforeunload", () => {
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId);
-        }
         Module._dotlottie_destroy(player);
-        Module._free(bufferPtr);
         Module._free(configPtr);
-        console.log("✓ Cleaned up resources");
-      });
+
+        if (renderer === "software") {
+          Module._free(playerData.bufferPtr);
+        } else if (renderer === "webgl") {
+          Module._dotlottie_webgl_context_destroy(playerData.webglContext);
+        } else if (renderer === "webgpu") {
+          if (playerData.surfaceHandle) {
+            Module._dotlottie_wgpu_surface_release(playerData.surfaceHandle);
+          }
+          if (playerData.deviceHandle) {
+            Module._dotlottie_wgpu_device_release(playerData.deviceHandle);
+          }
+          if (playerData.instanceHandle) {
+            Module._dotlottie_wgpu_instance_release(playerData.instanceHandle);
+          }
+        }
+
+        instances.delete(instanceId);
+
+        const instanceDiv = document.getElementById(`instance-${instanceId}`);
+        if (instanceDiv) instanceDiv.remove();
+
+        updateInstanceCount();
+        console.log(`✓ Instance ${instanceId} destroyed`);
+      }
+
+      // Event listeners
+      spawnButton.addEventListener("click", createInstance);
+
+      // Spawn initial instance
+      createInstance();
     </script>
   </body>
 </html>

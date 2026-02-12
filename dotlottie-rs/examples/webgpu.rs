@@ -8,7 +8,7 @@
 // ==============================================================================
 // WebGPU Implementation (only compiled when features are available)
 // ==============================================================================
-#[cfg(all(feature = "tvg-wg", any(target_os = "macos"), wgpu_native_linked))]
+#[cfg(all(feature = "tvg-wg", any(target_os = "macos")))]
 mod webgpu_impl {
     use dotlottie_rs::c_api::apple::WgpuContext;
     use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, WgpuDevice, WgpuInstance, WgpuTarget};
@@ -139,11 +139,7 @@ mod webgpu_impl {
     struct App {
         window: Option<Window>,
         player: Option<DotLottiePlayer>,
-        #[cfg(all(
-            feature = "tvg-wg",
-            any(target_os = "macos", target_os = "ios"),
-            wgpu_native_linked
-        ))]
+        #[cfg(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios")))]
         wgpu_context: Option<WgpuContext>,
         current_width: u32,
         current_height: u32,
@@ -154,11 +150,7 @@ mod webgpu_impl {
             Self {
                 window: None,
                 player: None,
-                #[cfg(all(
-                    feature = "tvg-wg",
-                    any(target_os = "macos", target_os = "ios"),
-                    wgpu_native_linked
-                ))]
+                #[cfg(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios")))]
                 wgpu_context: None,
                 current_width: 0,
                 current_height: 0,
@@ -407,25 +399,17 @@ mod webgpu_impl {
 // ==============================================================================
 // Main functions (selected by feature gates)
 // ==============================================================================
-#[cfg(all(
-    feature = "tvg-wg",
-    any(target_os = "macos", target_os = "ios"),
-    wgpu_native_linked
-))]
+#[cfg(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios")))]
 fn main() {
     webgpu_impl::run();
 }
 
-#[cfg(not(all(
-    feature = "tvg-wg",
-    any(target_os = "macos", target_os = "ios"),
-    wgpu_native_linked
-)))]
+#[cfg(not(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios"))))]
 fn main() {
     eprintln!("This example requires:");
     eprintln!("  - Feature 'tvg-wg' to be enabled");
     eprintln!("  - macOS or iOS target");
-    eprintln!("  - wgpu-native to be linked");
+    eprintln!("  - wgpu-native libraries must be present at build time");
     eprintln!("\nRun with:");
     eprintln!("  cargo run --example webgpu --features c_api,tvg,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions");
 }

@@ -67,10 +67,10 @@ impl WgpuTarget for RawWgpuTarget {
     }
 }
 
-#[cfg(all(feature = "tvg-wg", target_os = "macos", wgpu_native_linked))]
+#[cfg(all(feature = "tvg-wg", target_os = "macos"))]
 pub mod apple;
 
-#[cfg(all(feature = "tvg-wg", target_os = "emscripten"))]
+#[cfg(all(any(feature = "tvg-gl", feature = "tvg-wg"), target_os = "emscripten"))]
 pub mod emscripten;
 
 // Helper macro for DotLottiePlayer operations - wraps every C API call to check

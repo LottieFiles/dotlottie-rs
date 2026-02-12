@@ -200,6 +200,165 @@ pub unsafe extern "C" fn dotlottie_manifest_state_machines(
     })
 }
 
+/// Gets the number of animations in the loaded dotLottie manifest.
+///
+/// # Parameters
+/// - `ptr`: Pointer to the DotLottiePlayer instance
+/// - `count`: Pointer to receive the animation count
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::InvalidParameter` if pointers are invalid
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_manifest_animation_id_count(
+    ptr: *mut DotLottiePlayer,
+    count: *mut u32,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if count.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        *count = dotlottie_player.manifest_animation_ids().len() as u32;
+        DotLottieResult::Success
+    })
+}
+
+/// Gets an animation ID by index from the loaded dotLottie manifest.
+///
+/// # Parameters
+/// - `ptr`: Pointer to the DotLottiePlayer instance
+/// - `idx`: Index of the animation (0-based)
+/// - `id`: Pointer to receive the animation ID string pointer
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::InvalidParameter` if pointers are invalid or index is out of bounds
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_manifest_animation_id(
+    ptr: *mut DotLottiePlayer,
+    idx: u32,
+    id: *mut *const c_char,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if id.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        let ids = dotlottie_player.manifest_animation_ids();
+        if let Some(cstr) = ids.get(idx as usize) {
+            *id = cstr.as_ptr();
+            DotLottieResult::Success
+        } else {
+            DotLottieResult::InvalidParameter
+        }
+    })
+}
+
+/// Gets the number of themes in the loaded dotLottie manifest.
+///
+/// # Parameters
+/// - `ptr`: Pointer to the DotLottiePlayer instance
+/// - `count`: Pointer to receive the theme count
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::InvalidParameter` if pointers are invalid
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_manifest_theme_id_count(
+    ptr: *mut DotLottiePlayer,
+    count: *mut u32,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if count.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        *count = dotlottie_player.manifest_theme_ids().len() as u32;
+        DotLottieResult::Success
+    })
+}
+
+/// Gets a theme ID by index from the loaded dotLottie manifest.
+///
+/// # Parameters
+/// - `ptr`: Pointer to the DotLottiePlayer instance
+/// - `idx`: Index of the theme (0-based)
+/// - `id`: Pointer to receive the theme ID string pointer
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::InvalidParameter` if pointers are invalid or index is out of bounds
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_manifest_theme_id(
+    ptr: *mut DotLottiePlayer,
+    idx: u32,
+    id: *mut *const c_char,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if id.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        let ids = dotlottie_player.manifest_theme_ids();
+        if let Some(cstr) = ids.get(idx as usize) {
+            *id = cstr.as_ptr();
+            DotLottieResult::Success
+        } else {
+            DotLottieResult::InvalidParameter
+        }
+    })
+}
+
+/// Gets the number of state machines in the loaded dotLottie manifest.
+///
+/// # Parameters
+/// - `ptr`: Pointer to the DotLottiePlayer instance
+/// - `count`: Pointer to receive the state machine count
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::InvalidParameter` if pointers are invalid
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_manifest_state_machine_id_count(
+    ptr: *mut DotLottiePlayer,
+    count: *mut u32,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if count.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        *count = dotlottie_player.manifest_state_machine_ids().len() as u32;
+        DotLottieResult::Success
+    })
+}
+
+/// Gets a state machine ID by index from the loaded dotLottie manifest.
+///
+/// # Parameters
+/// - `ptr`: Pointer to the DotLottiePlayer instance
+/// - `idx`: Index of the state machine (0-based)
+/// - `id`: Pointer to receive the state machine ID string pointer
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::InvalidParameter` if pointers are invalid or index is out of bounds
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_manifest_state_machine_id(
+    ptr: *mut DotLottiePlayer,
+    idx: u32,
+    id: *mut *const c_char,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if id.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        let ids = dotlottie_player.manifest_state_machine_ids();
+        if let Some(cstr) = ids.get(idx as usize) {
+            *id = cstr.as_ptr();
+            DotLottieResult::Success
+        } else {
+            DotLottieResult::InvalidParameter
+        }
+    })
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_buffer_ptr(
     ptr: *mut DotLottiePlayer,

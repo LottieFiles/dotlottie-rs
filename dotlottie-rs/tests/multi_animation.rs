@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -11,12 +11,23 @@ mod tests {
     pub fn test_load_animation_with_animation_id() {
         let animation_id = "crying".to_string();
 
-        let mut player = DotLottiePlayer::new(Config {
-            animation_id: animation_id.clone(),
-            ..Config::default()
-        }, 0);
+        let mut player = DotLottiePlayer::new(
+            Config {
+                animation_id: animation_id.clone(),
+                ..Config::default()
+            },
+            0,
+        );
 
-        assert!(player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"), WIDTH, HEIGHT));
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+
+        assert!(player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
+            WIDTH,
+            HEIGHT
+        ));
 
         assert_eq!(player.active_animation_id(), animation_id);
     }
@@ -24,7 +35,16 @@ mod tests {
     #[test]
     pub fn test_load_animation() {
         let mut player = DotLottiePlayer::new(Config::default(), 0);
-        assert!(player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"), WIDTH, HEIGHT));
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+
+        assert!(player.load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
+            WIDTH,
+            HEIGHT
+        ));
 
         let manifest = player.manifest();
 

@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 
 mod test_utils;
 
@@ -26,6 +26,16 @@ mod play_mode_tests {
             loop_count: 3,
             ..Config::default()
         }, 0);
+
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
@@ -73,6 +83,16 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
+
         let mut observed_loops = 0;
 
         assert!(
@@ -111,6 +131,16 @@ mod play_mode_tests {
             loop_count: 3,
             ..Config::default()
         }, 0);
+
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
@@ -182,6 +212,16 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
+
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
@@ -252,6 +292,17 @@ mod play_mode_tests {
         for mode in play_modes {
             let mut player = DotLottiePlayer::new(Config::default(), 0);
 
+            
+            let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+            // Set software rendering target
+            assert!(player.set_sw_target(
+                &mut buffer,
+                WIDTH,
+                HEIGHT,
+                ColorSpace::ABGR8888,
+            ));
+
             let mut config = player.config();
             config.mode = mode;
             player.set_config(config);
@@ -310,6 +361,16 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
+
         assert!(
             player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
             "Animation should load"
@@ -360,6 +421,16 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
+
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
@@ -401,6 +472,16 @@ mod play_mode_tests {
             autoplay: true,
             ..Config::default()
         }, 0);
+
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         assert!(
             player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
@@ -450,6 +531,16 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
+
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
@@ -492,6 +583,16 @@ mod play_mode_tests {
             autoplay: true,
             ..Config::default()
         }, 0);
+
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         assert!(
             player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
@@ -558,6 +659,16 @@ mod play_mode_tests {
             ..Config::default()
         }, 0);
 
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
+
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
@@ -597,6 +708,16 @@ mod play_mode_tests {
             autoplay: true,
             ..Config::default()
         }, 0);
+
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         assert!(
             player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
@@ -662,6 +783,16 @@ mod play_mode_tests {
             loop_count: 3,
             ..Config::default()
         }, 0);
+
+        
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        ));
 
         let mut observed_loops = 0;
         let mut observed_completed = false;

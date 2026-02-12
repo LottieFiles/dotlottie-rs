@@ -8,7 +8,7 @@
 ///
 /// Position slots support spatial tangents for curved motion paths.
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{Config, DotLottiePlayer, LottieKeyframe, LottieProperty};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, LottieKeyframe, LottieProperty};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -16,7 +16,7 @@ const WIDTH: u32 = 512;
 const HEIGHT: u32 = 512;
 
 fn main() {
-    // Create window
+    
     let mut window = Window::new(
         "Position Slot Example - Press T to toggle, arrows to move",
         WIDTH as usize,
@@ -27,7 +27,7 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    // Create player and load animation
+    
     let mut player = DotLottiePlayer::new(
         Config {
             loop_animation: true,
@@ -36,6 +36,18 @@ fn main() {
         },
         0, // threads (0 = auto)
     );
+
+    
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+
+
+        player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        );
 
     let animation_data = include_str!("../assets/animations/lottie/bouncy_ball.json");
 
@@ -58,61 +70,56 @@ fn main() {
     let mut last_toggle_press = std::time::Instant::now();
     let mut is_animated = false;
 
-    // Set initial position (static)
+    
     let position_slot = LottieProperty::static_value([pos_x, pos_y]);
     player.set_position_slot("ball_position", position_slot);
-    println!(
-        "Mode: STATIC | Current position: X={pos_x:.0}, Y={pos_y:.0}"
-    );
+    println!("Mode: STATIC | Current position: X={pos_x:.0}, Y={pos_y:.0}");
 
-    // Main render loop
+    
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now();
 
-        // Handle toggle between static and animated with T key
-        if window.is_key_down(Key::T)
-            && now.duration_since(last_toggle_press).as_millis() > 200 {
-                is_animated = !is_animated;
+        
+        if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
+            is_animated = !is_animated;
 
-                if is_animated {
-                    // Create animated position slot: top-left -> bottom-right (linear interpolation)
-                    let position_slot = LottieProperty::animated(vec![
-                        LottieKeyframe {
-                            frame: 0,
-                            start_value: [100.0, 100.0],
-                            in_tangent: None,
-                            out_tangent: None,
-                            value_in_tangent: None,
-                            value_out_tangent: None,
-                            hold: None,
-                        },
-                        LottieKeyframe {
-                            frame: 60,
-                            start_value: [400.0, 400.0],
-                            in_tangent: None,
-                            out_tangent: None,
-                            value_in_tangent: None,
-                            value_out_tangent: None,
-                            hold: None,
-                        },
-                    ]);
-                    player.set_position_slot("ball_position", position_slot);
-                    println!("Mode: ANIMATED ([100, 100] -> [400, 400])");
-                } else {
-                    // Switch back to static mode
-                    let position_slot = LottieProperty::static_value([pos_x, pos_y]);
-                    player.set_position_slot("ball_position", position_slot);
-                    println!(
-                        "Mode: STATIC | Current position: X={pos_x:.0}, Y={pos_y:.0}"
-                    );
-                }
+            if is_animated {
+                
+                let position_slot = LottieProperty::animated(vec![
+                    LottieKeyframe {
+                        frame: 0,
+                        start_value: [100.0, 100.0],
+                        in_tangent: None,
+                        out_tangent: None,
+                        value_in_tangent: None,
+                        value_out_tangent: None,
+                        hold: None,
+                    },
+                    LottieKeyframe {
+                        frame: 60,
+                        start_value: [400.0, 400.0],
+                        in_tangent: None,
+                        out_tangent: None,
+                        value_in_tangent: None,
+                        value_out_tangent: None,
+                        hold: None,
+                    },
+                ]);
+                player.set_position_slot("ball_position", position_slot);
+                println!("Mode: ANIMATED ([100, 100] -> [400, 400])");
+            } else {
+                
+                let position_slot = LottieProperty::static_value([pos_x, pos_y]);
+                player.set_position_slot("ball_position", position_slot);
+                println!("Mode: STATIC | Current position: X={pos_x:.0}, Y={pos_y:.0}");
+            }
 
-                last_toggle_press = now;
+            last_toggle_press = now;
         }
 
         let mut position_changed = false;
 
-        // Handle position adjustment with arrow keys (only in static mode)
+        
         if !is_animated && now.duration_since(last_key_press).as_millis() > 16 {
             let move_speed = 5.0_f32;
 
@@ -139,21 +146,16 @@ fn main() {
         }
 
         if position_changed {
-            // Create and set the new position slot
+            
             let position_slot = LottieProperty::static_value([pos_x, pos_y]);
             player.set_position_slot("ball_position", position_slot);
-            println!(
-                "Mode: STATIC | Current position: X={pos_x:.0}, Y={pos_y:.0}"
-            );
+            println!("Mode: STATIC | Current position: X={pos_x:.0}, Y={pos_y:.0}");
         }
 
-        // Update animation frame and render
+        
         if player.tick() {
-            // Get buffer as a slice
-            let buffer = player.buffer();
-
             window
-                .update_with_buffer(buffer, WIDTH as usize, HEIGHT as usize)
+                .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");
         }
     }

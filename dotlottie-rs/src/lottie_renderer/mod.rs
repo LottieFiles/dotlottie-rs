@@ -10,7 +10,10 @@ mod fallback_font;
 #[cfg(feature = "tvg")]
 mod thorvg;
 
-pub use renderer::{Animation, ColorSpace, Drawable, Renderer, Shape};
+pub use renderer::{
+    Animation, ColorSpace, Drawable, GlContext, Renderer, Shape, WgpuDevice, WgpuInstance,
+    WgpuTarget,
+};
 pub use slots::{
     slots_from_json_string, Bezier, BezierValue, ColorSlot, GradientSlot, GradientStop, ImageSlot,
     LottieKeyframe, LottieProperty, PositionSlot, ScalarSlot, SlotType, TextCaps, TextDocument,
@@ -45,6 +48,48 @@ fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {
 }
 
 pub trait LottieRenderer {
+    /// # Safety
+    ///
+    /// `buffer` must be a valid pointer to a mutable u32 array with at least
+    /// `stride (Width)` elements. The buffer must remain valid for the lifetime
+    /// of rendering operations using this target.
+    fn set_sw_target(
+        &mut self,
+        buffer: &mut [u32],
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError>;
+
+    /// # Safety
+    ///
+    /// `context` must be a valid pointer to an OpenGL context. The context must
+    /// remain valid for the lifetime of rendering operations using this target.
+    unsafe fn set_gl_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+    ) -> Result<(), LottieRendererError>;
+
+    /// # Safety
+    ///
+    /// `device` must be a valid pointer to a WebGPU device, `instance` must be a valid
+    /// pointer to a WebGPU instance, and `target` must be a valid pointer to a WebGPU
+    /// render target. All pointers must remain valid for the lifetime of rendering
+    /// operations using this target.
+    #[allow(clippy::too_many_arguments)]
+    unsafe fn set_wg_target(
+        &mut self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+    ) -> Result<(), LottieRendererError>;
+
     fn load_data(
         &mut self,
         data: &CStr,
@@ -77,10 +122,6 @@ pub trait LottieRenderer {
     fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError>;
 
     fn resize(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError>;
-
-    fn buffer_ptr(&self) -> *const u32;
-
-    fn buffer_len(&self) -> usize;
 
     fn set_background_color(&mut self, hex_color: u32) -> Result<(), LottieRendererError>;
 
@@ -203,45 +244,6 @@ impl<R: Renderer> LottieRendererImpl<R> {
             self.background_shape = None;
         }
         Ok(())
-    }
-
-    fn resize_buffer(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError> {
-        let buffer_size = (width as u64)
-            .checked_mul(height as u64)
-            .ok_or(LottieRendererError::InvalidArgument)? as usize;
-
-        self.buffer = vec![0; buffer_size];
-
-        Ok(())
-    }
-
-    fn setup_buffer_and_target(
-        &mut self,
-        width: u32,
-        height: u32,
-    ) -> Result<(), LottieRendererError> {
-        if self.width == width && self.height == height && !self.buffer.is_empty() {
-            return Ok(());
-        }
-
-        let _ = self.renderer.sync();
-
-        self.picture_width = 0.0;
-        self.picture_height = 0.0;
-        self.width = width;
-        self.height = height;
-
-        self.resize_buffer(width, height)?;
-
-        self.renderer
-            .set_target(
-                &mut self.buffer,
-                self.width,
-                self.width,
-                self.height,
-                get_color_space_for_target(),
-            )
-            .map_err(into_lottie::<R>)
     }
 
     fn load_animation(&mut self, data: &CStr) -> Result<R::Animation, LottieRendererError> {
@@ -389,6 +391,48 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         R::register_font(font_name, font_data).map_err(into_lottie::<R>)
     }
 
+    fn set_sw_target(
+        &mut self,
+        buffer_ptr: &mut [u32],
+        stride: u32,
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), LottieRendererError> {
+        self.renderer
+            .set_sw_target(buffer_ptr, stride, width, height, color_space)
+            .map_err(into_lottie::<R>)
+    }
+
+    unsafe fn set_gl_target(
+        &mut self,
+        context: *mut std::ffi::c_void,
+        id: i32,
+        width: u32,
+        height: u32,
+    ) -> Result<(), LottieRendererError> {
+        let gl_context = R::GlContext::from_ptr(context);
+        self.renderer
+            .set_gl_target(&gl_context, id, width, height)
+            .map_err(into_lottie::<R>)
+    }
+
+    unsafe fn set_wg_target(
+        &mut self,
+        device: *mut std::ffi::c_void,
+        instance: *mut std::ffi::c_void,
+        target: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+    ) -> Result<(), LottieRendererError> {
+        let wgpu_device = R::WgpuDevice::from_ptr(device);
+        let wgpu_instance = R::WgpuInstance::from_ptr(instance);
+        let wgpu_target = R::WgpuTarget::from_ptr(target);
+        self.renderer
+            .set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_target, width, height)
+            .map_err(into_lottie::<R>)
+    }
+
     fn load_data(
         &mut self,
         data: &CStr,
@@ -397,7 +441,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     ) -> Result<(), LottieRendererError> {
         self.clear()?;
 
-        self.setup_buffer_and_target(width, height)?;
+        self.width = width;
+        self.height = height;
 
         let animation = self.load_animation(data)?;
 
@@ -456,6 +501,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn render(&mut self) -> Result<(), LottieRendererError> {
         if self.updated {
+            // Sync before update to ensure previous frame's rendering is complete
+            // This is crucial for async renderers like WebGL
+            self.renderer.sync().map_err(into_lottie::<R>)?;
+
             self.renderer.update().map_err(into_lottie::<R>)?;
             self.renderer.draw(true).map_err(into_lottie::<R>)?;
             self.renderer.sync().map_err(into_lottie::<R>)?;
@@ -506,18 +555,6 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.width = width;
         self.height = height;
 
-        self.resize_buffer(width, height)?;
-
-        self.renderer
-            .set_target(
-                &mut self.buffer,
-                self.width,
-                self.width,
-                self.height,
-                get_color_space_for_target(),
-            )
-            .map_err(into_lottie::<R>)?;
-
         if self.animation.is_some() {
             self.apply_user_transform()?;
         }
@@ -536,16 +573,6 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.render()?;
 
         Ok(())
-    }
-
-    #[inline]
-    fn buffer_ptr(&self) -> *const u32 {
-        self.buffer.as_ptr()
-    }
-
-    #[inline]
-    fn buffer_len(&self) -> usize {
-        self.buffer.len()
     }
 
     fn set_background_color(&mut self, hex_color: u32) -> Result<(), LottieRendererError> {
@@ -745,19 +772,6 @@ fn hex_to_rgba(hex_color: u32) -> (u8, u8, u8, u8) {
     let alpha = (hex_color & 0xFF) as u8;
 
     (red, green, blue, alpha)
-}
-
-#[inline]
-fn get_color_space_for_target() -> ColorSpace {
-    #[cfg(target_arch = "wasm32")]
-    {
-        ColorSpace::ABGR8888S
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        ColorSpace::ABGR8888
-    }
 }
 
 fn multiply_matrices(a: &[f32; 9], b: &[f32; 9]) -> [f32; 9] {

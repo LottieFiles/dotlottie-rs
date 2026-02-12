@@ -8,14 +8,13 @@
 ///
 /// Themes are a convenient way to bundle multiple slot changes together and switch
 /// between different visual styles of the same animation.
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 use minifb::{Key, Window, WindowOptions};
 
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = 512;
 
 fn main() {
-    // Create window
     let mut window = Window::new(
         "Theme Example - Press SPACE to cycle themes",
         WIDTH as usize,
@@ -26,7 +25,6 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    // Create player and load .lottie file
     let mut player = DotLottiePlayer::new(
         Config {
             loop_animation: true,
@@ -36,6 +34,10 @@ fn main() {
         0, // threads (0 = auto)
     );
 
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+    player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888);
+
     let dotlottie_data = include_bytes!("../assets/animations/dotlottie/v2/multi_themes.lottie");
 
     if !player.load_dotlottie_data(dotlottie_data, WIDTH, HEIGHT) {
@@ -44,15 +46,12 @@ fn main() {
     }
 
     println!("Animation loaded successfully!");
-
-    // Debug: Check active animation ID
     println!("Active animation ID: '{}'", player.active_animation_id());
 
     println!("Press SPACE to cycle through different themes");
     println!("Press ESC to quit");
     println!();
 
-    // Available themes from the multi_themes.lottie file
     let themes = [
         "light",
         "dark",
@@ -65,7 +64,6 @@ fn main() {
     let mut current_theme_index = 0;
     let mut last_space_press = std::time::Instant::now();
 
-    // Set initial theme
     println!("Attempting to set theme: '{}'", themes[current_theme_index]);
     if player.set_theme(themes[current_theme_index]) {
         println!("✓ Theme set: {}", themes[current_theme_index]);
@@ -73,15 +71,12 @@ fn main() {
         println!("✗ Failed to set theme: {}", themes[current_theme_index]);
     }
 
-    // Main render loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        // Handle theme cycling with SPACE key
         if window.is_key_down(Key::Space) {
             let now = std::time::Instant::now();
             if now.duration_since(last_space_press).as_millis() > 300 {
                 current_theme_index = (current_theme_index + 1) % themes.len();
 
-                // Switch to the new theme
                 if player.set_theme(themes[current_theme_index]) {
                     println!("✓ Theme set: {}", themes[current_theme_index]);
                 } else {
@@ -92,13 +87,9 @@ fn main() {
             }
         }
 
-        // Update animation frame and render
         if player.tick() {
-            // Get buffer as a slice
-            let buffer = player.buffer();
-
             window
-                .update_with_buffer(buffer, WIDTH as usize, HEIGHT as usize)
+                .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");
         }
     }

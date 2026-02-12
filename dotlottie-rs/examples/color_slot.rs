@@ -7,7 +7,7 @@
 /// slot with ID "ball_color" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSlot, Config, DotLottiePlayer, LottieKeyframe};
+use dotlottie_rs::{ColorSlot, ColorSpace, Config, DotLottiePlayer, LottieKeyframe};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -15,7 +15,6 @@ const WIDTH: u32 = 600;
 const HEIGHT: u32 = 600;
 
 fn main() {
-    // Create window
     let mut window = Window::new(
         "Color Slot Example - Press T to toggle, SPACE to cycle",
         WIDTH as usize,
@@ -26,7 +25,6 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    // Create player and load animation
     let mut player = DotLottiePlayer::new(
         Config {
             loop_animation: true,
@@ -34,6 +32,16 @@ fn main() {
             ..Config::default()
         },
         0, // threads (0 = auto)
+    );
+
+
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+    player.set_sw_target(
+        &mut buffer,
+        WIDTH,
+        HEIGHT,
+        ColorSpace::ABGR8888S,
     );
 
     let animation_data = include_str!("../assets/animations/lottie/bouncy_ball.json");
@@ -50,7 +58,6 @@ fn main() {
     println!("Press SPACE to cycle through different colors (static mode)");
     println!("Press ESC to quit");
 
-    // Define some colors to cycle through [R, G, B] (normalized 0.0-1.0)
     let colors = [
         ([1.0, 0.0, 0.0], "Red"),
         ([0.0, 1.0, 0.0], "Green"),
@@ -67,7 +74,6 @@ fn main() {
     let mut last_toggle_press = std::time::Instant::now();
     let mut is_animated = false;
 
-    // Set initial color (static)
     let color_slot = ColorSlot::new(colors[current_color_index].0);
     player.set_color_slot("ball_color", color_slot);
     println!(
@@ -75,16 +81,13 @@ fn main() {
         colors[current_color_index].1
     );
 
-    // Main render loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now();
 
-        // Handle toggle between static and animated with T key
         if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
             is_animated = !is_animated;
 
             if is_animated {
-                // Create animated color slot: Red -> Blue (linear interpolation)
                 let color_slot = ColorSlot::with_keyframes(vec![
                     LottieKeyframe {
                         frame: 0,
@@ -108,7 +111,6 @@ fn main() {
                 player.set_color_slot("ball_color", color_slot);
                 println!("Mode: ANIMATED (Red -> Blue)");
             } else {
-                // Switch back to static mode
                 let color_slot = ColorSlot::new(colors[current_color_index].0);
                 player.set_color_slot("ball_color", color_slot);
                 println!(
@@ -120,14 +122,12 @@ fn main() {
             last_toggle_press = now;
         }
 
-        // Handle color cycling with SPACE key (only in static mode)
         if !is_animated
             && window.is_key_down(Key::Space)
             && now.duration_since(last_space_press).as_millis() > 200
         {
             current_color_index = (current_color_index + 1) % colors.len();
 
-            // Create and set the new color slot
             let color_slot = ColorSlot::new(colors[current_color_index].0);
             player.set_color_slot("ball_color", color_slot);
 
@@ -138,13 +138,9 @@ fn main() {
             last_space_press = now;
         }
 
-        // Update animation frame and render
         if player.tick() {
-            // Get buffer as a slice
-            let buffer = player.buffer();
-
             window
-                .update_with_buffer(buffer, WIDTH as usize, HEIGHT as usize)
+                .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");
         }
     }

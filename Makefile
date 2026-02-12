@@ -72,7 +72,6 @@ help:
 	@echo "Setup Targets:"
 	@echo "=============="
 	@echo "  make setup                                        - Setup all platforms"
-	@echo "  make wgpu-setup                                   - Download wgpu-native dependencies"
 	@echo "  make android-setup                                - Setup Android environment"
 	@echo "  make apple-setup                                  - Setup Apple environment"
 	@echo "  make wasm-setup                                   - Setup WASM environment"
@@ -112,7 +111,7 @@ WGPU_PLATFORMS := \
 	ios-x86_64-simulator-release
 
 # Setup all platforms
-setup: wgpu-setup android-setup apple-setup wasm-setup linux-setup
+setup: android-setup apple-setup wasm-setup linux-setup
 	@echo "✓ All platform setup complete"
 
 # Clean all build artifacts

@@ -264,11 +264,13 @@ mod thorvg {
             cc_build.flag(flag);
         }
 
-        if cfg!(feature = "tvg-threads") && std::env::var("CARGO_CFG_UNIX").is_ok() {
-            if !target_triple.contains("apple") && !target_triple.contains("android") {
-                cc_build.flag("-pthread");
-                println!("cargo:rustc-link-lib=pthread");
-            }
+        if cfg!(feature = "tvg-threads")
+            && std::env::var("CARGO_CFG_UNIX").is_ok()
+            && !target_triple.contains("apple")
+            && !target_triple.contains("android")
+        {
+            cc_build.flag("-pthread");
+            println!("cargo:rustc-link-lib=pthread");
         }
 
         cc_build.compile("thorvg");

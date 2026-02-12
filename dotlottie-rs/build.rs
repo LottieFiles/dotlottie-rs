@@ -110,7 +110,6 @@ mod thorvg {
             let target = env::var("TARGET").unwrap_or_default();
 
             // For Emscripten: ENABLE ThorVG's wg_engine with newer Dawn
-            // The user has bumped Emscripten/Dawn version to support the newer API
             if target == "wasm32-unknown-emscripten" {
                 eprintln!(
                     "cargo:warning=tvg-wg for WASM: Enabling ThorVG WebGPU renderer with Dawn"
@@ -143,7 +142,6 @@ mod thorvg {
                 );
                 eprintln!("cargo:warning=Building without ThorVG WebGPU renderer");
             }
-            // For Emscripten, not having ThorVG's renderer is expected and OK
         }
 
         if cfg!(feature = "tvg-jpg") {

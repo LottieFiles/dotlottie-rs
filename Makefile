@@ -23,7 +23,7 @@ help:
 	@echo "Platform Build Targets:"
 	@echo "======================="
 	@echo "  make android                                      - Build all Android targets"
-	@echo "  make apple                                        - Build all Apple targets (software renderer)" 
+	@echo "  make apple                                        - Build all Apple targets" 
 	@echo "  make wasm                                         - Build WASM module"
 	@echo "  make linux                                        - Build all Linux targets"
 	@echo "  make native                                       - Build native (current platform)"
@@ -96,19 +96,6 @@ list-platforms:
 	@echo "  linux       - Linux (x86_64, ARM64)"
 	@echo "  native      - Native (current platform)"
 	@echo ""
-
-# wgpu-native version to download
-WGPU_VERSION ?= v25.0.2.1
-WGPU_DEPS_DIR := dotlottie-rs/deps/wgpu
-WGPU_BASE_URL := https://github.com/gfx-rs/wgpu-native/releases/download/$(WGPU_VERSION)
-
-# wgpu platforms to download
-WGPU_PLATFORMS := \
-	macos-aarch64-release \
-	macos-x86_64-release \
-	ios-aarch64-release \
-	ios-aarch64-simulator-release \
-	ios-x86_64-simulator-release
 
 # Setup all platforms
 setup: android-setup apple-setup wasm-setup linux-setup

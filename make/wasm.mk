@@ -1,6 +1,4 @@
 EMSDK_VERSION ?= 4.0.23
-UNIFFI_BINDGEN_CPP ?= uniffi-bindgen-cpp
-UNIFFI_BINDGEN_CPP_VERSION ?= v0.7.3+v0.28.3
 
 RUST_TOOLCHAIN ?= nightly-2025-08-01
 
@@ -16,7 +14,7 @@ endif
 WEBGPU_RUSTFLAGS :=
 WEBGPU_EMFLAGS :=
 WEBGPU_CPPFLAGS :=
-WGPU_INCLUDE := deps/modules/emsdk/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include
+WGPU_NATIVE_INCLUDE := $(PWD)/deps/modules/emsdk/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include
 
 ifneq (,$(findstring tvg-wg,$(WASM_FEATURES)))
 WEBGPU_RUSTFLAGS += -C link-arg=--use-port=emdawnwebgpu
@@ -47,7 +45,7 @@ ifneq (,$(findstring tvg-simd,$(FEATURES)))
 endif
 
 # WASM-specific phony targets
-.PHONY: wasm wasm-setup wasm-install-emsdk wasm-build-rust wasm-link wasm-package wasm-clean wasm-webgl wasm-webgpu wasm-all-variants
+.PHONY: wasm wasm-setup wasm-install-emsdk wasm-build-rust wasm-link wasm-package wasm-clean wasm-webgl wasm-webgpu wasm-all
 
 
 # Initialize emsdk submodule
@@ -102,10 +100,6 @@ wasm-setup: wasm-init-submodule wasm-install-emsdk
 	@rustup component add rust-src --toolchain $(RUST_TOOLCHAIN) >/dev/null
 	@rustup target add --toolchain $(RUST_TOOLCHAIN) $(WASM_TARGET) >/dev/null
 	@echo "✓ WASM targets and nightly toolchain installed"
-	@echo "→ Installing uniffi-bindgen-cpp..."
-	@cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag $(UNIFFI_BINDGEN_CPP_VERSION) >/dev/null
-	@echo "✓ uniffi-bindgen-cpp installed"
-
 
 
 # ============================================================================
@@ -133,7 +127,7 @@ wasm-build-rust: wasm-check-env wasm-fetch-webgpu-port
 	CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 	AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar \
 	CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
-	WGPU_INCLUDE=$(WGPU_INCLUDE) \
+	WGPU_NATIVE_INCLUDE=$(WGPU_NATIVE_INCLUDE) \
 	CXXFLAGS="-isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/c++/v1 -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include $(WEBGPU_CPPFLAGS)" \
 	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot -nostdinc -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include" \
 	RUSTFLAGS="-C panic=abort -C link-arg=--no-entry -C link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0 $(WEBGPU_RUSTFLAGS)" \
@@ -264,7 +258,7 @@ wasm-webgpu:
 	@echo "✓ WebGPU variant built: release/wasm-webgpu/"
 
 # Build all variants (default, WebGL, WebGPU)
-wasm-all-variants: wasm wasm-webgl wasm-webgpu
+wasm-all: wasm wasm-webgl wasm-webgpu
 	@echo ""
 	@echo "✓ All WASM variants built:"
 	@echo "  - Default (SW):  $(WASM_RELEASE_DIR)/"

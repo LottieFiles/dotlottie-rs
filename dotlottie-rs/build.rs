@@ -53,6 +53,7 @@ mod thorvg {
 
     pub fn build() -> std::io::Result<()> {
         let target_triple = env::var("TARGET").unwrap_or_default();
+        let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 
         get_cpp_standard_library()
             .iter()
@@ -104,44 +105,9 @@ mod thorvg {
             }
         }
 
-        let tvg_wg_requested = cfg!(feature = "tvg-wg");
-
-        let tvg_wg_enabled = if tvg_wg_requested {
-            let target = env::var("TARGET").unwrap_or_default();
-
-            // For Emscripten: ENABLE ThorVG's wg_engine with newer Dawn
-            if target == "wasm32-unknown-emscripten" {
-                eprintln!(
-                    "cargo:warning=tvg-wg for WASM: Enabling ThorVG WebGPU renderer with Dawn"
-                );
-                true // Enable ThorVG's wg_engine for WASM
-            } else {
-                // Native targets: compile ThorVG's wg_engine if wgpu binaries available
-                matches!(
-                    target.as_str(),
-                    "aarch64-apple-darwin"
-                        | "x86_64-apple-darwin"
-                        | "aarch64-unknown-linux-gnu"
-                        | "x86_64-unknown-linux-gnu"
-                )
-            }
-        } else {
-            false
-        };
-
-        if tvg_wg_enabled {
+        if cfg!(feature = "tvg-wg") {
             writeln!(thorvg_config_h, "#define THORVG_WG_RASTER_SUPPORT")?;
             src.push("deps/thorvg/src/renderer/wg_engine");
-
-            println!("cargo:rustc-cfg=has_wgpu_binaries");
-        } else if tvg_wg_requested {
-            let target = env::var("TARGET").unwrap_or_default();
-            if target != "wasm32-unknown-emscripten" {
-                eprintln!(
-                    "cargo:warning=tvg-wg requested but target {target_triple} doesn't have wgpu binaries"
-                );
-                eprintln!("cargo:warning=Building without ThorVG WebGPU renderer");
-            }
         }
 
         if cfg!(feature = "tvg-jpg") {
@@ -189,7 +155,6 @@ mod thorvg {
 
         // ThorVG SIMD feature (only when tvg-sw AND tvg-simd are enabled)
         let tvg_simd_enabled = cfg!(feature = "tvg-simd");
-        let target_triple = env::var("TARGET").unwrap_or_default();
 
         let mut simd_flags: Vec<&str> = Vec::new();
         if tvg_sw_enabled && tvg_simd_enabled {
@@ -233,76 +198,29 @@ mod thorvg {
             )
             .warnings(false);
 
-        // Add WebGPU header include path for WASM builds
-        if tvg_wg_enabled && target_triple == "wasm32-unknown-emscripten" {
-            let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-            let wgpu_emscripten_include = env::var("WGPU_INCLUDE").unwrap();
-            let webgpu_include = PathBuf::from(&crate_dir)
-                .parent()
-                .unwrap()
-                .join(&wgpu_emscripten_include);
-            cc_build.include(&webgpu_include);
-            eprintln!(
-                "cargo:warning=Adding WebGPU include path: {}",
-                webgpu_include.display()
-            );
-        }
+        if cfg!(feature = "tvg-wg") {
+            let vendored_wgpu_include = PathBuf::from(&crate_dir)
+                .join("deps/wgpu")
+                .join(&target_triple)
+                .join("include");
 
-        // Add WebGPU header include path and link wgpu-native for Apple platforms
-        if tvg_wg_enabled {
-            let target = env::var("TARGET").unwrap_or_default();
+            let wgpu_include_path = env::var("WGPU_NATIVE_INCLUDE")
+                .map(PathBuf::from)
+                .unwrap_or(vendored_wgpu_include);
 
-            if matches!(
-                target.as_str(),
-                "aarch64-apple-darwin"
-                    | "x86_64-apple-darwin"
-                    | "aarch64-unknown-linux-gnu"
-                    | "x86_64-unknown-linux-gnu"
-            ) {
-                let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+            cc_build.include(&wgpu_include_path);
 
+            if !target_triple.contains("emscripten") {
                 // Default paths: {crate_dir}/deps/wgpu/{target}/lib and /include
-                let default_lib_path = PathBuf::from(&crate_dir)
+                let vendored_wgpu_lib = PathBuf::from(&crate_dir)
                     .join("deps/wgpu")
-                    .join(&target)
+                    .join(&target_triple)
                     .join("lib");
-                let default_include_path = PathBuf::from(&crate_dir)
-                    .join("deps/wgpu")
-                    .join(&target)
-                    .join("include");
 
                 // Use environment variables or defaults
                 let wgpu_lib_path = env::var("WGPU_NATIVE_LIB")
                     .map(PathBuf::from)
-                    .unwrap_or(default_lib_path);
-                let wgpu_include_path = env::var("WGPU_INCLUDE")
-                    .map(PathBuf::from)
-                    .unwrap_or(default_include_path);
-
-                // Verify paths exist
-                let lib_path_exists = wgpu_lib_path.exists();
-                let include_path_exists = wgpu_include_path.exists();
-
-                // Add include path for wgpu headers
-                if include_path_exists {
-                    cc_build.include(&wgpu_include_path);
-                }
-
-                // Link wgpu-native static library
-                if !lib_path_exists {
-                    panic!(
-                        "tvg-wg feature enabled but wgpu lib path not found: {}\n\
-                         Set WGPU_NATIVE_LIB environment variable or place library at default location.",
-                        wgpu_lib_path.display()
-                    );
-                }
-                if !include_path_exists {
-                    panic!(
-                        "tvg-wg feature enabled but wgpu include path not found: {}\n\
-                         Set WGPU_INCLUDE environment variable or place headers at default location.",
-                        wgpu_include_path.display()
-                    );
-                }
+                    .unwrap_or(vendored_wgpu_lib);
 
                 let abs_lib_path = wgpu_lib_path
                     .canonicalize()
@@ -312,20 +230,34 @@ mod thorvg {
                 println!("cargo:rustc-link-lib=static=wgpu_native");
 
                 // Link platform-specific frameworks/libraries
-                if target.contains("apple") {
+                if target_triple.contains("apple") {
                     println!("cargo:rustc-link-lib=framework=Metal");
                     println!("cargo:rustc-link-lib=framework=QuartzCore");
                     println!("cargo:rustc-link-lib=framework=Foundation");
                     println!("cargo:rustc-link-lib=framework=AppKit");
-                } else if target.contains("linux") {
+                } else if target_triple.contains("linux") {
                     println!("cargo:rustc-link-lib=vulkan");
                 }
-
-                eprintln!(
-                    "cargo:warning=Linked wgpu-native from {}",
-                    abs_lib_path.display()
-                );
             }
+
+            // generate wgpu binding
+            bindgen::Builder::default()
+                .header(wgpu_include_path.join("webgpu/webgpu.h").to_str().unwrap())
+                // Only include WGPU types and functions
+                .allowlist_type("WGPU.*")
+                .allowlist_function("wgpu.*")
+                .allowlist_var("WGPU_.*")
+                // Use libc types
+                .ctypes_prefix("std::os::raw")
+                // Don't generate layout tests (they're huge and we don't need them)
+                .layout_tests(false)
+                // Disable default includes to avoid system header issues
+                .use_core()
+                .generate()
+                .expect("Failed to generate wgpu bindings")
+                .write_to_file(
+                    PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs"),
+                )?;
         }
 
         for flag in simd_flags {
@@ -333,8 +265,7 @@ mod thorvg {
         }
 
         if cfg!(feature = "tvg-threads") && std::env::var("CARGO_CFG_UNIX").is_ok() {
-            let target = std::env::var("TARGET").unwrap_or_default();
-            if !target.contains("apple") && !target.contains("android") {
+            if !target_triple.contains("apple") && !target_triple.contains("android") {
                 cc_build.flag("-pthread");
                 println!("cargo:rustc-link-lib=pthread");
             }
@@ -349,65 +280,7 @@ mod thorvg {
 
         bindings.write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
 
-        // Generate WebGPU bindings if tvg-wg is enabled for native platforms
-        if tvg_wg_enabled {
-            let target = env::var("TARGET").unwrap_or_default();
-
-            if matches!(
-                target.as_str(),
-                "aarch64-apple-darwin"
-                    | "x86_64-apple-darwin"
-                    | "aarch64-unknown-linux-gnu"
-                    | "x86_64-unknown-linux-gnu"
-            ) {
-                let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-
-                // Default path: {crate_dir}/deps/wgpu/{target}/include
-                let default_include_path = PathBuf::from(&crate_dir)
-                    .join("deps/wgpu")
-                    .join(&target)
-                    .join("include")
-                    .join("webgpu/webgpu.h");
-
-                // Use environment variable or default
-                let wgpu_include_path = env::var("WGPU_INCLUDE")
-                    .map(PathBuf::from)
-                    .unwrap_or(default_include_path);
-
-                let wgpu_header = wgpu_include_path;
-
-                if wgpu_header.exists() {
-                    eprintln!(
-                        "cargo:warning=Generating WebGPU bindings from {}",
-                        wgpu_header.display()
-                    );
-
-                    let wgpu_bindings = bindgen::Builder::default()
-                        .header(wgpu_header.to_str().unwrap())
-                        // Only include WGPU types and functions
-                        .allowlist_type("WGPU.*")
-                        .allowlist_function("wgpu.*")
-                        .allowlist_var("WGPU_.*")
-                        // Use libc types
-                        .ctypes_prefix("std::os::raw")
-                        // Don't generate layout tests (they're huge and we don't need them)
-                        .layout_tests(false)
-                        // Disable default includes to avoid system header issues
-                        .use_core()
-                        .generate()
-                        .expect("Failed to generate wgpu bindings");
-
-                    wgpu_bindings.write_to_file(
-                        PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs"),
-                    )?;
-
-                    eprintln!("cargo:warning=WebGPU bindings generated successfully");
-                }
-            }
-        }
-
         if cfg!(feature = "c_api") {
-            let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
             create_dir_all(PathBuf::from(&crate_dir).join("build")).unwrap();
             let header_path = PathBuf::from(&crate_dir).join("build/dotlottie_player.h");
             let config_path = PathBuf::from(&crate_dir).join("cbindgen.toml");

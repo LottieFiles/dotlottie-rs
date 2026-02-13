@@ -9,8 +9,7 @@ use crate::lottie_renderer::{
 };
 use crate::state_machine_engine::events::Event;
 use crate::{
-    Config, DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode,
-    StateMachineEngine,
+    DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode, StateMachineEngine,
 };
 
 use types::*;
@@ -54,19 +53,6 @@ pub unsafe extern "C" fn dotlottie_destroy(ptr: *mut DotLottiePlayer) -> DotLott
     // Reconstruct the Box from raw pointer and drop it (frees memory)
     let _ = Box::from_raw(ptr);
     DotLottieResult::Success
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_init_config(config: *mut DotLottieConfig) -> DotLottieResult {
-    if config.is_null() {
-        return DotLottieResult::InvalidParameter;
-    }
-    if let Ok(default_config) = DotLottieConfig::new(&Config::default()) {
-        default_config.copy(config);
-        DotLottieResult::Success
-    } else {
-        DotLottieResult::Error
-    }
 }
 
 #[no_mangle]
@@ -128,75 +114,6 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         let file_slice = slice::from_raw_parts(file_data as *const u8, file_size);
         dotlottie_player.load_dotlottie_data(file_slice, width, height)
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest(
-    ptr: *mut DotLottiePlayer,
-    result: *mut types::DotLottieManifest,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if let Some(manifest) = dotlottie_player.manifest() {
-            DotLottieManifest::transfer(manifest, result)
-        } else {
-            DotLottieResult::ManifestNotAvailable
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_animations(
-    ptr: *mut DotLottiePlayer,
-    result: *mut types::DotLottieManifestAnimation,
-    size: *mut usize,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if let Some(manifest) = dotlottie_player.manifest() {
-            DotLottieManifestAnimation::transfer_all(&manifest.animations, result, size)
-        } else {
-            DotLottieResult::ManifestNotAvailable
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_themes(
-    ptr: *mut DotLottiePlayer,
-    result: *mut types::DotLottieManifestTheme,
-    size: *mut usize,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        let manifest = match dotlottie_player.manifest() {
-            Some(v) => v,
-            None => return DotLottieResult::ManifestNotAvailable,
-        };
-        if let Some(themes) = &manifest.themes {
-            DotLottieManifestTheme::transfer_all(themes, result, size)
-        } else {
-            *size = 0;
-            DotLottieResult::Success
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_state_machines(
-    ptr: *mut DotLottiePlayer,
-    result: *mut types::DotLottieManifestStateMachine,
-    size: *mut usize,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        let manifest = match dotlottie_player.manifest() {
-            Some(v) => v,
-            None => return DotLottieResult::ManifestNotAvailable,
-        };
-        if let Some(state_machines) = &manifest.state_machines {
-            DotLottieManifestStateMachine::transfer_all(state_machines, result, size)
-        } else {
-            *size = 0;
-            DotLottieResult::Success
-        }
     })
 }
 
@@ -684,16 +601,16 @@ pub unsafe extern "C" fn dotlottie_get_segment(
 /// # Usage
 /// ```c
 /// size_t size;
-/// dotlottie_get_marker(player, NULL, &size);  // get required size
+/// dotlottie_get_active_marker(player, NULL, &size);  // get required size
 /// char* buf = malloc(size);
-/// dotlottie_get_marker(player, buf, NULL);    // get string
+/// dotlottie_get_active_marker(player, buf, NULL);    // get string
 /// ```
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
 /// - `DotLottieResult::InvalidParameter` if no marker is set or player pointer is invalid
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_get_marker(
+pub unsafe extern "C" fn dotlottie_get_active_marker(
     ptr: *mut DotLottiePlayer,
     buffer: *mut c_char,
     size_out: *mut usize,
@@ -1202,15 +1119,70 @@ pub unsafe extern "C" fn dotlottie_set_image_slot_data_url(
     })
 }
 
+/// Gets the number of markers in the current animation.
+///
+/// # Parameters
+/// - `ptr`: Pointer to the DotLottiePlayer instance
+/// - `count`: Pointer to receive the marker count
+///
+/// # Returns
+/// - `DOTLOTTIE_SUCCESS` on success
+/// - `DOTLOTTIE_INVALID_PARAMETER` if pointers are null
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_markers(
+pub unsafe extern "C" fn dotlottie_markers_count(
     ptr: *mut DotLottiePlayer,
-    result: *mut types::DotLottieMarker,
-    size: *mut usize,
+    count: *mut u32,
 ) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        DotLottieMarker::transfer_all(&dotlottie_player.markers(), result, size)
-    })
+    if ptr.is_null() || count.is_null() {
+        return DotLottieResult::InvalidParameter;
+    }
+    let player = &*ptr;
+    *count = player.marker_names().len() as u32;
+    DotLottieResult::Success
+}
+
+/// Gets a marker by index.
+///
+/// # Parameters
+/// - `ptr`: Pointer to the DotLottiePlayer instance
+/// - `idx`: Index of the marker (0-based)
+/// - `name`: Pointer to receive the marker name (library-owned, do not free)
+/// - `time`: Pointer to receive the marker time (start frame), or NULL to skip
+/// - `duration`: Pointer to receive the marker duration (in frames), or NULL to skip
+///
+/// # Returns
+/// - `DOTLOTTIE_SUCCESS` on success
+/// - `DOTLOTTIE_INVALID_PARAMETER` if ptr/name is null or index is out of bounds
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_marker(
+    ptr: *mut DotLottiePlayer,
+    idx: u32,
+    name: *mut *const c_char,
+    time: *mut f32,
+    duration: *mut f32,
+) -> DotLottieResult {
+    if ptr.is_null() || name.is_null() {
+        return DotLottieResult::InvalidParameter;
+    }
+    let player = &*ptr;
+    let idx = idx as usize;
+
+    let marker_names = player.marker_names();
+    let marker_data = player.marker_data();
+
+    if idx >= marker_names.len() {
+        return DotLottieResult::InvalidParameter;
+    }
+
+    *name = marker_names[idx].as_ptr();
+    if !time.is_null() {
+        *time = marker_data[idx].0;
+    }
+    if !duration.is_null() {
+        *duration = marker_data[idx].1;
+    }
+
+    DotLottieResult::Success
 }
 
 /// Returns the active animation ID.

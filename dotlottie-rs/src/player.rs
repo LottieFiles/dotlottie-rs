@@ -8,7 +8,7 @@ use crate::{
     extract_markers,
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
-    Marker, MarkersMap,
+    Marker,
 };
 use crate::{DotLottieManager, Manifest, Renderer, StateMachineEngine, StateMachineEngineError};
 
@@ -132,7 +132,8 @@ pub struct DotLottiePlayer {
     loop_count: u32,
     dotlottie_manager: Option<DotLottieManager>,
     direction: Direction,
-    markers: MarkersMap,
+    marker_names: Vec<CString>,
+    marker_data: Vec<(f32, f32)>, // (time, duration)
     active_animation_id: Option<CString>,
     active_theme_id: Option<CString>,
     active_state_machine_id: Option<CString>,
@@ -152,7 +153,7 @@ pub struct DotLottiePlayer {
     segment: Option<[f32; 2]>,
     background_color: u32,
     layout: Layout,
-    marker: Option<CString>,
+    marker: Option<(CString, usize)>, // (marker_name, index into marker_names/marker_data)
     theme_id: Option<CString>,
     animation_id: Option<CString>,
 }
@@ -184,7 +185,8 @@ impl DotLottiePlayer {
             animation_id: None,
             dotlottie_manager: None,
             direction: Direction::Forward,
-            markers: MarkersMap::new(),
+            marker_names: Vec::new(),
+            marker_data: Vec::new(),
             active_animation_id: None,
             active_theme_id: None,
             active_state_machine_id: None,
@@ -198,14 +200,33 @@ impl DotLottiePlayer {
     }
 
     pub fn markers(&self) -> Vec<Marker> {
-        self.markers
+        self.marker_names
             .iter()
+            .zip(self.marker_data.iter())
             .map(|(name, (time, duration))| Marker {
                 name: name.to_string_lossy().into_owned(),
                 time: *time,
                 duration: *duration,
             })
             .collect()
+    }
+
+    pub fn marker_names(&self) -> &[CString] {
+        &self.marker_names
+    }
+
+    pub fn marker_data(&self) -> &[(f32, f32)] {
+        &self.marker_data
+    }
+
+    fn find_marker(&self, name: &CStr) -> Option<(usize, f32, f32)> {
+        self.marker_names
+            .iter()
+            .position(|n| n.as_c_str() == name)
+            .map(|idx| {
+                let (time, duration) = self.marker_data[idx];
+                (idx, time, duration)
+            })
     }
 
     pub fn pop_completion_event(&mut self) -> CompletionEvent {
@@ -217,8 +238,10 @@ impl DotLottiePlayer {
     }
 
     fn compute_start_frame(&self) -> f32 {
-        if let Some((time, _)) = self.marker.as_deref().and_then(|m| self.markers.get(m)) {
-            return time.max(0.0);
+        if let Some((_, idx)) = &self.marker {
+            if let Some((time, _)) = self.marker_data.get(*idx) {
+                return time.max(0.0);
+            }
         }
 
         if let Some(segment) = self.segment {
@@ -231,8 +254,10 @@ impl DotLottiePlayer {
     fn compute_end_frame(&self) -> f32 {
         let max_frame = self.total_frames() - 1.0;
 
-        if let Some((time, duration)) = self.marker.as_deref().and_then(|m| self.markers.get(m)) {
-            return (time + duration).min(max_frame);
+        if let Some((_, idx)) = &self.marker {
+            if let Some((time, duration)) = self.marker_data.get(*idx) {
+                return (time + duration).min(max_frame);
+            }
         }
 
         if let Some(segment) = self.segment {
@@ -792,20 +817,23 @@ impl DotLottiePlayer {
     }
 
     pub fn set_marker(&mut self, marker_name: Option<&CStr>) {
-        if self.marker.as_deref() == marker_name {
+        let current_name = self.marker.as_ref().map(|(name, _)| name.as_c_str());
+        if current_name == marker_name {
             return;
         }
 
-        let marker_data = marker_name.and_then(|name| self.markers.get(name).map(|d| (name, d)));
+        if let Some(name) = marker_name {
+            if let Some((idx, time, _)) = self.find_marker(name) {
+                self.start_time = Instant::now();
+                self.marker = Some((name.to_owned(), idx));
+                self.invalidate_frame_cache();
 
-        if let Some((name, (time, _))) = marker_data {
-            let start_time = *time;
-            self.start_time = Instant::now();
-            self.marker = Some(name.to_owned());
-            self.invalidate_frame_cache();
-
-            let _ = self.set_frame(start_time);
-            let _ = self.render();
+                let _ = self.set_frame(time);
+                let _ = self.render();
+            } else {
+                self.marker = None;
+                self.invalidate_frame_cache();
+            }
         } else {
             self.marker = None;
             self.invalidate_frame_cache();
@@ -813,7 +841,7 @@ impl DotLottiePlayer {
     }
 
     pub fn marker(&self) -> Option<&CStr> {
-        self.marker.as_deref()
+        self.marker.as_ref().map(|(name, _)| name.as_c_str())
     }
 
     pub fn set_layout(&mut self, layout: Layout) -> Result<(), LottieRendererError> {
@@ -1008,7 +1036,9 @@ impl DotLottiePlayer {
 
         // Convert to &str only for marker extraction (JSON parsing)
         if let Ok(data_str) = animation_data.to_str() {
-            self.markers = extract_markers(data_str);
+            let (names, data) = extract_markers(data_str);
+            self.marker_names = names;
+            self.marker_data = data;
         }
 
         let result = self.load_animation_common(
@@ -1086,7 +1116,9 @@ impl DotLottiePlayer {
 
         let animation_data = active_animation.map_err(|_| DotLottiePlayerError::Unknown)?;
 
-        self.markers = extract_markers(&animation_data);
+        let (names, data) = extract_markers(&animation_data);
+        self.marker_names = names;
+        self.marker_data = data;
 
         let animation_data_cstr =
             CString::new(animation_data).map_err(|_| DotLottiePlayerError::Unknown)?;
@@ -1138,6 +1170,10 @@ impl DotLottiePlayer {
 
             let result = match animation_data {
                 Ok(animation_data) => {
+                    let (names, data) = extract_markers(&animation_data);
+                    self.marker_names = names;
+                    self.marker_data = data;
+
                     let animation_data_cstr =
                         CString::new(animation_data).expect("Failed to create CString");
                     self.load_animation_common(
@@ -1473,12 +1509,10 @@ impl DotLottiePlayer {
         duration: Option<f32>,
         easing: Option<[f32; 4]>,
     ) -> Result<(), DotLottiePlayerError> {
-        if let Some((time, _duration)) = self.markers.get(marker) {
-            let target_time = *time;
+        if let Some((idx, time, _)) = self.find_marker(marker) {
+            let _ = self.tween(time, duration, easing);
 
-            let _ = self.tween(target_time, duration, easing);
-
-            self.marker = Some(marker.to_owned());
+            self.marker = Some((marker.to_owned(), idx));
 
             self.invalidate_frame_cache();
 

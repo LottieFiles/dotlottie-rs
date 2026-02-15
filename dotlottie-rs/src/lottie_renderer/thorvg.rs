@@ -194,7 +194,7 @@ impl TvgRenderer {
 
     pub fn create_wg_canvas(&mut self) -> Result<(), TvgError> {
         unsafe {
-            let canvas = tvg::tvg_wgcanvas_create(TvgEngineOption::None.into());
+            let canvas = tvg::tvg_wgcanvas_create(TvgEngineOption::Default.into());
 
             if canvas.is_null() {
                 return Err(TvgError::FailedAllocation);

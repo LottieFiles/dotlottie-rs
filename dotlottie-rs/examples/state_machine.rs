@@ -11,6 +11,7 @@ use std::path::PathBuf;
 
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
+const ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets");
 
 pub const ANIMATION_NAME: &str = "smiley-slider.lottie";
 pub const STATE_MACHINE_NAME: &str = "smileys";
@@ -141,14 +142,14 @@ fn main() {
             ColorSpace::ABGR8888,
         );
     let animation_path =
-        PathBuf::from(format!("./assets/animations/dotlottie/v1/{ANIMATION_NAME}"));
+        PathBuf::from(format!("{ASSETS_DIR}/animations/dotlottie/v1/{ANIMATION_NAME}"));
 
     if !load_animation(&mut player, &animation_path) {
         eprintln!("Failed to load animation, exiting");
         return;
     }
 
-    let state_machine_path = format!("./assets/statemachines/{STATE_MACHINE_NAME}.json");
+    let state_machine_path = format!("{ASSETS_DIR}/statemachines/{STATE_MACHINE_NAME}.json");
     let state_machine_def = fs::read_to_string(&state_machine_path)
         .unwrap_or_else(|e| panic!("Failed to read state machine file {state_machine_path}: {e}"));
 

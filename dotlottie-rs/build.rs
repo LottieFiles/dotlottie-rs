@@ -77,10 +77,14 @@ mod thorvg {
             .write(true)
             .open(out_dir.join("config.h"))?;
 
-        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.0.0\"")?;
+        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.0.1\"")?;
         writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
         writeln!(thorvg_config_h, "#define TVG_STATIC")?;
         writeln!(thorvg_config_h, "#define WIN32_LEAN_AND_MEAN")?;
+
+        if target_triple != "wasm32-unknown-emscripten" {
+            writeln!(thorvg_config_h, "#define THORVG_FILE_IO_SUPPORT 1")?;
+        }
 
         if cfg!(feature = "tvg-log") {
             writeln!(thorvg_config_h, "#define THORVG_LOG_ENABLED")?;
@@ -102,6 +106,8 @@ mod thorvg {
 
             if target_triple == "wasm32-unknown-emscripten" {
                 writeln!(thorvg_config_h, "#define THORVG_GL_TARGET_GLES 1")?;
+            } else {
+                writeln!(thorvg_config_h, "#define THORVG_GL_TARGET_GL 1")?;
             }
         }
 
@@ -210,7 +216,7 @@ mod thorvg {
 
             cc_build.include(&wgpu_include_path);
 
-            if !target_triple.contains("emscripten") {
+            if target_triple != "wasm32-unknown-emscripten" {
                 // Default paths: {crate_dir}/deps/wgpu/{target}/lib and /include
                 let vendored_wgpu_lib = PathBuf::from(&crate_dir)
                     .join("deps/wgpu")

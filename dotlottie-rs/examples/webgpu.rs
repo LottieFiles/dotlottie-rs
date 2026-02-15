@@ -1,6 +1,6 @@
 /*
 * 🚨 To run this example, use:
- * cargo run --example webgpu --features dev,tvg-wg
+ * cargo run --example webgpu --features tvg-wg
 */
 #![allow(clippy::print_stdout)]
 
@@ -200,17 +200,13 @@ mod webgpu_impl {
                 let (device, instance, surface) = wgpu_context.as_pointers();
                 println!("✓ WebGPU context created");
 
-                // Initialize player with WebGPU renderer
-                let threads = std::thread::available_parallelism().unwrap().get() as u32;
-                println!("Using {} threads", threads);
-
                 let mut player = DotLottiePlayer::new(
                     Config {
                         autoplay: true,
                         loop_animation: true,
                         ..Default::default()
                     },
-                    threads,
+                    0,
                 );
 
                 // IMPORTANT: Call set_wg_target BEFORE loading animation data

@@ -1,6 +1,6 @@
 /*
 * 🚨 To run this example, use:
- * cargo run --example opengl --features dev,tvg-gl
+ * cargo run --example opengl --features tvg-gl
 */
 #![allow(clippy::print_stdout)]
 
@@ -161,16 +161,13 @@ mod opengl_impl {
                 }
             }
 
-            // Initialize player with OpenGL renderer
-            let threads = std::thread::available_parallelism().unwrap().get() as u32;
-
             let mut player = DotLottiePlayer::new(
                 Config {
                     autoplay: true,
                     loop_animation: true,
                     ..Default::default()
                 },
-                threads,
+                0,
             );
 
             // IMPORTANT: Call set_gl_target BEFORE loading animation data

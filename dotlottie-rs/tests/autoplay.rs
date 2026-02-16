@@ -1,4 +1,6 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use std::ffi::CString;
+
+use dotlottie_rs::DotLottiePlayer;
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -10,35 +12,27 @@ mod tests {
 
     #[test]
     fn test_default_autoplay() {
-        let player = DotLottiePlayer::new(Config::default(), 0);
+        let player = DotLottiePlayer::new(0);
 
-        assert!(!player.config().autoplay);
+        assert!(!player.autoplay());
     }
 
     #[test]
     fn test_set_autoplay() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
 
-        let mut config = player.config();
-        config.autoplay = true;
-        player.set_config(config);
+        player.set_autoplay(true);
 
-        assert!(player.config().autoplay);
+        assert!(player.autoplay());
     }
 
     #[test]
     fn test_autoplay() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                autoplay: true,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_autoplay(true);
 
-        assert!(player
-            .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-            .is_ok());
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
         assert!(player.is_playing());
         assert!(!player.is_paused());
         assert!(!player.is_stopped());
@@ -61,16 +55,11 @@ mod tests {
 
     #[test]
     fn test_no_autoplay() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                autoplay: false,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_autoplay(false);
 
-        let loaded =
-            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT);
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        let loaded = player.load_animation_path(&path, WIDTH, HEIGHT);
 
         assert!(loaded.is_ok());
 

@@ -1,4 +1,6 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use std::ffi::CString;
+
+use dotlottie_rs::DotLottiePlayer;
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -9,30 +11,27 @@ mod tests {
 
     #[test]
     pub fn test_load_animation_with_animation_id() {
-        let animation_id = "crying".to_string();
+        let animation_id = CString::new("crying").unwrap();
 
-        let mut player = DotLottiePlayer::new(
-            Config {
-                animation_id: animation_id.clone(),
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
 
+        // First load the dotlottie, then load the specific animation
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
                 WIDTH,
                 HEIGHT
             )
-            .is_ok());
+            .is_ok(),);
 
-        assert_eq!(player.active_animation_id(), animation_id);
+        assert_eq!(player.load_animation(&animation_id, WIDTH, HEIGHT), Ok(()));
+
+        assert_eq!(player.animation_id(), Some(animation_id.as_c_str()));
     }
 
     #[test]
     pub fn test_load_animation() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
@@ -49,38 +48,48 @@ mod tests {
 
         let animations = manifest.animations.clone();
 
-        assert!(
-            animations[0].id == player.active_animation_id(),
+        let first_id = CString::new(animations[0].id.clone()).unwrap();
+        assert_eq!(
+            player.animation_id(),
+            Some(first_id.as_c_str()),
             "Active animation id is not the first animation id"
         );
 
-        for animation in animations {
+        for animation in &animations {
+            let anim_id = CString::new(animation.id.clone()).unwrap();
             assert_eq!(
-                player.load_animation(&animation.id, WIDTH, HEIGHT),
+                player.load_animation(&anim_id, WIDTH, HEIGHT),
                 Ok(()),
                 "Failed to load animation with id {}",
                 animation.id
             );
 
-            let active_animation_id = player.active_animation_id();
+            let animation_id_result = player.animation_id();
 
             assert_eq!(
-                active_animation_id, animation.id,
+                animation_id_result,
+                Some(anim_id.as_c_str()),
                 "Active animation id is not equal to the loaded animation id"
             );
         }
 
+        // Store the last valid animation id before trying invalid load
+        let last_valid_anim = animations.last().unwrap();
+        let last_valid_id = CString::new(last_valid_anim.id.clone()).unwrap();
+
+        let invalid_id = CString::new("invalid_id").unwrap();
         assert_ne!(
-            player.load_animation("invalid_id", WIDTH, HEIGHT),
+            player.load_animation(&invalid_id, WIDTH, HEIGHT),
             Ok(()),
             "Loaded animation with invalid id"
         );
 
-        let active_action_id = player.active_animation_id();
-
-        assert!(
-            active_action_id.is_empty(),
-            "Active animation id is not empty"
+        // After failed load, animation_id should remain as the last successfully loaded one
+        let animation_id_result = player.animation_id();
+        assert_eq!(
+            animation_id_result,
+            Some(last_valid_id.as_c_str()),
+            "Animation id should remain unchanged after failed load"
         );
     }
 }

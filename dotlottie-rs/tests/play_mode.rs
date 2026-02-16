@@ -1,4 +1,6 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use std::ffi::CString;
+
+use dotlottie_rs::DotLottiePlayer;
 
 mod test_utils;
 
@@ -12,38 +14,32 @@ mod play_mode_tests {
 
     #[test]
     fn test_default_play_mode() {
-        let player = DotLottiePlayer::new(Config::default(), 0);
+        let player = DotLottiePlayer::new(0);
 
-        assert_eq!(player.config().mode, Mode::Forward);
+        assert_eq!(player.mode(), Mode::Forward);
     }
 
     #[test]
     fn test_loop_count_with_loop_animation_false() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::Forward,
-                autoplay: true,
-                loop_animation: false,
-                loop_count: 3,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
+        player.set_loop(false);
+        player.set_loop_count(3);
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -69,31 +65,25 @@ mod play_mode_tests {
 
     #[test]
     fn test_zero_loop_count() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::Forward,
-                autoplay: true,
-                loop_animation: true,
-                loop_count: 0,
-                use_frame_interpolation: false,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(0);
+        player.set_use_frame_interpolation(false);
 
         let mut observed_loops = 0;
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -113,31 +103,25 @@ mod play_mode_tests {
 
     #[test]
     fn test_playing_after_loop_has_completed() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::Forward,
-                autoplay: true,
-                loop_animation: true,
-                loop_count: 3,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(3);
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -166,7 +150,7 @@ mod play_mode_tests {
         observed_completed = false;
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -194,31 +178,25 @@ mod play_mode_tests {
 
     #[test]
     fn test_loop_count_paused_mid_play() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::Forward,
-                autoplay: true,
-                loop_animation: true,
-                loop_count: 5,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(5);
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() >= 3 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() >= 3 {
                 break;
             }
             let _ = player.tick();
@@ -245,7 +223,7 @@ mod play_mode_tests {
         let _ = player.play();
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 10 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 10 {
                 break;
             }
             let _ = player.tick();
@@ -280,25 +258,22 @@ mod play_mode_tests {
             Mode::ReverseBounce,
         ];
 
-        for mode in play_modes {
-            let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
-            let mut config = player.config();
-            config.mode = mode;
-            player.set_config(config);
+        for mode in play_modes {
+            let mut player = DotLottiePlayer::new(0);
+            player.set_mode(mode);
 
             assert_eq!(
-                player.config().mode,
+                player.mode(),
                 mode,
                 "Expected play mode to be {:?}, found {:?}",
                 mode,
-                player.config().mode
+                player.mode()
             );
 
             assert!(
-                player
-                    .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                    .is_ok(),
+                player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
                 "Animation should load"
             );
 
@@ -337,19 +312,13 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::Forward,
-                autoplay: true,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -390,31 +359,25 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::Forward,
-                autoplay: true,
-                loop_animation: true,
-                loop_count: 3,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(3);
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -442,19 +405,13 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_play_mode() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::Reverse,
-                autoplay: true,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::Reverse);
+        player.set_autoplay(true);
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -493,31 +450,25 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::Reverse,
-                autoplay: true,
-                loop_animation: true,
-                loop_count: 3,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::Reverse);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(3);
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -545,20 +496,14 @@ mod play_mode_tests {
 
     #[test]
     fn test_bounce_play_mode() {
-        // TODO: Sometimes this test fails.
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::Bounce,
-                autoplay: true,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::Bounce);
+        player.set_autoplay(true);
 
-        assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert_eq!(
+            player.load_animation_path(&path, WIDTH, HEIGHT),
+            Ok(()),
             "Animation should load"
         );
 
@@ -614,30 +559,25 @@ mod play_mode_tests {
 
     #[test]
     fn test_bounce_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::Bounce,
-                autoplay: true,
-                loop_animation: true,
-                loop_count: 3,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::Bounce);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(3);
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
-        assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert_eq!(
+            player.load_animation_path(&path, WIDTH, HEIGHT),
+            Ok(()),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -664,19 +604,13 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_bounce_play_mode() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::ReverseBounce,
-                autoplay: true,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::ReverseBounce);
+        player.set_autoplay(true);
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -732,30 +666,24 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_bounce_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                mode: Mode::ReverseBounce,
-                autoplay: true,
-                loop_animation: true,
-                loop_count: 3,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new(0);
+        player.set_mode(Mode::ReverseBounce);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(3);
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player
-                .load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT)
-                .is_ok(),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();

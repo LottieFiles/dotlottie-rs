@@ -1,5 +1,6 @@
 use core::result::Result::Ok;
 use std::collections::HashSet;
+use std::ffi::{CStr, CString};
 
 pub mod actions;
 pub mod errors;
@@ -24,8 +25,8 @@ use crate::actions::whitelist::Whitelist;
 use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, CompletionEvent, Config, DotLottiePlayer,
-    EventName, PointerEvent, StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, CompletionEvent, DotLottiePlayer,
+    EventName, Layout, Mode, PointerEvent, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -71,8 +72,17 @@ impl Default for PointerData {
 }
 
 pub struct StateMachineEngine<'a> {
-    // For resetting the player config after state machine is stopped
-    cached_player_config: Config,
+    // For restoring the player config after state machine is stopped
+    cached_mode: Mode,
+    cached_speed: f32,
+    cached_loop_animation: bool,
+    cached_loop_count: u32,
+    cached_autoplay: bool,
+    cached_use_frame_interpolation: bool,
+    cached_background_color: u32,
+    cached_segment: Option<[f32; 2]>,
+    cached_marker: Option<CString>,
+    cached_layout: Layout,
 
     /* We keep references to the StateMachine's States. */
     /* This prevents duplicating the data inside the engine. */
@@ -301,7 +311,16 @@ impl<'a> StateMachineEngine<'a> {
     ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine {
-            cached_player_config: player.config(),
+            cached_mode: player.mode(),
+            cached_speed: player.speed(),
+            cached_loop_animation: player.loop_animation(),
+            cached_loop_count: player.current_loop_count(),
+            cached_autoplay: player.autoplay(),
+            cached_use_frame_interpolation: player.use_frame_interpolation(),
+            cached_background_color: player.background_color(),
+            cached_segment: player.segment(),
+            cached_marker: player.marker().map(CStr::to_owned),
+            cached_layout: player.layout().clone(),
             player, // `player` Moved. Don't use after this point
             global_state: None,
             state_machine: StateMachine::default(),
@@ -399,14 +418,11 @@ impl<'a> StateMachineEngine<'a> {
     pub fn start(&mut self, open_url: &OpenUrlPolicy) -> Result<(), crate::DotLottiePlayerError> {
         // Reset to first frame
         let _ = self.player.stop();
-        // Remove all playback settings but preserve use_frame_interpolation and layout
-        let current_config = self.player.config();
-        let reset_config = Config {
-            use_frame_interpolation: current_config.use_frame_interpolation,
-            layout: current_config.layout,
-            ..Config::default()
-        };
-        self.player.set_config(reset_config);
+        self.player.set_mode(Mode::Forward);
+        self.player.set_speed(1.0);
+        self.player.set_loop(false);
+        self.player.set_loop_count(0);
+        self.player.set_autoplay(false);
 
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
@@ -458,7 +474,19 @@ impl<'a> StateMachineEngine<'a> {
 
         self.observe_on_stop();
 
-        self.player.set_config(self.cached_player_config.clone());
+        self.player.set_mode(self.cached_mode);
+        self.player.set_speed(self.cached_speed);
+        self.player.set_loop(self.cached_loop_animation);
+        self.player.set_loop_count(self.cached_loop_count);
+        self.player
+            .set_use_frame_interpolation(self.cached_use_frame_interpolation);
+        let _ = self
+            .player
+            .set_background_color(Some(self.cached_background_color));
+        let _ = self.player.set_segment(self.cached_segment);
+        let _ = self.player.set_marker(self.cached_marker.as_deref());
+        let _ = self.player.set_layout(self.cached_layout);
+        self.player.set_autoplay(self.cached_autoplay);
     }
 
     /// For external use only.
@@ -682,9 +710,10 @@ impl<'a> StateMachineEngine<'a> {
                                 self.tween_transition_target_state = Some(new_state.clone());
                                 // Tweening is activated and the state machine has been paused whilst it transitions
                                 self.status = StateMachineEngineStatus::Tweening;
-
+                                let target_segment_str =
+                                    CString::new(target_segment).unwrap_or_default();
                                 let _ = self.player.tween_to_marker(
-                                    &target_segment,
+                                    &target_segment_str,
                                     Some(causing_transition.duration()),
                                     Some(causing_transition.easing()),
                                 );

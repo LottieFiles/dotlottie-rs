@@ -1,21 +1,18 @@
 #[cfg(test)]
 mod tests {
     use core::assert_eq;
+    use std::ffi::CString;
     use std::fs::{self, File};
 
     use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer, Event,
-        StateMachineEngineStatus,
+        actions::open_url_policy::OpenUrlPolicy, DotLottiePlayer, Event, StateMachineEngineStatus,
     };
     use std::io::Read;
 
     #[test]
     fn get_state_machine() {
-        let config = Config {
-            autoplay: true,
-            ..Config::default()
-        };
-        let mut player = DotLottiePlayer::new(config, 0);
+        let mut player = DotLottiePlayer::new(0);
+        player.set_autoplay(true);
 
         let mut markers =
             File::open("assets/statemachines/normal_usecases/sm_exploding_pigeon.lottie")
@@ -35,8 +32,9 @@ mod tests {
 
         assert!(player.is_playing());
 
+        let sm_id = CString::new("Exploding Pigeon").unwrap();
         let mut sm = player
-            .state_machine_load("Exploding Pigeon")
+            .state_machine_load(&sm_id)
             .expect("state machine to load successfully");
 
         assert_eq!(sm.start(&OpenUrlPolicy::default()), Ok(()));
@@ -46,7 +44,7 @@ mod tests {
             include_str!("../assets/statemachines/normal_usecases/exploding_pigeon.json");
 
         let l = player
-            .get_state_machine("Exploding Pigeon")
+            .get_state_machine(&sm_id)
             .expect("to return a state machine json");
 
         assert_eq!(l, global_state);
@@ -54,7 +52,7 @@ mod tests {
 
     #[test]
     fn state_machine_start() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
 
         let sm = player.state_machine_load_data("bad_data");
 
@@ -72,7 +70,7 @@ mod tests {
 
     #[test]
     fn state_machine_stop() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
 
         let sm = player.state_machine_load_data("bad_data");
 
@@ -93,7 +91,7 @@ mod tests {
 
     #[test]
     fn state_machine_framework_setup() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
         let pointer_down =
             include_str!("../assets/statemachines/interaction_tests/interaction_array.json");
 
@@ -116,7 +114,7 @@ mod tests {
 
     #[test]
     fn state_machine_post_event() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
         let pointer_down =
             include_str!("../assets/statemachines/interaction_tests/all_interaction_events.json");
 
@@ -154,7 +152,7 @@ mod tests {
 
     #[test]
     fn state_machine_set_get_numeric_input() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
         let rating = include_str!("../assets/statemachines/normal_usecases/rating.json");
 
         let mut sm = player
@@ -186,7 +184,7 @@ mod tests {
 
     #[test]
     fn state_machine_set_get_boolean_input() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
         let sm = include_str!("../assets/statemachines/toggle.json");
 
         let mut sm = player
@@ -216,7 +214,7 @@ mod tests {
 
     #[test]
     fn state_machine_set_get_string_input() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
         let sm = include_str!("../assets/statemachines/normal_usecases/password.json");
 
         let mut sm = player
@@ -252,7 +250,7 @@ mod tests {
 
     #[test]
     fn state_machine_fire_event() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
         let sm = include_str!("../assets/statemachines/normal_usecases/password_with_events.json");
 
         let mut sm = player
@@ -271,7 +269,7 @@ mod tests {
 
     #[test]
     fn final_state() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
         let sm = include_str!("../assets/statemachines/normal_usecases/final_state.json");
 
         let mut sm = player
@@ -295,7 +293,7 @@ mod tests {
 
     #[test]
     fn state_machine_current_state() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
         let pointer_down =
             include_str!("../assets/statemachines/interaction_tests/all_interaction_events.json");
 
@@ -333,7 +331,7 @@ mod tests {
 
     #[test]
     fn state_machine_get_inputs() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new(0);
         let pointer_down =
             include_str!("../assets/statemachines/sanity_tests/test_get_all_inputs.json");
 
@@ -366,20 +364,21 @@ mod tests {
         );
 
         // Convert both arrays into sets of (key, type) pairs
-        let mut input_pairs: Vec<(&str, &str)> = inputs
-            .chunks_exact(2)
-            .map(|chunk| (chunk[0].as_str(), chunk[1].as_str()))
-            .collect();
+        use std::collections::HashSet;
 
-        let mut predefined_pairs: Vec<(&str, &str)> = predefined_inputs
-            .chunks_exact(2)
+        let expected_set: HashSet<(&str, &str)> = predefined_inputs
+            .chunks(2)
             .map(|chunk| (chunk[0], chunk[1]))
             .collect();
 
-        // Sort both for comparison
-        input_pairs.sort();
-        predefined_pairs.sort();
+        let actual_set: HashSet<(&str, &str)> = inputs
+            .chunks(2)
+            .map(|chunk| (chunk[0].as_str(), chunk[1].as_str()))
+            .collect();
 
-        assert_eq!(input_pairs, predefined_pairs);
+        assert_eq!(
+            actual_set, expected_set,
+            "Input key-value pairs do not match"
+        );
     }
 }

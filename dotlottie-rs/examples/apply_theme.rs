@@ -1,5 +1,7 @@
 #![allow(clippy::print_stdout)]
 
+use std::ffi::CString;
+
 /// Theme Example
 ///
 /// This example demonstrates how to use the `set_theme` API to switch between
@@ -8,7 +10,7 @@
 ///
 /// Themes are a convenient way to bundle multiple slot changes together and switch
 /// between different visual styles of the same animation.
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::DotLottiePlayer;
 use minifb::{Key, Window, WindowOptions};
 
 const WIDTH: u32 = 512;
@@ -27,14 +29,9 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
     // Create player and load .lottie file
-    let mut player = DotLottiePlayer::new(
-        Config {
-            loop_animation: true,
-            autoplay: true,
-            ..Config::default()
-        },
-        0, // threads (0 = auto)
-    );
+    let mut player = DotLottiePlayer::new(0);
+    player.set_loop(false);
+    player.set_autoplay(true);
 
     let dotlottie_data = include_bytes!("../assets/animations/dotlottie/v2/multi_themes.lottie");
 
@@ -49,7 +46,7 @@ fn main() {
     println!("Animation loaded successfully!");
 
     // Debug: Check active animation ID
-    println!("Active animation ID: '{}'", player.active_animation_id());
+    println!("Animation ID: '{:?}'", player.animation_id());
 
     println!("Press SPACE to cycle through different themes");
     println!("Press ESC to quit");
@@ -70,7 +67,9 @@ fn main() {
 
     // Set initial theme
     println!("Attempting to set theme: '{}'", themes[current_theme_index]);
-    if player.set_theme(themes[current_theme_index]).is_ok() {
+    let current_theme =
+        CString::new(themes[current_theme_index]).expect("Failed to create CString");
+    if player.set_theme(&current_theme).is_ok() {
         println!("✓ Theme set: {}", themes[current_theme_index]);
     } else {
         println!("✗ Failed to set theme: {}", themes[current_theme_index]);
@@ -85,7 +84,9 @@ fn main() {
                 current_theme_index = (current_theme_index + 1) % themes.len();
 
                 // Switch to the new theme
-                if player.set_theme(themes[current_theme_index]).is_ok() {
+                let new_theme =
+                    CString::new(themes[current_theme_index]).expect("Failed to create CString");
+                if player.set_theme(&new_theme).is_ok() {
                     println!("✓ Theme set: {}", themes[current_theme_index]);
                 } else {
                     println!("✗ Failed to set theme: {}", themes[current_theme_index]);

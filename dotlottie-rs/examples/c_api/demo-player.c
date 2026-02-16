@@ -24,7 +24,6 @@ int main(int argc, char **argv) {
   SDL_Texture *texture = NULL;
   SDL_Event e;
 
-  DotLottieConfig config;
   DotLottiePlayer *player;
 
   const char *animation_path;
@@ -49,22 +48,20 @@ int main(int argc, char **argv) {
     usage(argv[0]);
   }
 
-  // Setup dotlottie config
-  dotlottie_init_config(&config);
-  config.loop_animation = true;
-  config.background_color = 0xffffffff;
-  config.layout.fit = Void;
-  config.layout.align_x = 1.0;
-  config.layout.align_y = 0.5;
-  config.autoplay = true;
-  strcpy(config.marker.value, "feather");
-
-  // Setup dotlottie player
-  player = dotlottie_new_player(&config);
+  // Setup dotlottie player (0 threads = auto-detect)
+  player = dotlottie_new_player(0);
   if (!player) {
     fprintf(stderr, "Could not create dotlottie player\n");
     return 1;
   }
+
+  // Configure the player
+  dotlottie_set_loop(player, true);
+  dotlottie_set_background_color(player, 0xffffffff);
+  dotlottie_set_autoplay(player, true);
+  dotlottieLayout layout = {Contain, {1.0f, 0.5f}};
+  dotlottie_set_layout(player, layout);
+  dotlottie_set_marker(player, "feather");
 
   // Load the animation file
   ret = dotlottie_load_animation_path(player, animation_path, WIDTH, HEIGHT);

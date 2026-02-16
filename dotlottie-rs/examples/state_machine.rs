@@ -2,7 +2,7 @@
 
 use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
 use dotlottie_rs::events::Event;
-use dotlottie_rs::{Config, DotLottiePlayer, StateMachineEngine, StateMachineEvent};
+use dotlottie_rs::{DotLottiePlayer, StateMachineEngine, StateMachineEvent};
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -127,13 +127,8 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    let mut player = DotLottiePlayer::new(
-        Config {
-            background_color: 0xffffffff,
-            ..Config::default()
-        },
-        0,
-    );
+    let mut player = DotLottiePlayer::new(0);
+    let _ = player.set_background_color(Some(0xffffffff));
 
     let animation_path =
         PathBuf::from(format!("./assets/animations/dotlottie/v1/{ANIMATION_NAME}"));

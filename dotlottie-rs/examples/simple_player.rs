@@ -1,6 +1,6 @@
 #![allow(clippy::print_stdout)]
 
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::DotLottiePlayer;
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -64,15 +64,10 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = DotLottiePlayer::new(
-        Config {
-            background_color: 0xffffffff,
-            autoplay: true,
-            loop_animation: true,
-            ..Config::default()
-        },
-        0,
-    );
+    let mut player = DotLottiePlayer::new(0);
+    player.set_autoplay(true);
+    player.set_loop(true);
+    let _ = player.set_background_color(Some(0xffffffff));
 
     let animations = get_animation_files();
     if animations.is_empty() {

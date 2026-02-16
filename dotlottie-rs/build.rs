@@ -51,6 +51,15 @@ mod thorvg {
         files
     }
 
+    /// Check if WebGPU native libraries are available for the target platform
+    fn is_wgpu_supported(target_triple: &str) -> bool {
+        // WebGPU is supported on desktop platforms: macOS, Linux, Windows
+        target_triple.contains("apple-darwin")
+            || target_triple.contains("linux-gnu")
+            || target_triple.contains("linux-musl")
+            || target_triple.contains("pc-windows")
+    }
+
     pub fn build() -> std::io::Result<()> {
         let target_triple = env::var("TARGET").unwrap_or_default();
         let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -105,7 +114,8 @@ mod thorvg {
             }
         }
 
-        if cfg!(feature = "tvg-wg") {
+        // Only enable WebGPU renderer if the target platform supports it
+        if cfg!(feature = "tvg-wg") && is_wgpu_supported(&target_triple) {
             writeln!(thorvg_config_h, "#define THORVG_WG_RASTER_SUPPORT")?;
             src.push("deps/thorvg/src/renderer/wg_engine");
         }
@@ -198,7 +208,7 @@ mod thorvg {
             )
             .warnings(false);
 
-        if cfg!(feature = "tvg-wg") {
+        if cfg!(feature = "tvg-wg") && is_wgpu_supported(&target_triple) {
             let vendored_wgpu_include = PathBuf::from(&crate_dir)
                 .join("deps/wgpu")
                 .join(&target_triple)
@@ -258,6 +268,11 @@ mod thorvg {
                 .write_to_file(
                     PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs"),
                 )?;
+        } else if cfg!(feature = "tvg-wg") {
+            println!(
+                "cargo:warning=WebGPU renderer not available for target '{}', will use software renderer instead",
+                target_triple
+            );
         }
 
         for flag in simd_flags {

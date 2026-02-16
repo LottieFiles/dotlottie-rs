@@ -35,7 +35,7 @@ help:
 	@echo "  make wasm                              	   	   - Build WASM module with software renderer"
 	@echo "  make wasm-webgl                              	   - Build WASM module with webgl renderer"
 	@echo "  make wasm-webgpu                                  - Build WASM module with webgpu renderer"
-	@echo "  make wasm-all-variants                            - Build all WASM modules"
+	@echo "  make wasm-all                            - Build all WASM modules"
 	@echo ""
 	@echo "Android Targets:"
 	@echo "==============="

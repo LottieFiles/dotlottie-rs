@@ -1,16 +1,39 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug demo-player",
-      "program": "${workspaceFolder}/examples/demo-player/target/debug/demo-player",
-      "args": [],
+      "name": "Debug Example (Software)",
+      "cargo": {
+        "args": [
+          "build",
+          "--manifest-path",
+          "${workspaceFolder}/dotlottie-rs/Cargo.toml",
+          "--example",
+          "${input:swExample}"
+        ]
+      },
       "cwd": "${workspaceFolder}"
+    },
+  ],
+  "inputs": [
+    {
+      "id": "swExample",
+      "type": "pickString",
+      "description": "Select the example to debug",
+      "options": [
+        "simple_player",
+        "state_machine",
+        "apply_theme",
+        "color_slot",
+        "gradient_slot",
+        "position_slot",
+        "scalar_slot",
+        "text_slot",
+        "vector_slot"
+      ],
+      "default": "simple_player"
     }
   ]
 }

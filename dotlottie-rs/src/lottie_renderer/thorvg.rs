@@ -120,6 +120,23 @@ pub enum TvgEngine {
     TvgEngineGl,
 }
 
+#[allow(dead_code)]
+#[non_exhaustive]
+enum TvgEngineOption {
+    None,                  
+    Default,
+    Smart
+}
+impl From<TvgEngineOption> for tvg::Tvg_Engine_Option {
+    fn from(option: TvgEngineOption) -> Self {
+        match option {
+            TvgEngineOption::None => tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_NONE,
+            TvgEngineOption::Default => tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_DEFAULT,
+            TvgEngineOption::Smart => tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_SMART_RENDER,
+        }
+    }
+}
+
 static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
 
 #[cfg(feature = "tvg-ttf")]
@@ -150,7 +167,7 @@ impl TvgRenderer {
     }
 
     pub fn create_sw_canvas(&mut self) -> Result<(), TvgError> {
-        let canvas = unsafe { tvg::tvg_swcanvas_create(1) };
+        let canvas = unsafe { tvg::tvg_swcanvas_create(TvgEngineOption::Default.into()) };
 
         if canvas.is_null() {
             return Err(TvgError::FailedAllocation);
@@ -163,7 +180,7 @@ impl TvgRenderer {
 
     pub fn create_gl_canvas(&mut self) -> Result<(), TvgError> {
         {
-            let canvas = unsafe { tvg::tvg_glcanvas_create() };
+            let canvas = unsafe { tvg::tvg_glcanvas_create(TvgEngineOption::Default.into()) };
 
             if canvas.is_null() {
                 return Err(TvgError::FailedAllocation);
@@ -177,7 +194,7 @@ impl TvgRenderer {
 
     pub fn create_wg_canvas(&mut self) -> Result<(), TvgError> {
         unsafe {
-            let canvas = tvg::tvg_wgcanvas_create();
+            let canvas = tvg::tvg_wgcanvas_create(TvgEngineOption::Default.into());
 
             if canvas.is_null() {
                 return Err(TvgError::FailedAllocation);
@@ -268,8 +285,11 @@ impl Renderer for TvgRenderer {
 
         if let Some(raw_canvas) = self.raw_canvas {
             unsafe {
+                // TODO: expose the platform-specific display & surface handle for EGL, HDC for WGL
                 tvg::tvg_glcanvas_set_target(
                     raw_canvas,
+                    ptr::null_mut(),
+                    ptr::null_mut(),
                     context.as_ptr(),
                     id,
                     width,
@@ -341,7 +361,7 @@ impl Renderer for TvgRenderer {
                 Drawable::Shape(shape) => shape.raw_shape,
             };
 
-            unsafe { tvg::tvg_canvas_push(raw_canvas, raw_paint).into_result() }
+            unsafe { tvg::tvg_canvas_add(raw_canvas, raw_paint).into_result() }
         } else {
             Err(TvgError::InvalidArgument)
         }

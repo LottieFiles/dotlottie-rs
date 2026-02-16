@@ -45,6 +45,7 @@ raw-window-handle = "0.6"
 glutin = "0.32"
 glutin-winit = "0.5"
 gl = "0.14"
+base64 = "0.22.1"
 
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 core-foundation = "0.9"

@@ -28,10 +28,10 @@ mod tests {
         ));
 
         let mut markers =
-            File::open("assets/statemachines/normal_usecases/sm_exploding_pigeon.lottie")
+            File::open("assets/animations/dotlottie/v2/pigeon.lottie")
                 .expect("no file found");
         let metadatamarkers =
-            fs::metadata("assets/statemachines/normal_usecases/sm_exploding_pigeon.lottie")
+            fs::metadata("assets/animations/dotlottie/v2/pigeon.lottie")
                 .expect("unable to read metadata");
         let mut markers_buffer = vec![0; metadatamarkers.len() as usize];
         markers

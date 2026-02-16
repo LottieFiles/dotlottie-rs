@@ -131,6 +131,7 @@ pub unsafe extern "C" fn dotlottie_load_animation_path(
     })
 }
 
+#[cfg(feature = "dotlottie")]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_load_animation(
     ptr: *mut DotLottiePlayer,
@@ -150,6 +151,7 @@ pub unsafe extern "C" fn dotlottie_load_animation(
     })
 }
 
+#[cfg(feature = "dotlottie")]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     ptr: *mut DotLottiePlayer,
@@ -164,6 +166,7 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     })
 }
 
+#[cfg(feature = "dotlottie")]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_manifest(
     ptr: *mut DotLottiePlayer,
@@ -178,6 +181,7 @@ pub unsafe extern "C" fn dotlottie_manifest(
     })
 }
 
+#[cfg(feature = "dotlottie")]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_manifest_animations(
     ptr: *mut DotLottiePlayer,
@@ -738,6 +742,7 @@ pub unsafe extern "C" fn dotlottie_markers(
     })
 }
 
+#[cfg(feature = "dotlottie")]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_active_animation_id(
     ptr: *mut DotLottiePlayer,
@@ -751,8 +756,8 @@ pub unsafe extern "C" fn dotlottie_active_animation_id(
     })
 }
 
-#[no_mangle]
 #[cfg(feature = "theming")]
+#[no_mangle]
 pub unsafe extern "C" fn dotlottie_active_theme_id(
     ptr: *mut DotLottiePlayer,
     result: *mut c_char,

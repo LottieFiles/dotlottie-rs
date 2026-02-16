@@ -1,5 +1,6 @@
 mod poll_events;
 mod player;
+#[cfg(feature = "dotlottie")]
 mod fms;
 mod layout;
 mod lottie_renderer;
@@ -15,6 +16,7 @@ pub mod c_api;
 
 pub use poll_events::*;
 pub use player::*;
+#[cfg(feature = "dotlottie")]
 pub use fms::*;
 pub use layout::*;
 pub use lottie_renderer::*;

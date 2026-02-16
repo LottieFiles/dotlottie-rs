@@ -9,7 +9,9 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap,
 };
-use crate::{DotLottieManager, Manifest, Renderer};
+#[cfg(feature = "dotlottie")]
+use crate::{DotLottieManager, Manifest};
+use crate::Renderer;
 #[cfg(feature = "state-machines")]
 use crate::{StateMachineEngine, StateMachineEngineError};
 
@@ -58,6 +60,7 @@ pub struct Config {
     pub marker: String,
     #[cfg(feature = "theming")]
     pub theme_id: String,
+    #[cfg(feature = "dotlottie")]
     pub animation_id: String,
     #[cfg(feature = "state-machines")]
     pub state_machine_id: String,
@@ -78,6 +81,7 @@ impl Default for Config {
             marker: String::new(),
             #[cfg(feature = "theming")]
             theme_id: String::new(),
+            #[cfg(feature = "dotlottie")]
             animation_id: String::new(),
             #[cfg(feature = "state-machines")]
             state_machine_id: String::new(),
@@ -134,9 +138,11 @@ pub struct DotLottiePlayer {
     start_time: Instant,
     loop_count: u32,
     config: Config,
+    #[cfg(feature = "dotlottie")]
     dotlottie_manager: Option<DotLottieManager>,
     direction: Direction,
     markers: MarkersMap,
+    #[cfg(feature = "dotlottie")]
     active_animation_id: String,
     #[cfg(feature = "theming")]
     active_theme_id: String,
@@ -168,9 +174,11 @@ impl DotLottiePlayer {
             start_time: Instant::now(),
             loop_count: 0,
             config,
+            #[cfg(feature = "dotlottie")]
             dotlottie_manager: None,
             direction,
             markers: MarkersMap::new(),
+            #[cfg(feature = "dotlottie")]
             active_animation_id: String::new(),
             #[cfg(feature = "theming")]
             active_theme_id: String::new(),
@@ -354,6 +362,7 @@ impl DotLottiePlayer {
         }
     }
 
+    #[cfg(feature = "dotlottie")]
     pub fn manifest(&self) -> Option<&Manifest> {
         self.dotlottie_manager
             .as_ref()
@@ -744,7 +753,10 @@ impl DotLottiePlayer {
             self.invalidate_frame_cache();
         }
         self.config.autoplay = new_config.autoplay;
-        self.config.animation_id = new_config.animation_id;
+        #[cfg(feature = "dotlottie")]
+        {
+            self.config.animation_id = new_config.animation_id;
+        }
 
         if new_config.autoplay {
             self.play();
@@ -875,8 +887,11 @@ impl DotLottiePlayer {
     }
 
     pub fn load_animation_data(&mut self, animation_data: &CStr, width: u32, height: u32) -> bool {
-        self.dotlottie_manager = None;
-        self.active_animation_id.clear();
+        #[cfg(feature = "dotlottie")]
+        {
+            self.dotlottie_manager = None;
+            self.active_animation_id.clear();
+        }
         #[cfg(feature = "theming")]
         self.active_theme_id.clear();
 
@@ -892,8 +907,11 @@ impl DotLottiePlayer {
         );
 
         if animation_loaded {
-            if !self.config.animation_id.is_empty() {
-                self.active_animation_id = self.config.animation_id.clone();
+            #[cfg(feature = "dotlottie")]
+            {
+                if !self.config.animation_id.is_empty() {
+                    self.active_animation_id = self.config.animation_id.clone();
+                }
             }
 
             #[cfg(feature = "theming")]
@@ -916,8 +934,11 @@ impl DotLottiePlayer {
     }
 
     pub fn load_animation_path(&mut self, file_path: &str, width: u32, height: u32) -> bool {
-        self.dotlottie_manager = None;
-        self.active_animation_id.clear();
+        #[cfg(feature = "dotlottie")]
+        {
+            self.dotlottie_manager = None;
+            self.active_animation_id.clear();
+        }
         #[cfg(feature = "theming")]
         self.active_theme_id.clear();
 
@@ -933,6 +954,7 @@ impl DotLottiePlayer {
         }
     }
 
+    #[cfg(feature = "dotlottie")]
     pub fn load_dotlottie_data(&mut self, file_data: &[u8], width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
         #[cfg(feature = "theming")]
@@ -1001,6 +1023,7 @@ impl DotLottiePlayer {
         loaded
     }
 
+    #[cfg(feature = "dotlottie")]
     pub fn load_animation(&mut self, animation_id: &str, width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
         if let Some(manager) = &mut self.dotlottie_manager {
@@ -1287,6 +1310,7 @@ impl DotLottiePlayer {
         self.renderer.set_quality(quality).is_ok()
     }
 
+    #[cfg(feature = "dotlottie")]
     pub fn active_animation_id(&self) -> &str {
         &self.active_animation_id
     }

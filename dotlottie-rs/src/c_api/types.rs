@@ -17,7 +17,11 @@ use crate::ManifestStateMachine;
 
 #[cfg(feature = "theming")]
 use crate::ManifestTheme;
-use crate::{Config, Fit, Layout, Manifest, ManifestAnimation, Marker, Mode};
+
+use crate::{Config, Fit, Layout, Marker, Mode};
+
+#[cfg(feature = "dotlottie")]
+use crate::{Manifest, ManifestAnimation};
 
 // Function return codes
 pub const DOTLOTTIE_SUCCESS: i32 = 0;
@@ -288,6 +292,7 @@ pub struct DotLottieConfig {
     pub theme_id: DotLottieString,
     #[cfg(feature = "state-machines")]
     pub state_machine_id: DotLottieString,
+    #[cfg(feature = "dotlottie")]
     pub animation_id: DotLottieString,
 }
 
@@ -313,6 +318,7 @@ impl Transferable<Config> for DotLottieConfig {
             theme_id: DotLottieString::new(&config.theme_id)?,
             #[cfg(feature = "state-machines")]
             state_machine_id: DotLottieString::new(&config.state_machine_id)?,
+            #[cfg(feature = "dotlottie")]
             animation_id: DotLottieString::new(&config.animation_id)?,
         })
     }
@@ -339,6 +345,7 @@ impl DotLottieConfig {
             theme_id: self.theme_id.to_string(),
             #[cfg(feature = "state-machines")]
             state_machine_id: self.state_machine_id.to_string(),
+            #[cfg(feature = "dotlottie")]
             animation_id: self.animation_id.to_string(),
         })
     }
@@ -371,6 +378,7 @@ pub struct DotLottieManifestAnimation {
     pub background: DotLottieOption<DotLottieString>,
 }
 
+#[cfg(feature = "dotlottie")]
 impl Transferable<ManifestAnimation> for DotLottieManifestAnimation {
     unsafe fn new(animation: &ManifestAnimation) -> Result<DotLottieManifestAnimation, io::Error> {
         Ok(DotLottieManifestAnimation {
@@ -420,6 +428,7 @@ impl Transferable<ManifestStateMachine> for DotLottieManifestStateMachine {
     }
 }
 
+#[cfg(feature = "dotlottie")]
 #[derive(Clone, PartialEq)]
 #[repr(C)]
 pub struct DotLottieManifest {
@@ -427,6 +436,7 @@ pub struct DotLottieManifest {
     pub version: DotLottieOption<DotLottieString>,
 }
 
+#[cfg(feature = "dotlottie")]
 impl Transferable<Manifest> for DotLottieManifest {
     unsafe fn new(manifest: &Manifest) -> Result<DotLottieManifest, io::Error> {
         Ok(DotLottieManifest {

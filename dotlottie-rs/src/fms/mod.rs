@@ -184,6 +184,7 @@ impl DotLottieManager {
         serde_json::to_string(&lottie_animation).map_err(|_| DotLottieError::ReadContentError)
     }
 
+    #[cfg(feature = "state-machines")]
     #[inline]
     pub fn get_state_machine(&self, state_machine_id: &str) -> Result<String, DotLottieError> {
         let mut archive = self.archive.borrow_mut();

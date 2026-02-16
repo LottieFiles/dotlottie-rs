@@ -46,7 +46,7 @@ fn main() {
     println!("Animation loaded successfully!");
 
     // Debug: Check active animation ID
-    println!("Active animation ID: '{:?}'", player.active_animation_id());
+    println!("Animation ID: '{:?}'", player.animation_id());
 
     println!("Press SPACE to cycle through different themes");
     println!("Press ESC to quit");

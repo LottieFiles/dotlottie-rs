@@ -109,7 +109,7 @@ impl StateTrait for State {
                 };
 
                 if !animation.is_empty()
-                    && engine.player.active_animation_id() != Some(&anim_cstr)
+                    && engine.player.animation_id() != Some(&anim_cstr)
                     && engine.player.render().is_ok()
                 {
                     let _ = engine.player.load_animation(&anim_cstr, size.0, size.1);
@@ -142,7 +142,7 @@ impl StateTrait for State {
                     .map_err(|_| StateMachineActionError::ParsingError)?;
 
                 if let Some(cstr) = anim_cstr {
-                    if engine.player.active_animation_id() != Some(&cstr) {
+                    if engine.player.animation_id() != Some(&cstr) {
                         let _ = engine.player.load_animation(&cstr, size.0, size.1);
                     }
                 }

@@ -30,14 +30,14 @@ mod tests {
             ),
             Ok(())
         );
-        assert!(player.active_theme_id().is_none());
+        assert!(player.theme_id().is_none());
 
         assert_eq!(
             player.set_theme(&valid_theme_id),
             Ok(()),
             "Expected theme to load"
         );
-        assert_eq!(player.active_theme_id(), Some(valid_theme_id.as_c_str()));
+        assert_eq!(player.theme_id(), Some(valid_theme_id.as_c_str()));
 
         assert!(player.is_playing());
     }
@@ -141,13 +141,13 @@ mod tests {
             Ok(()),
             "Expected theme to load"
         );
-        assert_eq!(player.active_theme_id(), Some(valid_theme_id.as_c_str()));
+        assert_eq!(player.theme_id(), Some(valid_theme_id.as_c_str()));
 
         let data_str = std::str::from_utf8(include_bytes!("../assets/animations/lottie/test.json"))
             .expect("Invalid data.");
         let data = CString::new(data_str).expect("Failed to create CString");
         assert_eq!(player.load_animation_data(&data, WIDTH, HEIGHT), Ok(()));
-        assert!(player.active_theme_id().is_none());
+        assert!(player.theme_id().is_none());
 
         assert!(player.is_playing());
     }
@@ -177,12 +177,12 @@ mod tests {
             player.set_theme(&valid_theme_id).is_ok(),
             "Expected theme to load"
         );
-        assert_eq!(player.active_theme_id(), Some(valid_theme_id.as_c_str()));
+        assert_eq!(player.theme_id(), Some(valid_theme_id.as_c_str()));
 
         let path =
             CString::new("assets/animations/lottie/test.json").expect("Failed to create CString");
         assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));
-        assert!(player.active_theme_id().is_none());
+        assert!(player.theme_id().is_none());
 
         assert!(player.is_playing());
     }
@@ -202,14 +202,14 @@ mod tests {
             ),
             Ok(())
         );
-        assert!(player.active_theme_id().is_none());
+        assert!(player.theme_id().is_none());
 
         assert_eq!(
             player.set_theme(&valid_theme_id),
             Ok(()),
             "Expected theme to load"
         );
-        assert_eq!(player.active_theme_id(), Some(valid_theme_id.as_c_str()));
+        assert_eq!(player.theme_id(), Some(valid_theme_id.as_c_str()));
 
         assert_eq!(
             player.load_dotlottie_data(
@@ -219,7 +219,7 @@ mod tests {
             ),
             Ok(())
         );
-        assert!(player.active_theme_id().is_none());
+        assert!(player.theme_id().is_none());
 
         assert!(player.is_playing());
     }

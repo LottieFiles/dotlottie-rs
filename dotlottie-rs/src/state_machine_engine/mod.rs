@@ -351,7 +351,6 @@ impl<'a> StateMachineEngine<'a> {
             return Err(StateMachineEngineError::ParsingError(message));
         }
 
-        println!("StateMachineEngine::new -> 1");
         match parsed_state_machine {
             Ok(parsed_state_machine) => {
                 /* Build all input variables into hashmaps for easier use */
@@ -375,8 +374,6 @@ impl<'a> StateMachineEngine<'a> {
                         }
                     }
                 }
-
-                println!("StateMachineEngine::new -> 2");
 
                 /*
                    Set the reference to the global state so that we can easily

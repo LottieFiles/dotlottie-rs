@@ -26,7 +26,7 @@ mod tests {
 
         assert_eq!(player.load_animation(&animation_id, WIDTH, HEIGHT), Ok(()));
 
-        assert_eq!(player.active_animation_id(), Some(animation_id.as_c_str()));
+        assert_eq!(player.animation_id(), Some(animation_id.as_c_str()));
     }
 
     #[test]
@@ -50,7 +50,7 @@ mod tests {
 
         let first_id = CString::new(animations[0].id.clone()).unwrap();
         assert_eq!(
-            player.active_animation_id(),
+            player.animation_id(),
             Some(first_id.as_c_str()),
             "Active animation id is not the first animation id"
         );
@@ -64,14 +64,18 @@ mod tests {
                 animation.id
             );
 
-            let active_animation_id = player.active_animation_id();
+            let animation_id_result = player.animation_id();
 
             assert_eq!(
-                active_animation_id,
+                animation_id_result,
                 Some(anim_id.as_c_str()),
                 "Active animation id is not equal to the loaded animation id"
             );
         }
+
+        // Store the last valid animation id before trying invalid load
+        let last_valid_anim = animations.last().unwrap();
+        let last_valid_id = CString::new(last_valid_anim.id.clone()).unwrap();
 
         let invalid_id = CString::new("invalid_id").unwrap();
         assert_ne!(
@@ -80,11 +84,12 @@ mod tests {
             "Loaded animation with invalid id"
         );
 
-        let active_animation_id = player.active_animation_id();
-
-        assert!(
-            active_animation_id.is_none(),
-            "Active animation id should be None after invalid load"
+        // After failed load, animation_id should remain as the last successfully loaded one
+        let animation_id_result = player.animation_id();
+        assert_eq!(
+            animation_id_result,
+            Some(last_valid_id.as_c_str()),
+            "Animation id should remain unchanged after failed load"
         );
     }
 }

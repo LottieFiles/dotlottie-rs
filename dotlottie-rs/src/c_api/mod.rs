@@ -1196,13 +1196,13 @@ pub unsafe extern "C" fn dotlottie_marker(
 /// - `DotLottieResult::Success` on success
 /// - `DotLottieResult::InvalidParameter` if no animation is active or player pointer is invalid
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_active_animation_id(
+pub unsafe extern "C" fn dotlottie_animation_id(
     ptr: *mut DotLottiePlayer,
     buffer: *mut c_char,
     size_out: *mut usize,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        match dotlottie_player.active_animation_id() {
+        match dotlottie_player.animation_id() {
             Some(id) => {
                 let id_bytes = id.to_bytes_with_nul();
 
@@ -1236,13 +1236,13 @@ pub unsafe extern "C" fn dotlottie_active_animation_id(
 /// - `DotLottieResult::Success` on success
 /// - `DotLottieResult::InvalidParameter` if no theme is active or player pointer is invalid
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_active_theme_id(
+pub unsafe extern "C" fn dotlottie_theme_id(
     ptr: *mut DotLottiePlayer,
     buffer: *mut c_char,
     size_out: *mut usize,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        match dotlottie_player.active_theme_id() {
+        match dotlottie_player.theme_id() {
             Some(id) => {
                 let id_bytes = id.to_bytes_with_nul();
 

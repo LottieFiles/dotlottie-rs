@@ -134,9 +134,6 @@ pub struct DotLottiePlayer {
     direction: Direction,
     marker_names: Vec<CString>,
     marker_data: Vec<(f32, f32)>, // (time, duration)
-    active_animation_id: Option<CString>,
-    active_theme_id: Option<CString>,
-    active_state_machine_id: Option<CString>,
     cached_start_end_frame: Option<(f32, f32)>,
     event_queue: EventQueue<DotLottieEvent>,
     completion_event: CompletionEvent,
@@ -153,9 +150,10 @@ pub struct DotLottiePlayer {
     segment: Option<[f32; 2]>,
     background_color: u32,
     layout: Layout,
-    marker: Option<(CString, usize)>, // (marker_name, index into marker_names/marker_data)
+    marker: Option<usize>, // marker id
     theme_id: Option<CString>,
     animation_id: Option<CString>,
+    state_machine_id: Option<CString>,
 }
 
 impl DotLottiePlayer {
@@ -187,9 +185,7 @@ impl DotLottiePlayer {
             direction: Direction::Forward,
             marker_names: Vec::new(),
             marker_data: Vec::new(),
-            active_animation_id: None,
-            active_theme_id: None,
-            active_state_machine_id: None,
+            state_machine_id: None,
             cached_start_end_frame: None,
             event_queue: EventQueue::new(),
             completion_event: CompletionEvent::None,
@@ -238,7 +234,7 @@ impl DotLottiePlayer {
     }
 
     fn compute_start_frame(&self) -> f32 {
-        if let Some((_, idx)) = &self.marker {
+        if let Some(idx) = &self.marker {
             if let Some((time, _)) = self.marker_data.get(*idx) {
                 return time.max(0.0);
             }
@@ -254,7 +250,7 @@ impl DotLottiePlayer {
     fn compute_end_frame(&self) -> f32 {
         let max_frame = self.total_frames() - 1.0;
 
-        if let Some((_, idx)) = &self.marker {
+        if let Some(idx) = &self.marker {
             if let Some((time, duration)) = self.marker_data.get(*idx) {
                 return (time + duration).min(max_frame);
             }
@@ -817,7 +813,11 @@ impl DotLottiePlayer {
     }
 
     pub fn set_marker(&mut self, marker_name: Option<&CStr>) {
-        let current_name = self.marker.as_ref().map(|(name, _)| name.as_c_str());
+        // Get current marker name from index
+        let current_name = self
+            .marker
+            .and_then(|idx| self.marker_names.get(idx))
+            .map(|n| n.as_c_str());
         if current_name == marker_name {
             return;
         }
@@ -825,7 +825,7 @@ impl DotLottiePlayer {
         if let Some(name) = marker_name {
             if let Some((idx, time, _)) = self.find_marker(name) {
                 self.start_time = Instant::now();
-                self.marker = Some((name.to_owned(), idx));
+                self.marker = Some(idx);
                 self.invalidate_frame_cache();
 
                 let _ = self.set_frame(time);
@@ -841,7 +841,9 @@ impl DotLottiePlayer {
     }
 
     pub fn marker(&self) -> Option<&CStr> {
-        self.marker.as_ref().map(|(name, _)| name.as_c_str())
+        self.marker
+            .and_then(|idx| self.marker_names.get(idx))
+            .map(|n| n.as_c_str())
     }
 
     pub fn set_layout(&mut self, layout: Layout) -> Result<(), LottieRendererError> {
@@ -1031,8 +1033,8 @@ impl DotLottiePlayer {
         height: u32,
     ) -> Result<(), DotLottiePlayerError> {
         self.dotlottie_manager = None;
-        self.active_animation_id = None;
-        self.active_theme_id = None;
+        self.theme_id = None;
+        self.animation_id = None;
 
         // Convert to &str only for marker extraction (JSON parsing)
         if let Ok(data_str) = animation_data.to_str() {
@@ -1048,12 +1050,6 @@ impl DotLottiePlayer {
         );
 
         if result.is_ok() {
-            self.active_animation_id = self.animation_id.clone();
-
-            if let Some(theme_id) = self.theme_id.clone() {
-                let _ = self.set_theme(&theme_id);
-            }
-
             self.event_queue.push(DotLottieEvent::Load);
             if self.autoplay {
                 let _ = self.play();
@@ -1072,8 +1068,8 @@ impl DotLottiePlayer {
         height: u32,
     ) -> Result<(), DotLottiePlayerError> {
         self.dotlottie_manager = None;
-        self.active_animation_id = None;
-        self.active_theme_id = None;
+        self.theme_id = None;
+        self.animation_id = None;
 
         let result = (|| {
             let path_str = file_path
@@ -1098,8 +1094,8 @@ impl DotLottiePlayer {
         width: u32,
         height: u32,
     ) -> Result<(), DotLottiePlayerError> {
-        self.active_animation_id = None;
-        self.active_theme_id = None;
+        self.theme_id = None;
+        self.animation_id = None;
 
         let manager =
             DotLottieManager::new(file_data).map_err(|_| DotLottiePlayerError::Unknown)?;
@@ -1133,14 +1129,9 @@ impl DotLottiePlayer {
         );
 
         if result.is_ok() {
-            self.active_animation_id = active_animation_id;
-
-            if let Some(theme_id) = self.theme_id.clone() {
-                let _ = self.set_theme(&theme_id);
-            }
+            self.animation_id = active_animation_id;
         }
 
-        // container
         if result.is_ok() {
             self.event_queue.push(DotLottieEvent::Load);
 
@@ -1160,7 +1151,6 @@ impl DotLottiePlayer {
         width: u32,
         height: u32,
     ) -> Result<(), DotLottiePlayerError> {
-        self.active_animation_id = None;
         let anim_id_str = animation_id
             .to_str()
             .map_err(|_| DotLottiePlayerError::InvalidParameter)?;
@@ -1186,11 +1176,7 @@ impl DotLottiePlayer {
             };
 
             if result.is_ok() {
-                self.active_animation_id = Some(animation_id.to_owned());
-
-                if let Some(theme_id) = self.theme_id.clone() {
-                    let _ = self.set_theme(&theme_id);
-                }
+                self.animation_id = Some(animation_id.to_owned());
 
                 self.event_queue.push(DotLottieEvent::Load);
                 if self.autoplay {
@@ -1244,7 +1230,7 @@ impl DotLottiePlayer {
     }
 
     pub fn set_theme(&mut self, theme_id: &CStr) -> Result<(), DotLottiePlayerError> {
-        if self.active_theme_id.as_deref() == Some(theme_id) {
+        if self.theme_id.as_deref() == Some(theme_id) {
             return Ok(());
         }
 
@@ -1288,7 +1274,7 @@ impl DotLottiePlayer {
             .and_then(|manager| manager.get_theme(theme_id_str).ok())
             .map(|theme| {
                 let anim_id_str = self
-                    .active_animation_id
+                    .animation_id
                     .as_deref()
                     .and_then(|c| c.to_str().ok())
                     .unwrap_or("");
@@ -1299,7 +1285,6 @@ impl DotLottiePlayer {
             .unwrap_or(Err(DotLottiePlayerError::Unknown));
 
         if result.is_ok() {
-            self.active_theme_id = Some(theme_id.to_owned());
             self.theme_id = Some(theme_id.to_owned());
         }
 
@@ -1307,7 +1292,6 @@ impl DotLottiePlayer {
     }
 
     pub fn reset_theme(&mut self) -> Result<(), DotLottiePlayerError> {
-        self.active_theme_id = None;
         self.theme_id = None;
         self.renderer.clear_slots()?;
         Ok(())
@@ -1323,7 +1307,7 @@ impl DotLottiePlayer {
             .map_err(|_| DotLottiePlayerError::InvalidParameter)?;
 
         let anim_id_str = self
-            .active_animation_id
+            .animation_id
             .as_deref()
             .and_then(|c| c.to_str().ok())
             .unwrap_or("");
@@ -1472,20 +1456,16 @@ impl DotLottiePlayer {
         Ok(())
     }
 
-    pub fn active_animation_id(&self) -> Option<&CStr> {
-        Some(self.active_animation_id.as_ref()?)
+    pub fn animation_id(&self) -> Option<&CStr> {
+        Some(self.animation_id.as_ref()?)
     }
 
-    pub fn active_theme_id(&self) -> Option<&CStr> {
-        self.active_theme_id.as_deref()
+    pub fn theme_id(&self) -> Option<&CStr> {
+        self.theme_id.as_deref()
     }
 
-    pub fn active_state_machine_id(&self) -> Option<&CStr> {
-        self.active_state_machine_id.as_deref()
-    }
-
-    fn set_active_state_machine_id(&mut self, state_machine_id: &CStr) {
-        self.active_state_machine_id = Some(state_machine_id.to_owned());
+    pub fn state_machine_id(&self) -> Option<&CStr> {
+        self.state_machine_id.as_deref()
     }
 
     pub fn tween(
@@ -1512,7 +1492,7 @@ impl DotLottiePlayer {
         if let Some((idx, time, _)) = self.find_marker(marker) {
             let _ = self.tween(time, duration, easing);
 
-            self.marker = Some((marker.to_owned(), idx));
+            self.marker = Some(idx);
 
             self.invalidate_frame_cache();
 
@@ -1592,7 +1572,7 @@ impl DotLottiePlayer {
             None => return Err(StateMachineEngineError::CreationError),
         };
 
-        self.set_active_state_machine_id(state_machine_id);
+        self.state_machine_id = Some(state_machine_id.to_owned());
 
         StateMachineEngine::new(&machine, self, None)
     }

@@ -10,14 +10,14 @@ mod tests {
 
     #[test]
     fn test_default_use_frame_interpolation() {
-        let player = DotLottiePlayer::new(0);
+        let player = DotLottiePlayer::new();
 
         assert!(player.use_frame_interpolation());
     }
 
     #[test]
     fn test_set_use_frame_interpolation() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         player.set_use_frame_interpolation(false);
 
@@ -26,7 +26,7 @@ mod tests {
 
     #[test]
     fn test_disable_frame_interpolation() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
         player.set_use_frame_interpolation(false);
 

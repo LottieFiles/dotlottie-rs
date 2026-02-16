@@ -5,7 +5,7 @@ mod tests {
     #[test]
     pub fn not_equal_test() {
         let global_state = include_str!("../assets/statemachines/guard_tests/equal_not_equal.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -33,7 +33,7 @@ mod tests {
     #[test]
     pub fn equal_test() {
         let global_state = include_str!("../assets/statemachines/guard_tests/equal_not_equal.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -61,7 +61,7 @@ mod tests {
     #[test]
     pub fn greater_than() {
         let global_state = include_str!("../assets/statemachines/guard_tests/greater_than.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -114,7 +114,7 @@ mod tests {
     pub fn greater_than_or_equal() {
         let global_state =
             include_str!("../assets/statemachines/guard_tests/greater_than_equal.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -154,7 +154,7 @@ mod tests {
     #[test]
     pub fn less_than_equal() {
         let global_state = include_str!("../assets/statemachines/guard_tests/less_than_equal.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -200,7 +200,7 @@ mod tests {
     #[test]
     pub fn less_than() {
         let global_state = include_str!("../assets/statemachines/guard_tests/less_than.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),

@@ -17,7 +17,7 @@ mod tests {
     fn test_subscribe_unsubscribe() {
         let mut events: Vec<String> = vec![];
 
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
         player.set_loop(true);
         player.set_use_frame_interpolation(false);

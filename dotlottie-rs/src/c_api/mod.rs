@@ -100,7 +100,7 @@ macro_rules! exec_state_machine_op {
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_new_player(threads: u32) -> *mut DotLottiePlayer {
-    let dotlottie_player = Box::new(DotLottiePlayer::new(threads));
+    let dotlottie_player = Box::new(DotLottiePlayer::with_threads(threads));
     Box::into_raw(dotlottie_player)
 }
 

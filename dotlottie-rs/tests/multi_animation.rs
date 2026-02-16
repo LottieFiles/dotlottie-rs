@@ -13,7 +13,7 @@ mod tests {
     pub fn test_load_animation_with_animation_id() {
         let animation_id = CString::new("crying").unwrap();
 
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -36,7 +36,7 @@ mod tests {
 
     #[test]
     pub fn test_load_animation() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 

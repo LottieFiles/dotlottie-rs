@@ -12,14 +12,14 @@ mod tests {
 
     #[test]
     fn test_default_autoplay() {
-        let player = DotLottiePlayer::new(0);
+        let player = DotLottiePlayer::new();
 
         assert!(!player.autoplay());
     }
 
     #[test]
     fn test_set_autoplay() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         player.set_autoplay(true);
 
@@ -28,7 +28,7 @@ mod tests {
 
     #[test]
     fn test_autoplay() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
@@ -61,7 +61,7 @@ mod tests {
 
     #[test]
     fn test_no_autoplay() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(false);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];

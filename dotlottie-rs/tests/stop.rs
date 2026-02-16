@@ -65,7 +65,7 @@ mod tests {
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         for config in configs {
-            let mut player = DotLottiePlayer::new(0);
+            let mut player = DotLottiePlayer::new();
             player.set_mode(config.mode);
             player.set_autoplay(config.autoplay);
             if let Some(seg) = config.segment {

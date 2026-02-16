@@ -18,14 +18,14 @@ mod tests {
 
     #[test]
     fn test_default_speed() {
-        let player = DotLottiePlayer::new(0);
+        let player = DotLottiePlayer::new();
 
         assert_eq!(player.speed(), 1.0);
     }
 
     #[test]
     fn test_set_speed() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         player.set_speed(2.0);
 
@@ -83,7 +83,7 @@ mod tests {
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         for (config, expected_speed) in configs {
-            let mut player = DotLottiePlayer::new(0);
+            let mut player = DotLottiePlayer::new();
             player.set_speed(config.speed);
             player.set_autoplay(config.autoplay);
             if let Some(seg) = config.segment {
@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_zero_speed() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         player.set_speed(0.0);
 
@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_negative_speed() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         player.set_speed(-1.0);
 

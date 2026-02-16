@@ -65,7 +65,7 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = DotLottiePlayer::new(0);
+    let mut player = DotLottiePlayer::new();
     player.set_autoplay(true);
     player.set_loop(true);
     let _ = player.set_background_color(Some(0xffffffff));

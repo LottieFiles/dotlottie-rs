@@ -12,7 +12,7 @@ mod tests {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_down_up.json");
 
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -95,7 +95,7 @@ mod tests {
     pub fn pointer_down_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_down.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -129,7 +129,7 @@ mod tests {
     pub fn pointer_enter_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_enter.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -179,7 +179,7 @@ mod tests {
     pub fn pointer_enter_via_move_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_enter.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -229,7 +229,7 @@ mod tests {
     pub fn pointer_exit_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_exit.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -266,7 +266,7 @@ mod tests {
     pub fn pointer_exit_via_move_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_exit.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -331,7 +331,7 @@ mod tests {
     pub fn pointer_move_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_move.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -374,7 +374,7 @@ mod tests {
     pub fn on_complete_manual_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/on_complete.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -417,7 +417,7 @@ mod tests {
     pub fn on_complete_player_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pigeon_fsm.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -460,7 +460,7 @@ mod tests {
     pub fn on_loop_complete_player_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/on_loop_complete.json");
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 

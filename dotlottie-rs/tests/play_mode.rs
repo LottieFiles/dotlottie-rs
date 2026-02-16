@@ -14,14 +14,14 @@ mod play_mode_tests {
 
     #[test]
     fn test_default_play_mode() {
-        let player = DotLottiePlayer::new(0);
+        let player = DotLottiePlayer::new();
 
         assert_eq!(player.mode(), Mode::Forward);
     }
 
     #[test]
     fn test_loop_count_with_loop_animation_false() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
         player.set_loop(false);
@@ -71,7 +71,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_zero_loop_count() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -115,7 +115,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_playing_after_loop_has_completed() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -196,7 +196,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_loop_count_paused_mid_play() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -285,7 +285,7 @@ mod play_mode_tests {
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         for mode in play_modes {
-            let mut player = DotLottiePlayer::new(0);
+            let mut player = DotLottiePlayer::new();
             player.set_mode(mode);
 
             let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
@@ -343,7 +343,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
 
@@ -397,7 +397,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -449,7 +449,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_play_mode() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::Reverse);
         player.set_autoplay(true);
 
@@ -501,7 +501,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::Reverse);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -553,7 +553,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_bounce_play_mode() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::Bounce);
         player.set_autoplay(true);
 
@@ -623,7 +623,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_bounce_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::Bounce);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -674,7 +674,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_bounce_play_mode() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::ReverseBounce);
         player.set_autoplay(true);
 
@@ -743,7 +743,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_bounce_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_mode(Mode::ReverseBounce);
         player.set_autoplay(true);
         player.set_loop(true);

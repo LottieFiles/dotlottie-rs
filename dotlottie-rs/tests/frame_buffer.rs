@@ -10,7 +10,7 @@ mod tests {
 
     #[test]
     fn buflen() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -28,7 +28,7 @@ mod tests {
 
     #[test]
     fn test_buffer_len_with_animation_data() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 

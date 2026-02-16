@@ -26,7 +26,7 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
     // Create player and load animation
-    let mut player = DotLottiePlayer::new(0);
+    let mut player = DotLottiePlayer::new();
     player.set_loop(true);
     player.set_autoplay(true);
 

@@ -128,7 +128,7 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    let mut player = DotLottiePlayer::new(0);
+    let mut player = DotLottiePlayer::new();
     let _ = player.set_background_color(Some(0xffffffff));
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];

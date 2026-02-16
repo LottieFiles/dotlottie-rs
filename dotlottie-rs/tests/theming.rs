@@ -11,7 +11,7 @@ mod tests {
 
     #[test]
     fn test_load_valid_theme() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
 
         let valid_theme_id = CString::new("test_theme").expect("Failed to create CString");
@@ -49,7 +49,7 @@ mod tests {
 
     #[test]
     fn test_load_invalid_theme() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
 
         let invalid_theme_id = CString::new("invalid_theme").expect("Failed to create CString");
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn test_unset_theme() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
 
         let theme_id = CString::new("test_theme").expect("Failed to create CString");
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_unset_theme_before_load() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
 
         assert_eq!(
@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn test_clear_active_theme_id_after_new_animation_data_is_loaded() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
 
         let valid_theme_id = CString::new("test_theme").expect("Failed to create CString");
@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_clear_active_theme_id_after_new_animation_path_is_loaded() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
 
         let valid_theme_id = CString::new("test_theme").expect("Failed to create CString");
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_clear_active_theme_id_after_new_dotlottie_is_loaded() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];

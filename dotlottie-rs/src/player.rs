@@ -160,7 +160,12 @@ pub struct DotLottiePlayer {
 
 impl DotLottiePlayer {
     #[cfg(feature = "tvg")]
-    pub fn new(threads: u32) -> Self {
+    pub fn new() -> Self {
+        Self::with_renderer(crate::TvgRenderer::new(0))
+    }
+
+    #[cfg(feature = "tvg")]
+    pub fn with_threads(threads: u32) -> Self {
         Self::with_renderer(crate::TvgRenderer::new(threads))
     }
 

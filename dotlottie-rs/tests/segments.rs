@@ -11,7 +11,7 @@ mod tests {
 
     #[test]
     fn test_invalid_segment_rejected() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
         let _ = player.set_segment(Some([50.0, 30.0]));
 
@@ -49,7 +49,7 @@ mod tests {
 
     #[test]
     fn test_same_start_end_rejected() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
         let _ = player.set_segment(Some([0.0, 0.0]));
 
@@ -92,7 +92,7 @@ mod tests {
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         for mode in modes {
-            let mut player = DotLottiePlayer::new(0);
+            let mut player = DotLottiePlayer::new();
             player.set_mode(mode);
             player.set_autoplay(true);
             let _ = player.set_segment(Some([50.0, 30.0]));
@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_valid_segments_unchanged() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
         let _ = player.set_segment(Some([30.0, 50.0]));
 
@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn test_set_segment_rejects_invalid() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(false);
         let _ = player.set_segment(Some([10.0, 20.0]));
 

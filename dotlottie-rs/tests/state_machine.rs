@@ -12,7 +12,7 @@ mod tests {
 
     #[test]
     fn get_state_machine() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
 
         let mut buffer: Vec<u32> = vec![0; (500 * 500) as usize];
@@ -59,7 +59,7 @@ mod tests {
 
     #[test]
     fn state_machine_start() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let sm = player.state_machine_load_data("bad_data");
 
@@ -77,7 +77,7 @@ mod tests {
 
     #[test]
     fn state_machine_stop() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
 
         let sm = player.state_machine_load_data("bad_data");
 
@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn state_machine_framework_setup() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         let pointer_down =
             include_str!("../assets/statemachines/interaction_tests/interaction_array.json");
 
@@ -121,7 +121,7 @@ mod tests {
 
     #[test]
     fn state_machine_post_event() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         let pointer_down =
             include_str!("../assets/statemachines/interaction_tests/all_interaction_events.json");
 
@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn state_machine_set_get_numeric_input() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         let rating = include_str!("../assets/statemachines/normal_usecases/rating.json");
 
         let mut sm = player
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn state_machine_set_get_boolean_input() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         let sm = include_str!("../assets/statemachines/toggle.json");
 
         let mut sm = player
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn state_machine_set_get_string_input() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         let sm = include_str!("../assets/statemachines/normal_usecases/password.json");
 
         let mut sm = player
@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn state_machine_fire_event() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         let sm = include_str!("../assets/statemachines/normal_usecases/password_with_events.json");
 
         let mut sm = player
@@ -276,7 +276,7 @@ mod tests {
 
     #[test]
     fn final_state() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         let sm = include_str!("../assets/statemachines/normal_usecases/final_state.json");
 
         let mut sm = player
@@ -300,7 +300,7 @@ mod tests {
 
     #[test]
     fn state_machine_current_state() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         let pointer_down =
             include_str!("../assets/statemachines/interaction_tests/all_interaction_events.json");
 
@@ -338,7 +338,7 @@ mod tests {
 
     #[test]
     fn state_machine_get_inputs() {
-        let mut player = DotLottiePlayer::new(0);
+        let mut player = DotLottiePlayer::new();
         let pointer_down =
             include_str!("../assets/statemachines/sanity_tests/test_get_all_inputs.json");
 

@@ -513,7 +513,7 @@ pub unsafe extern "C" fn dotlottie_get_loop(ptr: *mut DotLottiePlayer) -> bool {
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_get_loop_count(ptr: *mut DotLottiePlayer) -> u32 {
     match ptr.as_mut() {
-        Some(p) => p.change_loop_count(),
+        Some(p) => p.loop_count(),
         _ => 0,
     }
 }
@@ -700,13 +700,13 @@ pub unsafe extern "C" fn dotlottie_current_frame(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_loop_count(
+pub unsafe extern "C" fn dotlottie_current_loop_count(
     ptr: *mut DotLottiePlayer,
     result: *mut u32,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
-            *result = dotlottie_player.loop_count();
+            *result = dotlottie_player.current_loop_count();
             DotLottieResult::Success
         } else {
             DotLottieResult::InvalidParameter

@@ -39,7 +39,7 @@ mod play_mode_tests {
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -83,7 +83,7 @@ mod play_mode_tests {
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -121,7 +121,7 @@ mod play_mode_tests {
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -150,7 +150,7 @@ mod play_mode_tests {
         observed_completed = false;
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -196,7 +196,7 @@ mod play_mode_tests {
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() >= 3 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() >= 3 {
                 break;
             }
             let _ = player.tick();
@@ -223,7 +223,7 @@ mod play_mode_tests {
         let _ = player.play();
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 10 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 10 {
                 break;
             }
             let _ = player.tick();
@@ -377,7 +377,7 @@ mod play_mode_tests {
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -468,7 +468,7 @@ mod play_mode_tests {
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -577,7 +577,7 @@ mod play_mode_tests {
         assert!(player.is_playing(), "Animation should be playing");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();
@@ -683,7 +683,7 @@ mod play_mode_tests {
         assert!(player.is_playing(), "Animation should be playing");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
             let _ = player.tick();

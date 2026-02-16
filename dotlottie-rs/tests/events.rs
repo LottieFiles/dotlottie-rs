@@ -54,7 +54,7 @@ mod tests {
                     expected_events.push(format!("on_render: {}", player.current_frame()));
                     if player.is_complete() {
                         if player.loop_animation() {
-                            let loop_count = player.loop_count();
+                            let loop_count = player.current_loop_count();
                             expected_events.push(format!("on_loop: {loop_count}"));
 
                             if loop_count == 1 {

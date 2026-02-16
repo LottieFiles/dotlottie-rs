@@ -129,7 +129,7 @@ pub struct DotLottiePlayer {
     playback_state: PlaybackState,
     is_loaded: bool,
     start_time: Instant,
-    loop_count: u32,
+    current_loop_count: u32,
     dotlottie_manager: Option<DotLottieManager>,
     direction: Direction,
     marker_names: Vec<CString>,
@@ -143,7 +143,7 @@ pub struct DotLottiePlayer {
     // Playback config properties
     mode: Mode,
     loop_animation: bool,
-    change_loop_count: u32,
+    loop_count: u32,
     speed: f32,
     use_frame_interpolation: bool,
     autoplay: bool,
@@ -168,10 +168,10 @@ impl DotLottiePlayer {
             playback_state: PlaybackState::Stopped,
             is_loaded: false,
             start_time: Instant::now(),
-            loop_count: 0,
+            current_loop_count: 0,
             mode: Mode::Forward,
             loop_animation: false,
-            change_loop_count: 0,
+            loop_count: 0,
             speed: 1.0,
             use_frame_interpolation: true,
             autoplay: false,
@@ -527,18 +527,18 @@ impl DotLottiePlayer {
         }
 
         // Unlimited looping: always increment
-        if self.change_loop_count == 0 {
+        if self.loop_count == 0 {
             return true;
         }
 
         // Counted looping: increment until reaching the configured count
-        self.loop_count < self.change_loop_count
+        self.current_loop_count < self.loop_count
     }
 
     fn handle_forward_mode(&mut self, next_frame: f32, end_frame: f32) -> f32 {
         if next_frame >= end_frame {
             if self.should_increment_loop() {
-                self.loop_count += 1;
+                self.current_loop_count += 1;
                 self.start_time = Instant::now();
             }
 
@@ -551,7 +551,7 @@ impl DotLottiePlayer {
     fn handle_reverse_mode(&mut self, next_frame: f32, start_frame: f32) -> f32 {
         if next_frame <= start_frame {
             if self.should_increment_loop() {
-                self.loop_count += 1;
+                self.current_loop_count += 1;
                 self.start_time = Instant::now();
             }
 
@@ -576,7 +576,7 @@ impl DotLottiePlayer {
             Direction::Reverse => {
                 if next_frame <= start_frame {
                     if self.should_increment_loop() {
-                        self.loop_count += 1;
+                        self.current_loop_count += 1;
                         self.direction = Direction::Forward;
                         self.start_time = Instant::now();
                     }
@@ -608,7 +608,7 @@ impl DotLottiePlayer {
             Direction::Forward => {
                 if next_frame >= end_frame {
                     if self.should_increment_loop() {
-                        self.loop_count += 1;
+                        self.current_loop_count += 1;
                         self.direction = Direction::Reverse;
                         self.start_time = Instant::now();
                     }
@@ -722,7 +722,7 @@ impl DotLottiePlayer {
     pub fn emit_on_loop(&mut self) {
         self.completion_event = CompletionEvent::LoopCompleted;
         self.event_queue.push(DotLottieEvent::Loop {
-            loop_count: self.loop_count(),
+            loop_count: self.current_loop_count(),
         });
     }
 
@@ -741,7 +741,7 @@ impl DotLottiePlayer {
         if self.is_complete() {
             if self.loop_animation {
                 let count_complete =
-                    self.change_loop_count > 0 && self.loop_count() >= self.change_loop_count;
+                    self.loop_count > 0 && self.current_loop_count() >= self.loop_count;
 
                 if count_complete {
                     // Put the animation in a stop state, otherwise we can keep looping if we call tick()
@@ -753,7 +753,7 @@ impl DotLottiePlayer {
 
                 if count_complete {
                     self.emit_on_complete();
-                    self.reset_loop_count();
+                    self.reset_current_loop_count();
                 }
             } else if !self.loop_animation {
                 self.emit_on_complete();
@@ -789,12 +789,12 @@ impl DotLottiePlayer {
         self.renderer.current_frame()
     }
 
-    pub fn loop_count(&self) -> u32 {
-        self.loop_count
+    pub fn current_loop_count(&self) -> u32 {
+        self.current_loop_count
     }
 
-    pub fn reset_loop_count(&mut self) {
-        self.loop_count = 0;
+    pub fn reset_current_loop_count(&mut self) {
+        self.current_loop_count = 0;
     }
 
     pub fn buffer(&self) -> &[u32] {
@@ -915,7 +915,7 @@ impl DotLottiePlayer {
 
     pub fn set_loop(&mut self, loop_animation: bool) {
         if self.loop_animation != loop_animation {
-            self.loop_count = 0;
+            self.current_loop_count = 0;
             self.loop_animation = loop_animation;
         }
     }
@@ -925,14 +925,14 @@ impl DotLottiePlayer {
     }
 
     pub fn set_loop_count(&mut self, loop_count: u32) {
-        if self.change_loop_count != loop_count {
-            self.loop_count = 0;
-            self.change_loop_count = loop_count;
+        if self.loop_count != loop_count {
+            self.current_loop_count = 0;
+            self.loop_count = loop_count;
         }
     }
 
-    pub fn change_loop_count(&self) -> u32 {
-        self.change_loop_count
+    pub fn loop_count(&self) -> u32 {
+        self.loop_count
     }
 
     pub fn set_autoplay(&mut self, autoplay: bool) {
@@ -989,7 +989,7 @@ impl DotLottiePlayer {
         self.clear();
         self.playback_state = PlaybackState::Stopped;
         self.start_time = Instant::now();
-        self.loop_count = 0;
+        self.current_loop_count = 0;
 
         let loaded = loader(&mut *self.renderer, width, height).is_ok()
             && self
@@ -1208,8 +1208,8 @@ impl DotLottiePlayer {
             Mode::Bounce => {
                 // Enables firing loop_complete if loop_count is enabled.
                 // Avoid firing at initial start frame before any loop has completed.
-                if self.loop_animation && self.change_loop_count > 0 {
-                    self.loop_count() > 0 && self.current_frame() <= self.start_frame()
+                if self.loop_animation && self.loop_count > 0 {
+                    self.current_loop_count() > 0 && self.current_frame() <= self.start_frame()
                 } else {
                     // Enables firing complete if loop_animation = false
                     self.current_frame() <= self.start_frame()
@@ -1219,8 +1219,8 @@ impl DotLottiePlayer {
             Mode::ReverseBounce => {
                 // Enables firing loop_complete if loop_count is enabled.
                 // Avoid firing at initial end frame before any loop has completed.
-                if self.loop_animation && self.change_loop_count > 0 {
-                    self.loop_count() > 0 && self.current_frame() >= self.end_frame()
+                if self.loop_animation && self.loop_count > 0 {
+                    self.current_loop_count() > 0 && self.current_frame() >= self.end_frame()
                 } else {
                     // Enables firing complete if loop_animation = false
                     self.current_frame() >= self.end_frame() && self.direction == Direction::Forward

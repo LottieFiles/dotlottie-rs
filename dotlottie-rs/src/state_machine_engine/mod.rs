@@ -314,7 +314,7 @@ impl<'a> StateMachineEngine<'a> {
             cached_mode: player.mode(),
             cached_speed: player.speed(),
             cached_loop_animation: player.loop_animation(),
-            cached_loop_count: player.loop_count(),
+            cached_loop_count: player.current_loop_count(),
             cached_autoplay: player.autoplay(),
             cached_use_frame_interpolation: player.use_frame_interpolation(),
             cached_background_color: player.background_color(),

@@ -4,7 +4,9 @@ mod fms;
 mod layout;
 mod lottie_renderer;
 mod markers;
+#[cfg(feature = "state-machines")]
 mod state_machine_engine;
+#[cfg(feature = "theming")]
 mod theme;
 pub(crate) mod time;
 
@@ -17,9 +19,13 @@ pub use fms::*;
 pub use layout::*;
 pub use lottie_renderer::*;
 pub use markers::*;
+#[cfg(feature = "state-machines")]
 pub use state_machine_engine::events::*;
+#[cfg(feature = "state-machines")]
 pub use state_machine_engine::security::*;
+#[cfg(feature = "state-machines")]
 pub use state_machine_engine::*;
+#[cfg(feature = "theming")]
 pub use theme::*;
 
 #[cfg(feature = "tvg")]

@@ -4,6 +4,7 @@ mod manifest;
 pub use errors::*;
 pub use manifest::*;
 
+#[cfg(feature = "theming")]
 use crate::theme::Theme;
 use serde_json::Value;
 use std::cell::RefCell;
@@ -201,6 +202,7 @@ impl DotLottieManager {
         self.active_animation_id.to_string()
     }
 
+    #[cfg(feature = "theming")]
     #[inline]
     pub fn get_theme(&self, theme_id: &str) -> Result<Theme, DotLottieError> {
         let mut archive = self.archive.borrow_mut();

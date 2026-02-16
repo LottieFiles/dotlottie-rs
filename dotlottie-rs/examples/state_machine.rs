@@ -1,3 +1,4 @@
+#![cfg(feature = "state-machines")]
 #![allow(clippy::print_stdout)]
 
 use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;

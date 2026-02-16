@@ -272,17 +272,24 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::SetTheme { value } => {
-                let resolved_value = if value.starts_with('$') {
-                    let trimmed_value = value.trim_start_matches('$');
-                    engine
-                        .get_string_input(trimmed_value)
-                        .unwrap_or_else(|| value.clone())
-                } else {
-                    value.clone()
-                };
+                #[cfg(feature = "theming")]
+                {
+                    let resolved_value = if value.starts_with('$') {
+                        let trimmed_value = value.trim_start_matches('$');
+                        engine
+                            .get_string_input(trimmed_value)
+                            .unwrap_or_else(|| value.clone())
+                    } else {
+                        value.clone()
+                    };
 
-                if !engine.player.set_theme(&resolved_value) {
-                    return Err(StateMachineActionError::ExecuteError);
+                    if !engine.player.set_theme(&resolved_value) {
+                        return Err(StateMachineActionError::ExecuteError);
+                    }
+                }
+                #[cfg(not(feature = "theming"))]
+                {
+                    let _ = value; // No-op, graceful degradation
                 }
                 Ok(())
             }

@@ -1,3 +1,4 @@
+#![cfg(feature = "state-machines")]
 #[cfg(test)]
 mod tests {
     use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer};

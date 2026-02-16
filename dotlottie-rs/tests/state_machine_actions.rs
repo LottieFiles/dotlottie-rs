@@ -1,3 +1,4 @@
+#![cfg(feature = "state-machines")]
 #[cfg(test)]
 mod tests {
     use dotlottie_rs::{

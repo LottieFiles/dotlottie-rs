@@ -6,12 +6,18 @@ use core::str::FromStr;
 use std::ffi::{c_char, CStr, CString};
 use std::io;
 
+#[cfg(feature = "state-machines")]
 use crate::actions::open_url_policy::OpenUrlPolicy;
+
+#[cfg(feature = "state-machines")]
 use crate::state_machine_engine::events::Event;
-use crate::{
-    Config, Fit, Layout, Manifest, ManifestAnimation, ManifestStateMachine, ManifestTheme, Marker,
-    Mode,
-};
+
+#[cfg(feature = "state-machines")]
+use crate::ManifestStateMachine;
+
+#[cfg(feature = "theming")]
+use crate::ManifestTheme;
+use crate::{Config, Fit, Layout, Manifest, ManifestAnimation, Marker, Mode};
 
 // Function return codes
 pub const DOTLOTTIE_SUCCESS: i32 = 0;
@@ -278,7 +284,9 @@ pub struct DotLottieConfig {
     pub background_color: u32,
     pub layout: DotLottieLayout,
     pub marker: DotLottieString,
+    #[cfg(feature = "theming")]
     pub theme_id: DotLottieString,
+    #[cfg(feature = "state-machines")]
     pub state_machine_id: DotLottieString,
     pub animation_id: DotLottieString,
 }
@@ -301,7 +309,9 @@ impl Transferable<Config> for DotLottieConfig {
             background_color: config.background_color,
             layout: DotLottieLayout::new(&config.layout),
             marker: DotLottieString::new(&config.marker)?,
+            #[cfg(feature = "theming")]
             theme_id: DotLottieString::new(&config.theme_id)?,
+            #[cfg(feature = "state-machines")]
             state_machine_id: DotLottieString::new(&config.state_machine_id)?,
             animation_id: DotLottieString::new(&config.animation_id)?,
         })
@@ -325,7 +335,9 @@ impl DotLottieConfig {
             background_color: self.background_color,
             layout: self.layout.to_layout(),
             marker: self.marker.to_string(),
+            #[cfg(feature = "theming")]
             theme_id: self.theme_id.to_string(),
+            #[cfg(feature = "state-machines")]
             state_machine_id: self.state_machine_id.to_string(),
             animation_id: self.animation_id.to_string(),
         })
@@ -370,6 +382,7 @@ impl Transferable<ManifestAnimation> for DotLottieManifestAnimation {
     }
 }
 
+#[cfg(feature = "theming")]
 #[derive(Clone, PartialEq)]
 #[repr(C)]
 pub struct DotLottieManifestTheme {
@@ -377,6 +390,7 @@ pub struct DotLottieManifestTheme {
     pub name: DotLottieOption<DotLottieString>,
 }
 
+#[cfg(feature = "theming")]
 impl Transferable<ManifestTheme> for DotLottieManifestTheme {
     unsafe fn new(theme: &ManifestTheme) -> Result<DotLottieManifestTheme, io::Error> {
         Ok(DotLottieManifestTheme {
@@ -386,6 +400,7 @@ impl Transferable<ManifestTheme> for DotLottieManifestTheme {
     }
 }
 
+#[cfg(feature = "state-machines")]
 #[derive(Clone, PartialEq)]
 #[repr(C)]
 pub struct DotLottieManifestStateMachine {
@@ -393,6 +408,7 @@ pub struct DotLottieManifestStateMachine {
     pub name: DotLottieOption<DotLottieString>,
 }
 
+#[cfg(feature = "state-machines")]
 impl Transferable<ManifestStateMachine> for DotLottieManifestStateMachine {
     unsafe fn new(
         state_machine: &ManifestStateMachine,
@@ -496,6 +512,7 @@ pub struct DotLottieOpenUrlPolicy {
     pub require_user_interaction: bool,
 }
 
+#[cfg(feature = "state-machines")]
 impl DotLottieOpenUrlPolicy {
     pub unsafe fn to_policy(&self) -> Result<OpenUrlPolicy, io::Error> {
         let cstring = DotLottieString::read(self.whitelist.value.as_ptr())?;
@@ -528,6 +545,7 @@ impl Default for DotLottieOpenUrlPolicy {
 }
 
 // Input events for state machine (pointer interactions)
+#[cfg(feature = "state-machines")]
 #[allow(dead_code)]
 #[repr(C)]
 pub enum DotLottieEvent {
@@ -541,6 +559,7 @@ pub enum DotLottieEvent {
     OnLoopComplete,
 }
 
+#[cfg(feature = "state-machines")]
 impl DotLottieEvent {
     pub unsafe fn to_event(&self) -> Event {
         match self {
@@ -856,12 +875,14 @@ impl StateMachineEvent {
     }
 }
 
+#[cfg(feature = "state-machines")]
 // Internal State Machine Events (for framework use)
 #[repr(C)]
 pub struct StateMachineInternalEvent {
     pub message: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
 }
 
+#[cfg(feature = "state-machines")]
 impl StateMachineInternalEvent {
     pub unsafe fn from_rust(event: crate::StateMachineInternalEvent) -> Result<Self, io::Error> {
         match event {

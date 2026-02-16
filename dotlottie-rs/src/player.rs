@@ -9,7 +9,9 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker, MarkersMap,
 };
-use crate::{DotLottieManager, Manifest, Renderer, StateMachineEngine, StateMachineEngineError};
+use crate::{DotLottieManager, Manifest, Renderer};
+#[cfg(feature = "state-machines")]
+use crate::{StateMachineEngine, StateMachineEngineError};
 
 pub enum PlaybackState {
     Playing,
@@ -54,8 +56,10 @@ pub struct Config {
     pub background_color: u32,
     pub layout: Layout,
     pub marker: String,
+    #[cfg(feature = "theming")]
     pub theme_id: String,
     pub animation_id: String,
+    #[cfg(feature = "state-machines")]
     pub state_machine_id: String,
 }
 
@@ -72,8 +76,10 @@ impl Default for Config {
             background_color: 0x00000000,
             layout: Layout::default(),
             marker: String::new(),
+            #[cfg(feature = "theming")]
             theme_id: String::new(),
             animation_id: String::new(),
+            #[cfg(feature = "state-machines")]
             state_machine_id: String::new(),
         }
     }
@@ -132,7 +138,9 @@ pub struct DotLottiePlayer {
     direction: Direction,
     markers: MarkersMap,
     active_animation_id: String,
+    #[cfg(feature = "theming")]
     active_theme_id: String,
+    #[cfg(feature = "state-machines")]
     active_state_machine_id: String,
     cached_start_end_frame: Option<(f32, f32)>,
     event_queue: EventQueue<DotLottieEvent>,
@@ -164,7 +172,9 @@ impl DotLottiePlayer {
             direction,
             markers: MarkersMap::new(),
             active_animation_id: String::new(),
+            #[cfg(feature = "theming")]
             active_theme_id: String::new(),
+            #[cfg(feature = "state-machines")]
             active_state_machine_id: String::new(),
             cached_start_end_frame: None,
             event_queue: EventQueue::new(),
@@ -354,6 +364,7 @@ impl DotLottiePlayer {
         (self.renderer.width(), self.renderer.height())
     }
 
+    #[cfg(feature = "state-machines")]
     pub fn get_state_machine(&self, state_machine_id: &str) -> Option<String> {
         self.dotlottie_manager
             .as_ref()
@@ -722,6 +733,7 @@ impl DotLottiePlayer {
         self.update_loop_count(&new_config);
         self.update_marker(&new_config.marker);
         self.update_layout(&new_config.layout);
+        #[cfg(feature = "theming")]
         self.set_theme(&new_config.theme_id);
 
         // directly updating fields that don't require special handling
@@ -865,6 +877,7 @@ impl DotLottiePlayer {
     pub fn load_animation_data(&mut self, animation_data: &CStr, width: u32, height: u32) -> bool {
         self.dotlottie_manager = None;
         self.active_animation_id.clear();
+        #[cfg(feature = "theming")]
         self.active_theme_id.clear();
 
         // Convert to &str only for marker extraction (JSON parsing)
@@ -883,9 +896,12 @@ impl DotLottiePlayer {
                 self.active_animation_id = self.config.animation_id.clone();
             }
 
-            let theme_id = self.config.theme_id.clone();
-            if !theme_id.is_empty() {
-                self.set_theme(&theme_id);
+            #[cfg(feature = "theming")]
+            {
+                let theme_id = self.config.theme_id.clone();
+                if !theme_id.is_empty() {
+                    self.set_theme(&theme_id);
+                }
             }
 
             self.event_queue.push(DotLottieEvent::Load);
@@ -902,6 +918,7 @@ impl DotLottiePlayer {
     pub fn load_animation_path(&mut self, file_path: &str, width: u32, height: u32) -> bool {
         self.dotlottie_manager = None;
         self.active_animation_id.clear();
+        #[cfg(feature = "theming")]
         self.active_theme_id.clear();
 
         match fs::read_to_string(file_path) {
@@ -918,6 +935,7 @@ impl DotLottiePlayer {
 
     pub fn load_dotlottie_data(&mut self, file_data: &[u8], width: u32, height: u32) -> bool {
         self.active_animation_id.clear();
+        #[cfg(feature = "theming")]
         self.active_theme_id.clear();
 
         let loaded = match DotLottieManager::new(file_data) {
@@ -950,6 +968,7 @@ impl DotLottiePlayer {
 
                         if animation_loaded {
                             self.active_animation_id = active_animation_id;
+                            #[cfg(feature = "theming")]
                             if !self.config.theme_id.is_empty() {
                                 self.set_theme(&self.config.theme_id.clone());
                             }
@@ -1003,6 +1022,7 @@ impl DotLottiePlayer {
             if ok {
                 self.active_animation_id = animation_id.to_string();
 
+                #[cfg(feature = "theming")]
                 if !self.config.theme_id.is_empty() {
                     self.set_theme(&self.config.theme_id.clone());
                 }
@@ -1061,6 +1081,7 @@ impl DotLottiePlayer {
         }
     }
 
+    #[cfg(feature = "theming")]
     pub fn set_theme(&mut self, theme_id: &str) -> bool {
         if self.active_theme_id == theme_id {
             return true;
@@ -1119,12 +1140,14 @@ impl DotLottiePlayer {
         ok
     }
 
+    #[cfg(feature = "theming")]
     pub fn reset_theme(&mut self) -> bool {
         self.active_theme_id.clear();
         self.config.theme_id.clear();
         self.renderer.clear_slots().is_ok()
     }
 
+    #[cfg(feature = "theming")]
     pub fn set_theme_data(&mut self, theme_data: &str) -> bool {
         match theme_data.parse::<crate::theme::Theme>() {
             Ok(theme) => {
@@ -1135,6 +1158,7 @@ impl DotLottiePlayer {
         }
     }
 
+    #[cfg(feature = "theming")]
     fn apply_slot_types(
         &mut self,
         slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
@@ -1267,14 +1291,17 @@ impl DotLottiePlayer {
         &self.active_animation_id
     }
 
+    #[cfg(feature = "theming")]
     pub fn active_theme_id(&self) -> &str {
         &self.active_theme_id
     }
 
+    #[cfg(feature = "state-machines")]
     pub fn active_state_machine_id(&self) -> &str {
         &self.active_state_machine_id
     }
 
+    #[cfg(feature = "state-machines")]
     pub fn set_active_state_machine_id(&mut self, state_machine_id: &str) {
         self.active_state_machine_id = state_machine_id.to_string();
     }
@@ -1361,6 +1388,7 @@ impl DotLottiePlayer {
         }
     }
 
+    #[cfg(feature = "state-machines")]
     pub fn state_machine_load<'a>(
         &'a mut self,
         state_machine_id: &str,
@@ -1375,6 +1403,7 @@ impl DotLottiePlayer {
         StateMachineEngine::new(&machine, self, None)
     }
 
+    #[cfg(feature = "state-machines")]
     pub fn state_machine_load_data<'a>(
         &'a mut self,
         state_machine: &str,

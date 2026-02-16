@@ -1,3 +1,4 @@
+#![cfg(feature = "theming")]
 use dotlottie_rs::{Config, DotLottiePlayer};
 use std::ffi::CString;
 

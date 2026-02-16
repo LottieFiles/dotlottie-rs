@@ -320,7 +320,7 @@ impl<'a> StateMachineEngine<'a> {
             cached_background_color: player.background_color(),
             cached_segment: player.segment(),
             cached_marker: player.marker().map(CStr::to_owned),
-            cached_layout: player.layout().clone(),
+            cached_layout: *player.layout(),
             player, // `player` Moved. Don't use after this point
             global_state: None,
             state_machine: StateMachine::default(),
@@ -484,7 +484,7 @@ impl<'a> StateMachineEngine<'a> {
             .player
             .set_background_color(Some(self.cached_background_color));
         let _ = self.player.set_segment(self.cached_segment);
-        let _ = self.player.set_marker(self.cached_marker.as_deref());
+        self.player.set_marker(self.cached_marker.as_deref());
         let _ = self.player.set_layout(self.cached_layout);
         self.player.set_autoplay(self.cached_autoplay);
     }

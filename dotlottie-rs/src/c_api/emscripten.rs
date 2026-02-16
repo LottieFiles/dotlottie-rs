@@ -1,4 +1,4 @@
-use std::ffi::{c_char};
+use std::ffi::c_char;
 
 // ============================================================================
 // WEBGL C API (WASM-specific)

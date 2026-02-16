@@ -21,7 +21,7 @@ mod tests {
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
-        player.render();
+        let _ = player.render();
 
         assert_eq!(buffer.len(), (WIDTH * HEIGHT) as usize);
     }
@@ -43,7 +43,7 @@ mod tests {
             Ok(())
         );
 
-        player.render();
+        let _ = player.render();
 
         assert_eq!(buffer.len(), (WIDTH * HEIGHT) as usize);
     }

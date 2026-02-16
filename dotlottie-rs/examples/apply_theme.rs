@@ -40,9 +40,9 @@ fn main() {
 
     let dotlottie_data = include_bytes!("../assets/animations/dotlottie/v2/multi_themes.lottie");
 
-    if !player
+    if player
         .load_dotlottie_data(dotlottie_data, WIDTH, HEIGHT)
-        .is_ok()
+        .is_err()
     {
         eprintln!("Failed to load .lottie file");
         return;

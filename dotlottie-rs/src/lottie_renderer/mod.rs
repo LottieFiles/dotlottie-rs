@@ -728,7 +728,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             return Ok(());
         }
 
-        self.layout = layout.clone();
+        self.layout = *layout;
 
         if self.animation.is_some() {
             self.apply_user_transform()?;

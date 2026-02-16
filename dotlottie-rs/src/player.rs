@@ -1154,9 +1154,8 @@ impl DotLottiePlayer {
             self.load_animation_data(&c_data, width, height)
         })();
 
-        result.map_err(|e| {
+        result.inspect_err(|_| {
             self.event_queue.push(DotLottieEvent::LoadError);
-            e
         })
     }
 

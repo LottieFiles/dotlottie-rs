@@ -1551,7 +1551,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_start(
         } else {
             let whitelist_cstr = CStr::from_ptr(whitelist);
             match whitelist_cstr.to_str() {
-                Ok(s) if s.is_empty() => vec![],
+                Ok("") => vec![],
                 Ok(s) => s.split(',').map(|p| p.trim().to_string()).collect(),
                 Err(_) => return DotLottieResult::InvalidParameter,
             }

@@ -12,9 +12,9 @@ dev = ["tvg", "tvg-sw", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg
 c_api = ["dep:bitflags"]
 tvg = []
 tvg-log = []
-tvg-sw = []
-tvg-wg = []
-tvg-gl = []
+tvg-sw = ["tvg"]
+tvg-wg = ["tvg"]
+tvg-gl = ["tvg"]
 tvg-lottie-expressions = []
 tvg-jpg = []
 tvg-png = []
@@ -32,8 +32,7 @@ bitflags = { version = "2.6", optional = true }
 
 [build-dependencies]
 bindgen = "0.72.0"
-cbindgen = "0.29.2" 
-lazy_static = "1.4"
+cbindgen = "0.29.2"
 cc = "1.2"
 
 [dev-dependencies]
@@ -60,6 +59,14 @@ opt-level = 3         # "z" is what's affecting frame rate / performance. Keepin
 strip = "debuginfo"   # Strip debug information
 codegen-units = 1     # Better optimization at cost of compile time
 panic = "abort"       # Remove panic unwinding infrastructure
+
+[[example]]
+name = "opengl"
+required-features = ["tvg-gl"]
+
+[[example]]
+name = "webgpu"
+required-features = ["tvg-wg"]
 
 [[bench]]
 name = "benchmarks"

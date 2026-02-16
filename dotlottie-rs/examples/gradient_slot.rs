@@ -7,9 +7,7 @@
 /// a slot with ID "gradient_fill" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{
-    ColorSpace, Config, DotLottiePlayer, GradientSlot, GradientStop, LottieKeyframe,
-};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, GradientSlot, GradientStop, LottieKeyframe};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -34,7 +32,9 @@ fn main() {
 
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-    player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888).unwrap();
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
 
     let animation_data = include_str!("../assets/animations/lottie/gradient.json");
     let c_data = CString::new(animation_data).expect("CString conversion failed");

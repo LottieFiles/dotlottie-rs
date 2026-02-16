@@ -7,7 +7,7 @@
 /// slot with ID "ball_color" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSlot, ColorSpace, Config, DotLottiePlayer, LottieKeyframe};
+use dotlottie_rs::{ColorSlot, ColorSpace, DotLottiePlayer, LottieKeyframe};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -32,7 +32,9 @@ fn main() {
 
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-    player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888S).unwrap();
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888S)
+        .unwrap();
 
     let animation_data = include_str!("../assets/animations/lottie/bouncy_ball.json");
 

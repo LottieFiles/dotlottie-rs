@@ -1,4 +1,4 @@
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 use std::ffi::CString;
 
 mod test_utils;
@@ -14,7 +14,9 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
@@ -30,7 +32,9 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         let test_data_str = r#"{"v":"5.5.7","fr":60,"ip":0,"op":60,"w":100,"h":100,"nm":"Test","ddd":0,"assets":[],"layers":[],"markers":[]}"#;
         let test_data = CString::new(test_data_str).expect("Failed to create CString");

@@ -10,7 +10,7 @@ use std::ffi::CString;
 ///
 /// Themes are a convenient way to bundle multiple slot changes together and switch
 /// between different visual styles of the same animation.
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 use minifb::{Key, Window, WindowOptions};
 
 const WIDTH: u32 = 512;
@@ -34,7 +34,9 @@ fn main() {
 
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-    player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888).unwrap();
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
 
     let dotlottie_data = include_bytes!("../assets/animations/dotlottie/v2/multi_themes.lottie");
 

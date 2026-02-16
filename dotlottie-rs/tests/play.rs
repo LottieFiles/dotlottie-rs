@@ -3,7 +3,7 @@ mod test_utils;
 use std::ffi::CString;
 
 use crate::test_utils::{HEIGHT, WIDTH};
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, DotLottiePlayerError};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError};
 
 #[cfg(test)]
 mod tests {
@@ -15,7 +15,9 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert_eq!(
             player.play(),
@@ -39,7 +41,9 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
@@ -62,7 +66,9 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
@@ -114,7 +120,9 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
@@ -158,7 +166,9 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));

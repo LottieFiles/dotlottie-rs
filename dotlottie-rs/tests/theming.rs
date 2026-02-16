@@ -1,4 +1,4 @@
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, DotLottiePlayerError};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError};
 use std::ffi::CString;
 
 mod test_utils;
@@ -17,7 +17,9 @@ mod tests {
         let valid_theme_id = CString::new("test_theme").expect("Failed to create CString");
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert_eq!(
             player.set_theme(&valid_theme_id),
@@ -53,7 +55,9 @@ mod tests {
         let invalid_theme_id = CString::new("invalid_theme").expect("Failed to create CString");
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert_eq!(
             player.set_theme(&invalid_theme_id),
@@ -97,13 +101,17 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        assert!(player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
-            WIDTH,
-            HEIGHT
-        ).is_ok());
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
+                WIDTH,
+                HEIGHT
+            )
+            .is_ok());
 
         assert_eq!(
             player.set_theme(&theme_id),
@@ -129,13 +137,17 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        assert!(player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
-            WIDTH,
-            HEIGHT
-        ).is_ok());
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
+                WIDTH,
+                HEIGHT
+            )
+            .is_ok());
 
         assert_eq!(player.reset_theme(), Ok(()), "Expected theme to unload");
     }
@@ -148,7 +160,9 @@ mod tests {
         let valid_theme_id = CString::new("test_theme").expect("Failed to create CString");
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert_eq!(
             player.set_theme(&valid_theme_id),
@@ -189,7 +203,9 @@ mod tests {
         let valid_theme_id = CString::new("test_theme").expect("Failed to create CString");
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert_eq!(
             player.set_theme(&valid_theme_id),
@@ -226,7 +242,9 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         let valid_theme_id = CString::new("test_theme").expect("Failed to create CString");
 

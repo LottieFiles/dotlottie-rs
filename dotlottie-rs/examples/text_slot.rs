@@ -7,7 +7,7 @@
 /// The text.json animation has a slot with ID "my_text" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, TextDocument, TextKeyframe, TextSlot};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, TextDocument, TextKeyframe, TextSlot};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -32,7 +32,9 @@ fn main() {
 
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-    player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888).unwrap();
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
 
     let animation_data = include_str!("../assets/animations/lottie/text.json");
     let c_data = CString::new(animation_data).expect("CString conversion failed");

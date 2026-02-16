@@ -3,7 +3,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 use std::ffi::CString;
 
-use dotlottie_rs::{DotLottiePlayer, Mode};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, Mode};
 
 #[cfg(test)]
 mod tests {
@@ -16,6 +16,11 @@ mod tests {
         let _ = player.set_segment(Some([50.0, 30.0]));
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(
             player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
@@ -47,6 +52,11 @@ mod tests {
         let _ = player.set_segment(Some([0.0, 0.0]));
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(
             player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
@@ -83,6 +93,11 @@ mod tests {
             player.set_autoplay(true);
             let _ = player.set_segment(Some([50.0, 30.0]));
 
+            let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+            // Set software rendering target
+            assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
             assert!(
                 player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
                 "Animation should load for mode {mode:?}"
@@ -113,6 +128,11 @@ mod tests {
         let _ = player.set_segment(Some([30.0, 50.0]));
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(
             player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load with valid segment"
@@ -142,6 +162,11 @@ mod tests {
         let _ = player.set_segment(Some([10.0, 20.0]));
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(
             player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"

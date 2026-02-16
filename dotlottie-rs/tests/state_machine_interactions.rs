@@ -1,6 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, DotLottiePlayer, Event};
+    use dotlottie_rs::{
+        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Config, DotLottiePlayer, Event,
+    };
+
+    const WIDTH: u32 = 100;
+    const HEIGHT: u32 = 100;
 
     #[test]
     pub fn pointer_down_up_test() {
@@ -8,6 +13,11 @@ mod tests {
             include_str!("../assets/statemachines/interaction_tests/pointer_down_up.json");
 
         let mut player = DotLottiePlayer::new(0);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert_eq!(
             player.load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -84,6 +94,11 @@ mod tests {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_down.json");
         let mut player = DotLottiePlayer::new(0);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -111,6 +126,11 @@ mod tests {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_enter.json");
         let mut player = DotLottiePlayer::new(0);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -154,6 +174,11 @@ mod tests {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_enter.json");
         let mut player = DotLottiePlayer::new(0);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -197,6 +222,11 @@ mod tests {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_exit.json");
         let mut player = DotLottiePlayer::new(0);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -227,6 +257,11 @@ mod tests {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_exit.json");
         let mut player = DotLottiePlayer::new(0);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -285,6 +320,11 @@ mod tests {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_move.json");
         let mut player = DotLottiePlayer::new(0);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -321,6 +361,11 @@ mod tests {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/on_complete.json");
         let mut player = DotLottiePlayer::new(0);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
@@ -358,6 +403,10 @@ mod tests {
             include_str!("../assets/statemachines/interaction_tests/pigeon_fsm.json");
         let mut player = DotLottiePlayer::new(0);
 
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v2/pigeon.lottie"),
@@ -394,6 +443,10 @@ mod tests {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/on_loop_complete.json");
         let mut player = DotLottiePlayer::new(0);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
 
         assert!(player
             .load_dotlottie_data(

@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::DotLottiePlayer;
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 
 mod test_utils;
 
@@ -26,6 +26,10 @@ mod play_mode_tests {
         player.set_autoplay(true);
         player.set_loop(false);
         player.set_loop_count(3);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
@@ -72,6 +76,10 @@ mod play_mode_tests {
         player.set_loop_count(0);
         player.set_use_frame_interpolation(false);
 
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         let mut observed_loops = 0;
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
@@ -108,6 +116,10 @@ mod play_mode_tests {
         player.set_autoplay(true);
         player.set_loop(true);
         player.set_loop_count(3);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
@@ -183,6 +195,10 @@ mod play_mode_tests {
         player.set_autoplay(true);
         player.set_loop(true);
         player.set_loop_count(5);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
 
         let mut observed_loops = 0;
         let mut observed_completed = false;
@@ -264,6 +280,11 @@ mod play_mode_tests {
             let mut player = DotLottiePlayer::new(0);
             player.set_mode(mode);
 
+            let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+            // Set software rendering target
+            assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
             assert_eq!(
                 player.mode(),
                 mode,
@@ -317,6 +338,11 @@ mod play_mode_tests {
         player.set_autoplay(true);
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(
             player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
@@ -365,6 +391,10 @@ mod play_mode_tests {
         player.set_loop(true);
         player.set_loop_count(3);
 
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
@@ -410,6 +440,11 @@ mod play_mode_tests {
         player.set_autoplay(true);
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(
             player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
@@ -456,6 +491,10 @@ mod play_mode_tests {
         player.set_loop(true);
         player.set_loop_count(3);
 
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
@@ -501,6 +540,11 @@ mod play_mode_tests {
         player.set_autoplay(true);
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert_eq!(
             player.load_animation_path(&path, WIDTH, HEIGHT),
             Ok(()),
@@ -565,6 +609,10 @@ mod play_mode_tests {
         player.set_loop(true);
         player.set_loop_count(3);
 
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         let mut observed_loops = 0;
         let mut observed_completed = false;
 
@@ -609,6 +657,11 @@ mod play_mode_tests {
         player.set_autoplay(true);
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(
             player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
@@ -671,6 +724,10 @@ mod play_mode_tests {
         player.set_autoplay(true);
         player.set_loop(true);
         player.set_loop_count(3);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
 
         let mut observed_loops = 0;
         let mut observed_completed = false;

@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::DotLottiePlayer;
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -15,7 +15,10 @@ mod tests {
 
         let mut player = DotLottiePlayer::new(0);
 
-        // First load the dotlottie, then load the specific animation
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
@@ -32,6 +35,11 @@ mod tests {
     #[test]
     pub fn test_load_animation() {
         let mut player = DotLottiePlayer::new(0);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),

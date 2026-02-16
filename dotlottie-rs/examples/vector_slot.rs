@@ -8,7 +8,7 @@
 ///
 /// Vector slots are for 2D properties like scale [x, y] without spatial tangents.
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{DotLottiePlayer, LottieKeyframe, LottieProperty};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, LottieKeyframe, LottieProperty};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -16,7 +16,6 @@ const WIDTH: u32 = 512;
 const HEIGHT: u32 = 512;
 
 fn main() {
-    // Create window
     let mut window = Window::new(
         "Vector Slot Example - Press T to toggle, arrows to adjust",
         WIDTH as usize,
@@ -27,11 +26,14 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    // Create player and load animation
     let mut player = DotLottiePlayer::new(0);
 
     player.set_autoplay(true);
     player.set_loop(true);
+
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+    player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888).unwrap();
 
     let animation_data = include_str!("../assets/animations/lottie/bouncy_ball.json");
 
@@ -54,21 +56,16 @@ fn main() {
     let mut last_toggle_press = std::time::Instant::now();
     let mut is_animated = false;
 
-    // Set initial scale (static)
     let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
     let _ = player.set_vector_slot("ball_scale", scale_slot);
     println!("Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%");
 
-    // Main render loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now();
 
-        // Handle toggle between static and animated with T key
         if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
             is_animated = !is_animated;
-
             if is_animated {
-                // Create animated scale slot: [50, 50] -> [150, 150] (linear interpolation)
                 let scale_slot = LottieProperty::animated(vec![
                     LottieKeyframe {
                         frame: 0,
@@ -103,7 +100,6 @@ fn main() {
 
         let mut scale_changed = false;
 
-        // Handle scale adjustment with arrow keys (only in static mode)
         if !is_animated && now.duration_since(last_key_press).as_millis() > 50 {
             if window.is_key_down(Key::Up) {
                 // Scale up uniformly
@@ -131,19 +127,14 @@ fn main() {
         }
 
         if scale_changed {
-            // Create and set the new vector slot
             let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
             let _ = player.set_vector_slot("ball_scale", scale_slot);
             println!("Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%");
         }
 
-        // Update animation frame and render
         if player.tick().is_ok() {
-            // Get buffer as a slice
-            let buffer = player.buffer();
-
             window
-                .update_with_buffer(buffer, WIDTH as usize, HEIGHT as usize)
+                .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");
         }
     }

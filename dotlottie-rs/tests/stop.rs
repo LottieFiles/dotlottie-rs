@@ -3,7 +3,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 use std::ffi::CString;
 
-use dotlottie_rs::{DotLottiePlayer, DotLottiePlayerError, Mode};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, DotLottiePlayerError, Mode};
 
 #[cfg(test)]
 mod tests {
@@ -71,6 +71,10 @@ mod tests {
             if let Some(seg) = config.segment {
                 let _ = player.set_segment(Some(seg));
             }
+
+            let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+            assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
 
             assert!(
                 player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),

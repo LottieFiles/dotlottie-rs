@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 
   const char *animation_path;
   int screen;
-  const uint32_t *buffer;
+  uint32_t *buffer;
   int len;
   char key_pressed[255];
   int ret;
@@ -55,24 +55,31 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  // Allocate our own buffer for software rendering
+  buffer = (uint32_t *)malloc(WIDTH * HEIGHT * sizeof(uint32_t));
+  if (!buffer) {
+    fprintf(stderr, "Could not allocate buffer\n");
+    return 1;
+  }
+
+  // Set up software rendering target - tell player to render into our buffer
+  ret = dotlottie_set_sw_target(player, buffer, WIDTH, HEIGHT, ABGR8888);
+  if (ret != DOTLOTTIE_SUCCESS) {
+    fprintf(stderr, "Could not set software rendering target\n");
+    free(buffer);
+    return 1;
+  }
+
   // Configure the player
   dotlottie_set_loop(player, true);
   dotlottie_set_background_color(player, 0xffffffff);
   dotlottie_set_autoplay(player, true);
-  dotlottieLayout layout = {Contain, {1.0f, 0.5f}};
-  dotlottie_set_layout(player, layout);
-  dotlottie_set_marker(player, "feather");
 
   // Load the animation file
   ret = dotlottie_load_animation_path(player, animation_path, WIDTH, HEIGHT);
   if (ret != DOTLOTTIE_SUCCESS) {
     fprintf(stderr, "Could not load dotlottie animation file\n");
-    return 1;
-  }
-  // Get direct access to the underlying buffer
-  ret = dotlottie_buffer_ptr(player, &buffer);
-  if (ret != DOTLOTTIE_SUCCESS) {
-    fprintf(stderr, "Could not access underlying dotlottie buffer\n");
+    free(buffer);
     return 1;
   }
 
@@ -144,6 +151,8 @@ int main(int argc, char **argv) {
 
 quit:
   // Clean up
+  if (buffer)
+    free(buffer);
   if (texture)
     SDL_DestroyTexture(texture);
   if (renderer)

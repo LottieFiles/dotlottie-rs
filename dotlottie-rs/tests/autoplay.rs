@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::DotLottiePlayer;
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -31,6 +31,10 @@ mod tests {
         let mut player = DotLottiePlayer::new(0);
         player.set_autoplay(true);
 
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
         assert!(player.is_playing());
@@ -57,6 +61,10 @@ mod tests {
     fn test_no_autoplay() {
         let mut player = DotLottiePlayer::new(0);
         player.set_autoplay(false);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888).is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         let loaded = player.load_animation_path(&path, WIDTH, HEIGHT);

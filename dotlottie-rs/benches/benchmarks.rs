@@ -1,7 +1,7 @@
 use std::ffi::CString;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use dotlottie_rs::DotLottiePlayer;
+use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 
 const WIDTH: u32 = 1000;
 const HEIGHT: u32 = 1000;
@@ -10,6 +10,11 @@ fn load_animation_data_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(0);
     let data_str =
         std::str::from_utf8(include_bytes!("../assets/animations/lottie/test.json")).unwrap();
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
+
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
 
     c.bench_function("load_animation_data", |b| {
         b.iter(|| {
@@ -21,7 +26,11 @@ fn load_animation_data_benchmark(c: &mut Criterion) {
 
 fn load_animation_path_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(0);
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
     let path = CString::new(format!(
         "{}/assets/animations/lottie/test.json",
         std::env!("CARGO_MANIFEST_DIR")
@@ -37,7 +46,11 @@ fn load_animation_path_benchmark(c: &mut Criterion) {
 
 fn load_dotlottie_data_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(0);
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
     let data = include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie");
 
     c.bench_function("load_dotlottie_data", |b| {
@@ -52,6 +65,11 @@ fn animation_loop_benchmark(c: &mut Criterion) {
     player.set_autoplay(true);
     player.set_loop(true);
 
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
+
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
     assert!(player
         .load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
@@ -74,7 +92,16 @@ fn animation_loop_benchmark(c: &mut Criterion) {
     player.set_autoplay(true);
     player.set_loop(true);
     player.set_use_frame_interpolation(true);
-
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
+    assert!(player
+        .load_dotlottie_data(
+            include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
+            WIDTH,
+            HEIGHT
+        )
+        .is_ok());
     assert!(player
         .load_dotlottie_data(
             include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
@@ -96,7 +123,11 @@ fn animation_loop_benchmark(c: &mut Criterion) {
 
 fn set_theme_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(0);
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
     let data = include_bytes!("../assets/animations/dotlottie/v2/themed.lottie");
     assert!(player.load_dotlottie_data(data, WIDTH, HEIGHT).is_ok());
 
@@ -109,7 +140,11 @@ fn set_theme_benchmark(c: &mut Criterion) {
 
 fn state_machine_load_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(0);
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
     let data = include_bytes!("../assets/statemachines/normal_usecases/sm_exploding_pigeon.lottie");
     assert!(player.load_dotlottie_data(data, WIDTH, HEIGHT).is_ok());
 
@@ -122,6 +157,11 @@ fn state_machine_load_benchmark(c: &mut Criterion) {
 
 fn state_machine_load_data_benchmark(c: &mut Criterion) {
     let mut player = DotLottiePlayer::new(0);
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
+
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
     let state_machine_data = std::str::from_utf8(include_bytes!(
         "../assets/statemachines/normal_usecases/exploding_pigeon.json"
     ))

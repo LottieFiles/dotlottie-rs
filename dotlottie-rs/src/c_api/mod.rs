@@ -5,16 +5,76 @@ use std::slice;
 
 use crate::actions::open_url_policy::OpenUrlPolicy;
 use crate::lottie_renderer::{
-    ColorSlot, ImageSlot, PositionSlot, ScalarSlot, TextDocument, TextSlot, VectorSlot,
+    ColorSlot, GlContext, ImageSlot, PositionSlot, ScalarSlot, TextDocument, TextSlot, VectorSlot,
+    WgpuDevice, WgpuInstance, WgpuTarget,
 };
 use crate::state_machine_engine::events::Event;
 use crate::{
     DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode, StateMachineEngine,
 };
 
+use crate::ColorSpace;
 use types::*;
 
 pub mod types;
+
+/// Wrapper for raw OpenGL context pointer that implements GlContext trait
+struct RawGlContext(*mut std::ffi::c_void);
+
+impl GlContext for RawGlContext {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
+
+/// Wrapper for raw WebGPU device pointer that implements WgpuDevice trait
+struct RawWgpuDevice(*mut std::ffi::c_void);
+
+impl WgpuDevice for RawWgpuDevice {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
+
+/// Wrapper for raw WebGPU instance pointer that implements WgpuInstance trait
+struct RawWgpuInstance(*mut std::ffi::c_void);
+
+impl WgpuInstance for RawWgpuInstance {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
+
+/// Wrapper for raw WebGPU target pointer that implements WgpuTarget trait
+struct RawWgpuTarget(*mut std::ffi::c_void);
+
+impl WgpuTarget for RawWgpuTarget {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
+
+#[cfg(all(feature = "tvg-wg", target_os = "macos"))]
+pub mod apple;
+
+#[cfg(all(any(feature = "tvg-gl", feature = "tvg-wg"), target_os = "emscripten"))]
+pub mod emscripten;
 
 // Helper macro for DotLottiePlayer operations - wraps every C API call to check
 // if the dotlottie player pointer is valid or not, and converts the body's
@@ -269,36 +329,6 @@ pub unsafe extern "C" fn dotlottie_manifest_state_machine_id(
         let ids = dotlottie_player.manifest_state_machine_ids();
         if let Some(cstr) = ids.get(idx as usize) {
             *id = cstr.as_ptr();
-            DotLottieResult::Success
-        } else {
-            DotLottieResult::InvalidParameter
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_buffer_ptr(
-    ptr: *mut DotLottiePlayer,
-    result: *mut *const u32,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if !result.is_null() {
-            *result = dotlottie_player.buffer().as_ptr();
-            DotLottieResult::Success
-        } else {
-            DotLottieResult::InvalidParameter
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_buffer_len(
-    ptr: *mut DotLottiePlayer,
-    result: *mut u64,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if !result.is_null() {
-            *result = dotlottie_player.buffer().len() as u64;
             DotLottieResult::Success
         } else {
             DotLottieResult::InvalidParameter
@@ -812,7 +842,6 @@ pub unsafe extern "C" fn dotlottie_render(ptr: *mut DotLottiePlayer) -> DotLotti
 /// ```c
 ///     while(true) {
 ///       dotlottie_tick(player);
-///       dotlottie_buffer_ptr(player, &buffer);
 ///       display(buffer, width, height);
 ///     }
 /// ```
@@ -849,15 +878,63 @@ pub unsafe extern "C" fn dotlottie_is_complete(ptr: *mut DotLottiePlayer) -> boo
     }
 }
 
-/// Sets the active theme.
+/// Sets the software rendering target.
 ///
 /// # Parameters
 /// - `ptr`: Pointer to the DotLottiePlayer instance
-/// - `theme_id`: Null-terminated C string with the theme ID
+/// - `buffer`: Pointer to the pixel buffer (must be width * height in size)
+/// - `width`: Width of the buffer in pixels
+/// - `height`: Height of the buffer in pixels
+/// - `color_space`: Color space for the buffer
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
-/// - `DotLottieResult::InvalidParameter` if the theme doesn't exist or pointer is invalid
+/// - `DotLottieResult::InvalidParameter` if buffer is too small or pointer is invalid
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_sw_target(
+    ptr: *mut DotLottiePlayer,
+    buffer: *mut u32,
+    width: u32,
+    height: u32,
+    color_space: ColorSpace,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        let buffer_slice = std::slice::from_raw_parts_mut(buffer, (width * height) as usize);
+        dotlottie_player.set_sw_target(buffer_slice, width, height, color_space)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_gl_target(
+    ptr: *mut DotLottiePlayer,
+    context: *mut std::ffi::c_void,
+    id: i32,
+    width: u32,
+    height: u32,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        let gl_context = RawGlContext(context);
+        dotlottie_player.set_gl_target(&gl_context, id, width, height)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_wg_target(
+    ptr: *mut DotLottiePlayer,
+    device: *mut std::ffi::c_void,
+    instance: *mut std::ffi::c_void,
+    target: *mut std::ffi::c_void,
+    width: u32,
+    height: u32,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        let wgpu_device = RawWgpuDevice(device);
+        let wgpu_instance = RawWgpuInstance(instance);
+        let wgpu_target = RawWgpuTarget(target);
+        dotlottie_player.set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_target, width, height)
+    })
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_set_theme(
     ptr: *mut DotLottiePlayer,

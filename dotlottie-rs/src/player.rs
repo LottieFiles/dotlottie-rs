@@ -10,7 +10,9 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker,
 };
-use crate::{DotLottieManager, Manifest, Renderer, StateMachineEngine, StateMachineEngineError};
+use crate::{
+    ColorSpace, DotLottieManager, Manifest, Renderer, StateMachineEngine, StateMachineEngineError,
+};
 
 pub enum PlaybackState {
     Playing,
@@ -797,10 +799,6 @@ impl DotLottiePlayer {
         self.current_loop_count = 0;
     }
 
-    pub fn buffer(&self) -> &[u32] {
-        self.renderer.buffer()
-    }
-
     pub fn animation_size(&self) -> Vec<f32> {
         vec![
             self.renderer.picture_width(),
@@ -975,6 +973,80 @@ impl DotLottiePlayer {
 
     pub fn segment(&self) -> Option<[f32; 2]> {
         self.segment
+    }
+
+    /// Set software rendering target using a safe Rust slice.
+    ///
+    /// This is the preferred safe API. The buffer must be large enough to hold
+    /// width * height pixels.
+    ///
+    /// # Returns
+    /// `Err(InvalidParameter)` if the buffer is too small, `Err` on setup failure.
+    pub fn set_sw_target(
+        &mut self,
+        buffer: &mut [u32],
+        width: u32,
+        height: u32,
+        color_space: ColorSpace,
+    ) -> Result<(), DotLottiePlayerError> {
+        let required_size = (width * height) as usize;
+        if buffer.len() < required_size {
+            return Err(DotLottiePlayerError::InvalidParameter);
+        }
+
+        let stride = width;
+        self.renderer
+            .set_sw_target(buffer, stride, width, height, color_space)?;
+
+        Ok(())
+    }
+
+    /// Set OpenGL rendering target.
+    ///
+    /// The GL context must remain valid while the player is using it and must be
+    /// current on the calling thread when rendering.
+    pub fn set_gl_target<C: crate::lottie_renderer::GlContext>(
+        &mut self,
+        context: &C,
+        id: i32,
+        width: u32,
+        height: u32,
+    ) -> Result<(), DotLottiePlayerError> {
+        unsafe {
+            self.renderer
+                .set_gl_target(context.as_ptr(), id, width, height)?;
+        }
+
+        Ok(())
+    }
+
+    /// Set WebGPU rendering target.
+    ///
+    /// All WebGPU objects must remain valid while the player is using them.
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_wg_target<
+        D: crate::lottie_renderer::WgpuDevice,
+        I: crate::lottie_renderer::WgpuInstance,
+        T: crate::lottie_renderer::WgpuTarget,
+    >(
+        &mut self,
+        device: &D,
+        instance: &I,
+        target: &T,
+        width: u32,
+        height: u32,
+    ) -> Result<(), DotLottiePlayerError> {
+        unsafe {
+            self.renderer.set_wg_target(
+                device.as_ptr(),
+                instance.as_ptr(),
+                target.as_ptr(),
+                width,
+                height,
+            )?;
+        }
+
+        Ok(())
     }
 
     fn load_animation_common<F>(

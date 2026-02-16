@@ -2,7 +2,7 @@
 
 use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
 use dotlottie_rs::events::Event;
-use dotlottie_rs::{DotLottiePlayer, StateMachineEngine, StateMachineEvent};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, StateMachineEngine, StateMachineEvent};
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -130,6 +130,11 @@ fn main() {
     let mut player = DotLottiePlayer::new(0);
     let _ = player.set_background_color(Some(0xffffffff));
 
+    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+
+    player
+        .set_sw_target(&mut buffer, WIDTH as u32, HEIGHT as u32, ColorSpace::ABGR8888)
+        .unwrap();
     let animation_path =
         PathBuf::from(format!("./assets/animations/dotlottie/v1/{ANIMATION_NAME}"));
 
@@ -204,12 +209,9 @@ fn main() {
         let frame_changed = engine.tick().is_ok();
 
         if frame_changed || last_buffer_update.elapsed().as_millis() > 100 {
-            window
-                .update_with_buffer(engine.player.buffer(), WIDTH, HEIGHT)
-                .unwrap();
+            window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
             last_buffer_update = std::time::Instant::now();
         } else {
-            // Still need to call update to process window events
             window.update();
         }
     }

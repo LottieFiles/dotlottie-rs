@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::DotLottiePlayer;
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 
 mod test_utils;
 
@@ -24,6 +24,10 @@ mod tests {
 
         let invalid_path = CString::new("invalid/path").unwrap();
         let valid_path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
 
         assert!(
             player

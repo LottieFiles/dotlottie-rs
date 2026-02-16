@@ -3,7 +3,7 @@ mod test_utils;
 use std::ffi::CString;
 
 use crate::test_utils::{HEIGHT, WIDTH};
-use dotlottie_rs::{DotLottiePlayer, DotLottiePlayerError};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, DotLottiePlayerError};
 
 #[cfg(test)]
 mod tests {
@@ -12,6 +12,10 @@ mod tests {
     #[test]
     fn test_play_fail_when_animation_is_not_loaded() {
         let mut player = DotLottiePlayer::new(0);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
 
         assert_eq!(
             player.play(),
@@ -33,6 +37,10 @@ mod tests {
     fn test_play_while_playing() {
         let mut player = DotLottiePlayer::new(0);
 
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
@@ -51,6 +59,10 @@ mod tests {
     fn test_play_after_pause() {
         let mut player = DotLottiePlayer::new(0);
         player.set_use_frame_interpolation(false);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
@@ -100,6 +112,10 @@ mod tests {
         let mut player = DotLottiePlayer::new(0);
         player.set_use_frame_interpolation(false);
 
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
+
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
@@ -139,6 +155,10 @@ mod tests {
     fn test_play_after_setting_frame() {
         let mut player = DotLottiePlayer::new(0);
         player.set_use_frame_interpolation(false);
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,).is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));

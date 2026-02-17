@@ -46,44 +46,6 @@ impl Direction {
 
 pub const DEFAULT_BACKGROUND_COLOR: u32 = 0x00000000;
 
-#[derive(Debug, Clone, PartialEq)]
-#[repr(C)]
-pub struct Config {
-    pub mode: Mode,
-    pub loop_animation: bool,
-    pub loop_count: u32,
-    pub speed: f32,
-    pub use_frame_interpolation: bool,
-    pub autoplay: bool,
-    pub segment: Vec<f32>,
-    pub background_color: u32,
-    pub layout: Layout,
-    pub marker: String,
-    pub theme_id: String,
-    pub animation_id: String,
-    pub state_machine_id: String,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            mode: Mode::Forward,
-            loop_animation: false,
-            loop_count: 0,
-            speed: 1.0,
-            use_frame_interpolation: true,
-            autoplay: false,
-            segment: vec![],
-            background_color: 0x00000000,
-            layout: Layout::default(),
-            marker: String::new(),
-            theme_id: String::new(),
-            animation_id: String::new(),
-            state_machine_id: String::new(),
-        }
-    }
-}
-
 #[repr(C)]
 pub struct LayerBoundingBox {
     pub x1: f32,

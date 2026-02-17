@@ -184,8 +184,8 @@ impl DotLottieManager {
         serde_json::to_string(&lottie_animation).map_err(|_| DotLottieError::ReadContentError)
     }
 
-    #[cfg(feature = "state-machines")]
     #[inline]
+    #[cfg(feature = "state-machines")]
     pub fn get_state_machine(&self, state_machine_id: &str) -> Result<String, DotLottieError> {
         let mut archive = self.archive.borrow_mut();
         let path = format!("s/{state_machine_id}.json");
@@ -203,14 +203,17 @@ impl DotLottieManager {
         self.active_animation_id.to_string()
     }
 
-    #[cfg(feature = "theming")]
     #[inline]
+    #[cfg(feature = "theming")]
     pub fn get_theme(&self, theme_id: &str) -> Result<Theme, DotLottieError> {
         let mut archive = self.archive.borrow_mut();
         let path = format!("t/{theme_id}.json");
         let content = Self::read_zip_file(&mut archive, &path)?;
-        let theme_str = std::str::from_utf8(&content).map_err(|_| DotLottieError::InvalidUtf8Error)?;
-        theme_str.parse::<Theme>().map_err(|_| DotLottieError::ReadContentError)
+        let theme_str =
+            std::str::from_utf8(&content).map_err(|_| DotLottieError::InvalidUtf8Error)?;
+        theme_str
+            .parse::<Theme>()
+            .map_err(|_| DotLottieError::ReadContentError)
     }
 
     #[inline]

@@ -158,6 +158,7 @@ pub struct DotLottiePlayer {
     state_machine_id: Option<CString>,
 }
 
+#[cfg(feature = "tvg")]
 impl Default for DotLottiePlayer {
     fn default() -> Self {
         Self::new()
@@ -173,6 +174,19 @@ impl DotLottiePlayer {
     #[cfg(feature = "tvg")]
     pub fn with_threads(threads: u32) -> Self {
         Self::with_renderer(crate::TvgRenderer::new(threads))
+    }
+
+    #[cfg(feature = "tvg")]
+    pub fn load_font(name: &str, data: &[u8]) -> Result<(), DotLottiePlayerError> {
+        use crate::lottie_renderer::Renderer;
+        crate::TvgRenderer::load_font(name, data)
+            .map_err(|_| DotLottiePlayerError::Unknown)
+    }
+
+    #[cfg(feature = "tvg")]
+    pub fn unload_font(name: &str) -> Result<(), DotLottiePlayerError> {
+        use crate::lottie_renderer::Renderer;
+        crate::TvgRenderer::unload_font(name).map_err(|_| DotLottiePlayerError::Unknown)
     }
 
     pub fn with_renderer<R: Renderer>(renderer: R) -> Self {

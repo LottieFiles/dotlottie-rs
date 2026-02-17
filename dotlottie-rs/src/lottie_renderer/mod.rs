@@ -190,11 +190,13 @@ pub trait LottieRenderer {
 
     fn set_transform(&mut self, transform: &[f32; 9]) -> Result<(), LottieRendererError>;
 
-    fn register_font(
+    fn load_font(
         &mut self,
-        font_name: &str,
-        font_data: &[u8],
+        name: &str,
+        data: &[u8],
     ) -> Result<(), LottieRendererError>;
+
+    fn unload_font(&mut self, name: &str) -> Result<(), LottieRendererError>;
 }
 
 impl dyn LottieRenderer {
@@ -383,12 +385,16 @@ impl<R: Renderer> LottieRendererImpl<R> {
 }
 
 impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
-    fn register_font(
+    fn load_font(
         &mut self,
         font_name: &str,
         font_data: &[u8],
     ) -> Result<(), LottieRendererError> {
-        R::register_font(font_name, font_data).map_err(into_lottie::<R>)
+        R::load_font(font_name, font_data).map_err(into_lottie::<R>)
+    }
+
+    fn unload_font(&mut self, name: &str) -> Result<(), LottieRendererError> {
+        R::unload_font(name).map_err(into_lottie::<R>)
     }
 
     fn set_sw_target(

@@ -1,0 +1,4 @@
+[env]
+# ThorVG's C++ internals have unsynchronized global state (engineInit, TaskScheduler,
+# SwRenderer memory pools). Tests must run single-threaded to avoid data races.
+RUST_TEST_THREADS = "1"

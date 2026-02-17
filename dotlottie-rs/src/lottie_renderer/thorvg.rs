@@ -5,6 +5,7 @@ use std::{
     ffi::{c_char, CStr, CString},
     fmt, ptr,
     result::Result,
+    sync::OnceLock,
 };
 
 #[cfg(feature = "tvg-ttf")]
@@ -137,10 +138,7 @@ impl From<TvgEngineOption> for tvg::Tvg_Engine_Option {
     }
 }
 
-static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
-
-#[cfg(feature = "tvg-ttf")]
-static FONT_LOADED: std::sync::Once = std::sync::Once::new();
+static TVG_INIT: OnceLock<()> = OnceLock::new();
 
 pub struct TvgRenderer {
     raw_canvas: Option<tvg::Tvg_Canvas>,
@@ -148,20 +146,15 @@ pub struct TvgRenderer {
 
 impl TvgRenderer {
     pub fn new(threads: u32) -> Self {
-        let mut count = RENDERERS_COUNT.lock().unwrap();
-
-        if *count == 0 {
+        TVG_INIT.get_or_init(|| {
             unsafe { tvg::tvg_engine_init(threads).into_result() }.unwrap();
 
             #[cfg(feature = "tvg-ttf")]
-            FONT_LOADED.call_once(|| {
+            {
                 let (font_name, font_data) = fallback_font::font();
-
                 Self::register_font(font_name, &font_data).unwrap();
-            });
-        }
-
-        *count += 1;
+            }
+        });
 
         TvgRenderer { raw_canvas: None }
     }
@@ -397,18 +390,10 @@ impl Renderer for TvgRenderer {
 
 impl Drop for TvgRenderer {
     fn drop(&mut self) {
-        let mut count = RENDERERS_COUNT.lock().unwrap();
-
         if let Some(raw_canvas) = self.raw_canvas {
             unsafe {
                 tvg::tvg_canvas_destroy(raw_canvas);
             }
-        }
-
-        *count = count.checked_sub(1).unwrap();
-
-        if *count == 0 {
-            unsafe { tvg::tvg_engine_term() };
         }
     }
 }
@@ -922,7 +907,7 @@ mod tests {
     use std::thread;
 
     #[test]
-    fn test_tvg_renderer_no_deadlock() {
+    fn test_tvg_renderer_concurrent_init() {
         const THREAD_COUNT: usize = 10;
         let barrier = Arc::new(Barrier::new(THREAD_COUNT));
         let mut handles = vec![];

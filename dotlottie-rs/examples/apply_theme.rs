@@ -29,7 +29,7 @@ fn main() {
 
     // Create player and load .lottie file
     let mut player = DotLottiePlayer::new();
-    player.set_loop(false);
+    player.set_loop(true);
     player.set_autoplay(true);
 
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];

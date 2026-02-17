@@ -158,6 +158,12 @@ pub struct DotLottiePlayer {
     state_machine_id: Option<CString>,
 }
 
+impl Default for DotLottiePlayer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DotLottiePlayer {
     #[cfg(feature = "tvg")]
     pub fn new() -> Self {

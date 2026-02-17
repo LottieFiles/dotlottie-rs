@@ -487,14 +487,11 @@ mod tests {
                 StateMachineEvent::Transition {
                     previous_state,
                     new_state,
-                } => Some(format!(
-                    "on_transition: {} -> {}",
-                    previous_state, new_state
-                )),
+                } => Some(format!("on_transition: {previous_state} -> {new_state}")),
                 StateMachineEvent::StateEntered { state } => {
-                    Some(format!("on_state_entered: {}", state))
+                    Some(format!("on_state_entered: {state}"))
                 }
-                StateMachineEvent::StateExit { state } => Some(format!("on_state_exit: {}", state)),
+                StateMachineEvent::StateExit { state } => Some(format!("on_state_exit: {state}")),
                 StateMachineEvent::CustomEvent { message } => {
                     Some(format!("custom_event: {message}"))
                 }

@@ -5,8 +5,8 @@ UNIFFI_BINDGEN_CPP_VERSION ?= v0.7.3+v0.28.3
 RUST_TOOLCHAIN ?= nightly-2025-08-01
 
 # Default Rust features for WASM builds
-WASM_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,state-machines,theming
-WASM_DEFAULT_FEATURES = tvg,tvg-sw,c_api,state-machines,theming
+WASM_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
+WASM_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
 
 ifdef FEATURES
 	WASM_FEATURES = $(FEATURES)

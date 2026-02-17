@@ -3,17 +3,16 @@
 use std::ffi::{c_char, CStr};
 use std::slice;
 
-#[cfg(feature = "state-machines")]
-use crate::actions::open_url_policy::OpenUrlPolicy;
-
 use crate::lottie_renderer::{
     ColorSlot, ImageSlot, PositionSlot, ScalarSlot, TextDocument, TextSlot, VectorSlot,
 };
-#[cfg(feature = "state-machines")]
-use crate::state_machine_engine::events::Event;
-#[cfg(feature = "state-machines")]
-use crate::StateMachineEngine;
 use crate::{Config, DotLottiePlayer, LayerBoundingBox};
+
+#[cfg(feature = "state-machines")]
+use crate::{
+    actions::open_url_policy::OpenUrlPolicy, state_machine_engine::events::Event,
+    StateMachineEngine,
+};
 
 use types::*;
 

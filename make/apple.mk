@@ -6,8 +6,8 @@ MIN_VISIONOS_VERSION ?= 1.0
 MIN_MACCATALYST_VERSION ?= 13.1
 
 # Default Rust features for Apple builds
-APPLE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads,state-machines,theming
-APPLE_DEFAULT_FEATURES = tvg,tvg-sw,c_api,state-machines,theming
+APPLE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+APPLE_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
 
 ifdef FEATURES
 	APPLE_FEATURES = $(FEATURES)

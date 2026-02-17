@@ -21,7 +21,7 @@ API_LEVEL ?= 21
 MIN_NDK_VERSION = 28
 
 # Default Rust features for Android builds
-ANDROID_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads,state-machines,theming
+ANDROID_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
 
 ifdef FEATURES
 	ANDROID_FEATURES = $(FEATURES)
@@ -140,7 +140,7 @@ android-clean:
 # ============================================================================
 
 # Android feature set (C API from dotlottie-rs)
-ANDROID_DEFAULT_FEATURES = tvg,tvg-sw,c_api,state-machines,theming
+ANDROID_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
 ANDROID_LIB_NAME = libdotlottie_rs.so
 
 # Build for all Android architectures with C API

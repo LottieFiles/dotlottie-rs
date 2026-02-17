@@ -489,14 +489,17 @@ mod tests {
                     new_state,
                 } => Some(format!(
                     "on_transition: {} -> {}",
-                    previous_state, new_state
+                    previous_state.to_string_lossy(),
+                    new_state.to_string_lossy()
                 )),
                 StateMachineEvent::StateEntered { state } => {
-                    Some(format!("on_state_entered: {}", state))
+                    Some(format!("on_state_entered: {}", state.to_string_lossy()))
                 }
-                StateMachineEvent::StateExit { state } => Some(format!("on_state_exit: {}", state)),
+                StateMachineEvent::StateExit { state } => {
+                    Some(format!("on_state_exit: {}", state.to_string_lossy()))
+                }
                 StateMachineEvent::CustomEvent { message } => {
-                    Some(format!("custom_event: {message}"))
+                    Some(format!("custom_event: {}", message.to_string_lossy()))
                 }
                 _ => None,
             };

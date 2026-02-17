@@ -2010,53 +2010,203 @@ pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
 /// Poll for the next state machine event
 ///
 /// Returns 1 if an event was retrieved, 0 if no events are available, or -1 on error.
+/// String pointers in the event struct are valid until the next poll call.
+///
+/// # Example
+/// ```c
+/// StateMachineEvent event;
+/// while (dotlottie_state_machine_poll_event(sm, &event) == 1) {
+///     switch (event.event_type) {
+///         case StateMachineEventType_StateMachineTransition:
+///             // Pointers valid until next poll
+///             printf("Transition: %s -> %s\n",
+///                    event.data.transition.previous_state,
+///                    event.data.transition.new_state);
+///             break;
+///         case StateMachineEventType_StateMachineStateEntered:
+///             printf("Entered: %s\n", event.data.state.state);
+///             break;
+///     }
+/// }
+/// ```
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_poll_event(
     sm: *mut StateMachineEngine<'static>,
     event: *mut types::StateMachineEvent,
 ) -> i32 {
+    use crate::StateMachineEvent;
+
     if sm.is_null() || event.is_null() {
         return -1;
     }
 
     let state_machine = &mut *sm;
 
-    match state_machine.poll_event() {
-        Some(rust_event) => match types::StateMachineEvent::from_rust(rust_event) {
-            Ok(c_event) => {
-                std::ptr::write(event, c_event);
-                1
-            }
-            Err(_) => -1,
-        },
-        None => 0,
+    // Poll from queue and store in current_event (keeps CStrings alive)
+    match state_machine.event_queue.poll() {
+        Some(rust_event) => {
+            state_machine.current_event = Some(rust_event);
+        }
+        None => return 0, // No events available
     }
+
+    // Get reference to stored event
+    let e = state_machine.current_event.as_ref().unwrap();
+
+    // Build C event struct with pointers into the stored event
+    let c_event = match e {
+        StateMachineEvent::Start => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineStart,
+            data: types::StateMachineEventData {
+                message: types::StateMachineMessageData {
+                    message: std::ptr::null(),
+                },
+            },
+        },
+        StateMachineEvent::Stop => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineStop,
+            data: types::StateMachineEventData {
+                message: types::StateMachineMessageData {
+                    message: std::ptr::null(),
+                },
+            },
+        },
+        StateMachineEvent::Transition {
+            previous_state,
+            new_state,
+        } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineTransition,
+            data: types::StateMachineEventData {
+                transition: types::StateMachineTransitionData {
+                    previous_state: previous_state.as_ptr(),
+                    new_state: new_state.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::StateEntered { state } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineStateEntered,
+            data: types::StateMachineEventData {
+                state: types::StateMachineStateData {
+                    state: state.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::StateExit { state } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineStateExit,
+            data: types::StateMachineEventData {
+                state: types::StateMachineStateData {
+                    state: state.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::CustomEvent { message } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineCustomEvent,
+            data: types::StateMachineEventData {
+                message: types::StateMachineMessageData {
+                    message: message.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::Error { message } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineError,
+            data: types::StateMachineEventData {
+                message: types::StateMachineMessageData {
+                    message: message.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::StringInputChange {
+            name,
+            old_value,
+            new_value,
+        } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineStringInputChange,
+            data: types::StateMachineEventData {
+                string_input: types::StateMachineStringInputData {
+                    name: name.as_ptr(),
+                    old_value: old_value.as_ptr(),
+                    new_value: new_value.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::NumericInputChange {
+            name,
+            old_value,
+            new_value,
+        } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineNumericInputChange,
+            data: types::StateMachineEventData {
+                numeric_input: types::StateMachineNumericInputData {
+                    name: name.as_ptr(),
+                    old_value: *old_value,
+                    new_value: *new_value,
+                },
+            },
+        },
+        StateMachineEvent::BooleanInputChange {
+            name,
+            old_value,
+            new_value,
+        } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineBooleanInputChange,
+            data: types::StateMachineEventData {
+                boolean_input: types::StateMachineBooleanInputData {
+                    name: name.as_ptr(),
+                    old_value: *old_value,
+                    new_value: *new_value,
+                },
+            },
+        },
+        StateMachineEvent::InputFired { name } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineInputFired,
+            data: types::StateMachineEventData {
+                input_fired: types::StateMachineInputFiredData {
+                    name: name.as_ptr(),
+                },
+            },
+        },
+    };
+
+    std::ptr::write(event, c_event);
+    1 // Event retrieved
 }
 
 /// Poll for the next internal state machine event
 ///
 /// Returns 1 if an event was retrieved, 0 if no events are available, or -1 on error.
+/// The message pointer is valid until the next poll call.
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_poll_internal_event(
     sm: *mut StateMachineEngine<'static>,
     event: *mut types::StateMachineInternalEvent,
 ) -> i32 {
+    use crate::StateMachineInternalEvent;
+
     if sm.is_null() || event.is_null() {
         return -1;
     }
 
     let state_machine = &mut *sm;
 
-    match state_machine.poll_internal_event() {
-        Some(rust_event) => match types::StateMachineInternalEvent::from_rust(rust_event) {
-            Ok(c_event) => {
-                std::ptr::write(event, c_event);
-                1
-            }
-            Err(_) => -1,
-        },
-        None => 0,
+    // Poll from queue and store (keeps CStrings alive)
+    match state_machine.internal_event_queue.poll() {
+        Some(rust_event) => {
+            state_machine.current_internal_event = Some(rust_event);
+        }
+        None => return 0, // No events available
     }
+
+    // Get reference to stored event
+    let e = state_machine.current_internal_event.as_ref().unwrap();
+
+    let c_event = match e {
+        StateMachineInternalEvent::Message { message } => types::StateMachineInternalEvent {
+            message: message.as_ptr(),
+        },
+    };
+
+    std::ptr::write(event, c_event);
+    1 // Event retrieved
 }
 
 /// Get the state machine definition as JSON string.

@@ -1,6 +1,4 @@
-EMSDK_VERSION ?= 3.1.74
-UNIFFI_BINDGEN_CPP ?= uniffi-bindgen-cpp
-UNIFFI_BINDGEN_CPP_VERSION ?= v0.7.3+v0.28.3
+EMSDK_VERSION ?= 4.0.23
 
 RUST_TOOLCHAIN ?= nightly-2025-08-01
 
@@ -10,6 +8,18 @@ WASM_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
 
 ifdef FEATURES
 	WASM_FEATURES = $(FEATURES)
+endif
+
+# WebGPU Dawn flags (enabled when tvg-wg is in WASM_FEATURES)
+WEBGPU_RUSTFLAGS :=
+WEBGPU_EMFLAGS :=
+WEBGPU_CPPFLAGS :=
+WGPU_NATIVE_INCLUDE := $(PWD)/deps/modules/emsdk/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include
+
+ifneq (,$(findstring tvg-wg,$(WASM_FEATURES)))
+WEBGPU_RUSTFLAGS += -C link-arg=--use-port=emdawnwebgpu
+WEBGPU_EMFLAGS += --use-port=emdawnwebgpu
+WEBGPU_CPPFLAGS += -DUSE_WEBGPU -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/webgpu
 endif
 
 # WASM/Emscripten configuration
@@ -35,7 +45,7 @@ ifneq (,$(findstring tvg-simd,$(FEATURES)))
 endif
 
 # WASM-specific phony targets
-.PHONY: wasm wasm-setup wasm-install-emsdk wasm-build-rust wasm-link wasm-package wasm-clean
+.PHONY: wasm wasm-setup wasm-install-emsdk wasm-build-rust wasm-link wasm-package wasm-clean wasm-webgl wasm-webgpu wasm-all
 
 
 # Initialize emsdk submodule
@@ -90,10 +100,6 @@ wasm-setup: wasm-init-submodule wasm-install-emsdk
 	@rustup component add rust-src --toolchain $(RUST_TOOLCHAIN) >/dev/null
 	@rustup target add --toolchain $(RUST_TOOLCHAIN) $(WASM_TARGET) >/dev/null
 	@echo "✓ WASM targets and nightly toolchain installed"
-	@echo "→ Installing uniffi-bindgen-cpp..."
-	@cargo install uniffi-bindgen-cpp --git https://github.com/NordSecurity/uniffi-bindgen-cpp --tag $(UNIFFI_BINDGEN_CPP_VERSION) >/dev/null
-	@echo "✓ uniffi-bindgen-cpp installed"
-
 
 
 # ============================================================================
@@ -104,17 +110,27 @@ wasm-setup: wasm-init-submodule wasm-install-emsdk
 
 # Note: C API function export list is auto-generated from the C header during link step
 
+# Pre-fetch WebGPU Dawn port if needed (so headers are available during Rust build)
+wasm-fetch-webgpu-port:
+ifneq (,$(findstring tvg-wg,$(WASM_FEATURES)))
+	@echo "→ Pre-fetching WebGPU Dawn port for headers..."
+	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
+		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc --version --use-port=emdawnwebgpu >/dev/null 2>&1"
+	@echo "✓ WebGPU Dawn port fetched (headers available)"
+endif
+
 # Build Rust library for WASM with C API (NO C++ wrapper needed!)
-wasm-build-rust: wasm-check-env
+wasm-build-rust: wasm-check-env wasm-fetch-webgpu-port
 	@echo "→ Building Rust library for WASM (C API - direct export)..."
 	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV)" && \
 	CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
 	CXX=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/em++ \
 	AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar \
 	CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
-	CXXFLAGS="-isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/c++/v1 -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include" \
+	WGPU_NATIVE_INCLUDE=$(WGPU_NATIVE_INCLUDE) \
+	CXXFLAGS="-isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/c++/v1 -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include $(WEBGPU_CPPFLAGS)" \
 	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot -nostdinc -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include" \
-	RUSTFLAGS="-C panic=abort -C link-arg=--no-entry -C link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0" \
+	RUSTFLAGS="-C panic=abort -C link-arg=--no-entry -C link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0 $(WEBGPU_RUSTFLAGS)" \
 	cargo +$(RUST_TOOLCHAIN) build \
 		--manifest-path dotlottie-rs/Cargo.toml \
 		-Z build-std=std,panic_abort \
@@ -141,8 +157,29 @@ wasm-link: wasm-build-rust  wasm-install-npm-deps
 	@mkdir -p $(WASM_BUILD_DIR)
 	@echo "  Auto-generating export list from C header..."
 	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
-		C_API_EXPORTED_FUNCTIONS=\$$(grep -o 'dotlottie_[a-z_]*(' $(BUILD_DIR)/dotlottie_player.h | sed 's/(//g' | sort -u | sed 's/^/_/' | paste -sd ',' - | sed 's/,/\",\"/g' | sed 's/^/\"/' | sed 's/\$$/\",\"_malloc\",\"_free\"/') && \
+		ALL_FUNCTIONS=\$$(grep -o 'dotlottie_[a-z_]*(' $(BUILD_DIR)/dotlottie_player.h | sed 's/(//g' | sort -u) && \
+		FILTERED_FUNCTIONS=\"\$$ALL_FUNCTIONS\" && \
+		echo \"  Filtering out native-only wgpu_context functions (not available in WASM)...\"; \
+		FILTERED_FUNCTIONS=\$$(echo \"\$$FILTERED_FUNCTIONS\" | grep -v \"wgpu_context\" | grep -v \"metal_layer\") && \
+		if ! echo \"$(WASM_FEATURES)\" | grep -q \"tvg-gl\"; then \
+			echo \"  Filtering out WebGL functions (tvg-gl not enabled)...\"; \
+			FILTERED_FUNCTIONS=\$$(echo \"\$$FILTERED_FUNCTIONS\" | grep -v \"webgl\"); \
+		fi && \
+		if ! echo \"$(WASM_FEATURES)\" | grep -q \"tvg-wg\"; then \
+			echo \"  Filtering out WebGPU functions (tvg-wg not enabled)...\"; \
+			FILTERED_FUNCTIONS=\$$(echo \"\$$FILTERED_FUNCTIONS\" | grep -v \"webgpu\" | grep -v \"wgpu\"); \
+		fi && \
+		C_API_EXPORTED_FUNCTIONS=\$$(echo \"\$$FILTERED_FUNCTIONS\" | sed 's/^/_/' | paste -sd ',' - | sed 's/,/\",\"/g' | sed 's/^/\"/' | sed 's/\$$/\",\"_malloc\",\"_free\"/') && \
 		echo \"  Exporting \$$(echo \$$C_API_EXPORTED_FUNCTIONS | grep -o '_dotlottie' | wc -l | tr -d ' ') C API functions\" && \
+		EMCC_FLAGS=\"\" && \
+		if echo \"$(WASM_FEATURES)\" | grep -q \"tvg-gl\"; then \
+			echo \"  Enabling WebGL support...\"; \
+			EMCC_FLAGS=\"\$$EMCC_FLAGS -sUSE_WEBGL2=1 -sMAX_WEBGL_VERSION=2\"; \
+		fi && \
+		if echo \"$(WASM_FEATURES)\" | grep -q \"tvg-wg\"; then \
+			echo \"  Enabling WebGPU support (Dawn via emdawnwebgpu port)...\"; \
+			EMCC_FLAGS=\"\$$EMCC_FLAGS $(WEBGPU_EMFLAGS)\"; \
+		fi && \
 		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
 			-o $(PWD)/$(WASM_BUILD_DIR)/$(WASM_MODULE).js \
 			$(PWD)/dotlottie-rs/target/$(WASM_TARGET)/release/libdotlottie_rs.a \
@@ -157,13 +194,13 @@ wasm-link: wasm-build-rust  wasm-install-npm-deps
 			-sMODULARIZE=1 \
 			-sEXPORT_NAME=createDotLottiePlayerModule \
 			-sEXPORT_ES6=1 \
-			-sUSE_ES6_IMPORT_META=0 \
 			-sDYNAMIC_EXECUTION=0 \
 			-sENVIRONMENT=web \
 			-sMIN_SAFARI_VERSION=130000 \
 			-sFILESYSTEM=0 \
 			-sEXPORTED_FUNCTIONS=\"[\$$C_API_EXPORTED_FUNCTIONS]\" \
-			-sEXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"getValue\",\"setValue\",\"HEAPU8\",\"HEAPU32\"]' \
+			-sEXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"getValue\",\"setValue\",\"HEAPU8\",\"HEAPU32\",\"HEAPF32\"]' \
+			\$$EMCC_FLAGS \
 			--no-entry \
 			--strip-all \
 			--closure=1"
@@ -199,10 +236,41 @@ wasm-package: wasm-link
 wasm: wasm-link wasm-package
 	@echo "✓ WASM C API build complete"
 
+# ============================================================================
+# WASM Build Variants (WebGL/WebGPU specific builds)
+# ============================================================================
+
+# Build WebGL-only variant
+wasm-webgl:
+	@echo "→ Building WebGL-only variant..."
+	@$(MAKE) wasm \
+		WASM_FEATURES=tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions \
+		WASM_RELEASE_DIR=release/wasm-webgl
+	@echo "✓ WebGL variant built: release/wasm-webgl/"
+	
+
+# Build WebGPU-only variant
+wasm-webgpu:
+	@echo "→ Building WebGPU-only variant..."
+	@$(MAKE) wasm \
+		WASM_FEATURES=tvg-wg,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions \
+		WASM_RELEASE_DIR=release/wasm-webgpu
+	@echo "✓ WebGPU variant built: release/wasm-webgpu/"
+
+# Build all variants (default, WebGL, WebGPU)
+wasm-all: wasm wasm-webgl wasm-webgpu
+	@echo ""
+	@echo "✓ All WASM variants built:"
+	@echo "  - Default (SW):  $(WASM_RELEASE_DIR)/"
+	@echo "  - WebGL:         release/wasm-webgl/"
+	@echo "  - WebGPU:        release/wasm-webgpu/"
+
 # Clean new WASM builds
 wasm-clean:
 	@echo "→ Cleaning WASM C API builds..."
 	@cargo clean --manifest-path dotlottie-rs/Cargo.toml --target $(WASM_TARGET)
 	@rm -rf $(WASM_BUILD_DIR)
 	@rm -rf $(WASM_RELEASE_DIR)
-	@echo "✓ WASM C API builds cleaned"
+	@rm -rf release/wasm-webgl
+	@rm -rf release/wasm-webgpu
+	@echo "✓ WASM C API builds cleaned (including all variants)"

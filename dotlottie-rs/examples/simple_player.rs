@@ -1,6 +1,6 @@
 #![allow(clippy::print_stdout)]
 
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -11,8 +11,9 @@ pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
 fn get_animation_files() -> Vec<PathBuf> {
-    let dir =
-        fs::read_dir("./assets/animations/dotlottie/v2/").expect("Could not read animations dir");
+    let animations_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/animations");
+    let dir = fs::read_dir(animations_dir.join("dotlottie/v2"))
+        .expect("Could not read animations dir");
 
     let mut files: Vec<PathBuf> = dir
         .filter_map(|entry| entry.ok())
@@ -74,9 +75,21 @@ fn main() {
         0,
     );
 
+
+    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+
+    if !player.set_sw_target(
+        &mut buffer,
+        WIDTH as u32,
+        HEIGHT as u32,
+        ColorSpace::ABGR8888,
+    ) {
+        panic!("Failed to set software rendering target");
+    }
+
     let animations = get_animation_files();
     if animations.is_empty() {
-        panic!("No animations found in ./examples/shared/animations/");
+        panic!("No animations found in assets/animations/dotlottie/v2/");
     }
 
     let mut current_index: usize = 0;
@@ -107,9 +120,7 @@ fn main() {
         right_was_down = right_is_down;
 
         if player.tick() {
-            window
-                .update_with_buffer(player.buffer(), WIDTH, HEIGHT)
-                .unwrap();
+            window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
         }
     }
 }

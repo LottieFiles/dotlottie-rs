@@ -27,6 +27,15 @@ help:
 	@echo "  make wasm                                         - Build WASM module"
 	@echo "  make linux                                        - Build all Linux targets"
 	@echo "  make native                                       - Build native (current platform)"
+	@echo "  make native-opengl                                - Build native (current platform) with opengl renderer"
+	@echo "  make native-webgpu                                - Build native (current platform) with webgpu renderer"
+	@echo ""
+	@echo "Wasm Targets:"
+	@echo "==============="
+	@echo "  make wasm                              	   	   - Build WASM module with software renderer"
+	@echo "  make wasm-webgl                              	   - Build WASM module with webgl renderer"
+	@echo "  make wasm-webgpu                                  - Build WASM module with webgpu renderer"
+	@echo "  make wasm-all                            - Build all WASM modules"
 	@echo ""
 	@echo "Android Targets:"
 	@echo "==============="
@@ -37,8 +46,9 @@ help:
 	@echo ""
 	@echo "Apple Targets:"
 	@echo "=============="
-	@echo "  make apple-macos                                  - Build all macOS targets"
-	@echo "  make apple-ios                                    - Build all iOS targets"
+	@echo "  make apple-webgpu                                 - Build all Apple targets ([Experimntal] WebGPU on macOS, software on others)"
+	@echo "  make apple-macos                                  - Build all macOS targets (software)"
+	@echo "  make apple-ios                                    - Build all iOS targets (software)"
 	@echo "  make apple-visionos                               - Build all visionOS targets"
 	@echo "  make apple-tvos                                   - Build all tvOS targets"
 	@echo "  make apple-maccatalyst                            - Build all macCatalyst targets"
@@ -137,6 +147,28 @@ NATIVE_RELEASE_DIR = $(RELEASE)/native
 NATIVE_LIB_DIR = $(NATIVE_RELEASE_DIR)/lib
 NATIVE_INCLUDE_DIR = $(NATIVE_RELEASE_DIR)/include
 
+native-opengl:
+	@echo "→ Building OpenGL-only variant..."
+	@echo "Building native libraries with dotlottie-rs c_api and OpenGL..."
+	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features c_api,tvg,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
+
+	$(NATIVE_RELEASE)
+
+	@echo "✓ Native build with OpenGL complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
+	@echo "   Library: $(NATIVE_LIB_DIR)/"
+	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/$(RUNTIME_HEADER)"
+
+native-webgpu:
+	@echo "→ Building WebGPU-only variant..."
+	@echo "Building native libraries with dotlottie-rs c_api and WebGPU..."
+	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features c_api,tvg,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
+
+	$(NATIVE_RELEASE)
+
+	@echo "✓ Native build with WebGPU complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
+	@echo "   Library: $(NATIVE_LIB_DIR)/"
+	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/$(RUNTIME_HEADER)"
+	
 # Build native libraries using dotlottie-rs c_api
 native:
 	@echo "Building native libraries with dotlottie-rs c_api..."

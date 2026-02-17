@@ -8,6 +8,7 @@ MIN_MACCATALYST_VERSION ?= 13.1
 # Default Rust features for Apple builds
 APPLE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
 APPLE_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
+APPLE_WEBGPU_FEATURES = tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
 
 ifdef FEATURES
 	APPLE_FEATURES = $(FEATURES)
@@ -143,7 +144,7 @@ TVOS_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/tvos
 TVOS_SIMULATOR_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/tvos-simulator
 
 # Apple-specific phony targets
-.PHONY: apple apple-macos apple-ios apple-maccatalyst apple-visionos apple-tvos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-maccatalyst-arm64 apple-maccatalyst-x86_64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 apple-setup apple-clean apple-code-sign
+.PHONY: apple apple-webgpu apple-macos apple-ios apple-maccatalyst apple-visionos apple-tvos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-maccatalyst-arm64 apple-maccatalyst-x86_64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 apple-setup apple-clean apple-code-sign
 
 
 
@@ -152,6 +153,12 @@ TVOS_SIMULATOR_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/tvos-simulator
 
 # Build for all Apple platforms
 apple: $(addprefix apple-,macos ios maccatalyst visionos tvos) apple-package
+
+# Build for all Apple platforms with WebGPU (WebGPU for macOS/iOS, software for others)
+apple-webgpu: APPLE_FEATURES = $(APPLE_WEBGPU_FEATURES)
+apple-webgpu: APPLE_RELEASE_DIR = $(RELEASE_DIR)/apple-webgpu
+apple-webgpu: $(addprefix apple-,macos ios maccatalyst visionos tvos) apple-package
+	@echo "✓ Apple WebGPU build complete (WebGPU on macOS, software on other platforms)"
 
 # Build for all macOS architectures
 apple-macos: $(addprefix apple-macos-,arm64 x86_64) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)

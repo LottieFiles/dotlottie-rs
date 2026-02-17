@@ -3,7 +3,7 @@
 
 use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
 use dotlottie_rs::events::Event;
-use dotlottie_rs::{Config, DotLottiePlayer, StateMachineEngine, StateMachineEvent};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, StateMachineEngine, StateMachineEvent};
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -12,6 +12,7 @@ use std::path::PathBuf;
 
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
+const ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets");
 
 pub const ANIMATION_NAME: &str = "smiley-slider.lottie";
 pub const STATE_MACHINE_NAME: &str = "smileys";
@@ -29,9 +30,7 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 previous_state,
                 new_state,
             } => {
-                println!(
-                    "[state machine event] on_transition: {previous_state} -> {new_state}"
-                );
+                println!("[state machine event] on_transition: {previous_state} -> {new_state}");
             }
             StateMachineEvent::StateEntered { state } => {
                 println!("[state machine event] on_state_entered: {state}");
@@ -134,21 +133,26 @@ fn main() {
         0,
     );
 
-    let animation_path = PathBuf::from(format!(
-        "./assets/animations/dotlottie/v1/{ANIMATION_NAME}"
-    ));
+
+    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+
+    player.set_sw_target(
+            &mut buffer,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ABGR8888,
+        );
+    let animation_path =
+        PathBuf::from(format!("{ASSETS_DIR}/animations/dotlottie/v1/{ANIMATION_NAME}"));
 
     if !load_animation(&mut player, &animation_path) {
         eprintln!("Failed to load animation, exiting");
         return;
     }
 
-    let state_machine_path = format!("./assets/statemachines/{STATE_MACHINE_NAME}.json");
-    let state_machine_def = fs::read_to_string(&state_machine_path).unwrap_or_else(|e| {
-        panic!(
-            "Failed to read state machine file {state_machine_path}: {e}"
-        )
-    });
+    let state_machine_path = format!("{ASSETS_DIR}/statemachines/{STATE_MACHINE_NAME}.json");
+    let state_machine_def = fs::read_to_string(&state_machine_path)
+        .unwrap_or_else(|e| panic!("Failed to read state machine file {state_machine_path}: {e}"));
 
     let mut engine = player
         .state_machine_load_data(&state_machine_def)
@@ -212,12 +216,9 @@ fn main() {
         let frame_changed = engine.tick();
 
         if frame_changed || last_buffer_update.elapsed().as_millis() > 100 {
-            window
-                .update_with_buffer(engine.player.buffer(), WIDTH, HEIGHT)
-                .unwrap();
+            window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
             last_buffer_update = std::time::Instant::now();
         } else {
-            // Still need to call update to process window events
             window.update();
         }
     }

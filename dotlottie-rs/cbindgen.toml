@@ -23,6 +23,7 @@ exclude = [
     "InteractionType",
     "InteractionTypeParseError",
     "Transferable",
+    "DeviceCallbackResult",
 ]
 
 [parse]

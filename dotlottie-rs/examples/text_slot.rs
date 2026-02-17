@@ -7,7 +7,7 @@
 /// The text.json animation has a slot with ID "my_text" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{Config, DotLottiePlayer, TextDocument, TextKeyframe, TextSlot};
+use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, TextDocument, TextKeyframe, TextSlot};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -15,7 +15,7 @@ const WIDTH: u32 = 512;
 const HEIGHT: u32 = 512;
 
 fn main() {
-    // Create window
+    
     let mut window = Window::new(
         "Text Slot Example - Press T to toggle, SPACE to cycle",
         WIDTH as usize,
@@ -26,7 +26,7 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    // Create player and load animation
+    
     let mut player = DotLottiePlayer::new(
         Config {
             loop_animation: true,
@@ -35,6 +35,18 @@ fn main() {
         },
         0, // threads (0 = auto)
     );
+
+    
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+
+
+        player.set_sw_target(
+            &mut buffer,
+            WIDTH,
+            HEIGHT,
+            ColorSpace::ABGR8888,
+        );
 
     let animation_data = include_str!("../assets/animations/lottie/text.json");
     let c_data = CString::new(animation_data).expect("CString conversion failed");
@@ -64,7 +76,7 @@ fn main() {
     let mut last_toggle_press = std::time::Instant::now();
     let mut is_animated = false;
 
-    // Set initial text (static)
+    
     let text_doc = TextDocument::new(texts[current_text_index].0)
         .with_font("Arial")
         .with_size(200.0)
@@ -77,16 +89,16 @@ fn main() {
         texts[current_text_index].0
     );
 
-    // Main render loop
+    
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now();
 
-        // Handle toggle between static and animated with T key
+        
         if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
             is_animated = !is_animated;
 
             if is_animated {
-                // Create animated text slot: "Hello" -> "World"
+                
                 let text_slot = TextSlot::with_keyframes(vec![
                     TextKeyframe {
                         frame: 0,
@@ -106,7 +118,7 @@ fn main() {
                 player.set_text_slot("my_text", text_slot);
                 println!("Mode: ANIMATED (\"Hello\" -> \"World\")");
             } else {
-                // Switch back to static mode
+                
                 let text_doc = TextDocument::new(texts[current_text_index].0)
                     .with_font("Arial")
                     .with_size(200.0)
@@ -130,7 +142,7 @@ fn main() {
         {
             current_text_index = (current_text_index + 1) % texts.len();
 
-            // Create and set the new text slot with custom styling
+            
             let text_doc = TextDocument::new(texts[current_text_index].0)
                 .with_font("Arial")
                 .with_size(200.0)
@@ -146,13 +158,10 @@ fn main() {
             last_space_press = now;
         }
 
-        // Update animation frame and render
+        
         if player.tick() {
-            // Get buffer as a slice
-            let buffer = player.buffer();
-
             window
-                .update_with_buffer(buffer, WIDTH as usize, HEIGHT as usize)
+                .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");
         }
     }

@@ -8,7 +8,7 @@ links = "thorvg"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
-default = []
+default = ["dotlottie", "state-machines", "theming"]
 dev = ["tvg", "tvg-sw", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-ttf", "c_api"]
 c_api = ["dep:bitflags"]
 tvg = []
@@ -41,6 +41,7 @@ cc = "1.2"
 [dev-dependencies]
 criterion = "0.5.1"
 # This is a workaround to enable this feature only on dev.
+# To test running without default deps: use "dotlottie-rs = { path = ".", default-features = false, features = [] }"
 dotlottie-rs = { path = ".", features = ["dev"] }
 minifb = "0.25"
 

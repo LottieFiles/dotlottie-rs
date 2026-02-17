@@ -753,30 +753,29 @@ pub unsafe extern "C" fn dotlottie_is_loaded(ptr: *mut DotLottiePlayer) -> bool 
     }
 }
 
-/// Returns whether the animation is currently playing.
+/// Returns the current playback status.
+///
+/// Priority order: Playing > Paused > Stopped
+///
+/// # Parameters
+/// - `ptr`: Pointer to the DotLottiePlayer instance
+///
+/// # Returns
+/// The current PlaybackStatus (Playing, Paused, or Stopped)
+/// Returns Stopped if the pointer is invalid
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_playing(ptr: *mut DotLottiePlayer) -> bool {
+pub unsafe extern "C" fn dotlottie_playback_status(ptr: *mut DotLottiePlayer) -> PlaybackStatus {
     match ptr.as_mut() {
-        Some(p) => p.is_playing(),
-        _ => false,
-    }
-}
-
-/// Returns whether the animation is paused.
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_paused(ptr: *mut DotLottiePlayer) -> bool {
-    match ptr.as_mut() {
-        Some(p) => p.is_paused(),
-        _ => false,
-    }
-}
-
-/// Returns whether the animation is stopped.
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_stopped(ptr: *mut DotLottiePlayer) -> bool {
-    match ptr.as_mut() {
-        Some(p) => p.is_stopped(),
-        _ => false,
+        Some(p) => {
+            if p.is_playing() {
+                PlaybackStatus::Playing
+            } else if p.is_paused() {
+                PlaybackStatus::Paused
+            } else {
+                PlaybackStatus::Stopped
+            }
+        }
+        _ => PlaybackStatus::Stopped,
     }
 }
 

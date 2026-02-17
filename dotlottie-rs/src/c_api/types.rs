@@ -1,10 +1,8 @@
 #![allow(clippy::missing_safety_doc)]
 
 use bitflags::bitflags;
-use core::fmt;
 use core::str::FromStr;
-use std::ffi::{c_char, CStr, CString};
-use std::io;
+use std::ffi::c_char;
 
 use crate::state_machine_engine::events::Event;
 
@@ -52,9 +50,6 @@ impl<E: Into<DotLottieResult>> From<Result<(), E>> for DotLottieResult {
         }
     }
 }
-
-// Other constant(s)
-pub const DOTLOTTIE_MAX_STR_LENGTH: usize = 512;
 
 // This type allows us to work with Interaction Types as bit flags and easily communicate this
 // information to the C side
@@ -104,73 +99,6 @@ impl FromStr for InteractionType {
             "OnComplete" => Ok(InteractionType::ON_COMPLETE),
             "OnLoopComplete" => Ok(InteractionType::ON_LOOP_COMPLETE),
             _ => Err(InteractionTypeParseError),
-        }
-    }
-}
-
-// A string struct used to ensure a buffer exists and is owned on the client side that can
-// accomodate a value of the maximum size we would want to write into it.
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieString {
-    pub value: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
-}
-
-impl DotLottieString {
-    pub unsafe fn read(value: *const c_char) -> Result<CString, io::Error> {
-        if value.is_null() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "null pointer"));
-        }
-        Ok(CStr::from_ptr(value).to_owned())
-    }
-
-    // Copy a rust string out into a C string
-    pub unsafe fn copy(value: &str, buffer: *mut c_char, size: usize) -> Result<(), io::Error> {
-        if buffer.is_null() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "null buffer"));
-        }
-
-        let bytes = value.as_bytes();
-
-        // Check for interior null bytes (same check CString::new does)
-        if bytes.contains(&0) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "interior null byte",
-            ));
-        }
-
-        let required_len = bytes.len() + 1; // +1 for null terminator
-        if required_len > size {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "value too large",
-            ));
-        }
-
-        // Direct copy - no intermediate allocation
-        std::ptr::copy_nonoverlapping(bytes.as_ptr(), buffer as *mut u8, bytes.len());
-        // Add null terminator
-        *buffer.add(bytes.len()) = 0;
-
-        Ok(())
-    }
-}
-
-impl fmt::Display for DotLottieString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let cstring = unsafe {
-            DotLottieString::read(self.value.as_ptr() as *const c_char).map_err(|_| fmt::Error)?
-        };
-        let value = cstring.to_str().map_err(|_| fmt::Error)?;
-        write!(f, "{value}")
-    }
-}
-
-impl Default for DotLottieString {
-    fn default() -> Self {
-        DotLottieString {
-            value: [0; DOTLOTTIE_MAX_STR_LENGTH],
         }
     }
 }

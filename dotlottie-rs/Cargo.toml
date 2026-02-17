@@ -41,8 +41,9 @@ cc = "1.2"
 
 [dev-dependencies]
 criterion = "0.5.1"
-# This is a workaround to enable this feature only on dev.
 # To test running without default deps: use "dotlottie-rs = { path = ".", default-features = false, features = [] }"
+# Using feature flag "dev" will also include the default features.
+# This is a workaround to enable this feature only on dev.
 dotlottie-rs = { path = ".", features = ["dev"] }
 minifb = "0.25"
 winit = "0.30"

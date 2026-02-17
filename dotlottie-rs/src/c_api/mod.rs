@@ -7,12 +7,15 @@ use crate::lottie_renderer::{
     ColorSlot, GlContext, ImageSlot, PositionSlot, ScalarSlot, TextDocument, TextSlot, VectorSlot,
     WgpuDevice, WgpuInstance, WgpuTarget,
 };
+
 use crate::ColorSpace;
+
 #[cfg(feature = "state-machines")]
 use crate::{
     actions::open_url_policy::OpenUrlPolicy, state_machine_engine::events::Event,
     StateMachineEngine,
 };
+
 use crate::{Config, DotLottiePlayer, LayerBoundingBox};
 
 use types::*;
@@ -189,8 +192,8 @@ pub unsafe extern "C" fn dotlottie_load_animation_path(
     })
 }
 
-#[cfg(feature = "dotlottie")]
 #[no_mangle]
+#[cfg(feature = "dotlottie")]
 pub unsafe extern "C" fn dotlottie_load_animation(
     ptr: *mut DotLottiePlayer,
     animation_id: *const c_char,
@@ -209,8 +212,8 @@ pub unsafe extern "C" fn dotlottie_load_animation(
     })
 }
 
-#[cfg(feature = "dotlottie")]
 #[no_mangle]
+#[cfg(feature = "dotlottie")]
 pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     ptr: *mut DotLottiePlayer,
     file_data: *const c_char,
@@ -224,8 +227,8 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     })
 }
 
-#[cfg(feature = "dotlottie")]
 #[no_mangle]
+#[cfg(feature = "dotlottie")]
 pub unsafe extern "C" fn dotlottie_manifest(
     ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieManifest,
@@ -239,8 +242,8 @@ pub unsafe extern "C" fn dotlottie_manifest(
     })
 }
 
-#[cfg(feature = "dotlottie")]
 #[no_mangle]
+#[cfg(feature = "dotlottie")]
 pub unsafe extern "C" fn dotlottie_manifest_animations(
     ptr: *mut DotLottiePlayer,
     result: *mut types::DotLottieManifestAnimation,
@@ -825,8 +828,8 @@ pub unsafe extern "C" fn dotlottie_markers(
     })
 }
 
-#[cfg(feature = "dotlottie")]
 #[no_mangle]
+#[cfg(feature = "dotlottie")]
 pub unsafe extern "C" fn dotlottie_active_animation_id(
     ptr: *mut DotLottiePlayer,
     result: *mut c_char,
@@ -839,8 +842,8 @@ pub unsafe extern "C" fn dotlottie_active_animation_id(
     })
 }
 
-#[cfg(feature = "theming")]
 #[no_mangle]
+#[cfg(feature = "theming")]
 pub unsafe extern "C" fn dotlottie_active_theme_id(
     ptr: *mut DotLottiePlayer,
     result: *mut c_char,
@@ -980,7 +983,6 @@ pub unsafe extern "C" fn dotlottie_poll_event(
 // Separate StateMachineEngine object with lifetime to DotLottiePlayer
 // ============================================================================
 
-#[cfg(feature = "state-machines")]
 /// Load a state machine by ID from the loaded .lottie file
 ///
 /// Returns a pointer to the StateMachineEngine or NULL on error.
@@ -992,6 +994,7 @@ pub unsafe extern "C" fn dotlottie_poll_event(
 /// - Returned state machine must be destroyed with dotlottie_state_machine_release()
 ///   BEFORE destroying the runtime
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_load(
     runtime: *mut DotLottiePlayer,
     state_machine_id: *const c_char,
@@ -1017,11 +1020,11 @@ pub unsafe extern "C" fn dotlottie_state_machine_load(
     }
 }
 
-#[cfg(feature = "state-machines")]
 /// Load a state machine from a JSON definition string
 ///
 /// Returns a pointer to the StateMachineEngine or NULL on error.
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_load_data(
     runtime: *mut DotLottiePlayer,
     state_machine_definition: *const c_char,
@@ -1046,12 +1049,12 @@ pub unsafe extern "C" fn dotlottie_state_machine_load_data(
     }
 }
 
-#[cfg(feature = "state-machines")]
 /// Start the state machine with the specified URL policy
 ///
 /// # Returns
 /// DOTLOTTIE_SUCCESS if started, DOTLOTTIE_ERROR if failed
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_start(
     sm: *mut StateMachineEngine<'static>,
     policy: *const types::DotLottieOpenUrlPolicy,
@@ -1070,12 +1073,12 @@ pub unsafe extern "C" fn dotlottie_state_machine_start(
     })
 }
 
-#[cfg(feature = "state-machines")]
 /// Stop the state machine (does not release the borrow)
 ///
 /// Call dotlottie_state_machine_release() to actually destroy the state machine
 /// and release the runtime borrow.
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_stop(sm: *mut StateMachineEngine<'static>) -> i32 {
     exec_state_machine_op!(sm, |state_machine| {
         state_machine.stop();
@@ -1083,7 +1086,6 @@ pub unsafe extern "C" fn dotlottie_state_machine_stop(sm: *mut StateMachineEngin
     })
 }
 
-#[cfg(feature = "state-machines")]
 /// Destroy the state machine and release the runtime borrow
 ///
 /// After calling this, the state machine pointer is invalid and the runtime
@@ -1093,6 +1095,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_stop(sm: *mut StateMachineEngin
 /// - State machine pointer must be valid
 /// - Must not use state machine pointer after this call
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_release(sm: *mut StateMachineEngine<'static>) {
     if !sm.is_null() {
         let boxed_sm = Box::from_raw(sm);
@@ -1100,16 +1103,16 @@ pub unsafe extern "C" fn dotlottie_state_machine_release(sm: *mut StateMachineEn
     }
 }
 
-#[cfg(feature = "state-machines")]
 /// Tick the state machine (advances animation and processes state logic)
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_tick(sm: *mut StateMachineEngine<'static>) -> i32 {
     exec_state_machine_op!(sm, |state_machine| to_exit_status(state_machine.tick()))
 }
 
-#[cfg(feature = "state-machines")]
 /// Post a pointer/click event to the state machine
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_event(
     sm: *mut StateMachineEngine<'static>,
     event: *const DotLottieEvent,
@@ -1124,9 +1127,9 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_event(
     })
 }
 
-#[cfg(feature = "state-machines")]
 /// Helper functions for posting specific event types
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_click(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
@@ -1139,8 +1142,8 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_click(
     })
 }
 
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_down(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
@@ -1153,8 +1156,8 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_down(
     })
 }
 
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_up(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
@@ -1167,8 +1170,8 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_up(
     })
 }
 
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_move(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
@@ -1181,8 +1184,8 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_move(
     })
 }
 
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_enter(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
@@ -1195,8 +1198,8 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_enter(
     })
 }
 
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_exit(
     sm: *mut StateMachineEngine<'static>,
     x: f32,
@@ -1209,9 +1212,9 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_exit(
     })
 }
 
-#[cfg(feature = "state-machines")]
 /// Fire a named event input
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_fire_event(
     sm: *mut StateMachineEngine<'static>,
     event_name: *const c_char,
@@ -1235,8 +1238,8 @@ pub unsafe extern "C" fn dotlottie_state_machine_fire_event(
 }
 
 /// Set a numeric input
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
@@ -1262,9 +1265,9 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_input(
     })
 }
 
-#[cfg(feature = "state-machines")]
 /// Set a string input
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_set_string_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
@@ -1290,10 +1293,10 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_string_input(
         }
     })
 }
-#[cfg(feature = "state-machines")]
 
 /// Set a boolean input
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
@@ -1319,9 +1322,9 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_input(
     })
 }
 
-#[cfg(feature = "state-machines")]
 /// Get a numeric input value
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_get_numeric_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
@@ -1346,9 +1349,9 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_numeric_input(
     })
 }
 
-#[cfg(feature = "state-machines")]
 /// Get a string input value
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_get_string_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
@@ -1374,9 +1377,9 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_string_input(
     })
 }
 
-#[cfg(feature = "state-machines")]
 /// Get a boolean input value
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_get_boolean_input(
     sm: *mut StateMachineEngine<'static>,
     key: *const c_char,
@@ -1396,22 +1399,20 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_boolean_input(
                     DOTLOTTIE_ERROR
                 }
             }
-            #[cfg(feature = "state-machines")]
             Err(_) => DOTLOTTIE_INVALID_PARAMETER,
         }
     })
 }
 
 /// Get current state name
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_current_state(
     sm: *mut StateMachineEngine<'static>,
     result: *mut c_char,
 ) -> i32 {
     exec_state_machine_op!(sm, |state_machine| {
         let current_state = state_machine.get_current_state_name();
-        #[cfg(feature = "state-machines")]
         to_exit_status(
             DotLottieString::copy(&current_state, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok(),
         )
@@ -1419,15 +1420,14 @@ pub unsafe extern "C" fn dotlottie_state_machine_current_state(
 }
 
 /// Get state machine status
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_status(
     sm: *mut StateMachineEngine<'static>,
     result: *mut c_char,
 ) -> i32 {
     exec_state_machine_op!(sm, |state_machine| {
         let status = state_machine.status();
-        #[cfg(feature = "state-machines")]
         to_exit_status(DotLottieString::copy(&status, result, DOTLOTTIE_MAX_STR_LENGTH).is_ok())
     })
 }
@@ -1436,8 +1436,8 @@ pub unsafe extern "C" fn dotlottie_state_machine_status(
 ///
 /// Returns bit flags indicating which interaction types are needed.
 /// Frameworks should register listeners for the returned interaction types.
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
     sm: *mut StateMachineEngine<'static>,
     result: *mut u16,
@@ -1462,8 +1462,8 @@ pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
 /// Poll for the next state machine event
 ///
 /// Returns 1 if an event was retrieved, 0 if no events are available, or -1 on error.
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_poll_event(
     sm: *mut StateMachineEngine<'static>,
     event: *mut types::StateMachineEvent,
@@ -1489,8 +1489,8 @@ pub unsafe extern "C" fn dotlottie_state_machine_poll_event(
 /// Poll for the next internal state machine event
 ///
 /// Returns 1 if an event was retrieved, 0 if no events are available, or -1 on error.
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_poll_internal_event(
     sm: *mut StateMachineEngine<'static>,
     event: *mut types::StateMachineInternalEvent,
@@ -1514,8 +1514,8 @@ pub unsafe extern "C" fn dotlottie_state_machine_poll_internal_event(
 }
 
 /// Get the state machine definition as JSON string
-#[cfg(feature = "state-machines")]
 #[no_mangle]
+#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_get_state_machine(
     runtime: *mut DotLottiePlayer,
     state_machine_id: *const c_char,

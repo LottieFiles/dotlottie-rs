@@ -206,71 +206,50 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     })
 }
 
+/// Get the manifest as a JSON string.
+///
+/// # Parameters
+/// - `ptr`: Pointer to the DotLottiePlayer instance
+/// - `buffer`: Buffer to store the JSON, or NULL to query required size
+/// - `size_out`: Pointer to receive the required buffer size (including null terminator)
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::ManifestNotAvailable` if no manifest is available
+/// - `DotLottieResult::InvalidParameter` if ptr is invalid
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_manifest(
     ptr: *mut DotLottiePlayer,
-    result: *mut types::DotLottieManifest,
+    buffer: *mut c_char,
+    size_out: *mut usize,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if let Some(manifest) = dotlottie_player.manifest() {
-            DotLottieManifest::transfer(manifest, result)
-        } else {
-            DotLottieResult::ManifestNotAvailable
-        }
-    })
-}
+        match dotlottie_player.manifest() {
+            Some(manifest) => {
+                let json_str = match serde_json::to_string(manifest) {
+                    Ok(s) => s,
+                    Err(_) => return DotLottieResult::Error,
+                };
+                let json_bytes = json_str.as_bytes();
+                let size = json_bytes.len() + 1; // +1 for null terminator
 
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_animations(
-    ptr: *mut DotLottiePlayer,
-    result: *mut types::DotLottieManifestAnimation,
-    size: *mut usize,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if let Some(manifest) = dotlottie_player.manifest() {
-            DotLottieManifestAnimation::transfer_all(&manifest.animations, result, size)
-        } else {
-            DotLottieResult::ManifestNotAvailable
-        }
-    })
-}
+                if !size_out.is_null() {
+                    *size_out = size;
+                }
 
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_themes(
-    ptr: *mut DotLottiePlayer,
-    result: *mut types::DotLottieManifestTheme,
-    size: *mut usize,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        let manifest = match dotlottie_player.manifest() {
-            Some(v) => v,
-            None => return DotLottieResult::ManifestNotAvailable,
-        };
-        if let Some(themes) = &manifest.themes {
-            DotLottieManifestTheme::transfer_all(themes, result, size)
-        } else {
-            *size = 0;
-            DotLottieResult::Success
-        }
-    })
-}
+                if !buffer.is_null() {
+                    std::ptr::copy_nonoverlapping(
+                        json_bytes.as_ptr() as *const c_char,
+                        buffer,
+                        json_bytes.len(),
+                    );
+                    // Add null terminator
+                    *buffer.add(json_bytes.len()) = 0;
+                }
 
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_state_machines(
-    ptr: *mut DotLottiePlayer,
-    result: *mut types::DotLottieManifestStateMachine,
-    size: *mut usize,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        let manifest = match dotlottie_player.manifest() {
-            Some(v) => v,
-            None => return DotLottieResult::ManifestNotAvailable,
-        };
-        if let Some(state_machines) = &manifest.state_machines {
-            DotLottieManifestStateMachine::transfer_all(state_machines, result, size)
-        } else {
-            *size = 0;
-            DotLottieResult::Success
+                DotLottieResult::Success
+            }
+            None => DotLottieResult::ManifestNotAvailable,
         }
     })
 }

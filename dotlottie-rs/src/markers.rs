@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::ffi::CString;
 
 use serde::{Deserialize, Serialize};
 
@@ -17,27 +17,37 @@ struct Lottie {
     markers: Vec<Marker>,
 }
 
-pub type MarkersMap = HashMap<String, (f32, f32)>;
+/// Extracts markers from Lottie JSON data.
+///
+/// Returns parallel arrays: (names, data) where data[i] = (time, duration) for names[i].
+pub fn extract_markers(json_data: &str) -> (Vec<CString>, Vec<(f32, f32)>) {
+    let mut names = Vec::new();
+    let mut data = Vec::new();
 
-pub fn extract_markers(json_data: &str) -> MarkersMap {
-    let mut markers_map = HashMap::new();
+    let Ok(lottie) = serde_json::from_str::<Lottie>(json_data) else {
+        return (names, data);
+    };
 
-    match serde_json::from_str::<Lottie>(json_data) {
-        Ok(lottie) => {
-            for marker in lottie.markers {
-                let name = marker.name.trim();
+    for marker in lottie.markers {
+        let name = marker.name.trim();
 
-                if name.is_empty() || marker.duration < 0.0 || marker.time < 0.0 {
-                    continue;
-                }
-
-                markers_map.insert(name.to_string(), (marker.time, marker.duration));
-            }
-
-            markers_map
+        if name.is_empty() || marker.duration < 0.0 || marker.time < 0.0 {
+            continue;
         }
-        Err(_) => markers_map,
+
+        // Skip duplicates (keep first occurrence)
+        if let Ok(c_name) = CString::new(name) {
+            if !names
+                .iter()
+                .any(|n: &CString| n.as_c_str() == c_name.as_c_str())
+            {
+                names.push(c_name);
+                data.push((marker.time, marker.duration));
+            }
+        }
     }
+
+    (names, data)
 }
 
 #[cfg(test)]
@@ -55,13 +65,14 @@ mod tests {
         })
         .to_string();
 
-        let markers = extract_markers(&json_data);
+        let (names, data) = extract_markers(&json_data);
 
-        assert_eq!(markers.len(), 2);
-        assert!(markers.contains_key("Marker1"));
-        assert_eq!(markers["Marker1"], (0.5, 1.5));
-        assert!(markers.contains_key("Marker2"));
-        assert_eq!(markers["Marker2"], (1.5, 2.5));
+        assert_eq!(names.len(), 2);
+        assert_eq!(data.len(), 2);
+        assert_eq!(names[0].to_str().unwrap(), "Marker1");
+        assert_eq!(data[0], (0.5, 1.5));
+        assert_eq!(names[1].to_str().unwrap(), "Marker2");
+        assert_eq!(data[1], (1.5, 2.5));
     }
 
     #[test]
@@ -74,28 +85,35 @@ mod tests {
         })
         .to_string();
 
-        let markers = extract_markers(&json_data);
+        let (names, data) = extract_markers(&json_data);
 
-        assert_eq!(markers.len(), 1);
-        assert!(markers.contains_key("Marker2"));
+        assert_eq!(names.len(), 1);
+        assert_eq!(data.len(), 1);
+        assert_eq!(names[0].to_str().unwrap(), "Marker2");
     }
 
     #[test]
     fn test_extract_markers_invalid_json() {
         let json_data = "This is not a valid JSON".to_string();
-        assert!(extract_markers(&json_data).is_empty());
+        let (names, data) = extract_markers(&json_data);
+        assert!(names.is_empty());
+        assert!(data.is_empty());
     }
 
     #[test]
     fn test_extract_markers_wrong_structure() {
         let json_data = json!({"unexpected_field": "unexpected_value"}).to_string();
-        assert!(extract_markers(&json_data).is_empty());
+        let (names, data) = extract_markers(&json_data);
+        assert!(names.is_empty());
+        assert!(data.is_empty());
     }
 
     #[test]
     fn test_extract_markers_empty() {
         let json_data = json!({}).to_string();
-        assert!(extract_markers(&json_data).is_empty());
+        let (names, data) = extract_markers(&json_data);
+        assert!(names.is_empty());
+        assert!(data.is_empty());
     }
 
     #[test]
@@ -108,11 +126,13 @@ mod tests {
         })
         .to_string();
 
-        let markers = extract_markers(&json_data);
+        let (names, data) = extract_markers(&json_data);
 
-        assert_eq!(markers.len(), 1);
-        assert!(markers.contains_key("Marker1"));
-        assert_eq!(markers["Marker1"], (1.5, 2.5));
+        // Keeps first occurrence
+        assert_eq!(names.len(), 1);
+        assert_eq!(data.len(), 1);
+        assert_eq!(names[0].to_str().unwrap(), "Marker1");
+        assert_eq!(data[0], (0.5, 1.5));
     }
 
     #[test]
@@ -125,11 +145,11 @@ mod tests {
         })
         .to_string();
 
-        let markers = extract_markers(&json_data);
+        let (names, data) = extract_markers(&json_data);
 
-        assert_eq!(markers.len(), 1);
-        assert!(markers.contains_key("Marker2"));
-        assert_eq!(markers["Marker2"], (1.5, 2.5));
+        assert_eq!(names.len(), 1);
+        assert_eq!(names[0].to_str().unwrap(), "Marker2");
+        assert_eq!(data[0], (1.5, 2.5));
     }
 
     #[test]
@@ -142,11 +162,11 @@ mod tests {
         })
         .to_string();
 
-        let markers = extract_markers(&json_data);
+        let (names, data) = extract_markers(&json_data);
 
-        assert_eq!(markers.len(), 1);
-        assert!(markers.contains_key("Marker2"));
-        assert_eq!(markers["Marker2"], (1.5, 2.5));
+        assert_eq!(names.len(), 1);
+        assert_eq!(names[0].to_str().unwrap(), "Marker2");
+        assert_eq!(data[0], (1.5, 2.5));
     }
 
     #[test]
@@ -159,13 +179,13 @@ mod tests {
         })
         .to_string();
 
-        let markers = extract_markers(&json_data);
+        let (names, data) = extract_markers(&json_data);
 
-        assert_eq!(markers.len(), 2);
-        assert!(markers.contains_key("Marker1"));
-        assert_eq!(markers["Marker1"], (1e10, 1.5));
-        assert!(markers.contains_key("Marker2"));
-        assert_eq!(markers["Marker2"], (1.5, 2.5));
+        assert_eq!(names.len(), 2);
+        assert_eq!(names[0].to_str().unwrap(), "Marker1");
+        assert_eq!(data[0], (1e10, 1.5));
+        assert_eq!(names[1].to_str().unwrap(), "Marker2");
+        assert_eq!(data[1], (1.5, 2.5));
     }
 
     #[test]
@@ -178,12 +198,12 @@ mod tests {
         })
         .to_string();
 
-        let markers = extract_markers(&json_data);
+        let (names, data) = extract_markers(&json_data);
 
-        assert_eq!(markers.len(), 2);
-        assert!(markers.contains_key("Marker1"));
-        assert_eq!(markers["Marker1"], (0.5, 1.5));
-        assert!(markers.contains_key("Marker2"));
-        assert_eq!(markers["Marker2"], (1.5, 2.5));
+        assert_eq!(names.len(), 2);
+        assert_eq!(names[0].to_str().unwrap(), "Marker1");
+        assert_eq!(data[0], (0.5, 1.5));
+        assert_eq!(names[1].to_str().unwrap(), "Marker2");
+        assert_eq!(data[1], (1.5, 2.5));
     }
 }

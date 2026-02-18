@@ -1,4 +1,6 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use std::ffi::CString;
+
+use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -10,30 +12,33 @@ mod tests {
 
     #[test]
     fn test_default_autoplay() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = DotLottiePlayer::new();
 
-        assert!(!player.config().autoplay);
+        assert!(!player.autoplay());
     }
 
     #[test]
     fn test_set_autoplay() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new();
 
-        let mut config = player.config();
-        config.autoplay = true;
-        player.set_config(config);
+        player.set_autoplay(true);
 
-        assert!(player.config().autoplay);
+        assert!(player.autoplay());
     }
 
     #[test]
     fn test_autoplay() {
-        let player = DotLottiePlayer::new(Config {
-            autoplay: true,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(true);
 
-        assert!(player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT));
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
         assert!(player.is_playing());
         assert!(!player.is_paused());
         assert!(!player.is_stopped());
@@ -45,7 +50,7 @@ mod tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }
@@ -56,14 +61,19 @@ mod tests {
 
     #[test]
     fn test_no_autoplay() {
-        let player = DotLottiePlayer::new(Config {
-            autoplay: false,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(false);
 
-        let loaded = player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT);
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(loaded);
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .is_ok());
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        let loaded = player.load_animation_path(&path, WIDTH, HEIGHT);
+
+        assert!(loaded.is_ok());
 
         assert!(!player.is_playing());
         assert!(!player.is_paused());

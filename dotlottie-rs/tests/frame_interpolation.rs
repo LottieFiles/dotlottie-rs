@@ -1,4 +1,4 @@
-use dotlottie_rs::{Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -10,38 +10,46 @@ mod tests {
 
     #[test]
     fn test_default_use_frame_interpolation() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = DotLottiePlayer::new();
 
-        assert!(player.config().use_frame_interpolation);
+        assert!(player.use_frame_interpolation());
     }
 
     #[test]
     fn test_set_use_frame_interpolation() {
-        let player = DotLottiePlayer::new(Config::default());
+        let mut player = DotLottiePlayer::new();
 
-        let mut config = player.config();
-        config.use_frame_interpolation = false;
-        player.set_config(config);
+        player.set_use_frame_interpolation(false);
 
-        assert!(!player.config().use_frame_interpolation);
+        assert!(!player.use_frame_interpolation());
     }
 
     #[test]
     fn test_disable_frame_interpolation() {
-        let player = DotLottiePlayer::new(Config {
-            autoplay: true,
-            use_frame_interpolation: false,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(true);
+        player.set_use_frame_interpolation(false);
 
-        assert!(player.load_dotlottie_data(include_bytes!("fixtures/emoji.lottie"), WIDTH, HEIGHT));
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
+
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
+                WIDTH,
+                HEIGHT
+            )
+            .is_ok());
 
         let mut rendered_frames: Vec<f32> = vec![];
 
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }

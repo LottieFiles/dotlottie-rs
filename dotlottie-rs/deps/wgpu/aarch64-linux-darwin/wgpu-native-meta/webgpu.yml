@@ -1,0 +1,4868 @@
+copyright: |
+  Copyright 2019-2023 WebGPU-Native developers
+
+  SPDX-License-Identifier: BSD-3-Clause
+name: webgpu
+enum_prefix: '0x0000'
+constants:
+  - name: array_layer_count_undefined
+    value: uint32_max
+    doc: |
+      TODO
+  - name: copy_stride_undefined
+    value: uint32_max
+    doc: |
+      TODO
+  - name: depth_slice_undefined
+    value: uint32_max
+    doc: |
+      TODO
+  - name: limit_u32_undefined
+    value: uint32_max
+    doc: |
+      TODO
+  - name: limit_u64_undefined
+    value: uint64_max
+    doc: |
+      TODO
+  - name: mip_level_count_undefined
+    value: uint32_max
+    doc: |
+      TODO
+  - name: query_set_index_undefined
+    value: uint32_max
+    doc: |
+      TODO
+  - name: whole_map_size
+    value: usize_max
+    doc: |
+      TODO
+  - name: whole_size
+    value: uint64_max
+    doc: |
+      TODO
+typedefs: []
+enums:
+  - name: adapter_type
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: discrete_GPU
+        doc: |
+          TODO
+      - name: integrated_GPU
+        doc: |
+          TODO
+      - name: CPU
+        doc: |
+          TODO
+      - name: unknown
+        doc: |
+          TODO
+  - name: address_mode
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: clamp_to_edge
+        doc: |
+          TODO
+      - name: repeat
+        doc: |
+          TODO
+      - name: mirror_repeat
+        doc: |
+          TODO
+  - name: backend_type
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: "null"
+        doc: |
+          TODO
+      - name: WebGPU
+        doc: |
+          TODO
+      - name: D3D11
+        doc: |
+          TODO
+      - name: D3D12
+        doc: |
+          TODO
+      - name: metal
+        doc: |
+          TODO
+      - name: vulkan
+        doc: |
+          TODO
+      - name: openGL
+        doc: |
+          TODO
+      - name: openGLES
+        doc: |
+          TODO
+  - name: blend_factor
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: zero
+        doc: |
+          TODO
+      - name: one
+        doc: |
+          TODO
+      - name: src
+        doc: |
+          TODO
+      - name: one_minus_src
+        doc: |
+          TODO
+      - name: src_alpha
+        doc: |
+          TODO
+      - name: one_minus_src_alpha
+        doc: |
+          TODO
+      - name: dst
+        doc: |
+          TODO
+      - name: one_minus_dst
+        doc: |
+          TODO
+      - name: dst_alpha
+        doc: |
+          TODO
+      - name: one_minus_dst_alpha
+        doc: |
+          TODO
+      - name: src_alpha_saturated
+        doc: |
+          TODO
+      - name: constant
+        doc: |
+          TODO
+      - name: one_minus_constant
+        doc: |
+          TODO
+      - name: src1
+        doc: |
+          TODO
+      - name: one_minus_src1
+        doc: |
+          TODO
+      - name: src1_alpha
+        doc: |
+          TODO
+      - name: one_minus_src1_alpha
+        doc: |
+          TODO
+  - name: blend_operation
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: add
+        doc: |
+          TODO
+      - name: subtract
+        doc: |
+          TODO
+      - name: reverse_subtract
+        doc: |
+          TODO
+      - name: min
+        doc: |
+          TODO
+      - name: max
+        doc: |
+          TODO
+  - name: buffer_binding_type
+    doc: |
+      TODO
+    entries:
+      - name: binding_not_used
+        doc: |
+          Indicates that this @ref WGPUBufferBindingLayout member of
+          its parent @ref WGPUBindGroupLayoutEntry is not used.
+          (See also @ref SentinelValues.)
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: uniform
+        doc: |
+          TODO
+      - name: storage
+        doc: |
+          TODO
+      - name: read_only_storage
+        doc: |
+          TODO
+  - name: buffer_map_state
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: unmapped
+        doc: |
+          TODO
+      - name: pending
+        doc: |
+          TODO
+      - name: mapped
+        doc: |
+          TODO
+  - name: callback_mode
+    doc: The callback mode controls how a callback for an asynchronous operation may be fired. See @ref Asynchronous-Operations for how these are used.
+    entries:
+      - null
+      - name: wait_any_only
+        doc: |
+          Callbacks created with `WGPUCallbackMode_WaitAnyOnly`:
+          - fire when the asynchronous operation's future is passed to a call to `::wgpuInstanceWaitAny`
+            AND the operation has already completed or it completes inside the call to `::wgpuInstanceWaitAny`.
+      - name: allow_process_events
+        doc: |
+          Callbacks created with `WGPUCallbackMode_AllowProcessEvents`:
+          - fire for the same reasons as callbacks created with `WGPUCallbackMode_WaitAnyOnly`
+          - fire inside a call to `::wgpuInstanceProcessEvents` if the asynchronous operation is complete.
+      - name: allow_spontaneous
+        doc: |
+          Callbacks created with `WGPUCallbackMode_AllowSpontaneous`:
+          - fire for the same reasons as callbacks created with `WGPUCallbackMode_AllowProcessEvents`
+          - **may** fire spontaneously on an arbitrary or application thread, when the WebGPU implementations discovers that the asynchronous operation is complete.
+
+            Implementations _should_ fire spontaneous callbacks as soon as possible.
+
+          @note Because spontaneous callbacks may fire at an arbitrary time on an arbitrary thread, applications should take extra care when acquiring locks or mutating state inside the callback. It undefined behavior to re-entrantly call into the webgpu.h API if the callback fires while inside the callstack of another webgpu.h function that is not `wgpuInstanceWaitAny` or `wgpuInstanceProcessEvents`.
+  - name: compare_function
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: never
+        doc: |
+          TODO
+      - name: less
+        doc: |
+          TODO
+      - name: equal
+        doc: |
+          TODO
+      - name: less_equal
+        doc: |
+          TODO
+      - name: greater
+        doc: |
+          TODO
+      - name: not_equal
+        doc: |
+          TODO
+      - name: greater_equal
+        doc: |
+          TODO
+      - name: always
+        doc: |
+          TODO
+  - name: compilation_info_request_status
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: success
+        doc: |
+          TODO
+      - name: instance_dropped
+        doc: |
+          TODO
+      - name: error
+        doc: |
+          TODO
+      - name: unknown
+        doc: |
+          TODO
+  - name: compilation_message_type
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: error
+        doc: |
+          TODO
+      - name: warning
+        doc: |
+          TODO
+      - name: info
+        doc: |
+          TODO
+  - name: composite_alpha_mode
+    doc: Describes how frames are composited with other contents on the screen when `::wgpuSurfacePresent` is called.
+    entries:
+      - name: auto
+        doc: Lets the WebGPU implementation choose the best mode (supported, and with the best performance) between @ref WGPUCompositeAlphaMode_Opaque or @ref WGPUCompositeAlphaMode_Inherit.
+      - name: opaque
+        doc: The alpha component of the image is ignored and teated as if it is always 1.0.
+      - name: premultiplied
+        doc: The alpha component is respected and non-alpha components are assumed to be already multiplied with the alpha component. For example, (0.5, 0, 0, 0.5) is semi-transparent bright red.
+      - name: unpremultiplied
+        doc: The alpha component is respected and non-alpha components are assumed to NOT be already multiplied with the alpha component. For example, (1.0, 0, 0, 0.5) is semi-transparent bright red.
+      - name: inherit
+        doc: The handling of the alpha component is unknown to WebGPU and should be handled by the application using system-specific APIs. This mode may be unavailable (for example on Wasm).
+  - name: create_pipeline_async_status
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: success
+        doc: |
+          TODO
+      - name: instance_dropped
+        doc: |
+          TODO
+      - name: validation_error
+        doc: |
+          TODO
+      - name: internal_error
+        doc: |
+          TODO
+      - name: unknown
+        doc: |
+          TODO
+  - name: cull_mode
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: none
+        doc: |
+          TODO
+      - name: front
+        doc: |
+          TODO
+      - name: back
+        doc: |
+          TODO
+  - name: device_lost_reason
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: unknown
+        doc: |
+          TODO
+      - name: destroyed
+        doc: |
+          TODO
+      - name: instance_dropped
+        doc: |
+          TODO
+      - name: failed_creation
+        doc: |
+          TODO
+  - name: error_filter
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: validation
+        doc: |
+          TODO
+      - name: out_of_memory
+        doc: |
+          TODO
+      - name: internal
+        doc: |
+          TODO
+  - name: error_type
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: no_error
+        doc: |
+          TODO
+      - name: validation
+        doc: |
+          TODO
+      - name: out_of_memory
+        doc: |
+          TODO
+      - name: internal
+        doc: |
+          TODO
+      - name: unknown
+        doc: |
+          TODO
+  - name: feature_level
+    doc: |
+      See @ref WGPURequestAdapterOptions::featureLevel.
+    entries:
+      - null
+      - name: compatibility
+        doc: |
+          "Compatibility" profile which can be supported on OpenGL ES 3.1.
+      - name: core
+        doc: |
+          "Core" profile which can be supported on Vulkan/Metal/D3D12.
+  - name: feature_name
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: |
+          TODO
+      - name: depth_clip_control
+        doc: |
+          TODO
+      - name: depth32_float_stencil8
+        doc: |
+          TODO
+      - name: timestamp_query
+        doc: |
+          TODO
+      - name: texture_compression_BC
+        doc: |
+          TODO
+      - name: texture_compression_BC_sliced_3D
+        doc: |
+          TODO
+      - name: texture_compression_ETC2
+        doc: |
+          TODO
+      - name: texture_compression_ASTC
+        doc: |
+          TODO
+      - name: texture_compression_ASTC_sliced_3D
+        doc: |
+          TODO
+      - name: indirect_first_instance
+        doc: |
+          TODO
+      - name: shader_f16
+        doc: |
+          TODO
+      - name: RG11B10_ufloat_renderable
+        doc: |
+          TODO
+      - name: BGRA8_unorm_storage
+        doc: |
+          TODO
+      - name: float32_filterable
+        doc: |
+          TODO
+      - name: float32_blendable
+        doc: |
+          TODO
+      - name: clip_distances
+        doc: |
+          TODO
+      - name: dual_source_blending
+        doc: |
+          TODO
+  - name: filter_mode
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: nearest
+        doc: |
+          TODO
+      - name: linear
+        doc: |
+          TODO
+  - name: front_face
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: CCW
+        doc: |
+          TODO
+      - name: CW
+        doc: |
+          TODO
+  - name: index_format
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: uint16
+        doc: |
+          TODO
+      - name: uint32
+        doc: |
+          TODO
+  - name: load_op
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: load
+        doc: |
+          TODO
+      - name: clear
+        doc: |
+          TODO
+  - name: map_async_status
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: success
+        doc: |
+          TODO
+      - name: instance_dropped
+        doc: |
+          TODO
+      - name: error
+        doc: |
+          TODO
+      - name: aborted
+        doc: |
+          TODO
+      - name: unknown
+        doc: |
+          TODO
+  - name: mipmap_filter_mode
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: nearest
+        doc: |
+          TODO
+      - name: linear
+        doc: |
+          TODO
+  - name: optional_bool
+    doc: |
+      TODO
+    entries:
+      - name: "false"
+        doc: |
+          TODO
+      - name: "true"
+        doc: |
+          TODO
+      - name: undefined
+        doc: |
+          TODO
+  - name: pop_error_scope_status
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: success
+        doc: |
+          The error scope stack was successfully popped and a result was reported.
+      - name: instance_dropped
+        doc: |
+          TODO
+      - name: empty_stack
+        doc: |
+          The error scope stack could not be popped, because it was empty.
+  - name: power_preference
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: No preference. (See also @ref SentinelValues.)
+      - name: low_power
+        doc: |
+          TODO
+      - name: high_performance
+        doc: |
+          TODO
+  - name: present_mode
+    doc: Describes when and in which order frames are presented on the screen when `::wgpuSurfacePresent` is called.
+    entries:
+      - name: undefined
+        doc: |
+          Present mode is not specified. Use the default.
+      - name: fifo
+        doc: |
+          The presentation of the image to the user waits for the next vertical blanking period to update in a first-in, first-out manner.
+          Tearing cannot be observed and frame-loop will be limited to the display's refresh rate.
+          This is the only mode that's always available.
+      - name: fifo_relaxed
+        doc: |
+          The presentation of the image to the user tries to wait for the next vertical blanking period but may decide to not wait if a frame is presented late.
+          Tearing can sometimes be observed but late-frame don't produce a full-frame stutter in the presentation.
+          This is still a first-in, first-out mechanism so a frame-loop will be limited to the display's refresh rate.
+      - name: immediate
+        doc: |
+          The presentation of the image to the user is updated immediately without waiting for a vertical blank.
+          Tearing can be observed but latency is minimized.
+      - name: mailbox
+        doc: |
+          The presentation of the image to the user waits for the next vertical blanking period to update to the latest provided image.
+          Tearing cannot be observed and a frame-loop is not limited to the display's refresh rate.
+  - name: primitive_topology
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: point_list
+        doc: |
+          TODO
+      - name: line_list
+        doc: |
+          TODO
+      - name: line_strip
+        doc: |
+          TODO
+      - name: triangle_list
+        doc: |
+          TODO
+      - name: triangle_strip
+        doc: |
+          TODO
+  - name: query_type
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: occlusion
+        doc: |
+          TODO
+      - name: timestamp
+        doc: |
+          TODO
+  - name: queue_work_done_status
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: success
+        doc: |
+          TODO
+      - name: instance_dropped
+        doc: |
+          TODO
+      - name: error
+        doc: |
+          TODO
+      - name: unknown
+        doc: |
+          TODO
+  - name: request_adapter_status
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: success
+        doc: |
+          TODO
+      - name: instance_dropped
+        doc: |
+          TODO
+      - name: unavailable
+        doc: |
+          TODO
+      - name: error
+        doc: |
+          TODO
+      - name: unknown
+        doc: |
+          TODO
+  - name: request_device_status
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: success
+        doc: |
+          TODO
+      - name: instance_dropped
+        doc: |
+          TODO
+      - name: error
+        doc: |
+          TODO
+      - name: unknown
+        doc: |
+          TODO
+  - name: s_type
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: shader_source_SPIRV
+        doc: |
+          TODO
+      - name: shader_source_WGSL
+        doc: |
+          TODO
+      - name: render_pass_max_draw_count
+        doc: |
+          TODO
+      # TODO(#214): Move all of the surface sources into block 0x0001
+      - name: surface_source_metal_layer
+        doc: |
+          TODO
+      - name: surface_source_windows_HWND
+        doc: |
+          TODO
+      - name: surface_source_xlib_window
+        doc: |
+          TODO
+      - name: surface_source_wayland_surface
+        doc: |
+          TODO
+      - name: surface_source_android_native_window
+        doc: |
+          TODO
+      - name: surface_source_XCB_window
+        doc: |
+          TODO
+  - name: sampler_binding_type
+    doc: |
+      TODO
+    entries:
+      - name: binding_not_used
+        doc: |
+          Indicates that this @ref WGPUSamplerBindingLayout member of
+          its parent @ref WGPUBindGroupLayoutEntry is not used.
+          (See also @ref SentinelValues.)
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: filtering
+        doc: |
+          TODO
+      - name: non_filtering
+        doc: |
+          TODO
+      - name: comparison
+        doc: |
+          TODO
+  - name: status
+    doc: |
+      Status code returned (synchronously) from many operations. Generally
+      indicates an invalid input like an unknown enum value or @ref OutStructChainError.
+      Read the function's documentation for specific error conditions.
+    entries:
+      - null
+      - name: success
+        doc: ""
+      - name: error
+        doc: ""
+  - name: stencil_operation
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: keep
+        doc: |
+          TODO
+      - name: zero
+        doc: |
+          TODO
+      - name: replace
+        doc: |
+          TODO
+      - name: invert
+        doc: |
+          TODO
+      - name: increment_clamp
+        doc: |
+          TODO
+      - name: decrement_clamp
+        doc: |
+          TODO
+      - name: increment_wrap
+        doc: |
+          TODO
+      - name: decrement_wrap
+        doc: |
+          TODO
+  - name: storage_texture_access
+    doc: |
+      TODO
+    entries:
+      - name: binding_not_used
+        doc: |
+          Indicates that this @ref WGPUStorageTextureBindingLayout member of
+          its parent @ref WGPUBindGroupLayoutEntry is not used.
+          (See also @ref SentinelValues.)
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: write_only
+        doc: |
+          TODO
+      - name: read_only
+        doc: |
+          TODO
+      - name: read_write
+        doc: |
+          TODO
+  - name: store_op
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: store
+        doc: |
+          TODO
+      - name: discard
+        doc: |
+          TODO
+  - name: surface_get_current_texture_status
+    doc: The status enum for `::wgpuSurfaceGetCurrentTexture`.
+    entries:
+      - null
+      - name: success_optimal
+        doc: Yay! Everything is good and we can render this frame.
+      - name: success_suboptimal
+        doc: Still OK - the surface can present the frame, but in a suboptimal way. The surface may need reconfiguration.
+      - name: timeout
+        doc: Some operation timed out while trying to acquire the frame.
+      - name: outdated
+        doc: The surface is too different to be used, compared to when it was originally created.
+      - name: lost
+        doc: The connection to whatever owns the surface was lost.
+      - name: out_of_memory
+        doc: The system ran out of memory.
+      - name: device_lost
+        doc: The @ref WGPUDevice configured on the @ref WGPUSurface was lost.
+      - name: error
+        doc: The surface is not configured, or there was an @ref OutStructChainError.
+  - name: texture_aspect
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: all
+        doc: |
+          TODO
+      - name: stencil_only
+        doc: |
+          TODO
+      - name: depth_only
+        doc: |
+          TODO
+  - name: texture_dimension
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: 1D
+        doc: |
+          TODO
+      - name: 2D
+        doc: |
+          TODO
+      - name: 3D
+        doc: |
+          TODO
+  - name: texture_format
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: R8_unorm
+        doc: |
+          TODO
+      - name: R8_snorm
+        doc: |
+          TODO
+      - name: R8_uint
+        doc: |
+          TODO
+      - name: R8_sint
+        doc: |
+          TODO
+      - name: R16_uint
+        doc: |
+          TODO
+      - name: R16_sint
+        doc: |
+          TODO
+      - name: R16_float
+        doc: |
+          TODO
+      - name: RG8_unorm
+        doc: |
+          TODO
+      - name: RG8_snorm
+        doc: |
+          TODO
+      - name: RG8_uint
+        doc: |
+          TODO
+      - name: RG8_sint
+        doc: |
+          TODO
+      - name: R32_float
+        doc: |
+          TODO
+      - name: R32_uint
+        doc: |
+          TODO
+      - name: R32_sint
+        doc: |
+          TODO
+      - name: RG16_uint
+        doc: |
+          TODO
+      - name: RG16_sint
+        doc: |
+          TODO
+      - name: RG16_float
+        doc: |
+          TODO
+      - name: RGBA8_unorm
+        doc: |
+          TODO
+      - name: RGBA8_unorm_srgb
+        doc: |
+          TODO
+      - name: RGBA8_snorm
+        doc: |
+          TODO
+      - name: RGBA8_uint
+        doc: |
+          TODO
+      - name: RGBA8_sint
+        doc: |
+          TODO
+      - name: BGRA8_unorm
+        doc: |
+          TODO
+      - name: BGRA8_unorm_srgb
+        doc: |
+          TODO
+      - name: RGB10_A2_uint
+        doc: |
+          TODO
+      - name: RGB10_A2_unorm
+        doc: |
+          TODO
+      - name: RG11_B10_ufloat
+        doc: |
+          TODO
+      - name: RGB9_E5_ufloat
+        doc: |
+          TODO
+      - name: RG32_float
+        doc: |
+          TODO
+      - name: RG32_uint
+        doc: |
+          TODO
+      - name: RG32_sint
+        doc: |
+          TODO
+      - name: RGBA16_uint
+        doc: |
+          TODO
+      - name: RGBA16_sint
+        doc: |
+          TODO
+      - name: RGBA16_float
+        doc: |
+          TODO
+      - name: RGBA32_float
+        doc: |
+          TODO
+      - name: RGBA32_uint
+        doc: |
+          TODO
+      - name: RGBA32_sint
+        doc: |
+          TODO
+      - name: stencil8
+        doc: |
+          TODO
+      - name: depth16_unorm
+        doc: |
+          TODO
+      - name: depth24_plus
+        doc: |
+          TODO
+      - name: depth24_plus_stencil8
+        doc: |
+          TODO
+      - name: depth32_float
+        doc: |
+          TODO
+      - name: depth32_float_stencil8
+        doc: |
+          TODO
+      - name: BC1_RGBA_unorm
+        doc: |
+          TODO
+      - name: BC1_RGBA_unorm_srgb
+        doc: |
+          TODO
+      - name: BC2_RGBA_unorm
+        doc: |
+          TODO
+      - name: BC2_RGBA_unorm_srgb
+        doc: |
+          TODO
+      - name: BC3_RGBA_unorm
+        doc: |
+          TODO
+      - name: BC3_RGBA_unorm_srgb
+        doc: |
+          TODO
+      - name: BC4_R_unorm
+        doc: |
+          TODO
+      - name: BC4_R_snorm
+        doc: |
+          TODO
+      - name: BC5_RG_unorm
+        doc: |
+          TODO
+      - name: BC5_RG_snorm
+        doc: |
+          TODO
+      - name: BC6H_RGB_ufloat
+        doc: |
+          TODO
+      - name: BC6H_RGB_float
+        doc: |
+          TODO
+      - name: BC7_RGBA_unorm
+        doc: |
+          TODO
+      - name: BC7_RGBA_unorm_srgb
+        doc: |
+          TODO
+      - name: ETC2_RGB8_unorm
+        doc: |
+          TODO
+      - name: ETC2_RGB8_unorm_srgb
+        doc: |
+          TODO
+      - name: ETC2_RGB8A1_unorm
+        doc: |
+          TODO
+      - name: ETC2_RGB8A1_unorm_srgb
+        doc: |
+          TODO
+      - name: ETC2_RGBA8_unorm
+        doc: |
+          TODO
+      - name: ETC2_RGBA8_unorm_srgb
+        doc: |
+          TODO
+      - name: EAC_R11_unorm
+        doc: |
+          TODO
+      - name: EAC_R11_snorm
+        doc: |
+          TODO
+      - name: EAC_RG11_unorm
+        doc: |
+          TODO
+      - name: EAC_RG11_snorm
+        doc: |
+          TODO
+      - name: ASTC_4x4_unorm
+        doc: |
+          TODO
+      - name: ASTC_4x4_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_5x4_unorm
+        doc: |
+          TODO
+      - name: ASTC_5x4_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_5x5_unorm
+        doc: |
+          TODO
+      - name: ASTC_5x5_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_6x5_unorm
+        doc: |
+          TODO
+      - name: ASTC_6x5_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_6x6_unorm
+        doc: |
+          TODO
+      - name: ASTC_6x6_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_8x5_unorm
+        doc: |
+          TODO
+      - name: ASTC_8x5_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_8x6_unorm
+        doc: |
+          TODO
+      - name: ASTC_8x6_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_8x8_unorm
+        doc: |
+          TODO
+      - name: ASTC_8x8_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_10x5_unorm
+        doc: |
+          TODO
+      - name: ASTC_10x5_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_10x6_unorm
+        doc: |
+          TODO
+      - name: ASTC_10x6_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_10x8_unorm
+        doc: |
+          TODO
+      - name: ASTC_10x8_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_10x10_unorm
+        doc: |
+          TODO
+      - name: ASTC_10x10_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_12x10_unorm
+        doc: |
+          TODO
+      - name: ASTC_12x10_unorm_srgb
+        doc: |
+          TODO
+      - name: ASTC_12x12_unorm
+        doc: |
+          TODO
+      - name: ASTC_12x12_unorm_srgb
+        doc: |
+          TODO
+  - name: texture_sample_type
+    doc: |
+      TODO
+    entries:
+      - name: binding_not_used
+        doc: |
+          Indicates that this @ref WGPUTextureBindingLayout member of
+          its parent @ref WGPUBindGroupLayoutEntry is not used.
+          (See also @ref SentinelValues.)
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: float
+        doc: |
+          TODO
+      - name: unfilterable_float
+        doc: |
+          TODO
+      - name: depth
+        doc: |
+          TODO
+      - name: sint
+        doc: |
+          TODO
+      - name: uint
+        doc: |
+          TODO
+  - name: texture_view_dimension
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: 1D
+        doc: |
+          TODO
+      - name: 2D
+        doc: |
+          TODO
+      - name: 2D_array
+        doc: |
+          TODO
+      - name: cube
+        doc: |
+          TODO
+      - name: cube_array
+        doc: |
+          TODO
+      - name: 3D
+        doc: |
+          TODO
+  - name: vertex_format
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: uint8
+        doc: |
+          TODO
+      - name: uint8x2
+        doc: |
+          TODO
+      - name: uint8x4
+        doc: |
+          TODO
+      - name: sint8
+        doc: |
+          TODO
+      - name: sint8x2
+        doc: |
+          TODO
+      - name: sint8x4
+        doc: |
+          TODO
+      - name: unorm8
+        doc: |
+          TODO
+      - name: unorm8x2
+        doc: |
+          TODO
+      - name: unorm8x4
+        doc: |
+          TODO
+      - name: snorm8
+        doc: |
+          TODO
+      - name: snorm8x2
+        doc: |
+          TODO
+      - name: snorm8x4
+        doc: |
+          TODO
+      - name: uint16
+        doc: |
+          TODO
+      - name: uint16x2
+        doc: |
+          TODO
+      - name: uint16x4
+        doc: |
+          TODO
+      - name: sint16
+        doc: |
+          TODO
+      - name: sint16x2
+        doc: |
+          TODO
+      - name: sint16x4
+        doc: |
+          TODO
+      - name: unorm16
+        doc: |
+          TODO
+      - name: unorm16x2
+        doc: |
+          TODO
+      - name: unorm16x4
+        doc: |
+          TODO
+      - name: snorm16
+        doc: |
+          TODO
+      - name: snorm16x2
+        doc: |
+          TODO
+      - name: snorm16x4
+        doc: |
+          TODO
+      - name: float16
+        doc: |
+          TODO
+      - name: float16x2
+        doc: |
+          TODO
+      - name: float16x4
+        doc: |
+          TODO
+      - name: float32
+        doc: |
+          TODO
+      - name: float32x2
+        doc: |
+          TODO
+      - name: float32x3
+        doc: |
+          TODO
+      - name: float32x4
+        doc: |
+          TODO
+      - name: uint32
+        doc: |
+          TODO
+      - name: uint32x2
+        doc: |
+          TODO
+      - name: uint32x3
+        doc: |
+          TODO
+      - name: uint32x4
+        doc: |
+          TODO
+      - name: sint32
+        doc: |
+          TODO
+      - name: sint32x2
+        doc: |
+          TODO
+      - name: sint32x3
+        doc: |
+          TODO
+      - name: sint32x4
+        doc: |
+          TODO
+      - name: unorm10__10__10__2
+        doc: |
+          TODO
+      - name: unorm8x4_B_G_R_A
+        doc: |
+          TODO
+  - name: vertex_step_mode
+    doc: |
+      TODO
+    entries:
+      - name: vertex_buffer_not_used
+        doc: |
+          This @ref WGPUVertexBufferLayout is a "hole" in the @ref WGPUVertexState `buffers` array.
+          (See also @ref SentinelValues.)
+      - name: undefined
+        doc: Indicates no value is passed for this argument. See @ref SentinelValues.
+      - name: vertex
+        doc: |
+          TODO
+      - name: instance
+        doc: |
+          TODO
+  - name: wait_status
+    doc: Status returned from a call to ::wgpuInstanceWaitAny.
+    entries:
+      - null
+      - name: success
+        doc: At least one WGPUFuture completed successfully.
+      - name: timed_out
+        doc: No WGPUFutures completed within the timeout.
+      - name: unsupported_timeout
+        doc: A @ref Timed-Wait was performed when WGPUInstanceFeatures::timedWaitAnyEnable is false.
+      - name: unsupported_count
+        doc: The number of futures waited on in a @ref Timed-Wait is greater than the supported WGPUInstanceFeatures::timedWaitAnyMaxCount.
+      - name: unsupported_mixed_sources
+        doc: An invalid wait was performed with @ref Mixed-Sources.
+  - name: WGSL_language_feature_name
+    doc: |
+      TODO
+    entries:
+      - null
+      - name: readonly_and_readwrite_storage_textures
+        doc: |
+          TODO
+      - name: packed4x8_integer_dot_product
+        doc: |
+          TODO
+      - name: unrestricted_pointer_parameters
+        doc: |
+          TODO
+      - name: pointer_composite_access
+        doc: |
+          TODO
+bitflags:
+  - name: buffer_usage
+    doc: |
+      TODO
+    entries:
+      - name: none
+        doc: |
+          TODO
+      - name: map_read
+        doc: |
+          TODO
+      - name: map_write
+        doc: |
+          TODO
+      - name: copy_src
+        doc: |
+          TODO
+      - name: copy_dst
+        doc: |
+          TODO
+      - name: index
+        doc: |
+          TODO
+      - name: vertex
+        doc: |
+          TODO
+      - name: uniform
+        doc: |
+          TODO
+      - name: storage
+        doc: |
+          TODO
+      - name: indirect
+        doc: |
+          TODO
+      - name: query_resolve
+        doc: |
+          TODO
+  - name: color_write_mask
+    doc: |
+      TODO
+    entries:
+      - name: none
+        doc: |
+          TODO
+      - name: red
+        doc: |
+          TODO
+      - name: green
+        doc: |
+          TODO
+      - name: blue
+        doc: |
+          TODO
+      - name: alpha
+        doc: |
+          TODO
+      - name: all
+        value_combination:
+          - red
+          - green
+          - blue
+          - alpha
+        doc: |
+          TODO
+  - name: map_mode
+    doc: |
+      TODO
+    entries:
+      - name: none
+        doc: |
+          TODO
+      - name: read
+        doc: |
+          TODO
+      - name: write
+        doc: |
+          TODO
+  - name: shader_stage
+    doc: |
+      TODO
+    entries:
+      - name: none
+        doc: |
+          TODO
+      - name: vertex
+        doc: |
+          TODO
+      - name: fragment
+        doc: |
+          TODO
+      - name: compute
+        doc: |
+          TODO
+  - name: texture_usage
+    doc: |
+      TODO
+    entries:
+      - name: none
+        doc: |
+          TODO
+      - name: copy_src
+        doc: |
+          TODO
+      - name: copy_dst
+        doc: |
+          TODO
+      - name: texture_binding
+        doc: |
+          TODO
+      - name: storage_binding
+        doc: |
+          TODO
+      - name: render_attachment
+        doc: |
+          TODO
+structs:
+  - name: adapter_info
+    doc: |
+      TODO
+    type: base_out
+    free_members: true
+    members:
+      - name: vendor
+        doc: |
+          TODO
+        type: out_string
+      - name: architecture
+        doc: |
+          TODO
+        type: out_string
+      - name: device
+        doc: |
+          TODO
+        type: out_string
+      - name: description
+        doc: |
+          TODO
+        type: out_string
+      - name: backend_type
+        doc: |
+          TODO
+        type: enum.backend_type
+      - name: adapter_type
+        doc: |
+          TODO
+        type: enum.adapter_type
+      - name: vendor_ID
+        doc: |
+          TODO
+        type: uint32
+      - name: device_ID
+        doc: |
+          TODO
+        type: uint32
+  - name: bind_group_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: layout
+        doc: |
+          TODO
+        type: object.bind_group_layout
+      - name: entries
+        doc: |
+          TODO
+        type: array<struct.bind_group_entry>
+        pointer: immutable
+  - name: bind_group_entry
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: binding
+        doc: |
+          TODO
+        type: uint32
+      - name: buffer
+        doc: |
+          TODO
+        type: object.buffer
+        optional: true
+      - name: offset
+        doc: |
+          TODO
+        type: uint64
+      - name: size
+        doc: |
+          TODO
+        type: uint64
+      - name: sampler
+        doc: |
+          TODO
+        type: object.sampler
+        optional: true
+      - name: texture_view
+        doc: |
+          TODO
+        type: object.texture_view
+        optional: true
+  - name: bind_group_layout_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: entries
+        doc: |
+          TODO
+        type: array<struct.bind_group_layout_entry>
+        pointer: immutable
+  - name: bind_group_layout_entry
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: binding
+        doc: |
+          TODO
+        type: uint32
+      - name: visibility
+        doc: |
+          TODO
+        type: bitflag.shader_stage
+      - name: buffer
+        doc: |
+          TODO
+        type: struct.buffer_binding_layout
+      - name: sampler
+        doc: |
+          TODO
+        type: struct.sampler_binding_layout
+      - name: texture
+        doc: |
+          TODO
+        type: struct.texture_binding_layout
+      - name: storage_texture
+        doc: |
+          TODO
+        type: struct.storage_texture_binding_layout
+  - name: blend_component
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: operation
+        doc: |
+          TODO
+        type: enum.blend_operation
+      - name: src_factor
+        doc: |
+          TODO
+        type: enum.blend_factor
+      - name: dst_factor
+        doc: |
+          TODO
+        type: enum.blend_factor
+  - name: blend_state
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: color
+        doc: |
+          TODO
+        type: struct.blend_component
+      - name: alpha
+        doc: |
+          TODO
+        type: struct.blend_component
+  - name: buffer_binding_layout
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: type
+        doc: |
+          TODO
+        type: enum.buffer_binding_type
+      - name: has_dynamic_offset
+        doc: |
+          TODO
+        type: bool
+      - name: min_binding_size
+        doc: |
+          TODO
+        type: uint64
+  - name: buffer_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: usage
+        doc: |
+          TODO
+        type: bitflag.buffer_usage
+      - name: size
+        doc: |
+          TODO
+        type: uint64
+      - name: mapped_at_creation
+        doc: |
+          TODO
+        type: bool
+  - name: color
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: r
+        doc: |
+          TODO
+        type: float64
+      - name: g
+        doc: |
+          TODO
+        type: float64
+      - name: b
+        doc: |
+          TODO
+        type: float64
+      - name: a
+        doc: |
+          TODO
+        type: float64
+  - name: color_target_state
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: format
+        doc: |
+          The texture format of the target. If @ref WGPUTextureFormat_Undefined,
+          indicates a "hole" in the parent @ref WGPUFragmentState `targets` array:
+          the pipeline does not output a value at this `location`.
+        type: enum.texture_format
+      - name: blend
+        doc: |
+          TODO
+        type: struct.blend_state
+        pointer: immutable
+        optional: true
+      - name: write_mask
+        doc: |
+          TODO
+        type: bitflag.color_write_mask
+  - name: command_buffer_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+  - name: command_encoder_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+  - name: compilation_info
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: messages
+        doc: |
+          TODO
+        type: array<struct.compilation_message>
+        pointer: immutable
+  - name: compilation_message
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: message
+        doc: |
+          A @ref LocalizableHumanReadableMessageString.
+        type: out_string
+      - name: type
+        doc: |
+          Severity level of the message.
+        type: enum.compilation_message_type
+      - name: line_num
+        doc: |
+          Line number where the message is attached, starting at 1.
+        type: uint64
+      - name: line_pos
+        doc: |
+          Offset in UTF-8 code units (bytes) from the beginning of the line, starting at 1.
+        type: uint64
+      - name: offset
+        doc: |
+          Offset in UTF-8 code units (bytes) from the beginning of the shader code, starting at 0.
+        type: uint64
+      - name: length
+        doc: |
+          Length in UTF-8 code units (bytes) of the span the message corresponds to.
+        type: uint64
+  - name: compute_pass_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: timestamp_writes
+        doc: |
+          TODO
+        type: struct.compute_pass_timestamp_writes
+        pointer: immutable
+        optional: true
+  - name: compute_pass_timestamp_writes
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: query_set
+        doc: |
+          TODO
+        type: object.query_set
+      - name: beginning_of_pass_write_index
+        doc: |
+          TODO
+        type: uint32
+      - name: end_of_pass_write_index
+        doc: |
+          TODO
+        type: uint32
+  - name: compute_pipeline_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: layout
+        doc: |
+          TODO
+        type: object.pipeline_layout
+        optional: true
+      - name: compute
+        doc: |
+          TODO
+        type: struct.programmable_stage_descriptor
+  - name: constant_entry
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: key
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: value
+        doc: |
+          TODO
+        type: float64
+  - name: depth_stencil_state
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: format
+        doc: |
+          TODO
+        type: enum.texture_format
+      - name: depth_write_enabled
+        doc: |
+          TODO
+        type: enum.optional_bool
+      - name: depth_compare
+        doc: |
+          TODO
+        type: enum.compare_function
+      - name: stencil_front
+        doc: |
+          TODO
+        type: struct.stencil_face_state
+      - name: stencil_back
+        doc: |
+          TODO
+        type: struct.stencil_face_state
+      - name: stencil_read_mask
+        doc: |
+          TODO
+        type: uint32
+      - name: stencil_write_mask
+        doc: |
+          TODO
+        type: uint32
+      - name: depth_bias
+        doc: |
+          TODO
+        type: int32
+      - name: depth_bias_slope_scale
+        doc: |
+          TODO
+        type: float32
+      - name: depth_bias_clamp
+        doc: |
+          TODO
+        type: float32
+  - name: device_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: required_features
+        doc: |
+          TODO
+        type: array<enum.feature_name>
+        pointer: immutable
+      - name: required_limits
+        doc: |
+          TODO
+        type: struct.limits
+        pointer: immutable
+        optional: true
+      - name: default_queue
+        doc: |
+          TODO
+        type: struct.queue_descriptor
+      - name: device_lost_callback_info
+        doc: |
+          TODO
+        type: callback.device_lost
+      - name: uncaptured_error_callback_info
+        doc: |
+          TODO
+        type: callback.uncaptured_error
+  - name: extent_3D
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: width
+        doc: |
+          TODO
+        type: uint32
+      - name: height
+        doc: |
+          TODO
+        type: uint32
+      - name: depth_or_array_layers
+        doc: |
+          TODO
+        type: uint32
+  - name: fragment_state
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: module
+        doc: |
+          TODO
+        type: object.shader_module
+      - name: entry_point
+        doc: |
+          TODO
+        type: nullable_string
+      - name: constants
+        doc: |
+          TODO
+        type: array<struct.constant_entry>
+        pointer: immutable
+      - name: targets
+        doc: |
+          TODO
+        type: array<struct.color_target_state>
+        pointer: immutable
+  - name: future
+    doc: Opaque handle to an asynchronous operation. See @ref Asynchronous-Operations for more information.
+    type: standalone
+    members:
+      - name: id
+        doc: Opaque id of the @ref WGPUFuture
+        type: uint64
+  - name: future_wait_info
+    doc: Struct holding a future to wait on, and a `completed` boolean flag.
+    type: standalone
+    members:
+      - name: future
+        doc: The future to wait on.
+        type: struct.future
+      - name: completed
+        doc: Whether or not the future completed.
+        type: bool
+  - name: instance_capabilities
+    doc: |
+      Features enabled on the WGPUInstance
+    type: base_in_or_out
+    members:
+      - name: timed_wait_any_enable
+        doc: Enable use of ::wgpuInstanceWaitAny with `timeoutNS > 0`.
+        type: bool
+      - name: timed_wait_any_max_count
+        doc: The maximum number @ref WGPUFutureWaitInfo supported in a call to ::wgpuInstanceWaitAny with `timeoutNS > 0`.
+        type: usize
+  - name: instance_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: features
+        doc: Instance features to enable
+        type: struct.instance_capabilities
+  - name: limits
+    doc: |
+      TODO
+    type: base_in_or_out
+    members:
+      - name: max_texture_dimension_1D
+        doc: |
+          TODO
+        type: uint32
+      - name: max_texture_dimension_2D
+        doc: |
+          TODO
+        type: uint32
+      - name: max_texture_dimension_3D
+        doc: |
+          TODO
+        type: uint32
+      - name: max_texture_array_layers
+        doc: |
+          TODO
+        type: uint32
+      - name: max_bind_groups
+        doc: |
+          TODO
+        type: uint32
+      - name: max_bind_groups_plus_vertex_buffers
+        doc: |
+          TODO
+        type: uint32
+      - name: max_bindings_per_bind_group
+        doc: |
+          TODO
+        type: uint32
+      - name: max_dynamic_uniform_buffers_per_pipeline_layout
+        doc: |
+          TODO
+        type: uint32
+      - name: max_dynamic_storage_buffers_per_pipeline_layout
+        doc: |
+          TODO
+        type: uint32
+      - name: max_sampled_textures_per_shader_stage
+        doc: |
+          TODO
+        type: uint32
+      - name: max_samplers_per_shader_stage
+        doc: |
+          TODO
+        type: uint32
+      - name: max_storage_buffers_per_shader_stage
+        doc: |
+          TODO
+        type: uint32
+      - name: max_storage_textures_per_shader_stage
+        doc: |
+          TODO
+        type: uint32
+      - name: max_uniform_buffers_per_shader_stage
+        doc: |
+          TODO
+        type: uint32
+      - name: max_uniform_buffer_binding_size
+        doc: |
+          TODO
+        type: uint64
+      - name: max_storage_buffer_binding_size
+        doc: |
+          TODO
+        type: uint64
+      - name: min_uniform_buffer_offset_alignment
+        doc: |
+          TODO
+        type: uint32
+      - name: min_storage_buffer_offset_alignment
+        doc: |
+          TODO
+        type: uint32
+      - name: max_vertex_buffers
+        doc: |
+          TODO
+        type: uint32
+      - name: max_buffer_size
+        doc: |
+          TODO
+        type: uint64
+      - name: max_vertex_attributes
+        doc: |
+          TODO
+        type: uint32
+      - name: max_vertex_buffer_array_stride
+        doc: |
+          TODO
+        type: uint32
+      - name: max_inter_stage_shader_variables
+        doc: |
+          TODO
+        type: uint32
+      - name: max_color_attachments
+        doc: |
+          TODO
+        type: uint32
+      - name: max_color_attachment_bytes_per_sample
+        doc: |
+          TODO
+        type: uint32
+      - name: max_compute_workgroup_storage_size
+        doc: |
+          TODO
+        type: uint32
+      - name: max_compute_invocations_per_workgroup
+        doc: |
+          TODO
+        type: uint32
+      - name: max_compute_workgroup_size_x
+        doc: |
+          TODO
+        type: uint32
+      - name: max_compute_workgroup_size_y
+        doc: |
+          TODO
+        type: uint32
+      - name: max_compute_workgroup_size_z
+        doc: |
+          TODO
+        type: uint32
+      - name: max_compute_workgroups_per_dimension
+        doc: |
+          TODO
+        type: uint32
+  - name: multisample_state
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: count
+        doc: |
+          TODO
+        type: uint32
+      - name: mask
+        doc: |
+          TODO
+        type: uint32
+      - name: alpha_to_coverage_enabled
+        doc: |
+          TODO
+        type: bool
+  - name: origin_3D
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: x
+        doc: |
+          TODO
+        type: uint32
+      - name: y
+        doc: |
+          TODO
+        type: uint32
+      - name: z
+        doc: |
+          TODO
+        type: uint32
+  - name: pipeline_layout_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: bind_group_layouts
+        doc: |
+          TODO
+        type: array<object.bind_group_layout>
+        pointer: immutable
+  - name: primitive_state
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: topology
+        doc: |
+          TODO
+        type: enum.primitive_topology
+      - name: strip_index_format
+        doc: |
+          TODO
+        type: enum.index_format
+      - name: front_face
+        doc: |
+          TODO
+        type: enum.front_face
+      - name: cull_mode
+        doc: |
+          TODO
+        type: enum.cull_mode
+      - name: unclipped_depth
+        doc: |
+          TODO
+        type: bool
+  - name: programmable_stage_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: module
+        doc: |
+          TODO
+        type: object.shader_module
+      - name: entry_point
+        doc: |
+          TODO
+        type: nullable_string
+      - name: constants
+        doc: |
+          TODO
+        type: array<struct.constant_entry>
+        pointer: immutable
+  - name: query_set_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: type
+        doc: |
+          TODO
+        type: enum.query_type
+      - name: count
+        doc: |
+          TODO
+        type: uint32
+  - name: queue_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+  - name: render_bundle_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+  - name: render_bundle_encoder_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: color_formats
+        doc: |
+          TODO
+        type: array<enum.texture_format>
+        pointer: immutable
+      - name: depth_stencil_format
+        doc: |
+          TODO
+        type: enum.texture_format
+      - name: sample_count
+        doc: |
+          TODO
+        type: uint32
+      - name: depth_read_only
+        doc: |
+          TODO
+        type: bool
+      - name: stencil_read_only
+        doc: |
+          TODO
+        type: bool
+  - name: render_pass_color_attachment
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: view
+        doc: |
+          TODO
+        type: object.texture_view
+        optional: true
+      - name: depth_slice
+        doc: |
+          TODO
+        type: uint32
+      - name: resolve_target
+        doc: |
+          TODO
+        type: object.texture_view
+        optional: true
+      - name: load_op
+        doc: |
+          TODO
+        type: enum.load_op
+      - name: store_op
+        doc: |
+          TODO
+        type: enum.store_op
+      - name: clear_value
+        doc: |
+          TODO
+        type: struct.color
+  - name: render_pass_depth_stencil_attachment
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: view
+        doc: |
+          TODO
+        type: object.texture_view
+      - name: depth_load_op
+        doc: |
+          TODO
+        type: enum.load_op
+      - name: depth_store_op
+        doc: |
+          TODO
+        type: enum.store_op
+      - name: depth_clear_value
+        doc: |
+          TODO
+        type: float32
+      - name: depth_read_only
+        doc: |
+          TODO
+        type: bool
+      - name: stencil_load_op
+        doc: |
+          TODO
+        type: enum.load_op
+      - name: stencil_store_op
+        doc: |
+          TODO
+        type: enum.store_op
+      - name: stencil_clear_value
+        doc: |
+          TODO
+        type: uint32
+      - name: stencil_read_only
+        doc: |
+          TODO
+        type: bool
+  - name: render_pass_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: color_attachments
+        doc: |
+          TODO
+        type: array<struct.render_pass_color_attachment>
+        pointer: immutable
+      - name: depth_stencil_attachment
+        doc: |
+          TODO
+        type: struct.render_pass_depth_stencil_attachment
+        pointer: immutable
+        optional: true
+      - name: occlusion_query_set
+        doc: |
+          TODO
+        type: object.query_set
+        optional: true
+      - name: timestamp_writes
+        doc: |
+          TODO
+        type: struct.render_pass_timestamp_writes
+        pointer: immutable
+        optional: true
+  - name: render_pass_max_draw_count
+    doc: |
+      TODO
+    type: extension_in
+    extends:
+      - render_pass_descriptor
+    members:
+      - name: max_draw_count
+        doc: |
+          TODO
+        type: uint64
+  - name: render_pass_timestamp_writes
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: query_set
+        doc: |
+          TODO
+        type: object.query_set
+      - name: beginning_of_pass_write_index
+        doc: |
+          TODO
+        type: uint32
+      - name: end_of_pass_write_index
+        doc: |
+          TODO
+        type: uint32
+  - name: render_pipeline_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: layout
+        doc: |
+          TODO
+        type: object.pipeline_layout
+        optional: true
+      - name: vertex
+        doc: |
+          TODO
+        type: struct.vertex_state
+      - name: primitive
+        doc: |
+          TODO
+        type: struct.primitive_state
+      - name: depth_stencil
+        doc: |
+          TODO
+        type: struct.depth_stencil_state
+        pointer: immutable
+        optional: true
+      - name: multisample
+        doc: |
+          TODO
+        type: struct.multisample_state
+      - name: fragment
+        doc: |
+          TODO
+        type: struct.fragment_state
+        pointer: immutable
+        optional: true
+  - name: request_adapter_options
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: feature_level
+        doc: |
+          "Feature level" for the adapter request. If an adapter is returned, it must support the features and limits in the requested feature level.
+
+          Implementations may ignore @ref WGPUFeatureLevel_Compatibility and provide @ref WGPUFeatureLevel_Core instead. @ref WGPUFeatureLevel_Core is the default in the JS API, but in C, this field is **required** (must not be undefined).
+        type: enum.feature_level
+      - name: power_preference
+        doc: |
+          TODO
+        type: enum.power_preference
+      - name: force_fallback_adapter
+        doc: |
+          If true, requires the adapter to be a "fallback" adapter as defined by the JS spec.
+          If this is not possible, the request returns null.
+        type: bool
+      - name: backend_type
+        doc: |
+          If set, requires the adapter to have a particular backend type.
+          If this is not possible, the request returns null.
+        type: enum.backend_type
+      - name: compatible_surface
+        doc: |
+          If set, requires the adapter to be able to output to a particular surface.
+          If this is not possible, the request returns null.
+        type: object.surface
+        optional: true
+  - name: sampler_binding_layout
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: type
+        doc: |
+          TODO
+        type: enum.sampler_binding_type
+  - name: sampler_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: address_mode_u
+        doc: |
+          TODO
+        type: enum.address_mode
+      - name: address_mode_v
+        doc: |
+          TODO
+        type: enum.address_mode
+      - name: address_mode_w
+        doc: |
+          TODO
+        type: enum.address_mode
+      - name: mag_filter
+        doc: |
+          TODO
+        type: enum.filter_mode
+      - name: min_filter
+        doc: |
+          TODO
+        type: enum.filter_mode
+      - name: mipmap_filter
+        doc: |
+          TODO
+        type: enum.mipmap_filter_mode
+      - name: lod_min_clamp
+        doc: |
+          TODO
+        type: float32
+      - name: lod_max_clamp
+        doc: |
+          TODO
+        type: float32
+      - name: compare
+        doc: |
+          TODO
+        type: enum.compare_function
+      - name: max_anisotropy
+        doc: |
+          TODO
+        type: uint16
+  - name: shader_module_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+  - name: shader_source_SPIRV
+    doc: |
+      TODO
+    type: extension_in
+    extends:
+      - shader_module_descriptor
+    members:
+      - name: code_size
+        doc: |
+          TODO
+        type: uint32
+      - name: code
+        doc: |
+          TODO
+        type: uint32
+        pointer: immutable
+  - name: shader_source_WGSL
+    doc: |
+      TODO
+    type: extension_in
+    extends:
+      - shader_module_descriptor
+    members:
+      - name: code
+        doc: |
+          TODO
+        type: string_with_default_empty
+  - name: stencil_face_state
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: compare
+        doc: |
+          TODO
+        type: enum.compare_function
+      - name: fail_op
+        doc: |
+          TODO
+        type: enum.stencil_operation
+      - name: depth_fail_op
+        doc: |
+          TODO
+        type: enum.stencil_operation
+      - name: pass_op
+        doc: |
+          TODO
+        type: enum.stencil_operation
+  - name: storage_texture_binding_layout
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: access
+        doc: |
+          TODO
+        type: enum.storage_texture_access
+      - name: format
+        doc: |
+          TODO
+        type: enum.texture_format
+      - name: view_dimension
+        doc: |
+          TODO
+        type: enum.texture_view_dimension
+  - name: supported_features
+    doc: |
+      TODO
+    type: standalone
+    free_members: true
+    members:
+      - name: features
+        doc: |
+          TODO
+        type: array<enum.feature_name>
+        pointer: immutable
+  - name: supported_WGSL_language_features
+    doc: |
+      TODO
+    type: standalone
+    free_members: true
+    members:
+      - name: features
+        doc: |
+          TODO
+        type: array<enum.WGSL_language_feature_name>
+        pointer: immutable
+  - name: surface_capabilities
+    doc: Filled by `::wgpuSurfaceGetCapabilities` with what's supported for `::wgpuSurfaceConfigure` for a pair of @ref WGPUSurface and @ref WGPUAdapter.
+    type: base_out
+    free_members: true
+    members:
+      - name: usages
+        doc: |
+          The bit set of supported @ref WGPUTextureUsage bits.
+          Guaranteed to contain @ref WGPUTextureUsage_RenderAttachment.
+        type: bitflag.texture_usage
+      - name: formats
+        doc: A list of supported @ref WGPUTextureFormat values, in order of preference.
+        type: array<enum.texture_format>
+        pointer: immutable
+      - name: present_modes
+        doc: |
+          A list of supported @ref WGPUPresentMode values.
+          Guaranteed to contain @ref WGPUPresentMode_Fifo.
+        type: array<enum.present_mode>
+        pointer: immutable
+      - name: alpha_modes
+        doc: |
+          A list of supported @ref WGPUCompositeAlphaMode values.
+          @ref WGPUCompositeAlphaMode_Auto will be an alias for the first element and will never be present in this array.
+        type: array<enum.composite_alpha_mode>
+        pointer: immutable
+  - name: surface_configuration
+    doc: |
+      Options to `::wgpuSurfaceConfigure` for defining how a @ref WGPUSurface will be rendered to and presented to the user.
+      See @ref Surface-Configuration for more details.
+    type: base_in
+    members:
+      - name: device
+        doc: The @ref WGPUDevice to use to render to surface's textures.
+        type: object.device
+      - name: format
+        doc: The @ref WGPUTextureFormat of the surface's textures.
+        type: enum.texture_format
+      - name: usage
+        doc: The @ref WGPUTextureUsage of the surface's textures.
+        type: bitflag.texture_usage
+      - name: width
+        doc: The width of the surface's textures.
+        type: uint32
+      - name: height
+        doc: The height of the surface's textures.
+        type: uint32
+      - name: view_formats
+        doc: The additional @ref WGPUTextureFormat for @ref WGPUTextureView format reinterpretation of the surface's textures.
+        type: array<enum.texture_format>
+        pointer: immutable
+      - name: alpha_mode
+        doc: How the surface's frames will be composited on the screen.
+        type: enum.composite_alpha_mode
+      - name: present_mode
+        doc: When and in which order the surface's frames will be shown on the screen. Defaults to @ref WGPUPresentMode_Fifo.
+        type: enum.present_mode
+  - name: surface_descriptor
+    doc: |
+      The root descriptor for the creation of an @ref WGPUSurface with `::wgpuInstanceCreateSurface`.
+      It isn't sufficient by itself and must have one of the `WGPUSurfaceSource*` in its chain.
+      See @ref Surface-Creation for more details.
+    type: base_in
+    members:
+      - name: label
+        doc: Label used to refer to the object.
+        type: string_with_default_empty
+  - name: surface_source_android_native_window
+    doc: Chained in @ref WGPUSurfaceDescriptor to make an @ref WGPUSurface wrapping an Android [`ANativeWindow`](https://developer.android.com/ndk/reference/group/a-native-window).
+    type: extension_in
+    extends:
+      - surface_descriptor
+    members:
+      - name: window
+        doc: The pointer to the [`ANativeWindow`](https://developer.android.com/ndk/reference/group/a-native-window) that will be wrapped by the @ref WGPUSurface.
+        type: c_void
+        pointer: mutable
+  - name: surface_source_metal_layer
+    doc: Chained in @ref WGPUSurfaceDescriptor to make an @ref WGPUSurface wrapping a [`CAMetalLayer`](https://developer.apple.com/documentation/quartzcore/cametallayer?language=objc).
+    type: extension_in
+    extends:
+      - surface_descriptor
+    members:
+      - name: layer
+        doc: The pointer to the [`CAMetalLayer`](https://developer.apple.com/documentation/quartzcore/cametallayer?language=objc) that will be wrapped by the @ref WGPUSurface.
+        type: c_void
+        pointer: mutable
+  - name: surface_source_wayland_surface
+    doc: Chained in @ref WGPUSurfaceDescriptor to make an @ref WGPUSurface wrapping a [Wayland](https://wayland.freedesktop.org/) [`wl_surface`](https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_surface).
+    type: extension_in
+    extends:
+      - surface_descriptor
+    members:
+      - name: display
+        doc: A [`wl_display`](https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_display) for this Wayland instance.
+        type: c_void
+        pointer: mutable
+      - name: surface
+        doc: A [`wl_surface`](https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_surface) that will be wrapped by the @ref WGPUSurface
+        type: c_void
+        pointer: mutable
+  - name: surface_source_windows_HWND
+    doc: Chained in @ref WGPUSurfaceDescriptor to make an @ref WGPUSurface wrapping a Windows [`HWND`](https://learn.microsoft.com/en-us/windows/apps/develop/ui-input/retrieve-hwnd).
+    type: extension_in
+    extends:
+      - surface_descriptor
+    members:
+      - name: hinstance
+        doc: |
+          The [`HINSTANCE`](https://learn.microsoft.com/en-us/windows/win32/learnwin32/winmain--the-application-entry-point) for this application.
+          Most commonly `GetModuleHandle(nullptr)`.
+        type: c_void
+        pointer: mutable
+      - name: hwnd
+        doc: The [`HWND`](https://learn.microsoft.com/en-us/windows/apps/develop/ui-input/retrieve-hwnd) that will be wrapped by the @ref WGPUSurface.
+        type: c_void
+        pointer: mutable
+  - name: surface_source_XCB_window
+    doc: Chained in @ref WGPUSurfaceDescriptor to make an @ref WGPUSurface wrapping an [XCB](https://xcb.freedesktop.org/) `xcb_window_t`.
+    type: extension_in
+    extends:
+      - surface_descriptor
+    members:
+      - name: connection
+        doc: The `xcb_connection_t` for the connection to the X server.
+        type: c_void
+        pointer: mutable
+      - name: window
+        doc: The `xcb_window_t` for the window that will be wrapped by the @ref WGPUSurface.
+        type: uint32
+  - name: surface_source_xlib_window
+    doc: Chained in @ref WGPUSurfaceDescriptor to make an @ref WGPUSurface wrapping an [Xlib](https://www.x.org/releases/current/doc/libX11/libX11/libX11.html) `Window`.
+    type: extension_in
+    extends:
+      - surface_descriptor
+    members:
+      - name: display
+        doc: A pointer to the [`Display`](https://www.x.org/releases/current/doc/libX11/libX11/libX11.html#Opening_the_Display) connected to the X server.
+        type: c_void
+        pointer: mutable
+      - name: window
+        doc: The [`Window`](https://www.x.org/releases/current/doc/libX11/libX11/libX11.html#Creating_Windows) that will be wrapped by the @ref WGPUSurface.
+        type: uint64
+  - name: surface_texture
+    doc: |
+      Queried each frame from a @ref WGPUSurface to get a @ref WGPUTexture to render to along with some metadata.
+      See @ref Surface-Presenting for more details.
+    type: base_out
+    members:
+      - name: texture
+        doc: |
+          The @ref WGPUTexture representing the frame that will be shown on the surface.
+          It is @ref ReturnedWithOwnership from @ref wgpuSurfaceGetCurrentTexture.
+        type: object.texture
+      - name: status
+        doc: Whether the call to `::wgpuSurfaceGetCurrentTexture` succeeded and a hint as to why it might not have.
+        type: enum.surface_get_current_texture_status
+  - name: texel_copy_buffer_info
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: layout
+        doc: |
+          TODO
+        type: struct.texel_copy_buffer_layout
+      - name: buffer
+        doc: |
+          TODO
+        type: object.buffer
+  - name: texel_copy_buffer_layout
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: offset
+        doc: |
+          TODO
+        type: uint64
+      - name: bytes_per_row
+        doc: |
+          TODO
+        type: uint32
+      - name: rows_per_image
+        doc: |
+          TODO
+        type: uint32
+  - name: texel_copy_texture_info
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: texture
+        doc: |
+          TODO
+        type: object.texture
+      - name: mip_level
+        doc: |
+          TODO
+        type: uint32
+      - name: origin
+        doc: |
+          TODO
+        type: struct.origin_3D
+      - name: aspect
+        doc: |
+          TODO
+        type: enum.texture_aspect
+  - name: texture_binding_layout
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: sample_type
+        doc: |
+          TODO
+        type: enum.texture_sample_type
+      - name: view_dimension
+        doc: |
+          TODO
+        type: enum.texture_view_dimension
+      - name: multisampled
+        doc: |
+          TODO
+        type: bool
+  - name: texture_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: usage
+        doc: |
+          TODO
+        type: bitflag.texture_usage
+      - name: dimension
+        doc: |
+          TODO
+        type: enum.texture_dimension
+      - name: size
+        doc: |
+          TODO
+        type: struct.extent_3D
+      - name: format
+        doc: |
+          TODO
+        type: enum.texture_format
+      - name: mip_level_count
+        doc: |
+          TODO
+        type: uint32
+      - name: sample_count
+        doc: |
+          TODO
+        type: uint32
+      - name: view_formats
+        doc: |
+          TODO
+        type: array<enum.texture_format>
+        pointer: immutable
+  - name: texture_view_descriptor
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: label
+        doc: |
+          TODO
+        type: string_with_default_empty
+      - name: format
+        doc: |
+          TODO
+        type: enum.texture_format
+      - name: dimension
+        doc: |
+          TODO
+        type: enum.texture_view_dimension
+      - name: base_mip_level
+        doc: |
+          TODO
+        type: uint32
+      - name: mip_level_count
+        doc: |
+          TODO
+        type: uint32
+      - name: base_array_layer
+        doc: |
+          TODO
+        type: uint32
+      - name: array_layer_count
+        doc: |
+          TODO
+        type: uint32
+      - name: aspect
+        doc: |
+          TODO
+        type: enum.texture_aspect
+      - name: usage
+        doc: |
+          TODO
+        type: bitflag.texture_usage
+  - name: vertex_attribute
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: format
+        doc: |
+          TODO
+        type: enum.vertex_format
+      - name: offset
+        doc: |
+          TODO
+        type: uint64
+      - name: shader_location
+        doc: |
+          TODO
+        type: uint32
+  - name: vertex_buffer_layout
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: step_mode
+        doc: |
+          The step mode for the vertex buffer. If @ref WGPUVertexStepMode_VertexBufferNotUsed,
+          indicates a "hole" in the parent @ref WGPUVertexState `buffers` array:
+          the pipeline does not use a vertex buffer at this `location`.
+        type: enum.vertex_step_mode
+      - name: array_stride
+        doc: |
+          TODO
+        type: uint64
+      - name: attributes
+        doc: |
+          TODO
+        type: array<struct.vertex_attribute>
+        pointer: immutable
+  - name: vertex_state
+    doc: |
+      TODO
+    type: base_in
+    members:
+      - name: module
+        doc: |
+          TODO
+        type: object.shader_module
+      - name: entry_point
+        doc: |
+          TODO
+        type: nullable_string
+      - name: constants
+        doc: |
+          TODO
+        type: array<struct.constant_entry>
+        pointer: immutable
+      - name: buffers
+        doc: |
+          TODO
+        type: array<struct.vertex_buffer_layout>
+        pointer: immutable
+callbacks:
+  - name: buffer_map
+    doc: |
+      TODO
+    style: callback_mode
+    args:
+      - name: status
+        doc: |
+          TODO
+        type: enum.map_async_status
+      - name: message
+        doc: |
+          TODO
+        type: out_string
+        passed_with_ownership: false
+  - name: compilation_info
+    doc: |
+      TODO
+    style: callback_mode
+    args:
+      - name: status
+        doc: |
+          TODO
+        type: enum.compilation_info_request_status
+      - name: compilation_info
+        doc: |
+          TODO
+        type: struct.compilation_info
+        pointer: immutable
+        passed_with_ownership: false
+  - name: create_compute_pipeline_async
+    doc: |
+      TODO
+    style: callback_mode
+    args:
+      - name: status
+        doc: |
+          TODO
+        type: enum.create_pipeline_async_status
+      - name: pipeline
+        doc: |
+          TODO
+        type: object.compute_pipeline
+        passed_with_ownership: true
+      - name: message
+        doc: |
+          TODO
+        type: out_string
+  - name: create_render_pipeline_async
+    doc: |
+      TODO
+    style: callback_mode
+    args:
+      - name: status
+        doc: |
+          TODO
+        type: enum.create_pipeline_async_status
+      - name: pipeline
+        doc: |
+          TODO
+        type: object.render_pipeline
+        passed_with_ownership: true
+      - name: message
+        doc: |
+          TODO
+        type: out_string
+  - name: device_lost
+    doc: TODO
+    style: callback_mode
+    args:
+      - name: device
+        doc: |
+          Reference to the device which was lost. If, and only if, the `reason` is @ref WGPUDeviceLostReason_FailedCreation, this is a non-null pointer to a null @ref WGPUDevice.
+        type: object.device
+        pointer: immutable
+        passed_with_ownership: false
+      - name: reason
+        doc: |
+          TODO
+        type: enum.device_lost_reason
+      - name: message
+        doc: |
+          TODO
+        type: out_string
+        passed_with_ownership: false
+  - name: pop_error_scope
+    doc: |
+      TODO
+    style: callback_mode
+    args:
+      - name: status
+        doc: |
+          See @ref WGPUPopErrorScopeStatus.
+        type: enum.pop_error_scope_status
+      - name: type
+        doc: |
+          The type of the error caught by the scope, or @ref WGPUErrorType_NoError if there was none.
+          If the `status` is not @ref WGPUPopErrorScopeStatus_Success, this is @ref WGPUErrorType_NoError.
+        type: enum.error_type
+      - name: message
+        doc: |
+          If the `type` is not @ref WGPUErrorType_NoError, this is a non-empty @ref LocalizableHumanReadableMessageString;
+          otherwise, this is an empty string.
+        type: out_string
+        passed_with_ownership: false
+  - name: queue_work_done
+    doc: |
+      TODO
+    style: callback_mode
+    args:
+      - name: status
+        doc: |
+          TODO
+        type: enum.queue_work_done_status
+  - name: request_adapter
+    doc: |
+      TODO
+    style: callback_mode
+    args:
+      - name: status
+        doc: |
+          TODO
+        type: enum.request_adapter_status
+      - name: adapter
+        doc: |
+          TODO
+        type: object.adapter
+        passed_with_ownership: true
+      - name: message
+        doc: |
+          TODO
+        type: out_string
+        passed_with_ownership: false
+  - name: request_device
+    doc: |
+      TODO
+    style: callback_mode
+    args:
+      - name: status
+        doc: |
+          TODO
+        type: enum.request_device_status
+      - name: device
+        doc: |
+          TODO
+        type: object.device
+        passed_with_ownership: true
+      - name: message
+        doc: |
+          TODO
+        type: out_string
+        passed_with_ownership: false
+  - name: uncaptured_error
+    doc: |
+      TODO
+    style: immediate
+    args:
+      - name: device
+        doc: |
+          TODO
+        type: object.device
+        pointer: immutable
+        passed_with_ownership: false
+      - name: type
+        doc: |
+          TODO
+        type: enum.error_type
+      - name: message
+        doc: |
+          TODO
+        type: out_string
+        passed_with_ownership: false
+functions:
+  - name: create_instance
+    doc: Create a WGPUInstance
+    returns:
+      doc: |
+        TODO
+      type: object.instance
+      passed_with_ownership: true
+    args:
+      - name: descriptor
+        doc: |
+          TODO
+        type: struct.instance_descriptor
+        pointer: immutable
+        optional: true
+  - name: get_instance_capabilities
+    doc: Query the supported instance capabilities.
+    returns:
+      doc: Indicates if there was an @ref OutStructChainError.
+      type: enum.status
+    args:
+      - name: capabilities
+        doc: The supported instance capabilities
+        type: struct.instance_capabilities
+        pointer: mutable
+objects:
+  - name: adapter
+    doc: |
+      TODO
+    methods:
+      - name: get_limits
+        doc: |
+          TODO
+        returns:
+          doc: Indicates if there was an @ref OutStructChainError.
+          type: enum.status
+        args:
+          - name: limits
+            doc: |
+              TODO
+            type: struct.limits
+            pointer: mutable
+      - name: has_feature
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: bool
+        args:
+          - name: feature
+            doc: |
+              TODO
+            type: enum.feature_name
+      - name: get_features
+        doc: |
+          Get the list of @ref WGPUFeatureName values supported by the adapter.
+        args:
+          - name: features
+            doc: |
+              TODO
+            type: struct.supported_features
+            pointer: mutable
+            passed_with_ownership: true
+      - name: get_info
+        doc: |
+          TODO
+        returns:
+          doc: Indicates if there was an @ref OutStructChainError.
+          type: enum.status
+        args:
+          - name: info
+            doc: |
+              TODO
+            type: struct.adapter_info
+            pointer: mutable
+            passed_with_ownership: true
+      - name: request_device
+        doc: |
+          TODO
+        callback: callback.request_device
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.device_descriptor
+            pointer: immutable
+            optional: true
+  - name: bind_group
+    doc: |
+      TODO
+    methods:
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: bind_group_layout
+    doc: |
+      TODO
+    methods:
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: buffer
+    doc: |
+      TODO
+    methods:
+      - name: map_async
+        doc: |
+          TODO
+        callback: callback.buffer_map
+        args:
+          - name: mode
+            doc: |
+              TODO
+            type: bitflag.map_mode
+          - name: offset
+            doc: |
+              TODO
+            type: usize
+          - name: size
+            doc: |
+              TODO
+            type: usize
+      - name: get_mapped_range
+        doc: |
+          TODO
+        returns:
+          doc: |
+            Returns a mutable pointer to beginning of the mapped range.
+            Returns `NULL` with @ref ImplementationDefinedLogging if:
+
+            - There is any content-timeline error as defined in the WebGPU specification for `getMappedRange()` (alignments, overlaps, etc.)
+            - The buffer is not mapped with @ref WGPUMapMode_Write.
+          type: c_void
+          pointer: mutable
+        args:
+          - name: offset
+            doc: |
+              Byte offset relative to the beginning of the buffer.
+            type: usize
+          - name: size
+            doc: |
+              Byte size of the range to get. The returned pointer is valid for exactly this many bytes.
+            type: usize
+      - name: get_const_mapped_range
+        doc: |
+          TODO
+        returns:
+          doc: |
+            Returns a const pointer to beginning of the mapped range.
+            It must not be written; writing to this range causes undefined behavior.
+            Returns `NULL` with @ref ImplementationDefinedLogging if:
+
+            - There is any content-timeline error as defined in the WebGPU specification for `getMappedRange()` (alignments, overlaps, etc.)
+              **except** for overlaps with other *const* ranges, which are allowed in C.
+              (JS does not allow this because const ranges do not exist.)
+          type: c_void
+          pointer: immutable
+        args:
+          - name: offset
+            doc: |
+              Byte offset relative to the beginning of the buffer.
+            type: usize
+          - name: size
+            doc: |
+              Byte size of the range to get. The returned pointer is valid for exactly this many bytes.
+            type: usize
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+      - name: get_usage
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: bitflag.buffer_usage
+      - name: get_size
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: uint64
+      - name: get_map_state
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: enum.buffer_map_state
+      - name: unmap
+        doc: |
+          TODO
+      - name: destroy
+        doc: |
+          TODO
+  - name: command_buffer
+    doc: |
+      TODO
+    methods:
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: command_encoder
+    doc: |
+      TODO
+    methods:
+      - name: finish
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.command_buffer
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.command_buffer_descriptor
+            pointer: immutable
+            optional: true
+      - name: begin_compute_pass
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.compute_pass_encoder
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.compute_pass_descriptor
+            pointer: immutable
+            optional: true
+      - name: begin_render_pass
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.render_pass_encoder
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.render_pass_descriptor
+            pointer: immutable
+      - name: copy_buffer_to_buffer
+        doc: |
+          TODO
+        args:
+          - name: source
+            doc: |
+              TODO
+            type: object.buffer
+          - name: source_offset
+            doc: |
+              TODO
+            type: uint64
+          - name: destination
+            doc: |
+              TODO
+            type: object.buffer
+          - name: destination_offset
+            doc: |
+              TODO
+            type: uint64
+          - name: size
+            doc: |
+              TODO
+            type: uint64
+      - name: copy_buffer_to_texture
+        doc: |
+          TODO
+        args:
+          - name: source
+            doc: |
+              TODO
+            type: struct.texel_copy_buffer_info
+            pointer: immutable
+          - name: destination
+            doc: |
+              TODO
+            type: struct.texel_copy_texture_info
+            pointer: immutable
+          - name: copy_size
+            doc: |
+              TODO
+            type: struct.extent_3D
+            pointer: immutable
+      - name: copy_texture_to_buffer
+        doc: |
+          TODO
+        args:
+          - name: source
+            doc: |
+              TODO
+            type: struct.texel_copy_texture_info
+            pointer: immutable
+          - name: destination
+            doc: |
+              TODO
+            type: struct.texel_copy_buffer_info
+            pointer: immutable
+          - name: copy_size
+            doc: |
+              TODO
+            type: struct.extent_3D
+            pointer: immutable
+      - name: copy_texture_to_texture
+        doc: |
+          TODO
+        args:
+          - name: source
+            doc: |
+              TODO
+            type: struct.texel_copy_texture_info
+            pointer: immutable
+          - name: destination
+            doc: |
+              TODO
+            type: struct.texel_copy_texture_info
+            pointer: immutable
+          - name: copy_size
+            doc: |
+              TODO
+            type: struct.extent_3D
+            pointer: immutable
+      - name: clear_buffer
+        doc: |
+          TODO
+        args:
+          - name: buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: offset
+            doc: |
+              TODO
+            type: uint64
+          - name: size
+            doc: |
+              TODO
+            type: uint64
+      - name: insert_debug_marker
+        doc: |
+          TODO
+        args:
+          - name: marker_label
+            doc: |
+              TODO
+            type: string_with_default_empty
+      - name: pop_debug_group
+        doc: |
+          TODO
+      - name: push_debug_group
+        doc: |
+          TODO
+        args:
+          - name: group_label
+            doc: |
+              TODO
+            type: string_with_default_empty
+      - name: resolve_query_set
+        doc: |
+          TODO
+        args:
+          - name: query_set
+            doc: |
+              TODO
+            type: object.query_set
+          - name: first_query
+            doc: |
+              TODO
+            type: uint32
+          - name: query_count
+            doc: |
+              TODO
+            type: uint32
+          - name: destination
+            doc: |
+              TODO
+            type: object.buffer
+          - name: destination_offset
+            doc: |
+              TODO
+            type: uint64
+      - name: write_timestamp
+        doc: |
+          TODO
+        args:
+          - name: query_set
+            doc: |
+              TODO
+            type: object.query_set
+          - name: query_index
+            doc: |
+              TODO
+            type: uint32
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: compute_pass_encoder
+    doc: |
+      TODO
+    methods:
+      - name: insert_debug_marker
+        doc: |
+          TODO
+        args:
+          - name: marker_label
+            doc: |
+              TODO
+            type: string_with_default_empty
+      - name: pop_debug_group
+        doc: |
+          TODO
+      - name: push_debug_group
+        doc: |
+          TODO
+        args:
+          - name: group_label
+            doc: |
+              TODO
+            type: string_with_default_empty
+      - name: set_pipeline
+        doc: |
+          TODO
+        args:
+          - name: pipeline
+            doc: |
+              TODO
+            type: object.compute_pipeline
+      - name: set_bind_group
+        doc: |
+          TODO
+        args:
+          - name: group_index
+            doc: |
+              TODO
+            type: uint32
+          - name: group
+            doc: |
+              TODO
+            type: object.bind_group
+            optional: true
+          - name: dynamic_offsets
+            doc: |
+              TODO
+            type: array<uint32>
+            pointer: immutable
+      - name: dispatch_workgroups
+        doc: |
+          TODO
+        args:
+          - name: workgroupCountX
+            doc: |
+              TODO
+            type: uint32
+          - name: workgroupCountY
+            doc: |
+              TODO
+            type: uint32
+          - name: workgroupCountZ
+            doc: |
+              TODO
+            type: uint32
+      - name: dispatch_workgroups_indirect
+        doc: |
+          TODO
+        args:
+          - name: indirect_buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: indirect_offset
+            doc: |
+              TODO
+            type: uint64
+      - name: end
+        doc: |
+          TODO
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: compute_pipeline
+    doc: |
+      TODO
+    methods:
+      - name: get_bind_group_layout
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.bind_group_layout
+          passed_with_ownership: true
+        args:
+          - name: group_index
+            doc: |
+              TODO
+            type: uint32
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: device
+    doc: |
+      TODO
+    methods:
+      - name: create_bind_group
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.bind_group
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.bind_group_descriptor
+            pointer: immutable
+      - name: create_bind_group_layout
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.bind_group_layout
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.bind_group_layout_descriptor
+            pointer: immutable
+      - name: create_buffer
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.buffer
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.buffer_descriptor
+            pointer: immutable
+      - name: create_command_encoder
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.command_encoder
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.command_encoder_descriptor
+            pointer: immutable
+            optional: true
+      - name: create_compute_pipeline
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.compute_pipeline
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.compute_pipeline_descriptor
+            pointer: immutable
+      - name: create_compute_pipeline_async
+        doc: |
+          TODO
+        callback: callback.create_compute_pipeline_async
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.compute_pipeline_descriptor
+            pointer: immutable
+      - name: create_pipeline_layout
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.pipeline_layout
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.pipeline_layout_descriptor
+            pointer: immutable
+      - name: create_query_set
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.query_set
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.query_set_descriptor
+            pointer: immutable
+      - name: create_render_pipeline_async
+        doc: |
+          TODO
+        callback: callback.create_render_pipeline_async
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.render_pipeline_descriptor
+            pointer: immutable
+      - name: create_render_bundle_encoder
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.render_bundle_encoder
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.render_bundle_encoder_descriptor
+            pointer: immutable
+      - name: create_render_pipeline
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.render_pipeline
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.render_pipeline_descriptor
+            pointer: immutable
+      - name: create_sampler
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.sampler
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.sampler_descriptor
+            pointer: immutable
+            optional: true
+      - name: create_shader_module
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.shader_module
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.shader_module_descriptor
+            pointer: immutable
+      - name: create_texture
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.texture
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.texture_descriptor
+            pointer: immutable
+      - name: destroy
+        doc: |
+          TODO
+      - name: get_lost_future
+        doc: ""
+        returns:
+          doc: |
+            The @ref WGPUFuture for the device-lost event of the device.
+          type: struct.future
+      - name: get_limits
+        doc: |
+          TODO
+        returns:
+          doc: Indicates if there was an @ref OutStructChainError.
+          type: enum.status
+        args:
+          - name: limits
+            doc: |
+              TODO
+            type: struct.limits
+            pointer: mutable
+      - name: has_feature
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: bool
+        args:
+          - name: feature
+            doc: |
+              TODO
+            type: enum.feature_name
+      - name: get_features
+        doc: |
+          Get the list of @ref WGPUFeatureName values supported by the device.
+        args:
+          - name: features
+            doc: |
+              TODO
+            type: struct.supported_features
+            pointer: mutable
+            passed_with_ownership: true
+      - name: get_adapter_info
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: struct.adapter_info
+          passed_with_ownership: true
+      - name: get_queue
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.queue
+          passed_with_ownership: true
+      - name: push_error_scope
+        doc: |
+          TODO
+        args:
+          - name: filter
+            doc: |
+              TODO
+            type: enum.error_filter
+      - name: pop_error_scope
+        doc: |
+          TODO
+        callback: callback.pop_error_scope
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: instance
+    doc: |
+      TODO
+    methods:
+      - name: create_surface
+        doc: Creates a @ref WGPUSurface, see @ref Surface-Creation for more details.
+        returns:
+          doc: A new @ref WGPUSurface for this descriptor (or an error @ref WGPUSurface).
+          type: object.surface
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: The description of the @ref WGPUSurface to create.
+            type: struct.surface_descriptor
+            pointer: immutable
+      - name: get_WGSL_language_features
+        doc: |
+          Get the list of @ref WGPUWGSLLanguageFeatureName values supported by the instance.
+        returns:
+          doc: |
+            TODO
+          type: enum.status
+        args:
+          - name: features
+            doc: |
+              TODO
+            type: struct.supported_WGSL_language_features
+            pointer: mutable
+      - name: has_WGSL_language_feature
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: bool
+        args:
+          - name: feature
+            doc: |
+              TODO
+            type: enum.WGSL_language_feature_name
+      - name: process_events
+        doc: |
+          Processes asynchronous events on this `WGPUInstance`, calling any callbacks for asynchronous operations created with `::WGPUCallbackMode_AllowProcessEvents`.
+
+          See @ref Process-Events for more information.
+      - name: request_adapter
+        doc: |
+          TODO
+        callback: callback.request_adapter
+        args:
+          - name: options
+            doc: |
+              TODO
+            type: struct.request_adapter_options
+            pointer: immutable
+            optional: true
+      - name: wait_any
+        doc: |
+          Wait for at least one WGPUFuture in `futures` to complete, and call callbacks of the respective completed asynchronous operations.
+
+          See @ref Wait-Any for more information.
+        returns:
+          doc: |
+            TODO
+          type: enum.wait_status
+        args:
+          - name: future_count
+            doc: |
+              TODO
+            type: usize
+          - name: futures
+            doc: |
+              TODO
+            type: struct.future_wait_info
+            pointer: mutable
+            optional: true
+          - name: timeout_NS
+            doc: |
+              TODO
+            type: uint64
+  - name: pipeline_layout
+    doc: |
+      TODO
+    methods:
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: query_set
+    doc: |
+      TODO
+    methods:
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+      - name: get_type
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: enum.query_type
+      - name: get_count
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: uint32
+      - name: destroy
+        doc: |
+          TODO
+  - name: queue
+    doc: |
+      TODO
+    methods:
+      - name: submit
+        doc: |
+          TODO
+        args:
+          - name: commands
+            doc: |
+              TODO
+            type: array<object.command_buffer>
+            pointer: immutable
+      - name: on_submitted_work_done
+        doc: |
+          TODO
+        callback: callback.queue_work_done
+      - name: write_buffer
+        doc: |
+          Produces a @ref DeviceError both content-timeline (`size` alignment) and device-timeline
+          errors defined by the WebGPU specification.
+        args:
+          - name: buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: buffer_offset
+            doc: |
+              TODO
+            type: uint64
+          - name: data
+            doc: |
+              TODO
+            type: c_void
+            pointer: immutable
+          - name: size
+            doc: |
+              TODO
+            type: usize
+      - name: write_texture
+        doc: |
+          TODO
+        args:
+          - name: destination
+            doc: |
+              TODO
+            type: struct.texel_copy_texture_info
+            pointer: immutable
+          - name: data
+            doc: |
+              TODO
+            type: c_void
+            pointer: immutable
+          - name: data_size
+            doc: |
+              TODO
+            type: usize
+          - name: data_layout
+            doc: |
+              TODO
+            type: struct.texel_copy_buffer_layout
+            pointer: immutable
+          - name: write_size
+            doc: |
+              TODO
+            type: struct.extent_3D
+            pointer: immutable
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: render_bundle
+    doc: |
+      TODO
+    methods:
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: render_bundle_encoder
+    doc: |
+      TODO
+    methods:
+      - name: set_pipeline
+        doc: |
+          TODO
+        args:
+          - name: pipeline
+            doc: |
+              TODO
+            type: object.render_pipeline
+      - name: set_bind_group
+        doc: |
+          TODO
+        args:
+          - name: group_index
+            doc: |
+              TODO
+            type: uint32
+          - name: group
+            doc: |
+              TODO
+            type: object.bind_group
+            optional: true
+          - name: dynamic_offsets
+            doc: |
+              TODO
+            type: array<uint32>
+            pointer: immutable
+      - name: draw
+        doc: |
+          TODO
+        args:
+          - name: vertex_count
+            doc: |
+              TODO
+            type: uint32
+          - name: instance_count
+            doc: |
+              TODO
+            type: uint32
+          - name: first_vertex
+            doc: |
+              TODO
+            type: uint32
+          - name: first_instance
+            doc: |
+              TODO
+            type: uint32
+      - name: draw_indexed
+        doc: |
+          TODO
+        args:
+          - name: index_count
+            doc: |
+              TODO
+            type: uint32
+          - name: instance_count
+            doc: |
+              TODO
+            type: uint32
+          - name: first_index
+            doc: |
+              TODO
+            type: uint32
+          - name: base_vertex
+            doc: |
+              TODO
+            type: int32
+          - name: first_instance
+            doc: |
+              TODO
+            type: uint32
+      - name: draw_indirect
+        doc: |
+          TODO
+        args:
+          - name: indirect_buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: indirect_offset
+            doc: |
+              TODO
+            type: uint64
+      - name: draw_indexed_indirect
+        doc: |
+          TODO
+        args:
+          - name: indirect_buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: indirect_offset
+            doc: |
+              TODO
+            type: uint64
+      - name: insert_debug_marker
+        doc: |
+          TODO
+        args:
+          - name: marker_label
+            doc: |
+              TODO
+            type: string_with_default_empty
+      - name: pop_debug_group
+        doc: |
+          TODO
+      - name: push_debug_group
+        doc: |
+          TODO
+        args:
+          - name: group_label
+            doc: |
+              TODO
+            type: string_with_default_empty
+      - name: set_vertex_buffer
+        doc: |
+          TODO
+        args:
+          - name: slot
+            doc: |
+              TODO
+            type: uint32
+          - name: buffer
+            doc: |
+              TODO
+            type: object.buffer
+            optional: true
+          - name: offset
+            doc: |
+              TODO
+            type: uint64
+          - name: size
+            doc: |
+              TODO
+            type: uint64
+      - name: set_index_buffer
+        doc: |
+          TODO
+        args:
+          - name: buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: format
+            doc: |
+              TODO
+            type: enum.index_format
+          - name: offset
+            doc: |
+              TODO
+            type: uint64
+          - name: size
+            doc: |
+              TODO
+            type: uint64
+      - name: finish
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.render_bundle
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.render_bundle_descriptor
+            pointer: immutable
+            optional: true
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: render_pass_encoder
+    doc: |
+      TODO
+    methods:
+      - name: set_pipeline
+        doc: |
+          TODO
+        args:
+          - name: pipeline
+            doc: |
+              TODO
+            type: object.render_pipeline
+      - name: set_bind_group
+        doc: |
+          TODO
+        args:
+          - name: group_index
+            doc: |
+              TODO
+            type: uint32
+          - name: group
+            doc: |
+              TODO
+            type: object.bind_group
+            optional: true
+          - name: dynamic_offsets
+            doc: |
+              TODO
+            type: array<uint32>
+            pointer: immutable
+      - name: draw
+        doc: |
+          TODO
+        args:
+          - name: vertex_count
+            doc: |
+              TODO
+            type: uint32
+          - name: instance_count
+            doc: |
+              TODO
+            type: uint32
+          - name: first_vertex
+            doc: |
+              TODO
+            type: uint32
+          - name: first_instance
+            doc: |
+              TODO
+            type: uint32
+      - name: draw_indexed
+        doc: |
+          TODO
+        args:
+          - name: index_count
+            doc: |
+              TODO
+            type: uint32
+          - name: instance_count
+            doc: |
+              TODO
+            type: uint32
+          - name: first_index
+            doc: |
+              TODO
+            type: uint32
+          - name: base_vertex
+            doc: |
+              TODO
+            type: int32
+          - name: first_instance
+            doc: |
+              TODO
+            type: uint32
+      - name: draw_indirect
+        doc: |
+          TODO
+        args:
+          - name: indirect_buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: indirect_offset
+            doc: |
+              TODO
+            type: uint64
+      - name: draw_indexed_indirect
+        doc: |
+          TODO
+        args:
+          - name: indirect_buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: indirect_offset
+            doc: |
+              TODO
+            type: uint64
+      - name: execute_bundles
+        doc: |
+          TODO
+        args:
+          - name: bundles
+            doc: |
+              TODO
+            type: array<object.render_bundle>
+            pointer: immutable
+      - name: insert_debug_marker
+        doc: |
+          TODO
+        args:
+          - name: marker_label
+            doc: |
+              TODO
+            type: string_with_default_empty
+      - name: pop_debug_group
+        doc: |
+          TODO
+      - name: push_debug_group
+        doc: |
+          TODO
+        args:
+          - name: group_label
+            doc: |
+              TODO
+            type: string_with_default_empty
+      - name: set_stencil_reference
+        doc: |
+          TODO
+        args:
+          - name: reference
+            doc: |
+              TODO
+            type: uint32
+      - name: set_blend_constant
+        doc: |
+          TODO
+        args:
+          - name: color
+            doc: |
+              TODO
+            type: struct.color
+            pointer: immutable
+      - name: set_viewport
+        doc: |
+          TODO
+        args:
+          - name: x
+            doc: |
+              TODO
+            type: float32
+          - name: y
+            doc: |
+              TODO
+            type: float32
+          - name: width
+            doc: |
+              TODO
+            type: float32
+          - name: height
+            doc: |
+              TODO
+            type: float32
+          - name: min_depth
+            doc: |
+              TODO
+            type: float32
+          - name: max_depth
+            doc: |
+              TODO
+            type: float32
+      - name: set_scissor_rect
+        doc: |
+          TODO
+        args:
+          - name: x
+            doc: |
+              TODO
+            type: uint32
+          - name: y
+            doc: |
+              TODO
+            type: uint32
+          - name: width
+            doc: |
+              TODO
+            type: uint32
+          - name: height
+            doc: |
+              TODO
+            type: uint32
+      - name: set_vertex_buffer
+        doc: |
+          TODO
+        args:
+          - name: slot
+            doc: |
+              TODO
+            type: uint32
+          - name: buffer
+            doc: |
+              TODO
+            type: object.buffer
+            optional: true
+          - name: offset
+            doc: |
+              TODO
+            type: uint64
+          - name: size
+            doc: |
+              TODO
+            type: uint64
+      - name: set_index_buffer
+        doc: |
+          TODO
+        args:
+          - name: buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: format
+            doc: |
+              TODO
+            type: enum.index_format
+          - name: offset
+            doc: |
+              TODO
+            type: uint64
+          - name: size
+            doc: |
+              TODO
+            type: uint64
+      - name: begin_occlusion_query
+        doc: |
+          TODO
+        args:
+          - name: query_index
+            doc: |
+              TODO
+            type: uint32
+      - name: end_occlusion_query
+        doc: |
+          TODO
+      - name: end
+        doc: |
+          TODO
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: render_pipeline
+    doc: |
+      TODO
+    methods:
+      - name: get_bind_group_layout
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.bind_group_layout
+          passed_with_ownership: true
+        args:
+          - name: group_index
+            doc: |
+              TODO
+            type: uint32
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: sampler
+    doc: |
+      TODO
+    methods:
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: shader_module
+    doc: |
+      TODO
+    methods:
+      - name: get_compilation_info
+        doc: |
+          TODO
+        callback: callback.compilation_info
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+  - name: surface
+    doc: An object used to continuously present image data to the user, see @ref Surfaces for more details.
+    methods:
+      - name: configure
+        doc: |
+          Configures parameters for rendering to `surface`.
+          Produces a @ref DeviceError for all content-timeline errors defined by the WebGPU specification.
+
+          See @ref Surface-Configuration for more details.
+        args:
+          - name: config
+            doc: The new configuration to use.
+            type: struct.surface_configuration
+            pointer: immutable
+      - name: get_capabilities
+        doc: |
+          Provides information on how `adapter` is able to use `surface`.
+          See @ref Surface-Capabilities for more details.
+        returns:
+          doc: Indicates if there was an @ref OutStructChainError.
+          type: enum.status
+        args:
+          - name: adapter
+            doc: The @ref WGPUAdapter to get capabilities for presenting to this @ref WGPUSurface.
+            type: object.adapter
+          - name: capabilities
+            doc: |
+              The structure to fill capabilities in.
+              It may contain memory allocations so `::wgpuSurfaceCapabilitiesFreeMembers` must be called to avoid memory leaks.
+            type: struct.surface_capabilities
+            pointer: mutable
+            passed_with_ownership: true
+      - name: get_current_texture
+        doc: |
+          Returns the @ref WGPUTexture to render to `surface` this frame along with metadata on the frame.
+          Returns `NULL` and @ref WGPUSurfaceGetCurrentTextureStatus_Error if the surface is not configured.
+
+          See @ref Surface-Presenting for more details.
+        args:
+          - name: surface_texture
+            doc: The structure to fill the @ref WGPUTexture and metadata in.
+            type: struct.surface_texture
+            pointer: mutable
+      - name: present
+        doc: |
+          Shows `surface`'s current texture to the user.
+          See @ref Surface-Presenting for more details.
+        returns:
+          doc: |
+            Returns @ref WGPUStatus_Error if the surface doesn't have a current texture.
+          type: enum.status
+      - name: unconfigure
+        doc: |
+          Removes the configuration for `surface`.
+          See @ref Surface-Configuration for more details.
+      - name: set_label
+        doc: Modifies the label used to refer to `surface`.
+        args:
+          - name: label
+            doc: The new label.
+            type: string_with_default_empty
+  - name: texture
+    doc: |
+      TODO
+    methods:
+      - name: create_view
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.texture_view
+          passed_with_ownership: true
+        args:
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.texture_view_descriptor
+            pointer: immutable
+            optional: true
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty
+      - name: get_width
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: uint32
+      - name: get_height
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: uint32
+      - name: get_depth_or_array_layers
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: uint32
+      - name: get_mip_level_count
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: uint32
+      - name: get_sample_count
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: uint32
+      - name: get_dimension
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: enum.texture_dimension
+      - name: get_format
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: enum.texture_format
+      - name: get_usage
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: bitflag.texture_usage
+      - name: destroy
+        doc: |
+          TODO
+  - name: texture_view
+    doc: |
+      TODO
+    methods:
+      - name: set_label
+        doc: |
+          TODO
+        args:
+          - name: label
+            doc: |
+              TODO
+            type: string_with_default_empty

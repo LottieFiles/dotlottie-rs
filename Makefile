@@ -2,7 +2,7 @@
 # Main build orchestrator for dotlottie-ffi across multiple platforms
 
 # Variables that can be overridden
-BINDINGS_DIR ?= dotlottie-ffi/uniffi-bindings
+BINDINGS_DIR ?= dotlottie-rs/build
 
 .PHONY: all clean help list-platforms test clippy native native-clean
 
@@ -27,6 +27,15 @@ help:
 	@echo "  make wasm                                         - Build WASM module"
 	@echo "  make linux                                        - Build all Linux targets"
 	@echo "  make native                                       - Build native (current platform)"
+	@echo "  make native-opengl                                - Build native (current platform) with opengl renderer"
+	@echo "  make native-webgpu                                - Build native (current platform) with webgpu renderer"
+	@echo ""
+	@echo "Wasm Targets:"
+	@echo "==============="
+	@echo "  make wasm                              	   	   - Build WASM module with software renderer"
+	@echo "  make wasm-webgl                              	   - Build WASM module with webgl renderer"
+	@echo "  make wasm-webgpu                                  - Build WASM module with webgpu renderer"
+	@echo "  make wasm-all                            - Build all WASM modules"
 	@echo ""
 	@echo "Android Targets:"
 	@echo "==============="
@@ -37,8 +46,9 @@ help:
 	@echo ""
 	@echo "Apple Targets:"
 	@echo "=============="
-	@echo "  make apple-macos                                  - Build all macOS targets"
-	@echo "  make apple-ios                                    - Build all iOS targets"
+	@echo "  make apple-webgpu                                 - Build all Apple targets ([Experimntal] WebGPU on macOS, software on others)"
+	@echo "  make apple-macos                                  - Build all macOS targets (software)"
+	@echo "  make apple-ios                                    - Build all iOS targets (software)"
 	@echo "  make apple-visionos                               - Build all visionOS targets"
 	@echo "  make apple-tvos                                   - Build all tvOS targets"
 	@echo "  make apple-maccatalyst                            - Build all macCatalyst targets"
@@ -94,7 +104,6 @@ setup: android-setup apple-setup wasm-setup linux-setup
 # Clean all build artifacts
 clean: native-clean
 	@echo "Cleaning all build artifacts..."
-	cargo clean --manifest-path dotlottie-ffi/Cargo.toml
 	cargo clean --manifest-path dotlottie-rs/Cargo.toml
 	rm -rf $(BINDINGS_DIR)
 	@echo "Clean complete."
@@ -102,19 +111,20 @@ clean: native-clean
 # Run tests
 test:
 	cargo test --manifest-path dotlottie-rs/Cargo.toml -- --test-threads=1
-	cargo test --manifest-path dotlottie-ffi/Cargo.toml -- --test-threads=1
 
 # Run clippy
 clippy:
 	cargo clippy --manifest-path dotlottie-rs/Cargo.toml --all-targets -- -D clippy::print_stdout
-	cargo clippy --manifest-path dotlottie-ffi/Cargo.toml --all-targets -- -D clippy::print_stdout
 
 # Native build variables
 NATIVE = native
 RELEASE = release
 RUNTIME_FFI = dotlottie-ffi
+DOTLOTTIE_ROOT = dotlottie-rs
+RELEASE_FILE_NAME = dotlottie_player
+RUNTIME_HEADER = $(RELEASE_FILE_NAME).h
+BUILD_DIR = $(DOTLOTTIE_ROOT)/build
 DOTLOTTIE_PLAYER = dotlottie-player
-RUNTIME_FFI_HEADER = dotlottie_player.h
 NATIVE_FEATURES = ffi,tvg,tvg-sw,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions
 
 DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR = $(RELEASE)/$(NATIVE)/$(DOTLOTTIE_PLAYER)
@@ -125,17 +135,50 @@ DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR = $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)
 define NATIVE_RELEASE
 	rm -rf $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)
 	mkdir -p $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR) $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)
-	cp $(RUNTIME_FFI)/bindings.h $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR)/$(RUNTIME_FFI_HEADER)
-	find $(RUNTIME_FFI)/target/release/ -maxdepth 1 \( -name '*.so' -or -name '*.dylib' -or -name "*.dll" \) \
-		-exec cp {} $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR) \;
+	cp $(BUILD_DIR)/$(RUNTIME_HEADER) $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR)/$(RUNTIME_HEADER)
+	find $(DOTLOTTIE_ROOT)/target/release/ -maxdepth 1 \( -name '*.so' -or -name '*.dylib' -or -name "*.dll" \) \
+		-exec sh -c 'cp "$$1" "$(DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR)/lib$(RELEASE_FILE_NAME).$${1##*.}"' _ {} \;
 endef
 
 # Build native libraries for the current platform
-native:
-	@echo "Building native libraries for current platform..."
-	cargo build --manifest-path $(RUNTIME_FFI)/Cargo.toml --features $(NATIVE_FEATURES) --release
+# Native build variables (using dotlottie-rs c_api)
+NATIVE_FEATURES = tvg,tvg-sw,c_api
+NATIVE_RELEASE_DIR = $(RELEASE)/native
+NATIVE_LIB_DIR = $(NATIVE_RELEASE_DIR)/lib
+NATIVE_INCLUDE_DIR = $(NATIVE_RELEASE_DIR)/include
+
+native-opengl:
+	@echo "→ Building OpenGL-only variant..."
+	@echo "Building native libraries with dotlottie-rs c_api and OpenGL..."
+	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features c_api,tvg,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
+
 	$(NATIVE_RELEASE)
-	@echo "✓ Native build complete. Artifacts available in $(RELEASE)/$(NATIVE)/"
+
+	@echo "✓ Native build with OpenGL complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
+	@echo "   Library: $(NATIVE_LIB_DIR)/"
+	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/$(RUNTIME_HEADER)"
+
+native-webgpu:
+	@echo "→ Building WebGPU-only variant..."
+	@echo "Building native libraries with dotlottie-rs c_api and WebGPU..."
+	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features c_api,tvg,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
+
+	$(NATIVE_RELEASE)
+
+	@echo "✓ Native build with WebGPU complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
+	@echo "   Library: $(NATIVE_LIB_DIR)/"
+	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/$(RUNTIME_HEADER)"
+	
+# Build native libraries using dotlottie-rs c_api
+native:
+	@echo "Building native libraries with dotlottie-rs c_api..."
+	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features $(NATIVE_FEATURES) --release
+
+	$(NATIVE_RELEASE)
+
+	@echo "✓ Native build complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
+	@echo "   Library: $(NATIVE_LIB_DIR)/"
+	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/$(RUNTIME_HEADER)"
 
 # Clean native artifacts
 native-clean:

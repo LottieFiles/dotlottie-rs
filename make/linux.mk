@@ -1,6 +1,6 @@
 # Default Rust features for Linux builds
 LINUX_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-LINUX_DEFAULT_FEATURES = tvg,tvg-sw,ffi
+LINUX_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
 
 ifdef FEATURES
 	LINUX_FEATURES = $(FEATURES)
@@ -12,14 +12,14 @@ LINUX_RELEASE_DIR ?= $(RELEASE_DIR)/linux
 DOTLOTTIE_PLAYER_DIR ?= dotlottie-player
 
 # Library names
-LINUX_FFI_LIB_BASE ?= libdotlottie_player
+LINUX_FFI_LIB_BASE ?= libdotlottie_rs
 LINUX_STATIC_LIB := $(LINUX_FFI_LIB_BASE).a
 LINUX_SHARED_LIB := $(LINUX_FFI_LIB_BASE).so
-LINUX_HEADER_FILE := bindings.h
-LINUX_HEADER_OUTPUT := dotlottie_player.h
+LINUX_HEADER_FILE := dotlottie_player.h
+LINUX_HEADER_DIR := dotlottie-rs/build
 
 # Get version information
-CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-ffi/Cargo.toml | grep -o '[0-9][0-9.]*')
+CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-rs/Cargo.toml | grep -o '[0-9][0-9.]*')
 COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
 # Linux target mapping
@@ -45,25 +45,25 @@ define LINUX_PACKAGE_ARCH
 	@mkdir -p $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/include
 	@mkdir -p $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib
 
-	# Copy header file and rename to dotlottie_player.h
-	@if [ -f "dotlottie-ffi/$(LINUX_HEADER_FILE)" ]; then \
-		cp dotlottie-ffi/$(LINUX_HEADER_FILE) $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/include/$(LINUX_HEADER_OUTPUT); \
+	# Copy header file
+	@if [ -f "$(LINUX_HEADER_DIR)/$(LINUX_HEADER_FILE)" ]; then \
+		cp $(LINUX_HEADER_DIR)/$(LINUX_HEADER_FILE) $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/include/$(LINUX_HEADER_FILE); \
 	else \
-		echo "Error: $(LINUX_HEADER_FILE) not found"; \
+		echo "Error: $(LINUX_HEADER_FILE) not found in $(LINUX_HEADER_DIR)"; \
 		exit 1; \
 	fi
 
 	# Copy static library
-	@if [ -f "dotlottie-ffi/target/$(LINUX_TARGET_$(1))/release/$(LINUX_STATIC_LIB)" ]; then \
-		cp dotlottie-ffi/target/$(LINUX_TARGET_$(1))/release/$(LINUX_STATIC_LIB) \
+	@if [ -f "dotlottie-rs/target/$(LINUX_TARGET_$(1))/release/$(LINUX_STATIC_LIB)" ]; then \
+		cp dotlottie-rs/target/$(LINUX_TARGET_$(1))/release/$(LINUX_STATIC_LIB) \
 		   $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/; \
 	else \
 		echo "Warning: $(LINUX_STATIC_LIB) not found for $(1)"; \
 	fi
 
 	# Copy shared library and strip it
-	@if [ -f "dotlottie-ffi/target/$(LINUX_TARGET_$(1))/release/$(LINUX_SHARED_LIB)" ]; then \
-		cp dotlottie-ffi/target/$(LINUX_TARGET_$(1))/release/$(LINUX_SHARED_LIB) \
+	@if [ -f "dotlottie-rs/target/$(LINUX_TARGET_$(1))/release/$(LINUX_SHARED_LIB)" ]; then \
+		cp dotlottie-rs/target/$(LINUX_TARGET_$(1))/release/$(LINUX_SHARED_LIB) \
 		   $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/; \
 		if [ "$(1)" = "arm64" ]; then \
 			if command -v aarch64-linux-gnu-strip >/dev/null 2>&1; then \
@@ -104,7 +104,7 @@ linux-x86_64: linux-check-deps
 	CFLAGS="-fPIC" \
 	CXXFLAGS="-fPIC -std=c++14" \
 	cargo build \
-		--manifest-path dotlottie-ffi/Cargo.toml \
+		--manifest-path dotlottie-rs/Cargo.toml \
 		--target $(LINUX_TARGET_x86_64) \
 		--release \
 		--no-default-features \
@@ -128,7 +128,7 @@ linux-arm64: linux-check-deps
 		CXXFLAGS="-fPIC -std=c++14" \
 		CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="gcc" \
 		cargo build \
-			--manifest-path dotlottie-ffi/Cargo.toml \
+			--manifest-path dotlottie-rs/Cargo.toml \
 			--target $(LINUX_TARGET_arm64) \
 			--release \
 			--no-default-features \
@@ -142,7 +142,7 @@ linux-arm64: linux-check-deps
 		CXXFLAGS="-fPIC -std=c++14" \
 		CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="aarch64-linux-gnu-gcc" \
 		cargo build \
-			--manifest-path dotlottie-ffi/Cargo.toml \
+			--manifest-path dotlottie-rs/Cargo.toml \
 			--target $(LINUX_TARGET_arm64) \
 			--release \
 			--no-default-features \
@@ -194,8 +194,8 @@ linux-clean:
 	@rm -rf $(LINUX_RELEASE_DIR)
 	@# Clean specific target directories
 	@for target in $(LINUX_TARGETS); do \
-		if [ -d "dotlottie-ffi/target/$$target" ]; then \
-			rm -rf dotlottie-ffi/target/$$target/release; \
+		if [ -d "dotlottie-rs/target/$$target" ]; then \
+			rm -rf dotlottie-rs/target/$$target/release; \
 		fi; \
 	done
 	@echo "✓ Linux builds cleaned"

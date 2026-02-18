@@ -1,95 +1,47 @@
-use std::sync::{Arc, Mutex};
+use std::ffi::CString;
 
-use dotlottie_rs::{Config, DotLottiePlayer, Observer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 
 mod test_utils;
 
 use crate::test_utils::{HEIGHT, WIDTH};
 
-struct MockObserver {
-    events: Arc<Mutex<Vec<String>>>,
-}
-
-impl MockObserver {
-    fn new(events: Arc<Mutex<Vec<String>>>) -> Self {
-        MockObserver { events }
-    }
-}
-
-impl Observer for MockObserver {
-    fn on_load_error(&self) {
-        let mut events = self.events.lock().unwrap();
-        events.push("on_load_error".to_string());
-    }
-
-    fn on_load(&self) {
-        let mut events = self.events.lock().unwrap();
-        events.push("on_load".to_string());
-    }
-
-    fn on_play(&self) {
-        let mut events = self.events.lock().unwrap();
-        events.push("on_play".to_string());
-    }
-
-    fn on_pause(&self) {
-        let mut events = self.events.lock().unwrap();
-        events.push("on_pause".to_string());
-    }
-
-    fn on_stop(&self) {
-        let mut events = self.events.lock().unwrap();
-        events.push("on_stop".to_string());
-    }
-
-    fn on_complete(&self) {
-        let mut events = self.events.lock().unwrap();
-        events.push("on_complete".to_string());
-    }
-
-    fn on_loop(&self, loop_count: u32) {
-        let mut events = self.events.lock().unwrap();
-        events.push(format!("on_loop: {loop_count}"));
-    }
-
-    fn on_frame(&self, frame: f32) {
-        let mut events = self.events.lock().unwrap();
-        events.push(format!("on_frame: {frame}"));
-    }
-
-    fn on_render(&self, frame: f32) {
-        let mut events = self.events.lock().unwrap();
-        events.push(format!("on_render: {frame}"));
-    }
-}
-
 #[cfg(test)]
 mod tests {
+
+    use dotlottie_rs::DotLottieEvent;
 
     use super::*;
 
     #[test]
     fn test_subscribe_unsubscribe() {
-        let player = DotLottiePlayer::new(Config {
-            autoplay: true,
-            loop_animation: true,
-            ..Config::default()
-        });
+        let mut events: Vec<String> = vec![];
 
-        let events = Arc::new(Mutex::new(vec![]));
-        let observer_events = Arc::clone(&events);
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_use_frame_interpolation(false);
 
-        let observer = MockObserver::new(observer_events);
-        let observer_arc: Arc<dyn Observer> = Arc::new(observer);
-        player.subscribe(Arc::clone(&observer_arc));
+        let invalid_path = CString::new("invalid/path").unwrap();
+        let valid_path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert!(
-            !player.load_animation_path("invalid/path", WIDTH, HEIGHT),
+            player
+                .load_animation_path(&invalid_path, WIDTH, HEIGHT)
+                .is_err(),
             "Invalid path should not load"
         );
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player
+                .load_animation_path(&valid_path, WIDTH, HEIGHT)
+                .is_ok(),
             "Valid path should load"
         );
 
@@ -102,17 +54,17 @@ mod tests {
         // animation loop
         loop {
             let next_frame = player.request_frame();
-            if player.set_frame(next_frame) {
+            if player.set_frame(next_frame).is_ok() {
                 expected_events.push(format!("on_frame: {}", player.current_frame()));
-                if player.render() {
+                if player.render().is_ok() {
                     expected_events.push(format!("on_render: {}", player.current_frame()));
                     if player.is_complete() {
-                        if player.config().loop_animation {
-                            let loop_count = player.loop_count();
+                        if player.loop_animation() {
+                            let loop_count = player.current_loop_count();
                             expected_events.push(format!("on_loop: {loop_count}"));
 
                             if loop_count == 1 {
-                                player.pause();
+                                let _ = player.pause();
                                 break;
                             }
                         } else {
@@ -124,14 +76,30 @@ mod tests {
             }
         }
 
-        player.stop();
+        let _ = player.stop();
 
         expected_events.push("on_pause".to_string());
+        // Stop set_frame to 0.0 before seding stop event
+        expected_events.push("on_frame: 0".to_string());
         expected_events.push("on_stop".to_string());
 
-        let recorded_events = events.lock().unwrap();
+        while let Some(event) = player.poll_event() {
+            let event_str = match event {
+                DotLottieEvent::Load => "on_load".to_string(),
+                DotLottieEvent::LoadError => "on_load_error".to_string(),
+                DotLottieEvent::Play => "on_play".to_string(),
+                DotLottieEvent::Pause => "on_pause".to_string(),
+                DotLottieEvent::Stop => "on_stop".to_string(),
+                DotLottieEvent::Frame { frame_no } => format!("on_frame: {frame_no}"),
+                DotLottieEvent::Render { frame_no } => format!("on_render: {frame_no}"),
+                DotLottieEvent::Loop { loop_count } => format!("on_loop: {loop_count}"),
+                DotLottieEvent::Complete => "on_complete".to_string(),
+            };
 
-        for (i, event) in recorded_events.iter().enumerate() {
+            events.push(event_str);
+        }
+
+        for (i, event) in events.iter().enumerate() {
             assert_eq!(
                 event, &expected_events[i],
                 "Mismatch at event index {}: expected '{}', found '{}'",
@@ -139,16 +107,14 @@ mod tests {
             );
         }
 
-        // unsubscribe the observer
-        player.unsubscribe(&observer_arc);
-
-        assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+        assert_eq!(
+            player.load_animation_path(&valid_path, WIDTH, HEIGHT),
+            Ok(()),
             "Valid path should load"
         );
 
         assert_eq!(
-            recorded_events.len(),
+            events.len(),
             expected_events.len(),
             "Events should not change after unsubscribing"
         );

@@ -1,237 +1,276 @@
-use std::sync::{Arc, Mutex};
+use std::ffi::CString;
 
-use dotlottie_rs::{Config, DotLottiePlayer, Observer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 
 mod test_utils;
 
 use crate::test_utils::{HEIGHT, WIDTH};
 
-struct LoopObserver {
-    loop_count: Arc<Mutex<u32>>,
-    completed: Arc<Mutex<bool>>,
-}
-
-impl Observer for LoopObserver {
-    fn on_loop(&self, _count: u32) {
-        let mut count = self.loop_count.lock().unwrap();
-        *count += 1;
-    }
-
-    fn on_load(&self) {}
-
-    fn on_load_error(&self) {}
-
-    fn on_play(&self) {}
-
-    fn on_pause(&self) {}
-
-    fn on_stop(&self) {}
-
-    fn on_frame(&self, _: f32) {}
-
-    fn on_render(&self, _: f32) {}
-
-    fn on_complete(&self) {
-        let mut completed = self.completed.lock().unwrap();
-        *completed = true;
-    }
-}
-
 #[cfg(test)]
 mod play_mode_tests {
-    use dotlottie_rs::Mode;
+    use dotlottie_rs::{DotLottieEvent, Mode};
 
     use super::*;
 
     #[test]
     fn test_default_play_mode() {
-        let player = DotLottiePlayer::new(Config::default());
+        let player = DotLottiePlayer::new();
 
-        assert_eq!(player.config().mode, Mode::Forward);
+        assert_eq!(player.mode(), Mode::Forward);
     }
 
     #[test]
     fn test_loop_count_with_loop_animation_false() {
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            loop_animation: false,
-            loop_count: 3,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
+        player.set_loop(false);
+        player.set_loop_count(3);
 
-        let observed_loops = Arc::new(Mutex::new(0));
-        let observed_completed = Arc::new(Mutex::new(false));
-        let observer = Arc::new(LoopObserver {
-            loop_count: Arc::clone(&observed_loops),
-            completed: Arc::clone(&observed_completed),
-        });
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        player.subscribe(observer);
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
+        let mut observed_loops = 0;
+        let mut observed_completed = false;
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
-        let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 0, "Should not have looped");
+        while let Some(event) = player.poll_event() {
+            match event {
+                DotLottieEvent::Loop { loop_count } => {
+                    observed_loops = loop_count;
+                }
+                DotLottieEvent::Complete => {
+                    observed_completed = true;
+                }
+                _ => {}
+            }
+        }
 
+        assert_eq!(observed_loops, 0, "Should not have looped");
+
+        assert!(observed_completed);
         assert!(player.is_complete());
     }
 
     #[test]
     fn test_zero_loop_count() {
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 0,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(0);
+        player.set_use_frame_interpolation(false);
 
-        let observed_loops = Arc::new(Mutex::new(0));
-        let observed_completed = Arc::new(Mutex::new(false));
-        let observer = Arc::new(LoopObserver {
-            loop_count: Arc::clone(&observed_loops),
-            completed: Arc::clone(&observed_completed),
-        });
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        player.subscribe(observer);
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
+        let mut observed_loops = 0;
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
-        let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 6, "Will loop and ignore loop count");
+        while let Some(event) = player.poll_event() {
+            if let DotLottieEvent::Loop { loop_count } = event {
+                observed_loops = loop_count;
+            }
+        }
 
+        assert_eq!(observed_loops, 6, "Will loop and ignore loop count");
+
+        // Same behaviour before refactor. I think is_complete should be false but its true
         assert!(player.is_complete());
     }
 
     #[test]
     fn test_playing_after_loop_has_completed() {
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 3,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(3);
 
-        let observed_loops = Arc::new(Mutex::new(0));
-        let observed_completed = Arc::new(Mutex::new(false));
-        let observer = Arc::new(LoopObserver {
-            loop_count: Arc::clone(&observed_loops),
-            completed: Arc::clone(&observed_completed),
-        });
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        player.subscribe(observer);
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
+        let mut observed_loops = 0;
+        let mut observed_completed = false;
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
-        let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
+        while let Some(event) = player.poll_event() {
+            match event {
+                DotLottieEvent::Loop { loop_count } => {
+                    observed_loops = loop_count;
+                }
+                DotLottieEvent::Complete => {
+                    observed_completed = true;
+                }
+                _ => {}
+            }
+        }
 
-        let completed = *observed_completed.lock().unwrap();
-        assert!(completed);
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
+        assert!(observed_completed);
 
         // Restart the player
-        player.play();
+        let _ = player.play();
+        observed_completed = false;
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
-        let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 6, "Should have looped 6 times, got {loops}");
+        while let Some(event) = player.poll_event() {
+            match event {
+                DotLottieEvent::Loop { loop_count } => {
+                    observed_loops = loop_count;
+                }
+                DotLottieEvent::Complete => {
+                    observed_completed = true;
+                }
+                _ => {}
+            }
+        }
+
+        // loop count resets on complete
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
+        assert!(observed_completed);
     }
 
     #[test]
     fn test_loop_count_paused_mid_play() {
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 5,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(5);
 
-        let observed_loops = Arc::new(Mutex::new(0));
-        let observed_completed = Arc::new(Mutex::new(false));
-        let observer = Arc::new(LoopObserver {
-            loop_count: Arc::clone(&observed_loops),
-            completed: Arc::clone(&observed_completed),
-        });
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        player.subscribe(observer);
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
+        let mut observed_loops = 0;
+        let mut observed_completed = false;
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() >= 3 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() >= 3 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
+        }
+        while let Some(event) = player.poll_event() {
+            match event {
+                DotLottieEvent::Loop { loop_count } => {
+                    observed_loops = loop_count;
+                }
+                DotLottieEvent::Complete => {
+                    observed_completed = true;
+                }
+                _ => {}
+            }
         }
 
-        let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
+        assert!(!observed_completed);
 
         // Restart the player
-        player.play();
+        let _ = player.play();
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 10 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 10 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
-        let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 5, "Should have looped 5 times, got {loops}");
+        while let Some(event) = player.poll_event() {
+            match event {
+                DotLottieEvent::Loop { loop_count } => {
+                    observed_loops = loop_count;
+                }
+                DotLottieEvent::Complete => {
+                    observed_completed = true;
+                }
+                _ => {}
+            }
+        }
 
-        let completed = *observed_completed.lock().unwrap();
-        assert!(completed);
+        assert_eq!(
+            observed_loops, 5,
+            "Should have looped 5 times, got {observed_loops}"
+        );
+
+        assert!(observed_completed);
     }
 
     #[test]
@@ -243,23 +282,29 @@ mod play_mode_tests {
             Mode::ReverseBounce,
         ];
 
-        for mode in play_modes {
-            let player = DotLottiePlayer::new(Config::default());
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
-            let mut config = player.config();
-            config.mode = mode;
-            player.set_config(config);
+        for mode in play_modes {
+            let mut player = DotLottiePlayer::new();
+            player.set_mode(mode);
+
+            let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+            // Set software rendering target
+            assert!(player
+                .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+                .is_ok());
 
             assert_eq!(
-                player.config().mode,
+                player.mode(),
                 mode,
                 "Expected play mode to be {:?}, found {:?}",
                 mode,
-                player.config().mode
+                player.mode()
             );
 
             assert!(
-                player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+                player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
                 "Animation should load"
             );
 
@@ -298,14 +343,20 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode() {
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -317,7 +368,7 @@ mod play_mode_tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }
@@ -346,54 +397,72 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode_with_loop_count() {
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::Forward,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 3,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::Forward);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(3);
 
-        let observed_loops = Arc::new(Mutex::new(0));
-        let observed_completed = Arc::new(Mutex::new(false));
-        let observer = Arc::new(LoopObserver {
-            loop_count: Arc::clone(&observed_loops),
-            completed: Arc::clone(&observed_completed),
-        });
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        player.subscribe(observer);
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
+        let mut observed_loops = 0;
+        let mut observed_completed = false;
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
-        let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
+        while let Some(event) = player.poll_event() {
+            match event {
+                DotLottieEvent::Loop { loop_count } => {
+                    observed_loops = loop_count;
+                }
+                DotLottieEvent::Complete => {
+                    observed_completed = true;
+                }
+                _ => {}
+            }
+        }
 
-        let completed = *observed_completed.lock().unwrap();
-        assert!(completed);
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
+
+        assert!(observed_completed);
     }
 
     #[test]
     fn test_reverse_play_mode() {
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::Reverse,
-            autoplay: true,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::Reverse);
+        player.set_autoplay(true);
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -406,7 +475,7 @@ mod play_mode_tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }
@@ -432,56 +501,73 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_play_mode_with_loop_count() {
-        use std::sync::{Arc, Mutex};
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::Reverse);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(3);
 
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::Reverse,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 3,
-            ..Config::default()
-        });
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        let observed_loops = Arc::new(Mutex::new(0));
-        let observed_completed = Arc::new(Mutex::new(false));
-        let observer = Arc::new(LoopObserver {
-            loop_count: Arc::clone(&observed_loops),
-            completed: Arc::clone(&observed_completed),
-        });
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.subscribe(observer);
+        let mut observed_loops = 0;
+        let mut observed_completed = false;
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
         }
 
-        let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
+        while let Some(event) = player.poll_event() {
+            match event {
+                DotLottieEvent::Loop { loop_count } => {
+                    observed_loops = loop_count;
+                }
+                DotLottieEvent::Complete => {
+                    observed_completed = true;
+                }
+                _ => {}
+            }
+        }
 
-        let completed = *observed_completed.lock().unwrap();
-        assert!(completed);
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
+
+        assert!(observed_completed);
     }
 
     #[test]
     fn test_bounce_play_mode() {
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::Bounce,
-            autoplay: true,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::Bounce);
+        player.set_autoplay(true);
 
-        assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
+
+        assert_eq!(
+            player.load_animation_path(&path, WIDTH, HEIGHT),
+            Ok(()),
             "Animation should load"
         );
 
@@ -490,11 +576,10 @@ mod play_mode_tests {
         assert!(player.is_playing(), "Animation should be playing");
         assert!(!player.is_complete(), "Animation should not be complete");
 
-        // animation loop
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }
@@ -538,53 +623,71 @@ mod play_mode_tests {
 
     #[test]
     fn test_bounce_play_mode_with_loop_count() {
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::Bounce,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 3,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::Bounce);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(3);
 
-        let observed_loops = Arc::new(Mutex::new(0));
-        let observed_completed = Arc::new(Mutex::new(false));
-        let observer = Arc::new(LoopObserver {
-            loop_count: Arc::clone(&observed_loops),
-            completed: Arc::clone(&observed_completed),
-        });
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        player.subscribe(observer);
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+        let mut observed_loops = 0;
+        let mut observed_completed = false;
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert_eq!(
+            player.load_animation_path(&path, WIDTH, HEIGHT),
+            Ok(()),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
+        }
+        while let Some(event) = player.poll_event() {
+            match event {
+                DotLottieEvent::Loop { loop_count } => {
+                    observed_loops = loop_count;
+                }
+                DotLottieEvent::Complete => {
+                    observed_completed = true;
+                }
+                _ => {}
+            }
         }
 
-        let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
 
-        let completed = *observed_completed.lock().unwrap();
-        assert!(completed);
+        assert!(observed_completed);
     }
 
     #[test]
     fn test_reverse_bounce_play_mode() {
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::ReverseBounce,
-            autoplay: true,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::ReverseBounce);
+        player.set_autoplay(true);
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -596,7 +699,7 @@ mod play_mode_tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }
@@ -640,40 +743,51 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_bounce_play_mode_with_loop_count() {
-        let player = DotLottiePlayer::new(Config {
-            mode: Mode::ReverseBounce,
-            autoplay: true,
-            loop_animation: true,
-            loop_count: 3,
-            ..Config::default()
-        });
+        let mut player = DotLottiePlayer::new();
+        player.set_mode(Mode::ReverseBounce);
+        player.set_autoplay(true);
+        player.set_loop(true);
+        player.set_loop_count(3);
 
-        let observed_loops = Arc::new(Mutex::new(0));
-        let observed_completed = Arc::new(Mutex::new(false));
-        let observer = Arc::new(LoopObserver {
-            loop_count: Arc::clone(&observed_loops),
-            completed: Arc::clone(&observed_completed),
-        });
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        player.subscribe(observer);
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
+        let mut observed_loops = 0;
+        let mut observed_completed = false;
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path("tests/fixtures/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
 
         loop {
-            if player.is_paused() || player.is_stopped() || player.loop_count() > 5 {
+            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
                 break;
             }
-            player.tick();
+            let _ = player.tick();
+        }
+        while let Some(event) = player.poll_event() {
+            match event {
+                DotLottieEvent::Loop { loop_count } => {
+                    observed_loops = loop_count;
+                }
+                DotLottieEvent::Complete => {
+                    observed_completed = true;
+                }
+                _ => {}
+            }
         }
 
-        let loops = *observed_loops.lock().unwrap();
-        assert_eq!(loops, 3, "Should have looped 3 times, got {loops}");
+        assert_eq!(
+            observed_loops, 3,
+            "Should have looped 3 times, got {observed_loops}"
+        );
 
-        let completed = *observed_completed.lock().unwrap();
-        assert!(completed);
+        assert!(observed_completed);
     }
 }

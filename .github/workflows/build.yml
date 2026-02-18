@@ -231,7 +231,7 @@ jobs:
           FEATURES: ${{ env.FEATURES }}
 
       - name: Check ELF Alignment
-        run: ./scripts/check_elf_alignment.sh release/android/dotlottie-player/src/main/jniLibs
+        run: ./scripts/check_elf_alignment.sh release/android/jniLibs
 
       - name: Create Android Archive
         run: |
@@ -259,6 +259,7 @@ jobs:
           node-version: 20
 
       - uses: dtolnay/rust-toolchain@nightly
+
       - name: Setup WASM
         run: make wasm-setup
 

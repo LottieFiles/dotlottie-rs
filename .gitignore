@@ -1,14 +1,11 @@
 /android
 /target
 /ios
-/uniffi-bindings
 **/*.rs.bk
 Cargo.lock
 pkg/
 wasm-pack.log
 **/.DS_Store
-/thorvg
-/deps/build
-/deps/artifacts
 /release
 .DS_Store
+/build

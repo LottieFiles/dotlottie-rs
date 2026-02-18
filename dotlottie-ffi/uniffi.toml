@@ -1,5 +1,0 @@
-[bindings.kotlin]
-package_name = "com.dotlottie.dlplayer"
-
-[bindings.swift]
-ffi_module_name = "DotLottiePlayer"

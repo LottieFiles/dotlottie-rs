@@ -1,6 +1,6 @@
 mod thorvg {
     use std::env;
-    use std::fs::{self, OpenOptions};
+    use std::fs::{self, create_dir_all, OpenOptions};
     use std::io::Write;
     use std::path::PathBuf;
 
@@ -52,6 +52,9 @@ mod thorvg {
     }
 
     pub fn build() -> std::io::Result<()> {
+        let target_triple = env::var("TARGET").unwrap_or_default();
+        let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+
         get_cpp_standard_library()
             .iter()
             .for_each(|lib| println!("cargo:rustc-link-lib=dylib={lib}"));
@@ -74,10 +77,14 @@ mod thorvg {
             .write(true)
             .open(out_dir.join("config.h"))?;
 
-        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.0.0\"")?;
+        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.0.1\"")?;
         writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
         writeln!(thorvg_config_h, "#define TVG_STATIC")?;
         writeln!(thorvg_config_h, "#define WIN32_LEAN_AND_MEAN")?;
+
+        if target_triple != "wasm32-unknown-emscripten" {
+            writeln!(thorvg_config_h, "#define THORVG_FILE_IO_SUPPORT 1")?;
+        }
 
         if cfg!(feature = "tvg-log") {
             writeln!(thorvg_config_h, "#define THORVG_LOG_ENABLED")?;
@@ -87,10 +94,30 @@ mod thorvg {
             writeln!(thorvg_config_h, "#define THORVG_THREAD_SUPPORT")?;
         }
 
+        if cfg!(feature = "tvg-partial") {
+            writeln!(thorvg_config_h, "#define THORVG_PARTIAL_RENDER_SUPPORT")?;
+        }
+
         let tvg_sw_enabled = cfg!(feature = "tvg-sw");
         if tvg_sw_enabled {
             writeln!(thorvg_config_h, "#define THORVG_SW_RASTER_SUPPORT")?;
             src.push("deps/thorvg/src/renderer/sw_engine");
+        }
+
+        if cfg!(feature = "tvg-gl") {
+            writeln!(thorvg_config_h, "#define THORVG_GL_RASTER_SUPPORT")?;
+            src.push("deps/thorvg/src/renderer/gl_engine");
+
+            if target_triple == "wasm32-unknown-emscripten" {
+                writeln!(thorvg_config_h, "#define THORVG_GL_TARGET_GLES 1")?;
+            } else {
+                writeln!(thorvg_config_h, "#define THORVG_GL_TARGET_GL 1")?;
+            }
+        }
+
+        if cfg!(feature = "tvg-wg") {
+            writeln!(thorvg_config_h, "#define THORVG_WG_RASTER_SUPPORT")?;
+            src.push("deps/thorvg/src/renderer/wg_engine");
         }
 
         if cfg!(feature = "tvg-jpg") {
@@ -138,7 +165,6 @@ mod thorvg {
 
         // ThorVG SIMD feature (only when tvg-sw AND tvg-simd are enabled)
         let tvg_simd_enabled = cfg!(feature = "tvg-simd");
-        let target_triple = env::var("TARGET").unwrap_or_default();
 
         let mut simd_flags: Vec<&str> = Vec::new();
         if tvg_sw_enabled && tvg_simd_enabled {
@@ -182,16 +208,79 @@ mod thorvg {
             )
             .warnings(false);
 
+        if cfg!(feature = "tvg-wg") {
+            let vendored_wgpu_include = PathBuf::from(&crate_dir)
+                .join("deps/wgpu")
+                .join(&target_triple)
+                .join("include");
+
+            let wgpu_include_path = env::var("WGPU_NATIVE_INCLUDE")
+                .map(PathBuf::from)
+                .unwrap_or(vendored_wgpu_include);
+
+            cc_build.include(&wgpu_include_path);
+
+            if target_triple != "wasm32-unknown-emscripten" {
+                // Default paths: {crate_dir}/deps/wgpu/{target}/lib and /include
+                let vendored_wgpu_lib = PathBuf::from(&crate_dir)
+                    .join("deps/wgpu")
+                    .join(&target_triple)
+                    .join("lib");
+
+                // Use environment variables or defaults
+                let wgpu_lib_path = env::var("WGPU_NATIVE_LIB")
+                    .map(PathBuf::from)
+                    .unwrap_or(vendored_wgpu_lib);
+
+                let abs_lib_path = wgpu_lib_path
+                    .canonicalize()
+                    .expect("Failed to canonicalize wgpu lib path");
+
+                println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
+                println!("cargo:rustc-link-lib=static=wgpu_native");
+
+                // Link platform-specific frameworks/libraries
+                if target_triple.contains("apple") {
+                    println!("cargo:rustc-link-lib=framework=Metal");
+                    println!("cargo:rustc-link-lib=framework=QuartzCore");
+                    println!("cargo:rustc-link-lib=framework=Foundation");
+                    println!("cargo:rustc-link-lib=framework=AppKit");
+                } else if target_triple.contains("linux") {
+                    println!("cargo:rustc-link-lib=vulkan");
+                }
+            }
+
+            // generate wgpu binding
+            bindgen::Builder::default()
+                .header(wgpu_include_path.join("webgpu/webgpu.h").to_str().unwrap())
+                // Only include WGPU types and functions
+                .allowlist_type("WGPU.*")
+                .allowlist_function("wgpu.*")
+                .allowlist_var("WGPU_.*")
+                // Use libc types
+                .ctypes_prefix("std::os::raw")
+                // Don't generate layout tests (they're huge and we don't need them)
+                .layout_tests(false)
+                // Disable default includes to avoid system header issues
+                .use_core()
+                .generate()
+                .expect("Failed to generate wgpu bindings")
+                .write_to_file(
+                    PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs"),
+                )?;
+        }
+
         for flag in simd_flags {
             cc_build.flag(flag);
         }
 
-        if cfg!(feature = "tvg-threads") && std::env::var("CARGO_CFG_UNIX").is_ok() {
-            let target = std::env::var("TARGET").unwrap_or_default();
-            if !target.contains("apple") && !target.contains("android") {
-                cc_build.flag("-pthread");
-                println!("cargo:rustc-link-lib=pthread");
-            }
+        if cfg!(feature = "tvg-threads")
+            && std::env::var("CARGO_CFG_UNIX").is_ok()
+            && !target_triple.contains("apple")
+            && !target_triple.contains("android")
+        {
+            cc_build.flag("-pthread");
+            println!("cargo:rustc-link-lib=pthread");
         }
 
         cc_build.compile("thorvg");
@@ -202,6 +291,20 @@ mod thorvg {
             .expect("Failed to generate bindings");
 
         bindings.write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
+
+        if cfg!(feature = "c_api") {
+            create_dir_all(PathBuf::from(&crate_dir).join("build")).unwrap();
+            let header_path = PathBuf::from(&crate_dir).join("build/dotlottie_player.h");
+            let config_path = PathBuf::from(&crate_dir).join("cbindgen.toml");
+            let config = cbindgen::Config::from_file(config_path).unwrap();
+
+            cbindgen::Builder::new()
+                .with_crate(crate_dir)
+                .with_config(config)
+                .generate()
+                .expect("Unable to generate bindings")
+                .write_to_file(header_path);
+        }
 
         Ok(())
     }

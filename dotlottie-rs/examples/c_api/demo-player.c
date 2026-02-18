@@ -1,0 +1,165 @@
+#include <SDL.h>
+#include <SDL_image.h>
+#include <SDL_pixels.h>
+#include <libgen.h> // For dirname
+#include <limits.h> // For PATH_MAX
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h> // For readlink
+
+#include "dotlottie_player.h"
+
+#define WIDTH 1000
+#define HEIGHT 1000
+
+void usage(char *app) {
+  fprintf(stderr, "usage: %s <animation-file>\n", app);
+  exit(1);
+}
+
+int main(int argc, char **argv) {
+  SDL_Window *window = NULL;
+  SDL_Renderer *renderer = NULL;
+  SDL_Texture *texture = NULL;
+  SDL_Event e;
+
+  DotLottiePlayer *player;
+
+  const char *animation_path;
+  int screen;
+  uint32_t *buffer;
+  int len;
+  char key_pressed[255];
+  int ret;
+  int ready;
+  float current_frame;
+  float next_frame;
+
+  // Ensure a file path has been provided
+  if (argc != 2) {
+    usage(argv[0]);
+  }
+  // Ensure the file path is readable
+  animation_path = argv[1];
+  ret = access(animation_path, R_OK);
+  if (ret != 0) {
+    fprintf(stderr, "Invalid animation path\n\n");
+    usage(argv[0]);
+  }
+
+  // Setup dotlottie player (0 threads = auto-detect)
+  player = dotlottie_new_player(0);
+  if (!player) {
+    fprintf(stderr, "Could not create dotlottie player\n");
+    return 1;
+  }
+
+  // Allocate our own buffer for software rendering
+  buffer = (uint32_t *)malloc(WIDTH * HEIGHT * sizeof(uint32_t));
+  if (!buffer) {
+    fprintf(stderr, "Could not allocate buffer\n");
+    return 1;
+  }
+
+  // Set up software rendering target - tell player to render into our buffer
+  ret = dotlottie_set_sw_target(player, buffer, WIDTH, HEIGHT, ABGR8888);
+  if (ret != DOTLOTTIE_SUCCESS) {
+    fprintf(stderr, "Could not set software rendering target\n");
+    free(buffer);
+    return 1;
+  }
+
+  // Configure the player
+  dotlottie_set_loop(player, true);
+  dotlottie_set_background_color(player, 0xffffffff);
+  dotlottie_set_autoplay(player, true);
+
+  // Load the animation file
+  ret = dotlottie_load_animation_path(player, animation_path, WIDTH, HEIGHT);
+  if (ret != DOTLOTTIE_SUCCESS) {
+    fprintf(stderr, "Could not load dotlottie animation file\n");
+    free(buffer);
+    return 1;
+  }
+
+  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    fprintf(stderr, "Could not initialize SDL: %s\n", SDL_GetError());
+    return 1;
+  }
+
+  // Setup SDL window
+  window = SDL_CreateWindow("demo-player-c", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                            WIDTH, HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_INPUT_FOCUS);
+  if (!window) {
+    fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
+    ret = 1;
+    goto quit;
+  }
+  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+  if (!renderer) {
+    fprintf(stderr, "Could not create SDL renderer: %s\n", SDL_GetError());
+    ret = 1;
+    goto quit;
+  }
+  texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRA32, SDL_TEXTUREACCESS_STREAMING, WIDTH,
+                              HEIGHT);
+  if (!texture) {
+    fprintf(stderr, "Could not create SDL texture: %s\n", SDL_GetError());
+    ret = 1;
+    goto quit;
+  }
+  SDL_UpdateTexture(texture, NULL, buffer, WIDTH * sizeof(Uint32));
+
+  current_frame = 0;
+  while (1) {
+    // Process events
+    while (SDL_PollEvent(&e) != 0) {
+      if (e.type == SDL_QUIT) {
+        goto quit;
+      } else if (e.type == SDL_KEYDOWN) {
+        switch (e.key.keysym.sym) {
+        case SDLK_p:
+          ret = dotlottie_play(player);
+          if (ret != DOTLOTTIE_SUCCESS) {
+            fprintf(stderr, "Could not start dotlottie player\n");
+          }
+          break;
+        case SDLK_s:
+          ret = dotlottie_stop(player);
+          if (ret != DOTLOTTIE_SUCCESS) {
+            fprintf(stderr, "Could not stop dotlottie player\n");
+          }
+          break;
+        case SDLK_q:
+          goto quit;
+        }
+      }
+    }
+
+    next_frame = 0;
+    dotlottie_tick(player);
+    dotlottie_current_frame(player, &next_frame);
+    if (next_frame != current_frame) {
+      // Render the image in the window
+      SDL_UpdateTexture(texture, NULL, buffer, WIDTH * sizeof(Uint32));
+      SDL_RenderCopy(renderer, texture, NULL, NULL);
+      SDL_RenderPresent(renderer);
+      current_frame = next_frame;
+    }
+  }
+
+quit:
+  // Clean up
+  if (buffer)
+    free(buffer);
+  if (texture)
+    SDL_DestroyTexture(texture);
+  if (renderer)
+    SDL_DestroyRenderer(renderer);
+  if (window)
+    SDL_DestroyWindow(window);
+  SDL_Quit();
+
+  return ret;
+}

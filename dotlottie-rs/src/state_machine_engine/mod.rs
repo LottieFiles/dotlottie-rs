@@ -1,7 +1,6 @@
 use core::result::Result::Ok;
 use std::collections::HashSet;
-use std::rc::Rc;
-use std::sync::{Arc, RwLock};
+use std::ffi::{CStr, CString};
 
 pub mod actions;
 pub mod errors;
@@ -23,37 +22,15 @@ use transitions::guard::GuardTrait;
 use transitions::{Transition, TransitionTrait};
 
 use crate::actions::whitelist::Whitelist;
+use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, Config, DotLottiePlayerContainer,
-    EventName, PointerEvent, StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, CompletionEvent, DotLottiePlayer,
+    EventName, Layout, Mode, PointerEvent, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
 use self::{events::Event, states::State};
-
-pub trait StateMachineObserver: Send + Sync {
-    fn on_start(&self);
-    fn on_stop(&self);
-    fn on_transition(&self, previous_state: String, new_state: String);
-    fn on_state_entered(&self, entering_state: String);
-    fn on_state_exit(&self, leaving_state: String);
-    fn on_custom_event(&self, message: String);
-    fn on_string_input_value_change(
-        &self,
-        input_name: String,
-        old_value: String,
-        new_value: String,
-    );
-    fn on_numeric_input_value_change(&self, input_name: String, old_value: f32, new_value: f32);
-    fn on_boolean_input_value_change(&self, input_name: String, old_value: bool, new_value: bool);
-    fn on_input_fired(&self, input_name: String);
-    fn on_error(&self, error: String);
-}
-
-pub trait StateMachineInternalObserver: Send + Sync {
-    fn on_message(&self, message: String);
-}
 
 #[derive(PartialEq, Debug)]
 pub enum StateMachineEngineStatus {
@@ -94,21 +71,31 @@ impl Default for PointerData {
     }
 }
 
-pub struct StateMachineEngine {
-    // For resetting the player config after state machine is stopped
-    cached_player_config: Config,
+pub struct StateMachineEngine<'a> {
+    // For restoring the player config after state machine is stopped
+    cached_mode: Mode,
+    cached_speed: f32,
+    cached_loop_animation: bool,
+    cached_loop_count: u32,
+    cached_autoplay: bool,
+    cached_use_frame_interpolation: bool,
+    cached_background_color: u32,
+    cached_segment: Option<[f32; 2]>,
+    cached_marker: Option<CString>,
+    cached_layout: Layout,
 
     /* We keep references to the StateMachine's States. */
     /* This prevents duplicating the data inside the engine. */
     pub global_state: Option<State>,
     pub current_state: Option<State>,
 
-    pub player: Option<Rc<RwLock<DotLottiePlayerContainer>>>,
     pub status: StateMachineEngineStatus,
 
     // Open url policy configurations
     pub open_url_requires_user_interaction: bool,
     pub open_url_whitelist: Whitelist,
+
+    pub player: &'a mut DotLottiePlayer,
 
     pub inputs: InputManager,
     curr_event: Option<String>,
@@ -116,8 +103,13 @@ pub struct StateMachineEngine {
     // PointerEnter/PointerExit management
     pointer_management: PointerData,
 
-    pub observers: RwLock<Vec<Arc<dyn StateMachineObserver>>>,
-    pub internal_observer: RwLock<Option<Arc<dyn StateMachineInternalObserver>>>,
+    // Event queues
+    pub event_queue: EventQueue<StateMachineEvent>,
+    pub internal_event_queue: EventQueue<StateMachineInternalEvent>,
+
+    // Holds current event during polling from C API
+    pub current_event: Option<StateMachineEvent>,
+    pub current_internal_event: Option<StateMachineInternalEvent>,
 
     state_machine: StateMachine,
 
@@ -130,86 +122,29 @@ pub struct StateMachineEngine {
     tween_transition_target_state: Option<State>,
 }
 
-impl Default for StateMachineEngine {
-    fn default() -> StateMachineEngine {
-        StateMachineEngine {
-            cached_player_config: Config::default(),
-            global_state: None,
-            state_machine: StateMachine::default(),
-            current_state: None,
-            open_url_requires_user_interaction: false,
-            open_url_whitelist: Whitelist::new(),
-            player: None,
-            inputs: InputManager::new(),
-            curr_event: None,
-            pointer_management: PointerData::default(),
-            status: StateMachineEngineStatus::Stopped,
-            observers: RwLock::new(Vec::new()),
-            internal_observer: RwLock::new(None),
-            state_history: Vec::new(),
-            max_cycle_count: 20,
-            current_cycle_count: 0,
-            action_mutated_inputs: false,
-            tween_transition_target_state: None,
-        }
-    }
-}
-
-impl StateMachineEngine {
+impl<'a> StateMachineEngine<'a> {
     pub fn new(
         state_machine_definition: &str,
-        player: Rc<RwLock<DotLottiePlayerContainer>>,
+        player: &'a mut DotLottiePlayer,
         max_cycle_count: Option<usize>,
-    ) -> Result<StateMachineEngine, StateMachineEngineError> {
-        // Create an empty state machine object that we'll use to boot up the parser from
-        let mut state_machine = StateMachineEngine {
-            cached_player_config: Config::default(),
-            global_state: None,
-            state_machine: StateMachine::default(),
-            current_state: None,
-            open_url_requires_user_interaction: false,
-            open_url_whitelist: Whitelist::new(),
-            player: Some(player.clone()),
-            inputs: InputManager::new(),
-            curr_event: None,
-            pointer_management: PointerData::default(),
-            status: StateMachineEngineStatus::Stopped,
-            observers: RwLock::new(Vec::new()),
-            internal_observer: RwLock::new(None),
-            state_history: Vec::new(),
-            max_cycle_count: max_cycle_count.unwrap_or(20),
-            current_cycle_count: 0,
-            action_mutated_inputs: false,
-            tween_transition_target_state: None,
-        };
-
-        state_machine.create_state_machine(state_machine_definition, &player)
+    ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
+        Self::from_definition(state_machine_definition, player, max_cycle_count)
     }
 
-    pub fn subscribe(&self, observer: Arc<dyn StateMachineObserver>) {
-        let mut observers = self.observers.write().unwrap();
-        observers.push(observer);
+    /// Poll for the next state machine event
+    ///
+    /// Returns Some(event) if an event is available, None if the queue is empty.
+    /// Events are removed from the queue when polled.
+    pub fn poll_event(&mut self) -> Option<StateMachineEvent> {
+        self.event_queue.poll()
     }
 
-    pub fn unsubscribe(&self, observer: &Arc<dyn StateMachineObserver>) {
-        self.observers
-            .write()
-            .unwrap()
-            .retain(|o| !Arc::ptr_eq(o, observer));
-    }
-
-    pub fn internal_subscribe(&self, observer: Arc<dyn StateMachineInternalObserver>) {
-        let mut internal_observer = self.internal_observer.write().unwrap();
-        *internal_observer = Some(observer);
-    }
-
-    pub fn internal_unsubscribe(&self, observer: &Arc<dyn StateMachineInternalObserver>) {
-        let mut internal_observer_write_lock = self.internal_observer.write().unwrap();
-        if let Some(internal_observer) = &*internal_observer_write_lock {
-            if Arc::ptr_eq(internal_observer, observer) {
-                *internal_observer_write_lock = None;
-            }
-        }
+    /// Poll for the next internal state machine event
+    ///
+    /// Returns Some(event) if an event is available, None if the queue is empty.
+    /// Internal events are for framework use only.
+    pub fn poll_internal_event(&mut self) -> Option<StateMachineInternalEvent> {
+        self.internal_event_queue.poll()
     }
 
     // key: The key of the input
@@ -270,6 +205,7 @@ impl StateMachineEngine {
         if called_from_action {
             self.action_mutated_inputs = true;
         }
+
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
         }
@@ -302,6 +238,7 @@ impl StateMachineEngine {
         if called_from_action {
             self.action_mutated_inputs = true;
         }
+
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
         }
@@ -345,6 +282,7 @@ impl StateMachineEngine {
         if called_from_action {
             self.action_mutated_inputs = true;
         }
+
         if run_pipeline {
             let _ = self.run_current_state_pipeline();
         }
@@ -369,20 +307,52 @@ impl StateMachineEngine {
     }
 
     // Parses the JSON of the state machine definition and creates the states and transitions
-    pub fn create_state_machine(
-        &mut self,
+    // Previously called create_state_machine
+    pub fn from_definition(
         sm_definition: &str,
-        player: &Rc<RwLock<DotLottiePlayerContainer>>,
-    ) -> Result<StateMachineEngine, StateMachineEngineError> {
+        player: &'a mut DotLottiePlayer,
+        max_cycle_count: Option<usize>,
+    ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
-        let mut new_state_machine = StateMachineEngine::default();
+        let mut new_state_machine = StateMachineEngine {
+            cached_mode: player.mode(),
+            cached_speed: player.speed(),
+            cached_loop_animation: player.loop_animation(),
+            cached_loop_count: player.current_loop_count(),
+            cached_autoplay: player.autoplay(),
+            cached_use_frame_interpolation: player.use_frame_interpolation(),
+            cached_background_color: player.background_color(),
+            cached_segment: player.segment(),
+            cached_marker: player.marker().map(CStr::to_owned),
+            cached_layout: *player.layout(),
+            player, // `player` Moved. Don't use after this point
+            global_state: None,
+            state_machine: StateMachine::default(),
+            current_state: None,
+            open_url_requires_user_interaction: false,
+            open_url_whitelist: Whitelist::new(),
+            inputs: InputManager::new(),
+            curr_event: None,
+            pointer_management: PointerData::default(),
+            status: StateMachineEngineStatus::Stopped,
+            event_queue: EventQueue::new(),
+            internal_event_queue: EventQueue::new(),
+            current_event: None,
+            current_internal_event: None,
+            state_history: Vec::new(),
+            max_cycle_count: max_cycle_count.unwrap_or(20),
+            current_cycle_count: 0,
+            action_mutated_inputs: false,
+            tween_transition_target_state: None,
+        };
+
         if parsed_state_machine.is_err() {
             let message = match parsed_state_machine.err() {
                 Some(e) => format!("Parsing error: {e:?}"),
                 None => "Parsing error: Unknown error".to_string(),
             };
 
-            self.observe_on_error(message.as_str());
+            new_state_machine.observe_on_error(message.as_str());
 
             return Err(StateMachineEngineError::ParsingError(message));
         }
@@ -421,25 +391,19 @@ impl StateMachineEngine {
                     }
                 }
 
-                new_state_machine.player = Some(player.clone());
                 new_state_machine.state_machine = parsed_state_machine;
-
-                let try_read_lock = &player.try_read();
-                if let Ok(player) = try_read_lock {
-                    new_state_machine.cached_player_config = player.config();
-                }
 
                 new_state_machine.init_listened_layers();
 
                 // Run the security check pipeline
-                let check_report = self.security_check_pipeline(&new_state_machine);
+                let check_report = Self::security_check_pipeline(&new_state_machine);
 
                 match check_report {
                     Ok(_) => {}
                     Err(error) => {
                         let message = format!("Load: {error:?}");
 
-                        self.observe_on_error(message.as_str());
+                        new_state_machine.observe_on_error(message.as_str());
 
                         return Err(StateMachineEngineError::CreationError);
                     }
@@ -452,32 +416,23 @@ impl StateMachineEngine {
     }
 
     fn security_check_pipeline(
-        &self,
         state_machine: &StateMachineEngine,
     ) -> Result<(), StateMachineEngineSecurityError> {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> bool {
-        if let Some(player) = &self.player {
-            let try_read_lock = &player.try_read();
-            if let Ok(player) = try_read_lock {
-                // Reset to first frame
-                player.stop();
-                // Remove all playback settings but preserve use_frame_interpolation and layout
-                let current_config = player.config();
-                let reset_config = Config {
-                    use_frame_interpolation: current_config.use_frame_interpolation,
-                    layout: current_config.layout,
-                    ..Config::default()
-                };
-                player.set_config(reset_config);
-            }
-        }
+    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> Result<(), crate::DotLottiePlayerError> {
+        // Reset to first frame
+        let _ = self.player.stop();
+        self.player.set_mode(Mode::Forward);
+        self.player.set_speed(1.0);
+        self.player.set_loop(false);
+        self.player.set_loop_count(0);
+        self.player.set_autoplay(false);
 
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
-            return false;
+            return Err(crate::DotLottiePlayerError::Unknown);
         }
 
         self.open_url_requires_user_interaction = open_url.require_user_interaction;
@@ -503,12 +458,12 @@ impl StateMachineEngine {
 
                 self.observe_on_error(message.as_str());
 
-                return false;
+                return Err(crate::DotLottiePlayerError::Unknown);
             }
         }
 
         if self.status == StateMachineEngineStatus::Running {
-            return true;
+            return Ok(());
         }
 
         self.observe_on_start();
@@ -517,7 +472,7 @@ impl StateMachineEngine {
 
         let _ = self.run_current_state_pipeline();
 
-        true
+        Ok(())
     }
 
     pub fn stop(&mut self) {
@@ -525,11 +480,26 @@ impl StateMachineEngine {
 
         self.observe_on_stop();
 
-        if let Some(player) = &self.player {
-            let try_read_lock = &player.try_read();
-            if let Ok(player) = try_read_lock {
-                player.set_config(self.cached_player_config.clone());
-            }
+        self.player.set_mode(self.cached_mode);
+        self.player.set_speed(self.cached_speed);
+        self.player.set_loop(self.cached_loop_animation);
+        self.player.set_loop_count(self.cached_loop_count);
+        self.player
+            .set_use_frame_interpolation(self.cached_use_frame_interpolation);
+        let _ = self
+            .player
+            .set_background_color(Some(self.cached_background_color));
+        let _ = self.player.set_segment(self.cached_segment);
+        self.player.set_marker(self.cached_marker.as_deref());
+        let _ = self.player.set_layout(self.cached_layout);
+        self.player.set_autoplay(self.cached_autoplay);
+    }
+
+    /// For external use only.
+    /// `mut self` here drops state_machine_engine which releases the borrow of `dotlottie_player`
+    pub fn release(mut self) {
+        if self.status != StateMachineEngineStatus::Stopped {
+            self.stop();
         }
     }
 
@@ -565,6 +535,49 @@ impl StateMachineEngine {
         }
 
         interactions_clone
+    }
+
+    pub fn framework_setup(&self) -> Vec<String> {
+        let mut interaction_types = vec![];
+
+        for interaction in self.interactions(None) {
+            match interaction {
+                crate::interactions::Interaction::PointerUp { .. } => {
+                    interaction_types.push("PointerUp".to_string())
+                }
+                crate::interactions::Interaction::PointerDown { .. } => {
+                    interaction_types.push("PointerDown".to_string())
+                }
+                crate::interactions::Interaction::PointerEnter { .. } => {
+                    // In case framework self detects pointer entering layers, push pointerExit
+                    interaction_types.push("PointerEnter".to_string());
+                    // We push PointerMove too so that we can do hit detection instead of the framework
+                    interaction_types.push("PointerMove".to_string());
+                }
+                crate::interactions::Interaction::PointerMove { .. } => {
+                    interaction_types.push("PointerMove".to_string())
+                }
+                crate::interactions::Interaction::PointerExit { .. } => {
+                    // In case framework self detects pointer exiting layers, push pointerExit
+                    interaction_types.push("PointerExit".to_string());
+                    // We push PointerMove too so that we can do hit detection instead of the framework
+                    interaction_types.push("PointerMove".to_string());
+                }
+                crate::interactions::Interaction::OnComplete { .. } => {
+                    interaction_types.push("OnComplete".to_string())
+                }
+                crate::interactions::Interaction::OnLoopComplete { .. } => {
+                    interaction_types.push("OnLoopComplete".to_string())
+                }
+                crate::interactions::Interaction::Click { .. } => {
+                    interaction_types.push("Click".to_string());
+                }
+            }
+        }
+
+        interaction_types.sort();
+        interaction_types.dedup();
+        interaction_types
     }
 
     fn init_listened_layers(&mut self) {
@@ -641,17 +654,15 @@ impl StateMachineEngine {
             // Perform entry actions
             // Execute its type of state
             let state = self.current_state.take();
-            let player = self.player.take();
 
             // Now use the extracted information
-            if let (Some(state), Some(player)) = (state, player) {
+            if let Some(state) = state {
                 // Enter the state
-                let _ = state.enter(self, &player);
+                let _ = state.enter(self);
 
                 // Don't forget to put things back
                 // new_state becomes the current state
                 self.current_state = Some(state);
-                self.player = Some(player);
             }
         }
     }
@@ -673,16 +684,14 @@ impl StateMachineEngine {
             // Perform exit actions on the current state if there is one.
             if self.current_state.is_some() {
                 let state = self.current_state.take();
-                let player = self.player.take();
                 // Now use the extracted information
-                if let (Some(state), Some(player)) = (state, player) {
+                if let Some(state) = state {
                     if !called_from_global {
-                        let _ = state.exit(self, &player);
+                        let _ = state.exit(self);
                     }
                     // Don't forget to put things back
                     // new_state becomes the current state
                     self.current_state = Some(state);
-                    self.player = Some(player);
                 }
             }
             // Emit transtion occured event
@@ -695,38 +704,32 @@ impl StateMachineEngine {
             if let Some(causing_transition) = causing_transition {
                 // If we dealing with a tweened transition
                 if let Transition::Tweened { .. } = causing_transition {
-                    if let Some(unwrapped_player) = &self.player {
-                        let read_lock = &unwrapped_player.try_read();
+                    // Clone segment before match to avoid partial move
+                    let segment_clone = match &new_state {
+                        State::PlaybackState { segment, .. } => segment.clone(),
+                        _ => None,
+                    };
+                    match &new_state {
+                        // If we're transitioning to a PlaybackState, grab the start segment
+                        State::PlaybackState { .. } => {
+                            if let Some(target_segment) = segment_clone {
+                                self.tween_transition_target_state = Some(new_state.clone());
+                                // Tweening is activated and the state machine has been paused whilst it transitions
+                                self.status = StateMachineEngineStatus::Tweening;
+                                let target_segment_str =
+                                    CString::new(target_segment).unwrap_or_default();
+                                let _ = self.player.tween_to_marker(
+                                    &target_segment_str,
+                                    Some(causing_transition.duration()),
+                                    Some(causing_transition.easing()),
+                                );
 
-                        if let Ok(player) = read_lock {
-                            // Clone segment before match to avoid partial move
-                            let segment_clone = match &new_state {
-                                State::PlaybackState { segment, .. } => segment.clone(),
-                                _ => None,
-                            };
-                            match &new_state {
-                                // If we're transitioning to a PlaybackState, grab the start segment
-                                State::PlaybackState { .. } => {
-                                    if let Some(target_segment) = segment_clone {
-                                        self.tween_transition_target_state =
-                                            Some(new_state.clone());
-                                        // Tweening is activated and the state machine has been paused whilst it transitions
-                                        self.status = StateMachineEngineStatus::Tweening;
-
-                                        player.tween_to_marker(
-                                            &target_segment,
-                                            Some(causing_transition.duration()),
-                                            Some(causing_transition.easing().to_vec()),
-                                        );
-
-                                        return Ok(());
-                                    }
-                                }
-                                // If we're transitioning to a GlobalState, do nothing
-                                State::GlobalState { .. } => {
-                                    return Ok(());
-                                }
+                                return Ok(());
                             }
+                        }
+                        // If we're transitioning to a GlobalState, do nothing
+                        State::GlobalState { .. } => {
+                            return Ok(());
                         }
                     }
                 }
@@ -740,15 +743,13 @@ impl StateMachineEngine {
             // Perform entry actions
             // Execute its type of state
             let state = self.current_state.take();
-            let player = self.player.take();
             // Now use the extracted information
-            if let (Some(state), Some(player)) = (state, player) {
+            if let Some(state) = state {
                 // Enter the state
-                let _ = state.enter(self, &player);
+                let _ = state.enter(self);
                 // Don't forget to put things back
                 // new_state becomes the current state
                 self.current_state = Some(state);
-                self.player = Some(player);
             } else {
                 return Err(StateMachineEngineError::SetStateError);
             }
@@ -1018,26 +1019,19 @@ impl StateMachineEngine {
             if interaction.type_name() == event.type_name() {
                 // User defined a specific layer to check if hit
                 if let Some(layer) = interaction.get_layer_name() {
-                    // Check if the layer was hit, otherwise we ignore this interaction
-                    if let Some(rc_player) = &self.player {
-                        let try_read_lock = rc_player.try_read();
-
-                        if let Ok(player_container) = try_read_lock {
-                            // If we have a pointer down event, we need to check if the pointer is outside of the layer
-                            if let Event::PointerExit { x, y } = event {
-                                if self.pointer_management.curr_entered_layer == *layer
-                                    && !player_container.intersect(*x, *y, &layer)
-                                {
-                                    entered_layer = "".to_string();
-                                    actions_to_execute.extend(interaction.get_actions().clone());
-                                }
-                            } else {
-                                // Hit check will return true if the layer was hit
-                                if player_container.intersect(x, y, &layer) {
-                                    entered_layer = layer.clone();
-                                    actions_to_execute.extend(interaction.get_actions().clone());
-                                }
-                            }
+                    // If we have a pointer down event, we need to check if the pointer is outside of the layer
+                    if let Event::PointerExit { x, y } = event {
+                        if self.pointer_management.curr_entered_layer == *layer
+                            && !self.player.intersect(*x, *y, &layer)
+                        {
+                            entered_layer = "".to_string();
+                            actions_to_execute.extend(interaction.get_actions().clone());
+                        }
+                    } else {
+                        // Hit check will return true if the layer was hit
+                        if self.player.intersect(x, y, &layer) {
+                            entered_layer = layer.clone();
+                            actions_to_execute.extend(interaction.get_actions().clone());
                         }
                     }
                 } else {
@@ -1051,9 +1045,7 @@ impl StateMachineEngine {
 
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
-            if let Some(player_ref) = &self.player {
-                let _ = action.execute(self, player_ref.clone(), true, false);
-            }
+            let _ = action.execute(self, true, false);
         }
     }
 
@@ -1075,61 +1067,53 @@ impl StateMachineEngine {
         // Check if we've moved the pointer over any of the pointerEnter/Exit interactions
         // If we've changed layers, perform exit actions
         // If we don't hit any layers, perform exit actions
-        if let Some(rc_player) = &self.player {
-            let try_read_lock = rc_player.try_read();
+        let mut hit = false;
+        let old_layer = self.pointer_management.curr_entered_layer.clone();
 
-            if let Ok(player_container) = try_read_lock {
-                let mut hit = false;
-                let old_layer = self.pointer_management.curr_entered_layer.clone();
+        // Loop through all layers we're listening to
+        for (layer, event_name) in &self.pointer_management.listened_layers.clone() {
+            // We're only interested in the listened layers that need enter / exit event
+            if (event_name == event_type_name!(PointerEnter)
+                || event_name == event_type_name!(PointerExit))
+                && self.player.intersect(x, y, layer)
+            {
+                hit = true;
 
-                // Loop through all layers we're listening to
-                for (layer, event_name) in &self.pointer_management.listened_layers {
-                    // We're only interested in the listened layers that need enter / exit event
-                    if (event_name == event_type_name!(PointerEnter)
-                        || event_name == event_type_name!(PointerExit))
-                        && player_container.intersect(x, y, layer)
-                    {
-                        hit = true;
+                // If it's that same current layer, do nothing
+                if self.pointer_management.curr_entered_layer == *layer {
+                    break;
+                }
 
-                        // If it's that same current layer, do nothing
-                        if self.pointer_management.curr_entered_layer == *layer {
-                            break;
-                        }
+                self.pointer_management.curr_entered_layer = layer.to_string();
 
-                        self.pointer_management.curr_entered_layer = layer.to_string();
+                // Get all pointer_enter interactions
+                let pointer_enter_interactions =
+                    self.interactions(Some(event_type_name!(PointerEnter).to_string()));
 
-                        // Get all pointer_enter interactions
-                        let pointer_enter_interactions =
-                            self.interactions(Some(event_type_name!(PointerEnter).to_string()));
-
-                        // Add their actions if their layer name matches the current layer name in loop
-                        for interaction in pointer_enter_interactions {
-                            if let Some(interaction_layer_name) = interaction.get_layer_name() {
-                                if *interaction_layer_name
-                                    == self.pointer_management.curr_entered_layer
-                                {
-                                    actions_to_execute.extend(interaction.get_actions().clone());
-                                }
-                            }
+                // Add their actions if their layer name matches the current layer name in loop
+                for interaction in pointer_enter_interactions {
+                    if let Some(interaction_layer_name) = interaction.get_layer_name() {
+                        if *interaction_layer_name == self.pointer_management.curr_entered_layer {
+                            actions_to_execute.extend(interaction.get_actions().clone());
                         }
                     }
                 }
+            }
+        }
 
-                // We didn't hit any listened layers
-                if !hit {
-                    self.pointer_management.curr_entered_layer = "".to_string();
+        // We didn't hit any listened layers
+        if !hit {
+            self.pointer_management.curr_entered_layer = "".to_string();
 
-                    let pointer_exit_interactions =
-                        self.interactions(Some(event_type_name!(PointerExit).to_string()));
+            let pointer_exit_interactions =
+                self.interactions(Some(event_type_name!(PointerExit).to_string()));
 
-                    // Add the actions of every PointerExit interaction that depended on the layer we've just exited
-                    for interaction in pointer_exit_interactions {
-                        if let Some(interaction_layer_name) = interaction.get_layer_name() {
-                            // We've exited the desired layer, add its actions to execute
-                            if *interaction_layer_name == old_layer {
-                                actions_to_execute.extend(interaction.get_actions().clone());
-                            }
-                        }
+            // Add the actions of every PointerExit interaction that depended on the layer we've just exited
+            for interaction in pointer_exit_interactions {
+                if let Some(interaction_layer_name) = interaction.get_layer_name() {
+                    // We've exited the desired layer, add its actions to execute
+                    if *interaction_layer_name == old_layer {
+                        actions_to_execute.extend(interaction.get_actions().clone());
                     }
                 }
             }
@@ -1137,9 +1121,7 @@ impl StateMachineEngine {
 
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
-            if let Some(player_ref) = &self.player {
-                let _ = action.execute(self, player_ref.clone(), true, false);
-            }
+            let _ = action.execute(self, true, false);
         }
     }
 
@@ -1223,9 +1205,7 @@ impl StateMachineEngine {
 
         for action in actions_to_execute {
             // Run the pipeline because interactions are outside of the evaluation pipeline loop
-            if let Some(player_ref) = &self.player {
-                let _ = action.execute(self, player_ref.clone(), true, false);
-            }
+            let _ = action.execute(self, true, false);
         }
     }
 
@@ -1246,14 +1226,24 @@ impl StateMachineEngine {
      * @params state_name: The name of the state to change to.
      * @params do_tick: If true, the state machine will run the transition evaluation pipeline after changing the state.
      */
-    pub fn override_current_state(&mut self, state_name: &str, do_tick: bool) -> bool {
-        let r = self.set_current_state(state_name, None, false).is_ok();
-
-        if do_tick {
-            return self.run_current_state_pipeline().is_ok();
+    pub fn override_current_state(
+        &mut self,
+        state_name: &str,
+        do_tick: bool,
+    ) -> Result<(), crate::DotLottiePlayerError> {
+        if self.set_current_state(state_name, None, false).is_err() {
+            return Err(crate::DotLottiePlayerError::Unknown);
         }
 
-        r
+        if do_tick {
+            return if self.run_current_state_pipeline().is_ok() {
+                Ok(())
+            } else {
+                Err(crate::DotLottiePlayerError::Unknown)
+            };
+        }
+
+        Ok(())
     }
 
     pub fn get_state_machine(&self) -> &StateMachine {
@@ -1268,56 +1258,46 @@ impl StateMachineEngine {
         "".to_string()
     }
 
-    fn observe_on_state_entered(&self, entering_state: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_state_entered(entering_state.to_string());
-            }
-        }
+    fn observe_on_state_entered(&mut self, entering_state: &str) {
+        self.event_queue.push(StateMachineEvent::StateEntered {
+            state: CString::new(entering_state).unwrap_or_default(),
+        });
     }
 
-    fn observe_on_state_exit(&self, leaving_state: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_state_exit(leaving_state.to_string());
-            }
-        }
+    fn observe_on_state_exit(&mut self, leaving_state: &str) {
+        self.event_queue.push(StateMachineEvent::StateExit {
+            state: CString::new(leaving_state).unwrap_or_default(),
+        });
     }
 
-    fn observe_on_transition(&self, previous_state: &str, new_state: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_transition(previous_state.to_string(), new_state.to_string());
-            }
-        }
+    fn observe_on_transition(&mut self, previous_state: &str, new_state: &str) {
+        self.event_queue.push(StateMachineEvent::Transition {
+            previous_state: CString::new(previous_state).unwrap_or_default(),
+            new_state: CString::new(new_state).unwrap_or_default(),
+        });
     }
 
-    pub fn observe_internal_event(&self, message: &str) {
-        if let Ok(observer) = self.internal_observer.try_read() {
-            if let Some(ob) = &*observer {
-                ob.on_message(message.to_string());
-            }
-        }
+    pub fn observe_internal_event(&mut self, message: &str) {
+        self.internal_event_queue
+            .push(StateMachineInternalEvent::Message {
+                message: CString::new(message).unwrap_or_default(),
+            });
     }
 
-    pub fn observe_custom_event(&self, message: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_custom_event(message.to_string());
-            }
-        }
+    pub fn observe_custom_event(&mut self, message: &str) {
+        self.event_queue.push(StateMachineEvent::CustomEvent {
+            message: CString::new(message).unwrap_or_default(),
+        });
     }
 
-    pub fn observe_on_error(&self, message: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_error(message.to_string());
-            }
-        }
+    pub fn observe_on_error(&mut self, message: &str) {
+        self.event_queue.push(StateMachineEvent::Error {
+            message: CString::new(message).unwrap_or_default(),
+        });
     }
 
     pub fn observe_string_input_value_change(
-        &self,
+        &mut self,
         input_name: &str,
         old_value: &str,
         new_value: &str,
@@ -1325,19 +1305,15 @@ impl StateMachineEngine {
         if old_value == new_value {
             return;
         }
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_string_input_value_change(
-                    input_name.to_string(),
-                    old_value.to_string(),
-                    new_value.to_string(),
-                );
-            }
-        }
+        self.event_queue.push(StateMachineEvent::StringInputChange {
+            name: CString::new(input_name).unwrap_or_default(),
+            old_value: CString::new(old_value).unwrap_or_default(),
+            new_value: CString::new(new_value).unwrap_or_default(),
+        });
     }
 
     pub fn observe_numeric_input_value_change(
-        &self,
+        &mut self,
         input_name: &str,
         old_value: f32,
         new_value: f32,
@@ -1345,19 +1321,16 @@ impl StateMachineEngine {
         if old_value == new_value {
             return;
         }
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_numeric_input_value_change(
-                    input_name.to_string(),
-                    old_value,
-                    new_value,
-                );
-            }
-        }
+        self.event_queue
+            .push(StateMachineEvent::NumericInputChange {
+                name: CString::new(input_name).unwrap_or_default(),
+                old_value,
+                new_value,
+            });
     }
 
     pub fn observe_boolean_input_value_change(
-        &self,
+        &mut self,
         input_name: &str,
         old_value: bool,
         new_value: bool,
@@ -1365,41 +1338,69 @@ impl StateMachineEngine {
         if old_value == new_value {
             return;
         }
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_boolean_input_value_change(
-                    input_name.to_string(),
-                    old_value,
-                    new_value,
-                );
+        self.event_queue
+            .push(StateMachineEvent::BooleanInputChange {
+                name: CString::new(input_name).unwrap_or_default(),
+                old_value,
+                new_value,
+            });
+    }
+
+    pub fn observe_on_start(&mut self) {
+        self.event_queue.push(StateMachineEvent::Start);
+    }
+
+    pub fn observe_on_stop(&mut self) {
+        self.event_queue.push(StateMachineEvent::Stop);
+    }
+
+    pub fn observe_on_input_fired(&mut self, input_name: &str) {
+        self.event_queue.push(StateMachineEvent::InputFired {
+            name: CString::new(input_name).unwrap_or_default(),
+        });
+    }
+
+    fn check_completion(&mut self) {
+        match self.player.pop_completion_event() {
+            CompletionEvent::Completed => {
+                self.post_event(&Event::OnComplete);
             }
+            CompletionEvent::LoopCompleted => {
+                self.post_event(&Event::OnLoopComplete);
+            }
+            _ => {}
         }
     }
 
-    pub fn observe_on_start(&self) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_start();
-            }
+    pub fn tick(&mut self) -> Result<(), crate::DotLottiePlayerError> {
+        let ticked = self.player.tick();
+
+        self.check_completion();
+
+        let needs_resume =
+            self.status == StateMachineEngineStatus::Tweening && !self.player.is_tweening();
+
+        if needs_resume {
+            self.resume_from_tweening();
         }
+
+        ticked
     }
 
-    pub fn observe_on_stop(&self) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_stop();
-            }
+    pub fn get_inputs(&self) -> Vec<String> {
+        let mut result = Vec::with_capacity(self.inputs.inputs.len() * 2);
+        for (key, value) in self.inputs.inputs.iter() {
+            result.push(key.clone());
+            result.push(
+                match value {
+                    crate::inputs::InputValue::Numeric(_) => "Numeric",
+                    crate::inputs::InputValue::String(_) => "String",
+                    crate::inputs::InputValue::Boolean(_) => "Boolean",
+                    crate::inputs::InputValue::Event(_) => "Event",
+                }
+                .to_string(),
+            );
         }
-    }
-
-    pub fn observe_on_input_fired(&self, input_name: &str) {
-        if let Ok(observers) = self.observers.try_read() {
-            for observer in observers.iter() {
-                observer.on_input_fired(input_name.to_string());
-            }
-        }
+        result
     }
 }
-
-unsafe impl Send for StateMachineEngine {}
-unsafe impl Sync for StateMachineEngine {}

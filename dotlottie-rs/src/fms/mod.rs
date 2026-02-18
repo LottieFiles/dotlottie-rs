@@ -206,8 +206,11 @@ impl DotLottieManager {
         let mut archive = self.archive.borrow_mut();
         let path = format!("t/{theme_id}.json");
         let content = Self::read_zip_file(&mut archive, &path)?;
-        let theme_str = std::str::from_utf8(&content).map_err(|_| DotLottieError::InvalidUtf8Error)?;
-        theme_str.parse::<Theme>().map_err(|_| DotLottieError::ReadContentError)
+        let theme_str =
+            std::str::from_utf8(&content).map_err(|_| DotLottieError::InvalidUtf8Error)?;
+        theme_str
+            .parse::<Theme>()
+            .map_err(|_| DotLottieError::ReadContentError)
     }
 
     #[inline]

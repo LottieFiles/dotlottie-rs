@@ -105,6 +105,35 @@ pub unsafe extern "C" fn dotlottie_new_player(threads: u32) -> *mut DotLottiePla
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn dotlottie_load_font(
+    name: *const c_char,
+    data: *const u8,
+    size: usize,
+) -> DotLottieResult {
+    if name.is_null() || data.is_null() || size == 0 {
+        return DotLottieResult::InvalidParameter;
+    }
+    let name = match CStr::from_ptr(name).to_str() {
+        Ok(s) => s,
+        Err(_) => return DotLottieResult::InvalidParameter,
+    };
+    let data = slice::from_raw_parts(data, size);
+    DotLottiePlayer::load_font(name, data).into()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_unload_font(name: *const c_char) -> DotLottieResult {
+    if name.is_null() {
+        return DotLottieResult::InvalidParameter;
+    }
+    let name = match CStr::from_ptr(name).to_str() {
+        Ok(s) => s,
+        Err(_) => return DotLottieResult::InvalidParameter,
+    };
+    DotLottiePlayer::unload_font(name).into()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn dotlottie_destroy(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     if ptr.is_null() {
         return DotLottieResult::InvalidParameter;

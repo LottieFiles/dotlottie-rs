@@ -23,10 +23,3 @@ pub use state_machine_engine::events::*;
 pub use state_machine_engine::security::*;
 pub use state_machine_engine::*;
 pub use theme::*;
-
-#[cfg(feature = "tvg")]
-pub fn register_font(font_name: &str, font_data: &[u8]) -> Result<(), DotLottiePlayerError> {
-    use lottie_renderer::Renderer;
-    crate::TvgRenderer::register_font(font_name, font_data)
-        .map_err(|_| DotLottiePlayerError::Unknown)
-}

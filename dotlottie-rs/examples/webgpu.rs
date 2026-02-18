@@ -11,7 +11,7 @@
 #[cfg(all(feature = "tvg-wg", target_os = "macos"))]
 mod webgpu_impl {
     use dotlottie_rs::c_api::apple::WgpuContext;
-    use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, WgpuDevice, WgpuInstance, WgpuTarget};
+    use dotlottie_rs::{DotLottiePlayer, WgpuDevice, WgpuInstance, WgpuTarget};
     use std::ffi::CString;
 
     // Wrapper types for WebGPU pointers
@@ -200,14 +200,9 @@ mod webgpu_impl {
                 let (device, instance, surface) = wgpu_context.as_pointers();
                 println!("✓ WebGPU context created");
 
-                let mut player = DotLottiePlayer::new(
-                    Config {
-                        autoplay: true,
-                        loop_animation: true,
-                        ..Default::default()
-                    },
-                    0,
-                );
+                let mut player = DotLottiePlayer::new();
+                player.set_loop(true);
+                player.set_autoplay(true);
 
                 // IMPORTANT: Call set_wg_target BEFORE loading animation data
                 // Use actual window size to handle DPI scaling
@@ -215,13 +210,9 @@ mod webgpu_impl {
                 let wgpu_instance = WebGpuInstance(instance as *mut std::ffi::c_void);
                 let wgpu_surface = WebGpuSurface(surface as *mut std::ffi::c_void);
 
-                let success = player.set_wg_target(
-                    &wgpu_device,
-                    &wgpu_instance,
-                    &wgpu_surface,
-                    width,
-                    height,
-                );
+                let success = player
+                    .set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_surface, width, height)
+                    .is_ok();
 
                 if success {
                     println!("✓ WebGPU target set successfully");
@@ -235,12 +226,12 @@ mod webgpu_impl {
 
                 let c_data = CString::new(animation_data).expect("CString conversion failed");
 
-                if !player.load_animation_data(&c_data, width, height) {
+                if player.load_animation_data(&c_data, width, height).is_err() {
                     eprintln!("Failed to load animation");
                     return;
                 }
 
-                player.play();
+                let _ = player.play();
 
                 println!("✓ Animation loaded successfully");
                 println!("   Total frames: {}", player.total_frames());
@@ -265,7 +256,7 @@ mod webgpu_impl {
                 if let (Some(player), Some(wgpu_context)) =
                     (self.player.as_mut(), &self.wgpu_context)
                 {
-                    player.tick();
+                    let _ = player.tick();
 
                     // CRITICAL: Present the surface to display the rendered frame
                     // Without this, rendering happens but nothing appears on screen
@@ -306,18 +297,21 @@ mod webgpu_impl {
                     let wgpu_instance = WebGpuInstance(instance as *mut std::ffi::c_void);
                     let wgpu_surface = WebGpuSurface(surface as *mut std::ffi::c_void);
 
-                    let success = player.set_wg_target(
-                        &wgpu_device,
-                        &wgpu_instance,
-                        &wgpu_surface,
-                        new_width,
-                        new_height,
-                    );
+                    let success = player
+                        .set_wg_target(
+                            &wgpu_device,
+                            &wgpu_instance,
+                            &wgpu_surface,
+                            new_width,
+                            new_height,
+                        )
+                        .is_ok();
 
                     if success {
                         // Reload animation with new size
-                        player.load_animation_path("src/bouncy_ball.json", new_width, new_height);
-                        player.play();
+                        let path = CString::new("src/bouncy_ball.json").unwrap();
+                        let _ = player.load_animation_path(&path, new_width, new_height);
+                        let _ = player.play();
 
                         self.current_width = new_width;
                         self.current_height = new_height;

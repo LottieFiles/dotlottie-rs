@@ -17,7 +17,7 @@ pub unsafe extern "C" fn dotlottie_create_wgpu_context_from_metal_layer(
     match WgpuContext::from_metal_layer(metal_layer) {
         Ok(context) => Box::into_raw(Box::new(context)) as *mut std::ffi::c_void,
         Err(e) => {
-            eprintln!("Failed to create WebGPU context: {}", e);
+            eprintln!("Failed to create WebGPU context: {e}");
             std::ptr::null_mut()
         }
     }
@@ -106,8 +106,11 @@ mod ffi {
 // Thread-local storage for device callback workaround
 // This is needed because wgpu-native doesn't pass userdata1 correctly for device callbacks
 use std::cell::RefCell;
+
+type DeviceCallbackShared = Arc<(Mutex<DeviceCallbackResult>, Condvar)>;
+
 thread_local! {
-    static DEVICE_CALLBACK_RESULT: RefCell<Option<Arc<(Mutex<DeviceCallbackResult>, Condvar)>>> = RefCell::new(None);
+    static DEVICE_CALLBACK_RESULT: RefCell<Option<DeviceCallbackShared>> = const { RefCell::new(None) };
 }
 
 struct DeviceCallbackResult {
@@ -116,6 +119,7 @@ struct DeviceCallbackResult {
 }
 
 /// Request adapter synchronously using condvar instead of polling
+#[allow(clippy::arc_with_non_send_sync)]
 unsafe fn request_adapter_sync(
     instance: ffi::WGPUInstance,
     surface: ffi::WGPUSurface,
@@ -150,7 +154,7 @@ unsafe fn request_adapter_sync(
             if status == ffi::WGPURequestAdapterStatus_WGPURequestAdapterStatus_Success {
                 data.adapter = Some(adapter);
             } else {
-                eprintln!("WebGPU adapter request failed with status: {}", status);
+                eprintln!("WebGPU adapter request failed with status: {status}");
             }
             data.completed = true;
             cvar.notify_one();
@@ -201,6 +205,7 @@ unsafe fn request_adapter_sync(
 ///
 /// Note: wgpu-native has a bug where it doesn't pass userdata1 correctly for device callbacks,
 /// so we use thread_local storage as a workaround.
+#[allow(clippy::arc_with_non_send_sync)]
 unsafe fn request_device_sync(adapter: ffi::WGPUAdapter) -> Result<ffi::WGPUDevice, String> {
     let result = Arc::new((
         Mutex::new(DeviceCallbackResult {
@@ -231,7 +236,7 @@ unsafe fn request_device_sync(adapter: ffi::WGPUAdapter) -> Result<ffi::WGPUDevi
                 if status == ffi::WGPURequestDeviceStatus_WGPURequestDeviceStatus_Success {
                     data.device = Some(device);
                 } else {
-                    eprintln!("WebGPU device request failed with status: {}", status);
+                    eprintln!("WebGPU device request failed with status: {status}");
                 }
                 data.completed = true;
                 cvar.notify_one();
@@ -439,7 +444,7 @@ impl WgpuContext {
 
             // Check if present succeeded
             if status != ffi::WGPUStatus_WGPUStatus_Success {
-                eprintln!("Warning: wgpuSurfacePresent failed with status: {}", status);
+                eprintln!("Warning: wgpuSurfacePresent failed with status: {status}");
             }
         }
     }

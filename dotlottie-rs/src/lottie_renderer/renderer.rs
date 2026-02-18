@@ -216,5 +216,7 @@ pub trait Renderer: Sized + 'static {
 
     fn update(&mut self) -> Result<(), Self::Error>;
 
-    fn register_font(font_name: &str, font_data: &[u8]) -> Result<(), Self::Error>;
+    fn load_font(font_name: &str, font_data: &[u8]) -> Result<(), Self::Error>;
+
+    fn unload_font(font_name: &str) -> Result<(), Self::Error>;
 }

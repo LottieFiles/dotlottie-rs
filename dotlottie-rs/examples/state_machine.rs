@@ -2,7 +2,7 @@
 
 use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
 use dotlottie_rs::events::Event;
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, StateMachineEngine, StateMachineEvent};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, StateMachineEngine, StateMachineEvent};
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -29,19 +29,32 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 previous_state,
                 new_state,
             } => {
-                println!("[state machine event] on_transition: {previous_state} -> {new_state}");
+                println!(
+                    "[state machine event] on_transition: {} -> {}",
+                    previous_state.to_string_lossy(),
+                    new_state.to_string_lossy()
+                );
             }
             StateMachineEvent::StateEntered { state } => {
-                println!("[state machine event] on_state_entered: {state}");
+                println!(
+                    "[state machine event] on_state_entered: {}",
+                    state.to_string_lossy()
+                );
             }
             StateMachineEvent::StateExit { state } => {
-                println!("[state machine event] on_state_exit: {state}");
+                println!(
+                    "[state machine event] on_state_exit: {}",
+                    state.to_string_lossy()
+                );
             }
             StateMachineEvent::CustomEvent { message } => {
-                println!("[state machine event] custom_event: {message}");
+                println!(
+                    "[state machine event] custom_event: {}",
+                    message.to_string_lossy()
+                );
             }
             StateMachineEvent::Error { message } => {
-                println!("[state machine event] error: {message}");
+                println!("[state machine event] error: {}", message.to_string_lossy());
             }
             StateMachineEvent::StringInputChange {
                 name,
@@ -49,7 +62,10 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] string_input_value_change ==> {name} : {old_value} -> {new_value}"
+                    "[state machine event] string_input_value_change ==> {} : {} -> {}",
+                    name.to_string_lossy(),
+                    old_value.to_string_lossy(),
+                    new_value.to_string_lossy()
                 );
             }
             StateMachineEvent::NumericInputChange {
@@ -58,7 +74,8 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] numeric_input_value_change ==> {name} : {old_value} -> {new_value}"
+                    "[state machine event] numeric_input_value_change ==> {} : {old_value} -> {new_value}",
+                    name.to_string_lossy()
                 );
             }
             StateMachineEvent::BooleanInputChange {
@@ -67,11 +84,15 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] boolean_input_value_change ==> {name} : {old_value} -> {new_value}"
+                    "[state machine event] boolean_input_value_change ==> {} : {old_value} -> {new_value}",
+                    name.to_string_lossy()
                 );
             }
             StateMachineEvent::InputFired { name } => {
-                println!("[state machine event] input_fired ==> {name}");
+                println!(
+                    "[state machine event] input_fired ==> {}",
+                    name.to_string_lossy()
+                );
             }
         }
     }
@@ -86,12 +107,16 @@ fn load_animation(player: &mut DotLottiePlayer, path: &PathBuf) -> bool {
             let metadata = fs::metadata(path).expect("Could not read metadata");
             let mut buffer = vec![0; metadata.len() as usize];
             file.read_exact(&mut buffer).expect("Buffer overflow");
-            player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32)
+            player
+                .load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32)
+                .is_ok()
         }
         "json" => {
             let data = fs::read_to_string(path).expect("Could not read JSON file");
             let c_data = CString::new(data).expect("CString conversion failed");
-            player.load_animation_data(&c_data, WIDTH as u32, HEIGHT as u32)
+            player
+                .load_animation_data(&c_data, WIDTH as u32, HEIGHT as u32)
+                .is_ok()
         }
         _ => false,
     };
@@ -124,25 +149,22 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    let mut player = DotLottiePlayer::new(
-        Config {
-            background_color: 0xffffffff,
-            ..Config::default()
-        },
-        0,
-    );
-
+    let mut player = DotLottiePlayer::new();
+    let _ = player.set_background_color(Some(0xffffffff));
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
-    player.set_sw_target(
+    player
+        .set_sw_target(
             &mut buffer,
             WIDTH as u32,
             HEIGHT as u32,
             ColorSpace::ABGR8888,
-        );
-    let animation_path =
-        PathBuf::from(format!("{ASSETS_DIR}/animations/dotlottie/v1/{ANIMATION_NAME}"));
+        )
+        .unwrap();
+    let animation_path = PathBuf::from(format!(
+        "{ASSETS_DIR}/animations/dotlottie/v1/{ANIMATION_NAME}"
+    ));
 
     if !load_animation(&mut player, &animation_path) {
         eprintln!("Failed to load animation, exiting");
@@ -159,15 +181,15 @@ fn main() {
 
     let open_url = OpenUrlPolicy::default();
 
-    let started = engine.start(&open_url);
+    let started = engine.start(&open_url).is_ok();
     println!("State machine started: {started}");
 
     if !started {
         eprintln!("Warning: State machine failed to start");
     }
 
-    engine.player.set_frame(0.0);
-    engine.player.render();
+    let _ = engine.player.set_frame(0.0);
+    let _ = engine.player.render();
 
     let mut mx = 0.0_f32;
     let mut my = 0.0_f32;
@@ -212,7 +234,7 @@ fn main() {
 
         left_down = mouse_pressed;
 
-        let frame_changed = engine.tick();
+        let frame_changed = engine.tick().is_ok();
 
         if frame_changed || last_buffer_update.elapsed().as_millis() > 100 {
             window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();

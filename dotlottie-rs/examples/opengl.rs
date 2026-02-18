@@ -10,7 +10,7 @@
 // ==============================================================================
 #[cfg(feature = "tvg-gl")]
 mod opengl_impl {
-    use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, GlContext};
+    use dotlottie_rs::{DotLottiePlayer, GlContext};
     use glutin::config::ConfigTemplateBuilder;
     use glutin::context::{ContextAttributesBuilder, NotCurrentGlContext, PossiblyCurrentContext};
     use glutin::display::GetGlDisplay;
@@ -161,14 +161,9 @@ mod opengl_impl {
                 }
             }
 
-            let mut player = DotLottiePlayer::new(
-                Config {
-                    autoplay: true,
-                    loop_animation: true,
-                    ..Default::default()
-                },
-                0,
-            );
+            let mut player = DotLottiePlayer::new();
+            player.set_loop(true);
+            player.set_autoplay(true);
 
             // IMPORTANT: Call set_gl_target BEFORE loading animation data
             // This configures ThorVG to use OpenGL as the renderer
@@ -230,7 +225,7 @@ mod opengl_impl {
                     gl::Finish();
                 }
 
-                success = player.set_gl_target(&gl_ctx, fbo_id, WIDTH, HEIGHT);
+                success = player.set_gl_target(&gl_ctx, fbo_id, WIDTH, HEIGHT).is_ok();
 
                 if success {
                     println!("✓ OpenGL target set successfully on attempt {attempt}");
@@ -260,7 +255,7 @@ mod opengl_impl {
 
             let c_data = CString::new(animation_data).expect("CString conversion failed");
 
-            if !player.load_animation_data(&c_data, WIDTH, HEIGHT) {
+            if player.load_animation_data(&c_data, WIDTH, HEIGHT).is_err() {
                 eprintln!("Failed to load animation");
                 return;
             }
@@ -290,8 +285,8 @@ mod opengl_impl {
                     println!("First render - starting playback from frame 0...");
 
                     // Start playing from the beginning
-                    player.set_frame(0.0);
-                    player.play();
+                    let _ = player.set_frame(0.0);
+                    let _ = player.play();
 
                     self.first_render = false;
                 }
@@ -304,7 +299,7 @@ mod opengl_impl {
                     gl::Clear(gl::COLOR_BUFFER_BIT);
                 }
 
-                let rendered = player.tick();
+                let rendered = player.tick().is_ok();
 
                 // Debug: Check if rendering actually happened
                 static mut FRAME_COUNT: u32 = 0;

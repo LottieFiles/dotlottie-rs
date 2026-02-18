@@ -1,3 +1,5 @@
+use std::ffi::CString;
+
 use serde::Deserialize;
 
 use crate::{state_machine::StringBool, Event};
@@ -272,18 +274,19 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::SetTheme { value } => {
-                let resolved_value = if value.starts_with('$') {
-                    let trimmed_value = value.trim_start_matches('$');
-                    engine
-                        .get_string_input(trimmed_value)
-                        .unwrap_or_else(|| value.clone())
-                } else {
-                    value.clone()
-                };
+                let resolved_value = value
+                    .strip_prefix('$')
+                    .and_then(|key| engine.get_string_input(key))
+                    .unwrap_or_else(|| value.clone());
 
-                if !engine.player.set_theme(&resolved_value) {
-                    return Err(StateMachineActionError::ExecuteError);
-                }
+                let theme_cstr = CString::new(resolved_value)
+                    .map_err(|_| StateMachineActionError::ParsingError)?;
+
+                engine
+                    .player
+                    .set_theme(&theme_cstr)
+                    .map_err(|_| StateMachineActionError::ExecuteError)?;
+
                 Ok(())
             }
             Action::OpenUrl { url, target } => {
@@ -340,8 +343,9 @@ impl ActionTrait for Action {
                         let value = value.trim_start_matches('$');
                         let frame = engine.get_numeric_input(value);
                         if let Some(frame) = frame {
-                            let clamped_frame = frame.clamp(0.0, engine.player.total_frames() - 1.0);
-                            engine.player.set_frame(clamped_frame);
+                            let clamped_frame =
+                                frame.clamp(0.0, engine.player.total_frames() - 1.0);
+                            let _ = engine.player.set_frame(clamped_frame);
                         } else {
                             return Err(StateMachineActionError::ExecuteError);
                         }
@@ -349,7 +353,7 @@ impl ActionTrait for Action {
                     }
                     StringNumber::F32(value) => {
                         let clamped_frame = value.clamp(0.0, engine.player.total_frames() - 1.0);
-                        engine.player.set_frame(clamped_frame);
+                        let _ = engine.player.set_frame(clamped_frame);
                     }
                 }
                 Ok(())
@@ -366,7 +370,7 @@ impl ActionTrait for Action {
                             let new_perc = clamped_value / 100.0;
                             let frame = (engine.player.total_frames() - 1.0) * new_perc;
 
-                            engine.player.set_frame(frame);
+                            let _ = engine.player.set_frame(frame);
                         }
 
                         return Ok(());
@@ -376,7 +380,7 @@ impl ActionTrait for Action {
                         let new_perc = clamped_value / 100.0;
                         let frame = (engine.player.total_frames() - 1.0) * new_perc;
 
-                        engine.player.set_frame(frame);
+                        let _ = engine.player.set_frame(frame);
                     }
                 }
 

@@ -1,4 +1,4 @@
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 use std::ffi::CString;
 
 mod test_utils;
@@ -10,32 +10,40 @@ mod tests {
 
     #[test]
     fn buflen() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        assert!(player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT));
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
-        player.render();
+        let _ = player.render();
 
         assert_eq!(buffer.len(), (WIDTH * HEIGHT) as usize);
     }
 
     #[test]
     fn test_buffer_len_with_animation_data() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         let test_data_str = r#"{"v":"5.5.7","fr":60,"ip":0,"op":60,"w":100,"h":100,"nm":"Test","ddd":0,"assets":[],"layers":[],"markers":[]}"#;
         let test_data = CString::new(test_data_str).expect("Failed to create CString");
-        assert!(player.load_animation_data(&test_data, WIDTH, HEIGHT));
+        assert_eq!(
+            player.load_animation_data(&test_data, WIDTH, HEIGHT),
+            Ok(())
+        );
 
-        player.render();
+        let _ = player.render();
 
         assert_eq!(buffer.len(), (WIDTH * HEIGHT) as usize);
     }

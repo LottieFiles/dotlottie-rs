@@ -1,7 +1,9 @@
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
 
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, Mode};
+use std::ffi::CString;
+
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Mode};
 
 #[cfg(test)]
 mod tests {
@@ -9,26 +11,20 @@ mod tests {
 
     #[test]
     fn test_invalid_segment_rejected() {
-        let config = Config {
-            autoplay: true,
-            segment: vec![50.0, 30.0],
-            ..Config::default()
-        };
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(true);
+        let _ = player.set_segment(Some([50.0, 30.0]));
 
-        let mut player = DotLottiePlayer::new(config, 0);
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
-        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert!(
-            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -53,26 +49,20 @@ mod tests {
 
     #[test]
     fn test_same_start_end_rejected() {
-        let config = Config {
-            autoplay: true,
-            segment: vec![0.0, 0.0],
-            ..Config::default()
-        };
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(true);
+        let _ = player.set_segment(Some([0.0, 0.0]));
 
-        let mut player = DotLottiePlayer::new(config, 0);
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
-        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert!(
-            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -99,29 +89,23 @@ mod tests {
             Mode::ReverseBounce,
         ];
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
         for mode in modes {
-            let config = Config {
-                mode,
-                autoplay: true,
-                segment: vec![50.0, 30.0],
-                ..Config::default()
-            };
+            let mut player = DotLottiePlayer::new();
+            player.set_mode(mode);
+            player.set_autoplay(true);
+            let _ = player.set_segment(Some([50.0, 30.0]));
 
-            let mut player = DotLottiePlayer::new(config, 0);
-
-            
             let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
             // Set software rendering target
-            assert!(player.set_sw_target(
-                &mut buffer,
-                WIDTH,
-                HEIGHT,
-                ColorSpace::ABGR8888,
-            ));
+            assert!(player
+                .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+                .is_ok());
 
             assert!(
-                player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
+                player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
                 "Animation should load for mode {mode:?}"
             );
 
@@ -145,26 +129,20 @@ mod tests {
 
     #[test]
     fn test_valid_segments_unchanged() {
-        let config = Config {
-            autoplay: true,
-            segment: vec![30.0, 50.0],
-            ..Config::default()
-        };
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(true);
+        let _ = player.set_segment(Some([30.0, 50.0]));
 
-        let mut player = DotLottiePlayer::new(config, 0);
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
-        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert!(
-            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load with valid segment"
         );
 
@@ -186,60 +164,49 @@ mod tests {
     }
 
     #[test]
-    fn test_set_config_rejects_invalid_segment() {
-        let config = Config {
-            autoplay: false,
-            segment: vec![10.0, 20.0],
-            ..Config::default()
-        };
+    fn test_set_segment_rejects_invalid() {
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(false);
+        let _ = player.set_segment(Some([10.0, 20.0]));
 
-        let mut player = DotLottiePlayer::new(config, 0);
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
-        
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        ));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert!(
-            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
-        let initial_config = player.config();
-        assert_eq!(initial_config.segment, vec![10.0, 20.0]);
+        let initial_segment = player.segment();
+        assert_eq!(initial_segment, Some([10.0, 20.0]));
 
-        let invalid_config = Config {
-            autoplay: false,
-            segment: vec![50.0, 30.0],
-            ..initial_config
-        };
+        // Try to set invalid segment
+        let result = player.set_segment(Some([50.0, 30.0]));
+        assert!(result.is_err(), "Invalid segment should be rejected");
 
-        player.set_config(invalid_config);
-
-        let updated_config = player.config();
+        let updated_segment = player.segment();
         assert_eq!(
-            updated_config.segment,
-            vec![10.0, 20.0],
+            updated_segment,
+            Some([10.0, 20.0]),
             "Invalid segment should be rejected, keeping previous valid segment"
         );
 
-        let invalid_config2 = Config {
-            autoplay: false,
-            segment: vec![25.0, 25.0],
-            ..updated_config
-        };
+        // Try to set same start/end segment
+        let result2 = player.set_segment(Some([25.0, 25.0]));
+        assert!(
+            result2.is_err(),
+            "Same start/end segment should be rejected"
+        );
 
-        player.set_config(invalid_config2);
-
-        let final_config = player.config();
+        let final_segment = player.segment();
         assert_eq!(
-            final_config.segment,
-            vec![10.0, 20.0],
+            final_segment,
+            Some([10.0, 20.0]),
             "Invalid segment [25, 25] should be rejected"
         );
     }

@@ -1,7 +1,9 @@
 mod test_utils;
 
+use std::ffi::CString;
+
 use crate::test_utils::{HEIGHT, WIDTH};
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError};
 
 #[cfg(test)]
 mod tests {
@@ -9,83 +11,97 @@ mod tests {
 
     #[test]
     fn test_play_fail_when_animation_is_not_loaded() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        assert!(
-            !player.play(),
+        assert_eq!(
+            player.play(),
+            Err(DotLottiePlayerError::AnimationNotLoaded),
             "Expected play to fail when animation is not loaded"
         );
 
-        assert!(player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT));
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
-        assert!(
+        assert_eq!(
             player.play(),
+            Ok(()),
             "Expected play to succeed when animation is loaded"
         );
     }
 
     #[test]
     fn test_play_while_playing() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        assert!(player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT));
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
-        assert!(player.play());
+        assert_eq!(player.play(), Ok(()));
 
         assert!(player.is_playing(), "Expected player to be playing");
 
-        assert!(!player.play(), "Expected play to fail when already playing");
+        assert_eq!(
+            player.play(),
+            Err(DotLottiePlayerError::InsufficientCondition),
+            "Expected play to fail when already playing"
+        );
     }
 
     #[test]
     fn test_play_after_pause() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                use_frame_interpolation: false,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new();
+        player.set_use_frame_interpolation(false);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        assert!(player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT));
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
-        assert!(player.play());
+        assert_eq!(player.play(), Ok(()));
 
         let mid_frame = player.total_frames() / 2.0;
 
         while player.current_frame() < mid_frame {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) {
-                player.render();
+            if player.set_frame(next_frame).is_ok() {
+                let _ = player.render();
             }
         }
 
-        assert!(player.pause(), "Expected pause to succeed");
+        assert_eq!(player.pause(), Ok(()), "Expected pause to succeed");
 
         let paused_at = player.current_frame();
 
-        assert!(player.play(), "Expected play to succeed after pause");
+        assert_eq!(
+            player.play(),
+            Ok(()),
+            "Expected play to succeed after pause"
+        );
 
         let mut rendered_frames = vec![];
 
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) {
-                player.render();
+            if player.set_frame(next_frame).is_ok() {
+                let _ = player.render();
 
                 rendered_frames.push(player.current_frame());
             }
@@ -99,27 +115,25 @@ mod tests {
 
     #[test]
     fn test_play_after_complete() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                use_frame_interpolation: false,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new();
+        player.set_use_frame_interpolation(false);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        assert!(player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT));
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
 
-        assert!(player.play());
+        assert_eq!(player.play(), Ok(()));
 
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) {
-                player.render();
+            if player.set_frame(next_frame).is_ok() {
+                let _ = player.render();
             }
         }
 
@@ -132,7 +146,11 @@ mod tests {
             "Expected current frame to be total frames"
         );
 
-        assert!(player.play(), "Expected play to succeed after complete");
+        assert_eq!(
+            player.play(),
+            Ok(()),
+            "Expected play to succeed after complete"
+        );
 
         assert_eq!(
             player.current_frame(),
@@ -143,23 +161,21 @@ mod tests {
 
     #[test]
     fn test_play_after_setting_frame() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                use_frame_interpolation: false,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new();
+        player.set_use_frame_interpolation(false);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        assert!(player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT));
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));
 
         let mid_frame = player.total_frames() / 2.0;
 
-        assert!(player.set_frame(mid_frame));
+        assert_eq!(player.set_frame(mid_frame), Ok(()));
 
         assert_eq!(
             player.current_frame(),
@@ -167,7 +183,7 @@ mod tests {
             "Expected current frame to be mid frame"
         );
 
-        assert!(player.play());
+        assert_eq!(player.play(), Ok(()));
 
         assert_eq!(
             player.current_frame(),
@@ -180,7 +196,7 @@ mod tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 rendered_frames.push(player.current_frame());
             }
         }

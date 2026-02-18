@@ -1,5 +1,4 @@
 #[derive(Debug, Clone, PartialEq)]
-#[repr(C)]
 pub struct OpenUrlPolicy {
     pub whitelist: Vec<String>,
     pub require_user_interaction: bool,

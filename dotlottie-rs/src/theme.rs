@@ -48,7 +48,11 @@ impl Theme {
 
     pub fn set_rule(&mut self, rule: ThemeRule) {
         let rule_id = rule.id().to_string();
-        if let Some(pos) = self.rules.iter().position(|existing| existing.id() == rule_id) {
+        if let Some(pos) = self
+            .rules
+            .iter()
+            .position(|existing| existing.id() == rule_id)
+        {
             self.rules[pos] = rule;
         } else {
             self.rules.push(rule);
@@ -357,10 +361,7 @@ impl ThemeRule {
     }
 }
 
-pub fn transform_theme_to_lottie_slots(
-    theme_json: &str,
-    active_animation_id: &str,
-) -> String {
+pub fn transform_theme_to_lottie_slots(theme_json: &str, active_animation_id: &str) -> String {
     match theme_json.parse::<Theme>() {
         Ok(theme) => {
             let slots = theme.to_slot_types(active_animation_id);
@@ -650,8 +651,16 @@ fn text_value_to_document(value: &TextValue) -> TextDocument {
         stroke_over_fill: value.stroke_over_fill,
         line_height: value.line_height,
         tracking: value.tracking,
-        justify: value.justify.as_ref().and_then(|j| parse_justify(j)).map(|j| j.to_number()),
-        text_caps: value.text_caps.as_ref().and_then(|c| parse_caps(c)).map(|c| c.to_number()),
+        justify: value
+            .justify
+            .as_ref()
+            .and_then(|j| parse_justify(j))
+            .map(|j| j.to_number()),
+        text_caps: value
+            .text_caps
+            .as_ref()
+            .and_then(|c| parse_caps(c))
+            .map(|c| c.to_number()),
         baseline_shift: value.baseline_shift,
         wrap_size: value.wrap_size,
         wrap_position: value.wrap_position,

@@ -1,30 +1,33 @@
 #[cfg(test)]
 mod tests {
     use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Config, DotLottiePlayer,
-        StateMachineEvent,
+        actions::open_url_policy::OpenUrlPolicy, ColorSpace, DotLottiePlayer, StateMachineEvent,
     };
 
     #[test]
     fn increment() {
         let global_state = include_str!("../assets/statemachines/action_tests/inc_rating.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -57,23 +60,27 @@ mod tests {
     #[test]
     fn decrement() {
         let global_state = include_str!("../assets/statemachines/action_tests/decr_rating.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -106,23 +113,27 @@ mod tests {
     #[test]
     fn toggle() {
         let global_state = include_str!("../assets/statemachines/action_tests/toggle.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -144,23 +155,28 @@ mod tests {
     #[test]
     fn set_boolean() {
         let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
+        assert_eq!(
+            player.load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            ),
+            Ok(())
         );
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -176,23 +192,27 @@ mod tests {
     #[test]
     fn set_numeric() {
         let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -209,23 +229,27 @@ mod tests {
     #[test]
     fn set_string() {
         let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -242,23 +266,27 @@ mod tests {
     #[test]
     fn fire() {
         let global_state = include_str!("../assets/statemachines/action_tests/fire.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -274,17 +302,21 @@ mod tests {
     #[test]
     fn set_frame() {
         let global_state = include_str!("../assets/statemachines/action_tests/set_frame.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
 
         assert_eq!(player.current_frame(), 0.0);
 
@@ -293,7 +325,7 @@ mod tests {
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -315,17 +347,21 @@ mod tests {
     #[test]
     fn set_progress() {
         let global_state = include_str!("../assets/statemachines/action_tests/set_progress.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
 
         assert_eq!(player.current_frame(), 0.0);
 
@@ -334,7 +370,7 @@ mod tests {
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         // Since switch is false by default, on load we land in the b state
         let curr_state_name = sm.get_current_state_name();
@@ -356,17 +392,21 @@ mod tests {
     #[test]
     fn reset() {
         let reset_sm = include_str!("../assets/statemachines/action_tests/reset.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
 
         assert_eq!(player.current_frame(), 0.0);
 
@@ -375,7 +415,7 @@ mod tests {
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         sm.set_numeric_input("rating", 3.0, true, false)
             .expect("input to set successfully");
@@ -393,17 +433,21 @@ mod tests {
     #[test]
     fn fire_custom_event() {
         let reset_sm = include_str!("../assets/statemachines/normal_usecases/rating.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
 
         assert_eq!(player.current_frame(), 0.0);
 
@@ -412,7 +456,7 @@ mod tests {
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         sm.set_numeric_input("rating", 3.0, true, false)
             .expect("input to set successfully");
@@ -443,13 +487,19 @@ mod tests {
                 StateMachineEvent::Transition {
                     previous_state,
                     new_state,
-                } => Some(format!("on_transition: {previous_state} -> {new_state}")),
+                } => Some(format!(
+                    "on_transition: {} -> {}",
+                    previous_state.to_string_lossy(),
+                    new_state.to_string_lossy()
+                )),
                 StateMachineEvent::StateEntered { state } => {
-                    Some(format!("on_state_entered: {state}"))
+                    Some(format!("on_state_entered: {}", state.to_string_lossy()))
                 }
-                StateMachineEvent::StateExit { state } => Some(format!("on_state_exit: {state}")),
+                StateMachineEvent::StateExit { state } => {
+                    Some(format!("on_state_exit: {}", state.to_string_lossy()))
+                }
                 StateMachineEvent::CustomEvent { message } => {
-                    Some(format!("custom_event: {message}"))
+                    Some(format!("custom_event: {}", message.to_string_lossy()))
                 }
                 _ => None,
             };

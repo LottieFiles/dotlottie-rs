@@ -140,7 +140,7 @@ android-clean:
 # ============================================================================
 
 # Android feature set (C API from dotlottie-rs)
-ANDROID_DEFAULT_FEATURES = tvg,tvg-sw,c_api
+ANDROID_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
 ANDROID_LIB_NAME = libdotlottie_rs.so
 
 # Build for all Android architectures with C API

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -10,7 +10,10 @@
       }
 
       body {
-        font-family: system-ui, -apple-system, sans-serif;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
         max-width: 1400px;
         margin: 0 auto;
         padding: 20px;
@@ -318,7 +321,7 @@
 
         if (!Module._dotlottie_set_sw_target) {
           throw new Error(
-            "WASM module missing _dotlottie_set_sw_target function"
+            "WASM module missing _dotlottie_set_sw_target function",
           );
         }
 
@@ -330,7 +333,7 @@
         if (player === 0) throw new Error("Failed to create player");
 
         console.log(
-          `Instance ${instanceId}: Player created, setting up software target`
+          `Instance ${instanceId}: Player created, setting up software target`,
         );
 
         const width = canvas.width;
@@ -341,10 +344,10 @@
         if (bufferPtr === 0) throw new Error("Failed to allocate buffer");
 
         console.log(
-          `Instance ${instanceId}: Allocated buffer ${bufferSize} bytes for ${width}x${height}`
+          `Instance ${instanceId}: Allocated buffer ${bufferSize} bytes for ${width}x${height}`,
         );
         console.log(
-          `Instance ${instanceId}: bufferPtr = ${bufferPtr}, player = ${player}`
+          `Instance ${instanceId}: bufferPtr = ${bufferPtr}, player = ${player}`,
         );
 
         // ColorSpace: 0 = ABGR8888 (matching the Rust forced colorspace)
@@ -365,16 +368,16 @@
           bufferPtr,
           width,
           height,
-          colorSpace
+          colorSpace,
         );
 
         console.log(
-          `Instance ${instanceId}: set_sw_target returned: ${setTargetResult}`
+          `Instance ${instanceId}: set_sw_target returned: ${setTargetResult}`,
         );
 
         if (setTargetResult !== 0) {
           throw new Error(
-            `Failed to set software target (error code: ${setTargetResult})`
+            `Failed to set software target (error code: ${setTargetResult})`,
           );
         }
 
@@ -390,7 +393,7 @@
           player,
           animationPtr,
           width,
-          height
+          height,
         );
 
         Module._free(animationPtr);
@@ -462,7 +465,7 @@
           webglContext,
           0,
           width,
-          height
+          height,
         );
 
         if (setTargetResult !== 0)
@@ -478,7 +481,7 @@
           player,
           animationPtr,
           width,
-          height
+          height,
         );
 
         Module._free(animationPtr);
@@ -555,7 +558,7 @@
           instanceHandle,
           surfaceHandle,
           width,
-          height
+          height,
         );
 
         if (setTargetResult !== 0)
@@ -571,7 +574,7 @@
           player,
           animationPtr,
           width,
-          height
+          height,
         );
 
         Module._free(animationPtr);
@@ -611,7 +614,7 @@
           .addEventListener("click", () => Module._dotlottie_stop(player));
 
         const loopInput = document.querySelector(
-          `.loop[data-id="${instanceId}"]`
+          `.loop[data-id="${instanceId}"]`,
         );
         loopInput.addEventListener("change", (e) => {
           playerData.shouldLoop = e.target.checked;
@@ -664,12 +667,12 @@
               const bufferView = new Uint8ClampedArray(
                 Module.HEAPU8.buffer,
                 playerData.bufferPtr,
-                playerData.bufferSize
+                playerData.bufferSize,
               );
               const imageData = new ImageData(
                 new Uint8ClampedArray(bufferView),
                 playerData.width,
-                playerData.height
+                playerData.height,
               );
               playerData.ctx.putImageData(imageData, 0, 0);
             }
@@ -681,7 +684,7 @@
             Module._free(currentFramePtr);
 
             frameInfoEl.textContent = `Frame: ${currentFrame.toFixed(
-              1
+              1,
             )} / ${playerData.totalFrames.toFixed(1)}`;
           }
 
@@ -689,7 +692,7 @@
           playerData.frameCount++;
           if (now - playerData.lastFrameTime >= 1000) {
             playerData.fps = Math.round(
-              (playerData.frameCount * 1000) / (now - playerData.lastFrameTime)
+              (playerData.frameCount * 1000) / (now - playerData.lastFrameTime),
             );
             fpsInfoEl.textContent = `FPS: ${playerData.fps}`;
             playerData.frameCount = 0;

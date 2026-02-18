@@ -1,4 +1,6 @@
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
+use std::ffi::CString;
+
+use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -8,82 +10,94 @@ mod tests {
 
     use super::*;
 
+    struct TestConfig {
+        speed: f32,
+        autoplay: bool,
+        segment: Option<[f32; 2]>,
+    }
+
     #[test]
     fn test_default_speed() {
-        let player = DotLottiePlayer::new(Config::default(), 0);
+        let player = DotLottiePlayer::new();
 
-        assert_eq!(player.config().speed, 1.0);
+        assert_eq!(player.speed(), 1.0);
     }
 
     #[test]
     fn test_set_speed() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
-        let mut config = player.config();
-        config.speed = 2.0;
-        player.set_config(config);
+        player.set_speed(2.0);
 
-        assert_eq!(player.config().speed, 2.0);
+        assert_eq!(player.speed(), 2.0);
     }
 
     #[test]
     fn test_playback_speed_accuracy() {
-        let configs: Vec<(Config, f32)> = vec![
+        let configs: Vec<(TestConfig, f32)> = vec![
             // test with default config
             (
-                Config {
+                TestConfig {
+                    speed: 1.0,
                     autoplay: true,
-                    ..Config::default()
+                    segment: None,
                 },
                 1.0,
             ),
             // test with different speeds
             (
-                Config {
+                TestConfig {
                     speed: 2.0,
                     autoplay: true,
-                    ..Config::default()
+                    segment: None,
                 },
                 2.0,
             ),
             (
-                Config {
+                TestConfig {
                     speed: 0.5,
                     autoplay: true,
-                    ..Config::default()
+                    segment: None,
                 },
                 0.5,
             ),
             // test with a segment
             (
-                Config {
+                TestConfig {
                     speed: 2.0,
-                    segment: vec![10.0, 30.0],
+                    segment: Some([10.0, 30.0]),
                     autoplay: true,
-                    ..Config::default()
                 },
                 2.0,
             ),
             (
-                Config {
+                TestConfig {
                     speed: 0.4,
                     autoplay: true,
-                    segment: vec![10.0, 30.0],
-                    ..Config::default()
+                    segment: Some([10.0, 30.0]),
                 },
                 0.4,
             ),
         ];
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+
         for (config, expected_speed) in configs {
-            let mut player = DotLottiePlayer::new(config, 0);
+            let mut player = DotLottiePlayer::new();
+            player.set_speed(config.speed);
+            player.set_autoplay(config.autoplay);
+            if let Some(seg) = config.segment {
+                let _ = player.set_segment(Some(seg));
+            }
 
             let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-            assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+            assert!(player
+                .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+                .is_ok());
 
             assert!(
-                player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
+                player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
                 "Animation should load"
             );
             assert!(player.is_playing(), "Animation should be playing");
@@ -95,8 +109,8 @@ mod tests {
             // animation loop
             while !player.is_complete() {
                 let next_frame = player.request_frame();
-                if player.set_frame(next_frame) {
-                    player.render();
+                if player.set_frame(next_frame).is_ok() {
+                    let _ = player.render();
                 }
             }
 
@@ -116,23 +130,19 @@ mod tests {
 
     #[test]
     fn test_zero_speed() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
-        let mut config = player.config();
-        config.speed = 0.0;
-        player.set_config(config);
+        player.set_speed(0.0);
 
-        assert_eq!(player.config().speed, 1.0);
+        assert_eq!(player.speed(), 1.0);
     }
 
     #[test]
     fn test_negative_speed() {
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
-        let mut config = player.config();
-        config.speed = -1.0;
-        player.set_config(config);
+        player.set_speed(-1.0);
 
-        assert_eq!(player.config().speed, 1.0);
+        assert_eq!(player.speed(), 1.0);
     }
 }

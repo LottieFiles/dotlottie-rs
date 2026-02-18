@@ -8,7 +8,7 @@
 ///
 /// Vector slots are for 2D properties like scale [x, y] without spatial tangents.
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, LottieKeyframe, LottieProperty};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, LottieKeyframe, LottieProperty};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -16,7 +16,6 @@ const WIDTH: u32 = 512;
 const HEIGHT: u32 = 512;
 
 fn main() {
-    
     let mut window = Window::new(
         "Vector Slot Example - Press T to toggle, arrows to adjust",
         WIDTH as usize,
@@ -27,33 +26,22 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    
-    let mut player = DotLottiePlayer::new(
-        Config {
-            loop_animation: true,
-            autoplay: true,
-            ..Config::default()
-        },
-        0, // threads (0 = auto)
-    );
+    let mut player = DotLottiePlayer::new();
 
-    
+    player.set_autoplay(true);
+    player.set_loop(true);
+
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-
-
-        player.set_sw_target(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        );
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
 
     let animation_data = include_str!("../assets/animations/lottie/bouncy_ball.json");
 
     let c_data = CString::new(animation_data).expect("CString conversion failed");
 
-    if !player.load_animation_data(&c_data, WIDTH, HEIGHT) {
+    if player.load_animation_data(&c_data, WIDTH, HEIGHT).is_err() {
         eprintln!("Failed to load animation");
         return;
     }
@@ -70,21 +58,16 @@ fn main() {
     let mut last_toggle_press = std::time::Instant::now();
     let mut is_animated = false;
 
-    
     let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
-    player.set_vector_slot("ball_scale", scale_slot);
+    let _ = player.set_vector_slot("ball_scale", scale_slot);
     println!("Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%");
 
-    
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now();
 
-        
         if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
             is_animated = !is_animated;
-
             if is_animated {
-                
                 let scale_slot = LottieProperty::animated(vec![
                     LottieKeyframe {
                         frame: 0,
@@ -105,12 +88,12 @@ fn main() {
                         hold: None,
                     },
                 ]);
-                player.set_vector_slot("ball_scale", scale_slot);
+                let _ = player.set_vector_slot("ball_scale", scale_slot);
                 println!("Mode: ANIMATED ([50%, 50%] -> [150%, 150%])");
             } else {
-                
+                // Switch back to static mode
                 let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
-                player.set_vector_slot("ball_scale", scale_slot);
+                let _ = player.set_vector_slot("ball_scale", scale_slot);
                 println!("Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%");
             }
 
@@ -119,7 +102,6 @@ fn main() {
 
         let mut scale_changed = false;
 
-        
         if !is_animated && now.duration_since(last_key_press).as_millis() > 50 {
             if window.is_key_down(Key::Up) {
                 // Scale up uniformly
@@ -147,14 +129,12 @@ fn main() {
         }
 
         if scale_changed {
-            
             let scale_slot = LottieProperty::static_value([scale_x, scale_y]);
-            player.set_vector_slot("ball_scale", scale_slot);
+            let _ = player.set_vector_slot("ball_scale", scale_slot);
             println!("Mode: STATIC | Current scale: X={scale_x:.0}%, Y={scale_y:.0}%");
         }
 
-        
-        if player.tick() {
+        if player.tick().is_ok() {
             window
                 .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");

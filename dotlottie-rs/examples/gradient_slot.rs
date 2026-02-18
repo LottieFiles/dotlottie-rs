@@ -7,9 +7,7 @@
 /// a slot with ID "gradient_fill" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{
-    ColorSpace, Config, DotLottiePlayer, GradientSlot, GradientStop, LottieKeyframe,
-};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, GradientSlot, GradientStop, LottieKeyframe};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -27,29 +25,21 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    let mut player = DotLottiePlayer::new(
-        Config {
-            loop_animation: true,
-            autoplay: true,
-            ..Config::default()
-        },
-        0, // threads (0 = auto)
-    );
-
+    // Create player and load animation
+    let mut player = DotLottiePlayer::new();
+    player.set_loop(true);
+    player.set_autoplay(true);
 
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-    player.set_sw_target(
-            &mut buffer,
-            WIDTH,
-            HEIGHT,
-            ColorSpace::ABGR8888,
-        );
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
 
     let animation_data = include_str!("../assets/animations/lottie/gradient.json");
     let c_data = CString::new(animation_data).expect("CString conversion failed");
 
-    if !player.load_animation_data(&c_data, WIDTH, HEIGHT) {
+    if player.load_animation_data(&c_data, WIDTH, HEIGHT).is_err() {
         eprintln!("Failed to load animation");
         return;
     }
@@ -174,7 +164,7 @@ fn main() {
     let mut is_animated = false;
 
     let gradient_slot = GradientSlot::new(gradients[current_gradient_index].1.clone());
-    player.set_gradient_slot("gradient_fill", gradient_slot);
+    let _ = player.set_gradient_slot("gradient_fill", gradient_slot);
     println!(
         "Mode: STATIC | Current gradient: {}",
         gradients[current_gradient_index].0
@@ -233,11 +223,11 @@ fn main() {
                         hold: None,
                     },
                 ]);
-                player.set_gradient_slot("gradient_fill", gradient_slot);
+                let _ = player.set_gradient_slot("gradient_fill", gradient_slot);
                 println!("Mode: ANIMATED (Sunset -> Ocean)");
             } else {
                 let gradient_slot = GradientSlot::new(gradients[current_gradient_index].1.clone());
-                player.set_gradient_slot("gradient_fill", gradient_slot);
+                let _ = player.set_gradient_slot("gradient_fill", gradient_slot);
                 println!(
                     "Mode: STATIC | Current gradient: {}",
                     gradients[current_gradient_index].0
@@ -254,7 +244,7 @@ fn main() {
             current_gradient_index = (current_gradient_index + 1) % gradients.len();
 
             let gradient_slot = GradientSlot::new(gradients[current_gradient_index].1.clone());
-            player.set_gradient_slot("gradient_fill", gradient_slot);
+            let _ = player.set_gradient_slot("gradient_fill", gradient_slot);
 
             println!(
                 "Mode: STATIC | Current gradient: {}",
@@ -263,7 +253,8 @@ fn main() {
             last_space_press = now;
         }
 
-        if player.tick() {
+        // Update animation frame and render
+        if player.tick().is_ok() {
             window
                 .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");

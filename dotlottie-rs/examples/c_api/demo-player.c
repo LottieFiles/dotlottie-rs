@@ -24,7 +24,6 @@ int main(int argc, char **argv) {
   SDL_Texture *texture = NULL;
   SDL_Event e;
 
-  DotLottieConfig config;
   DotLottiePlayer *player;
 
   const char *animation_path;
@@ -49,18 +48,8 @@ int main(int argc, char **argv) {
     usage(argv[0]);
   }
 
-  // Setup dotlottie config
-  dotlottie_init_config(&config);
-  config.loop_animation = true;
-  config.background_color = 0xffffffff;
-  config.layout.fit = Void;
-  config.layout.align_x = 1.0;
-  config.layout.align_y = 0.5;
-  config.autoplay = true;
-  strcpy(config.marker.value, "feather");
-
-  // Setup dotlottie player
-  player = dotlottie_new_player(&config);
+  // Setup dotlottie player (0 threads = auto-detect)
+  player = dotlottie_new_player(0);
   if (!player) {
     fprintf(stderr, "Could not create dotlottie player\n");
     return 1;
@@ -74,12 +63,17 @@ int main(int argc, char **argv) {
   }
 
   // Set up software rendering target - tell player to render into our buffer
-  ret = dotlottie_set_sw_target(player, buffer, WIDTH, WIDTH, HEIGHT, ABGR8888);
+  ret = dotlottie_set_sw_target(player, buffer, WIDTH, HEIGHT, ABGR8888);
   if (ret != DOTLOTTIE_SUCCESS) {
     fprintf(stderr, "Could not set software rendering target\n");
     free(buffer);
     return 1;
   }
+
+  // Configure the player
+  dotlottie_set_loop(player, true);
+  dotlottie_set_background_color(player, 0xffffffff);
+  dotlottie_set_autoplay(player, true);
 
   // Load the animation file
   ret = dotlottie_load_animation_path(player, animation_path, WIDTH, HEIGHT);

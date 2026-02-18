@@ -1,5 +1,7 @@
 #![allow(clippy::print_stdout)]
 
+use std::ffi::CString;
+
 /// Theme Example
 ///
 /// This example demonstrates how to use the `set_theme` API to switch between
@@ -8,7 +10,7 @@
 ///
 /// Themes are a convenient way to bundle multiple slot changes together and switch
 /// between different visual styles of the same animation.
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 use minifb::{Key, Window, WindowOptions};
 
 const WIDTH: u32 = 512;
@@ -25,28 +27,29 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    let mut player = DotLottiePlayer::new(
-        Config {
-            loop_animation: true,
-            autoplay: true,
-            ..Config::default()
-        },
-        0, // threads (0 = auto)
-    );
+    // Create player and load .lottie file
+    let mut player = DotLottiePlayer::new();
+    player.set_loop(true);
+    player.set_autoplay(true);
 
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-    player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888);
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
 
     let dotlottie_data = include_bytes!("../assets/animations/dotlottie/v2/multi_themes.lottie");
 
-    if !player.load_dotlottie_data(dotlottie_data, WIDTH, HEIGHT) {
+    if player
+        .load_dotlottie_data(dotlottie_data, WIDTH, HEIGHT)
+        .is_err()
+    {
         eprintln!("Failed to load .lottie file");
         return;
     }
 
     println!("Animation loaded successfully!");
-    println!("Active animation ID: '{}'", player.active_animation_id());
+    println!("Animation ID: '{:?}'", player.animation_id());
 
     println!("Press SPACE to cycle through different themes");
     println!("Press ESC to quit");
@@ -65,7 +68,9 @@ fn main() {
     let mut last_space_press = std::time::Instant::now();
 
     println!("Attempting to set theme: '{}'", themes[current_theme_index]);
-    if player.set_theme(themes[current_theme_index]) {
+    let current_theme =
+        CString::new(themes[current_theme_index]).expect("Failed to create CString");
+    if player.set_theme(&current_theme).is_ok() {
         println!("✓ Theme set: {}", themes[current_theme_index]);
     } else {
         println!("✗ Failed to set theme: {}", themes[current_theme_index]);
@@ -77,7 +82,10 @@ fn main() {
             if now.duration_since(last_space_press).as_millis() > 300 {
                 current_theme_index = (current_theme_index + 1) % themes.len();
 
-                if player.set_theme(themes[current_theme_index]) {
+                // Switch to the new theme
+                let new_theme =
+                    CString::new(themes[current_theme_index]).expect("Failed to create CString");
+                if player.set_theme(&new_theme).is_ok() {
                     println!("✓ Theme set: {}", themes[current_theme_index]);
                 } else {
                     println!("✗ Failed to set theme: {}", themes[current_theme_index]);
@@ -87,7 +95,8 @@ fn main() {
             }
         }
 
-        if player.tick() {
+        // Update animation frame and render
+        if player.tick().is_ok() {
             window
                 .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");

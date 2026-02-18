@@ -1,6 +1,6 @@
 #![allow(clippy::print_stdout)]
 
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -38,17 +38,17 @@ fn load_animation(player: &mut DotLottiePlayer, path: &PathBuf) {
             let metadata = fs::metadata(path).expect("Could not read metadata");
             let mut buffer = vec![0; metadata.len() as usize];
             file.read_exact(&mut buffer).expect("Buffer overflow");
-            player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
+            let _ = player.load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32);
         }
         "json" => {
             let data = fs::read_to_string(path).expect("Could not read JSON file");
             let c_data = CString::new(data).expect("CString conversion failed");
-            player.load_animation_data(&c_data, WIDTH as u32, HEIGHT as u32);
+            let _ = player.load_animation_data(&c_data, WIDTH as u32, HEIGHT as u32);
         }
         _ => {}
     }
 
-    player.play();
+    let _ = player.play();
 
     println!(
         "Loaded: {}",
@@ -65,25 +65,22 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = DotLottiePlayer::new(
-        Config {
-            background_color: 0xffffffff,
-            autoplay: true,
-            loop_animation: true,
-            ..Config::default()
-        },
-        0,
-    );
-
+    let mut player = DotLottiePlayer::new();
+    player.set_autoplay(true);
+    player.set_loop(true);
+    let _ = player.set_background_color(Some(0xffffffff));
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
-    if !player.set_sw_target(
-        &mut buffer,
-        WIDTH as u32,
-        HEIGHT as u32,
-        ColorSpace::ABGR8888,
-    ) {
+    if player
+        .set_sw_target(
+            &mut buffer,
+            WIDTH as u32,
+            HEIGHT as u32,
+            ColorSpace::ABGR8888,
+        )
+        .is_err()
+    {
         panic!("Failed to set software rendering target");
     }
 
@@ -119,7 +116,7 @@ fn main() {
         left_was_down = left_is_down;
         right_was_down = right_is_down;
 
-        if player.tick() {
+        if player.tick().is_ok() {
             window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
         }
     }

@@ -1,5 +1,6 @@
 use core::result::Result::Ok;
 use std::collections::HashSet;
+use std::ffi::{CStr, CString};
 
 pub mod actions;
 pub mod errors;
@@ -24,8 +25,8 @@ use crate::actions::whitelist::Whitelist;
 use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, CompletionEvent, Config, DotLottiePlayer,
-    EventName, PointerEvent, StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, CompletionEvent, DotLottiePlayer,
+    EventName, Layout, Mode, PointerEvent, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -71,8 +72,17 @@ impl Default for PointerData {
 }
 
 pub struct StateMachineEngine<'a> {
-    // For resetting the player config after state machine is stopped
-    cached_player_config: Config,
+    // For restoring the player config after state machine is stopped
+    cached_mode: Mode,
+    cached_speed: f32,
+    cached_loop_animation: bool,
+    cached_loop_count: u32,
+    cached_autoplay: bool,
+    cached_use_frame_interpolation: bool,
+    cached_background_color: u32,
+    cached_segment: Option<[f32; 2]>,
+    cached_marker: Option<CString>,
+    cached_layout: Layout,
 
     /* We keep references to the StateMachine's States. */
     /* This prevents duplicating the data inside the engine. */
@@ -93,9 +103,13 @@ pub struct StateMachineEngine<'a> {
     // PointerEnter/PointerExit management
     pointer_management: PointerData,
 
-    // event queues
-    event_queue: EventQueue<StateMachineEvent>,
-    internal_event_queue: EventQueue<StateMachineInternalEvent>,
+    // Event queues
+    pub event_queue: EventQueue<StateMachineEvent>,
+    pub internal_event_queue: EventQueue<StateMachineInternalEvent>,
+
+    // Holds current event during polling from C API
+    pub current_event: Option<StateMachineEvent>,
+    pub current_internal_event: Option<StateMachineInternalEvent>,
 
     state_machine: StateMachine,
 
@@ -301,7 +315,16 @@ impl<'a> StateMachineEngine<'a> {
     ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine {
-            cached_player_config: player.config(),
+            cached_mode: player.mode(),
+            cached_speed: player.speed(),
+            cached_loop_animation: player.loop_animation(),
+            cached_loop_count: player.current_loop_count(),
+            cached_autoplay: player.autoplay(),
+            cached_use_frame_interpolation: player.use_frame_interpolation(),
+            cached_background_color: player.background_color(),
+            cached_segment: player.segment(),
+            cached_marker: player.marker().map(CStr::to_owned),
+            cached_layout: *player.layout(),
             player, // `player` Moved. Don't use after this point
             global_state: None,
             state_machine: StateMachine::default(),
@@ -314,6 +337,8 @@ impl<'a> StateMachineEngine<'a> {
             status: StateMachineEngineStatus::Stopped,
             event_queue: EventQueue::new(),
             internal_event_queue: EventQueue::new(),
+            current_event: None,
+            current_internal_event: None,
             state_history: Vec::new(),
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
@@ -396,21 +421,18 @@ impl<'a> StateMachineEngine<'a> {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> bool {
+    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> Result<(), crate::DotLottiePlayerError> {
         // Reset to first frame
-        self.player.stop();
-        // Remove all playback settings but preserve use_frame_interpolation and layout
-        let current_config = self.player.config();
-        let reset_config = Config {
-            use_frame_interpolation: current_config.use_frame_interpolation,
-            layout: current_config.layout,
-            ..Config::default()
-        };
-        self.player.set_config(reset_config);
+        let _ = self.player.stop();
+        self.player.set_mode(Mode::Forward);
+        self.player.set_speed(1.0);
+        self.player.set_loop(false);
+        self.player.set_loop_count(0);
+        self.player.set_autoplay(false);
 
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
-            return false;
+            return Err(crate::DotLottiePlayerError::Unknown);
         }
 
         self.open_url_requires_user_interaction = open_url.require_user_interaction;
@@ -436,12 +458,12 @@ impl<'a> StateMachineEngine<'a> {
 
                 self.observe_on_error(message.as_str());
 
-                return false;
+                return Err(crate::DotLottiePlayerError::Unknown);
             }
         }
 
         if self.status == StateMachineEngineStatus::Running {
-            return true;
+            return Ok(());
         }
 
         self.observe_on_start();
@@ -450,7 +472,7 @@ impl<'a> StateMachineEngine<'a> {
 
         let _ = self.run_current_state_pipeline();
 
-        true
+        Ok(())
     }
 
     pub fn stop(&mut self) {
@@ -458,7 +480,19 @@ impl<'a> StateMachineEngine<'a> {
 
         self.observe_on_stop();
 
-        self.player.set_config(self.cached_player_config.clone());
+        self.player.set_mode(self.cached_mode);
+        self.player.set_speed(self.cached_speed);
+        self.player.set_loop(self.cached_loop_animation);
+        self.player.set_loop_count(self.cached_loop_count);
+        self.player
+            .set_use_frame_interpolation(self.cached_use_frame_interpolation);
+        let _ = self
+            .player
+            .set_background_color(Some(self.cached_background_color));
+        let _ = self.player.set_segment(self.cached_segment);
+        self.player.set_marker(self.cached_marker.as_deref());
+        let _ = self.player.set_layout(self.cached_layout);
+        self.player.set_autoplay(self.cached_autoplay);
     }
 
     /// For external use only.
@@ -682,9 +716,10 @@ impl<'a> StateMachineEngine<'a> {
                                 self.tween_transition_target_state = Some(new_state.clone());
                                 // Tweening is activated and the state machine has been paused whilst it transitions
                                 self.status = StateMachineEngineStatus::Tweening;
-
-                                self.player.tween_to_marker(
-                                    &target_segment,
+                                let target_segment_str =
+                                    CString::new(target_segment).unwrap_or_default();
+                                let _ = self.player.tween_to_marker(
+                                    &target_segment_str,
                                     Some(causing_transition.duration()),
                                     Some(causing_transition.easing()),
                                 );
@@ -1191,14 +1226,24 @@ impl<'a> StateMachineEngine<'a> {
      * @params state_name: The name of the state to change to.
      * @params do_tick: If true, the state machine will run the transition evaluation pipeline after changing the state.
      */
-    pub fn override_current_state(&mut self, state_name: &str, do_tick: bool) -> bool {
-        let r = self.set_current_state(state_name, None, false).is_ok();
-
-        if do_tick {
-            return self.run_current_state_pipeline().is_ok();
+    pub fn override_current_state(
+        &mut self,
+        state_name: &str,
+        do_tick: bool,
+    ) -> Result<(), crate::DotLottiePlayerError> {
+        if self.set_current_state(state_name, None, false).is_err() {
+            return Err(crate::DotLottiePlayerError::Unknown);
         }
 
-        r
+        if do_tick {
+            return if self.run_current_state_pipeline().is_ok() {
+                Ok(())
+            } else {
+                Err(crate::DotLottiePlayerError::Unknown)
+            };
+        }
+
+        Ok(())
     }
 
     pub fn get_state_machine(&self) -> &StateMachine {
@@ -1215,39 +1260,39 @@ impl<'a> StateMachineEngine<'a> {
 
     fn observe_on_state_entered(&mut self, entering_state: &str) {
         self.event_queue.push(StateMachineEvent::StateEntered {
-            state: entering_state.to_string(),
+            state: CString::new(entering_state).unwrap_or_default(),
         });
     }
 
     fn observe_on_state_exit(&mut self, leaving_state: &str) {
         self.event_queue.push(StateMachineEvent::StateExit {
-            state: leaving_state.to_string(),
+            state: CString::new(leaving_state).unwrap_or_default(),
         });
     }
 
     fn observe_on_transition(&mut self, previous_state: &str, new_state: &str) {
         self.event_queue.push(StateMachineEvent::Transition {
-            previous_state: previous_state.to_string(),
-            new_state: new_state.to_string(),
+            previous_state: CString::new(previous_state).unwrap_or_default(),
+            new_state: CString::new(new_state).unwrap_or_default(),
         });
     }
 
     pub fn observe_internal_event(&mut self, message: &str) {
         self.internal_event_queue
             .push(StateMachineInternalEvent::Message {
-                message: message.to_string(),
+                message: CString::new(message).unwrap_or_default(),
             });
     }
 
     pub fn observe_custom_event(&mut self, message: &str) {
         self.event_queue.push(StateMachineEvent::CustomEvent {
-            message: message.to_string(),
+            message: CString::new(message).unwrap_or_default(),
         });
     }
 
     pub fn observe_on_error(&mut self, message: &str) {
         self.event_queue.push(StateMachineEvent::Error {
-            message: message.to_string(),
+            message: CString::new(message).unwrap_or_default(),
         });
     }
 
@@ -1261,9 +1306,9 @@ impl<'a> StateMachineEngine<'a> {
             return;
         }
         self.event_queue.push(StateMachineEvent::StringInputChange {
-            name: input_name.to_string(),
-            old_value: old_value.to_string(),
-            new_value: new_value.to_string(),
+            name: CString::new(input_name).unwrap_or_default(),
+            old_value: CString::new(old_value).unwrap_or_default(),
+            new_value: CString::new(new_value).unwrap_or_default(),
         });
     }
 
@@ -1278,7 +1323,7 @@ impl<'a> StateMachineEngine<'a> {
         }
         self.event_queue
             .push(StateMachineEvent::NumericInputChange {
-                name: input_name.to_string(),
+                name: CString::new(input_name).unwrap_or_default(),
                 old_value,
                 new_value,
             });
@@ -1295,7 +1340,7 @@ impl<'a> StateMachineEngine<'a> {
         }
         self.event_queue
             .push(StateMachineEvent::BooleanInputChange {
-                name: input_name.to_string(),
+                name: CString::new(input_name).unwrap_or_default(),
                 old_value,
                 new_value,
             });
@@ -1311,7 +1356,7 @@ impl<'a> StateMachineEngine<'a> {
 
     pub fn observe_on_input_fired(&mut self, input_name: &str) {
         self.event_queue.push(StateMachineEvent::InputFired {
-            name: input_name.to_string(),
+            name: CString::new(input_name).unwrap_or_default(),
         });
     }
 
@@ -1327,7 +1372,7 @@ impl<'a> StateMachineEngine<'a> {
         }
     }
 
-    pub fn tick(&mut self) -> bool {
+    pub fn tick(&mut self) -> Result<(), crate::DotLottiePlayerError> {
         let ticked = self.player.tick();
 
         self.check_completion();

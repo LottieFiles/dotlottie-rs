@@ -1,29 +1,39 @@
 #![cfg(feature = "state-machines")]
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Config, DotLottiePlayer};
+    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, DotLottiePlayer};
 
     #[test]
     pub fn global_and_guardless() {
         let global_state =
             include_str!("../assets/statemachines/sanity_tests/test_global_and_guardless.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"), 100, 100);
-        let mut sm  = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        let mut player = DotLottiePlayer::new();
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
 
         let l = sm.start(&OpenUrlPolicy::default());
 
-        assert!(l);
+        assert_eq!(l, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
 
-        sm.set_numeric_input("Rating", 2.0, true, false).expect("input to set successfully");
+        sm.set_numeric_input("Rating", 2.0, true, false)
+            .expect("input to set successfully");
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "b");
 
-        sm.set_numeric_input("Rating", 1.0, true, false).expect("input to set successfully");
+        sm.set_numeric_input("Rating", 1.0, true, false)
+            .expect("input to set successfully");
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "d");
     }
@@ -32,13 +42,21 @@ mod tests {
     pub fn guarded_and_guardless() {
         let global_state =
             include_str!("../assets/statemachines/sanity_tests/test_guarded_and_guardless.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        let mut player = DotLottiePlayer::new();
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "a");
@@ -48,7 +66,8 @@ mod tests {
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "d");
 
-        sm.set_numeric_input("r", 1.0, true, false).expect("input to set successfully");
+        sm.set_numeric_input("r", 1.0, true, false)
+            .expect("input to set successfully");
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "a");
 
@@ -61,18 +80,27 @@ mod tests {
     pub fn guardless_and_event() {
         let global_state =
             include_str!("../assets/statemachines/sanity_tests/test_guardless_and_event.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        let mut player = DotLottiePlayer::new();
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
 
-        sm.set_numeric_input("Rating", 1.0, true, false).expect("input to set successfully");
+        sm.set_numeric_input("Rating", 1.0, true, false)
+            .expect("input to set successfully");
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "c");
     }
@@ -88,18 +116,27 @@ mod tests {
         let global_state = include_str!(
             "../assets/statemachines/sanity_tests/test_exit_action_causes_global_to_transition.json"
         );
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        let mut player = DotLottiePlayer::new();
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "Initial");
 
-        sm.set_numeric_input("rating", 1.0, true, false).expect("input to set successfully");
+        sm.set_numeric_input("rating", 1.0, true, false)
+            .expect("input to set successfully");
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "a");
 
@@ -110,9 +147,11 @@ mod tests {
         assert_eq!(curr_state_name, "a");
 
         // So that the global state doesn't set us back in 'a'
-        sm.set_numeric_input("rating", 4.0, true, false).expect("input to set successfully");
+        sm.set_numeric_input("rating", 4.0, true, false)
+            .expect("input to set successfully");
         // A's exit action will toggle a_exited to true, allowing us to go to d
-        sm.set_boolean_input("a_exited", false, true, false).expect("input to set successfully");
+        sm.set_boolean_input("a_exited", false, true, false)
+            .expect("input to set successfully");
 
         sm.fire("Step", true).expect("event to fire successfully");
         let curr_state_name = sm.get_current_state_name();
@@ -131,18 +170,27 @@ mod tests {
         let global_state = include_str!(
             "../assets/statemachines/sanity_tests/test_exit_action_global_ignored_if_non_valid.json"
         );
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        let mut player = DotLottiePlayer::new();
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "Initial");
 
-        sm.set_numeric_input("rating", 1.0, true, false).expect("input to set successfully");
+        sm.set_numeric_input("rating", 1.0, true, false)
+            .expect("input to set successfully");
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "a");
 
@@ -155,7 +203,8 @@ mod tests {
 
         // Once on c, we set rating to 3.0
         // Since still none of the global state transitions are valid, we stay on c
-        sm.set_numeric_input("rating", 3.0, true, false).expect("input to set successfully");
+        sm.set_numeric_input("rating", 3.0, true, false)
+            .expect("input to set successfully");
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "c");
     }
@@ -171,13 +220,21 @@ mod tests {
         let global_state = include_str!(
             "../assets/statemachines/sanity_tests/test_entry_action_causes_global_to_transition.json"
         );
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        let mut player = DotLottiePlayer::new();
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "Initial");
@@ -185,13 +242,15 @@ mod tests {
         // State a has a transition with no guards, meaning that it should be taken by default
         // However it also has an entry action that validates a global state transition to b
         // This global state transition is taken, and the state machine transitions to b
-        sm.set_numeric_input("rating", 1.0, true, false).expect("input to set successfully");
+        sm.set_numeric_input("rating", 1.0, true, false)
+            .expect("input to set successfully");
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "b");
 
         // Modifying the rating to which has no valid global transitions to check that
         // the state machine remains in the current state
-        sm.set_numeric_input("rating", 3.0, true, false).expect("input to set successfully");
+        sm.set_numeric_input("rating", 3.0, true, false)
+            .expect("input to set successfully");
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "b");
 
@@ -211,18 +270,27 @@ mod tests {
         let global_state = include_str!(
             "../assets/statemachines/sanity_tests/test_entry_action_global_ignored_if_non_valid.json"
         );
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
-        player.load_dotlottie_data(include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"), 100, 100);
-        let mut sm = player.state_machine_load_data(global_state).expect("state machine to load successfully");
+        let mut player = DotLottiePlayer::new();
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
+        let mut sm = player
+            .state_machine_load_data(global_state)
+            .expect("state machine to load successfully");
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "Initial");
 
-        sm.set_numeric_input("rating", 1.0, true, false).expect("input to set successfully");
+        sm.set_numeric_input("rating", 1.0, true, false)
+            .expect("input to set successfully");
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "a");
 
@@ -235,7 +303,8 @@ mod tests {
 
         // Once on c, we set rating to 3.0
         // Since still none of the global state transitions are valid, we stay on c
-        sm.set_boolean_input("a_exited", true, true, false).expect("input to set successfully");
+        sm.set_boolean_input("a_exited", true, true, false)
+            .expect("input to set successfully");
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "d");
     }

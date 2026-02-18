@@ -1,4 +1,6 @@
-use dotlottie_rs::{ColorSpace, Config, DotLottiePlayer, Marker};
+use std::ffi::CString;
+
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Marker};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -10,35 +12,30 @@ mod tests {
 
     #[test]
     fn test_default_marker() {
-        let player = DotLottiePlayer::new(Config::default(), 0);
+        let player = DotLottiePlayer::new();
 
-        assert!(
-            player.config().marker.is_empty(),
-            "Expected no marker by default"
-        );
+        assert!(player.marker().is_none(), "Expected no marker by default");
     }
 
     #[test]
     fn test_markers() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                autoplay: true,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(true);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
         assert!(
             player.markers().is_empty(),
             "Expected no markers before loading animation"
         );
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
@@ -86,31 +83,26 @@ mod tests {
 
     #[test]
     fn test_set_marker() {
-        let mut player = DotLottiePlayer::new(
-            Config {
-                autoplay: true,
-                ..Config::default()
-            },
-            0,
-        );
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(true);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        let marker_name = "Marker_3".to_string();
+        let marker_name = CString::new("Marker_3").unwrap();
 
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path("assets/animations/lottie/test.json", WIDTH, HEIGHT),
+            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
             "Animation should load"
         );
 
-        player.set_config(Config {
-            marker: marker_name.clone(),
-            ..player.config()
-        });
+        player.set_marker(Some(&marker_name));
 
-        assert_eq!(player.config().marker, marker_name.clone());
+        assert_eq!(player.marker(), Some(marker_name.as_c_str()));
 
         assert!(player.is_playing(), "Animation should be playing");
 
@@ -123,7 +115,7 @@ mod tests {
         while !player.is_complete() {
             let next_frame = player.request_frame();
 
-            if player.set_frame(next_frame) && player.render() {
+            if player.set_frame(next_frame).is_ok() && player.render().is_ok() {
                 let current_frame = player.current_frame();
                 rendered_frames.push(current_frame);
             }
@@ -133,7 +125,7 @@ mod tests {
         let marker = player
             .markers()
             .into_iter()
-            .find(|m| m.name == marker_name.clone())
+            .find(|m| m.name == "Marker_3")
             .unwrap();
 
         for frame in rendered_frames {

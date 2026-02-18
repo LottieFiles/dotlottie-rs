@@ -2,7 +2,7 @@
 #[cfg(test)]
 mod tests {
     use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Config, DotLottiePlayer, Event,
+        actions::open_url_policy::OpenUrlPolicy, ColorSpace, DotLottiePlayer, Event,
     };
 
     const WIDTH: u32 = 100;
@@ -13,16 +13,21 @@ mod tests {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_down_up.json");
 
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
+        assert_eq!(
+            player.load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            ),
+            Ok(())
         );
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -30,7 +35,7 @@ mod tests {
 
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -91,23 +96,27 @@ mod tests {
     pub fn pointer_down_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_down.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -121,23 +130,27 @@ mod tests {
     pub fn pointer_enter_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_enter.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "star_0");
@@ -167,23 +180,27 @@ mod tests {
     pub fn pointer_enter_via_move_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_enter.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "star_0");
@@ -213,23 +230,27 @@ mod tests {
     pub fn pointer_exit_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_exit.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "star_0");
@@ -246,23 +267,27 @@ mod tests {
     pub fn pointer_exit_via_move_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_exit.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "star_0");
@@ -307,23 +332,27 @@ mod tests {
     pub fn pointer_move_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pointer_move.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -346,23 +375,27 @@ mod tests {
     pub fn on_complete_manual_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/on_complete.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
@@ -385,23 +418,27 @@ mod tests {
     pub fn on_complete_player_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/pigeon_fsm.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v2/pigeon.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v2/pigeon.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "PigeonRunning");
@@ -410,7 +447,7 @@ mod tests {
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "Explosion");
         loop {
-            sm.tick();
+            let _ = sm.tick();
             if sm.player.is_complete() {
                 break;
             }
@@ -424,26 +461,30 @@ mod tests {
     pub fn on_loop_complete_player_test() {
         let global_state =
             include_str!("../assets/statemachines/interaction_tests/on_loop_complete.json");
-        let mut player = DotLottiePlayer::new(Config::default(), 0);
+        let mut player = DotLottiePlayer::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-        assert!(player.set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,));
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
 
-        player.load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v2/pigeon.lottie"),
-            100,
-            100,
-        );
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v2/pigeon.lottie"),
+                100,
+                100
+            )
+            .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
             .expect("state machine to load successfully");
         let s = sm.start(&OpenUrlPolicy::default());
 
-        assert!(s);
+        assert_eq!(s, Ok(()));
 
         loop {
-            sm.tick();
+            let _ = sm.tick();
             if sm.status() == "Stopped" {
                 break;
             }

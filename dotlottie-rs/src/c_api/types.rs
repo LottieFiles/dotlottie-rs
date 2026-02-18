@@ -1,70 +1,93 @@
 #![allow(clippy::missing_safety_doc)]
 
-use bitflags::bitflags;
-use core::fmt;
-use core::str::FromStr;
-use std::ffi::{c_char, CStr, CString};
-use std::io;
-
 #[cfg(feature = "state-machines")]
-use crate::actions::open_url_policy::OpenUrlPolicy;
+use bitflags::bitflags;
+#[cfg(feature = "state-machines")]
+use core::str::FromStr;
+#[cfg(feature = "state-machines")]
+use std::ffi::c_char;
 
 #[cfg(feature = "state-machines")]
 use crate::state_machine_engine::events::Event;
 
-#[cfg(feature = "state-machines")]
-use crate::ManifestStateMachine;
+use crate::lottie_renderer::LottieRendererError;
+use crate::DotLottiePlayerError;
 
-#[cfg(feature = "theming")]
-use crate::ManifestTheme;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub enum PlaybackStatus {
+    Playing = 0,
+    Paused = 1,
+    Stopped = 2,
+}
 
-use crate::{Config, Fit, Layout, Marker, Mode};
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub enum DotLottieResult {
+    Success = 0,
+    Error = 1,
+    InvalidParameter = 2,
+    ManifestNotAvailable = 3,
+    AnimationNotLoaded = 4,
+    InsufficientCondition = 5,
+}
 
-#[cfg(feature = "dotlottie")]
-use crate::{Manifest, ManifestAnimation};
+impl From<DotLottiePlayerError> for DotLottieResult {
+    fn from(err: DotLottiePlayerError) -> Self {
+        match err {
+            DotLottiePlayerError::Unknown => DotLottieResult::Error,
+            DotLottiePlayerError::InvalidParameter => DotLottieResult::InvalidParameter,
+            DotLottiePlayerError::ManifestNotAvailable => DotLottieResult::ManifestNotAvailable,
+            DotLottiePlayerError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
+            DotLottiePlayerError::InsufficientCondition => DotLottieResult::InsufficientCondition,
+        }
+    }
+}
 
-// Function return codes
-pub const DOTLOTTIE_SUCCESS: i32 = 0;
-pub const DOTLOTTIE_ERROR: i32 = 1;
-pub const DOTLOTTIE_INVALID_PARAMETER: i32 = 2;
-pub const DOTLOTTIE_MANIFEST_NOT_AVAILABLE: i32 = 3;
+impl From<LottieRendererError> for DotLottieResult {
+    fn from(err: LottieRendererError) -> Self {
+        match err {
+            LottieRendererError::InvalidArgument => DotLottieResult::InvalidParameter,
+            LottieRendererError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
+            _ => DotLottieResult::Error,
+        }
+    }
+}
 
-// Other constant(s)
-pub const DOTLOTTIE_MAX_STR_LENGTH: usize = 512;
-
-// Legacy - kept for compatibility (unused)
-pub const INTERACTION_TYPE_UNSET: u16 = 0;
-pub const INTERACTION_TYPE_POINTER_UP: u16 = 1 << 0; // Bit 0 (1)
-pub const INTERACTION_TYPE_POINTER_DOWN: u16 = 1 << 1; // Bit 1 (2)
-pub const INTERACTION_TYPE_POINTER_ENTER: u16 = 1 << 2; // Bit 2 (4)
-pub const INTERACTION_TYPE_POINTER_EXIT: u16 = 1 << 3; // Bit 3 (8)
-pub const INTERACTION_TYPE_POINTER_MOVE: u16 = 1 << 4; // Bit 4 (16)
-pub const INTERACTION_TYPE_CLICK: u16 = 1 << 5; // Bit 5 (32)
-pub const INTERACTION_TYPE_ON_COMPLETE: u16 = 1 << 6; // Bit 6 (64)
-pub const INTERACTION_TYPE_ON_LOOP_COMPLETE: u16 = 1 << 7; // Bit 7 (128)
+impl<E: Into<DotLottieResult>> From<Result<(), E>> for DotLottieResult {
+    fn from(result: Result<(), E>) -> Self {
+        match result {
+            Ok(()) => DotLottieResult::Success,
+            Err(e) => e.into(),
+        }
+    }
+}
 
 // This type allows us to work with Interaction Types as bit flags and easily communicate this
 // information to the C side
+#[cfg(feature = "state-machines")]
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     #[repr(C)]
     pub(crate) struct InteractionType: u16 {
-        const UNSET = INTERACTION_TYPE_UNSET;
+        const UNSET = 0;
 
-        const POINTER_UP    = INTERACTION_TYPE_POINTER_UP;
-        const POINTER_DOWN  = INTERACTION_TYPE_POINTER_DOWN;
-        const POINTER_ENTER = INTERACTION_TYPE_POINTER_ENTER;
-        const POINTER_EXIT  = INTERACTION_TYPE_POINTER_EXIT;
-        const POINTER_MOVE  = INTERACTION_TYPE_POINTER_MOVE;
-        const CLICK         = INTERACTION_TYPE_CLICK;
-        const ON_COMPLETE   = INTERACTION_TYPE_ON_COMPLETE;
-        const ON_LOOP_COMPLETE = INTERACTION_TYPE_ON_LOOP_COMPLETE;
+        const POINTER_UP       = 1 << 0;
+        const POINTER_DOWN     = 1 << 1;
+        const POINTER_ENTER    = 1 << 2;
+        const POINTER_EXIT     = 1 << 3;
+        const POINTER_MOVE     = 1 << 4;
+        const CLICK            = 1 << 5;
+        const ON_COMPLETE      = 1 << 6;
+        const ON_LOOP_COMPLETE = 1 << 7;
     }
 }
 
 #[derive(Debug, Clone)]
+#[cfg(feature = "state-machines")]
 pub(crate) struct InteractionTypeParseError;
 
+#[cfg(feature = "state-machines")]
 impl InteractionType {
     pub fn new(
         interaction_types: &Vec<String>,
@@ -77,6 +100,7 @@ impl InteractionType {
     }
 }
 
+#[cfg(feature = "state-machines")]
 impl FromStr for InteractionType {
     type Err = InteractionTypeParseError;
 
@@ -95,469 +119,10 @@ impl FromStr for InteractionType {
     }
 }
 
-// Makes transfer data to C nice & easy by making the functionality available generically
-pub(crate) trait Transferable<T: Sized>
-where
-    Self: Sized,
-{
-    unsafe fn new(value: &T) -> Result<Self, io::Error>;
-
-    // Copy a single value to C
-    unsafe fn copy(&self, buffer: *mut Self) {
-        std::ptr::copy_nonoverlapping(self as *const Self, buffer, 1);
-    }
-
-    // Copy a callection of source values to C, performing the required translation
-    unsafe fn copy_all(values: &Vec<T>, buffer: *mut Self) -> Result<(), io::Error> {
-        let mut ptr = buffer;
-        for value in values {
-            let new_value = Self::new(value)?;
-            new_value.copy(ptr);
-            ptr = ptr.add(1);
-        }
-        Ok(())
-    }
-
-    // Perform a copy, returning the expected exit codes
-    unsafe fn transfer(value: &T, result: *mut Self) -> i32 {
-        if result.is_null() {
-            // No destination buffer provided
-            DOTLOTTIE_INVALID_PARAMETER
-        } else if let Ok(value) = Self::new(value) {
-            value.copy(result);
-            DOTLOTTIE_SUCCESS
-        } else {
-            DOTLOTTIE_ERROR
-        }
-    }
-
-    // Perform a copy_all, returning the expected exit codes
-    unsafe fn transfer_all(values: &Vec<T>, result: *mut Self, size: *mut usize) -> i32 {
-        if size.is_null() {
-            // Size must always be provided
-            DOTLOTTIE_INVALID_PARAMETER
-        } else if result.is_null() {
-            // No buffer provided: just return the size
-            *size = values.len();
-            DOTLOTTIE_SUCCESS
-        } else if *size < values.len() {
-            // Both buffer & size have been provided, however,
-            // The size of the buffer must be big enough to hold the result
-            DOTLOTTIE_INVALID_PARAMETER
-        } else if Self::copy_all(values, result).is_ok() {
-            // Return back to the user the actual number of items
-            *size = values.len();
-            DOTLOTTIE_SUCCESS
-        } else {
-            DOTLOTTIE_ERROR
-        }
-    }
-}
-
-// A string struct used to ensure a buffer exists and is owned on the client side that can
-// accomodate a value of the maximum size we would want to write into it.
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieString {
-    pub value: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
-}
-
-impl DotLottieString {
-    pub unsafe fn read(value: *const c_char) -> Result<CString, io::Error> {
-        if value.is_null() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "null pointer"));
-        }
-        Ok(CStr::from_ptr(value).to_owned())
-    }
-
-    // Copy a rust string out into a C string
-    pub unsafe fn copy(value: &str, buffer: *mut c_char, size: usize) -> Result<(), io::Error> {
-        if buffer.is_null() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "null buffer"));
-        }
-
-        let bytes = value.as_bytes();
-
-        // Check for interior null bytes (same check CString::new does)
-        if bytes.contains(&0) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "interior null byte",
-            ));
-        }
-
-        let required_len = bytes.len() + 1; // +1 for null terminator
-        if required_len > size {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "value too large",
-            ));
-        }
-
-        // Direct copy - no intermediate allocation
-        std::ptr::copy_nonoverlapping(bytes.as_ptr(), buffer as *mut u8, bytes.len());
-        // Add null terminator
-        *buffer.add(bytes.len()) = 0;
-
-        Ok(())
-    }
-}
-
-impl Transferable<String> for DotLottieString {
-    unsafe fn new(s: &String) -> Result<DotLottieString, io::Error> {
-        let mut value: [c_char; DOTLOTTIE_MAX_STR_LENGTH] = [0; DOTLOTTIE_MAX_STR_LENGTH];
-        DotLottieString::copy(s, value.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-        Ok(DotLottieString { value })
-    }
-}
-
-impl fmt::Display for DotLottieString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let cstring = unsafe {
-            DotLottieString::read(self.value.as_ptr() as *const c_char).map_err(|_| fmt::Error)?
-        };
-        let value = cstring.to_str().map_err(|_| fmt::Error)?;
-        write!(f, "{value}")
-    }
-}
-
-impl Default for DotLottieString {
-    fn default() -> Self {
-        DotLottieString {
-            value: [0; DOTLOTTIE_MAX_STR_LENGTH],
-        }
-    }
-}
-
-// A wrapper for Option
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieOption<T> {
-    pub value: T,
-    pub defined: bool,
-}
-
-// Specialization for strings
-impl Transferable<Option<String>> for DotLottieOption<DotLottieString> {
-    unsafe fn new(
-        option_value: &Option<String>,
-    ) -> Result<DotLottieOption<DotLottieString>, io::Error> {
-        let (value, defined) = match option_value {
-            Some(s) => (DotLottieString::new(s)?, true),
-            _ => (DotLottieString::default(), false),
-        };
-        Ok(DotLottieOption { value, defined })
-    }
-}
-
-impl Transferable<String> for DotLottieOption<DotLottieString> {
-    unsafe fn new(value: &String) -> Result<DotLottieOption<DotLottieString>, io::Error> {
-        Ok(DotLottieOption {
-            value: DotLottieString::new(value)?,
-            defined: true,
-        })
-    }
-}
-
-// Generic implementation
-impl<T: Sized + Default + Copy> Transferable<Option<T>> for DotLottieOption<T> {
-    unsafe fn new(option_value: &Option<T>) -> Result<DotLottieOption<T>, io::Error> {
-        let (value, defined) = match option_value {
-            Some(v) => (*v, true),
-            _ => (T::default(), false),
-        };
-        Ok(DotLottieOption { value, defined })
-    }
-}
-
-// The following types mirror types in dotlottie-rs for various reasons, e.g. because strings are
-// used, unsuitable enum variants, etc. They also typically need to be copied over to C, and
-// implementing Transferable helps with this.
-
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieConfig {
-    pub mode: Mode,
-    pub loop_animation: bool,
-    pub loop_count: u32,
-    pub speed: f32,
-    pub use_frame_interpolation: bool,
-    pub autoplay: bool,
-    pub segment_start: f32,
-    pub segment_end: f32,
-    pub background_color: u32,
-    pub layout: DotLottieLayout,
-    pub marker: DotLottieString,
-    #[cfg(feature = "theming")]
-    pub theme_id: DotLottieString,
-    #[cfg(feature = "state-machines")]
-    pub state_machine_id: DotLottieString,
-    #[cfg(feature = "dotlottie")]
-    pub animation_id: DotLottieString,
-}
-
-impl Transferable<Config> for DotLottieConfig {
-    unsafe fn new(config: &Config) -> Result<DotLottieConfig, io::Error> {
-        let (segment_start, segment_end) = match config.segment[..] {
-            [start, end] => (start, end),
-            _ => (-1.0, -1.0),
-        };
-        Ok(DotLottieConfig {
-            mode: config.mode,
-            loop_animation: config.loop_animation,
-            loop_count: config.loop_count,
-            speed: config.speed,
-            use_frame_interpolation: config.use_frame_interpolation,
-            autoplay: config.autoplay,
-            segment_start,
-            segment_end,
-            background_color: config.background_color,
-            layout: DotLottieLayout::new(&config.layout),
-            marker: DotLottieString::new(&config.marker)?,
-            #[cfg(feature = "theming")]
-            theme_id: DotLottieString::new(&config.theme_id)?,
-            #[cfg(feature = "state-machines")]
-            state_machine_id: DotLottieString::new(&config.state_machine_id)?,
-            #[cfg(feature = "dotlottie")]
-            animation_id: DotLottieString::new(&config.animation_id)?,
-        })
-    }
-}
-
-impl DotLottieConfig {
-    pub unsafe fn to_config(&self) -> Result<Config, io::Error> {
-        Ok(Config {
-            mode: self.mode,
-            loop_animation: self.loop_animation,
-            loop_count: self.loop_count,
-            speed: self.speed,
-            use_frame_interpolation: self.use_frame_interpolation,
-            autoplay: self.autoplay,
-            segment: if self.segment_start >= 0f32 && self.segment_end >= 0f32 {
-                vec![self.segment_start, self.segment_end]
-            } else {
-                vec![]
-            },
-            background_color: self.background_color,
-            layout: self.layout.to_layout(),
-            marker: self.marker.to_string(),
-            #[cfg(feature = "theming")]
-            theme_id: self.theme_id.to_string(),
-            #[cfg(feature = "state-machines")]
-            state_machine_id: self.state_machine_id.to_string(),
-            #[cfg(feature = "dotlottie")]
-            animation_id: self.animation_id.to_string(),
-        })
-    }
-}
-
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieMarker {
-    pub name: DotLottieString,
-    pub duration: f32,
-    pub time: f32,
-}
-
-impl Transferable<Marker> for DotLottieMarker {
-    unsafe fn new(marker: &Marker) -> Result<DotLottieMarker, io::Error> {
-        Ok(DotLottieMarker {
-            name: DotLottieString::new(&marker.name)?,
-            duration: marker.duration,
-            time: marker.time,
-        })
-    }
-}
-
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieManifestAnimation {
-    pub id: DotLottieOption<DotLottieString>,
-    pub name: DotLottieOption<DotLottieString>,
-    pub initial_theme: DotLottieOption<DotLottieString>,
-    pub background: DotLottieOption<DotLottieString>,
-}
-
-#[cfg(feature = "dotlottie")]
-impl Transferable<ManifestAnimation> for DotLottieManifestAnimation {
-    unsafe fn new(animation: &ManifestAnimation) -> Result<DotLottieManifestAnimation, io::Error> {
-        Ok(DotLottieManifestAnimation {
-            id: DotLottieOption::new(&animation.id)?,
-            name: DotLottieOption::new(&animation.name)?,
-            initial_theme: DotLottieOption::new(&animation.initial_theme)?,
-            background: DotLottieOption::new(&animation.background)?,
-        })
-    }
-}
-
-#[cfg(feature = "theming")]
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieManifestTheme {
-    pub id: DotLottieString,
-    pub name: DotLottieOption<DotLottieString>,
-}
-
-#[cfg(feature = "theming")]
-impl Transferable<ManifestTheme> for DotLottieManifestTheme {
-    unsafe fn new(theme: &ManifestTheme) -> Result<DotLottieManifestTheme, io::Error> {
-        Ok(DotLottieManifestTheme {
-            id: DotLottieString::new(&theme.id)?,
-            name: DotLottieOption::new(&theme.name)?,
-        })
-    }
-}
-
-#[cfg(feature = "state-machines")]
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieManifestStateMachine {
-    pub id: DotLottieString,
-    pub name: DotLottieOption<DotLottieString>,
-}
-
-#[cfg(feature = "state-machines")]
-impl Transferable<ManifestStateMachine> for DotLottieManifestStateMachine {
-    unsafe fn new(
-        state_machine: &ManifestStateMachine,
-    ) -> Result<DotLottieManifestStateMachine, io::Error> {
-        Ok(DotLottieManifestStateMachine {
-            id: DotLottieString::new(&state_machine.id)?,
-            name: DotLottieOption::new(&state_machine.name)?,
-        })
-    }
-}
-
-#[cfg(feature = "dotlottie")]
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieManifest {
-    pub generator: DotLottieOption<DotLottieString>,
-    pub version: DotLottieOption<DotLottieString>,
-}
-
-#[cfg(feature = "dotlottie")]
-impl Transferable<Manifest> for DotLottieManifest {
-    unsafe fn new(manifest: &Manifest) -> Result<DotLottieManifest, io::Error> {
-        Ok(DotLottieManifest {
-            generator: DotLottieOption::new(&manifest.generator)?,
-            version: DotLottieOption::new(&manifest.version)?,
-        })
-    }
-}
-
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub enum DotLottieFit {
-    Contain,
-    Fill,
-    Cover,
-    FitWidth,
-    FitHeight,
-    Void,
-}
-
-impl DotLottieFit {
-    pub fn new(fit: Fit) -> DotLottieFit {
-        match fit {
-            Fit::Contain => DotLottieFit::Contain,
-            Fit::Fill => DotLottieFit::Fill,
-            Fit::Cover => DotLottieFit::Cover,
-            Fit::FitWidth => DotLottieFit::FitWidth,
-            Fit::FitHeight => DotLottieFit::FitHeight,
-            Fit::None => DotLottieFit::Void,
-        }
-    }
-
-    pub fn to_fit(&self) -> Fit {
-        match self {
-            DotLottieFit::Contain => Fit::Contain,
-            DotLottieFit::Fill => Fit::Fill,
-            DotLottieFit::Cover => Fit::Cover,
-            DotLottieFit::FitWidth => Fit::FitWidth,
-            DotLottieFit::FitHeight => Fit::FitHeight,
-            DotLottieFit::Void => Fit::None,
-        }
-    }
-}
-
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieLayout {
-    pub fit: DotLottieFit,
-    pub align_x: f32,
-    pub align_y: f32,
-}
-
-impl DotLottieLayout {
-    pub fn new(layout: &Layout) -> DotLottieLayout {
-        let (align_x, align_y) = match layout.align[..] {
-            [align_x, align_y] => (align_x, align_y),
-            _ => (-1.0, -1.0),
-        };
-        DotLottieLayout {
-            fit: DotLottieFit::new(layout.fit),
-            align_x,
-            align_y,
-        }
-    }
-
-    pub fn to_layout(&self) -> Layout {
-        Layout {
-            fit: self.fit.to_fit(),
-            align: if self.align_x >= 0f32 && self.align_y >= 0f32 {
-                vec![self.align_x, self.align_y]
-            } else {
-                vec![]
-            },
-        }
-    }
-}
-
-// OpenUrlPolicy for state machine URL opening control
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieOpenUrlPolicy {
-    pub whitelist: DotLottieString, // Comma-separated list of allowed URL patterns
-    pub require_user_interaction: bool,
-}
-
-#[cfg(feature = "state-machines")]
-impl DotLottieOpenUrlPolicy {
-    pub unsafe fn to_policy(&self) -> Result<OpenUrlPolicy, io::Error> {
-        let cstring = DotLottieString::read(self.whitelist.value.as_ptr())?;
-        let whitelist_str = cstring
-            .to_str()
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid utf8 sequence"))?;
-        let whitelist = if whitelist_str.is_empty() {
-            vec![]
-        } else {
-            whitelist_str
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect()
-        };
-
-        Ok(OpenUrlPolicy {
-            whitelist,
-            require_user_interaction: self.require_user_interaction,
-        })
-    }
-}
-
-impl Default for DotLottieOpenUrlPolicy {
-    fn default() -> Self {
-        DotLottieOpenUrlPolicy {
-            whitelist: DotLottieString::default(),
-            require_user_interaction: true,
-        }
-    }
-}
-
 // Input events for state machine (pointer interactions)
-#[cfg(feature = "state-machines")]
 #[allow(dead_code)]
 #[repr(C)]
+#[cfg(feature = "state-machines")]
 pub enum DotLottieEvent {
     PointerDown { x: f32, y: f32 },
     PointerUp { x: f32, y: f32 },
@@ -662,6 +227,7 @@ impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
 // State Machine Events
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg(feature = "state-machines")]
 pub enum StateMachineEventType {
     StateMachineStart = 0,
     StateMachineStop = 1,
@@ -676,237 +242,95 @@ pub enum StateMachineEventType {
     StateMachineInputFired = 10,
 }
 
-// For string-based event data (states, input names, messages)
+/// Transition event data with pointers to state names
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct StateMachineStringData {
-    pub str1: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
-    pub str2: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
-    pub str3: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
+#[cfg(feature = "state-machines")]
+pub struct StateMachineTransitionData {
+    pub previous_state: *const c_char,
+    pub new_state: *const c_char,
 }
 
-// For numeric input changes
+/// State event data (for StateEntered/StateExit)
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct StateMachineNumericData {
-    pub name: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
+#[cfg(feature = "state-machines")]
+pub struct StateMachineStateData {
+    pub state: *const c_char,
+}
+
+/// Message event data (for CustomEvent/Error)
+#[repr(C)]
+#[derive(Copy, Clone)]
+#[cfg(feature = "state-machines")]
+pub struct StateMachineMessageData {
+    pub message: *const c_char,
+}
+
+/// String input change event data
+#[repr(C)]
+#[derive(Copy, Clone)]
+#[cfg(feature = "state-machines")]
+pub struct StateMachineStringInputData {
+    pub name: *const c_char,
+    pub old_value: *const c_char,
+    pub new_value: *const c_char,
+}
+
+/// Numeric input change event data
+#[repr(C)]
+#[derive(Copy, Clone)]
+#[cfg(feature = "state-machines")]
+pub struct StateMachineNumericInputData {
+    pub name: *const c_char,
     pub old_value: f32,
     pub new_value: f32,
 }
 
-// For boolean input changes
+/// Boolean input change event data
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct StateMachineBooleanData {
-    pub name: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
+#[cfg(feature = "state-machines")]
+pub struct StateMachineBooleanInputData {
+    pub name: *const c_char,
     pub old_value: bool,
     pub new_value: bool,
 }
 
+/// Input fired event data
 #[repr(C)]
-pub union StateMachineEventData {
-    pub strings: StateMachineStringData,
-    pub numeric: StateMachineNumericData,
-    pub boolean: StateMachineBooleanData,
+#[derive(Copy, Clone)]
+#[cfg(feature = "state-machines")]
+pub struct StateMachineInputFiredData {
+    pub name: *const c_char,
 }
 
+/// Union of all possible state machine event data types
 #[repr(C)]
+#[cfg(feature = "state-machines")]
+pub union StateMachineEventData {
+    pub transition: StateMachineTransitionData,
+    pub state: StateMachineStateData,
+    pub message: StateMachineMessageData,
+    pub string_input: StateMachineStringInputData,
+    pub numeric_input: StateMachineNumericInputData,
+    pub boolean_input: StateMachineBooleanInputData,
+    pub input_fired: StateMachineInputFiredData,
+}
+
+/// State machine event with type tag and data union.
+/// String pointers are valid until the next poll call.
+#[repr(C)]
+#[cfg(feature = "state-machines")]
 pub struct StateMachineEvent {
     pub event_type: StateMachineEventType,
     pub data: StateMachineEventData,
 }
 
-impl StateMachineEvent {
-    pub unsafe fn from_rust(event: crate::StateMachineEvent) -> Result<Self, io::Error> {
-        match event {
-            crate::StateMachineEvent::Start => Ok(StateMachineEvent {
-                event_type: StateMachineEventType::StateMachineStart,
-                data: StateMachineEventData {
-                    strings: StateMachineStringData {
-                        str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                        str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                        str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    },
-                },
-            }),
-            crate::StateMachineEvent::Stop => Ok(StateMachineEvent {
-                event_type: StateMachineEventType::StateMachineStop,
-                data: StateMachineEventData {
-                    strings: StateMachineStringData {
-                        str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                        str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                        str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    },
-                },
-            }),
-            crate::StateMachineEvent::Transition {
-                previous_state,
-                new_state,
-            } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(
-                    &previous_state,
-                    data.str1.as_mut_ptr(),
-                    DOTLOTTIE_MAX_STR_LENGTH,
-                )?;
-                DotLottieString::copy(
-                    &new_state,
-                    data.str2.as_mut_ptr(),
-                    DOTLOTTIE_MAX_STR_LENGTH,
-                )?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineTransition,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::StateEntered { state } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&state, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineStateEntered,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::StateExit { state } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&state, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineStateExit,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::CustomEvent { message } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&message, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineCustomEvent,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::Error { message } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&message, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineError,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::StringInputChange {
-                name,
-                old_value,
-                new_value,
-            } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&name, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                DotLottieString::copy(
-                    &old_value,
-                    data.str2.as_mut_ptr(),
-                    DOTLOTTIE_MAX_STR_LENGTH,
-                )?;
-                DotLottieString::copy(
-                    &new_value,
-                    data.str3.as_mut_ptr(),
-                    DOTLOTTIE_MAX_STR_LENGTH,
-                )?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineStringInputChange,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::NumericInputChange {
-                name,
-                old_value,
-                new_value,
-            } => {
-                let mut data = StateMachineNumericData {
-                    name: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    old_value,
-                    new_value,
-                };
-                DotLottieString::copy(&name, data.name.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineNumericInputChange,
-                    data: StateMachineEventData { numeric: data },
-                })
-            }
-            crate::StateMachineEvent::BooleanInputChange {
-                name,
-                old_value,
-                new_value,
-            } => {
-                let mut data = StateMachineBooleanData {
-                    name: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    old_value,
-                    new_value,
-                };
-                DotLottieString::copy(&name, data.name.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineBooleanInputChange,
-                    data: StateMachineEventData { boolean: data },
-                })
-            }
-            crate::StateMachineEvent::InputFired { name } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&name, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineInputFired,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-        }
-    }
-}
-
-#[cfg(feature = "state-machines")]
-// Internal State Machine Events (for framework use)
+/// Internal state machine event (for framework use).
+/// The message pointer is valid until the next poll call.
 #[repr(C)]
-pub struct StateMachineInternalEvent {
-    pub message: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
-}
-
 #[cfg(feature = "state-machines")]
-impl StateMachineInternalEvent {
-    pub unsafe fn from_rust(event: crate::StateMachineInternalEvent) -> Result<Self, io::Error> {
-        match event {
-            crate::StateMachineInternalEvent::Message { message } => {
-                let mut data = StateMachineInternalEvent {
-                    message: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(
-                    &message,
-                    data.message.as_mut_ptr(),
-                    DOTLOTTIE_MAX_STR_LENGTH,
-                )?;
-                Ok(data)
-            }
-        }
-    }
+pub struct StateMachineInternalEvent {
+    pub message: *const c_char,
 }

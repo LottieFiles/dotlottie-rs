@@ -1,131 +1,79 @@
 use std::collections::VecDeque;
+use std::ffi::CString;
 
-/// SDL-style events for DotLottie player
+/// Events emitted by the DotLottie player.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DotLottieEvent {
-    // Player lifecycle events
     Load,
     LoadError,
-
-    // Playback control events
     Play,
     Pause,
     Stop,
-
-    // Frame events (can coalesce)
     Frame { frame_no: f32 },
     Render { frame_no: f32 },
-
-    // Loop/complete events
     Loop { loop_count: u32 },
     Complete,
 }
 
-/// State machine events
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum StateMachineEvent {
-    // Lifecycle
     Start,
     Stop,
-
-    // State transitions
     Transition {
-        previous_state: String,
-        new_state: String,
+        previous_state: CString,
+        new_state: CString,
     },
     StateEntered {
-        state: String,
+        state: CString,
     },
     StateExit {
-        state: String,
+        state: CString,
     },
-
-    // Custom events and errors
     CustomEvent {
-        message: String,
+        message: CString,
     },
     Error {
-        message: String,
+        message: CString,
     },
-
-    // Input value changes
     StringInputChange {
-        name: String,
-        old_value: String,
-        new_value: String,
+        name: CString,
+        old_value: CString,
+        new_value: CString,
     },
     NumericInputChange {
-        name: String,
+        name: CString,
         old_value: f32,
         new_value: f32,
     },
     BooleanInputChange {
-        name: String,
+        name: CString,
         old_value: bool,
         new_value: bool,
     },
-
-    // Event input fired
     InputFired {
-        name: String,
+        name: CString,
     },
 }
 
-/// Internal state machine events (for framework use)
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum StateMachineInternalEvent {
-    Message { message: String },
+    Message { message: CString },
 }
 
 pub const MAX_EVENTS: usize = 256;
 
-/// Trait for events that can be coalesced to save queue space
-pub trait CoalescableEvent: Sized {
-    /// Returns true if this event can coalesce with (replace) the other event
-    fn can_coalesce_with(&self, other: &Self) -> bool;
-}
-
-impl CoalescableEvent for DotLottieEvent {
-    fn can_coalesce_with(&self, other: &Self) -> bool {
-        match (self, other) {
-            // Frame events coalesce with other frame events
-            (DotLottieEvent::Frame { .. }, DotLottieEvent::Frame { .. }) => true,
-            // Render events coalesce with other render events
-            (DotLottieEvent::Render { .. }, DotLottieEvent::Render { .. }) => true,
-            // All other events don't coalesce
-            _ => false,
-        }
-    }
-}
-
-impl CoalescableEvent for StateMachineEvent {
-    fn can_coalesce_with(&self, _other: &Self) -> bool {
-        // State machine events don't coalesce
-        false
-    }
-}
-
-impl CoalescableEvent for StateMachineInternalEvent {
-    fn can_coalesce_with(&self, _other: &Self) -> bool {
-        // Internal events don't coalesce
-        false
-    }
-}
-
-/// Event queue with bounded size and coalescing support
+/// Bounded event queue.
 ///
-/// This queue follows SDL's event system design:
-/// - Fixed maximum size (MAX_EVENTS events)
-/// - When full, oldest events are dropped
-/// - Consecutive frame/render events coalesce to save space
-/// - Single-threaded (no synchronization overhead)
-pub struct EventQueue<T: CoalescableEvent> {
+/// - Fixed maximum size ([`MAX_EVENTS`]).
+/// - When full, the oldest event is dropped.
+/// - Single-threaded; no synchronization overhead.
+pub struct EventQueue<T> {
     queue: VecDeque<T>,
     max_size: usize,
 }
 
-impl<T: CoalescableEvent + Clone> EventQueue<T> {
-    /// Create a new event queue with default capacity (256 events)
+impl<T> EventQueue<T> {
+    /// Creates a new event queue with the default capacity.
     pub fn new() -> Self {
         Self {
             queue: VecDeque::with_capacity(MAX_EVENTS),
@@ -133,21 +81,10 @@ impl<T: CoalescableEvent + Clone> EventQueue<T> {
         }
     }
 
-    /// Push an event onto the queue
+    /// Pushes an event onto the queue.
     ///
-    /// If the last event in the queue can coalesce with this event,
-    /// it will be replaced instead of adding a new entry.
-    /// If the queue is full, the oldest event will be dropped.
+    /// If the queue is full, the oldest event is dropped.
     pub fn push(&mut self, event: T) {
-        // Try to coalesce with last event
-        if let Some(last) = self.queue.back_mut() {
-            if last.can_coalesce_with(&event) {
-                *last = event;
-                return;
-            }
-        }
-
-        // Queue full - drop oldest event
         if self.queue.len() >= self.max_size {
             self.queue.pop_front();
         }
@@ -155,31 +92,30 @@ impl<T: CoalescableEvent + Clone> EventQueue<T> {
         self.queue.push_back(event);
     }
 
-    /// Poll for the next event (removes it from the queue)
+    /// Removes and returns the next event from the queue.
     ///
-    /// Returns Some(event) if an event is available, None if queue is empty.
-    /// This follows SDL's SDL_PollEvent pattern.
+    /// Returns `Some(event)` if an event is available, `None` if the queue is empty.
     pub fn poll(&mut self) -> Option<T> {
         self.queue.pop_front()
     }
 
-    /// Get the number of events currently in the queue
+    /// Returns the number of events currently in the queue.
     pub fn len(&self) -> usize {
         self.queue.len()
     }
 
-    /// Check if the queue is empty
+    /// Returns `true` if the queue is empty.
     pub fn is_empty(&self) -> bool {
         self.queue.is_empty()
     }
 
-    /// Clear all events from the queue
+    /// Removes all events from the queue.
     pub fn clear(&mut self) {
         self.queue.clear();
     }
 }
 
-impl<T: CoalescableEvent + Clone> Default for EventQueue<T> {
+impl<T> Default for EventQueue<T> {
     fn default() -> Self {
         Self::new()
     }
@@ -204,43 +140,41 @@ mod tests {
     }
 
     #[test]
-    fn test_frame_coalescing() {
+    fn test_frame_events() {
         let mut queue = EventQueue::<DotLottieEvent>::new();
 
         queue.push(DotLottieEvent::Frame { frame_no: 10.0 });
         queue.push(DotLottieEvent::Frame { frame_no: 11.0 });
         queue.push(DotLottieEvent::Frame { frame_no: 12.0 });
 
-        // Should only have one frame event (coalesced)
-        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.len(), 3);
 
-        let event = queue.poll();
-        assert_eq!(event, Some(DotLottieEvent::Frame { frame_no: 12.0 }));
+        assert_eq!(queue.poll(), Some(DotLottieEvent::Frame { frame_no: 10.0 }));
+        assert_eq!(queue.poll(), Some(DotLottieEvent::Frame { frame_no: 11.0 }));
+        assert_eq!(queue.poll(), Some(DotLottieEvent::Frame { frame_no: 12.0 }));
     }
 
     #[test]
-    fn test_render_coalescing() {
+    fn test_render_events() {
         let mut queue = EventQueue::<DotLottieEvent>::new();
 
         queue.push(DotLottieEvent::Render { frame_no: 5.0 });
         queue.push(DotLottieEvent::Render { frame_no: 6.0 });
 
-        // Should only have one render event (coalesced)
-        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.len(), 2);
 
-        let event = queue.poll();
-        assert_eq!(event, Some(DotLottieEvent::Render { frame_no: 6.0 }));
+        assert_eq!(queue.poll(), Some(DotLottieEvent::Render { frame_no: 5.0 }));
+        assert_eq!(queue.poll(), Some(DotLottieEvent::Render { frame_no: 6.0 }));
     }
 
     #[test]
-    fn test_no_coalescing_different_events() {
+    fn test_multiple_event_types() {
         let mut queue = EventQueue::<DotLottieEvent>::new();
 
         queue.push(DotLottieEvent::Load);
         queue.push(DotLottieEvent::Play);
         queue.push(DotLottieEvent::Frame { frame_no: 10.0 });
 
-        // All events should be separate
         assert_eq!(queue.len(), 3);
     }
 
@@ -248,15 +182,12 @@ mod tests {
     fn test_queue_overflow() {
         let mut queue = EventQueue::<DotLottieEvent>::new();
 
-        // Fill beyond capacity
         for i in 0..300 {
             queue.push(DotLottieEvent::Loop { loop_count: i });
         }
 
-        // Should not exceed max size
         assert_eq!(queue.len(), MAX_EVENTS);
 
-        // First event should be Loop { loop_count: 44 } (300 - 256 = 44)
         let event = queue.poll();
         assert_eq!(event, Some(DotLottieEvent::Loop { loop_count: 44 }));
     }
@@ -271,5 +202,128 @@ mod tests {
 
         queue.clear();
         assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn test_state_machine_event_cstring() {
+        // Test Start event
+        let event = StateMachineEvent::Start;
+        assert!(matches!(event, StateMachineEvent::Start));
+
+        // Test Stop event
+        let event = StateMachineEvent::Stop;
+        assert!(matches!(event, StateMachineEvent::Stop));
+
+        // Test Transition event with CString
+        let event = StateMachineEvent::Transition {
+            previous_state: CString::new("state_a").unwrap(),
+            new_state: CString::new("state_b").unwrap(),
+        };
+        if let StateMachineEvent::Transition {
+            previous_state,
+            new_state,
+        } = &event
+        {
+            assert_eq!(previous_state.to_str().unwrap(), "state_a");
+            assert_eq!(new_state.to_str().unwrap(), "state_b");
+        } else {
+            panic!("Expected Transition variant");
+        }
+
+        // Test StateEntered event
+        let event = StateMachineEvent::StateEntered {
+            state: CString::new("entered_state").unwrap(),
+        };
+        if let StateMachineEvent::StateEntered { state } = &event {
+            assert_eq!(state.to_str().unwrap(), "entered_state");
+        } else {
+            panic!("Expected StateEntered variant");
+        }
+
+        // Test NumericInputChange event
+        let event = StateMachineEvent::NumericInputChange {
+            name: CString::new("speed").unwrap(),
+            old_value: 1.0,
+            new_value: 2.5,
+        };
+        if let StateMachineEvent::NumericInputChange {
+            name,
+            old_value,
+            new_value,
+        } = &event
+        {
+            assert_eq!(name.to_str().unwrap(), "speed");
+            assert_eq!(*old_value, 1.0);
+            assert_eq!(*new_value, 2.5);
+        } else {
+            panic!("Expected NumericInputChange variant");
+        }
+
+        // Test BooleanInputChange event
+        let event = StateMachineEvent::BooleanInputChange {
+            name: CString::new("enabled").unwrap(),
+            old_value: false,
+            new_value: true,
+        };
+        if let StateMachineEvent::BooleanInputChange {
+            name,
+            old_value,
+            new_value,
+        } = &event
+        {
+            assert_eq!(name.to_str().unwrap(), "enabled");
+            assert!(!old_value);
+            assert!(new_value);
+        } else {
+            panic!("Expected BooleanInputChange variant");
+        }
+    }
+
+    #[test]
+    fn test_state_machine_event_empty_strings() {
+        // Test with empty strings (should produce valid empty CStrings)
+        let event = StateMachineEvent::Transition {
+            previous_state: CString::new("").unwrap(),
+            new_state: CString::new("").unwrap(),
+        };
+        if let StateMachineEvent::Transition {
+            previous_state,
+            new_state,
+        } = &event
+        {
+            assert_eq!(previous_state.to_str().unwrap(), "");
+            assert_eq!(new_state.to_str().unwrap(), "");
+            // Verify CStrings have valid content (empty string is "\0")
+            assert_eq!(previous_state.as_bytes_with_nul().len(), 1);
+            assert_eq!(new_state.as_bytes_with_nul().len(), 1);
+        } else {
+            panic!("Expected Transition variant");
+        }
+    }
+
+    #[test]
+    fn test_state_machine_internal_event() {
+        let event = StateMachineInternalEvent::Message {
+            message: CString::new("test message").unwrap(),
+        };
+        let StateMachineInternalEvent::Message { message } = &event;
+        assert_eq!(message.to_str().unwrap(), "test message");
+    }
+
+    #[test]
+    fn test_cstring_pointer_stability() {
+        // Verify that pointers remain valid while event is alive
+        let event = StateMachineEvent::Error {
+            message: CString::new("an error occurred").unwrap(),
+        };
+
+        if let StateMachineEvent::Error { message } = &event {
+            let ptr = message.as_ptr();
+            // Read through pointer to verify it's valid
+            let cstr = unsafe { std::ffi::CStr::from_ptr(ptr) };
+            assert_eq!(cstr.to_str().unwrap(), "an error occurred");
+        } else {
+            panic!("Expected Error variant");
+        }
     }
 }

@@ -7,7 +7,7 @@
 /// slot with ID "ball_color" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSlot, ColorSpace, Config, DotLottiePlayer, LottieKeyframe};
+use dotlottie_rs::{ColorSlot, ColorSpace, DotLottiePlayer, LottieKeyframe};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -25,30 +25,22 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    let mut player = DotLottiePlayer::new(
-        Config {
-            loop_animation: true,
-            autoplay: true,
-            ..Config::default()
-        },
-        0, // threads (0 = auto)
-    );
-
+    // Create player and load animation
+    let mut player = DotLottiePlayer::new();
+    player.set_autoplay(true);
+    player.set_loop(true);
 
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-    player.set_sw_target(
-        &mut buffer,
-        WIDTH,
-        HEIGHT,
-        ColorSpace::ABGR8888S,
-    );
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888S)
+        .unwrap();
 
     let animation_data = include_str!("../assets/animations/lottie/bouncy_ball.json");
 
     let c_data = CString::new(animation_data).expect("CString conversion failed");
 
-    if !player.load_animation_data(&c_data, WIDTH, HEIGHT) {
+    if player.load_animation_data(&c_data, WIDTH, HEIGHT).is_err() {
         eprintln!("Failed to load animation");
         return;
     }
@@ -75,7 +67,7 @@ fn main() {
     let mut is_animated = false;
 
     let color_slot = ColorSlot::new(colors[current_color_index].0);
-    player.set_color_slot("ball_color", color_slot);
+    let _ = player.set_color_slot("ball_color", color_slot);
     println!(
         "Mode: STATIC | Current color: {}",
         colors[current_color_index].1
@@ -108,11 +100,11 @@ fn main() {
                         hold: None,
                     },
                 ]);
-                player.set_color_slot("ball_color", color_slot);
+                let _ = player.set_color_slot("ball_color", color_slot);
                 println!("Mode: ANIMATED (Red -> Blue)");
             } else {
                 let color_slot = ColorSlot::new(colors[current_color_index].0);
-                player.set_color_slot("ball_color", color_slot);
+                let _ = player.set_color_slot("ball_color", color_slot);
                 println!(
                     "Mode: STATIC | Current color: {}",
                     colors[current_color_index].1
@@ -129,7 +121,7 @@ fn main() {
             current_color_index = (current_color_index + 1) % colors.len();
 
             let color_slot = ColorSlot::new(colors[current_color_index].0);
-            player.set_color_slot("ball_color", color_slot);
+            let _ = player.set_color_slot("ball_color", color_slot);
 
             println!(
                 "Mode: STATIC | Current color: {}",
@@ -138,7 +130,8 @@ fn main() {
             last_space_press = now;
         }
 
-        if player.tick() {
+        // Update animation frame and render
+        if player.tick().is_ok() {
             window
                 .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");

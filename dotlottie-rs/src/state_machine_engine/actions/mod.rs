@@ -1,3 +1,4 @@
+#[cfg(feature = "theming")]
 use std::ffi::CString;
 
 use serde::Deserialize;
@@ -274,18 +275,21 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::SetTheme { value } => {
-                let resolved_value = value
-                    .strip_prefix('$')
-                    .and_then(|key| engine.get_string_input(key))
-                    .unwrap_or_else(|| value.clone());
+                #[cfg(feature = "theming")]
+                {
+                    let resolved_value = value
+                        .strip_prefix('$')
+                        .and_then(|key| engine.get_string_input(key))
+                        .unwrap_or_else(|| value.clone());
 
-                let theme_cstr = CString::new(resolved_value)
-                    .map_err(|_| StateMachineActionError::ParsingError)?;
+                    let theme_cstr = CString::new(resolved_value)
+                        .map_err(|_| StateMachineActionError::ParsingError)?;
 
-                engine
-                    .player
-                    .set_theme(&theme_cstr)
-                    .map_err(|_| StateMachineActionError::ExecuteError)?;
+                    engine
+                        .player
+                        .set_theme(&theme_cstr)
+                        .map_err(|_| StateMachineActionError::ExecuteError)?;
+                }
 
                 Ok(())
             }

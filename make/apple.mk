@@ -7,7 +7,7 @@ MIN_MACCATALYST_VERSION ?= 13.1
 
 # Default Rust features for Apple builds
 APPLE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-APPLE_DEFAULT_FEATURES = tvg,tvg-sw,c_api
+APPLE_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
 APPLE_WEBGPU_FEATURES = tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
 
 ifdef FEATURES

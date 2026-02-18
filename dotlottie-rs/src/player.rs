@@ -10,9 +10,11 @@ use crate::{
     lottie_renderer::{LottieRenderer, LottieRendererError},
     Marker,
 };
-use crate::{
-    ColorSpace, DotLottieManager, Manifest, Renderer, StateMachineEngine, StateMachineEngineError,
-};
+use crate::{ColorSpace, Renderer};
+#[cfg(feature = "dotlottie")]
+use crate::{DotLottieManager, Manifest};
+#[cfg(feature = "state-machines")]
+use crate::{StateMachineEngine, StateMachineEngineError};
 
 pub enum PlaybackState {
     Playing,
@@ -94,6 +96,7 @@ pub struct DotLottiePlayer {
     is_loaded: bool,
     start_time: Instant,
     current_loop_count: u32,
+    #[cfg(feature = "dotlottie")]
     dotlottie_manager: Option<DotLottieManager>,
     direction: Direction,
     marker_names: Vec<CString>,
@@ -112,8 +115,11 @@ pub struct DotLottiePlayer {
     background_color: u32,
     layout: Layout,
     marker: Option<usize>, // marker id
+    #[cfg(feature = "theming")]
     theme_id: Option<CString>,
+    #[cfg(feature = "dotlottie")]
     animation_id: Option<CString>,
+    #[cfg(feature = "state-machines")]
     state_machine_id: Option<CString>,
 }
 
@@ -164,12 +170,16 @@ impl DotLottiePlayer {
             background_color: DEFAULT_BACKGROUND_COLOR,
             layout: Layout::default(),
             marker: None,
+            #[cfg(feature = "theming")]
             theme_id: None,
+            #[cfg(feature = "dotlottie")]
             animation_id: None,
+            #[cfg(feature = "dotlottie")]
             dotlottie_manager: None,
             direction: Direction::Forward,
             marker_names: Vec::new(),
             marker_data: Vec::new(),
+            #[cfg(feature = "state-machines")]
             state_machine_id: None,
             cached_start_end_frame: None,
             event_queue: EventQueue::new(),
@@ -375,6 +385,7 @@ impl DotLottiePlayer {
         Ok(())
     }
 
+    #[cfg(feature = "dotlottie")]
     pub fn manifest(&self) -> Option<&Manifest> {
         self.dotlottie_manager
             .as_ref()
@@ -385,6 +396,7 @@ impl DotLottiePlayer {
         (self.renderer.width(), self.renderer.height())
     }
 
+    #[cfg(feature = "state-machines")]
     pub fn get_state_machine(&self, state_machine_id: &CStr) -> Option<String> {
         let id_str = state_machine_id.to_str().ok()?;
 
@@ -1028,9 +1040,15 @@ impl DotLottiePlayer {
         width: u32,
         height: u32,
     ) -> Result<(), DotLottiePlayerError> {
-        self.dotlottie_manager = None;
-        self.theme_id = None;
-        self.animation_id = None;
+        #[cfg(feature = "dotlottie")]
+        {
+            self.dotlottie_manager = None;
+            self.animation_id = None;
+        }
+        #[cfg(feature = "theming")]
+        {
+            self.theme_id = None;
+        }
 
         // Convert to &str only for marker extraction (JSON parsing)
         if let Ok(data_str) = animation_data.to_str() {
@@ -1063,10 +1081,15 @@ impl DotLottiePlayer {
         width: u32,
         height: u32,
     ) -> Result<(), DotLottiePlayerError> {
-        self.dotlottie_manager = None;
-        self.theme_id = None;
-        self.animation_id = None;
-
+        #[cfg(feature = "dotlottie")]
+        {
+            self.dotlottie_manager = None;
+            self.animation_id = None;
+        }
+        #[cfg(feature = "theming")]
+        {
+            self.theme_id = None;
+        }
         let result = (|| {
             let path_str = file_path
                 .to_str()
@@ -1083,15 +1106,21 @@ impl DotLottiePlayer {
         })
     }
 
+    #[cfg(feature = "dotlottie")]
     pub fn load_dotlottie_data(
         &mut self,
         file_data: &[u8],
         width: u32,
         height: u32,
     ) -> Result<(), DotLottiePlayerError> {
-        self.theme_id = None;
-        self.animation_id = None;
-
+        #[cfg(feature = "dotlottie")]
+        {
+            self.animation_id = None;
+        }
+        #[cfg(feature = "theming")]
+        {
+            self.theme_id = None;
+        }
         let manager =
             DotLottieManager::new(file_data).map_err(|_| DotLottiePlayerError::Unknown)?;
 
@@ -1139,6 +1168,7 @@ impl DotLottiePlayer {
         Ok(())
     }
 
+    #[cfg(feature = "dotlottie")]
     pub fn load_animation(
         &mut self,
         animation_id: &CStr,
@@ -1223,6 +1253,7 @@ impl DotLottiePlayer {
         }
     }
 
+    #[cfg(feature = "theming")]
     pub fn set_theme(&mut self, theme_id: &CStr) -> Result<(), DotLottiePlayerError> {
         if self.theme_id.as_deref() == Some(theme_id) {
             return Ok(());
@@ -1285,12 +1316,14 @@ impl DotLottiePlayer {
         result
     }
 
+    #[cfg(feature = "theming")]
     pub fn reset_theme(&mut self) -> Result<(), DotLottiePlayerError> {
         self.theme_id = None;
         self.renderer.clear_slots()?;
         Ok(())
     }
 
+    #[cfg(feature = "theming")]
     pub fn set_theme_data(&mut self, theme_data: &CStr) -> Result<(), DotLottiePlayerError> {
         let theme_data_str = theme_data
             .to_str()
@@ -1311,6 +1344,7 @@ impl DotLottiePlayer {
         self.apply_slot_types(slots)
     }
 
+    #[cfg(feature = "theming")]
     fn apply_slot_types(
         &mut self,
         slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
@@ -1450,14 +1484,17 @@ impl DotLottiePlayer {
         Ok(())
     }
 
+    #[cfg(feature = "dotlottie")]
     pub fn animation_id(&self) -> Option<&CStr> {
         Some(self.animation_id.as_ref()?)
     }
 
+    #[cfg(feature = "theming")]
     pub fn theme_id(&self) -> Option<&CStr> {
         self.theme_id.as_deref()
     }
 
+    #[cfg(feature = "state-machines")]
     pub fn state_machine_id(&self) -> Option<&CStr> {
         self.state_machine_id.as_deref()
     }
@@ -1557,6 +1594,7 @@ impl DotLottiePlayer {
         }
     }
 
+    #[cfg(feature = "state-machines")]
     pub fn state_machine_load<'a>(
         &'a mut self,
         state_machine_id: &CStr,
@@ -1571,6 +1609,7 @@ impl DotLottiePlayer {
         StateMachineEngine::new(&machine, self, None)
     }
 
+    #[cfg(feature = "state-machines")]
     pub fn state_machine_load_data<'a>(
         &'a mut self,
         state_machine: &str,

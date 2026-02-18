@@ -4,7 +4,7 @@ RUST_TOOLCHAIN ?= nightly-2025-08-01
 
 # Default Rust features for WASM builds
 WASM_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
-WASM_DEFAULT_FEATURES = tvg,tvg-sw,c_api
+WASM_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
 
 ifdef FEATURES
 	WASM_FEATURES = $(FEATURES)

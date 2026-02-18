@@ -1,9 +1,13 @@
 #![allow(clippy::missing_safety_doc)]
 
+#[cfg(feature = "state-machines")]
 use bitflags::bitflags;
+#[cfg(feature = "state-machines")]
 use core::str::FromStr;
+#[cfg(feature = "state-machines")]
 use std::ffi::c_char;
 
+#[cfg(feature = "state-machines")]
 use crate::state_machine_engine::events::Event;
 
 use crate::lottie_renderer::LottieRendererError;
@@ -61,6 +65,7 @@ impl<E: Into<DotLottieResult>> From<Result<(), E>> for DotLottieResult {
 
 // This type allows us to work with Interaction Types as bit flags and easily communicate this
 // information to the C side
+#[cfg(feature = "state-machines")]
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     #[repr(C)]
@@ -79,8 +84,10 @@ bitflags! {
 }
 
 #[derive(Debug, Clone)]
+#[cfg(feature = "state-machines")]
 pub(crate) struct InteractionTypeParseError;
 
+#[cfg(feature = "state-machines")]
 impl InteractionType {
     pub fn new(
         interaction_types: &Vec<String>,
@@ -93,6 +100,7 @@ impl InteractionType {
     }
 }
 
+#[cfg(feature = "state-machines")]
 impl FromStr for InteractionType {
     type Err = InteractionTypeParseError;
 
@@ -114,6 +122,7 @@ impl FromStr for InteractionType {
 // Input events for state machine (pointer interactions)
 #[allow(dead_code)]
 #[repr(C)]
+#[cfg(feature = "state-machines")]
 pub enum DotLottieEvent {
     PointerDown { x: f32, y: f32 },
     PointerUp { x: f32, y: f32 },
@@ -125,6 +134,7 @@ pub enum DotLottieEvent {
     OnLoopComplete,
 }
 
+#[cfg(feature = "state-machines")]
 impl DotLottieEvent {
     pub unsafe fn to_event(&self) -> Event {
         match self {
@@ -217,6 +227,7 @@ impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
 // State Machine Events
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg(feature = "state-machines")]
 pub enum StateMachineEventType {
     StateMachineStart = 0,
     StateMachineStop = 1,
@@ -234,6 +245,7 @@ pub enum StateMachineEventType {
 /// Transition event data with pointers to state names
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[cfg(feature = "state-machines")]
 pub struct StateMachineTransitionData {
     pub previous_state: *const c_char,
     pub new_state: *const c_char,
@@ -242,6 +254,7 @@ pub struct StateMachineTransitionData {
 /// State event data (for StateEntered/StateExit)
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[cfg(feature = "state-machines")]
 pub struct StateMachineStateData {
     pub state: *const c_char,
 }
@@ -249,6 +262,7 @@ pub struct StateMachineStateData {
 /// Message event data (for CustomEvent/Error)
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[cfg(feature = "state-machines")]
 pub struct StateMachineMessageData {
     pub message: *const c_char,
 }
@@ -256,6 +270,7 @@ pub struct StateMachineMessageData {
 /// String input change event data
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[cfg(feature = "state-machines")]
 pub struct StateMachineStringInputData {
     pub name: *const c_char,
     pub old_value: *const c_char,
@@ -265,6 +280,7 @@ pub struct StateMachineStringInputData {
 /// Numeric input change event data
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[cfg(feature = "state-machines")]
 pub struct StateMachineNumericInputData {
     pub name: *const c_char,
     pub old_value: f32,
@@ -274,6 +290,7 @@ pub struct StateMachineNumericInputData {
 /// Boolean input change event data
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[cfg(feature = "state-machines")]
 pub struct StateMachineBooleanInputData {
     pub name: *const c_char,
     pub old_value: bool,
@@ -283,12 +300,14 @@ pub struct StateMachineBooleanInputData {
 /// Input fired event data
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[cfg(feature = "state-machines")]
 pub struct StateMachineInputFiredData {
     pub name: *const c_char,
 }
 
 /// Union of all possible state machine event data types
 #[repr(C)]
+#[cfg(feature = "state-machines")]
 pub union StateMachineEventData {
     pub transition: StateMachineTransitionData,
     pub state: StateMachineStateData,
@@ -302,6 +321,7 @@ pub union StateMachineEventData {
 /// State machine event with type tag and data union.
 /// String pointers are valid until the next poll call.
 #[repr(C)]
+#[cfg(feature = "state-machines")]
 pub struct StateMachineEvent {
     pub event_type: StateMachineEventType,
     pub data: StateMachineEventData,
@@ -310,6 +330,7 @@ pub struct StateMachineEvent {
 /// Internal state machine event (for framework use).
 /// The message pointer is valid until the next poll call.
 #[repr(C)]
+#[cfg(feature = "state-machines")]
 pub struct StateMachineInternalEvent {
     pub message: *const c_char,
 }

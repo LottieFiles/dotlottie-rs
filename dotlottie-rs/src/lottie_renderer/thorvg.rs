@@ -10,7 +10,7 @@ use std::{
 #[cfg(feature = "tvg-ttf")]
 use crate::lottie_renderer::fallback_font;
 
-use super::{Animation, ColorSpace, Drawable, Renderer, Shape};
+use super::{Animation, ColorSpace, Drawable, Renderer, Shape, WgpuTargetType};
 
 pub struct TvgGlContext(*mut std::ffi::c_void);
 pub struct TvgWgpuDevice(*mut std::ffi::c_void);
@@ -112,6 +112,12 @@ impl From<ColorSpace> for tvg::Tvg_Colorspace {
             ColorSpace::ARGB8888 => tvg::Tvg_Colorspace_TVG_COLORSPACE_ARGB8888,
             ColorSpace::ARGB8888S => tvg::Tvg_Colorspace_TVG_COLORSPACE_ARGB8888S,
         }
+    }
+}
+
+impl From<WgpuTargetType> for std::ffi::c_int {
+    fn from(target_type: WgpuTargetType) -> Self {
+        target_type as std::ffi::c_int
     }
 }
 
@@ -315,6 +321,7 @@ impl Renderer for TvgRenderer {
         target: &Self::WgpuTarget,
         width: u32,
         height: u32,
+        target_type: WgpuTargetType,
     ) -> Result<(), Self::Error> {
         if self.raw_canvas.is_none() {
             self.create_wg_canvas()?;
@@ -337,7 +344,7 @@ impl Renderer for TvgRenderer {
                     width,
                     height,
                     tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
-                    0,
+                    target_type.into(),
                 )
             };
 

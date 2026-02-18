@@ -971,6 +971,7 @@ impl DotLottiePlayer {
         target: &T,
         width: u32,
         height: u32,
+        target_type: crate::lottie_renderer::WgpuTargetType,
     ) -> Result<(), DotLottiePlayerError> {
         unsafe {
             self.renderer.set_wg_target(
@@ -979,6 +980,7 @@ impl DotLottiePlayer {
                 target.as_ptr(),
                 width,
                 height,
+                target_type,
             )?;
         }
 

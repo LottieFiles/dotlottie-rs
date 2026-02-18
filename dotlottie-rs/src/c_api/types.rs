@@ -119,6 +119,23 @@ impl FromStr for InteractionType {
     }
 }
 
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub enum DotLottieWgpuTargetType {
+    Surface = 0,
+    Texture = 1,
+}
+
+impl DotLottieWgpuTargetType {
+    pub fn to_wgpu_target_type(&self) -> crate::lottie_renderer::WgpuTargetType {
+        match self {
+            DotLottieWgpuTargetType::Surface => crate::lottie_renderer::WgpuTargetType::Surface,
+            DotLottieWgpuTargetType::Texture => crate::lottie_renderer::WgpuTargetType::Texture,
+        }
+    }
+}
+
 // Input events for state machine (pointer interactions)
 #[allow(dead_code)]
 #[repr(C)]

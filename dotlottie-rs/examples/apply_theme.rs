@@ -1,4 +1,3 @@
-#![cfg(feature = "theming")]
 #![allow(clippy::print_stdout)]
 
 /// Theme Example

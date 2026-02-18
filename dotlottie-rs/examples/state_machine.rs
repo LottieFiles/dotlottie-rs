@@ -1,4 +1,3 @@
-#![cfg(feature = "state-machines")]
 #![allow(clippy::print_stdout)]
 
 use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
@@ -133,17 +132,17 @@ fn main() {
         0,
     );
 
-
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
     player.set_sw_target(
-            &mut buffer,
-            WIDTH as u32,
-            HEIGHT as u32,
-            ColorSpace::ABGR8888,
-        );
-    let animation_path =
-        PathBuf::from(format!("{ASSETS_DIR}/animations/dotlottie/v1/{ANIMATION_NAME}"));
+        &mut buffer,
+        WIDTH as u32,
+        HEIGHT as u32,
+        ColorSpace::ABGR8888,
+    );
+    let animation_path = PathBuf::from(format!(
+        "{ASSETS_DIR}/animations/dotlottie/v1/{ANIMATION_NAME}"
+    ));
 
     if !load_animation(&mut player, &animation_path) {
         eprintln!("Failed to load animation, exiting");

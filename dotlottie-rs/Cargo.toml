@@ -74,6 +74,14 @@ required-features = ["tvg-gl"]
 name = "webgpu"
 required-features = ["tvg-wg"]
 
+[[example]]
+name = "apply_theme"
+required-features = ["theming"]
+
+[[example]]
+name = "state_machine"
+required-features = ["state-machines"]
+
 [[bench]]
 name = "benchmarks"
 harness = false

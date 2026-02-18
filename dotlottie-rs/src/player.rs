@@ -46,44 +46,6 @@ impl Direction {
 
 pub const DEFAULT_BACKGROUND_COLOR: u32 = 0x00000000;
 
-#[derive(Debug, Clone, PartialEq)]
-#[repr(C)]
-pub struct Config {
-    pub mode: Mode,
-    pub loop_animation: bool,
-    pub loop_count: u32,
-    pub speed: f32,
-    pub use_frame_interpolation: bool,
-    pub autoplay: bool,
-    pub segment: Vec<f32>,
-    pub background_color: u32,
-    pub layout: Layout,
-    pub marker: String,
-    pub theme_id: String,
-    pub animation_id: String,
-    pub state_machine_id: String,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            mode: Mode::Forward,
-            loop_animation: false,
-            loop_count: 0,
-            speed: 1.0,
-            use_frame_interpolation: true,
-            autoplay: false,
-            segment: vec![],
-            background_color: 0x00000000,
-            layout: Layout::default(),
-            marker: String::new(),
-            theme_id: String::new(),
-            animation_id: String::new(),
-            state_machine_id: String::new(),
-        }
-    }
-}
-
 #[repr(C)]
 pub struct LayerBoundingBox {
     pub x1: f32,
@@ -139,9 +101,6 @@ pub struct DotLottiePlayer {
     cached_start_end_frame: Option<(f32, f32)>,
     event_queue: EventQueue<DotLottieEvent>,
     completion_event: CompletionEvent,
-    manifest_animation_ids: Vec<CString>,
-    manifest_theme_ids: Vec<CString>,
-    manifest_state_machine_ids: Vec<CString>,
     // Playback config properties
     mode: Mode,
     loop_animation: bool,
@@ -179,8 +138,7 @@ impl DotLottiePlayer {
     #[cfg(feature = "tvg")]
     pub fn load_font(name: &str, data: &[u8]) -> Result<(), DotLottiePlayerError> {
         use crate::lottie_renderer::Renderer;
-        crate::TvgRenderer::load_font(name, data)
-            .map_err(|_| DotLottiePlayerError::Unknown)
+        crate::TvgRenderer::load_font(name, data).map_err(|_| DotLottiePlayerError::Unknown)
     }
 
     #[cfg(feature = "tvg")]
@@ -216,9 +174,6 @@ impl DotLottiePlayer {
             cached_start_end_frame: None,
             event_queue: EventQueue::new(),
             completion_event: CompletionEvent::None,
-            manifest_animation_ids: Vec::new(),
-            manifest_theme_ids: Vec::new(),
-            manifest_state_machine_ids: Vec::new(),
         }
     }
 
@@ -424,62 +379,6 @@ impl DotLottiePlayer {
         self.dotlottie_manager
             .as_ref()
             .map(|manager| manager.manifest())
-    }
-
-    fn populate_manifest_id_cache(&mut self) {
-        self.manifest_animation_ids.clear();
-        self.manifest_theme_ids.clear();
-        self.manifest_state_machine_ids.clear();
-
-        // Extract IDs first to avoid borrow conflict
-        let (anim_ids, theme_ids, sm_ids): (Vec<_>, Vec<_>, Vec<_>) =
-            if let Some(manifest) = self.manifest() {
-                let anims = manifest
-                    .animations
-                    .iter()
-                    .filter_map(|a| CString::new(a.id.as_str()).ok())
-                    .collect();
-
-                let themes = manifest
-                    .themes
-                    .as_ref()
-                    .map(|t| {
-                        t.iter()
-                            .filter_map(|theme| CString::new(theme.id.as_str()).ok())
-                            .collect()
-                    })
-                    .unwrap_or_default();
-
-                let sms = manifest
-                    .state_machines
-                    .as_ref()
-                    .map(|s| {
-                        s.iter()
-                            .filter_map(|sm| CString::new(sm.id.as_str()).ok())
-                            .collect()
-                    })
-                    .unwrap_or_default();
-
-                (anims, themes, sms)
-            } else {
-                (Vec::new(), Vec::new(), Vec::new())
-            };
-
-        self.manifest_animation_ids = anim_ids;
-        self.manifest_theme_ids = theme_ids;
-        self.manifest_state_machine_ids = sm_ids;
-    }
-
-    pub fn manifest_animation_ids(&self) -> &[CString] {
-        &self.manifest_animation_ids
-    }
-
-    pub fn manifest_theme_ids(&self) -> &[CString] {
-        &self.manifest_theme_ids
-    }
-
-    pub fn manifest_state_machine_ids(&self) -> &[CString] {
-        &self.manifest_state_machine_ids
     }
 
     pub fn size(&self) -> (u32, u32) {
@@ -1216,7 +1115,6 @@ impl DotLottiePlayer {
             CString::new(animation_data).map_err(|_| DotLottiePlayerError::Unknown)?;
 
         self.dotlottie_manager = Some(manager);
-        self.populate_manifest_id_cache();
 
         let result = self.load_animation_common(
             |renderer, w, h| renderer.load_data(&animation_data_cstr, w, h),

@@ -123,9 +123,9 @@ pub enum TvgEngine {
 #[allow(dead_code)]
 #[non_exhaustive]
 enum TvgEngineOption {
-    None,                  
+    None,
     Default,
-    Smart
+    Smart,
 }
 impl From<TvgEngineOption> for tvg::Tvg_Engine_Option {
     fn from(option: TvgEngineOption) -> Self {

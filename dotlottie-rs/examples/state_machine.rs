@@ -29,19 +29,32 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 previous_state,
                 new_state,
             } => {
-                println!("[state machine event] on_transition: {previous_state} -> {new_state}");
+                println!(
+                    "[state machine event] on_transition: {} -> {}",
+                    previous_state.to_string_lossy(),
+                    new_state.to_string_lossy()
+                );
             }
             StateMachineEvent::StateEntered { state } => {
-                println!("[state machine event] on_state_entered: {state}");
+                println!(
+                    "[state machine event] on_state_entered: {}",
+                    state.to_string_lossy()
+                );
             }
             StateMachineEvent::StateExit { state } => {
-                println!("[state machine event] on_state_exit: {state}");
+                println!(
+                    "[state machine event] on_state_exit: {}",
+                    state.to_string_lossy()
+                );
             }
             StateMachineEvent::CustomEvent { message } => {
-                println!("[state machine event] custom_event: {message}");
+                println!(
+                    "[state machine event] custom_event: {}",
+                    message.to_string_lossy()
+                );
             }
             StateMachineEvent::Error { message } => {
-                println!("[state machine event] error: {message}");
+                println!("[state machine event] error: {}", message.to_string_lossy());
             }
             StateMachineEvent::StringInputChange {
                 name,
@@ -49,7 +62,10 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] string_input_value_change ==> {name} : {old_value} -> {new_value}"
+                    "[state machine event] string_input_value_change ==> {} : {} -> {}",
+                    name.to_string_lossy(),
+                    old_value.to_string_lossy(),
+                    new_value.to_string_lossy()
                 );
             }
             StateMachineEvent::NumericInputChange {
@@ -58,7 +74,8 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] numeric_input_value_change ==> {name} : {old_value} -> {new_value}"
+                    "[state machine event] numeric_input_value_change ==> {} : {old_value} -> {new_value}",
+                    name.to_string_lossy()
                 );
             }
             StateMachineEvent::BooleanInputChange {
@@ -67,11 +84,15 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] boolean_input_value_change ==> {name} : {old_value} -> {new_value}"
+                    "[state machine event] boolean_input_value_change ==> {} : {old_value} -> {new_value}",
+                    name.to_string_lossy()
                 );
             }
             StateMachineEvent::InputFired { name } => {
-                println!("[state machine event] input_fired ==> {name}");
+                println!(
+                    "[state machine event] input_fired ==> {}",
+                    name.to_string_lossy()
+                );
             }
         }
     }
@@ -141,8 +162,9 @@ fn main() {
             ColorSpace::ABGR8888,
         )
         .unwrap();
-    let animation_path =
-        PathBuf::from(format!("{ASSETS_DIR}/animations/dotlottie/v1/{ANIMATION_NAME}"));
+    let animation_path = PathBuf::from(format!(
+        "{ASSETS_DIR}/animations/dotlottie/v1/{ANIMATION_NAME}"
+    ));
 
     if !load_animation(&mut player, &animation_path) {
         eprintln!("Failed to load animation, exiting");

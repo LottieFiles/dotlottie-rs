@@ -206,161 +206,50 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     })
 }
 
-/// Gets the number of animations in the loaded dotLottie manifest.
+/// Get the manifest as a JSON string.
 ///
 /// # Parameters
 /// - `ptr`: Pointer to the DotLottiePlayer instance
-/// - `count`: Pointer to receive the animation count
+/// - `buffer`: Buffer to store the JSON, or NULL to query required size
+/// - `size_out`: Pointer to receive the required buffer size (including null terminator)
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
-/// - `DotLottieResult::InvalidParameter` if pointers are invalid
+/// - `DotLottieResult::ManifestNotAvailable` if no manifest is available
+/// - `DotLottieResult::InvalidParameter` if ptr is invalid
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_animation_id_count(
+pub unsafe extern "C" fn dotlottie_manifest(
     ptr: *mut DotLottiePlayer,
-    count: *mut u32,
+    buffer: *mut c_char,
+    size_out: *mut usize,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if count.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        *count = dotlottie_player.manifest_animation_ids().len() as u32;
-        DotLottieResult::Success
-    })
-}
+        match dotlottie_player.manifest() {
+            Some(manifest) => {
+                let json_str = match serde_json::to_string(manifest) {
+                    Ok(s) => s,
+                    Err(_) => return DotLottieResult::Error,
+                };
+                let json_bytes = json_str.as_bytes();
+                let size = json_bytes.len() + 1; // +1 for null terminator
 
-/// Gets an animation ID by index from the loaded dotLottie manifest.
-///
-/// # Parameters
-/// - `ptr`: Pointer to the DotLottiePlayer instance
-/// - `idx`: Index of the animation (0-based)
-/// - `id`: Pointer to receive the animation ID string pointer
-///
-/// # Returns
-/// - `DotLottieResult::Success` on success
-/// - `DotLottieResult::InvalidParameter` if pointers are invalid or index is out of bounds
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_animation_id(
-    ptr: *mut DotLottiePlayer,
-    idx: u32,
-    id: *mut *const c_char,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if id.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let ids = dotlottie_player.manifest_animation_ids();
-        if let Some(cstr) = ids.get(idx as usize) {
-            *id = cstr.as_ptr();
-            DotLottieResult::Success
-        } else {
-            DotLottieResult::InvalidParameter
-        }
-    })
-}
+                if !size_out.is_null() {
+                    *size_out = size;
+                }
 
-/// Gets the number of themes in the loaded dotLottie manifest.
-///
-/// # Parameters
-/// - `ptr`: Pointer to the DotLottiePlayer instance
-/// - `count`: Pointer to receive the theme count
-///
-/// # Returns
-/// - `DotLottieResult::Success` on success
-/// - `DotLottieResult::InvalidParameter` if pointers are invalid
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_theme_id_count(
-    ptr: *mut DotLottiePlayer,
-    count: *mut u32,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if count.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        *count = dotlottie_player.manifest_theme_ids().len() as u32;
-        DotLottieResult::Success
-    })
-}
+                if !buffer.is_null() {
+                    std::ptr::copy_nonoverlapping(
+                        json_bytes.as_ptr() as *const c_char,
+                        buffer,
+                        json_bytes.len(),
+                    );
+                    // Add null terminator
+                    *buffer.add(json_bytes.len()) = 0;
+                }
 
-/// Gets a theme ID by index from the loaded dotLottie manifest.
-///
-/// # Parameters
-/// - `ptr`: Pointer to the DotLottiePlayer instance
-/// - `idx`: Index of the theme (0-based)
-/// - `id`: Pointer to receive the theme ID string pointer
-///
-/// # Returns
-/// - `DotLottieResult::Success` on success
-/// - `DotLottieResult::InvalidParameter` if pointers are invalid or index is out of bounds
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_theme_id(
-    ptr: *mut DotLottiePlayer,
-    idx: u32,
-    id: *mut *const c_char,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if id.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let ids = dotlottie_player.manifest_theme_ids();
-        if let Some(cstr) = ids.get(idx as usize) {
-            *id = cstr.as_ptr();
-            DotLottieResult::Success
-        } else {
-            DotLottieResult::InvalidParameter
-        }
-    })
-}
-
-/// Gets the number of state machines in the loaded dotLottie manifest.
-///
-/// # Parameters
-/// - `ptr`: Pointer to the DotLottiePlayer instance
-/// - `count`: Pointer to receive the state machine count
-///
-/// # Returns
-/// - `DotLottieResult::Success` on success
-/// - `DotLottieResult::InvalidParameter` if pointers are invalid
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_state_machine_id_count(
-    ptr: *mut DotLottiePlayer,
-    count: *mut u32,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if count.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        *count = dotlottie_player.manifest_state_machine_ids().len() as u32;
-        DotLottieResult::Success
-    })
-}
-
-/// Gets a state machine ID by index from the loaded dotLottie manifest.
-///
-/// # Parameters
-/// - `ptr`: Pointer to the DotLottiePlayer instance
-/// - `idx`: Index of the state machine (0-based)
-/// - `id`: Pointer to receive the state machine ID string pointer
-///
-/// # Returns
-/// - `DotLottieResult::Success` on success
-/// - `DotLottieResult::InvalidParameter` if pointers are invalid or index is out of bounds
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest_state_machine_id(
-    ptr: *mut DotLottiePlayer,
-    idx: u32,
-    id: *mut *const c_char,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if id.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let ids = dotlottie_player.manifest_state_machine_ids();
-        if let Some(cstr) = ids.get(idx as usize) {
-            *id = cstr.as_ptr();
-            DotLottieResult::Success
-        } else {
-            DotLottieResult::InvalidParameter
+                DotLottieResult::Success
+            }
+            None => DotLottieResult::ManifestNotAvailable,
         }
     })
 }
@@ -782,30 +671,29 @@ pub unsafe extern "C" fn dotlottie_is_loaded(ptr: *mut DotLottiePlayer) -> bool 
     }
 }
 
-/// Returns whether the animation is currently playing.
+/// Returns the current playback status.
+///
+/// Priority order: Playing > Paused > Stopped
+///
+/// # Parameters
+/// - `ptr`: Pointer to the DotLottiePlayer instance
+///
+/// # Returns
+/// The current PlaybackStatus (Playing, Paused, or Stopped)
+/// Returns Stopped if the pointer is invalid
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_playing(ptr: *mut DotLottiePlayer) -> bool {
+pub unsafe extern "C" fn dotlottie_playback_status(ptr: *mut DotLottiePlayer) -> PlaybackStatus {
     match ptr.as_mut() {
-        Some(p) => p.is_playing(),
-        _ => false,
-    }
-}
-
-/// Returns whether the animation is paused.
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_paused(ptr: *mut DotLottiePlayer) -> bool {
-    match ptr.as_mut() {
-        Some(p) => p.is_paused(),
-        _ => false,
-    }
-}
-
-/// Returns whether the animation is stopped.
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_stopped(ptr: *mut DotLottiePlayer) -> bool {
-    match ptr.as_mut() {
-        Some(p) => p.is_stopped(),
-        _ => false,
+        Some(p) => {
+            if p.is_playing() {
+                PlaybackStatus::Playing
+            } else if p.is_paused() {
+                PlaybackStatus::Paused
+            } else {
+                PlaybackStatus::Stopped
+            }
+        }
+        _ => PlaybackStatus::Stopped,
     }
 }
 
@@ -2039,53 +1927,203 @@ pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
 /// Poll for the next state machine event
 ///
 /// Returns 1 if an event was retrieved, 0 if no events are available, or -1 on error.
+/// String pointers in the event struct are valid until the next poll call.
+///
+/// # Example
+/// ```c
+/// StateMachineEvent event;
+/// while (dotlottie_state_machine_poll_event(sm, &event) == 1) {
+///     switch (event.event_type) {
+///         case StateMachineEventType_StateMachineTransition:
+///             // Pointers valid until next poll
+///             printf("Transition: %s -> %s\n",
+///                    event.data.transition.previous_state,
+///                    event.data.transition.new_state);
+///             break;
+///         case StateMachineEventType_StateMachineStateEntered:
+///             printf("Entered: %s\n", event.data.state.state);
+///             break;
+///     }
+/// }
+/// ```
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_poll_event(
     sm: *mut StateMachineEngine<'static>,
     event: *mut types::StateMachineEvent,
 ) -> i32 {
+    use crate::StateMachineEvent;
+
     if sm.is_null() || event.is_null() {
         return -1;
     }
 
     let state_machine = &mut *sm;
 
-    match state_machine.poll_event() {
-        Some(rust_event) => match types::StateMachineEvent::from_rust(rust_event) {
-            Ok(c_event) => {
-                std::ptr::write(event, c_event);
-                1
-            }
-            Err(_) => -1,
-        },
-        None => 0,
+    // Poll from queue and store in current_event (keeps CStrings alive)
+    match state_machine.event_queue.poll() {
+        Some(rust_event) => {
+            state_machine.current_event = Some(rust_event);
+        }
+        None => return 0, // No events available
     }
+
+    // Get reference to stored event
+    let e = state_machine.current_event.as_ref().unwrap();
+
+    // Build C event struct with pointers into the stored event
+    let c_event = match e {
+        StateMachineEvent::Start => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineStart,
+            data: types::StateMachineEventData {
+                message: types::StateMachineMessageData {
+                    message: std::ptr::null(),
+                },
+            },
+        },
+        StateMachineEvent::Stop => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineStop,
+            data: types::StateMachineEventData {
+                message: types::StateMachineMessageData {
+                    message: std::ptr::null(),
+                },
+            },
+        },
+        StateMachineEvent::Transition {
+            previous_state,
+            new_state,
+        } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineTransition,
+            data: types::StateMachineEventData {
+                transition: types::StateMachineTransitionData {
+                    previous_state: previous_state.as_ptr(),
+                    new_state: new_state.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::StateEntered { state } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineStateEntered,
+            data: types::StateMachineEventData {
+                state: types::StateMachineStateData {
+                    state: state.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::StateExit { state } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineStateExit,
+            data: types::StateMachineEventData {
+                state: types::StateMachineStateData {
+                    state: state.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::CustomEvent { message } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineCustomEvent,
+            data: types::StateMachineEventData {
+                message: types::StateMachineMessageData {
+                    message: message.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::Error { message } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineError,
+            data: types::StateMachineEventData {
+                message: types::StateMachineMessageData {
+                    message: message.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::StringInputChange {
+            name,
+            old_value,
+            new_value,
+        } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineStringInputChange,
+            data: types::StateMachineEventData {
+                string_input: types::StateMachineStringInputData {
+                    name: name.as_ptr(),
+                    old_value: old_value.as_ptr(),
+                    new_value: new_value.as_ptr(),
+                },
+            },
+        },
+        StateMachineEvent::NumericInputChange {
+            name,
+            old_value,
+            new_value,
+        } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineNumericInputChange,
+            data: types::StateMachineEventData {
+                numeric_input: types::StateMachineNumericInputData {
+                    name: name.as_ptr(),
+                    old_value: *old_value,
+                    new_value: *new_value,
+                },
+            },
+        },
+        StateMachineEvent::BooleanInputChange {
+            name,
+            old_value,
+            new_value,
+        } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineBooleanInputChange,
+            data: types::StateMachineEventData {
+                boolean_input: types::StateMachineBooleanInputData {
+                    name: name.as_ptr(),
+                    old_value: *old_value,
+                    new_value: *new_value,
+                },
+            },
+        },
+        StateMachineEvent::InputFired { name } => types::StateMachineEvent {
+            event_type: types::StateMachineEventType::StateMachineInputFired,
+            data: types::StateMachineEventData {
+                input_fired: types::StateMachineInputFiredData {
+                    name: name.as_ptr(),
+                },
+            },
+        },
+    };
+
+    std::ptr::write(event, c_event);
+    1 // Event retrieved
 }
 
 /// Poll for the next internal state machine event
 ///
 /// Returns 1 if an event was retrieved, 0 if no events are available, or -1 on error.
+/// The message pointer is valid until the next poll call.
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_poll_internal_event(
     sm: *mut StateMachineEngine<'static>,
     event: *mut types::StateMachineInternalEvent,
 ) -> i32 {
+    use crate::StateMachineInternalEvent;
+
     if sm.is_null() || event.is_null() {
         return -1;
     }
 
     let state_machine = &mut *sm;
 
-    match state_machine.poll_internal_event() {
-        Some(rust_event) => match types::StateMachineInternalEvent::from_rust(rust_event) {
-            Ok(c_event) => {
-                std::ptr::write(event, c_event);
-                1
-            }
-            Err(_) => -1,
-        },
-        None => 0,
+    // Poll from queue and store (keeps CStrings alive)
+    match state_machine.internal_event_queue.poll() {
+        Some(rust_event) => {
+            state_machine.current_internal_event = Some(rust_event);
+        }
+        None => return 0, // No events available
     }
+
+    // Get reference to stored event
+    let e = state_machine.current_internal_event.as_ref().unwrap();
+
+    let c_event = match e {
+        StateMachineInternalEvent::Message { message } => types::StateMachineInternalEvent {
+            message: message.as_ptr(),
+        },
+    };
+
+    std::ptr::write(event, c_event);
+    1 // Event retrieved
 }
 
 /// Get the state machine definition as JSON string.

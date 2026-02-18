@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::ffi::CString;
 
 /// Events emitted by the DotLottie player.
 #[derive(Debug, Clone, PartialEq)]
@@ -14,51 +15,49 @@ pub enum DotLottieEvent {
     Complete,
 }
 
-/// State machine events.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum StateMachineEvent {
     Start,
     Stop,
     Transition {
-        previous_state: String,
-        new_state: String,
+        previous_state: CString,
+        new_state: CString,
     },
     StateEntered {
-        state: String,
+        state: CString,
     },
     StateExit {
-        state: String,
+        state: CString,
     },
     CustomEvent {
-        message: String,
+        message: CString,
     },
     Error {
-        message: String,
+        message: CString,
     },
     StringInputChange {
-        name: String,
-        old_value: String,
-        new_value: String,
+        name: CString,
+        old_value: CString,
+        new_value: CString,
     },
     NumericInputChange {
-        name: String,
+        name: CString,
         old_value: f32,
         new_value: f32,
     },
     BooleanInputChange {
-        name: String,
+        name: CString,
         old_value: bool,
         new_value: bool,
     },
     InputFired {
-        name: String,
+        name: CString,
     },
 }
 
-/// Internal state machine events (for framework use).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum StateMachineInternalEvent {
-    Message { message: String },
+    Message { message: CString },
 }
 
 pub const MAX_EVENTS: usize = 256;
@@ -203,5 +202,128 @@ mod tests {
 
         queue.clear();
         assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn test_state_machine_event_cstring() {
+        // Test Start event
+        let event = StateMachineEvent::Start;
+        assert!(matches!(event, StateMachineEvent::Start));
+
+        // Test Stop event
+        let event = StateMachineEvent::Stop;
+        assert!(matches!(event, StateMachineEvent::Stop));
+
+        // Test Transition event with CString
+        let event = StateMachineEvent::Transition {
+            previous_state: CString::new("state_a").unwrap(),
+            new_state: CString::new("state_b").unwrap(),
+        };
+        if let StateMachineEvent::Transition {
+            previous_state,
+            new_state,
+        } = &event
+        {
+            assert_eq!(previous_state.to_str().unwrap(), "state_a");
+            assert_eq!(new_state.to_str().unwrap(), "state_b");
+        } else {
+            panic!("Expected Transition variant");
+        }
+
+        // Test StateEntered event
+        let event = StateMachineEvent::StateEntered {
+            state: CString::new("entered_state").unwrap(),
+        };
+        if let StateMachineEvent::StateEntered { state } = &event {
+            assert_eq!(state.to_str().unwrap(), "entered_state");
+        } else {
+            panic!("Expected StateEntered variant");
+        }
+
+        // Test NumericInputChange event
+        let event = StateMachineEvent::NumericInputChange {
+            name: CString::new("speed").unwrap(),
+            old_value: 1.0,
+            new_value: 2.5,
+        };
+        if let StateMachineEvent::NumericInputChange {
+            name,
+            old_value,
+            new_value,
+        } = &event
+        {
+            assert_eq!(name.to_str().unwrap(), "speed");
+            assert_eq!(*old_value, 1.0);
+            assert_eq!(*new_value, 2.5);
+        } else {
+            panic!("Expected NumericInputChange variant");
+        }
+
+        // Test BooleanInputChange event
+        let event = StateMachineEvent::BooleanInputChange {
+            name: CString::new("enabled").unwrap(),
+            old_value: false,
+            new_value: true,
+        };
+        if let StateMachineEvent::BooleanInputChange {
+            name,
+            old_value,
+            new_value,
+        } = &event
+        {
+            assert_eq!(name.to_str().unwrap(), "enabled");
+            assert!(!old_value);
+            assert!(new_value);
+        } else {
+            panic!("Expected BooleanInputChange variant");
+        }
+    }
+
+    #[test]
+    fn test_state_machine_event_empty_strings() {
+        // Test with empty strings (should produce valid empty CStrings)
+        let event = StateMachineEvent::Transition {
+            previous_state: CString::new("").unwrap(),
+            new_state: CString::new("").unwrap(),
+        };
+        if let StateMachineEvent::Transition {
+            previous_state,
+            new_state,
+        } = &event
+        {
+            assert_eq!(previous_state.to_str().unwrap(), "");
+            assert_eq!(new_state.to_str().unwrap(), "");
+            // Verify CStrings have valid content (empty string is "\0")
+            assert_eq!(previous_state.as_bytes_with_nul().len(), 1);
+            assert_eq!(new_state.as_bytes_with_nul().len(), 1);
+        } else {
+            panic!("Expected Transition variant");
+        }
+    }
+
+    #[test]
+    fn test_state_machine_internal_event() {
+        let event = StateMachineInternalEvent::Message {
+            message: CString::new("test message").unwrap(),
+        };
+        let StateMachineInternalEvent::Message { message } = &event;
+        assert_eq!(message.to_str().unwrap(), "test message");
+    }
+
+    #[test]
+    fn test_cstring_pointer_stability() {
+        // Verify that pointers remain valid while event is alive
+        let event = StateMachineEvent::Error {
+            message: CString::new("an error occurred").unwrap(),
+        };
+
+        if let StateMachineEvent::Error { message } = &event {
+            let ptr = message.as_ptr();
+            // Read through pointer to verify it's valid
+            let cstr = unsafe { std::ffi::CStr::from_ptr(ptr) };
+            assert_eq!(cstr.to_str().unwrap(), "an error occurred");
+        } else {
+            panic!("Expected Error variant");
+        }
     }
 }

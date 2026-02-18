@@ -103,9 +103,13 @@ pub struct StateMachineEngine<'a> {
     // PointerEnter/PointerExit management
     pointer_management: PointerData,
 
-    // event queues
-    event_queue: EventQueue<StateMachineEvent>,
-    internal_event_queue: EventQueue<StateMachineInternalEvent>,
+    // Event queues
+    pub event_queue: EventQueue<StateMachineEvent>,
+    pub internal_event_queue: EventQueue<StateMachineInternalEvent>,
+
+    // Holds current event during polling from C API
+    pub current_event: Option<StateMachineEvent>,
+    pub current_internal_event: Option<StateMachineInternalEvent>,
 
     state_machine: StateMachine,
 
@@ -333,6 +337,8 @@ impl<'a> StateMachineEngine<'a> {
             status: StateMachineEngineStatus::Stopped,
             event_queue: EventQueue::new(),
             internal_event_queue: EventQueue::new(),
+            current_event: None,
+            current_internal_event: None,
             state_history: Vec::new(),
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
@@ -1254,39 +1260,39 @@ impl<'a> StateMachineEngine<'a> {
 
     fn observe_on_state_entered(&mut self, entering_state: &str) {
         self.event_queue.push(StateMachineEvent::StateEntered {
-            state: entering_state.to_string(),
+            state: CString::new(entering_state).unwrap_or_default(),
         });
     }
 
     fn observe_on_state_exit(&mut self, leaving_state: &str) {
         self.event_queue.push(StateMachineEvent::StateExit {
-            state: leaving_state.to_string(),
+            state: CString::new(leaving_state).unwrap_or_default(),
         });
     }
 
     fn observe_on_transition(&mut self, previous_state: &str, new_state: &str) {
         self.event_queue.push(StateMachineEvent::Transition {
-            previous_state: previous_state.to_string(),
-            new_state: new_state.to_string(),
+            previous_state: CString::new(previous_state).unwrap_or_default(),
+            new_state: CString::new(new_state).unwrap_or_default(),
         });
     }
 
     pub fn observe_internal_event(&mut self, message: &str) {
         self.internal_event_queue
             .push(StateMachineInternalEvent::Message {
-                message: message.to_string(),
+                message: CString::new(message).unwrap_or_default(),
             });
     }
 
     pub fn observe_custom_event(&mut self, message: &str) {
         self.event_queue.push(StateMachineEvent::CustomEvent {
-            message: message.to_string(),
+            message: CString::new(message).unwrap_or_default(),
         });
     }
 
     pub fn observe_on_error(&mut self, message: &str) {
         self.event_queue.push(StateMachineEvent::Error {
-            message: message.to_string(),
+            message: CString::new(message).unwrap_or_default(),
         });
     }
 
@@ -1300,9 +1306,9 @@ impl<'a> StateMachineEngine<'a> {
             return;
         }
         self.event_queue.push(StateMachineEvent::StringInputChange {
-            name: input_name.to_string(),
-            old_value: old_value.to_string(),
-            new_value: new_value.to_string(),
+            name: CString::new(input_name).unwrap_or_default(),
+            old_value: CString::new(old_value).unwrap_or_default(),
+            new_value: CString::new(new_value).unwrap_or_default(),
         });
     }
 
@@ -1317,7 +1323,7 @@ impl<'a> StateMachineEngine<'a> {
         }
         self.event_queue
             .push(StateMachineEvent::NumericInputChange {
-                name: input_name.to_string(),
+                name: CString::new(input_name).unwrap_or_default(),
                 old_value,
                 new_value,
             });
@@ -1334,7 +1340,7 @@ impl<'a> StateMachineEngine<'a> {
         }
         self.event_queue
             .push(StateMachineEvent::BooleanInputChange {
-                name: input_name.to_string(),
+                name: CString::new(input_name).unwrap_or_default(),
                 old_value,
                 new_value,
             });
@@ -1350,7 +1356,7 @@ impl<'a> StateMachineEngine<'a> {
 
     pub fn observe_on_input_fired(&mut self, input_name: &str) {
         self.event_queue.push(StateMachineEvent::InputFired {
-            name: input_name.to_string(),
+            name: CString::new(input_name).unwrap_or_default(),
         });
     }
 

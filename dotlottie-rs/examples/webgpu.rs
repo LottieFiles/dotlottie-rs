@@ -210,13 +210,9 @@ mod webgpu_impl {
                 let wgpu_instance = WebGpuInstance(instance as *mut std::ffi::c_void);
                 let wgpu_surface = WebGpuSurface(surface as *mut std::ffi::c_void);
 
-                let success = player.set_wg_target(
-                    &wgpu_device,
-                    &wgpu_instance,
-                    &wgpu_surface,
-                    width,
-                    height,
-                ).is_ok();
+                let success = player
+                    .set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_surface, width, height)
+                    .is_ok();
 
                 if success {
                     println!("✓ WebGPU target set successfully");
@@ -301,13 +297,15 @@ mod webgpu_impl {
                     let wgpu_instance = WebGpuInstance(instance as *mut std::ffi::c_void);
                     let wgpu_surface = WebGpuSurface(surface as *mut std::ffi::c_void);
 
-                    let success = player.set_wg_target(
-                        &wgpu_device,
-                        &wgpu_instance,
-                        &wgpu_surface,
-                        new_width,
-                        new_height,
-                    ).is_ok();
+                    let success = player
+                        .set_wg_target(
+                            &wgpu_device,
+                            &wgpu_instance,
+                            &wgpu_surface,
+                            new_width,
+                            new_height,
+                        )
+                        .is_ok();
 
                     if success {
                         // Reload animation with new size

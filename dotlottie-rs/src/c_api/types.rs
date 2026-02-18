@@ -1,15 +1,21 @@
 #![allow(clippy::missing_safety_doc)]
 
 use bitflags::bitflags;
-use core::fmt;
 use core::str::FromStr;
-use std::ffi::{c_char, CStr, CString};
-use std::io;
+use std::ffi::c_char;
 
 use crate::state_machine_engine::events::Event;
 
 use crate::lottie_renderer::LottieRendererError;
 use crate::DotLottiePlayerError;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub enum PlaybackStatus {
+    Playing = 0,
+    Paused = 1,
+    Stopped = 2,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
@@ -52,9 +58,6 @@ impl<E: Into<DotLottieResult>> From<Result<(), E>> for DotLottieResult {
         }
     }
 }
-
-// Other constant(s)
-pub const DOTLOTTIE_MAX_STR_LENGTH: usize = 512;
 
 // This type allows us to work with Interaction Types as bit flags and easily communicate this
 // information to the C side
@@ -104,73 +107,6 @@ impl FromStr for InteractionType {
             "OnComplete" => Ok(InteractionType::ON_COMPLETE),
             "OnLoopComplete" => Ok(InteractionType::ON_LOOP_COMPLETE),
             _ => Err(InteractionTypeParseError),
-        }
-    }
-}
-
-// A string struct used to ensure a buffer exists and is owned on the client side that can
-// accomodate a value of the maximum size we would want to write into it.
-#[derive(Clone, PartialEq)]
-#[repr(C)]
-pub struct DotLottieString {
-    pub value: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
-}
-
-impl DotLottieString {
-    pub unsafe fn read(value: *const c_char) -> Result<CString, io::Error> {
-        if value.is_null() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "null pointer"));
-        }
-        Ok(CStr::from_ptr(value).to_owned())
-    }
-
-    // Copy a rust string out into a C string
-    pub unsafe fn copy(value: &str, buffer: *mut c_char, size: usize) -> Result<(), io::Error> {
-        if buffer.is_null() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "null buffer"));
-        }
-
-        let bytes = value.as_bytes();
-
-        // Check for interior null bytes (same check CString::new does)
-        if bytes.contains(&0) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "interior null byte",
-            ));
-        }
-
-        let required_len = bytes.len() + 1; // +1 for null terminator
-        if required_len > size {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "value too large",
-            ));
-        }
-
-        // Direct copy - no intermediate allocation
-        std::ptr::copy_nonoverlapping(bytes.as_ptr(), buffer as *mut u8, bytes.len());
-        // Add null terminator
-        *buffer.add(bytes.len()) = 0;
-
-        Ok(())
-    }
-}
-
-impl fmt::Display for DotLottieString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let cstring = unsafe {
-            DotLottieString::read(self.value.as_ptr() as *const c_char).map_err(|_| fmt::Error)?
-        };
-        let value = cstring.to_str().map_err(|_| fmt::Error)?;
-        write!(f, "{value}")
-    }
-}
-
-impl Default for DotLottieString {
-    fn default() -> Self {
-        DotLottieString {
-            value: [0; DOTLOTTIE_MAX_STR_LENGTH],
         }
     }
 }
@@ -295,235 +231,85 @@ pub enum StateMachineEventType {
     StateMachineInputFired = 10,
 }
 
-// For string-based event data (states, input names, messages)
+/// Transition event data with pointers to state names
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct StateMachineStringData {
-    pub str1: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
-    pub str2: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
-    pub str3: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
+pub struct StateMachineTransitionData {
+    pub previous_state: *const c_char,
+    pub new_state: *const c_char,
 }
 
-// For numeric input changes
+/// State event data (for StateEntered/StateExit)
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct StateMachineNumericData {
-    pub name: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
+pub struct StateMachineStateData {
+    pub state: *const c_char,
+}
+
+/// Message event data (for CustomEvent/Error)
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct StateMachineMessageData {
+    pub message: *const c_char,
+}
+
+/// String input change event data
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct StateMachineStringInputData {
+    pub name: *const c_char,
+    pub old_value: *const c_char,
+    pub new_value: *const c_char,
+}
+
+/// Numeric input change event data
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct StateMachineNumericInputData {
+    pub name: *const c_char,
     pub old_value: f32,
     pub new_value: f32,
 }
 
-// For boolean input changes
+/// Boolean input change event data
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct StateMachineBooleanData {
-    pub name: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
+pub struct StateMachineBooleanInputData {
+    pub name: *const c_char,
     pub old_value: bool,
     pub new_value: bool,
 }
 
+/// Input fired event data
 #[repr(C)]
-pub union StateMachineEventData {
-    pub strings: StateMachineStringData,
-    pub numeric: StateMachineNumericData,
-    pub boolean: StateMachineBooleanData,
+#[derive(Copy, Clone)]
+pub struct StateMachineInputFiredData {
+    pub name: *const c_char,
 }
 
+/// Union of all possible state machine event data types
+#[repr(C)]
+pub union StateMachineEventData {
+    pub transition: StateMachineTransitionData,
+    pub state: StateMachineStateData,
+    pub message: StateMachineMessageData,
+    pub string_input: StateMachineStringInputData,
+    pub numeric_input: StateMachineNumericInputData,
+    pub boolean_input: StateMachineBooleanInputData,
+    pub input_fired: StateMachineInputFiredData,
+}
+
+/// State machine event with type tag and data union.
+/// String pointers are valid until the next poll call.
 #[repr(C)]
 pub struct StateMachineEvent {
     pub event_type: StateMachineEventType,
     pub data: StateMachineEventData,
 }
 
-impl StateMachineEvent {
-    pub unsafe fn from_rust(event: crate::StateMachineEvent) -> Result<Self, io::Error> {
-        match event {
-            crate::StateMachineEvent::Start => Ok(StateMachineEvent {
-                event_type: StateMachineEventType::StateMachineStart,
-                data: StateMachineEventData {
-                    strings: StateMachineStringData {
-                        str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                        str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                        str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    },
-                },
-            }),
-            crate::StateMachineEvent::Stop => Ok(StateMachineEvent {
-                event_type: StateMachineEventType::StateMachineStop,
-                data: StateMachineEventData {
-                    strings: StateMachineStringData {
-                        str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                        str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                        str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    },
-                },
-            }),
-            crate::StateMachineEvent::Transition {
-                previous_state,
-                new_state,
-            } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(
-                    &previous_state,
-                    data.str1.as_mut_ptr(),
-                    DOTLOTTIE_MAX_STR_LENGTH,
-                )?;
-                DotLottieString::copy(
-                    &new_state,
-                    data.str2.as_mut_ptr(),
-                    DOTLOTTIE_MAX_STR_LENGTH,
-                )?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineTransition,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::StateEntered { state } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&state, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineStateEntered,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::StateExit { state } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&state, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineStateExit,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::CustomEvent { message } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&message, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineCustomEvent,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::Error { message } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&message, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineError,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::StringInputChange {
-                name,
-                old_value,
-                new_value,
-            } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&name, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                DotLottieString::copy(
-                    &old_value,
-                    data.str2.as_mut_ptr(),
-                    DOTLOTTIE_MAX_STR_LENGTH,
-                )?;
-                DotLottieString::copy(
-                    &new_value,
-                    data.str3.as_mut_ptr(),
-                    DOTLOTTIE_MAX_STR_LENGTH,
-                )?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineStringInputChange,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-            crate::StateMachineEvent::NumericInputChange {
-                name,
-                old_value,
-                new_value,
-            } => {
-                let mut data = StateMachineNumericData {
-                    name: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    old_value,
-                    new_value,
-                };
-                DotLottieString::copy(&name, data.name.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineNumericInputChange,
-                    data: StateMachineEventData { numeric: data },
-                })
-            }
-            crate::StateMachineEvent::BooleanInputChange {
-                name,
-                old_value,
-                new_value,
-            } => {
-                let mut data = StateMachineBooleanData {
-                    name: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    old_value,
-                    new_value,
-                };
-                DotLottieString::copy(&name, data.name.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineBooleanInputChange,
-                    data: StateMachineEventData { boolean: data },
-                })
-            }
-            crate::StateMachineEvent::InputFired { name } => {
-                let mut data = StateMachineStringData {
-                    str1: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str2: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                    str3: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(&name, data.str1.as_mut_ptr(), DOTLOTTIE_MAX_STR_LENGTH)?;
-                Ok(StateMachineEvent {
-                    event_type: StateMachineEventType::StateMachineInputFired,
-                    data: StateMachineEventData { strings: data },
-                })
-            }
-        }
-    }
-}
-
-// Internal State Machine Events (for framework use)
+/// Internal state machine event (for framework use).
+/// The message pointer is valid until the next poll call.
 #[repr(C)]
 pub struct StateMachineInternalEvent {
-    pub message: [c_char; DOTLOTTIE_MAX_STR_LENGTH],
-}
-
-impl StateMachineInternalEvent {
-    pub unsafe fn from_rust(event: crate::StateMachineInternalEvent) -> Result<Self, io::Error> {
-        match event {
-            crate::StateMachineInternalEvent::Message { message } => {
-                let mut data = StateMachineInternalEvent {
-                    message: [0; DOTLOTTIE_MAX_STR_LENGTH],
-                };
-                DotLottieString::copy(
-                    &message,
-                    data.message.as_mut_ptr(),
-                    DOTLOTTIE_MAX_STR_LENGTH,
-                )?;
-                Ok(data)
-            }
-        }
-    }
+    pub message: *const c_char,
 }

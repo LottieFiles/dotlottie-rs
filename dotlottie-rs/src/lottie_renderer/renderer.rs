@@ -10,6 +10,13 @@ pub enum ColorSpace {
     ARGB8888S,
 }
 
+#[derive(Debug, Copy, Clone)]
+#[repr(C)]
+pub enum WgpuTargetType {
+    Surface = 0,
+    Texture = 1,
+}
+
 /// Trait for OpenGL context types that can be used with the renderer.
 ///
 /// Implement this trait for your windowing library's OpenGL context type
@@ -204,6 +211,7 @@ pub trait Renderer: Sized + 'static {
         target: &Self::WgpuTarget,
         width: u32,
         height: u32,
+        target_type: WgpuTargetType,
     ) -> Result<(), Self::Error>;
 
     fn clear(&self) -> Result<(), Self::Error>;

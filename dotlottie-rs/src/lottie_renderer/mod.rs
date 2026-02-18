@@ -12,7 +12,7 @@ mod thorvg;
 
 pub use renderer::{
     Animation, ColorSpace, Drawable, GlContext, Renderer, Shape, WgpuDevice, WgpuInstance,
-    WgpuTarget,
+    WgpuTarget, WgpuTargetType,
 };
 pub use slots::{
     slots_from_json_string, Bezier, BezierValue, ColorSlot, GradientSlot, GradientStop, ImageSlot,
@@ -88,6 +88,7 @@ pub trait LottieRenderer {
         target: *mut std::ffi::c_void,
         width: u32,
         height: u32,
+        target_type: WgpuTargetType,
     ) -> Result<(), LottieRendererError>;
 
     fn load_data(
@@ -422,12 +423,13 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         target: *mut std::ffi::c_void,
         width: u32,
         height: u32,
+        target_type: WgpuTargetType,
     ) -> Result<(), LottieRendererError> {
         let wgpu_device = R::WgpuDevice::from_ptr(device);
         let wgpu_instance = R::WgpuInstance::from_ptr(instance);
         let wgpu_target = R::WgpuTarget::from_ptr(target);
         self.renderer
-            .set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_target, width, height)
+            .set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_target, width, height, target_type)
             .map_err(into_lottie::<R>)
     }
 

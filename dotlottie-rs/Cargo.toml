@@ -9,7 +9,6 @@ homepage = "https://github.com/LottieFiles/dotlottie-rs"
 keywords = ["lottie", "dotlottie", "animation", "graphics", "rendering"]
 categories = ["graphics", "multimedia", "rendering"]
 links = "thorvg"
-exclude = ["deps/wgpu/"]
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]

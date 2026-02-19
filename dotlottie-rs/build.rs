@@ -9,10 +9,24 @@ mod wgpu_native {
 
     fn artifact_name(target: &str) -> Option<&'static str> {
         match target {
+            // macOS
             "aarch64-apple-darwin" => Some("wgpu-macos-aarch64-release"),
             "x86_64-apple-darwin" => Some("wgpu-macos-x86_64-release"),
+            // iOS
+            "aarch64-apple-ios" => Some("wgpu-ios-aarch64-release"),
+            "aarch64-apple-ios-sim" => Some("wgpu-ios-aarch64-simulator-release"),
+            "x86_64-apple-ios" => Some("wgpu-ios-x86_64-simulator-release"),
+            // Mac Catalyst (runs on macOS hardware)
+            "aarch64-apple-ios-macabi" => Some("wgpu-macos-aarch64-release"),
+            "x86_64-apple-ios-macabi" => Some("wgpu-macos-x86_64-release"),
+            // Linux
             "aarch64-unknown-linux-gnu" => Some("wgpu-linux-aarch64-release"),
             "x86_64-unknown-linux-gnu" => Some("wgpu-linux-x86_64-release"),
+            // Android
+            "aarch64-linux-android" => Some("wgpu-android-aarch64-release"),
+            "x86_64-linux-android" => Some("wgpu-android-x86_64-release"),
+            "i686-linux-android" => Some("wgpu-android-i686-release"),
+            "armv7-linux-androideabi" => Some("wgpu-android-armv7-release"),
             _ => None,
         }
     }
@@ -64,12 +78,11 @@ mod wgpu_native {
     ///
     /// Priority chain:
     /// 1. `WGPU_NATIVE_INCLUDE` + `WGPU_NATIVE_LIB` env vars
-    /// 2. Vendored `deps/wgpu/{target}/`
-    /// 3. Cached download at `$CARGO_HOME/wgpu-native-cache/{version}/{artifact}/`
-    /// 4. Fresh download from GitHub
+    /// 2. Cached download at `$CARGO_HOME/wgpu-native-cache/{version}/{artifact}/`
+    /// 3. Fresh download from GitHub
     ///
-    /// For emscripten: only headers are needed, so we download any platform's zip for headers.
-    pub fn ensure_available(target: &str, crate_dir: &str) -> io::Result<(PathBuf, PathBuf)> {
+    /// For emscripten: only headers are needed, so `WGPU_NATIVE_INCLUDE` must be set.
+    pub fn ensure_available(target: &str) -> io::Result<(PathBuf, PathBuf)> {
         println!("cargo:rerun-if-env-changed=WGPU_NATIVE_INCLUDE");
         println!("cargo:rerun-if-env-changed=WGPU_NATIVE_LIB");
 
@@ -89,12 +102,6 @@ mod wgpu_native {
             ));
         }
 
-        // Priority 2: vendored deps
-        let vendored = PathBuf::from(crate_dir).join("deps/wgpu").join(target);
-        if vendored.join("lib/libwgpu_native.a").exists() {
-            return Ok((vendored.join("include"), vendored.join("lib")));
-        }
-
         let artifact = artifact_name(target).ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::Unsupported,
@@ -104,14 +111,14 @@ mod wgpu_native {
 
         let cache = cache_dir().join(artifact);
 
-        // Priority 3: cached download
+        // Priority 2: cached download
         if cache.join("include/webgpu/webgpu.h").exists()
             && cache.join("lib/libwgpu_native.a").exists()
         {
             return Ok((cache.join("include"), cache.join("lib")));
         }
 
-        // Priority 4: download
+        // Priority 3: download
         let url = format!(
             "https://github.com/gfx-rs/wgpu-native/releases/download/{WGPU_NATIVE_VERSION}/{artifact}.zip"
         );
@@ -337,7 +344,7 @@ mod thorvg {
 
         if cfg!(feature = "tvg-wg") {
             let (wgpu_include_path, wgpu_lib_path) =
-                crate::wgpu_native::ensure_available(&target_triple, &crate_dir)
+                crate::wgpu_native::ensure_available(&target_triple)
                     .expect("Failed to obtain wgpu-native. Set WGPU_NATIVE_LIB and WGPU_NATIVE_INCLUDE env vars, or check your network connection.");
 
             cc_build.include(&wgpu_include_path);

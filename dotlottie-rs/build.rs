@@ -35,10 +35,10 @@ mod wgpu_native {
             .arg(url)
             .status()?;
         if !status.success() {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Download failed (exit {}): {url}", status),
-            ));
+            return Err(io::Error::other(format!(
+                "Download failed (exit {}): {url}",
+                status,
+            )));
         }
         Ok(())
     }
@@ -52,10 +52,10 @@ mod wgpu_native {
             .arg(dest_dir)
             .status()?;
         if !status.success() {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Extraction failed (exit {})", status),
-            ));
+            return Err(io::Error::other(format!(
+                "Extraction failed (exit {})",
+                status,
+            )));
         }
         Ok(())
     }

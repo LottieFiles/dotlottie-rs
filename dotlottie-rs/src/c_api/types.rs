@@ -1,13 +1,9 @@
 #![allow(clippy::missing_safety_doc)]
 
-#[cfg(feature = "state-machines")]
 use bitflags::bitflags;
-#[cfg(feature = "state-machines")]
 use core::str::FromStr;
-#[cfg(feature = "state-machines")]
 use std::ffi::c_char;
 
-#[cfg(feature = "state-machines")]
 use crate::state_machine_engine::events::Event;
 
 use crate::lottie_renderer::LottieRendererError;
@@ -30,6 +26,7 @@ pub enum DotLottieResult {
     ManifestNotAvailable = 3,
     AnimationNotLoaded = 4,
     InsufficientCondition = 5,
+    FeatureNotEnabled = 6,
 }
 
 impl From<DotLottiePlayerError> for DotLottieResult {
@@ -118,7 +115,6 @@ impl FromStr for InteractionType {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]

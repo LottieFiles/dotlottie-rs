@@ -44,6 +44,8 @@ bitflags = { version = "2.6", optional = true }
 bindgen = "0.72.0"
 cbindgen = "0.29.2"
 cc = "1.2"
+minreq = { version = "2.14.1", features = ["https-native"] }
+zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 criterion = "0.5.1"

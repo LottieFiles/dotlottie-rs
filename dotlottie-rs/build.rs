@@ -3,8 +3,6 @@ mod wgpu_native {
     use std::fs;
     use std::io;
     use std::path::PathBuf;
-    use std::process::Command;
-
     const WGPU_NATIVE_VERSION: &str = "v25.0.2.1";
 
     fn artifact_name(target: &str) -> Option<&'static str> {
@@ -43,33 +41,38 @@ mod wgpu_native {
     }
 
     fn download_file(url: &str, dest: &std::path::Path) -> io::Result<()> {
-        let status = Command::new("curl")
-            .args(["-fsSL", "-o"])
-            .arg(dest)
-            .arg(url)
-            .status()?;
-        if !status.success() {
+        let response = minreq::get(url)
+            .send()
+            .map_err(|e| io::Error::other(format!("Download failed: {url}: {e}")))?;
+        if response.status_code < 200 || response.status_code >= 300 {
             return Err(io::Error::other(format!(
-                "Download failed (exit {}): {url}",
-                status,
+                "Download failed: {url}: HTTP {}",
+                response.status_code
             )));
         }
+        fs::write(dest, response.as_bytes())?;
         Ok(())
     }
 
     fn extract_zip(zip_path: &std::path::Path, dest_dir: &std::path::Path) -> io::Result<()> {
         fs::create_dir_all(dest_dir)?;
-        let status = Command::new("unzip")
-            .args(["-o", "-q"])
-            .arg(zip_path)
-            .arg("-d")
-            .arg(dest_dir)
-            .status()?;
-        if !status.success() {
-            return Err(io::Error::other(format!(
-                "Extraction failed (exit {})",
-                status,
-            )));
+        let file = fs::File::open(zip_path)?;
+        let mut archive = zip::ZipArchive::new(file)
+            .map_err(|e| io::Error::other(format!("Failed to read zip: {e}")))?;
+        for i in 0..archive.len() {
+            let mut entry = archive
+                .by_index(i)
+                .map_err(|e| io::Error::other(format!("Failed to read zip entry: {e}")))?;
+            let out_path = dest_dir.join(entry.mangled_name());
+            if entry.is_dir() {
+                fs::create_dir_all(&out_path)?;
+            } else {
+                if let Some(parent) = out_path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                let mut out_file = fs::File::create(&out_path)?;
+                io::copy(&mut entry, &mut out_file)?;
+            }
         }
         Ok(())
     }

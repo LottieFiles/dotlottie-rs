@@ -2,6 +2,12 @@
 name = "dotlottie-rs"
 version = "0.1.54"
 edition = "2021"
+description = "A high-performance Lottie and dotLottie player built with Rust"
+license = "MIT"
+repository = "https://github.com/LottieFiles/dotlottie-rs"
+homepage = "https://github.com/LottieFiles/dotlottie-rs"
+keywords = ["lottie", "dotlottie", "animation", "graphics", "rendering"]
+categories = ["graphics", "multimedia", "rendering"]
 links = "thorvg"
 
 [lib]
@@ -38,6 +44,8 @@ bitflags = { version = "2.6", optional = true }
 bindgen = "0.72.0"
 cbindgen = "0.29.2"
 cc = "1.2"
+minreq = { version = "2.14.1", features = ["https-native"] }
+zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 criterion = "0.5.1"

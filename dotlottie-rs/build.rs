@@ -1,3 +1,144 @@
+mod wgpu_native {
+    use std::env;
+    use std::fs;
+    use std::io;
+    use std::path::PathBuf;
+    const WGPU_NATIVE_VERSION: &str = "v25.0.2.1";
+
+    fn artifact_name(target: &str) -> Option<&'static str> {
+        match target {
+            // macOS
+            "aarch64-apple-darwin" => Some("wgpu-macos-aarch64-release"),
+            "x86_64-apple-darwin" => Some("wgpu-macos-x86_64-release"),
+            // iOS
+            "aarch64-apple-ios" => Some("wgpu-ios-aarch64-release"),
+            "aarch64-apple-ios-sim" => Some("wgpu-ios-aarch64-simulator-release"),
+            "x86_64-apple-ios" => Some("wgpu-ios-x86_64-simulator-release"),
+            // Mac Catalyst (runs on macOS hardware)
+            "aarch64-apple-ios-macabi" => Some("wgpu-macos-aarch64-release"),
+            "x86_64-apple-ios-macabi" => Some("wgpu-macos-x86_64-release"),
+            // Linux
+            "aarch64-unknown-linux-gnu" => Some("wgpu-linux-aarch64-release"),
+            "x86_64-unknown-linux-gnu" => Some("wgpu-linux-x86_64-release"),
+            // Android
+            "aarch64-linux-android" => Some("wgpu-android-aarch64-release"),
+            "x86_64-linux-android" => Some("wgpu-android-x86_64-release"),
+            "i686-linux-android" => Some("wgpu-android-i686-release"),
+            "armv7-linux-androideabi" => Some("wgpu-android-armv7-release"),
+            _ => None,
+        }
+    }
+
+    /// Returns the persistent cache directory: `$CARGO_HOME/wgpu-native-cache/{version}/`.
+    fn cache_dir() -> PathBuf {
+        let cargo_home = env::var("CARGO_HOME").unwrap_or_else(|_| {
+            let home = env::var("HOME").expect("Neither CARGO_HOME nor HOME is set");
+            format!("{home}/.cargo")
+        });
+        PathBuf::from(cargo_home)
+            .join("wgpu-native-cache")
+            .join(WGPU_NATIVE_VERSION)
+    }
+
+    fn download_file(url: &str, dest: &std::path::Path) -> io::Result<()> {
+        let response = minreq::get(url)
+            .send()
+            .map_err(|e| io::Error::other(format!("Download failed: {url}: {e}")))?;
+        if response.status_code < 200 || response.status_code >= 300 {
+            return Err(io::Error::other(format!(
+                "Download failed: {url}: HTTP {}",
+                response.status_code
+            )));
+        }
+        fs::write(dest, response.as_bytes())?;
+        Ok(())
+    }
+
+    fn extract_zip(zip_path: &std::path::Path, dest_dir: &std::path::Path) -> io::Result<()> {
+        fs::create_dir_all(dest_dir)?;
+        let file = fs::File::open(zip_path)?;
+        let mut archive = zip::ZipArchive::new(file)
+            .map_err(|e| io::Error::other(format!("Failed to read zip: {e}")))?;
+        for i in 0..archive.len() {
+            let mut entry = archive
+                .by_index(i)
+                .map_err(|e| io::Error::other(format!("Failed to read zip entry: {e}")))?;
+            let out_path = dest_dir.join(entry.mangled_name());
+            if entry.is_dir() {
+                fs::create_dir_all(&out_path)?;
+            } else {
+                if let Some(parent) = out_path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                let mut out_file = fs::File::create(&out_path)?;
+                io::copy(&mut entry, &mut out_file)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Main entry point. Returns `(include_path, lib_path)`.
+    ///
+    /// Priority chain:
+    /// 1. `WGPU_NATIVE_INCLUDE` + `WGPU_NATIVE_LIB` env vars
+    /// 2. Cached download at `$CARGO_HOME/wgpu-native-cache/{version}/{artifact}/`
+    /// 3. Fresh download from GitHub
+    ///
+    /// For emscripten: only headers are needed, so `WGPU_NATIVE_INCLUDE` must be set.
+    pub fn ensure_available(target: &str) -> io::Result<(PathBuf, PathBuf)> {
+        println!("cargo:rerun-if-env-changed=WGPU_NATIVE_INCLUDE");
+        println!("cargo:rerun-if-env-changed=WGPU_NATIVE_LIB");
+
+        // Priority 1: env var overrides
+        if let (Ok(inc), Ok(lib)) = (
+            env::var("WGPU_NATIVE_INCLUDE"),
+            env::var("WGPU_NATIVE_LIB"),
+        ) {
+            return Ok((PathBuf::from(inc), PathBuf::from(lib)));
+        }
+
+        // Emscripten only needs headers (no lib linking) — require WGPU_NATIVE_INCLUDE
+        if target == "wasm32-unknown-emscripten" {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "wasm32-unknown-emscripten requires WGPU_NATIVE_INCLUDE to be set (only headers are needed)",
+            ));
+        }
+
+        let artifact = artifact_name(target).ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::Unsupported,
+                format!("No wgpu-native artifact for target: {target}"),
+            )
+        })?;
+
+        let cache = cache_dir().join(artifact);
+
+        // Priority 2: cached download
+        if cache.join("include/webgpu/webgpu.h").exists()
+            && cache.join("lib/libwgpu_native.a").exists()
+        {
+            return Ok((cache.join("include"), cache.join("lib")));
+        }
+
+        // Priority 3: download
+        let url = format!(
+            "https://github.com/gfx-rs/wgpu-native/releases/download/{WGPU_NATIVE_VERSION}/{artifact}.zip"
+        );
+
+        let download_dir = cache_dir();
+        fs::create_dir_all(&download_dir)?;
+        let zip_path = download_dir.join(format!("{artifact}.zip"));
+
+        download_file(&url, &zip_path)?;
+        extract_zip(&zip_path, &cache)?;
+
+        let _ = fs::remove_file(&zip_path);
+
+        Ok((cache.join("include"), cache.join("lib")))
+    }
+}
+
 mod thorvg {
     use std::env;
     use std::fs::{self, create_dir_all, OpenOptions};
@@ -205,29 +346,13 @@ mod thorvg {
             .warnings(false);
 
         if cfg!(feature = "tvg-wg") {
-            let vendored_wgpu_include = PathBuf::from(&crate_dir)
-                .join("deps/wgpu")
-                .join(&target_triple)
-                .join("include");
-
-            let wgpu_include_path = env::var("WGPU_NATIVE_INCLUDE")
-                .map(PathBuf::from)
-                .unwrap_or(vendored_wgpu_include);
+            let (wgpu_include_path, wgpu_lib_path) =
+                crate::wgpu_native::ensure_available(&target_triple)
+                    .expect("Failed to obtain wgpu-native. Set WGPU_NATIVE_LIB and WGPU_NATIVE_INCLUDE env vars, or check your network connection.");
 
             cc_build.include(&wgpu_include_path);
 
             if target_triple != "wasm32-unknown-emscripten" {
-                // Default paths: {crate_dir}/deps/wgpu/{target}/lib and /include
-                let vendored_wgpu_lib = PathBuf::from(&crate_dir)
-                    .join("deps/wgpu")
-                    .join(&target_triple)
-                    .join("lib");
-
-                // Use environment variables or defaults
-                let wgpu_lib_path = env::var("WGPU_NATIVE_LIB")
-                    .map(PathBuf::from)
-                    .unwrap_or(vendored_wgpu_lib);
-
                 let abs_lib_path = wgpu_lib_path
                     .canonicalize()
                     .expect("Failed to canonicalize wgpu lib path");
@@ -236,12 +361,18 @@ mod thorvg {
                 println!("cargo:rustc-link-lib=static=wgpu_native");
 
                 // Link platform-specific frameworks/libraries
-                if target_triple.contains("apple") {
+                if target_triple.contains("apple") || target_triple.contains("ios") {
                     println!("cargo:rustc-link-lib=framework=Metal");
                     println!("cargo:rustc-link-lib=framework=QuartzCore");
                     println!("cargo:rustc-link-lib=framework=Foundation");
-                    println!("cargo:rustc-link-lib=framework=AppKit");
-                } else if target_triple.contains("linux") {
+                    if target_triple.contains("darwin") {
+                        // macOS
+                        println!("cargo:rustc-link-lib=framework=AppKit");
+                    } else {
+                        // iOS, Mac Catalyst
+                        println!("cargo:rustc-link-lib=framework=UIKit");
+                    }
+                } else if target_triple.contains("linux") && !target_triple.contains("android") {
                     println!("cargo:rustc-link-lib=vulkan");
                 }
             }

@@ -5,14 +5,24 @@ MIN_TVOS_VERSION ?= 13.0
 MIN_VISIONOS_VERSION ?= 1.0
 MIN_MACCATALYST_VERSION ?= 13.1
 
-# Default Rust features for Apple builds
-APPLE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+# Base features shared by all Apple platforms
+APPLE_BASE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
 APPLE_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
-APPLE_WEBGPU_FEATURES = tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+# WebGPU: base features + tvg-wg (macOS, iOS, Mac Catalyst only)
+APPLE_WEBGPU_FEATURES = tvg-wg,$(APPLE_BASE_FEATURES)
+
+# Active feature set — defaults to base (software-only)
+APPLE_FEATURES ?= $(APPLE_BASE_FEATURES)
 
 ifdef FEATURES
 	APPLE_FEATURES = $(FEATURES)
 endif
+
+# Software-only platforms: tvOS and visionOS don't support WebGPU
+# Target-specific overrides ensure tvg-wg is never passed to these targets,
+# even when building via the apple-webgpu meta-target
+apple-tvos-arm64 apple-tvos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATURES)
+apple-visionos-arm64 apple-visionos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATURES)
 
 # C API Header
 C_HEADER_DIR ?= dotlottie-rs/build

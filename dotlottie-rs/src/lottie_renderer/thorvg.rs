@@ -1,9 +1,12 @@
+use crate::asset_resolver::AssetResolverContext;
 use crate::{time::Instant, GlContext, WgpuDevice, WgpuInstance, WgpuTarget};
 
 use std::{
     error::Error,
     ffi::{c_char, CStr, CString},
-    fmt, ptr,
+    fmt,
+    pin::Pin,
+    ptr,
     result::Result,
 };
 
@@ -434,6 +437,7 @@ pub struct TvgAnimation {
     raw_paint: tvg::Tvg_Paint,
     tween_state: Option<TweenState>,
     data: Option<CString>,
+    resolver_context: Option<Pin<Box<AssetResolverContext>>>,
 }
 
 impl Default for TvgAnimation {
@@ -446,6 +450,7 @@ impl Default for TvgAnimation {
             raw_paint,
             tween_state: None,
             data: None,
+            resolver_context: None,
         }
     }
 }
@@ -483,6 +488,72 @@ impl TvgAnimation {
             false,
         )
         .into_result()
+    }
+}
+
+unsafe extern "C" fn tvg_asset_resolver_callback(
+    paint: tvg::Tvg_Paint,
+    src: *const ::std::os::raw::c_char,
+    data: *mut ::std::os::raw::c_void,
+) -> bool {
+    if src.is_null() || data.is_null() {
+        return false;
+    }
+
+    let ctx = &*(data as *const AssetResolverContext);
+    let src_str = match CStr::from_ptr(src).to_str() {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+
+    if let Some(asset) = ctx.resolve(src_str) {
+        // Determine if this is a font request (src starts with "name:" or resolver returned a font mimetype)
+        let is_font = src_str.starts_with("name:")
+            || matches!(
+                asset.mimetype.as_str(),
+                "ttf" | "otf" | "woff" | "woff2"
+            );
+
+        if is_font {
+            // Register font globally via tvg_font_load_data
+            // Extract font name from "name:<fontname>" or use src as-is
+            let font_name = src_str.strip_prefix("name:").unwrap_or(src_str);
+            let font_name_cstr = match CString::new(font_name) {
+                Ok(c) => c,
+                Err(_) => return false,
+            };
+            let mimetype_cstr = match CString::new(asset.mimetype.as_str()) {
+                Ok(c) => c,
+                Err(_) => return false,
+            };
+
+            let result = tvg::tvg_font_load_data(
+                font_name_cstr.as_ptr(),
+                asset.data.as_ptr() as *const ::std::os::raw::c_char,
+                asset.data.len() as u32,
+                mimetype_cstr.as_ptr(),
+                true, // copy the data
+            );
+            result == tvg::Tvg_Result_TVG_RESULT_SUCCESS
+        } else {
+            // Load image data into the Picture paint
+            let mimetype_cstr = match CString::new(asset.mimetype.as_str()) {
+                Ok(c) => c,
+                Err(_) => return false,
+            };
+
+            let result = tvg::tvg_picture_load_data(
+                paint,
+                asset.data.as_ptr() as *const ::std::os::raw::c_char,
+                asset.data.len() as u32,
+                mimetype_cstr.as_ptr(),
+                ptr::null(), // no resource path
+                true,        // copy the data
+            );
+            result == tvg::Tvg_Result_TVG_RESULT_SUCCESS
+        }
+    } else {
+        false
     }
 }
 
@@ -790,6 +861,26 @@ impl Animation for TvgAnimation {
             tvg_matrix.e32,
             tvg_matrix.e33,
         ])
+    }
+
+    fn set_asset_resolver(
+        &mut self,
+        ctx: Box<AssetResolverContext>,
+    ) -> Result<(), TvgError> {
+        let pinned = Pin::new(ctx);
+        let ctx_ptr = &*pinned as *const AssetResolverContext as *mut ::std::os::raw::c_void;
+
+        unsafe {
+            tvg::tvg_picture_set_asset_resolver(
+                self.raw_paint,
+                Some(tvg_asset_resolver_callback),
+                ctx_ptr,
+            )
+            .into_result()?;
+        }
+
+        self.resolver_context = Some(pinned);
+        Ok(())
     }
 }
 

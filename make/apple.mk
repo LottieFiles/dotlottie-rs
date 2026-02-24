@@ -7,7 +7,7 @@ MIN_MACCATALYST_VERSION ?= 13.1
 
 # Base features shared by all Apple platforms
 APPLE_BASE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-APPLE_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
+APPLE_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming,audio
 # WebGPU: base features + tvg-wg (macOS, iOS, Mac Catalyst only)
 APPLE_WEBGPU_FEATURES = tvg-wg,$(APPLE_BASE_FEATURES)
 

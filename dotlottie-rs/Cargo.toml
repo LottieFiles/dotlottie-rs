@@ -29,9 +29,10 @@ tvg-webp = []
 tvg-ttf = []
 tvg-threads = []
 tvg-simd = []
-dotlottie = ["dep:zip"] 
+dotlottie = ["dep:zip"]
 state-machines = ["dotlottie"]
 theming = ["dotlottie"]
+audio = ["dep:rodio"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
@@ -39,6 +40,7 @@ serde_json = { version = "1.0", default-features = false, features = ["preserve_
 serde = { version = "1.0", features = ["derive"] }
 zip = { version = "2.4.2", default-features = false, features = ["deflate"], optional = true }
 bitflags = { version = "2.6", optional = true }
+rodio = { version = "0.17", optional = true, default-features = false, features = ["mp3", "wav"] }
 
 [build-dependencies]
 bindgen = "0.72.0"
@@ -89,6 +91,10 @@ required-features = ["theming"]
 [[example]]
 name = "state_machine"
 required-features = ["state-machines"]
+
+[[example]]
+name = "audio_player"
+required-features = ["audio", "dev"]
 
 [[bench]]
 name = "benchmarks"

@@ -184,6 +184,12 @@ pub enum DotLottiePlayerEventType {
     Render = 6,
     Loop = 7,
     Complete = 8,
+    #[cfg(feature = "audio")]
+    AudioPlay = 9,
+    #[cfg(feature = "audio")]
+    AudioPause = 10,
+    #[cfg(feature = "audio")]
+    AudioStop = 11,
 }
 
 #[repr(C)]
@@ -235,6 +241,21 @@ impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
             },
             crate::DotLottieEvent::Complete => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Complete,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            },
+            #[cfg(feature = "audio")]
+            crate::DotLottieEvent::AudioPlay { .. } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::AudioPlay,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            },
+            #[cfg(feature = "audio")]
+            crate::DotLottieEvent::AudioPause { .. } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::AudioPause,
+                data: DotLottiePlayerEventData { frame_no: 0.0 },
+            },
+            #[cfg(feature = "audio")]
+            crate::DotLottieEvent::AudioStop { .. } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::AudioStop,
                 data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
         }

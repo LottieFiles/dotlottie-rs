@@ -1,3 +1,5 @@
+#[cfg(feature = "audio")]
+mod audio;
 #[cfg(feature = "dotlottie")]
 mod fms;
 mod layout;
@@ -15,6 +17,8 @@ pub(crate) mod time;
 #[cfg(feature = "c_api")]
 pub mod c_api;
 
+#[cfg(feature = "audio")]
+pub use audio::*;
 #[cfg(feature = "dotlottie")]
 pub use fms::*;
 pub use layout::*;

@@ -501,13 +501,16 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn render(&mut self) -> Result<(), LottieRendererError> {
         if self.updated {
-            // Sync before update to ensure previous frame's rendering is complete
-            // This is crucial for async renderers like WebGL
-            self.renderer.sync().map_err(into_lottie::<R>)?;
+            // Sync before update to ensure previous frame's rendering is complete.
+            // This is crucial for async renderers like WebGL. For SW rendering the
+            // canvas may not yet have a pending draw (InsufficientCondition), which
+            // is harmless — we proceed regardless.
+            let _ = self.renderer.sync();
 
             self.renderer.update().map_err(into_lottie::<R>)?;
             self.renderer.draw(true).map_err(into_lottie::<R>)?;
             self.renderer.sync().map_err(into_lottie::<R>)?;
+
             self.updated = false;
 
             return Ok(());

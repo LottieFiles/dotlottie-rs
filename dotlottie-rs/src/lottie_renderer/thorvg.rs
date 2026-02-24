@@ -77,9 +77,6 @@ pub enum TvgEngine {
 
 static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
 
-#[cfg(feature = "tvg-ttf")]
-static FONT_LOADED: std::sync::Once = std::sync::Once::new();
-
 pub struct TvgRenderer {
     raw_canvas: tvg::Tvg_Canvas,
 }
@@ -92,11 +89,11 @@ impl TvgRenderer {
             unsafe { tvg::tvg_engine_init(threads).into_result() }.unwrap();
 
             #[cfg(feature = "tvg-ttf")]
-            FONT_LOADED.call_once(|| {
+            {
                 let (font_name, font_data) = fallback_font::font();
 
                 Self::register_font(font_name, &font_data).unwrap();
-            });
+            }
         }
 
         *count += 1;

@@ -934,16 +934,18 @@ impl DotLottieRuntime {
             return true;
         }
 
+        if theme_id.is_empty() {
+            self.active_theme_id.clear();
+            self.config.theme_id.clear();
+            return self.renderer.reset_slots();
+        }
+
         if self.dotlottie_manager.is_none() {
             return false;
         }
 
         self.active_theme_id.clear();
         self.config.theme_id.clear();
-
-        if theme_id.is_empty() {
-            return self.renderer.clear_slots().is_ok();
-        }
 
         let theme_exists = self
             .manifest()

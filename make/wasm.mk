@@ -94,7 +94,7 @@ wasm-compile-cpp: wasm-cpp-bindings
 			-I$(CPP_BINDINGS_DIR) \
 			-Wshift-negative-value \
 			-flto \
-			-Oz \
+			-O3 \
 			-ffunction-sections \
 			-fdata-sections \
 			-c dotlottie-ffi/emscripten_bindings.cpp \
@@ -105,7 +105,7 @@ wasm-compile-cpp: wasm-cpp-bindings
 			-I$(CPP_BINDINGS_DIR) \
 			-Wshift-negative-value \
 			-flto \
-			-Oz \
+			-O3 \
 			-ffunction-sections \
 			-fdata-sections \
 			-c $(CPP_BINDINGS_DIR)/dotlottie_player.cpp \
@@ -164,7 +164,7 @@ wasm-link-module: wasm-build-rust wasm-compile-cpp wasm-install-npm-deps
 			-Wl,-u,htonl \
 			-Wshift-negative-value \
 			-flto \
-			-Oz \
+			-O3 \
 			--bind \
 			--emit-tsd $(PWD)/$(WASM_BUILD_DIR)/$(WASM_MODULE).d.ts \
 			-sWASM=1 \

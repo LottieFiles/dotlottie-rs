@@ -29,7 +29,7 @@ pub enum DotLottieResult {
     ManifestNotAvailable = 3,
     AnimationNotLoaded = 4,
     InsufficientCondition = 5,
-    FeatureNotEnabled = 6
+    FeatureNotEnabled = 6,
 }
 
 impl From<DotLottiePlayerError> for DotLottieResult {
@@ -83,7 +83,7 @@ bitflags! {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+#[cfg(feature = "state-machines")]
 pub(crate) struct InteractionTypeParseError;
 
 #[cfg(feature = "state-machines")]
@@ -117,7 +117,6 @@ impl FromStr for InteractionType {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]

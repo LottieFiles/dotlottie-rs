@@ -85,7 +85,7 @@ macro_rules! exec_dotlottie_player_op {
     }};
 }
 
-// Helper macro for StateMachineEngine operations (only usable with state-machines feature)
+// Helper macro for StateMachineEngine operations
 #[cfg(feature = "state-machines")]
 macro_rules! exec_state_machine_op {
     ($ptr:expr, |$sm:ident| $body:expr) => {{

@@ -71,7 +71,7 @@ fn main() {
     let mut player = DotLottiePlayer::new();
     player.set_autoplay(false);
     player.set_loop(true);
-    player.set_mode(dotlottie_rs::Mode::Reverse);
+    player.set_mode(dotlottie_rs::Mode::Forward);
     let _ = player.set_background_color(Some(0x000000));
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
@@ -166,7 +166,7 @@ fn main() {
         while let Some(event) = player.poll_event() {
             let frame = player.current_frame();
             match event {
-                DotLottieEvent::AudioPlay { ref ref_id } => {
+                DotLottieEvent::AudioPlay { ref ref_id, volume } => {
                     println!("  >> AudioPlay   ref_id={ref_id:<12}  frame={frame:.1}");
                 }
                 DotLottieEvent::AudioStop { ref ref_id } => {

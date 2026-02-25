@@ -2,9 +2,9 @@ use std::collections::{HashMap, HashSet};
 
 use serde_json::Value;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "audio-native")]
 mod rodio_player;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "audio-native")]
 pub use rodio_player::RodioPlayer;
 
 const BASE64_CHARS: &[u8; 64] =
@@ -232,13 +232,13 @@ pub struct AudioManager {
     /// Set of `ref_id`s whose audio is currently active (started but not stopped).
     playing: HashSet<String>,
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(feature = "audio-native")]
     rodio_player: Option<RodioPlayer>,
 }
 
 impl AudioManager {
     pub fn new(assets: Vec<AudioAsset>, layers: Vec<AudioLayer>) -> Self {
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(feature = "audio-native")]
         let rodio_player = RodioPlayer::new().ok().map(|mut player| {
             for asset in &assets {
                 player.load(&asset.id, &asset.data);
@@ -253,7 +253,7 @@ impl AudioManager {
             assets: assets_map,
             layers,
             playing: HashSet::new(),
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(feature = "audio-native")]
             rodio_player,
         }
     }
@@ -272,7 +272,7 @@ impl AudioManager {
             if should_play && !is_playing {
                 self.playing.insert(layer.ref_id.clone());
 
-                #[cfg(not(target_arch = "wasm32"))]
+                #[cfg(feature = "audio-native")]
                 if let Some(ref mut player) = self.rodio_player {
                     player.play(&layer.ref_id, layer.volume);
                 }
@@ -284,7 +284,7 @@ impl AudioManager {
             } else if !should_play && is_playing {
                 self.playing.remove(&layer.ref_id);
 
-                #[cfg(not(target_arch = "wasm32"))]
+                #[cfg(feature = "audio-native")]
                 if let Some(ref mut player) = self.rodio_player {
                     player.stop(&layer.ref_id);
                 }
@@ -302,7 +302,7 @@ impl AudioManager {
     pub fn pause_all(&mut self) -> Vec<AudioEvent> {
         let ids: Vec<String> = self.playing.iter().cloned().collect();
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(feature = "audio-native")]
         if let Some(ref mut player) = self.rodio_player {
             for id in &ids {
                 player.pause(id);
@@ -318,7 +318,7 @@ impl AudioManager {
     pub fn resume_all(&mut self) -> Vec<AudioEvent> {
         let ids: Vec<String> = self.playing.iter().cloned().collect();
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(feature = "audio-native")]
         if let Some(ref mut player) = self.rodio_player {
             for id in &ids {
                 player.resume(id);
@@ -337,7 +337,7 @@ impl AudioManager {
     pub fn stop_all(&mut self) -> Vec<AudioEvent> {
         let ids: Vec<String> = self.playing.drain().collect();
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(feature = "audio-native")]
         if let Some(ref mut player) = self.rodio_player {
             for id in &ids {
                 player.stop(id);

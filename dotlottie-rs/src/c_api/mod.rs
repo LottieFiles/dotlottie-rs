@@ -2215,3 +2215,142 @@ pub unsafe extern "C" fn dotlottie_get_state_machine(
         }
     })
 }
+
+// ============================================================================
+// Audio Asset C API
+// ============================================================================
+
+/// Returns the number of audio assets embedded in the loaded animation.
+/// Returns 0 if no animation is loaded, the player pointer is invalid, or
+/// the animation has no audio assets.
+#[no_mangle]
+#[cfg(feature = "audio")]
+pub unsafe extern "C" fn dotlottie_audio_asset_count(ptr: *mut DotLottiePlayer) -> u32 {
+    match ptr.as_ref() {
+        Some(p) => p.audio_assets().len() as u32,
+        None => 0,
+    }
+}
+
+/// Writes the ref_id of audio asset at `index` into `buffer`.
+///
+/// Pass `NULL` for `buffer` to query the required buffer size (including null
+/// terminator) via `size_out`.
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::InvalidParameter` if `index` is out of bounds or `ptr` is invalid
+#[no_mangle]
+#[cfg(feature = "audio")]
+pub unsafe extern "C" fn dotlottie_audio_asset_id(
+    ptr: *mut DotLottiePlayer,
+    index: u32,
+    buffer: *mut c_char,
+    size_out: *mut usize,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        let assets = dotlottie_player.audio_assets();
+        let asset = match assets.get(index as usize) {
+            Some(a) => a,
+            None => return DotLottieResult::InvalidParameter,
+        };
+        let id_bytes = asset.id.as_bytes();
+        let size = id_bytes.len() + 1;
+
+        if !size_out.is_null() {
+            *size_out = size;
+        }
+
+        if !buffer.is_null() {
+            std::ptr::copy_nonoverlapping(
+                id_bytes.as_ptr() as *const c_char,
+                buffer,
+                id_bytes.len(),
+            );
+            *buffer.add(id_bytes.len()) = 0;
+        }
+
+        DotLottieResult::Success
+    })
+}
+
+/// Returns a pointer to the raw audio bytes of asset at `index`.
+///
+/// The pointer points directly into the player's heap allocation and is valid
+/// for the lifetime of the player (or until the animation is reloaded).
+/// From JavaScript: `Module.HEAPU8.slice(ptr, ptr + size)` to copy the bytes.
+///
+/// Returns `NULL` if `index` is out of bounds or `ptr` is invalid.
+#[no_mangle]
+#[cfg(feature = "audio")]
+pub unsafe extern "C" fn dotlottie_audio_asset_data_ptr(
+    ptr: *mut DotLottiePlayer,
+    index: u32,
+) -> *const u8 {
+    match ptr.as_ref() {
+        Some(p) => match p.audio_assets().get(index as usize) {
+            Some(asset) => asset.data.as_ptr(),
+            None => std::ptr::null(),
+        },
+        None => std::ptr::null(),
+    }
+}
+
+/// Returns the size in bytes of the audio data for asset at `index`.
+/// Returns 0 if `index` is out of bounds or `ptr` is invalid.
+#[no_mangle]
+#[cfg(feature = "audio")]
+pub unsafe extern "C" fn dotlottie_audio_asset_data_size(
+    ptr: *mut DotLottiePlayer,
+    index: u32,
+) -> u32 {
+    match ptr.as_ref() {
+        Some(p) => match p.audio_assets().get(index as usize) {
+            Some(asset) => asset.data.len() as u32,
+            None => 0,
+        },
+        None => 0,
+    }
+}
+
+/// Writes the MIME type (e.g. `"audio/mp3"`) of asset at `index` into `buffer`.
+///
+/// Pass `NULL` for `buffer` to query the required buffer size (including null
+/// terminator) via `size_out`.
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::InvalidParameter` if `index` is out of bounds or `ptr` is invalid
+#[no_mangle]
+#[cfg(feature = "audio")]
+pub unsafe extern "C" fn dotlottie_audio_asset_mime_type(
+    ptr: *mut DotLottiePlayer,
+    index: u32,
+    buffer: *mut c_char,
+    size_out: *mut usize,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        let assets = dotlottie_player.audio_assets();
+        let asset = match assets.get(index as usize) {
+            Some(a) => a,
+            None => return DotLottieResult::InvalidParameter,
+        };
+        let mime_bytes = asset.mime_type.as_bytes();
+        let size = mime_bytes.len() + 1;
+
+        if !size_out.is_null() {
+            *size_out = size;
+        }
+
+        if !buffer.is_null() {
+            std::ptr::copy_nonoverlapping(
+                mime_bytes.as_ptr() as *const c_char,
+                buffer,
+                mime_bytes.len(),
+            );
+            *buffer.add(mime_bytes.len()) = 0;
+        }
+
+        DotLottieResult::Success
+    })
+}

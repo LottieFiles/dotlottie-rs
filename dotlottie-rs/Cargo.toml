@@ -32,7 +32,8 @@ tvg-simd = []
 dotlottie = ["dep:zip"]
 state-machines = ["dotlottie"]
 theming = ["dotlottie"]
-audio = ["dep:rodio"]
+audio = []
+audio-native = ["audio", "dep:rodio"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
@@ -94,7 +95,7 @@ required-features = ["state-machines"]
 
 [[example]]
 name = "audio_player"
-required-features = ["audio", "dev"]
+required-features = ["audio-native", "dev"]
 
 [[bench]]
 name = "benchmarks"

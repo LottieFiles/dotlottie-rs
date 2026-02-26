@@ -29,7 +29,7 @@ tvg-webp = []
 tvg-ttf = []
 tvg-threads = []
 tvg-simd = []
-dotlottie = ["dep:zip"] 
+dotlottie = ["dep:libdeflater"]
 state-machines = ["dotlottie"]
 theming = ["dotlottie"]
 
@@ -37,7 +37,7 @@ theming = ["dotlottie"]
 [dependencies]
 serde_json = { version = "1.0", default-features = false, features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
-zip = { version = "2.4.2", default-features = false, features = ["deflate"], optional = true }
+libdeflater = { version = "1.0", optional = true }
 bitflags = { version = "2.6", optional = true }
 
 [build-dependencies]

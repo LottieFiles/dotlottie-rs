@@ -857,7 +857,14 @@ pub unsafe extern "C" fn dotlottie_set_wg_target(
         let wgpu_device = RawWgpuDevice(device);
         let wgpu_instance = RawWgpuInstance(instance);
         let wgpu_target = RawWgpuTarget(target);
-        dotlottie_player.set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_target, width, height, target_type.to_wgpu_target_type())
+        dotlottie_player.set_wg_target(
+            &wgpu_device,
+            &wgpu_instance,
+            &wgpu_target,
+            width,
+            height,
+            target_type.to_wgpu_target_type(),
+        )
     })
 }
 

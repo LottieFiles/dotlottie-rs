@@ -119,7 +119,6 @@ impl FromStr for InteractionType {
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 pub enum DotLottieWgpuTargetType {

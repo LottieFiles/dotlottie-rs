@@ -429,7 +429,14 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         let wgpu_instance = R::WgpuInstance::from_ptr(instance);
         let wgpu_target = R::WgpuTarget::from_ptr(target);
         self.renderer
-            .set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_target, width, height, target_type)
+            .set_wg_target(
+                &wgpu_device,
+                &wgpu_instance,
+                &wgpu_target,
+                width,
+                height,
+                target_type,
+            )
             .map_err(into_lottie::<R>)
     }
 

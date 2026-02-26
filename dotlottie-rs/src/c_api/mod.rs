@@ -11,13 +11,6 @@ use crate::{DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mod
 
 use crate::ColorSpace;
 
-#[cfg(feature = "state-machines")]
-use crate::actions::open_url_policy::OpenUrlPolicy;
-#[cfg(feature = "state-machines")]
-use crate::state_machine_engine::events::Event;
-#[cfg(feature = "state-machines")]
-use crate::StateMachineEngine;
-
 use types::*;
 
 pub mod types;
@@ -97,7 +90,10 @@ macro_rules! exec_dotlottie_player_op {
 macro_rules! exec_state_machine_op {
     ($ptr:expr, |$sm:ident| $body:expr) => {{
         match $ptr.as_mut() {
-            Some($sm) => DotLottieResult::from($body),
+            Some(wrapper) => {
+                let $sm = &mut wrapper.inner;
+                DotLottieResult::from($body)
+            }
             _ => DotLottieResult::InvalidParameter,
         }
     }};
@@ -181,25 +177,32 @@ pub unsafe extern "C" fn dotlottie_load_animation_path(
     })
 }
 
+#[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "dotlottie")]
 pub unsafe extern "C" fn dotlottie_load_animation(
     ptr: *mut DotLottiePlayer,
     animation_id: *const c_char,
     width: u32,
     height: u32,
 ) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if animation_id.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let id = CStr::from_ptr(animation_id);
-        dotlottie_player.load_animation(id, width, height)
-    })
+    #[cfg(not(feature = "dotlottie"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "dotlottie")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+            if animation_id.is_null() {
+                return DotLottieResult::InvalidParameter;
+            }
+            let id = CStr::from_ptr(animation_id);
+            dotlottie_player.load_animation(id, width, height)
+        })
+    }
 }
 
+#[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "dotlottie")]
 pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     ptr: *mut DotLottiePlayer,
     file_data: *const c_char,
@@ -207,10 +210,20 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     width: u32,
     height: u32,
 ) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        let file_slice = slice::from_raw_parts(file_data as *const u8, file_size);
-        dotlottie_player.load_dotlottie_data(file_slice, width, height)
-    })
+    #[cfg(not(feature = "dotlottie"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "dotlottie")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+            if file_data.is_null() || file_size == 0 {
+                return DotLottieResult::InvalidParameter;
+            }
+            let file_slice = slice::from_raw_parts(file_data as *const u8, file_size);
+            dotlottie_player.load_dotlottie_data(file_slice, width, height)
+        })
+    }
 }
 
 /// Get the manifest as a JSON string.
@@ -224,42 +237,51 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
 /// - `DotLottieResult::Success` on success
 /// - `DotLottieResult::ManifestNotAvailable` if no manifest is available
 /// - `DotLottieResult::InvalidParameter` if ptr is invalid
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `dotlottie` feature
+/// - `DotLottieResult::Error` if the manifest cannot be serialized to JSON
+#[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "dotlottie")]
 pub unsafe extern "C" fn dotlottie_manifest(
     ptr: *mut DotLottiePlayer,
     buffer: *mut c_char,
     size_out: *mut usize,
 ) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        match dotlottie_player.manifest() {
-            Some(manifest) => {
-                let json_str = match serde_json::to_string(manifest) {
-                    Ok(s) => s,
-                    Err(_) => return DotLottieResult::Error,
-                };
-                let json_bytes = json_str.as_bytes();
-                let size = json_bytes.len() + 1; // +1 for null terminator
+    #[cfg(not(feature = "dotlottie"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "dotlottie")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+            match dotlottie_player.manifest() {
+                Some(manifest) => {
+                    let json_str = match serde_json::to_string(manifest) {
+                        Ok(s) => s,
+                        Err(_) => return DotLottieResult::Error,
+                    };
+                    let json_bytes = json_str.as_bytes();
+                    let size = json_bytes.len() + 1; // +1 for null terminator
 
-                if !size_out.is_null() {
-                    *size_out = size;
+                    if !size_out.is_null() {
+                        *size_out = size;
+                    }
+
+                    if !buffer.is_null() {
+                        std::ptr::copy_nonoverlapping(
+                            json_bytes.as_ptr() as *const c_char,
+                            buffer,
+                            json_bytes.len(),
+                        );
+                        // Add null terminator
+                        *buffer.add(json_bytes.len()) = 0;
+                    }
+
+                    DotLottieResult::Success
                 }
-
-                if !buffer.is_null() {
-                    std::ptr::copy_nonoverlapping(
-                        json_bytes.as_ptr() as *const c_char,
-                        buffer,
-                        json_bytes.len(),
-                    );
-                    // Add null terminator
-                    *buffer.add(json_bytes.len()) = 0;
-                }
-
-                DotLottieResult::Success
+                None => DotLottieResult::ManifestNotAvailable,
             }
-            None => DotLottieResult::ManifestNotAvailable,
-        }
-    })
+        })
+    }
 }
 
 // ============================================================================
@@ -857,29 +879,50 @@ pub unsafe extern "C" fn dotlottie_set_wg_target(
         let wgpu_device = RawWgpuDevice(device);
         let wgpu_instance = RawWgpuInstance(instance);
         let wgpu_target = RawWgpuTarget(target);
-        dotlottie_player.set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_target, width, height, target_type.to_wgpu_target_type())
+        dotlottie_player.set_wg_target(
+            &wgpu_device,
+            &wgpu_instance,
+            &wgpu_target,
+            width,
+            height,
+            target_type.to_wgpu_target_type(),
+        )
     })
 }
 
+#[cfg_attr(not(feature = "theming"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "theming")]
 pub unsafe extern "C" fn dotlottie_set_theme(
     ptr: *mut DotLottiePlayer,
     theme_id: *const c_char,
 ) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if theme_id.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let id = CStr::from_ptr(theme_id);
-        dotlottie_player.set_theme(id)
-    })
+    #[cfg(not(feature = "theming"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "theming")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+            if theme_id.is_null() {
+                return DotLottieResult::InvalidParameter;
+            }
+            let id = CStr::from_ptr(theme_id);
+            dotlottie_player.set_theme(id)
+        })
+    }
 }
 
+#[cfg_attr(not(feature = "theming"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "theming")]
 pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut DotLottiePlayer) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player.reset_theme())
+    #[cfg(not(feature = "theming"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "theming")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player.reset_theme())
+    }
 }
 
 /// Sets the theme using raw theme data.
@@ -890,20 +933,28 @@ pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut DotLottiePlayer) -> Dot
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `theming` feature
 /// - `DotLottieResult::InvalidParameter` if the data is invalid or pointer is invalid
+#[cfg_attr(not(feature = "theming"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "theming")]
 pub unsafe extern "C" fn dotlottie_set_theme_data(
     ptr: *mut DotLottiePlayer,
     theme_data: *const c_char,
 ) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if theme_data.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let data = CStr::from_ptr(theme_data);
-        dotlottie_player.set_theme_data(data)
-    })
+    #[cfg(not(feature = "theming"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "theming")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+            if theme_data.is_null() {
+                return DotLottieResult::InvalidParameter;
+            }
+            let data = CStr::from_ptr(theme_data);
+            dotlottie_player.set_theme_data(data)
+        })
+    }
 }
 
 // ============================================================================
@@ -1200,36 +1251,44 @@ pub unsafe extern "C" fn dotlottie_marker(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `dotlottie` feature
 /// - `DotLottieResult::InvalidParameter` if no animation is active or player pointer is invalid
+#[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "dotlottie")]
 pub unsafe extern "C" fn dotlottie_animation_id(
     ptr: *mut DotLottiePlayer,
     buffer: *mut c_char,
     size_out: *mut usize,
 ) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        match dotlottie_player.animation_id() {
-            Some(id) => {
-                let id_bytes = id.to_bytes_with_nul();
+    #[cfg(not(feature = "dotlottie"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "dotlottie")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+            match dotlottie_player.animation_id() {
+                Some(id) => {
+                    let id_bytes = id.to_bytes_with_nul();
 
-                if !size_out.is_null() {
-                    *size_out = id_bytes.len();
+                    if !size_out.is_null() {
+                        *size_out = id_bytes.len();
+                    }
+
+                    if !buffer.is_null() {
+                        std::ptr::copy_nonoverlapping(
+                            id_bytes.as_ptr() as *const c_char,
+                            buffer,
+                            id_bytes.len(),
+                        );
+                    }
+
+                    DotLottieResult::Success
                 }
-
-                if !buffer.is_null() {
-                    std::ptr::copy_nonoverlapping(
-                        id_bytes.as_ptr() as *const c_char,
-                        buffer,
-                        id_bytes.len(),
-                    );
-                }
-
-                DotLottieResult::Success
+                None => DotLottieResult::InvalidParameter,
             }
-            None => DotLottieResult::InvalidParameter,
-        }
-    })
+        })
+    }
 }
 
 /// Returns the active theme ID.
@@ -1241,36 +1300,44 @@ pub unsafe extern "C" fn dotlottie_animation_id(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `theming` feature
 /// - `DotLottieResult::InvalidParameter` if no theme is active or player pointer is invalid
+#[cfg_attr(not(feature = "theming"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "theming")]
 pub unsafe extern "C" fn dotlottie_theme_id(
     ptr: *mut DotLottiePlayer,
     buffer: *mut c_char,
     size_out: *mut usize,
 ) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        match dotlottie_player.theme_id() {
-            Some(id) => {
-                let id_bytes = id.to_bytes_with_nul();
+    #[cfg(not(feature = "theming"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "theming")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+            match dotlottie_player.theme_id() {
+                Some(id) => {
+                    let id_bytes = id.to_bytes_with_nul();
 
-                if !size_out.is_null() {
-                    *size_out = id_bytes.len();
+                    if !size_out.is_null() {
+                        *size_out = id_bytes.len();
+                    }
+
+                    if !buffer.is_null() {
+                        std::ptr::copy_nonoverlapping(
+                            id_bytes.as_ptr() as *const c_char,
+                            buffer,
+                            id_bytes.len(),
+                        );
+                    }
+
+                    DotLottieResult::Success
                 }
-
-                if !buffer.is_null() {
-                    std::ptr::copy_nonoverlapping(
-                        id_bytes.as_ptr() as *const c_char,
-                        buffer,
-                        id_bytes.len(),
-                    );
-                }
-
-                DotLottieResult::Success
+                None => DotLottieResult::InvalidParameter,
             }
-            None => DotLottieResult::InvalidParameter,
-        }
-    })
+        })
+    }
 }
 
 #[no_mangle]
@@ -1410,56 +1477,74 @@ pub unsafe extern "C" fn dotlottie_poll_event(
 /// - Runtime pointer must be valid
 /// - Returned state machine must be destroyed with dotlottie_state_machine_release()
 ///   BEFORE destroying the runtime
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_load(
     runtime: *mut DotLottiePlayer,
     state_machine_id: *const c_char,
-) -> *mut StateMachineEngine<'static> {
-    if runtime.is_null() || state_machine_id.is_null() {
+) -> *mut DotLottieStateMachine {
+    #[cfg(not(feature = "state-machines"))]
+    {
         return std::ptr::null_mut();
     }
+    #[cfg(feature = "state-machines")]
+    {
+        use crate::StateMachineEngine;
 
-    let runtime_ref = &mut *runtime;
-    let sm_id = CStr::from_ptr(state_machine_id);
-
-    match runtime_ref.state_machine_load(sm_id) {
-        Ok(sm) => {
-            // Transmute lifetime to 'static for FFI boundary
-            // Safety: The C caller must ensure SM is destroyed before Runtime
-            let sm_static: StateMachineEngine<'static> = std::mem::transmute(sm);
-            Box::into_raw(Box::new(sm_static))
+        if runtime.is_null() || state_machine_id.is_null() {
+            return std::ptr::null_mut();
         }
-        Err(_) => std::ptr::null_mut(),
+
+        let runtime_ref = &mut *runtime;
+        let sm_id = CStr::from_ptr(state_machine_id);
+
+        match runtime_ref.state_machine_load(sm_id) {
+            Ok(sm) => {
+                // Transmute lifetime to 'static for FFI boundary
+                // Safety: The C caller must ensure SM is destroyed before Runtime
+                let sm_static: StateMachineEngine<'static> = std::mem::transmute(sm);
+                Box::into_raw(Box::new(DotLottieStateMachine { inner: sm_static }))
+            }
+            Err(_) => std::ptr::null_mut(),
+        }
     }
 }
 
 /// Load a state machine from a JSON definition string
 ///
 /// Returns a pointer to the StateMachineEngine or NULL on error.
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_load_data(
     runtime: *mut DotLottiePlayer,
     state_machine_definition: *const c_char,
-) -> *mut StateMachineEngine<'static> {
-    if runtime.is_null() || state_machine_definition.is_null() {
+) -> *mut DotLottieStateMachine {
+    #[cfg(not(feature = "state-machines"))]
+    {
         return std::ptr::null_mut();
     }
+    #[cfg(feature = "state-machines")]
+    {
+        use crate::StateMachineEngine;
 
-    let runtime_ref = &mut *runtime;
-    let sm_def = CStr::from_ptr(state_machine_definition);
+        if runtime.is_null() || state_machine_definition.is_null() {
+            return std::ptr::null_mut();
+        }
 
-    match sm_def.to_str() {
-        Ok(def_str) => match runtime_ref.state_machine_load_data(def_str) {
-            Ok(sm) => {
-                // Transmute lifetime to 'static for FFI boundary
-                let sm_static: StateMachineEngine<'static> = std::mem::transmute(sm);
-                Box::into_raw(Box::new(sm_static))
-            }
+        let runtime_ref = &mut *runtime;
+        let sm_def = CStr::from_ptr(state_machine_definition);
+
+        match sm_def.to_str() {
+            Ok(def_str) => match runtime_ref.state_machine_load_data(def_str) {
+                Ok(sm) => {
+                    // Transmute lifetime to 'static for FFI boundary
+                    let sm_static: StateMachineEngine<'static> = std::mem::transmute(sm);
+                    Box::into_raw(Box::new(DotLottieStateMachine { inner: sm_static }))
+                }
+                Err(_) => std::ptr::null_mut(),
+            },
             Err(_) => std::ptr::null_mut(),
-        },
-        Err(_) => std::ptr::null_mut(),
+        }
     }
 }
 
@@ -1472,43 +1557,59 @@ pub unsafe extern "C" fn dotlottie_state_machine_load_data(
 ///
 /// # Returns
 /// DotLottieResult::Success if started, error variant if failed
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `state-machines` feature
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_start(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     whitelist: *const c_char,
     require_user_interaction: bool,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        let whitelist_vec = if whitelist.is_null() {
-            vec![]
-        } else {
-            let whitelist_cstr = CStr::from_ptr(whitelist);
-            match whitelist_cstr.to_str() {
-                Ok("") => vec![],
-                Ok(s) => s.split(',').map(|p| p.trim().to_string()).collect(),
-                Err(_) => return DotLottieResult::InvalidParameter,
-            }
-        };
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        use crate::actions::open_url_policy::OpenUrlPolicy;
+        exec_state_machine_op!(sm, |state_machine| {
+            let whitelist_vec = if whitelist.is_null() {
+                vec![]
+            } else {
+                let whitelist_cstr = CStr::from_ptr(whitelist);
+                match whitelist_cstr.to_str() {
+                    Ok("") => vec![],
+                    Ok(s) => s.split(',').map(|p| p.trim().to_string()).collect(),
+                    Err(_) => return DotLottieResult::InvalidParameter,
+                }
+            };
 
-        let policy = OpenUrlPolicy::new(whitelist_vec, require_user_interaction);
-        state_machine.start(&policy)
-    })
+            let policy = OpenUrlPolicy::new(whitelist_vec, require_user_interaction);
+            state_machine.start(&policy)
+        })
+    }
 }
 
 /// Stop the state machine (does not release the borrow)
 ///
 /// Call dotlottie_state_machine_release() to actually destroy the state machine
 /// and release the runtime borrow.
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_stop(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        state_machine.stop();
-        DotLottieResult::Success
-    })
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            state_machine.stop();
+            DotLottieResult::Success
+        })
+    }
 }
 
 /// Destroy the state machine and release the runtime borrow
@@ -1519,261 +1620,365 @@ pub unsafe extern "C" fn dotlottie_state_machine_stop(
 /// # Safety
 /// - State machine pointer must be valid
 /// - Must not use state machine pointer after this call
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
-pub unsafe extern "C" fn dotlottie_state_machine_release(sm: *mut StateMachineEngine<'static>) {
-    if !sm.is_null() {
-        let boxed_sm = Box::from_raw(sm);
-        boxed_sm.release(); // Calls consuming release()
+pub unsafe extern "C" fn dotlottie_state_machine_release(sm: *mut DotLottieStateMachine) {
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        if !sm.is_null() {
+            let boxed = Box::from_raw(sm);
+            boxed.inner.release(); // Calls consuming release()
+        }
     }
 }
 
 /// Tick the state machine (advances animation and processes state logic)
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_tick(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| state_machine.tick())
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| state_machine.tick())
+    }
 }
 
 /// Post a pointer/click event to the state machine
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_event(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     event: *const DotLottieEvent,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        if let Some(event) = event.as_ref() {
-            state_machine.post_event(&event.to_event());
-            DotLottieResult::Success
-        } else {
-            DotLottieResult::Error
-        }
-    })
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if let Some(event) = event.as_ref() {
+                state_machine.post_event(&event.to_event());
+                DotLottieResult::Success
+            } else {
+                DotLottieResult::Error
+            }
+        })
+    }
 }
 
 /// Helper functions for posting specific event types
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_click(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     x: f32,
     y: f32,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        let event = Event::Click { x, y };
-        state_machine.post_event(&event);
-        DotLottieResult::Success
-    })
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        use crate::state_machine_engine::events::Event;
+        exec_state_machine_op!(sm, |state_machine| {
+            let event = Event::Click { x, y };
+            state_machine.post_event(&event);
+            DotLottieResult::Success
+        })
+    }
 }
 
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_down(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     x: f32,
     y: f32,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        let event = Event::PointerDown { x, y };
-        state_machine.post_event(&event);
-        DotLottieResult::Success
-    })
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        use crate::state_machine_engine::events::Event;
+        exec_state_machine_op!(sm, |state_machine| {
+            let event = Event::PointerDown { x, y };
+            state_machine.post_event(&event);
+            DotLottieResult::Success
+        })
+    }
 }
 
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_up(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     x: f32,
     y: f32,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        let event = Event::PointerUp { x, y };
-        state_machine.post_event(&event);
-        DotLottieResult::Success
-    })
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        use crate::state_machine_engine::events::Event;
+        exec_state_machine_op!(sm, |state_machine| {
+            let event = Event::PointerUp { x, y };
+            state_machine.post_event(&event);
+            DotLottieResult::Success
+        })
+    }
 }
 
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_move(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     x: f32,
     y: f32,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        let event = Event::PointerMove { x, y };
-        state_machine.post_event(&event);
-        DotLottieResult::Success
-    })
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        use crate::state_machine_engine::events::Event;
+        exec_state_machine_op!(sm, |state_machine| {
+            let event = Event::PointerMove { x, y };
+            state_machine.post_event(&event);
+            DotLottieResult::Success
+        })
+    }
 }
 
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_enter(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     x: f32,
     y: f32,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        let event = Event::PointerEnter { x, y };
-        state_machine.post_event(&event);
-        DotLottieResult::Success
-    })
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        use crate::state_machine_engine::events::Event;
+        exec_state_machine_op!(sm, |state_machine| {
+            let event = Event::PointerEnter { x, y };
+            state_machine.post_event(&event);
+            DotLottieResult::Success
+        })
+    }
 }
 
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_exit(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     x: f32,
     y: f32,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        let event = Event::PointerExit { x, y };
-        state_machine.post_event(&event);
-        DotLottieResult::Success
-    })
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        use crate::state_machine_engine::events::Event;
+        exec_state_machine_op!(sm, |state_machine| {
+            let event = Event::PointerExit { x, y };
+            state_machine.post_event(&event);
+            DotLottieResult::Success
+        })
+    }
 }
 
 /// Fire a named event input
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_fire_event(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     event_name: *const c_char,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        if event_name.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let event = CStr::from_ptr(event_name);
-        match event.to_str() {
-            Ok(event_str) => match state_machine.fire(event_str, true) {
-                Ok(_) => {
-                    let _ = state_machine.run_current_state_pipeline();
-                    DotLottieResult::Success
-                }
-                Err(_) => DotLottieResult::Error,
-            },
-            Err(_) => DotLottieResult::InvalidParameter,
-        }
-    })
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if event_name.is_null() {
+                return DotLottieResult::InvalidParameter;
+            }
+            let event = CStr::from_ptr(event_name);
+            match event.to_str() {
+                Ok(event_str) => match state_machine.fire(event_str, true) {
+                    Ok(_) => {
+                        let _ = state_machine.run_current_state_pipeline();
+                        DotLottieResult::Success
+                    }
+                    Err(_) => DotLottieResult::Error,
+                },
+                Err(_) => DotLottieResult::InvalidParameter,
+            }
+        })
+    }
 }
 
 /// Set a numeric input
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_input(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     key: *const c_char,
     value: f32,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        if key.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let key_cstr = CStr::from_ptr(key);
-        match key_cstr.to_str() {
-            Ok(key_str) => {
-                let result = state_machine.set_numeric_input(key_str, value, true, false);
-                if result.is_some() {
-                    let _ = state_machine.run_current_state_pipeline();
-                    DotLottieResult::Success
-                } else {
-                    DotLottieResult::Error
-                }
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if key.is_null() {
+                return DotLottieResult::InvalidParameter;
             }
-            Err(_) => DotLottieResult::InvalidParameter,
-        }
-    })
+            let key_cstr = CStr::from_ptr(key);
+            match key_cstr.to_str() {
+                Ok(key_str) => {
+                    let result = state_machine.set_numeric_input(key_str, value, true, false);
+                    if result.is_some() {
+                        let _ = state_machine.run_current_state_pipeline();
+                        DotLottieResult::Success
+                    } else {
+                        DotLottieResult::Error
+                    }
+                }
+                Err(_) => DotLottieResult::InvalidParameter,
+            }
+        })
+    }
 }
 
 /// Set a string input
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_set_string_input(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     key: *const c_char,
     value: *const c_char,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        if key.is_null() || value.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let key_cstr = CStr::from_ptr(key);
-        let value_cstr = CStr::from_ptr(value);
-        match (key_cstr.to_str(), value_cstr.to_str()) {
-            (Ok(key_str), Ok(value_str)) => {
-                let result = state_machine.set_string_input(key_str, value_str, true, false);
-                if result.is_some() {
-                    let _ = state_machine.run_current_state_pipeline();
-                    DotLottieResult::Success
-                } else {
-                    DotLottieResult::Error
-                }
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if key.is_null() || value.is_null() {
+                return DotLottieResult::InvalidParameter;
             }
-            _ => DotLottieResult::InvalidParameter,
-        }
-    })
+            let key_cstr = CStr::from_ptr(key);
+            let value_cstr = CStr::from_ptr(value);
+            match (key_cstr.to_str(), value_cstr.to_str()) {
+                (Ok(key_str), Ok(value_str)) => {
+                    let result = state_machine.set_string_input(key_str, value_str, true, false);
+                    if result.is_some() {
+                        let _ = state_machine.run_current_state_pipeline();
+                        DotLottieResult::Success
+                    } else {
+                        DotLottieResult::Error
+                    }
+                }
+                _ => DotLottieResult::InvalidParameter,
+            }
+        })
+    }
 }
 
 /// Set a boolean input
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_set_boolean_input(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     key: *const c_char,
     value: bool,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        if key.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let key_cstr = CStr::from_ptr(key);
-        match key_cstr.to_str() {
-            Ok(key_str) => {
-                let result = state_machine.set_boolean_input(key_str, value, true, false);
-                if result.is_some() {
-                    let _ = state_machine.run_current_state_pipeline();
-                    DotLottieResult::Success
-                } else {
-                    DotLottieResult::Error
-                }
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if key.is_null() {
+                return DotLottieResult::InvalidParameter;
             }
-            Err(_) => DotLottieResult::InvalidParameter,
-        }
-    })
+            let key_cstr = CStr::from_ptr(key);
+            match key_cstr.to_str() {
+                Ok(key_str) => {
+                    let result = state_machine.set_boolean_input(key_str, value, true, false);
+                    if result.is_some() {
+                        let _ = state_machine.run_current_state_pipeline();
+                        DotLottieResult::Success
+                    } else {
+                        DotLottieResult::Error
+                    }
+                }
+                Err(_) => DotLottieResult::InvalidParameter,
+            }
+        })
+    }
 }
 
 /// Get a numeric input value
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_get_numeric_input(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     key: *const c_char,
     result: *mut f32,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        if key.is_null() || result.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let key_cstr = CStr::from_ptr(key);
-        match key_cstr.to_str() {
-            Ok(key_str) => {
-                if let Some(value) = state_machine.get_numeric_input(key_str) {
-                    *result = value;
-                    DotLottieResult::Success
-                } else {
-                    DotLottieResult::Error
-                }
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if key.is_null() || result.is_null() {
+                return DotLottieResult::InvalidParameter;
             }
-            Err(_) => DotLottieResult::InvalidParameter,
-        }
-    })
+            let key_cstr = CStr::from_ptr(key);
+            match key_cstr.to_str() {
+                Ok(key_str) => {
+                    if let Some(value) = state_machine.get_numeric_input(key_str) {
+                        *result = value;
+                        DotLottieResult::Success
+                    } else {
+                        DotLottieResult::Error
+                    }
+                }
+                Err(_) => DotLottieResult::InvalidParameter,
+            }
+        })
+    }
 }
 
 /// Get a string input value.
@@ -1786,74 +1991,89 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_numeric_input(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `state-machines` feature
 /// - `DotLottieResult::InvalidParameter` if the input doesn't exist or pointers are invalid
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_get_string_input(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     key: *const c_char,
     buffer: *mut c_char,
     size_out: *mut usize,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        if key.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let key_cstr = CStr::from_ptr(key);
-        match key_cstr.to_str() {
-            Ok(key_str) => {
-                if let Some(value) = state_machine.get_string_input(key_str) {
-                    let value_bytes = value.as_bytes();
-                    let size = value_bytes.len() + 1;
-
-                    if !size_out.is_null() {
-                        *size_out = size;
-                    }
-
-                    if !buffer.is_null() {
-                        std::ptr::copy_nonoverlapping(
-                            value_bytes.as_ptr() as *const c_char,
-                            buffer,
-                            value_bytes.len(),
-                        );
-                        *buffer.add(value_bytes.len()) = 0;
-                    }
-
-                    DotLottieResult::Success
-                } else {
-                    DotLottieResult::InvalidParameter
-                }
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if key.is_null() {
+                return DotLottieResult::InvalidParameter;
             }
-            Err(_) => DotLottieResult::InvalidParameter,
-        }
-    })
+            let key_cstr = CStr::from_ptr(key);
+            match key_cstr.to_str() {
+                Ok(key_str) => {
+                    if let Some(value) = state_machine.get_string_input(key_str) {
+                        let value_bytes = value.as_bytes();
+                        let size = value_bytes.len() + 1;
+
+                        if !size_out.is_null() {
+                            *size_out = size;
+                        }
+
+                        if !buffer.is_null() {
+                            std::ptr::copy_nonoverlapping(
+                                value_bytes.as_ptr() as *const c_char,
+                                buffer,
+                                value_bytes.len(),
+                            );
+                            *buffer.add(value_bytes.len()) = 0;
+                        }
+
+                        DotLottieResult::Success
+                    } else {
+                        DotLottieResult::InvalidParameter
+                    }
+                }
+                Err(_) => DotLottieResult::InvalidParameter,
+            }
+        })
+    }
 }
 
 /// Get a boolean input value
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_get_boolean_input(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     key: *const c_char,
     result: *mut bool,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        if key.is_null() || result.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let key_cstr = CStr::from_ptr(key);
-        match key_cstr.to_str() {
-            Ok(key_str) => {
-                if let Some(value) = state_machine.get_boolean_input(key_str) {
-                    *result = value;
-                    DotLottieResult::Success
-                } else {
-                    DotLottieResult::Error
-                }
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if key.is_null() || result.is_null() {
+                return DotLottieResult::InvalidParameter;
             }
-            Err(_) => DotLottieResult::InvalidParameter,
-        }
-    })
+            let key_cstr = CStr::from_ptr(key);
+            match key_cstr.to_str() {
+                Ok(key_str) => {
+                    if let Some(value) = state_machine.get_boolean_input(key_str) {
+                        *result = value;
+                        DotLottieResult::Success
+                    } else {
+                        DotLottieResult::Error
+                    }
+                }
+                Err(_) => DotLottieResult::InvalidParameter,
+            }
+        })
+    }
 }
 
 /// Get current state name.
@@ -1865,34 +2085,42 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_boolean_input(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `state-machines` feature
 /// - `DotLottieResult::InvalidParameter` if pointer is invalid
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_current_state(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     buffer: *mut c_char,
     size_out: *mut usize,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        let current_state = state_machine.get_current_state_name();
-        let state_bytes = current_state.as_bytes();
-        let size = state_bytes.len() + 1;
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            let current_state = state_machine.get_current_state_name();
+            let state_bytes = current_state.as_bytes();
+            let size = state_bytes.len() + 1;
 
-        if !size_out.is_null() {
-            *size_out = size;
-        }
+            if !size_out.is_null() {
+                *size_out = size;
+            }
 
-        if !buffer.is_null() {
-            std::ptr::copy_nonoverlapping(
-                state_bytes.as_ptr() as *const c_char,
-                buffer,
-                state_bytes.len(),
-            );
-            *buffer.add(state_bytes.len()) = 0;
-        }
+            if !buffer.is_null() {
+                std::ptr::copy_nonoverlapping(
+                    state_bytes.as_ptr() as *const c_char,
+                    buffer,
+                    state_bytes.len(),
+                );
+                *buffer.add(state_bytes.len()) = 0;
+            }
 
-        DotLottieResult::Success
-    })
+            DotLottieResult::Success
+        })
+    }
 }
 
 /// Get state machine status.
@@ -1904,61 +2132,76 @@ pub unsafe extern "C" fn dotlottie_state_machine_current_state(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `state-machines` feature
 /// - `DotLottieResult::InvalidParameter` if pointer is invalid
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_status(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     buffer: *mut c_char,
     size_out: *mut usize,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        let status = state_machine.status();
-        let status_bytes = status.as_bytes();
-        let size = status_bytes.len() + 1;
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            let status = state_machine.status();
+            let status_bytes = status.as_bytes();
+            let size = status_bytes.len() + 1;
 
-        if !size_out.is_null() {
-            *size_out = size;
-        }
+            if !size_out.is_null() {
+                *size_out = size;
+            }
 
-        if !buffer.is_null() {
-            std::ptr::copy_nonoverlapping(
-                status_bytes.as_ptr() as *const c_char,
-                buffer,
-                status_bytes.len(),
-            );
-            *buffer.add(status_bytes.len()) = 0;
-        }
+            if !buffer.is_null() {
+                std::ptr::copy_nonoverlapping(
+                    status_bytes.as_ptr() as *const c_char,
+                    buffer,
+                    status_bytes.len(),
+                );
+                *buffer.add(status_bytes.len()) = 0;
+            }
 
-        DotLottieResult::Success
-    })
+            DotLottieResult::Success
+        })
+    }
 }
 
 /// Get interaction types for framework setup
 ///
 /// Returns bit flags indicating which interaction types are needed.
 /// Frameworks should register listeners for the returned interaction types.
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     result: *mut u16,
 ) -> DotLottieResult {
-    exec_state_machine_op!(sm, |state_machine| {
-        if result.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if result.is_null() {
+                return DotLottieResult::InvalidParameter;
+            }
 
-        let interaction_types = state_machine.framework_setup();
+            let interaction_types = state_machine.framework_setup();
 
-        // Convert Vec<String> to bit flags using InteractionType
-        if let Ok(interaction_type) = InteractionType::new(&interaction_types) {
-            *result = interaction_type.bits();
-            DotLottieResult::Success
-        } else {
-            DotLottieResult::Error
-        }
-    })
+            // Convert Vec<String> to bit flags using InteractionType
+            if let Ok(interaction_type) = InteractionType::new(&interaction_types) {
+                *result = interaction_type.bits();
+                DotLottieResult::Success
+            } else {
+                DotLottieResult::Error
+            }
+        })
+    }
 }
 
 /// Poll for the next state machine event
@@ -1983,186 +2226,200 @@ pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
 ///     }
 /// }
 /// ```
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_poll_event(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     event: *mut types::StateMachineEvent,
 ) -> i32 {
-    use crate::StateMachineEvent;
-
-    if sm.is_null() || event.is_null() {
+    #[cfg(not(feature = "state-machines"))]
+    {
         return -1;
     }
+    #[cfg(feature = "state-machines")]
+    {
+        use crate::StateMachineEvent;
 
-    let state_machine = &mut *sm;
-
-    // Poll from queue and store in current_event (keeps CStrings alive)
-    match state_machine.event_queue.poll() {
-        Some(rust_event) => {
-            state_machine.current_event = Some(rust_event);
+        if sm.is_null() || event.is_null() {
+            return -1;
         }
-        None => return 0, // No events available
-    }
 
-    // Get reference to stored event
-    let e = state_machine.current_event.as_ref().unwrap();
+        let state_machine = &mut (*sm).inner;
 
-    // Build C event struct with pointers into the stored event
-    let c_event = match e {
-        StateMachineEvent::Start => types::StateMachineEvent {
-            event_type: types::StateMachineEventType::StateMachineStart,
-            data: types::StateMachineEventData {
-                message: types::StateMachineMessageData {
-                    message: std::ptr::null(),
-                },
-            },
-        },
-        StateMachineEvent::Stop => types::StateMachineEvent {
-            event_type: types::StateMachineEventType::StateMachineStop,
-            data: types::StateMachineEventData {
-                message: types::StateMachineMessageData {
-                    message: std::ptr::null(),
-                },
-            },
-        },
-        StateMachineEvent::Transition {
-            previous_state,
-            new_state,
-        } => types::StateMachineEvent {
-            event_type: types::StateMachineEventType::StateMachineTransition,
-            data: types::StateMachineEventData {
-                transition: types::StateMachineTransitionData {
-                    previous_state: previous_state.as_ptr(),
-                    new_state: new_state.as_ptr(),
-                },
-            },
-        },
-        StateMachineEvent::StateEntered { state } => types::StateMachineEvent {
-            event_type: types::StateMachineEventType::StateMachineStateEntered,
-            data: types::StateMachineEventData {
-                state: types::StateMachineStateData {
-                    state: state.as_ptr(),
-                },
-            },
-        },
-        StateMachineEvent::StateExit { state } => types::StateMachineEvent {
-            event_type: types::StateMachineEventType::StateMachineStateExit,
-            data: types::StateMachineEventData {
-                state: types::StateMachineStateData {
-                    state: state.as_ptr(),
-                },
-            },
-        },
-        StateMachineEvent::CustomEvent { message } => types::StateMachineEvent {
-            event_type: types::StateMachineEventType::StateMachineCustomEvent,
-            data: types::StateMachineEventData {
-                message: types::StateMachineMessageData {
-                    message: message.as_ptr(),
-                },
-            },
-        },
-        StateMachineEvent::Error { message } => types::StateMachineEvent {
-            event_type: types::StateMachineEventType::StateMachineError,
-            data: types::StateMachineEventData {
-                message: types::StateMachineMessageData {
-                    message: message.as_ptr(),
-                },
-            },
-        },
-        StateMachineEvent::StringInputChange {
-            name,
-            old_value,
-            new_value,
-        } => types::StateMachineEvent {
-            event_type: types::StateMachineEventType::StateMachineStringInputChange,
-            data: types::StateMachineEventData {
-                string_input: types::StateMachineStringInputData {
-                    name: name.as_ptr(),
-                    old_value: old_value.as_ptr(),
-                    new_value: new_value.as_ptr(),
-                },
-            },
-        },
-        StateMachineEvent::NumericInputChange {
-            name,
-            old_value,
-            new_value,
-        } => types::StateMachineEvent {
-            event_type: types::StateMachineEventType::StateMachineNumericInputChange,
-            data: types::StateMachineEventData {
-                numeric_input: types::StateMachineNumericInputData {
-                    name: name.as_ptr(),
-                    old_value: *old_value,
-                    new_value: *new_value,
-                },
-            },
-        },
-        StateMachineEvent::BooleanInputChange {
-            name,
-            old_value,
-            new_value,
-        } => types::StateMachineEvent {
-            event_type: types::StateMachineEventType::StateMachineBooleanInputChange,
-            data: types::StateMachineEventData {
-                boolean_input: types::StateMachineBooleanInputData {
-                    name: name.as_ptr(),
-                    old_value: *old_value,
-                    new_value: *new_value,
-                },
-            },
-        },
-        StateMachineEvent::InputFired { name } => types::StateMachineEvent {
-            event_type: types::StateMachineEventType::StateMachineInputFired,
-            data: types::StateMachineEventData {
-                input_fired: types::StateMachineInputFiredData {
-                    name: name.as_ptr(),
-                },
-            },
-        },
-    };
+        // Poll from queue and store in current_event (keeps CStrings alive)
+        match state_machine.event_queue.poll() {
+            Some(rust_event) => {
+                state_machine.current_event = Some(rust_event);
+            }
+            None => return 0, // No events available
+        }
 
-    std::ptr::write(event, c_event);
-    1 // Event retrieved
+        // Get reference to stored event
+        let e = state_machine.current_event.as_ref().unwrap();
+
+        // Build C event struct with pointers into the stored event
+        let c_event = match e {
+            StateMachineEvent::Start => types::StateMachineEvent {
+                event_type: types::StateMachineEventType::StateMachineStart,
+                data: types::StateMachineEventData {
+                    message: types::StateMachineMessageData {
+                        message: std::ptr::null(),
+                    },
+                },
+            },
+            StateMachineEvent::Stop => types::StateMachineEvent {
+                event_type: types::StateMachineEventType::StateMachineStop,
+                data: types::StateMachineEventData {
+                    message: types::StateMachineMessageData {
+                        message: std::ptr::null(),
+                    },
+                },
+            },
+            StateMachineEvent::Transition {
+                previous_state,
+                new_state,
+            } => types::StateMachineEvent {
+                event_type: types::StateMachineEventType::StateMachineTransition,
+                data: types::StateMachineEventData {
+                    transition: types::StateMachineTransitionData {
+                        previous_state: previous_state.as_ptr(),
+                        new_state: new_state.as_ptr(),
+                    },
+                },
+            },
+            StateMachineEvent::StateEntered { state } => types::StateMachineEvent {
+                event_type: types::StateMachineEventType::StateMachineStateEntered,
+                data: types::StateMachineEventData {
+                    state: types::StateMachineStateData {
+                        state: state.as_ptr(),
+                    },
+                },
+            },
+            StateMachineEvent::StateExit { state } => types::StateMachineEvent {
+                event_type: types::StateMachineEventType::StateMachineStateExit,
+                data: types::StateMachineEventData {
+                    state: types::StateMachineStateData {
+                        state: state.as_ptr(),
+                    },
+                },
+            },
+            StateMachineEvent::CustomEvent { message } => types::StateMachineEvent {
+                event_type: types::StateMachineEventType::StateMachineCustomEvent,
+                data: types::StateMachineEventData {
+                    message: types::StateMachineMessageData {
+                        message: message.as_ptr(),
+                    },
+                },
+            },
+            StateMachineEvent::Error { message } => types::StateMachineEvent {
+                event_type: types::StateMachineEventType::StateMachineError,
+                data: types::StateMachineEventData {
+                    message: types::StateMachineMessageData {
+                        message: message.as_ptr(),
+                    },
+                },
+            },
+            StateMachineEvent::StringInputChange {
+                name,
+                old_value,
+                new_value,
+            } => types::StateMachineEvent {
+                event_type: types::StateMachineEventType::StateMachineStringInputChange,
+                data: types::StateMachineEventData {
+                    string_input: types::StateMachineStringInputData {
+                        name: name.as_ptr(),
+                        old_value: old_value.as_ptr(),
+                        new_value: new_value.as_ptr(),
+                    },
+                },
+            },
+            StateMachineEvent::NumericInputChange {
+                name,
+                old_value,
+                new_value,
+            } => types::StateMachineEvent {
+                event_type: types::StateMachineEventType::StateMachineNumericInputChange,
+                data: types::StateMachineEventData {
+                    numeric_input: types::StateMachineNumericInputData {
+                        name: name.as_ptr(),
+                        old_value: *old_value,
+                        new_value: *new_value,
+                    },
+                },
+            },
+            StateMachineEvent::BooleanInputChange {
+                name,
+                old_value,
+                new_value,
+            } => types::StateMachineEvent {
+                event_type: types::StateMachineEventType::StateMachineBooleanInputChange,
+                data: types::StateMachineEventData {
+                    boolean_input: types::StateMachineBooleanInputData {
+                        name: name.as_ptr(),
+                        old_value: *old_value,
+                        new_value: *new_value,
+                    },
+                },
+            },
+            StateMachineEvent::InputFired { name } => types::StateMachineEvent {
+                event_type: types::StateMachineEventType::StateMachineInputFired,
+                data: types::StateMachineEventData {
+                    input_fired: types::StateMachineInputFiredData {
+                        name: name.as_ptr(),
+                    },
+                },
+            },
+        };
+
+        std::ptr::write(event, c_event);
+        1 // Event retrieved
+    } // end #[cfg(feature = "state-machines")]
 }
 
 /// Poll for the next internal state machine event
 ///
 /// Returns 1 if an event was retrieved, 0 if no events are available, or -1 on error.
 /// The message pointer is valid until the next poll call.
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_state_machine_poll_internal_event(
-    sm: *mut StateMachineEngine<'static>,
+    sm: *mut DotLottieStateMachine,
     event: *mut types::StateMachineInternalEvent,
 ) -> i32 {
-    use crate::StateMachineInternalEvent;
-
-    if sm.is_null() || event.is_null() {
+    #[cfg(not(feature = "state-machines"))]
+    {
         return -1;
     }
+    #[cfg(feature = "state-machines")]
+    {
+        use crate::StateMachineInternalEvent;
 
-    let state_machine = &mut *sm;
-
-    // Poll from queue and store (keeps CStrings alive)
-    match state_machine.internal_event_queue.poll() {
-        Some(rust_event) => {
-            state_machine.current_internal_event = Some(rust_event);
+        if sm.is_null() || event.is_null() {
+            return -1;
         }
-        None => return 0, // No events available
-    }
 
-    // Get reference to stored event
-    let e = state_machine.current_internal_event.as_ref().unwrap();
+        let state_machine = &mut (*sm).inner;
 
-    let c_event = match e {
-        StateMachineInternalEvent::Message { message } => types::StateMachineInternalEvent {
-            message: message.as_ptr(),
-        },
-    };
+        // Poll from queue and store (keeps CStrings alive)
+        match state_machine.internal_event_queue.poll() {
+            Some(rust_event) => {
+                state_machine.current_internal_event = Some(rust_event);
+            }
+            None => return 0, // No events available
+        }
 
-    std::ptr::write(event, c_event);
-    1 // Event retrieved
+        // Get reference to stored event
+        let e = state_machine.current_internal_event.as_ref().unwrap();
+
+        let c_event = match e {
+            StateMachineInternalEvent::Message { message } => types::StateMachineInternalEvent {
+                message: message.as_ptr(),
+            },
+        };
+
+        std::ptr::write(event, c_event);
+        1 // Event retrieved
+    } // end #[cfg(feature = "state-machines")]
 }
 
 /// Get the state machine definition as JSON string.
@@ -2175,43 +2432,51 @@ pub unsafe extern "C" fn dotlottie_state_machine_poll_internal_event(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `state-machines` feature
 /// - `DotLottieResult::InvalidParameter` if state machine not found or pointers are invalid
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-#[cfg(feature = "state-machines")]
 pub unsafe extern "C" fn dotlottie_get_state_machine(
     runtime: *mut DotLottiePlayer,
     state_machine_id: *const c_char,
     buffer: *mut c_char,
     size_out: *mut usize,
 ) -> DotLottieResult {
-    exec_dotlottie_player_op!(runtime, |dotlottie_player| {
-        if state_machine_id.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let sm_id = CStr::from_ptr(state_machine_id);
-
-        match dotlottie_player.get_state_machine(sm_id) {
-            Some(sm_json) => {
-                let json_bytes = sm_json.as_bytes();
-                let size = json_bytes.len() + 1; // +1 for null terminator
-
-                if !size_out.is_null() {
-                    *size_out = size;
-                }
-
-                if !buffer.is_null() {
-                    std::ptr::copy_nonoverlapping(
-                        json_bytes.as_ptr() as *const c_char,
-                        buffer,
-                        json_bytes.len(),
-                    );
-                    // Add null terminator
-                    *buffer.add(json_bytes.len()) = 0;
-                }
-
-                DotLottieResult::Success
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_dotlottie_player_op!(runtime, |dotlottie_player| {
+            if state_machine_id.is_null() {
+                return DotLottieResult::InvalidParameter;
             }
-            None => DotLottieResult::InvalidParameter,
-        }
-    })
+            let sm_id = CStr::from_ptr(state_machine_id);
+
+            match dotlottie_player.get_state_machine(sm_id) {
+                Some(sm_json) => {
+                    let json_bytes = sm_json.as_bytes();
+                    let size = json_bytes.len() + 1; // +1 for null terminator
+
+                    if !size_out.is_null() {
+                        *size_out = size;
+                    }
+
+                    if !buffer.is_null() {
+                        std::ptr::copy_nonoverlapping(
+                            json_bytes.as_ptr() as *const c_char,
+                            buffer,
+                            json_bytes.len(),
+                        );
+                        // Add null terminator
+                        *buffer.add(json_bytes.len()) = 0;
+                    }
+
+                    DotLottieResult::Success
+                }
+                None => DotLottieResult::InvalidParameter,
+            }
+        })
+    }
 }

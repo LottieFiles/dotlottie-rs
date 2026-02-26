@@ -274,6 +274,7 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
+            #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
             Action::SetTheme { value } => {
                 #[cfg(feature = "theming")]
                 {

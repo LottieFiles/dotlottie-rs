@@ -1,8 +1,9 @@
 #![allow(clippy::missing_safety_doc)]
 
-use std::ffi::{c_char, CStr};
+use std::ffi::{c_char, CStr, CString};
 use std::slice;
 
+use crate::asset_resolver::{AssetResolver, ResolvedAsset};
 use crate::lottie_renderer::{
     ColorSlot, GlContext, ImageSlot, PositionSlot, ScalarSlot, TextDocument, TextSlot, VectorSlot,
     WgpuDevice, WgpuInstance, WgpuTarget,
@@ -21,6 +22,59 @@ use crate::StateMachineEngine;
 use types::*;
 
 pub mod types;
+
+struct CAssetResolver {
+    callback: unsafe extern "C" fn(
+        src: *const c_char,
+        data_out: *mut *const u8,
+        size_out: *mut u32,
+        mimetype_out: *mut *const c_char,
+        userdata: *mut std::ffi::c_void,
+    ) -> bool,
+    userdata: *mut std::ffi::c_void,
+}
+
+// Safety: C caller is responsible for thread safety of callback and userdata
+unsafe impl Send for CAssetResolver {}
+unsafe impl Sync for CAssetResolver {}
+
+impl AssetResolver for CAssetResolver {
+    fn resolve(&self, src: &str) -> Option<ResolvedAsset> {
+        let src_cstr = CString::new(src).ok()?;
+
+        let mut data_ptr: *const u8 = std::ptr::null();
+        let mut size: u32 = 0;
+        let mut mimetype_ptr: *const c_char = std::ptr::null();
+
+        let resolved = unsafe {
+            (self.callback)(
+                src_cstr.as_ptr(),
+                &mut data_ptr,
+                &mut size,
+                &mut mimetype_ptr,
+                self.userdata,
+            )
+        };
+
+        if !resolved || data_ptr.is_null() || size == 0 {
+            return None;
+        }
+
+        // Copy data from C-owned memory into Rust-owned Vec
+        let data = unsafe { slice::from_raw_parts(data_ptr, size as usize) }.to_vec();
+
+        let mimetype = if mimetype_ptr.is_null() {
+            "png".to_string()
+        } else {
+            unsafe { CStr::from_ptr(mimetype_ptr) }
+                .to_str()
+                .unwrap_or("png")
+                .to_string()
+        };
+
+        Some(ResolvedAsset { data, mimetype })
+    }
+}
 
 /// Wrapper for raw OpenGL context pointer that implements GlContext trait
 struct RawGlContext(*mut std::ffi::c_void);
@@ -794,6 +848,30 @@ pub unsafe extern "C" fn dotlottie_clear(ptr: *mut DotLottiePlayer) -> DotLottie
     })
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_asset_resolver(
+    ptr: *mut DotLottiePlayer,
+    callback: DotLottieAssetResolverCallback,
+    userdata: *mut std::ffi::c_void,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        match callback {
+            Some(cb) => {
+                let resolver = CAssetResolver {
+                    callback: cb,
+                    userdata,
+                };
+                dotlottie_player.set_asset_resolver(resolver);
+                DotLottieResult::Success
+            }
+            None => {
+                dotlottie_player.clear_asset_resolver();
+                DotLottieResult::Success
+            }
+        }
+    })
+}
+
 /// Returns whether the animation has completed playback.
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_is_complete(ptr: *mut DotLottiePlayer) -> bool {
@@ -857,7 +935,14 @@ pub unsafe extern "C" fn dotlottie_set_wg_target(
         let wgpu_device = RawWgpuDevice(device);
         let wgpu_instance = RawWgpuInstance(instance);
         let wgpu_target = RawWgpuTarget(target);
-        dotlottie_player.set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_target, width, height, target_type.to_wgpu_target_type())
+        dotlottie_player.set_wg_target(
+            &wgpu_device,
+            &wgpu_instance,
+            &wgpu_target,
+            width,
+            height,
+            target_type.to_wgpu_target_type(),
+        )
     })
 }
 

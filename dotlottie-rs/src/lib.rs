@@ -1,5 +1,6 @@
+mod asset_resolver;
 #[cfg(feature = "dotlottie")]
-mod fms;
+mod dotlottie;
 mod layout;
 mod lottie_renderer;
 mod markers;
@@ -15,8 +16,9 @@ pub(crate) mod time;
 #[cfg(feature = "c_api")]
 pub mod c_api;
 
+pub use asset_resolver::{AssetResolver, AssetResolverContext, ResolvedAsset};
 #[cfg(feature = "dotlottie")]
-pub use fms::*;
+pub use dotlottie::*;
 pub use layout::*;
 pub use lottie_renderer::*;
 pub use markers::*;

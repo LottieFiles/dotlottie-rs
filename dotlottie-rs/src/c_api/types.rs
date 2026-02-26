@@ -13,6 +13,16 @@ use crate::state_machine_engine::events::Event;
 use crate::lottie_renderer::LottieRendererError;
 use crate::DotLottiePlayerError;
 
+pub type DotLottieAssetResolverCallback = Option<
+    unsafe extern "C" fn(
+        src: *const std::ffi::c_char,
+        data_out: *mut *const u8,
+        size_out: *mut u32,
+        mimetype_out: *mut *const std::ffi::c_char,
+        userdata: *mut std::ffi::c_void,
+    ) -> bool,
+>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 pub enum PlaybackStatus {
@@ -118,7 +128,6 @@ impl FromStr for InteractionType {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]

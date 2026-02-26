@@ -217,6 +217,9 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     #[cfg(feature = "dotlottie")]
     {
         exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+            if file_data.is_null() || file_size == 0 {
+                return DotLottieResult::InvalidParameter;
+            }
             let file_slice = slice::from_raw_parts(file_data as *const u8, file_size);
             dotlottie_player.load_dotlottie_data(file_slice, width, height)
         })
@@ -234,6 +237,8 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
 /// - `DotLottieResult::Success` on success
 /// - `DotLottieResult::ManifestNotAvailable` if no manifest is available
 /// - `DotLottieResult::InvalidParameter` if ptr is invalid
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `dotlottie` feature
+/// - `DotLottieResult::Error` if the manifest cannot be serialized to JSON
 #[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_manifest(
@@ -928,6 +933,7 @@ pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut DotLottiePlayer) -> Dot
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `theming` feature
 /// - `DotLottieResult::InvalidParameter` if the data is invalid or pointer is invalid
 #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
 #[no_mangle]
@@ -1245,6 +1251,7 @@ pub unsafe extern "C" fn dotlottie_marker(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `dotlottie` feature
 /// - `DotLottieResult::InvalidParameter` if no animation is active or player pointer is invalid
 #[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
 #[no_mangle]
@@ -1293,6 +1300,7 @@ pub unsafe extern "C" fn dotlottie_animation_id(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `theming` feature
 /// - `DotLottieResult::InvalidParameter` if no theme is active or player pointer is invalid
 #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
 #[no_mangle]
@@ -1549,6 +1557,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_load_data(
 ///
 /// # Returns
 /// DotLottieResult::Success if started, error variant if failed
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `state-machines` feature
 #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_start(
@@ -1982,6 +1991,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_numeric_input(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `state-machines` feature
 /// - `DotLottieResult::InvalidParameter` if the input doesn't exist or pointers are invalid
 #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
@@ -2075,6 +2085,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_boolean_input(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `state-machines` feature
 /// - `DotLottieResult::InvalidParameter` if pointer is invalid
 #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
@@ -2121,6 +2132,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_current_state(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `state-machines` feature
 /// - `DotLottieResult::InvalidParameter` if pointer is invalid
 #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
@@ -2420,6 +2432,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_poll_internal_event(
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `state-machines` feature
 /// - `DotLottieResult::InvalidParameter` if state machine not found or pointers are invalid
 #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]

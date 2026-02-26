@@ -196,7 +196,7 @@ impl DotLottieReader {
         Ok(theme_str.parse::<Theme>()?)
     }
 
-    fn embed_image_assets(&self, assets: &mut Vec<Value>) -> Result<(), DotLottieReaderError> {
+    fn embed_image_assets(&self, assets: &mut [Value]) -> Result<(), DotLottieReaderError> {
         let image_prefix = if self.version == 2 { "i/" } else { "images/" };
         let mut asset_path = String::with_capacity(128);
         let mut data_url_buf = String::with_capacity(1024);
@@ -243,7 +243,7 @@ impl DotLottieReader {
         Ok(())
     }
 
-    fn embed_font_assets(&self, font_list: &mut Vec<Value>) -> Result<(), DotLottieReaderError> {
+    fn embed_font_assets(&self, font_list: &mut [Value]) -> Result<(), DotLottieReaderError> {
         let mut font_path = String::with_capacity(128);
         let mut data_url_buf = String::with_capacity(1024);
         let key_fpath = "fPath".to_owned();

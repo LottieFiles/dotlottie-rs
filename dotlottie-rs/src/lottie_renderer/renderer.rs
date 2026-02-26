@@ -1,3 +1,4 @@
+use crate::asset_resolver::AssetResolverContext;
 use core::error;
 use std::ffi::CStr;
 
@@ -162,6 +163,13 @@ pub trait Animation: Default {
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), Self::Error>;
 
     fn get_transform(&self) -> Result<[f32; 9], Self::Error>;
+
+    fn set_asset_resolver(
+        &mut self,
+        _ctx: Box<AssetResolverContext>,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 pub trait Renderer: Sized + 'static {

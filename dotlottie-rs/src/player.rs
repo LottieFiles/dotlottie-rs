@@ -1,5 +1,7 @@
+use crate::asset_resolver::{AssetResolver, AssetResolverContext};
 use crate::time::{Duration, Instant};
 use std::ffi::{CStr, CString};
+use std::sync::Arc;
 use std::{fs, mem};
 
 use crate::poll_events::{DotLottieEvent, EventQueue};
@@ -121,6 +123,7 @@ pub struct DotLottiePlayer {
     animation_id: Option<CString>,
     #[cfg(feature = "state-machines")]
     state_machine_id: Option<CString>,
+    user_asset_resolver: Option<Arc<dyn AssetResolver>>,
 }
 
 #[cfg(feature = "tvg")]
@@ -184,6 +187,7 @@ impl DotLottiePlayer {
             cached_start_end_frame: None,
             event_queue: EventQueue::new(),
             completion_event: CompletionEvent::None,
+            user_asset_resolver: None,
         }
     }
 
@@ -987,6 +991,29 @@ impl DotLottiePlayer {
         Ok(())
     }
 
+    fn apply_resolver_context(&mut self) {
+        let user = self.user_asset_resolver.clone();
+
+        #[cfg(feature = "dotlottie")]
+        let dotlottie = self
+            .dotlottie_reader
+            .as_ref()
+            .map(|m| m.create_resolver());
+
+        let has_resolver = user.is_some();
+        #[cfg(feature = "dotlottie")]
+        let has_resolver = has_resolver || dotlottie.is_some();
+
+        if has_resolver {
+            let ctx = Box::new(AssetResolverContext::new(
+                user,
+                #[cfg(feature = "dotlottie")]
+                dotlottie,
+            ));
+            let _ = self.renderer.set_asset_resolver(ctx);
+        }
+    }
+
     fn load_animation_common<F>(
         &mut self,
         loader: F,
@@ -1058,6 +1085,8 @@ impl DotLottiePlayer {
             self.marker_names = names;
             self.marker_data = data;
         }
+
+        self.apply_resolver_context();
 
         let result = self.load_animation_common(
             |renderer, w, h| renderer.load_data(animation_data, w, h),
@@ -1146,6 +1175,8 @@ impl DotLottiePlayer {
 
         self.dotlottie_reader = Some(manager);
 
+        self.apply_resolver_context();
+
         let result = self.load_animation_common(
             |renderer, w, h| renderer.load_data(&animation_data_cstr, w, h),
             width,
@@ -1188,6 +1219,8 @@ impl DotLottiePlayer {
                     let (names, data) = extract_markers(&animation_data);
                     self.marker_names = names;
                     self.marker_data = data;
+
+                    self.apply_resolver_context();
 
                     let animation_data_cstr =
                         CString::new(animation_data).expect("Failed to create CString");
@@ -1483,6 +1516,14 @@ impl DotLottiePlayer {
     pub fn set_quality(&mut self, quality: u8) -> Result<(), DotLottiePlayerError> {
         self.renderer.set_quality(quality)?;
         Ok(())
+    }
+
+    pub fn set_asset_resolver(&mut self, resolver: impl AssetResolver + 'static) {
+        self.user_asset_resolver = Some(Arc::new(resolver));
+    }
+
+    pub fn clear_asset_resolver(&mut self) {
+        self.user_asset_resolver = None;
     }
 
     #[cfg(feature = "dotlottie")]

@@ -1,3 +1,4 @@
+use crate::asset_resolver::AssetResolverContext;
 use crate::Layout;
 use std::ffi::{CStr, CString};
 
@@ -194,6 +195,11 @@ pub trait LottieRenderer {
     fn load_font(&mut self, name: &str, data: &[u8]) -> Result<(), LottieRendererError>;
 
     fn unload_font(&mut self, name: &str) -> Result<(), LottieRendererError>;
+
+    fn set_asset_resolver(
+        &mut self,
+        ctx: Box<AssetResolverContext>,
+    ) -> Result<(), LottieRendererError>;
 }
 
 impl dyn LottieRenderer {
@@ -213,11 +219,11 @@ impl dyn LottieRenderer {
             layout: Layout::default(),
             user_transform: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
             slots: BTreeMap::new(),
+            pending_resolver_context: None,
         })
     }
 }
 
-#[derive(Default)]
 struct LottieRendererImpl<R: Renderer> {
     animation: Option<R::Animation>,
     background_shape: Option<R::Shape>,
@@ -233,6 +239,7 @@ struct LottieRendererImpl<R: Renderer> {
     layout: Layout,
     user_transform: [f32; 9],
     slots: BTreeMap<String, SlotType>,
+    pending_resolver_context: Option<Box<AssetResolverContext>>,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -247,6 +254,12 @@ impl<R: Renderer> LottieRendererImpl<R> {
 
     fn load_animation(&mut self, data: &CStr) -> Result<R::Animation, LottieRendererError> {
         let mut animation = R::Animation::default();
+
+        if let Some(ctx) = self.pending_resolver_context.take() {
+            animation
+                .set_asset_resolver(ctx)
+                .map_err(into_lottie::<R>)?;
+        }
 
         let mimetype = c"lottie+json";
         animation
@@ -767,6 +780,14 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             self.apply_user_transform()?;
         }
 
+        Ok(())
+    }
+
+    fn set_asset_resolver(
+        &mut self,
+        ctx: Box<AssetResolverContext>,
+    ) -> Result<(), LottieRendererError> {
+        self.pending_resolver_context = Some(ctx);
         Ok(())
     }
 }

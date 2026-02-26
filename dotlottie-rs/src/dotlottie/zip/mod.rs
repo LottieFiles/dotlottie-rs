@@ -37,6 +37,10 @@ impl DotLottieArchive {
         })
     }
 
+    pub fn file_names(&self) -> impl Iterator<Item = &str> {
+        self.entries.iter().map(|e| e.name.as_ref())
+    }
+
     pub fn read(&self, name: &str) -> Result<Cow<'_, [u8]>, ZipError> {
         let idx = self
             .entries

@@ -89,10 +89,7 @@ mod wgpu_native {
         println!("cargo:rerun-if-env-changed=WGPU_NATIVE_LIB");
 
         // Priority 1: env var overrides
-        if let (Ok(inc), Ok(lib)) = (
-            env::var("WGPU_NATIVE_INCLUDE"),
-            env::var("WGPU_NATIVE_LIB"),
-        ) {
+        if let (Ok(inc), Ok(lib)) = (env::var("WGPU_NATIVE_INCLUDE"), env::var("WGPU_NATIVE_LIB")) {
             return Ok((PathBuf::from(inc), PathBuf::from(lib)));
         }
 

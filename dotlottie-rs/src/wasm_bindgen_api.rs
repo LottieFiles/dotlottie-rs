@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ffi::CString;
 
 use js_sys::{Array, Float32Array, Object, Uint8Array};
@@ -168,6 +169,8 @@ pub struct DotLottiePlayerWasm {
     wg_device_ptr: usize,
     #[cfg(feature = "webgpu")]
     wg_surface_ptr: usize,
+    /// Cache of slot values: id -> (type_name, json_value).
+    slot_cache: HashMap<String, (String, String)>,
 }
 
 #[wasm_bindgen]
@@ -188,6 +191,7 @@ impl DotLottiePlayerWasm {
             wg_device_ptr: 0,
             #[cfg(feature = "webgpu")]
             wg_surface_ptr: 0,
+            slot_cache: HashMap::new(),
         }
     }
 
@@ -261,6 +265,7 @@ impl DotLottiePlayerWasm {
 
     /// Load a Lottie JSON animation.  Sets up the rendering target automatically.
     pub fn load_animation(&mut self, data: &str, width: u32, height: u32) -> bool {
+        self.slot_cache.clear();
         if !self.setup_target(width, height) { return false; }
         let Ok(c_data) = CString::new(data) else { return false; };
         self.player.load_animation_data(&c_data, width, height).is_ok()
@@ -269,6 +274,7 @@ impl DotLottiePlayerWasm {
     /// Load a .lottie archive from raw bytes.
     #[cfg(feature = "dotlottie")]
     pub fn load_dotlottie_data(&mut self, data: &[u8], width: u32, height: u32) -> bool {
+        self.slot_cache.clear();
         if !self.setup_target(width, height) { return false; }
         self.player.load_dotlottie_data(data, width, height).is_ok()
     }
@@ -276,6 +282,7 @@ impl DotLottiePlayerWasm {
     /// Load an animation from an already-loaded .lottie archive by its ID.
     #[cfg(feature = "dotlottie")]
     pub fn load_animation_from_id(&mut self, id: &str, width: u32, height: u32) -> bool {
+        self.slot_cache.clear();
         if !self.setup_target(width, height) { return false; }
         let Ok(c_id) = CString::new(id) else { return false; };
         self.player.load_animation(&c_id, width, height).is_ok()
@@ -472,6 +479,64 @@ impl DotLottiePlayerWasm {
         self.player.set_slots_str(json).is_ok()
     }
 
+    /// Set a single slot by ID from a JSON value string.
+    pub fn set_slot_str(&mut self, id: &str, json: &str) -> bool {
+        let wrapper = format!("{{\"{}\": {}}}", id, json);
+        if self.player.set_slots_str(&wrapper).is_ok() {
+            let slot_type = Self::infer_slot_type(json);
+            self.slot_cache.insert(id.to_string(), (slot_type, json.to_string()));
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Get the JSON value of a single slot by ID, or `undefined` if not cached.
+    pub fn get_slot_str(&self, id: &str) -> Option<String> {
+        self.slot_cache.get(id).map(|(_, json)| json.clone())
+    }
+
+    /// Get all cached slots as a JSON object string.
+    pub fn get_slots_str(&self) -> String {
+        // Build JSON manually since values are already JSON strings
+        let mut out = String::from('{');
+        for (i, (k, (_, v))) in self.slot_cache.iter().enumerate() {
+            if i > 0 { out.push(','); }
+            out.push('"');
+            out.push_str(k);
+            out.push_str("\":");
+            out.push_str(v);
+        }
+        out.push('}');
+        out
+    }
+
+    /// Get all cached slot IDs as a JS array.
+    pub fn get_slot_ids(&self) -> JsValue {
+        let arr = Array::new();
+        for key in self.slot_cache.keys() {
+            arr.push(&key.as_str().into());
+        }
+        arr.into()
+    }
+
+    /// Get the type string of a cached slot, or `undefined` if not found.
+    pub fn get_slot_type(&self, id: &str) -> Option<String> {
+        self.slot_cache.get(id).map(|(t, _)| t.clone())
+    }
+
+    /// Reset a slot to its original value and clear its cache entry.
+    pub fn reset_slot(&mut self, id: &str) -> bool {
+        self.slot_cache.remove(id);
+        self.player.clear_slot(id).is_ok()
+    }
+
+    /// Reset all slots and clear the cache.
+    pub fn reset_slots(&mut self) -> bool {
+        self.slot_cache.clear();
+        self.player.clear_slots().is_ok()
+    }
+
     // ── Layer inspection ──────────────────────────────────────────────────────
 
     pub fn intersect(&self, x: f32, y: f32, layer_name: &str) -> bool {
@@ -631,6 +696,15 @@ impl DotLottiePlayerWasm {
     #[cfg(feature = "dotlottie")]
     pub fn animation_id(&self) -> Option<String> {
         self.player.animation_id().map(|c| c.to_string_lossy().into_owned())
+    }
+
+    /// Returns the animation manifest as a JSON string, or empty string if unavailable.
+    #[cfg(feature = "dotlottie")]
+    pub fn manifest_string(&self) -> String {
+        match self.player.manifest() {
+            Some(m) => serde_json::to_string(m).unwrap_or_default(),
+            None => String::new(),
+        }
     }
 
     // ── State machines ────────────────────────────────────────────────────────
@@ -821,8 +895,168 @@ impl DotLottiePlayerWasm {
             }
         }
     }
+
+    // ── SM lifecycle ──────────────────────────────────────────────────────
+
+    /// Start the state machine with an open-URL policy.
+    #[cfg(feature = "state-machines")]
+    pub fn sm_start(&mut self, require_user_interaction: bool, whitelist: Vec<JsValue>) -> bool {
+        let Some(ref mut sm) = self.state_machine else { return false };
+        use crate::actions::open_url_policy::OpenUrlPolicy;
+        let policy = OpenUrlPolicy::new(
+            whitelist.iter().filter_map(|v| v.as_string()).collect(),
+            require_user_interaction,
+        );
+        sm.start(&policy).is_ok()
+    }
+
+    /// Stop the state machine.
+    #[cfg(feature = "state-machines")]
+    pub fn sm_stop(&mut self) -> bool {
+        let Some(ref mut sm) = self.state_machine else { return false };
+        sm.stop();
+        true
+    }
+
+    /// Get the current status of the state machine as a string.
+    #[cfg(feature = "state-machines")]
+    pub fn sm_status(&self) -> String {
+        self.state_machine.as_ref().map(|sm| sm.status()).unwrap_or_default()
+    }
+
+    /// Get the name of the current state.
+    #[cfg(feature = "state-machines")]
+    pub fn sm_current_state(&self) -> String {
+        self.state_machine.as_ref().map(|sm| sm.get_current_state_name()).unwrap_or_default()
+    }
+
+    /// Override the current state.
+    #[cfg(feature = "state-machines")]
+    pub fn sm_override_current_state(&mut self, state: &str, immediate: bool) -> bool {
+        let Some(ref mut sm) = self.state_machine else { return false };
+        sm.override_current_state(state, immediate).is_ok()
+    }
+
+    // ── SM introspection ──────────────────────────────────────────────────
+
+    /// Returns the framework setup listeners as a JS array of strings.
+    #[cfg(feature = "state-machines")]
+    pub fn sm_framework_setup(&self) -> JsValue {
+        let Some(ref sm) = self.state_machine else { return Array::new().into() };
+        let listeners = sm.framework_setup();
+        let arr = Array::new();
+        for l in &listeners { arr.push(&l.as_str().into()); }
+        arr.into()
+    }
+
+    /// Returns all state machine inputs as a JS array of strings.
+    #[cfg(feature = "state-machines")]
+    pub fn sm_get_inputs(&self) -> JsValue {
+        let Some(ref sm) = self.state_machine else { return Array::new().into() };
+        let inputs = sm.get_inputs();
+        let arr = Array::new();
+        for i in &inputs { arr.push(&i.as_str().into()); }
+        arr.into()
+    }
+
+    // ── SM pointer events ─────────────────────────────────────────────────
+
+    #[cfg(feature = "state-machines")]
+    pub fn sm_post_click(&mut self, x: f32, y: f32) {
+        if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::Click { x, y }); }
+    }
+
+    #[cfg(feature = "state-machines")]
+    pub fn sm_post_pointer_down(&mut self, x: f32, y: f32) {
+        if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::PointerDown { x, y }); }
+    }
+
+    #[cfg(feature = "state-machines")]
+    pub fn sm_post_pointer_up(&mut self, x: f32, y: f32) {
+        if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::PointerUp { x, y }); }
+    }
+
+    #[cfg(feature = "state-machines")]
+    pub fn sm_post_pointer_move(&mut self, x: f32, y: f32) {
+        if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::PointerMove { x, y }); }
+    }
+
+    #[cfg(feature = "state-machines")]
+    pub fn sm_post_pointer_enter(&mut self, x: f32, y: f32) {
+        if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::PointerEnter { x, y }); }
+    }
+
+    #[cfg(feature = "state-machines")]
+    pub fn sm_post_pointer_exit(&mut self, x: f32, y: f32) {
+        if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::PointerExit { x, y }); }
+    }
+
+    // ── SM internal events ────────────────────────────────────────────────
+
+    /// Poll the next state machine internal event.  Returns `null` if the
+    /// queue is empty, otherwise a JS object `{ type: "Message", message }`.
+    #[cfg(feature = "state-machines")]
+    pub fn sm_poll_internal_event(&mut self) -> JsValue {
+        let Some(ref mut sm) = self.state_machine else { return JsValue::null() };
+        let Some(evt) = sm.poll_internal_event() else { return JsValue::null() };
+        match &evt {
+            crate::StateMachineInternalEvent::Message { message } => {
+                let obj = js_obj_with_type("Message");
+                set_str(&obj, "message", &message.to_string_lossy());
+                obj.into()
+            }
+        }
+    }
+}
+
+impl DotLottiePlayerWasm {
+    /// Infer the slot type from the JSON shape.
+    fn infer_slot_type(json: &str) -> String {
+        let Ok(val) = serde_json::from_str::<serde_json::Value>(json) else {
+            return "unknown".to_string();
+        };
+        // Gradient: has "p" key (colorStopCount)
+        if val.get("p").is_some() {
+            return "gradient".to_string();
+        }
+        // Text: k is array where first element has "s" with string "t" field
+        if let Some(k) = val.get("k") {
+            if let Some(arr) = k.as_array() {
+                if let Some(first) = arr.first() {
+                    if let Some(s) = first.get("s") {
+                        if s.get("t").and_then(|t| t.as_str()).is_some() {
+                            return "text".to_string();
+                        }
+                    }
+                }
+            }
+            // Scalar: k is a number
+            if k.is_number() {
+                return "scalar".to_string();
+            }
+            // Color or vector: k is an array of numbers
+            if let Some(arr) = k.as_array() {
+                if arr.len() >= 3 && arr.iter().all(|v| v.is_number()) {
+                    return "color".to_string();
+                }
+                if arr.len() == 2 && arr.iter().all(|v| v.is_number()) {
+                    return "vector".to_string();
+                }
+            }
+        }
+        "unknown".to_string()
+    }
 }
 
 impl Default for DotLottiePlayerWasm {
     fn default() -> Self { Self::new() }
+}
+
+// ─── Free functions ──────────────────────────────────────────────────────────
+
+/// Register a font globally (static, not tied to a player instance).
+#[wasm_bindgen]
+#[cfg(feature = "tvg")]
+pub fn register_font(name: &str, data: &[u8]) -> bool {
+    DotLottiePlayer::load_font(name, data).is_ok()
 }

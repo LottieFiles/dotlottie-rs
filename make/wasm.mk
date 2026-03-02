@@ -300,13 +300,18 @@ wasm-bindgen-setup:
 	@rustup target add $(WASM_BINDGEN_TARGET)
 	@command -v wasm-pack >/dev/null 2>&1 || curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
-# wasm-bindgen ≥0.2 generates `import * as __wbg_star0 from 'env'` unconditionally
-# even when the wasm binary has no env imports.  Browsers reject the bare 'env'
-# specifier, so strip the two dead lines after every wasm-pack run.
+# Post-process wasm-bindgen output to fix two issues:
+# 1. wasm-bindgen ≥0.2 generates `import * as __wbg_star0 from 'env'` unconditionally
+#    even when the wasm binary has no env imports.  Browsers reject the bare 'env'
+#    specifier, so strip the two dead lines.
+# 2. The default module path fallback `new URL('...wasm', import.meta.url)` causes
+#    Webpack/Next.js to try resolving the .wasm file at build time, breaking bundled
+#    consumers. Replace with a throw since DotLottieWasmLoader always provides a URL.
 define strip_env_import
 	sed -i '' \
 		-e '/^import \* as __wbg_star0 from .env.;/d' \
 		-e '/imports\[.env.\] = __wbg_star0;/d' \
+		-e "s|module_or_path = new URL('dotlottie_rs_bg.wasm', import.meta.url);|throw new Error('WASM module URL must be provided via DotLottieWasmLoader or setWasmUrl().');|" \
 		$(1)/dotlottie_rs.js
 endef
 

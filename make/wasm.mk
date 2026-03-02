@@ -274,3 +274,71 @@ wasm-clean:
 	@rm -rf release/wasm-webgl
 	@rm -rf release/wasm-webgpu
 	@echo "✓ WASM C API builds cleaned (including all variants)"
+
+# ============================================================================
+# wasm32-unknown-unknown / wasm-bindgen targets
+# ============================================================================
+
+WASM_BINDGEN_TARGET := wasm32-unknown-unknown
+WASM_BINDGEN_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-ttf,dotlottie,theming,state-machines,wasm,wasm-bindgen-api
+
+# Apple's system clang lacks the WebAssembly backend.  Use Homebrew LLVM if
+# present, otherwise fall back to whatever clang/clang++ is on PATH.
+LLVM_PREFIX := $(shell brew --prefix llvm 2>/dev/null)
+ifneq ($(LLVM_PREFIX),)
+  WASM_CC  := $(LLVM_PREFIX)/bin/clang
+  WASM_CXX := $(LLVM_PREFIX)/bin/clang++
+else
+  WASM_CC  := clang
+  WASM_CXX := clang++
+endif
+
+.PHONY: wasm-bindgen-setup wasm-bindgen-sw wasm-bindgen-webgl wasm-bindgen-webgpu wasm-bindgen-all wasm-bindgen-clean
+
+# Install the wasm32-unknown-unknown target and wasm-pack
+wasm-bindgen-setup:
+	@rustup target add $(WASM_BINDGEN_TARGET)
+	@command -v wasm-pack >/dev/null 2>&1 || curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+# wasm-bindgen ≥0.2 generates `import * as __wbg_star0 from 'env'` unconditionally
+# even when the wasm binary has no env imports.  Browsers reject the bare 'env'
+# specifier, so strip the two dead lines after every wasm-pack run.
+define strip_env_import
+	sed -i '' \
+		-e '/^import \* as __wbg_star0 from .env.;/d' \
+		-e '/imports\[.env.\] = __wbg_star0;/d' \
+		$(1)/dotlottie_rs.js
+endef
+
+# SW (software rasteriser) build — no graphics API required
+wasm-bindgen-sw:
+	CC=$(WASM_CC) CXX=$(WASM_CXX) \
+		wasm-pack build dotlottie-rs --target web \
+		--out-dir ../release/wasm-bindgen-sw \
+		--no-default-features --features $(WASM_BINDGEN_COMMON)
+	$(call strip_env_import,release/wasm-bindgen-sw)
+
+# WebGL2 build
+wasm-bindgen-webgl:
+	CC=$(WASM_CC) CXX=$(WASM_CXX) \
+		wasm-pack build dotlottie-rs --target web \
+		--out-dir ../release/wasm-bindgen-webgl \
+		--no-default-features --features $(WASM_BINDGEN_COMMON),tvg-gl,webgl
+	$(call strip_env_import,release/wasm-bindgen-webgl)
+
+# WebGPU build — requires web_sys_unstable_apis cfg for all Gpu* web-sys types
+wasm-bindgen-webgpu:
+	CC=$(WASM_CC) CXX=$(WASM_CXX) \
+		RUSTFLAGS="--cfg=web_sys_unstable_apis" \
+		wasm-pack build dotlottie-rs --target web \
+		--out-dir ../release/wasm-bindgen-webgpu \
+		--no-default-features --features $(WASM_BINDGEN_COMMON),tvg-wg,webgpu
+	$(call strip_env_import,release/wasm-bindgen-webgpu)
+
+# Build all three wasm-bindgen variants
+wasm-bindgen-all: wasm-bindgen-sw wasm-bindgen-webgl wasm-bindgen-webgpu
+
+# Remove wasm-bindgen artefacts
+wasm-bindgen-clean:
+	@cargo clean --manifest-path dotlottie-rs/Cargo.toml --target $(WASM_BINDGEN_TARGET)
+	@rm -rf release/wasm-bindgen-sw release/wasm-bindgen-webgl release/wasm-bindgen-webgpu

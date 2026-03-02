@@ -12,7 +12,12 @@ pub fn now() -> f64 {
         unsafe { emscripten_get_now() }
     }
 
-    #[cfg(not(target_os = "emscripten"))]
+    #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+    {
+        js_sys::Date::now()
+    }
+
+    #[cfg(not(any(target_os = "emscripten", all(target_arch = "wasm32", not(target_os = "emscripten")))))]
     {
         std::time::SystemTime::now()
             .duration_since(std::time::SystemTime::UNIX_EPOCH)

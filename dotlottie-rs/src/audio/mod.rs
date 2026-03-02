@@ -2,15 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use serde_json::Value;
 
-#[cfg(feature = "audio-native")]
+#[cfg(feature = "audio")]
 mod rodio_player;
-#[cfg(feature = "audio-native")]
+#[cfg(feature = "audio")]
 pub use rodio_player::RodioPlayer;
-
-#[cfg(feature = "audio-sdl")]
-mod sdl_player;
-#[cfg(feature = "audio-sdl")]
-pub use sdl_player::SdlPlayer;
 
 const BASE64_CHARS: &[u8; 64] =
     b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -228,35 +223,24 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
 
 /// Manages frame-synchronised audio playback.
 ///
-/// Audio is played directly via SDL2 on all supported targets (macOS, iOS,
-/// Android, and WASM/Emscripten via the Emscripten SDL2 port → Web Audio API).
-/// [`AudioManager::update`] (and friends) also return [`AudioEvent`]s that
-/// the host application may handle.
+/// Audio is played via rodio on native targets (macOS, iOS, Android) and on
+/// `wasm32-unknown-unknown` (Web Audio API backend). [`AudioManager::update`]
+/// (and friends) also return [`AudioEvent`]s that the host application may
+/// handle.
 pub struct AudioManager {
     assets: HashMap<String, AudioAsset>,
     layers: Vec<AudioLayer>,
     /// Set of `ref_id`s whose audio is currently active (started but not stopped).
     playing: HashSet<String>,
 
-    #[cfg(feature = "audio-native")]
+    #[cfg(feature = "audio")]
     rodio_player: Option<RodioPlayer>,
-
-    #[cfg(feature = "audio-sdl")]
-    sdl_player: Option<SdlPlayer>,
 }
 
 impl AudioManager {
     pub fn new(assets: Vec<AudioAsset>, layers: Vec<AudioLayer>) -> Self {
-        #[cfg(feature = "audio-native")]
+        #[cfg(feature = "audio")]
         let rodio_player = RodioPlayer::new().ok().map(|mut player| {
-            for asset in &assets {
-                player.load(&asset.id, &asset.data);
-            }
-            player
-        });
-
-        #[cfg(feature = "audio-sdl")]
-        let sdl_player = SdlPlayer::new().ok().map(|mut player| {
             for asset in &assets {
                 player.load(&asset.id, &asset.data);
             }
@@ -270,17 +254,14 @@ impl AudioManager {
             assets: assets_map,
             layers,
             playing: HashSet::new(),
-            #[cfg(feature = "audio-native")]
+            #[cfg(feature = "audio")]
             rodio_player,
-            #[cfg(feature = "audio-sdl")]
-            sdl_player,
         }
     }
 
     /// Synchronise audio state with the current animation frame.
     ///
-    /// Returns events that the host application may handle. On targets where
-    /// SDL2 is active, audio is also driven directly inside this call.
+    /// Returns events that the host application may handle.
     pub fn update(&mut self, frame: f32) -> Vec<AudioEvent> {
         let mut events = Vec::new();
 
@@ -291,13 +272,8 @@ impl AudioManager {
             if should_play && !is_playing {
                 self.playing.insert(layer.ref_id.clone());
 
-                #[cfg(feature = "audio-native")]
+                #[cfg(feature = "audio")]
                 if let Some(ref mut player) = self.rodio_player {
-                    player.play(&layer.ref_id, layer.volume);
-                }
-
-                #[cfg(feature = "audio-sdl")]
-                if let Some(ref mut player) = self.sdl_player {
                     player.play(&layer.ref_id, layer.volume);
                 }
 
@@ -308,13 +284,8 @@ impl AudioManager {
             } else if !should_play && is_playing {
                 self.playing.remove(&layer.ref_id);
 
-                #[cfg(feature = "audio-native")]
+                #[cfg(feature = "audio")]
                 if let Some(ref mut player) = self.rodio_player {
-                    player.stop(&layer.ref_id);
-                }
-
-                #[cfg(feature = "audio-sdl")]
-                if let Some(ref mut player) = self.sdl_player {
                     player.stop(&layer.ref_id);
                 }
 
@@ -331,15 +302,8 @@ impl AudioManager {
     pub fn pause_all(&mut self) -> Vec<AudioEvent> {
         let ids: Vec<String> = self.playing.iter().cloned().collect();
 
-        #[cfg(feature = "audio-native")]
+        #[cfg(feature = "audio")]
         if let Some(ref mut player) = self.rodio_player {
-            for id in &ids {
-                player.pause(id);
-            }
-        }
-
-        #[cfg(feature = "audio-sdl")]
-        if let Some(ref mut player) = self.sdl_player {
             for id in &ids {
                 player.pause(id);
             }
@@ -354,15 +318,8 @@ impl AudioManager {
     pub fn resume_all(&mut self) -> Vec<AudioEvent> {
         let ids: Vec<String> = self.playing.iter().cloned().collect();
 
-        #[cfg(feature = "audio-native")]
+        #[cfg(feature = "audio")]
         if let Some(ref mut player) = self.rodio_player {
-            for id in &ids {
-                player.resume(id);
-            }
-        }
-
-        #[cfg(feature = "audio-sdl")]
-        if let Some(ref mut player) = self.sdl_player {
             for id in &ids {
                 player.resume(id);
             }
@@ -380,15 +337,8 @@ impl AudioManager {
     pub fn stop_all(&mut self) -> Vec<AudioEvent> {
         let ids: Vec<String> = self.playing.drain().collect();
 
-        #[cfg(feature = "audio-native")]
+        #[cfg(feature = "audio")]
         if let Some(ref mut player) = self.rodio_player {
-            for id in &ids {
-                player.stop(id);
-            }
-        }
-
-        #[cfg(feature = "audio-sdl")]
-        if let Some(ref mut player) = self.sdl_player {
             for id in &ids {
                 player.stop(id);
             }
@@ -397,6 +347,29 @@ impl AudioManager {
         ids.into_iter()
             .map(|ref_id| AudioEvent::Stop { ref_id })
             .collect()
+    }
+
+    /// Recreate the underlying audio player with a fresh output stream.
+    ///
+    /// On `wasm32-unknown-unknown`, `OutputStream::try_default()` creates a new
+    /// Web Audio `AudioContext`.  If this is called from inside a browser user-
+    /// gesture handler (click, keydown, etc.) the new context starts in
+    /// `running` state, satisfying the browser's autoplay policy.
+    ///
+    /// The `playing` set is cleared so that [`AudioManager::update`] will
+    /// re-issue `play()` calls on the new player during the next tick.
+    pub fn recreate_player(&mut self) {
+        self.playing.clear();
+
+        #[cfg(feature = "audio")]
+        {
+            self.rodio_player = RodioPlayer::new().ok().map(|mut player| {
+                for (id, asset) in &self.assets {
+                    player.load(id, &asset.data);
+                }
+                player
+            });
+        }
     }
 
     /// Iterate over all decoded audio assets.

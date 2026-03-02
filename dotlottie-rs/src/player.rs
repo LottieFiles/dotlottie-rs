@@ -217,6 +217,20 @@ impl DotLottiePlayer {
             .unwrap_or_default()
     }
 
+    /// Recreate the audio output stream from within a user-gesture context.
+    ///
+    /// Browsers suspend any `AudioContext` created outside a user gesture
+    /// (e.g. during page load).  Call this method once from a click or keydown
+    /// handler to obtain a running context and enable audio playback.
+    ///
+    /// No-op when the `audio` feature is disabled or no audio is loaded.
+    #[cfg(feature = "audio")]
+    pub fn unlock_audio(&mut self) {
+        if let Some(am) = &mut self.audio_manager {
+            am.recreate_player();
+        }
+    }
+
     pub fn marker_names(&self) -> &[CString] {
         &self.marker_names
     }
@@ -685,8 +699,8 @@ impl DotLottiePlayer {
             if let Some(am) = &mut self.audio_manager {
                 // Events are always pushed so hosts on every platform (native or
                 // WASM) can observe audio state changes via poll_event().
-                // AudioManager::update() also drives SDL2 directly on all
-                // supported targets, so audio plays AND events fire.
+                // AudioManager::update() also drives rodio directly, so audio
+                // plays AND events fire.
                 for event in am.update(no) {
                     match event {
                         AudioEvent::Play { ref_id, volume } => {

@@ -125,7 +125,7 @@ RELEASE_FILE_NAME = dotlottie_player
 RUNTIME_HEADER = $(RELEASE_FILE_NAME).h
 BUILD_DIR = $(DOTLOTTIE_ROOT)/build
 DOTLOTTIE_PLAYER = dotlottie-player
-NATIVE_FEATURES = ffi,tvg,tvg-sw,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions
+NATIVE_FEATURES = ffi,tvg,tvg-sw,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions,dotlottie,state-machines,theming
 
 DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR = $(RELEASE)/$(NATIVE)/$(DOTLOTTIE_PLAYER)
 DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR = $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)/include

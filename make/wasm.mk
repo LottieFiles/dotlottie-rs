@@ -4,7 +4,7 @@ RUST_TOOLCHAIN ?= nightly-2025-08-01
 
 # Default Rust features for WASM builds
 WASM_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions
-WASM_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming,audio
+WASM_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming,audio-sdl
 
 ifdef FEATURES
 	WASM_FEATURES = $(FEATURES)
@@ -45,7 +45,7 @@ ifneq (,$(findstring tvg-simd,$(FEATURES)))
 endif
 
 # WASM-specific phony targets
-.PHONY: wasm wasm-setup wasm-install-emsdk wasm-build-rust wasm-link wasm-package wasm-clean wasm-webgl wasm-webgpu wasm-all
+.PHONY: wasm wasm-setup wasm-install-emsdk wasm-build-rust wasm-link wasm-package wasm-clean wasm-webgl wasm-webgpu wasm-all wasm-init-sdl2-port
 
 
 # Initialize emsdk submodule
@@ -110,6 +110,14 @@ wasm-setup: wasm-init-submodule wasm-install-emsdk
 
 # Note: C API function export list is auto-generated from the C header during link step
 
+# Pre-fetch Emscripten SDL2 port so its headers land in the sysroot before the Rust build.
+# sdl2-sys needs SDL2/SDL.h (and friends) visible to bindgen at compile time.
+wasm-init-sdl2-port: wasm-init-submodule
+	@echo "→ Pre-fetching SDL2 port for Emscripten audio..."
+	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV) && \
+		$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc --use-port=sdl2 -c /dev/null -o /dev/null 2>/dev/null || true"
+	@echo "✓ SDL2 port ready"
+
 # Pre-fetch WebGPU Dawn port if needed (so headers are available during Rust build)
 wasm-fetch-webgpu-port:
 ifneq (,$(findstring tvg-wg,$(WASM_FEATURES)))
@@ -120,7 +128,7 @@ ifneq (,$(findstring tvg-wg,$(WASM_FEATURES)))
 endif
 
 # Build Rust library for WASM with C API (NO C++ wrapper needed!)
-wasm-build-rust: wasm-check-env wasm-fetch-webgpu-port
+wasm-build-rust: wasm-check-env wasm-fetch-webgpu-port wasm-init-sdl2-port
 	@echo "→ Building Rust library for WASM (C API - direct export)..."
 	@bash -c "source $(EMSDK_DIR)/$(EMSDK_ENV)" && \
 	CC=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
@@ -128,6 +136,7 @@ wasm-build-rust: wasm-check-env wasm-fetch-webgpu-port
 	AR=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emar \
 	CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/emcc \
 	WGPU_NATIVE_INCLUDE=$(WGPU_NATIVE_INCLUDE) \
+	SDL2_INCLUDE_PATH=$(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include \
 	CXXFLAGS="-isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include/c++/v1 -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include $(WEBGPU_CPPFLAGS)" \
 	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot -nostdinc -isystem $(PWD)/$(EMSDK_DIR)/upstream/emscripten/cache/sysroot/include" \
 	RUSTFLAGS="-C panic=abort -C link-arg=--no-entry -C link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0 $(WEBGPU_RUSTFLAGS)" \
@@ -172,6 +181,10 @@ wasm-link: wasm-build-rust  wasm-install-npm-deps
 		C_API_EXPORTED_FUNCTIONS=\$$(echo \"\$$FILTERED_FUNCTIONS\" | sed 's/^/_/' | paste -sd ',' - | sed 's/,/\",\"/g' | sed 's/^/\"/' | sed 's/\$$/\",\"_malloc\",\"_free\"/') && \
 		echo \"  Exporting \$$(echo \$$C_API_EXPORTED_FUNCTIONS | grep -o '_dotlottie' | wc -l | tr -d ' ') C API functions\" && \
 		EMCC_FLAGS=\"\" && \
+		if echo \"$(WASM_DEFAULT_FEATURES)\" | grep -q \"audio-sdl\"; then \
+			echo \"  Enabling SDL2 audio port...\"; \
+			EMCC_FLAGS=\"\$$EMCC_FLAGS --use-port=sdl2\"; \
+		fi && \
 		if echo \"$(WASM_FEATURES)\" | grep -q \"tvg-gl\"; then \
 			echo \"  Enabling WebGL support...\"; \
 			EMCC_FLAGS=\"\$$EMCC_FLAGS -sUSE_WEBGL2=1 -sMAX_WEBGL_VERSION=2\"; \

@@ -7,8 +7,10 @@ MIN_MACCATALYST_VERSION ?= 13.1
 
 # Base features shared by all Apple platforms
 APPLE_BASE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-# Default features without audio (used by platforms whose coreaudio-sys doesn't support the target triple)
+# Default features without audio
 APPLE_DEFAULT_FEATURES_NO_AUDIO = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
+# rodio uses cpal → CoreAudio on all Apple platforms (macOS, iOS, tvOS, visionOS).
+# No SDL2 cmake bundled build required.
 APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO),audio-native
 # WebGPU: base features + tvg-wg (macOS, iOS, Mac Catalyst only)
 APPLE_WEBGPU_FEATURES = tvg-wg,$(APPLE_BASE_FEATURES)
@@ -26,12 +28,13 @@ endif
 apple-tvos-arm64 apple-tvos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATURES)
 apple-visionos-arm64 apple-visionos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATURES)
 
-# coreaudio-sys (rodio dependency) doesn't recognise the -macabi, visionos, or tvos
-# target triples — its build script hits unreachable!() for all of them.
-# Disable the audio feature for those targets.
+# coreaudio-sys (rodio/cpal dependency) only handles apple-darwin and apple-ios
+# target triples — it panics with unreachable!() on visionOS, tvOS, and Mac
+# Catalyst targets.  Disable audio on those platforms until cpal gains support.
 apple-maccatalyst-arm64 apple-maccatalyst-x86_64: APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO)
 apple-visionos-arm64 apple-visionos-sim-arm64: APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO)
 apple-tvos-arm64 apple-tvos-sim-arm64: APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO)
+
 
 # C API Header
 C_HEADER_DIR ?= dotlottie-rs/build

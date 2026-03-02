@@ -2,8 +2,8 @@
 //!
 //! Loads a Lottie animation (JSON or .lottie) that contains audio layers and
 //! plays it. Audio events are printed to stdout as they fire so you can verify
-//! the correct frame boundaries. On native targets the audio is also played
-//! through the system output via rodio.
+//! the correct frame boundaries. Audio is played directly via SDL2 on all
+//! supported targets (native and WASM/Emscripten).
 //!
 //! Usage:
 //!   cargo run --example audio_player --features audio,dev -- path/to/animation.json

@@ -685,8 +685,8 @@ impl DotLottiePlayer {
             if let Some(am) = &mut self.audio_manager {
                 // Events are always pushed so hosts on every platform (native or
                 // WASM) can observe audio state changes via poll_event().
-                // On native targets, AudioManager::update() also drives rodio
-                // directly, so audio plays AND events fire.
+                // AudioManager::update() also drives SDL2 directly on all
+                // supported targets, so audio plays AND events fire.
                 for event in am.update(no) {
                     match event {
                         AudioEvent::Play { ref_id, volume } => {

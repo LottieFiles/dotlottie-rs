@@ -326,9 +326,8 @@
         }
 
         const ctx = canvas.getContext("2d");
-        const configPtr = Module._malloc(256);
-        Module._dotlottie_init_config(configPtr);
-        const player = Module._dotlottie_new_player(configPtr);
+
+        const player = Module._dotlottie_new_player(0);
 
         if (player === 0) throw new Error("Failed to create player");
 
@@ -385,7 +384,7 @@
 
         // Load animation
         const animationUrl =
-          "./dotlottie-rs/assets/animations/lottie/bouncy_ball.json";
+          "./dotlottie-rs/assets/animations/lottie/with_audio.json";
         const animationData = await fetch(animationUrl).then((r) => r.text());
         const animationPtr = allocateUTF8(Module, animationData);
 
@@ -411,7 +410,6 @@
           bufferSize,
           width,
           height,
-          configPtr,
           renderer: "software",
         };
       }
@@ -451,9 +449,7 @@
         if (makeCurrentResult !== 0)
           throw new Error("Failed to make WebGL context current");
 
-        const configPtr = Module._malloc(256);
-        Module._dotlottie_init_config(configPtr);
-        const player = Module._dotlottie_new_player(configPtr);
+        const player = Module._dotlottie_new_player(0);
 
         if (player === 0) throw new Error("Failed to create player");
 
@@ -497,7 +493,6 @@
           webglContext,
           width,
           height,
-          configPtr,
           renderer: "webgl",
         };
       }
@@ -527,9 +522,7 @@
           preinitializedWebGPUDevice: device,
         });
 
-        const configPtr = Module._malloc(256);
-        Module._dotlottie_init_config(configPtr);
-        const player = Module._dotlottie_new_player(configPtr);
+        const player = Module._dotlottie_new_player(0);
 
         if (player === 0) throw new Error("Failed to create player");
 
@@ -559,6 +552,7 @@
           surfaceHandle,
           width,
           height,
+          0, // target_type: Surface = 0
         );
 
         if (setTargetResult !== 0)
@@ -593,7 +587,6 @@
           surfaceHandle,
           width,
           height,
-          configPtr,
           renderer: "webgpu",
         };
       }
@@ -654,11 +647,11 @@
             Module._dotlottie_play(player);
           }
 
-          const isPlaying = Module._dotlottie_is_playing(player);
+          const playbackStatus = Module._dotlottie_playback_status(player);
           const timeSinceLastTick = now - playerData.lastTickTime;
           const tickInterval = 1000 / 60;
 
-          if (isPlaying === 1 && timeSinceLastTick >= tickInterval) {
+          if (playbackStatus === 0 && timeSinceLastTick >= tickInterval) { // 0 = Playing
             Module._dotlottie_tick(player);
             playerData.lastTickTime = now;
 
@@ -709,10 +702,9 @@
         const playerData = instances.get(instanceId);
         if (!playerData) return;
 
-        const { Module, player, configPtr, renderer } = playerData;
+        const { Module, player, renderer } = playerData;
 
         Module._dotlottie_destroy(player);
-        Module._free(configPtr);
 
         if (renderer === "software") {
           Module._free(playerData.bufferPtr);

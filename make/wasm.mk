@@ -274,3 +274,87 @@ wasm-clean:
 	@rm -rf release/wasm-webgl
 	@rm -rf release/wasm-webgpu
 	@echo "✓ WASM C API builds cleaned (including all variants)"
+
+# ============================================================================
+# wasm32-unknown-unknown / wasm-bindgen targets
+# ============================================================================
+
+WASM_BINDGEN_TARGET := wasm32-unknown-unknown
+WASM_BINDGEN_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-ttf,dotlottie,theming,state-machines,wasm,wasm-bindgen-api,audio
+
+# wasm32-unknown-unknown builds require a Clang with a WebAssembly backend.
+# Apple's Xcode clang does not have one; Homebrew LLVM is needed.
+# We probe common formula names so both 'llvm' and versioned taps work
+# (e.g. llvm@20, llvm@19).  'brew --prefix' always returns a path regardless
+# of whether the formula is installed, so we verify the binary exists too.
+LLVM_PREFIX := $(shell \
+  for v in llvm llvm@20 llvm@19 llvm@18; do \
+    p=$$(brew --prefix "$$v" 2>/dev/null) && [ -x "$$p/bin/clang" ] && echo "$$p" && break; \
+  done)
+ifneq ($(LLVM_PREFIX),)
+  WASM_CC  := $(LLVM_PREFIX)/bin/clang
+  WASM_CXX := $(LLVM_PREFIX)/bin/clang++
+else
+  WASM_CC  := clang
+  WASM_CXX := clang++
+endif
+
+.PHONY: wasm-bindgen-setup wasm-bindgen-sw wasm-bindgen-webgl wasm-bindgen-webgpu wasm-bindgen-all wasm-bindgen-clean
+
+# Install the wasm32-unknown-unknown target and wasm-pack
+wasm-bindgen-setup:
+	@rustup target add $(WASM_BINDGEN_TARGET)
+	@command -v wasm-pack >/dev/null 2>&1 || curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+	@if [ -z "$(LLVM_PREFIX)" ]; then \
+		echo "→ Homebrew LLVM not found — installing (required for wasm32 C/C++ deps)..."; \
+		brew install llvm; \
+		echo "✓ LLVM installed. Re-run 'make wasm-bindgen-sw' (or your target) to build."; \
+	else \
+		echo "✓ LLVM found at $(LLVM_PREFIX)"; \
+	fi
+
+# wasm-bindgen generates a bare `import * as <name> from "env"` even when the
+# wasm binary has no "env" imports.  Browsers reject the bare "env" specifier,
+# so strip the import declaration and the corresponding object-literal entry
+# after every wasm-pack run.  Match generically — the variable name has changed
+# across wasm-bindgen versions (__wbg_star0, import1, …).
+define strip_env_import
+	sed -i '' \
+		-e '/^import \* as .* from ["'"'"']env["'"'"'];*$$/d' \
+		-e '/["'"'"']env["'"'"']: /d' \
+		-e '/imports\[["'"'"']env["'"'"']\] = /d' \
+		$(1)/dotlottie_rs.js
+endef
+
+# SW (software rasteriser) build — no graphics API required
+wasm-bindgen-sw:
+	CC=$(WASM_CC) CXX=$(WASM_CXX) \
+		wasm-pack build dotlottie-rs --target web \
+		--out-dir ../release/wasm-bindgen-sw \
+		--no-default-features --features $(WASM_BINDGEN_COMMON)
+	$(call strip_env_import,release/wasm-bindgen-sw)
+
+# WebGL2 build
+wasm-bindgen-webgl:
+	CC=$(WASM_CC) CXX=$(WASM_CXX) \
+		wasm-pack build dotlottie-rs --target web \
+		--out-dir ../release/wasm-bindgen-webgl \
+		--no-default-features --features $(WASM_BINDGEN_COMMON),tvg-gl,webgl
+	$(call strip_env_import,release/wasm-bindgen-webgl)
+
+# WebGPU build — requires web_sys_unstable_apis cfg for all Gpu* web-sys types
+wasm-bindgen-webgpu:
+	CC=$(WASM_CC) CXX=$(WASM_CXX) \
+		RUSTFLAGS="--cfg=web_sys_unstable_apis" \
+		wasm-pack build dotlottie-rs --target web \
+		--out-dir ../release/wasm-bindgen-webgpu \
+		--no-default-features --features $(WASM_BINDGEN_COMMON),tvg-wg,webgpu
+	$(call strip_env_import,release/wasm-bindgen-webgpu)
+
+# Build all three wasm-bindgen variants
+wasm-bindgen-all: wasm-bindgen-sw wasm-bindgen-webgl wasm-bindgen-webgpu
+
+# Remove wasm-bindgen artefacts
+wasm-bindgen-clean:
+	@cargo clean --manifest-path dotlottie-rs/Cargo.toml --target $(WASM_BINDGEN_TARGET)
+	@rm -rf release/wasm-bindgen-sw release/wasm-bindgen-webgl release/wasm-bindgen-webgpu

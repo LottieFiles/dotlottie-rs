@@ -29,9 +29,14 @@ tvg-webp = []
 tvg-ttf = []
 tvg-threads = []
 tvg-simd = []
-dotlottie = ["dep:zip"] 
+dotlottie = ["dep:zip"]
 state-machines = ["dotlottie"]
 theming = ["dotlottie"]
+wasm = []                                       # base: enables libc/C++ stubs for wasm32-unknown-unknown
+wasm-bindgen-api = ["wasm"]                     # OOP JS wrapper via wasm-bindgen; implies wasm
+webgl = ["wasm-bindgen-api", "web-sys/WebGl2RenderingContext", "web-sys/WebGlBuffer", "web-sys/WebGlFramebuffer", "web-sys/WebGlProgram", "web-sys/WebGlRenderbuffer", "web-sys/WebGlShader", "web-sys/WebGlTexture", "web-sys/WebGlUniformLocation", "web-sys/WebGlVertexArrayObject"]
+webgpu = ["wasm-bindgen-api", "web-sys/Gpu", "web-sys/GpuAdapter", "web-sys/GpuAddressMode", "web-sys/GpuBindGroup", "web-sys/GpuBindGroupDescriptor", "web-sys/GpuBindGroupEntry", "web-sys/GpuBindGroupLayout", "web-sys/GpuBindGroupLayoutDescriptor", "web-sys/GpuBindGroupLayoutEntry", "web-sys/GpuBlendComponent", "web-sys/GpuBlendFactor", "web-sys/GpuBlendOperation", "web-sys/GpuBlendState", "web-sys/GpuBuffer", "web-sys/GpuBufferBinding", "web-sys/GpuBufferBindingLayout", "web-sys/GpuBufferBindingType", "web-sys/GpuBufferDescriptor", "web-sys/GpuCanvasContext", "web-sys/GpuCanvasConfiguration", "web-sys/GpuColorDict", "web-sys/GpuColorTargetState", "web-sys/GpuCommandBuffer", "web-sys/GpuCommandBufferDescriptor", "web-sys/GpuCommandEncoder", "web-sys/GpuCommandEncoderDescriptor", "web-sys/GpuCompareFunction", "web-sys/GpuComputePassDescriptor", "web-sys/GpuComputePassEncoder", "web-sys/GpuComputePassTimestampWrites", "web-sys/GpuComputePipeline", "web-sys/GpuComputePipelineDescriptor", "web-sys/GpuCullMode", "web-sys/GpuDepthStencilState", "web-sys/GpuDevice", "web-sys/GpuDeviceDescriptor", "web-sys/GpuExtent3dDict", "web-sys/GpuFilterMode", "web-sys/GpuFragmentState", "web-sys/GpuFrontFace", "web-sys/GpuIndexFormat", "web-sys/GpuLoadOp", "web-sys/GpuMipmapFilterMode", "web-sys/GpuMultisampleState", "web-sys/GpuPrimitiveState", "web-sys/GpuPrimitiveTopology", "web-sys/GpuPipelineLayout", "web-sys/GpuPipelineLayoutDescriptor", "web-sys/GpuProgrammableStage", "web-sys/GpuQuerySet", "web-sys/GpuQueue", "web-sys/GpuRenderPassColorAttachment", "web-sys/GpuRenderPassDepthStencilAttachment", "web-sys/GpuRenderPassDescriptor", "web-sys/GpuRenderPassEncoder", "web-sys/GpuRenderPassTimestampWrites", "web-sys/GpuRenderPipeline", "web-sys/GpuRenderPipelineDescriptor", "web-sys/GpuSampler", "web-sys/GpuSamplerBindingLayout", "web-sys/GpuSamplerBindingType", "web-sys/GpuSamplerDescriptor", "web-sys/GpuShaderModule", "web-sys/GpuShaderModuleDescriptor", "web-sys/GpuStencilFaceState", "web-sys/GpuStencilOperation", "web-sys/GpuStorageTextureAccess", "web-sys/GpuStorageTextureBindingLayout", "web-sys/GpuStoreOp", "web-sys/GpuTexelCopyBufferInfo", "web-sys/GpuTexelCopyBufferLayout", "web-sys/GpuTexelCopyTextureInfo", "web-sys/GpuTexture", "web-sys/GpuTextureAspect", "web-sys/GpuTextureBindingLayout", "web-sys/GpuTextureDescriptor", "web-sys/GpuTextureDimension", "web-sys/GpuTextureFormat", "web-sys/GpuTextureSampleType", "web-sys/GpuTextureView", "web-sys/GpuTextureViewDescriptor", "web-sys/GpuTextureViewDimension", "web-sys/GpuVertexAttribute", "web-sys/GpuVertexBufferLayout", "web-sys/GpuVertexFormat", "web-sys/GpuVertexState", "web-sys/GpuVertexStepMode"]
+audio        = ["dep:rodio"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
@@ -39,6 +44,16 @@ serde_json = { version = "1.0", default-features = false, features = ["preserve_
 serde = { version = "1.0", features = ["derive"] }
 zip = { version = "2.4.2", default-features = false, features = ["deflate"], optional = true }
 bitflags = { version = "2.6", optional = true }
+rodio       = { version = "0.17", optional = true, default-features = false, features = ["mp3", "wav"] }
+
+[target.wasm32-unknown-unknown.dependencies]
+wasm-bindgen = "0.2.100"
+js-sys = "0.3"
+nostd-printf = "0.1.4"
+web-sys = { version = "=0.3.77", optional = true }
+# Features are additive: on wasm32-unknown-unknown this merges with the [dependencies]
+# entry to produce ["mp3", "wav", "wasm-bindgen"] for the audio feature.
+rodio        = { version = "0.17", optional = true, default-features = false, features = ["wasm-bindgen"] }
 
 [build-dependencies]
 bindgen = "0.72.0"
@@ -89,6 +104,10 @@ required-features = ["theming"]
 [[example]]
 name = "state_machine"
 required-features = ["state-machines"]
+
+[[example]]
+name = "audio_player"
+required-features = ["audio", "dev"]
 
 [[bench]]
 name = "benchmarks"

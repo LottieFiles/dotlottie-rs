@@ -142,8 +142,11 @@ mod wgpu_native {
 mod thorvg {
     use std::env;
     use std::fs::{self, create_dir_all, OpenOptions};
-    use std::io::Write;
-    use std::path::PathBuf;
+    use std::io::{self, Write};
+    use std::path::{Path, PathBuf};
+
+    const EMSCRIPTEN_VERSION: &str = "3.1.70";
+    const WEBGPU_HEADERS_REV: &str = "bac5208";
 
     /// Returns the C++ standard library that needs to be linked for the current platform.
     ///
@@ -177,7 +180,7 @@ mod thorvg {
         std::env::var("CARGO_CFG_UNIX").is_ok()
     }
 
-    fn collect_files(dir: &str) -> Vec<String> {
+    pub(super) fn collect_files(dir: &str) -> Vec<String> {
         let mut files = Vec::new();
 
         if let Ok(entries) = fs::read_dir(dir) {
@@ -192,16 +195,141 @@ mod thorvg {
         files
     }
 
-    pub fn build() -> std::io::Result<()> {
+    /// Verify that the CXX compiler is clang++ >= 16 (required for wasm32-unknown-unknown).
+    fn verify_clang_version(compiler: &str) {
+        let output = std::process::Command::new(compiler)
+            .arg("--version")
+            .output()
+            .unwrap_or_else(|e| {
+                panic!(
+                    "failed to run `{compiler} --version`: {e}\n\
+                    Set CXX to a clang++ >= 16 with the wasm32-unknown-unknown \
+                    backend (e.g. Homebrew LLVM: CXX=/opt/homebrew/opt/llvm/bin/clang++)"
+                )
+            });
+        let stdout = std::str::from_utf8(&output.stdout).unwrap_or("");
+        let stderr = std::str::from_utf8(&output.stderr).unwrap_or("");
+        let version = stdout
+            .lines()
+            .chain(stderr.lines())
+            .find_map(|l| {
+                l.split_once("clang version ").and_then(|(_, ver)| {
+                    ver.split_once('.').and_then(|(major, _)| major.parse::<u32>().ok())
+                })
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "failed to parse version from `{compiler} --version`\n\
+                    exit status: {}\nstdout:\n{stdout}\nstderr:\n{stderr}\n\
+                    Ensure CXX points to a working clang++ >= 16.",
+                    output.status
+                )
+            });
+        if version < 16 {
+            panic!(
+                "clang++ {version} is too old; wasm32-unknown-unknown requires clang++ >= 16.\n\
+                Set CXX to a newer clang++ (e.g. /opt/homebrew/opt/llvm/bin/clang++)"
+            );
+        }
+    }
+
+    /// Download and cache Emscripten system headers (libc++, musl, WebGPU) into `out_dir`.
+    /// Returns the path to the emscripten directory.
+    fn setup_emscripten_headers(out_dir: &Path) -> io::Result<PathBuf> {
+        let emscripten_dir = out_dir.join("emscripten");
+
+        if !emscripten_dir.exists() {
+            let url = format!(
+                "https://github.com/emscripten-core/emscripten/archive/refs/tags/{EMSCRIPTEN_VERSION}.zip"
+            );
+            let response = minreq::get(&url)
+                .send()
+                .map_err(|e| io::Error::other(format!("Failed to download emscripten: {e}")))?;
+            if response.status_code < 200 || response.status_code >= 300 {
+                return Err(io::Error::other(format!(
+                    "Failed to download emscripten: HTTP {}",
+                    response.status_code
+                )));
+            }
+            let zip_path = out_dir.join("emscripten.zip");
+            fs::write(&zip_path, response.as_bytes())?;
+
+            let file = fs::File::open(&zip_path)?;
+            let mut archive = zip::ZipArchive::new(file)
+                .map_err(|e| io::Error::other(format!("Failed to open emscripten zip: {e}")))?;
+            archive
+                .extract(out_dir)
+                .map_err(|e| io::Error::other(format!("Failed to extract emscripten zip: {e}")))?;
+            fs::remove_file(&zip_path)?;
+            fs::rename(
+                out_dir.join(format!("emscripten-{EMSCRIPTEN_VERSION}")),
+                &emscripten_dir,
+            )?;
+
+            // Write stub html5_webgl.h (ThorVG's GL engine needs this)
+            let html5_webgl_path =
+                emscripten_dir.join("system/include/emscripten/html5_webgl.h");
+            fs::write(
+                &html5_webgl_path,
+                "#pragma once\n\
+                typedef void* EMSCRIPTEN_WEBGL_CONTEXT_HANDLE;\n\
+                typedef int   EMSCRIPTEN_RESULT;\n\
+                #ifdef __cplusplus\n\
+                extern \"C\" {\n\
+                #endif\n\
+                EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context(void);\n\
+                EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);\n\
+                #ifdef __cplusplus\n\
+                }\n\
+                #endif\n",
+            )?;
+
+            // Download WebGPU headers
+            let webgpu_header_dir = emscripten_dir.join("system/include/webgpu");
+            fs::create_dir_all(&webgpu_header_dir)?;
+            let webgpu_url = format!(
+                "https://raw.githubusercontent.com/webgpu-native/webgpu-headers/{WEBGPU_HEADERS_REV}/webgpu.h"
+            );
+            let wgpu_resp = minreq::get(&webgpu_url)
+                .send()
+                .map_err(|e| io::Error::other(format!("Failed to download webgpu.h: {e}")))?;
+            fs::write(webgpu_header_dir.join("webgpu.h"), wgpu_resp.as_bytes())?;
+        }
+
+        Ok(emscripten_dir)
+    }
+
+    pub fn build() -> io::Result<()> {
         let target_triple = env::var("TARGET").unwrap_or_default();
         let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-
-        get_cpp_standard_library()
-            .iter()
-            .for_each(|lib| println!("cargo:rustc-link-lib=dylib={lib}"));
-
         let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
+        let is_wasm = target_triple.starts_with("wasm32-unknown-");
+        let is_wasm_unknown = target_triple == "wasm32-unknown-unknown";
+
+        let compiler = env::var("CXX").unwrap_or_else(|_| "clang++".to_string());
+
+        // wasm32-unknown-unknown needs clang++ >= 16 and emscripten system headers
+        if is_wasm_unknown {
+            verify_clang_version(&compiler);
+        }
+        let emscripten_dir = if is_wasm_unknown {
+            Some(setup_emscripten_headers(&out_dir)?)
+        } else {
+            None
+        };
+
+        // C++ standard library linking
+        if is_wasm_unknown {
+            // Prevent cc from linking stdc++ — no C++ runtime available
+            env::set_var("CXXSTDLIB", "");
+        } else {
+            get_cpp_standard_library()
+                .iter()
+                .for_each(|lib| println!("cargo:rustc-link-lib=dylib={lib}"));
+        }
+
+        // Source directories (identical for all targets)
         let mut src = vec![
             "deps/thorvg/inc",
             "deps/thorvg/src/common",
@@ -211,7 +339,7 @@ mod thorvg {
             "deps/thorvg/src/renderer",
         ];
 
-        // thorvg config.h
+        // --- config.h generation ---
         let mut thorvg_config_h = OpenOptions::new()
             .create(true)
             .truncate(true)
@@ -223,7 +351,7 @@ mod thorvg {
         writeln!(thorvg_config_h, "#define TVG_STATIC")?;
         writeln!(thorvg_config_h, "#define WIN32_LEAN_AND_MEAN")?;
 
-        if target_triple != "wasm32-unknown-emscripten" {
+        if !is_wasm {
             writeln!(thorvg_config_h, "#define THORVG_FILE_IO_SUPPORT 1")?;
         }
 
@@ -231,7 +359,7 @@ mod thorvg {
             writeln!(thorvg_config_h, "#define THORVG_LOG_ENABLED")?;
         }
 
-        if cfg!(feature = "tvg-threads") {
+        if cfg!(feature = "tvg-threads") && !is_wasm {
             writeln!(thorvg_config_h, "#define THORVG_THREAD_SUPPORT")?;
         }
 
@@ -245,7 +373,7 @@ mod thorvg {
             writeln!(thorvg_config_h, "#define THORVG_GL_RASTER_SUPPORT")?;
             src.push("deps/thorvg/src/renderer/gl_engine");
 
-            if target_triple == "wasm32-unknown-emscripten" {
+            if is_wasm {
                 writeln!(thorvg_config_h, "#define THORVG_GL_TARGET_GLES 1")?;
             } else {
                 writeln!(thorvg_config_h, "#define THORVG_GL_TARGET_GL 1")?;
@@ -300,40 +428,33 @@ mod thorvg {
             src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/vm");
         }
 
-        // ThorVG SIMD feature (only when tvg-sw AND tvg-simd are enabled)
+        // SIMD — skip entirely for wasm32-unknown-unknown (no SIMD support there yet)
         let tvg_simd_enabled = cfg!(feature = "tvg-simd");
-
         let mut simd_flags: Vec<&str> = Vec::new();
-        if tvg_sw_enabled && tvg_simd_enabled {
+        if tvg_sw_enabled && tvg_simd_enabled && !is_wasm_unknown {
             if target_triple.contains("x86_64")
                 || target_triple.contains("i686")
                 || target_triple.contains("i586")
             {
-                // x86/x86_64 → AVX
                 writeln!(thorvg_config_h, "#define THORVG_AVX_VECTOR_SUPPORT")?;
                 simd_flags.push("-mavx");
             } else if target_triple.contains("aarch64") {
-                // aarch64 → NEON baseline (no extra flag needed)
                 writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?;
             } else if target_triple.contains("armv7") {
-                // armv7 → NEON
                 writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?;
                 simd_flags.push("-mfpu=neon");
             } else if target_triple == "wasm32-unknown-emscripten" {
-                // Emscripten → use Wasm SIMD
-                // https://emscripten.org/docs/porting/simd.html
-                writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?; // maps to Wasm SIMD in ThorVG
+                writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?;
                 simd_flags.push("-msimd128");
             }
         }
 
         thorvg_config_h.flush()?;
 
-        let compiler = env::var("CXX").unwrap_or("clang++".to_string());
-
+        // --- cc::Build setup ---
         let mut cc_build = cc::Build::new();
         cc_build
-            .compiler(compiler)
+            .compiler(&compiler)
             .std("c++14")
             .cpp(true)
             .include(&out_dir)
@@ -345,7 +466,27 @@ mod thorvg {
             )
             .warnings(false);
 
-        if cfg!(feature = "tvg-wg") {
+        // wasm32-unknown-unknown: add emscripten system headers and defines
+        if let Some(ref emscripten_dir) = emscripten_dir {
+            cc_build
+                .include(emscripten_dir.join("system/lib/libcxx/include"))
+                .include(emscripten_dir.join("system/lib/libc/musl/arch/emscripten"))
+                .include(emscripten_dir.join("system/lib/libc/musl/include"))
+                .include(emscripten_dir.join("system/include"))
+                .include(emscripten_dir.join("system/lib/pthread"))
+                .define("__EMSCRIPTEN__", None);
+
+            let target_features_str = env::var("CARGO_CFG_TARGET_FEATURE").unwrap_or_default();
+            if target_features_str.split(',').any(|f| f == "atomics") {
+                cc_build.flag("-matomics");
+            }
+            if target_features_str.split(',').any(|f| f == "bulk-memory") {
+                cc_build.flag("-mbulk-memory");
+            }
+        }
+
+        // wgpu-native — not used for wasm32-unknown-unknown
+        if cfg!(feature = "tvg-wg") && !is_wasm_unknown {
             let (wgpu_include_path, wgpu_lib_path) =
                 crate::wgpu_native::ensure_available(&target_triple)
                     .expect("Failed to obtain wgpu-native. Set WGPU_NATIVE_LIB and WGPU_NATIVE_INCLUDE env vars, or check your network connection.");
@@ -360,16 +501,13 @@ mod thorvg {
                 println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
                 println!("cargo:rustc-link-lib=static=wgpu_native");
 
-                // Link platform-specific frameworks/libraries
                 if target_triple.contains("apple") || target_triple.contains("ios") {
                     println!("cargo:rustc-link-lib=framework=Metal");
                     println!("cargo:rustc-link-lib=framework=QuartzCore");
                     println!("cargo:rustc-link-lib=framework=Foundation");
                     if target_triple.contains("darwin") {
-                        // macOS
                         println!("cargo:rustc-link-lib=framework=AppKit");
                     } else {
-                        // iOS, Mac Catalyst
                         println!("cargo:rustc-link-lib=framework=UIKit");
                     }
                 } else if target_triple.contains("linux") && !target_triple.contains("android") {
@@ -377,18 +515,13 @@ mod thorvg {
                 }
             }
 
-            // generate wgpu binding
             bindgen::Builder::default()
                 .header(wgpu_include_path.join("webgpu/webgpu.h").to_str().unwrap())
-                // Only include WGPU types and functions
                 .allowlist_type("WGPU.*")
                 .allowlist_function("wgpu.*")
                 .allowlist_var("WGPU_.*")
-                // Use libc types
                 .ctypes_prefix("std::os::raw")
-                // Don't generate layout tests (they're huge and we don't need them)
                 .layout_tests(false)
-                // Disable default includes to avoid system header issues
                 .use_core()
                 .generate()
                 .expect("Failed to generate wgpu bindings")
@@ -397,12 +530,13 @@ mod thorvg {
                 )?;
         }
 
-        for flag in simd_flags {
+        for flag in &simd_flags {
             cc_build.flag(flag);
         }
 
         if cfg!(feature = "tvg-threads")
-            && std::env::var("CARGO_CFG_UNIX").is_ok()
+            && !is_wasm
+            && env::var("CARGO_CFG_UNIX").is_ok()
             && !target_triple.contains("apple")
             && !target_triple.contains("android")
         {
@@ -412,14 +546,15 @@ mod thorvg {
 
         cc_build.compile("thorvg");
 
+        // Generate ThorVG C API bindings
         let bindings = bindgen::Builder::default()
             .header("deps/thorvg/src/bindings/capi/thorvg_capi.h")
             .generate()
             .expect("Failed to generate bindings");
-
         bindings.write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
 
-        if cfg!(feature = "c_api") {
+        // cbindgen — only for native builds with c_api feature
+        if cfg!(feature = "c_api") && !is_wasm_unknown {
             create_dir_all(PathBuf::from(&crate_dir).join("build")).unwrap();
             let header_path = PathBuf::from(&crate_dir).join("build/dotlottie_player.h");
             let config_path = PathBuf::from(&crate_dir).join("cbindgen.toml");

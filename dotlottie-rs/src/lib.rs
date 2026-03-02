@@ -1,3 +1,5 @@
+#[cfg(feature = "audio")]
+mod audio;
 #[cfg(feature = "dotlottie")]
 mod fms;
 mod layout;
@@ -15,6 +17,21 @@ pub(crate) mod time;
 #[cfg(feature = "c_api")]
 pub mod c_api;
 
+// wasm32-unknown-unknown modules (not emscripten — that uses c_api instead)
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten"), feature = "wasm"))]
+mod stubs;
+
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten"), feature = "webgl"))]
+pub(crate) mod webgl_stubs;
+
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten"), feature = "webgpu"))]
+pub(crate) mod webgpu_stubs;
+
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten"), feature = "wasm-bindgen-api"))]
+pub mod wasm_bindgen_api;
+
+#[cfg(feature = "audio")]
+pub use audio::*;
 #[cfg(feature = "dotlottie")]
 pub use fms::*;
 pub use layout::*;

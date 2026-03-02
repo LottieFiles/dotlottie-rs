@@ -3,11 +3,11 @@
 use bitflags::bitflags;
 use std::ffi::c_char;
 
-#[cfg(feature = "state-machines")]
-use core::str::FromStr;
-
+#[cfg(any(feature = "state-machines", feature = "audio"))]
 #[cfg(feature = "state-machines")]
 use crate::state_machine_engine::events::Event;
+#[cfg(feature = "state-machines")]
+use core::str::FromStr;
 
 use crate::lottie_renderer::LottieRendererError;
 use crate::DotLottiePlayerError;
@@ -181,12 +181,30 @@ pub enum DotLottiePlayerEventType {
     Render = 6,
     Loop = 7,
     Complete = 8,
+    #[cfg(feature = "audio")]
+    AudioPlay = 9,
+    #[cfg(feature = "audio")]
+    AudioPause = 10,
+    #[cfg(feature = "audio")]
+    AudioStop = 11,
+}
+
+/// Fixed-size audio event payload — safe to copy across the C boundary.
+/// `ref_id` is a null-terminated string in a 64-byte buffer.
+#[repr(C)]
+#[derive(Copy, Clone)]
+#[cfg(feature = "audio")]
+pub struct DotLottieAudioEventData {
+    pub ref_id: [c_char; 64],
+    pub volume: f32,
 }
 
 #[repr(C)]
 pub union DotLottiePlayerEventData {
     pub frame_no: f32,   // For Frame and Render events
     pub loop_count: u32, // For Loop event
+    #[cfg(feature = "audio")]
+    pub audio: DotLottieAudioEventData,
 }
 
 #[repr(C)]
@@ -234,6 +252,54 @@ impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Complete,
                 data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
+            #[cfg(feature = "audio")]
+            crate::DotLottieEvent::AudioPlay { ref_id, volume } => {
+                let mut audio_data = DotLottieAudioEventData {
+                    ref_id: [0; 64],
+                    volume,
+                };
+                let bytes = ref_id.as_bytes();
+                let copy_len = bytes.len().min(63);
+                for (i, &b) in bytes[..copy_len].iter().enumerate() {
+                    audio_data.ref_id[i] = b as c_char;
+                }
+                DotLottiePlayerEvent {
+                    event_type: DotLottiePlayerEventType::AudioPlay,
+                    data: DotLottiePlayerEventData { audio: audio_data },
+                }
+            }
+            #[cfg(feature = "audio")]
+            crate::DotLottieEvent::AudioPause { ref_id } => {
+                let mut audio_data = DotLottieAudioEventData {
+                    ref_id: [0; 64],
+                    volume: 0.0,
+                };
+                let bytes = ref_id.as_bytes();
+                let copy_len = bytes.len().min(63);
+                for (i, &b) in bytes[..copy_len].iter().enumerate() {
+                    audio_data.ref_id[i] = b as c_char;
+                }
+                DotLottiePlayerEvent {
+                    event_type: DotLottiePlayerEventType::AudioPause,
+                    data: DotLottiePlayerEventData { audio: audio_data },
+                }
+            }
+            #[cfg(feature = "audio")]
+            crate::DotLottieEvent::AudioStop { ref_id } => {
+                let mut audio_data = DotLottieAudioEventData {
+                    ref_id: [0; 64],
+                    volume: 0.0,
+                };
+                let bytes = ref_id.as_bytes();
+                let copy_len = bytes.len().min(63);
+                for (i, &b) in bytes[..copy_len].iter().enumerate() {
+                    audio_data.ref_id[i] = b as c_char;
+                }
+                DotLottiePlayerEvent {
+                    event_type: DotLottiePlayerEventType::AudioStop,
+                    data: DotLottiePlayerEventData { audio: audio_data },
+                }
+            }
         }
     }
 }

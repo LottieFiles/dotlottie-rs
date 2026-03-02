@@ -11,6 +11,8 @@ use crate::{
     Marker,
 };
 use crate::{ColorSpace, Renderer};
+#[cfg(feature = "audio")]
+use crate::{extract_audio, AudioAsset, AudioEvent, AudioManager};
 #[cfg(feature = "dotlottie")]
 use crate::{DotLottieManager, Manifest};
 #[cfg(feature = "state-machines")]
@@ -121,6 +123,8 @@ pub struct DotLottiePlayer {
     animation_id: Option<CString>,
     #[cfg(feature = "state-machines")]
     state_machine_id: Option<CString>,
+    #[cfg(feature = "audio")]
+    audio_manager: Option<AudioManager>,
 }
 
 #[cfg(feature = "tvg")]
@@ -184,6 +188,8 @@ impl DotLottiePlayer {
             cached_start_end_frame: None,
             event_queue: EventQueue::new(),
             completion_event: CompletionEvent::None,
+            #[cfg(feature = "audio")]
+            audio_manager: None,
         }
     }
 
@@ -197,6 +203,32 @@ impl DotLottiePlayer {
                 duration: *duration,
             })
             .collect()
+    }
+
+    /// Returns all audio assets decoded from the current animation.
+    ///
+    /// WASM hosts can use this to pre-create `<audio>` elements or
+    /// `AudioBufferSourceNode`s at load time before the render loop begins.
+    #[cfg(feature = "audio")]
+    pub fn audio_assets(&self) -> Vec<&AudioAsset> {
+        self.audio_manager
+            .as_ref()
+            .map(|am| am.assets().collect())
+            .unwrap_or_default()
+    }
+
+    /// Recreate the audio output stream from within a user-gesture context.
+    ///
+    /// Browsers suspend any `AudioContext` created outside a user gesture
+    /// (e.g. during page load).  Call this method once from a click or keydown
+    /// handler to obtain a running context and enable audio playback.
+    ///
+    /// No-op when the `audio` feature is disabled or no audio is loaded.
+    #[cfg(feature = "audio")]
+    pub fn unlock_audio(&mut self) {
+        if let Some(am) = &mut self.audio_manager {
+            am.recreate_player();
+        }
     }
 
     pub fn marker_names(&self) -> &[CString] {
@@ -342,6 +374,20 @@ impl DotLottiePlayer {
 
         self.playback_state = PlaybackState::Playing;
 
+        // Resume any audio that was active before a pause.
+        #[cfg(feature = "audio")]
+        if let Some(am) = &mut self.audio_manager {
+            for event in am.resume_all() {
+                match event {
+                    AudioEvent::Play { ref_id, volume } => {
+                        self.event_queue
+                            .push(DotLottieEvent::AudioPlay { ref_id, volume });
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         self.event_queue.push(DotLottieEvent::Play);
 
         Ok(())
@@ -355,6 +401,20 @@ impl DotLottiePlayer {
             return Err(DotLottiePlayerError::InsufficientCondition);
         }
         self.playback_state = PlaybackState::Paused;
+
+        #[cfg(feature = "audio")]
+        if let Some(am) = &mut self.audio_manager {
+            for event in am.pause_all() {
+                match event {
+                    AudioEvent::Pause { ref_id } => {
+                        self.event_queue
+                            .push(DotLottieEvent::AudioPause { ref_id });
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         self.event_queue.push(DotLottieEvent::Pause);
         Ok(())
     }
@@ -380,6 +440,20 @@ impl DotLottiePlayer {
                 let _ = self.set_frame(end_frame);
             }
         }
+
+        #[cfg(feature = "audio")]
+        if let Some(am) = &mut self.audio_manager {
+            for event in am.stop_all() {
+                match event {
+                    AudioEvent::Stop { ref_id } => {
+                        self.event_queue
+                            .push(DotLottieEvent::AudioStop { ref_id });
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         self.event_queue.push(DotLottieEvent::Stop);
 
         Ok(())
@@ -618,6 +692,34 @@ impl DotLottiePlayer {
         self.renderer.set_frame(no)?;
         self.event_queue
             .push(DotLottieEvent::Frame { frame_no: no });
+
+        // Only sync audio when the animation is actively playing.
+        #[cfg(feature = "audio")]
+        if self.is_playing() {
+            if let Some(am) = &mut self.audio_manager {
+                // Events are always pushed so hosts on every platform (native or
+                // WASM) can observe audio state changes via poll_event().
+                // AudioManager::update() also drives rodio directly, so audio
+                // plays AND events fire.
+                for event in am.update(no) {
+                    match event {
+                        AudioEvent::Play { ref_id, volume } => {
+                            self.event_queue
+                                .push(DotLottieEvent::AudioPlay { ref_id, volume });
+                        }
+                        AudioEvent::Pause { ref_id } => {
+                            self.event_queue
+                                .push(DotLottieEvent::AudioPause { ref_id });
+                        }
+                        AudioEvent::Stop { ref_id } => {
+                            self.event_queue
+                                .push(DotLottieEvent::AudioStop { ref_id });
+                        }
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -1052,11 +1154,20 @@ impl DotLottiePlayer {
             self.theme_id = None;
         }
 
-        // Convert to &str only for marker extraction (JSON parsing)
         if let Ok(data_str) = animation_data.to_str() {
             let (names, data) = extract_markers(data_str);
             self.marker_names = names;
             self.marker_data = data;
+
+            #[cfg(feature = "audio")]
+            {
+                let (audio_assets, audio_layers) = extract_audio(data_str);
+                self.audio_manager = if audio_assets.is_empty() {
+                    None
+                } else {
+                    Some(AudioManager::new(audio_assets, audio_layers))
+                };
+            }
         }
 
         let result = self.load_animation_common(
@@ -1142,6 +1253,16 @@ impl DotLottiePlayer {
         self.marker_names = names;
         self.marker_data = data;
 
+        #[cfg(feature = "audio")]
+        {
+            let (audio_assets, audio_layers) = extract_audio(&animation_data);
+            self.audio_manager = if audio_assets.is_empty() {
+                None
+            } else {
+                Some(AudioManager::new(audio_assets, audio_layers))
+            };
+        }
+
         let animation_data_cstr =
             CString::new(animation_data).map_err(|_| DotLottiePlayerError::Unknown)?;
 
@@ -1189,6 +1310,16 @@ impl DotLottiePlayer {
                     let (names, data) = extract_markers(&animation_data);
                     self.marker_names = names;
                     self.marker_data = data;
+
+                    #[cfg(feature = "audio")]
+                    {
+                        let (audio_assets, audio_layers) = extract_audio(&animation_data);
+                        self.audio_manager = if audio_assets.is_empty() {
+                            None
+                        } else {
+                            Some(AudioManager::new(audio_assets, audio_layers))
+                        };
+                    }
 
                     let animation_data_cstr =
                         CString::new(animation_data).expect("Failed to create CString");

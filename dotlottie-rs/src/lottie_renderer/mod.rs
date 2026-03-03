@@ -486,6 +486,14 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.width = width;
         self.height = height;
 
+        // Extract default slot values BEFORE passing to ThorVG, because
+        // ThorVG's load_data with copy=false may parse the JSON in-place
+        // and mutate the buffer (nulling out string terminators).
+        let default_slots = data
+            .to_str()
+            .map(slots::extract_slots_from_animation)
+            .unwrap_or_default();
+
         let animation = self.load_animation(data)?;
 
         let background_shape = self.create_background_shape()?;
@@ -496,11 +504,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.background_shape = Some(background_shape);
         self.updated = true;
 
-        // Extract and store default slot values from the animation JSON
-        if let Ok(data_str) = data.to_str() {
-            let defaults = slots::extract_slots_from_animation(data_str);
-            self.store_default_slots(defaults);
-        }
+        self.store_default_slots(default_slots);
 
         Ok(())
     }

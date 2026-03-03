@@ -196,14 +196,51 @@ pub fn extract_slots_from_animation(animation_json: &str) -> BTreeMap<String, Sl
 
     match parsed {
         Ok(json) => {
+            // Prefer the top-level "slots" object if present (newer Lottie spec)
             if let Some(slots_obj) = json.get("slots") {
                 if let Ok(slots_str) = serde_json::to_string(slots_obj) {
-                    return slots_from_json_string(&slots_str).unwrap_or_default();
+                    let slots = slots_from_json_string(&slots_str).unwrap_or_default();
+                    if !slots.is_empty() {
+                        return slots;
+                    }
                 }
             }
-            BTreeMap::new()
+
+            // Fall back to walking the tree for "sid"-tagged properties
+            let mut result = BTreeMap::new();
+            collect_sid_slots(&json, &mut result);
+            result
         }
         Err(_) => BTreeMap::new(),
+    }
+}
+
+/// Walk the JSON tree and collect properties that have a "sid" (slot ID) tag.
+/// These are animated properties with an explicit slot identifier, e.g.:
+/// `{"a": 0, "k": [0.71, 0.192, 0.278], "sid": "ball_color"}`
+fn collect_sid_slots(value: &serde_json::Value, result: &mut BTreeMap<String, SlotType>) {
+    match value {
+        serde_json::Value::Object(map) => {
+            if let Some(serde_json::Value::String(sid)) = map.get("sid") {
+                // This object is a slot-tagged property — parse it without the "sid" key
+                let mut prop = map.clone();
+                prop.remove("sid");
+                let prop_value = serde_json::Value::Object(prop);
+                if let Some(slot_type) = parse_slot_type(&prop_value) {
+                    result.insert(sid.clone(), slot_type);
+                }
+            }
+            // Continue walking children regardless
+            for v in map.values() {
+                collect_sid_slots(v, result);
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for v in arr {
+                collect_sid_slots(v, result);
+            }
+        }
+        _ => {}
     }
 }
 

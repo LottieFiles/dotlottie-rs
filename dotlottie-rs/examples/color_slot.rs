@@ -7,7 +7,7 @@
 /// slot with ID "ball_color" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSlot, ColorSpace, DotLottiePlayer, LottieKeyframe};
+use dotlottie_rs::{ColorSlot, ColorSpace, ColorValue, DotLottiePlayer, LottieKeyframe};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -83,7 +83,7 @@ fn main() {
                 let color_slot = ColorSlot::with_keyframes(vec![
                     LottieKeyframe {
                         frame: 0,
-                        start_value: [1.0, 0.0, 0.0], // Red
+                        start_value: ColorValue([1.0, 0.0, 0.0]), // Red
                         in_tangent: None,
                         out_tangent: None,
                         value_in_tangent: None,
@@ -92,7 +92,7 @@ fn main() {
                     },
                     LottieKeyframe {
                         frame: 60,
-                        start_value: [0.0, 0.0, 1.0], // Blue
+                        start_value: ColorValue([0.0, 0.0, 1.0]), // Blue
                         in_tangent: None,
                         out_tangent: None,
                         value_in_tangent: None,

@@ -1261,6 +1261,15 @@ impl DotLottiePlayer {
             return Ok(());
         }
 
+        if theme_id.to_bytes().is_empty() {
+            self.theme_id = None;
+            self.renderer
+                .reset_slots()
+                .then_some(())
+                .ok_or(DotLottiePlayerError::Unknown)?;
+            return Ok(());
+        }
+
         if self.dotlottie_manager.is_none() {
             return Err(DotLottiePlayerError::InsufficientCondition);
         }
@@ -1479,6 +1488,36 @@ impl DotLottiePlayer {
             }
             Err(_) => Err(DotLottiePlayerError::InvalidParameter),
         }
+    }
+
+    pub fn get_slot_ids(&self) -> Vec<String> {
+        self.renderer.get_slot_ids()
+    }
+
+    pub fn get_slot_type(&self, slot_id: &str) -> String {
+        self.renderer.get_slot_type(slot_id)
+    }
+
+    pub fn get_slot_str(&self, slot_id: &str) -> String {
+        self.renderer.get_slot_str(slot_id)
+    }
+
+    pub fn get_slots_str(&self) -> String {
+        self.renderer.get_slots_str()
+    }
+
+    pub fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), DotLottiePlayerError> {
+        self.renderer.set_slot_str(slot_id, json)?;
+        Ok(())
+    }
+
+    pub fn reset_slot(&mut self, slot_id: &str) -> Result<(), DotLottiePlayerError> {
+        self.renderer.reset_slot(slot_id)?;
+        Ok(())
+    }
+
+    pub fn reset_slots(&mut self) -> bool {
+        self.renderer.reset_slots()
     }
 
     pub fn set_quality(&mut self, quality: u8) -> Result<(), DotLottiePlayerError> {

@@ -6,11 +6,11 @@ mod scalar;
 mod text;
 mod vector;
 
-pub use color::ColorSlot;
+pub use color::{ColorSlot, ColorValue};
 pub use gradient::{GradientSlot, GradientStop};
 pub use image::ImageSlot;
 pub use position::PositionSlot;
-pub use scalar::ScalarSlot;
+pub use scalar::{ScalarSlot, ScalarValue};
 pub use text::{TextCaps, TextDocument, TextJustify, TextKeyframe, TextSlot};
 pub use vector::VectorSlot;
 
@@ -123,6 +123,55 @@ pub(crate) fn slots_to_json_string(
     serde_json::to_string(&lottie_slots)
 }
 
+/// Serialize a single slot to JSON in ThorVG format: {"slot_id": {"p": value}}
+pub(crate) fn single_slot_to_json_string(
+    slot_id: &str,
+    slot_type: &SlotType,
+) -> Result<String, serde_json::Error> {
+    use serde_json::json;
+
+    let mut map = serde_json::Map::new();
+    map.insert(slot_id.to_string(), json!({"p": slot_type}));
+    serde_json::to_string(&map)
+}
+
+pub fn slot_to_json_string(slot: &SlotType) -> Result<String, serde_json::Error> {
+    match slot {
+        SlotType::Color(s) => serde_json::to_string(s),
+        SlotType::Gradient(s) => serde_json::to_string(s),
+        SlotType::Image(s) => serde_json::to_string(s),
+        SlotType::Text(s) => serde_json::to_string(s),
+        SlotType::Scalar(s) => serde_json::to_string(s),
+        SlotType::Vector(s) => serde_json::to_string(s),
+        SlotType::Position(s) => serde_json::to_string(s),
+    }
+}
+
+pub fn slot_type_name(slot: &SlotType) -> &'static str {
+    match slot {
+        SlotType::Color(_) => "color",
+        SlotType::Gradient(_) => "gradient",
+        SlotType::Image(_) => "image",
+        SlotType::Text(_) => "text",
+        SlotType::Scalar(_) => "scalar",
+        SlotType::Vector(_) => "vector",
+        SlotType::Position(_) => "position",
+    }
+}
+
+pub fn parse_slot_from_json(slot_type: &str, json: &str) -> Option<SlotType> {
+    match slot_type {
+        "color" => serde_json::from_str::<ColorSlot>(json).ok().map(SlotType::Color),
+        "scalar" => serde_json::from_str::<ScalarSlot>(json).ok().map(SlotType::Scalar),
+        "vector" => serde_json::from_str::<VectorSlot>(json).ok().map(SlotType::Vector),
+        "position" => serde_json::from_str::<PositionSlot>(json).ok().map(SlotType::Position),
+        "gradient" => serde_json::from_str::<GradientSlot>(json).ok().map(SlotType::Gradient),
+        "image" => serde_json::from_str::<ImageSlot>(json).ok().map(SlotType::Image),
+        "text" => serde_json::from_str::<TextSlot>(json).ok().map(SlotType::Text),
+        _ => None,
+    }
+}
+
 pub fn slots_from_json_string(
     json_str: &str,
 ) -> Result<BTreeMap<String, SlotType>, serde_json::Error> {
@@ -142,6 +191,59 @@ pub fn slots_from_json_string(
     Ok(result)
 }
 
+pub fn extract_slots_from_animation(animation_json: &str) -> BTreeMap<String, SlotType> {
+    let parsed: Result<serde_json::Value, _> = serde_json::from_str(animation_json);
+
+    match parsed {
+        Ok(json) => {
+            // Prefer the top-level "slots" object if present (newer Lottie spec)
+            if let Some(slots_obj) = json.get("slots") {
+                if let Ok(slots_str) = serde_json::to_string(slots_obj) {
+                    let slots = slots_from_json_string(&slots_str).unwrap_or_default();
+                    if !slots.is_empty() {
+                        return slots;
+                    }
+                }
+            }
+
+            // Fall back to walking the tree for "sid"-tagged properties
+            let mut result = BTreeMap::new();
+            collect_sid_slots(&json, &mut result);
+            result
+        }
+        Err(_) => BTreeMap::new(),
+    }
+}
+
+/// Walk the JSON tree and collect properties that have a "sid" (slot ID) tag.
+/// These are animated properties with an explicit slot identifier, e.g.:
+/// `{"a": 0, "k": [0.71, 0.192, 0.278], "sid": "ball_color"}`
+fn collect_sid_slots(value: &serde_json::Value, result: &mut BTreeMap<String, SlotType>) {
+    match value {
+        serde_json::Value::Object(map) => {
+            if let Some(serde_json::Value::String(sid)) = map.get("sid") {
+                // This object is a slot-tagged property — parse it without the "sid" key
+                let mut prop = map.clone();
+                prop.remove("sid");
+                let prop_value = serde_json::Value::Object(prop);
+                if let Some(slot_type) = parse_slot_type(&prop_value) {
+                    result.insert(sid.clone(), slot_type);
+                }
+            }
+            // Continue walking children regardless
+            for v in map.values() {
+                collect_sid_slots(v, result);
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for v in arr {
+                collect_sid_slots(v, result);
+            }
+        }
+        _ => {}
+    }
+}
+
 fn parse_slot_type(value: &serde_json::Value) -> Option<SlotType> {
     if value.get("w").is_some() || value.get("h").is_some() || value.get("u").is_some() {
         serde_json::from_value::<ImageSlot>(value.clone())
@@ -152,10 +254,83 @@ fn parse_slot_type(value: &serde_json::Value) -> Option<SlotType> {
             .ok()
             .map(SlotType::Gradient)
     } else if let Some(k) = value.get("k") {
-        if k.is_array() {
-            serde_json::from_value::<TextSlot>(value.clone())
+        if let Some(arr) = k.as_array() {
+            if arr.is_empty() {
+                return None;
+            }
+
+            // Check if this is an array of keyframe objects (animated property)
+            let first_element = &arr[0];
+            let is_keyframe_array = first_element.is_object()
+                && first_element.get("t").is_some()
+                && first_element.get("s").is_some();
+
+            if is_keyframe_array {
+                if let Some(start_value) = first_element.get("s") {
+                    if let Some(start_arr) = start_value.as_array() {
+                        let len = start_arr.len();
+
+                        if start_arr.iter().all(|v| v.is_number()) {
+                            if len == 3 || len == 4 {
+                                return serde_json::from_value::<ColorSlot>(value.clone())
+                                    .ok()
+                                    .map(SlotType::Color);
+                            } else if len == 2 {
+                                return serde_json::from_value::<VectorSlot>(value.clone())
+                                    .ok()
+                                    .map(SlotType::Vector);
+                            } else if len == 1 {
+                                return serde_json::from_value::<ScalarSlot>(value.clone())
+                                    .ok()
+                                    .map(SlotType::Scalar);
+                            }
+                        } else {
+                            return serde_json::from_value::<TextSlot>(value.clone())
+                                .ok()
+                                .map(SlotType::Text);
+                        }
+                    } else if start_value.is_number() {
+                        return serde_json::from_value::<ScalarSlot>(value.clone())
+                            .ok()
+                            .map(SlotType::Scalar);
+                    } else if start_value.is_object() {
+                        return serde_json::from_value::<TextSlot>(value.clone())
+                            .ok()
+                            .map(SlotType::Text);
+                    }
+                }
+                return None;
+            }
+
+            let is_numeric_array = arr.iter().all(|v| v.is_number());
+
+            if is_numeric_array {
+                let len = arr.len();
+                if len == 3 || len == 4 {
+                    serde_json::from_value::<ColorSlot>(value.clone())
+                        .ok()
+                        .map(SlotType::Color)
+                } else if len == 2 {
+                    serde_json::from_value::<VectorSlot>(value.clone())
+                        .ok()
+                        .map(SlotType::Vector)
+                } else if len == 1 {
+                    serde_json::from_value::<ScalarSlot>(value.clone())
+                        .ok()
+                        .map(SlotType::Scalar)
+                } else {
+                    None
+                }
+            } else {
+                // Non-numeric array, treat as text slot
+                serde_json::from_value::<TextSlot>(value.clone())
+                    .ok()
+                    .map(SlotType::Text)
+            }
+        } else if k.is_number() {
+            serde_json::from_value::<ScalarSlot>(value.clone())
                 .ok()
-                .map(SlotType::Text)
+                .map(SlotType::Scalar)
         } else if let Some(k_obj) = k.as_object() {
             parse_animated_slot(k_obj)
         } else {
@@ -174,7 +349,7 @@ fn parse_animated_slot(k: &serde_json::Map<String, serde_json::Value>) -> Option
             return None;
         }
 
-        if arr.len() == 3 && arr.iter().all(|v| v.is_number()) {
+        if (arr.len() == 3 || arr.len() == 4) && arr.iter().all(|v| v.is_number()) {
             serde_json::from_value::<ColorSlot>(serde_json::Value::Object(k.clone()))
                 .ok()
                 .map(SlotType::Color)

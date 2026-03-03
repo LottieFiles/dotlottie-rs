@@ -1,382 +1,461 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DotLottie wasm-bindgen Demo</title>
-    <style>
-      * { box-sizing: border-box; }
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>DotLottie wasm-bindgen Demo</title>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
 
-      body {
-        font-family: system-ui, -apple-system, sans-serif;
-        margin: 0;
-        padding: 16px;
-        background: #fafafa;
-      }
+            body {
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                margin: 0;
+                padding: 16px;
+                background: #fafafa;
+            }
 
-      h1 { margin-bottom: 6px; }
+            h1 {
+                margin-bottom: 6px;
+            }
 
-      .subtitle { color: #666; margin-bottom: 16px; font-size: 14px; }
+            .subtitle {
+                color: #666;
+                margin-bottom: 16px;
+                font-size: 14px;
+            }
 
-      .renderer-tabs {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 12px;
-      }
+            .renderer-tabs {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 12px;
+            }
 
-      .tab {
-        padding: 8px 18px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        background: white;
-        cursor: pointer;
-        font-size: 13px;
-        font-weight: 500;
-        color: #555;
-      }
+            .tab {
+                padding: 8px 18px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                background: white;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 500;
+                color: #555;
+            }
 
-      .tab.active {
-        background: #333;
-        color: white;
-        border-color: #333;
-      }
+            .tab.active {
+                background: #333;
+                color: white;
+                border-color: #333;
+            }
 
-      .tab.unavailable {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
+            .tab.unavailable {
+                opacity: 0.4;
+                cursor: not-allowed;
+            }
 
-      .demo-panel {
-        background: white;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        overflow: hidden;
-      }
+            .demo-panel {
+                background: white;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                overflow: hidden;
+            }
 
-      #canvas-wrap {
-        width: 100%;
-        line-height: 0; /* removes inline-block gap under canvas */
-      }
+            #canvas-wrap {
+                width: 100%;
+                line-height: 0; /* removes inline-block gap under canvas */
+            }
 
-      canvas {
-        display: block;
-        width: 100%;
-        height: auto;
-      }
+            canvas {
+                display: block;
+                width: 100%;
+                height: auto;
+            }
 
-      .bottom-bar {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        padding: 12px 16px;
-        border-top: 1px solid #eee;
-        flex-wrap: wrap;
-      }
+            .bottom-bar {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                padding: 12px 16px;
+                border-top: 1px solid #eee;
+                flex-wrap: wrap;
+            }
 
-      .controls {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
-      }
+            .controls {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+            }
 
-      .controls button {
-        padding: 7px 14px;
-        border: 1px solid #333;
-        border-radius: 4px;
-        background: white;
-        cursor: pointer;
-        font-size: 13px;
-      }
+            .controls button {
+                padding: 7px 14px;
+                border: 1px solid #333;
+                border-radius: 4px;
+                background: white;
+                cursor: pointer;
+                font-size: 13px;
+            }
 
-      .controls button:hover { background: #f0f0f0; }
+            .controls button:hover {
+                background: #f0f0f0;
+            }
 
-      .controls label {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 13px;
-      }
+            .controls label {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 13px;
+            }
 
-      .speed-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-      }
+            .speed-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 13px;
+            }
 
-      .speed-row input { width: 100px; }
+            .speed-row input {
+                width: 100px;
+            }
 
-      .info {
-        margin-left: auto;
-        padding: 6px 10px;
-        background: #f9f9f9;
-        border-radius: 4px;
-        font-family: monospace;
-        font-size: 12px;
-        line-height: 1.7;
-        white-space: nowrap;
-      }
+            .info {
+                margin-left: auto;
+                padding: 6px 10px;
+                background: #f9f9f9;
+                border-radius: 4px;
+                font-family: monospace;
+                font-size: 12px;
+                line-height: 1.7;
+                white-space: nowrap;
+            }
 
-      .success { color: #080; font-weight: bold; }
-      .error   { color: #d00; font-weight: bold; }
-      .muted   { color: #666; }
-    </style>
-  </head>
-  <body>
-    <h1>DotLottie wasm-bindgen Demo</h1>
-    <p class="subtitle">
-      Idiomatic OOP JavaScript API via
-      <code>wasm32-unknown-unknown</code> + wasm-bindgen.
-    </p>
+            .success {
+                color: #080;
+                font-weight: bold;
+            }
+            .error {
+                color: #d00;
+                font-weight: bold;
+            }
+            .muted {
+                color: #666;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>DotLottie wasm-bindgen Demo</h1>
+        <p class="subtitle">
+            Idiomatic OOP JavaScript API via
+            <code>wasm32-unknown-unknown</code> + wasm-bindgen.
+        </p>
 
-    <div class="renderer-tabs">
-      <button class="tab active" data-renderer="sw">Software (SW)</button>
-      <button class="tab" data-renderer="webgl">WebGL</button>
-      <button class="tab" data-renderer="webgpu">WebGPU</button>
-    </div>
+        <div class="renderer-tabs">
+            <button class="tab active" data-renderer="sw">Software (SW)</button>
+            <button class="tab" data-renderer="webgl">WebGL</button>
+            <button class="tab" data-renderer="webgpu">WebGPU</button>
+        </div>
 
-    <div class="demo-panel">
-      <!-- Canvas is replaced on every renderer switch to avoid the
+        <div class="demo-panel">
+            <!-- Canvas is replaced on every renderer switch to avoid the
            "one context type per canvas" browser restriction. -->
-      <div id="canvas-wrap">
-        <canvas id="canvas" width="1280" height="720"></canvas>
-      </div>
+            <div id="canvas-wrap">
+                <canvas id="canvas" width="1280" height="720"></canvas>
+            </div>
 
-      <div class="bottom-bar">
-        <div class="controls">
-          <button id="btn-play">&#9654; Play</button>
-          <button id="btn-pause">&#9646;&#9646; Pause</button>
-          <button id="btn-stop">&#9646; Stop</button>
-          <label>
-            <input type="checkbox" id="chk-loop" checked />
-            Loop
-          </label>
+            <div class="bottom-bar">
+                <div class="controls">
+                    <button id="btn-play">&#9654; Play</button>
+                    <button id="btn-pause">&#9646;&#9646; Pause</button>
+                    <button id="btn-stop">&#9646; Stop</button>
+                    <label>
+                        <input type="checkbox" id="chk-loop" checked />
+                        Loop
+                    </label>
+                </div>
+
+                <div class="speed-row">
+                    <label for="rng-speed">Speed</label>
+                    <input
+                        type="range"
+                        id="rng-speed"
+                        min="0.1"
+                        max="3"
+                        step="0.1"
+                        value="1"
+                    />
+                    <span id="lbl-speed">1.0x</span>
+                </div>
+
+                <div class="info" id="info">
+                    <div id="info-status" class="muted">Loading...</div>
+                    <div id="info-renderer">Renderer: -</div>
+                    <div id="info-frame">Frame: -</div>
+                    <div id="info-fps">FPS: -</div>
+                </div>
+            </div>
         </div>
 
-        <div class="speed-row">
-          <label for="rng-speed">Speed</label>
-          <input type="range" id="rng-speed" min="0.1" max="3" step="0.1" value="1" />
-          <span id="lbl-speed">1.0x</span>
-        </div>
+        <script type="module">
+            const ANIMATION_URL =
+                "./dotlottie-rs/assets/animations/lottie/toggle.json";
 
-        <div class="info" id="info">
-          <div id="info-status" class="muted">Loading...</div>
-          <div id="info-renderer">Renderer: -</div>
-          <div id="info-frame">Frame: -</div>
-          <div id="info-fps">FPS: -</div>
-        </div>
-      </div>
-    </div>
+            const canvasWrap = document.getElementById("canvas-wrap");
+            const infoStatus = document.getElementById("info-status");
+            const infoRenderer = document.getElementById("info-renderer");
+            const infoFrame = document.getElementById("info-frame");
+            const infoFps = document.getElementById("info-fps");
 
-    <script type="module">
-      const ANIMATION_URL =
-        './dotlottie-rs/assets/animations/lottie/toggle.json';
+            // Current canvas / 2D context — replaced on every renderer switch.
+            let canvas = document.getElementById("canvas");
+            let ctx2d = null; // only set in SW mode
 
-      const canvasWrap   = document.getElementById('canvas-wrap');
-      const infoStatus   = document.getElementById('info-status');
-      const infoRenderer = document.getElementById('info-renderer');
-      const infoFrame    = document.getElementById('info-frame');
-      const infoFps      = document.getElementById('info-fps');
+            let player = null;
+            let raf = null;
+            let activeRenderer = "sw";
 
-      // Current canvas / 2D context — replaced on every renderer switch.
-      let canvas = document.getElementById('canvas');
-      let ctx2d  = null;   // only set in SW mode
+            // ── Canvas replacement ───────────────────────────────────────────────
+            // A canvas can only have one context type (2d / webgl2 / webgpu).
+            // Replacing the element resets that lock so every renderer gets a
+            // clean canvas.
+            //
+            // The pixel dimensions (canvas.width / canvas.height attributes) are
+            // set to the actual CSS layout width so ThorVG allocates the right
+            // number of pixels.  CSS "width:100%" then scales the canvas to fill
+            // the container without distortion.
+            function canvasSize() {
+                const dpr = window.devicePixelRatio || 1;
+                const cssW = canvasWrap.clientWidth || 1280;
+                const cssH = Math.round((cssW * 9) / 16); // 16:9 aspect ratio
+                // Pixel dimensions rendered by ThorVG — full physical resolution.
+                const pixW = Math.round(cssW * dpr);
+                const pixH = Math.round(cssH * dpr);
+                return { cssW, cssH, pixW, pixH };
+            }
 
-      let player         = null;
-      let raf            = null;
-      let activeRenderer = 'sw';
+            function freshCanvas() {
+                const { cssW, cssH, pixW, pixH } = canvasSize();
+                const next = document.createElement("canvas");
+                next.id = "canvas";
+                // Attribute dimensions = physical pixels (ThorVG draws into these).
+                next.width = pixW;
+                next.height = pixH;
+                // CSS dimensions = layout pixels (browser scales to display size).
+                next.style.width = cssW + "px";
+                next.style.height = cssH + "px";
+                canvasWrap.replaceChildren(next);
+                canvas = next;
+                ctx2d = null;
+            }
 
-      // ── Canvas replacement ───────────────────────────────────────────────
-      // A canvas can only have one context type (2d / webgl2 / webgpu).
-      // Replacing the element resets that lock so every renderer gets a
-      // clean canvas.
-      //
-      // The pixel dimensions (canvas.width / canvas.height attributes) are
-      // set to the actual CSS layout width so ThorVG allocates the right
-      // number of pixels.  CSS "width:100%" then scales the canvas to fill
-      // the container without distortion.
-      function canvasSize() {
-        const dpr     = window.devicePixelRatio || 1;
-        const cssW    = canvasWrap.clientWidth || 1280;
-        const cssH    = Math.round(cssW * 9 / 16);   // 16:9 aspect ratio
-        // Pixel dimensions rendered by ThorVG — full physical resolution.
-        const pixW    = Math.round(cssW * dpr);
-        const pixH    = Math.round(cssH * dpr);
-        return { cssW, cssH, pixW, pixH };
-      }
+            // ── FPS tracking ────────────────────────────────────────────────────
+            let fpsTick = 0,
+                fpsLast = performance.now(),
+                fps = 0;
 
-      function freshCanvas() {
-        const { cssW, cssH, pixW, pixH } = canvasSize();
-        const next     = document.createElement('canvas');
-        next.id        = 'canvas';
-        // Attribute dimensions = physical pixels (ThorVG draws into these).
-        next.width     = pixW;
-        next.height    = pixH;
-        // CSS dimensions = layout pixels (browser scales to display size).
-        next.style.width  = cssW + 'px';
-        next.style.height = cssH + 'px';
-        canvasWrap.replaceChildren(next);
-        canvas = next;
-        ctx2d  = null;
-      }
+            function trackFps() {
+                fpsTick++;
+                const now = performance.now();
+                if (now - fpsLast >= 1000) {
+                    fps = Math.round((fpsTick * 1000) / (now - fpsLast));
+                    fpsTick = 0;
+                    fpsLast = now;
+                }
+            }
 
-      // ── FPS tracking ────────────────────────────────────────────────────
-      let fpsTick = 0, fpsLast = performance.now(), fps = 0;
+            function setStatus(text, type) {
+                infoStatus.textContent = text;
+                infoStatus.className = type || "muted";
+            }
 
-      function trackFps() {
-        fpsTick++;
-        const now = performance.now();
-        if (now - fpsLast >= 1000) {
-          fps = Math.round(fpsTick * 1000 / (now - fpsLast));
-          fpsTick = 0;
-          fpsLast = now;
-        }
-      }
+            // ── Render loop ──────────────────────────────────────────────────────
+            function loop() {
+                raf = requestAnimationFrame(loop);
+                if (!player) return;
 
-      function setStatus(text, type) {
-        infoStatus.textContent = text;
-        infoStatus.className = type || 'muted';
-      }
+                player.tick();
+                trackFps();
 
-      // ── Render loop ──────────────────────────────────────────────────────
-      function loop() {
-        raf = requestAnimationFrame(loop);
-        if (!player) return;
+                if (activeRenderer === "sw" && ctx2d) {
+                    // Zero-copy view into WASM linear memory.
+                    // Use the data immediately — do NOT store the reference.
+                    const pixels = player.get_pixel_buffer();
+                    const clamped = new Uint8ClampedArray(
+                        pixels.buffer,
+                        pixels.byteOffset,
+                        pixels.byteLength,
+                    );
+                    ctx2d.putImageData(
+                        new ImageData(clamped, canvas.width, canvas.height),
+                        0,
+                        0,
+                    );
+                }
+                // WebGL and WebGPU: tick() has already rendered into the canvas
+                // framebuffer via the GPU — no blit needed.
 
-        player.tick();
-        trackFps();
+                infoFrame.textContent =
+                    "Frame: " +
+                    player.current_frame().toFixed(1) +
+                    " / " +
+                    player.total_frames().toFixed(1);
+                infoFps.textContent = "FPS: " + fps;
 
-        if (activeRenderer === 'sw' && ctx2d) {
-          // Zero-copy view into WASM linear memory.
-          // Use the data immediately — do NOT store the reference.
-          const pixels = player.get_pixel_buffer();
-          const clamped = new Uint8ClampedArray(
-            pixels.buffer, pixels.byteOffset, pixels.byteLength
-          );
-          ctx2d.putImageData(new ImageData(clamped, canvas.width, canvas.height), 0, 0);
-        }
-        // WebGL and WebGPU: tick() has already rendered into the canvas
-        // framebuffer via the GPU — no blit needed.
+                // Re-loop when animation completes
+                if (
+                    player.is_complete() &&
+                    document.getElementById("chk-loop").checked
+                ) {
+                    player.set_frame(0);
+                    player.play();
+                }
+            }
 
-        infoFrame.textContent =
-          'Frame: ' + player.current_frame().toFixed(1) + ' / ' + player.total_frames().toFixed(1);
-        infoFps.textContent = 'FPS: ' + fps;
+            // ── Initialise a renderer ────────────────────────────────────────────
+            async function init(rendererType) {
+                // Stop previous loop and release old player.
+                if (raf) {
+                    cancelAnimationFrame(raf);
+                    raf = null;
+                }
+                if (player) {
+                    player.free();
+                    player = null;
+                }
 
-        // Re-loop when animation completes
-        if (player.is_complete() && document.getElementById('chk-loop').checked) {
-          player.set_frame(0);
-          player.play();
-        }
-      }
+                // Replace the canvas so the new context type can be requested.
+                freshCanvas();
+                setStatus("Loading WASM...", "muted");
+                infoRenderer.textContent =
+                    "Renderer: " + rendererType.toUpperCase();
 
-      // ── Initialise a renderer ────────────────────────────────────────────
-      async function init(rendererType) {
-        // Stop previous loop and release old player.
-        if (raf) { cancelAnimationFrame(raf); raf = null; }
-        if (player) { player.free(); player = null; }
+                try {
+                    let newPlayer;
+                    // canvas.width / canvas.height are the physical pixel dimensions
+                    // set by freshCanvas() — pass these directly to ThorVG so it
+                    // allocates the right buffer / texture size.
+                    const W = canvas.width,
+                        H = canvas.height;
 
-        // Replace the canvas so the new context type can be requested.
-        freshCanvas();
-        setStatus('Loading WASM...', 'muted');
-        infoRenderer.textContent = 'Renderer: ' + rendererType.toUpperCase();
+                    if (rendererType === "sw") {
+                        const mod =
+                            await import("./release/wasm-bindgen-sw/dotlottie_rs.js");
+                        await mod.default(
+                            "./release/wasm-bindgen-sw/dotlottie_rs_bg.wasm",
+                        );
+                        newPlayer = new mod.DotLottiePlayerWasm();
+                        // Grab the 2D context after the canvas is fresh.
+                        ctx2d = canvas.getContext("2d");
+                    } else if (rendererType === "webgl") {
+                        const gl = canvas.getContext("webgl2");
+                        if (!gl)
+                            throw new Error(
+                                "WebGL2 not available in this browser",
+                            );
+                        const mod =
+                            await import("./release/wasm-bindgen-webgl/dotlottie_rs.js");
+                        await mod.default(
+                            "./release/wasm-bindgen-webgl/dotlottie_rs_bg.wasm",
+                        );
+                        newPlayer = new mod.DotLottiePlayerWasm();
+                        // Pass the WebGL2 context into the WASM layer before loading.
+                        newPlayer.set_webgl_context(gl);
+                    } else if (rendererType === "webgpu") {
+                        if (!navigator.gpu)
+                            throw new Error(
+                                "WebGPU not available in this browser",
+                            );
+                        const adapter = await navigator.gpu.requestAdapter();
+                        if (!adapter)
+                            throw new Error("No WebGPU adapter found");
+                        const device = await adapter.requestDevice();
+                        const gpuCtx = canvas.getContext("webgpu");
+                        if (!gpuCtx)
+                            throw new Error(
+                                "Canvas WebGPU context unavailable",
+                            );
+                        // 'premultiplied' lets transparent ThorVG pixels show the CSS
+                        // background instead of rendering as solid black (the default
+                        // 'opaque' mode discards the alpha channel entirely).
+                        gpuCtx.configure({
+                            device,
+                            format: navigator.gpu.getPreferredCanvasFormat(),
+                            alphaMode: "premultiplied",
+                        });
+                        const mod =
+                            await import("./release/wasm-bindgen-webgpu/dotlottie_rs.js");
+                        await mod.default(
+                            "./release/wasm-bindgen-webgpu/dotlottie_rs_bg.wasm",
+                        );
+                        newPlayer = new mod.DotLottiePlayerWasm();
+                        newPlayer.set_webgpu_device(device);
+                        newPlayer.set_webgpu_surface(gpuCtx);
+                    }
 
-        try {
-          let newPlayer;
-          // canvas.width / canvas.height are the physical pixel dimensions
-          // set by freshCanvas() — pass these directly to ThorVG so it
-          // allocates the right buffer / texture size.
-          const W = canvas.width, H = canvas.height;
+                    const animData = await fetch(ANIMATION_URL).then((r) =>
+                        r.text(),
+                    );
+                    if (!newPlayer.load_animation(animData, W, H)) {
+                        throw new Error(
+                            "load_animation() returned false — check the console",
+                        );
+                    }
 
-          if (rendererType === 'sw') {
-            const mod = await import('./release/wasm-bindgen-sw/dotlottie_rs.js');
-            await mod.default();
-            newPlayer = new mod.DotLottiePlayerWasm();
-            // Grab the 2D context after the canvas is fresh.
-            ctx2d = canvas.getContext('2d');
+                    newPlayer.set_loop(true);
+                    newPlayer.play();
 
-          } else if (rendererType === 'webgl') {
-            const gl = canvas.getContext('webgl2');
-            if (!gl) throw new Error('WebGL2 not available in this browser');
-            const mod = await import('./release/wasm-bindgen-webgl/dotlottie_rs.js');
-            await mod.default();
-            newPlayer = new mod.DotLottiePlayerWasm();
-            // Pass the WebGL2 context into the WASM layer before loading.
-            newPlayer.set_webgl_context(gl);
+                    player = newPlayer;
+                    activeRenderer = rendererType;
+                    setStatus("Playing", "success");
+                    loop();
+                } catch (err) {
+                    console.error(err);
+                    setStatus("Error: " + err.message, "error");
+                }
+            }
 
-          } else if (rendererType === 'webgpu') {
-            if (!navigator.gpu) throw new Error('WebGPU not available in this browser');
-            const adapter = await navigator.gpu.requestAdapter();
-            if (!adapter) throw new Error('No WebGPU adapter found');
-            const device  = await adapter.requestDevice();
-            const gpuCtx  = canvas.getContext('webgpu');
-            if (!gpuCtx) throw new Error('Canvas WebGPU context unavailable');
-            // 'premultiplied' lets transparent ThorVG pixels show the CSS
-            // background instead of rendering as solid black (the default
-            // 'opaque' mode discards the alpha channel entirely).
-            gpuCtx.configure({
-              device,
-              format: navigator.gpu.getPreferredCanvasFormat(),
-              alphaMode: 'premultiplied',
+            // ── Availability checks (update tabs before first render) ─────────────
+            if (!navigator.gpu) {
+                document
+                    .querySelector('[data-renderer="webgpu"]')
+                    .classList.add("unavailable");
+            }
+
+            // ── Controls ─────────────────────────────────────────────────────────
+            document.getElementById("btn-play").onclick = () =>
+                player && player.play();
+            document.getElementById("btn-pause").onclick = () =>
+                player && player.pause();
+            document.getElementById("btn-stop").onclick = () =>
+                player && player.stop();
+
+            document.getElementById("chk-loop").onchange = (e) =>
+                player && player.set_loop(e.target.checked);
+
+            const speedRange = document.getElementById("rng-speed");
+            const speedLabel = document.getElementById("lbl-speed");
+            speedRange.oninput = () => {
+                const v = parseFloat(speedRange.value);
+                speedLabel.textContent = v.toFixed(1) + "x";
+                player && player.set_speed(v);
+            };
+
+            document.querySelectorAll(".tab").forEach((tab) => {
+                tab.onclick = () => {
+                    if (tab.classList.contains("unavailable")) return;
+                    document
+                        .querySelectorAll(".tab")
+                        .forEach((t) => t.classList.remove("active"));
+                    tab.classList.add("active");
+                    init(tab.dataset.renderer);
+                };
             });
-            const mod = await import('./release/wasm-bindgen-webgpu/dotlottie_rs.js');
-            await mod.default();
-            newPlayer = new mod.DotLottiePlayerWasm();
-            newPlayer.set_webgpu_device(device);
-            newPlayer.set_webgpu_surface(gpuCtx);
-          }
 
-          const animData = await fetch(ANIMATION_URL).then(r => r.text());
-          if (!newPlayer.load_animation(animData, W, H)) {
-            throw new Error('load_animation() returned false — check the console');
-          }
-
-          newPlayer.set_loop(true);
-          newPlayer.play();
-
-          player         = newPlayer;
-          activeRenderer = rendererType;
-          setStatus('Playing', 'success');
-          loop();
-
-        } catch (err) {
-          console.error(err);
-          setStatus('Error: ' + err.message, 'error');
-        }
-      }
-
-      // ── Availability checks (update tabs before first render) ─────────────
-      if (!navigator.gpu) {
-        document.querySelector('[data-renderer="webgpu"]').classList.add('unavailable');
-      }
-
-      // ── Controls ─────────────────────────────────────────────────────────
-      document.getElementById('btn-play').onclick  = () => player && player.play();
-      document.getElementById('btn-pause').onclick = () => player && player.pause();
-      document.getElementById('btn-stop').onclick  = () => player && player.stop();
-
-      document.getElementById('chk-loop').onchange = e =>
-        player && player.set_loop(e.target.checked);
-
-      const speedRange = document.getElementById('rng-speed');
-      const speedLabel = document.getElementById('lbl-speed');
-      speedRange.oninput = () => {
-        const v = parseFloat(speedRange.value);
-        speedLabel.textContent = v.toFixed(1) + 'x';
-        player && player.set_speed(v);
-      };
-
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.onclick = () => {
-          if (tab.classList.contains('unavailable')) return;
-          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-          init(tab.dataset.renderer);
-        };
-      });
-
-      // ── Start with SW renderer ───────────────────────────────────────────
-      init('sw');
-    </script>
-  </body>
+            // ── Start with SW renderer ───────────────────────────────────────────
+            init("sw");
+        </script>
+    </body>
 </html>

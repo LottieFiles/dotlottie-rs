@@ -144,6 +144,15 @@ pub trait Animation: Default {
 
     fn set_slots_str(&mut self, slots: &CStr) -> Result<(), Self::Error>;
 
+    /// Generate a slot override from JSON and return its code for later use
+    fn gen_slot(&mut self, slot_json: &str) -> Result<u32, Self::Error>;
+
+    /// Apply a previously generated slot by its code (0 = reset all slots to defaults)
+    fn apply_slot(&mut self, slot_code: u32) -> Result<(), Self::Error>;
+
+    /// Delete a previously generated slot by its code
+    fn del_slot(&mut self, slot_code: u32) -> Result<(), Self::Error>;
+
     fn set_quality(&mut self, quality: u8) -> Result<(), Self::Error>;
 
     fn tween(

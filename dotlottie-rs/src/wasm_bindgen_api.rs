@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::ffi::CString;
 
 use js_sys::{Array, Float32Array, Object, Uint8Array};
@@ -169,8 +168,6 @@ pub struct DotLottiePlayerWasm {
     wg_device_ptr: usize,
     #[cfg(feature = "webgpu")]
     wg_surface_ptr: usize,
-    /// Cache of slot values: id -> (type_name, json_value).
-    slot_cache: HashMap<String, (String, String)>,
 }
 
 #[wasm_bindgen]
@@ -191,7 +188,6 @@ impl DotLottiePlayerWasm {
             wg_device_ptr: 0,
             #[cfg(feature = "webgpu")]
             wg_surface_ptr: 0,
-            slot_cache: HashMap::new(),
         }
     }
 
@@ -265,7 +261,6 @@ impl DotLottiePlayerWasm {
 
     /// Load a Lottie JSON animation.  Sets up the rendering target automatically.
     pub fn load_animation(&mut self, data: &str, width: u32, height: u32) -> bool {
-        self.slot_cache.clear();
         if !self.setup_target(width, height) { return false; }
         let Ok(c_data) = CString::new(data) else { return false; };
         self.player.load_animation_data(&c_data, width, height).is_ok()
@@ -274,7 +269,6 @@ impl DotLottiePlayerWasm {
     /// Load a .lottie archive from raw bytes.
     #[cfg(feature = "dotlottie")]
     pub fn load_dotlottie_data(&mut self, data: &[u8], width: u32, height: u32) -> bool {
-        self.slot_cache.clear();
         if !self.setup_target(width, height) { return false; }
         self.player.load_dotlottie_data(data, width, height).is_ok()
     }
@@ -282,7 +276,6 @@ impl DotLottiePlayerWasm {
     /// Load an animation from an already-loaded .lottie archive by its ID.
     #[cfg(feature = "dotlottie")]
     pub fn load_animation_from_id(&mut self, id: &str, width: u32, height: u32) -> bool {
-        self.slot_cache.clear();
         if !self.setup_target(width, height) { return false; }
         let Ok(c_id) = CString::new(id) else { return false; };
         self.player.load_animation(&c_id, width, height).is_ok()
@@ -481,60 +474,43 @@ impl DotLottiePlayerWasm {
 
     /// Set a single slot by ID from a JSON value string.
     pub fn set_slot_str(&mut self, id: &str, json: &str) -> bool {
-        let wrapper = format!("{{\"{}\": {}}}", id, json);
-        if self.player.set_slots_str(&wrapper).is_ok() {
-            let slot_type = Self::infer_slot_type(json);
-            self.slot_cache.insert(id.to_string(), (slot_type, json.to_string()));
-            true
-        } else {
-            false
-        }
+        self.player.set_slot_str(id, json).is_ok()
     }
 
-    /// Get the JSON value of a single slot by ID, or `undefined` if not cached.
+    /// Get the JSON value of a single slot by ID, or `undefined` if not found.
     pub fn get_slot_str(&self, id: &str) -> Option<String> {
-        self.slot_cache.get(id).map(|(_, json)| json.clone())
+        let s = self.player.get_slot_str(id);
+        if s.is_empty() { None } else { Some(s) }
     }
 
-    /// Get all cached slots as a JSON object string.
+    /// Get all slots as a JSON object string.
     pub fn get_slots_str(&self) -> String {
-        // Build JSON manually since values are already JSON strings
-        let mut out = String::from('{');
-        for (i, (k, (_, v))) in self.slot_cache.iter().enumerate() {
-            if i > 0 { out.push(','); }
-            out.push('"');
-            out.push_str(k);
-            out.push_str("\":");
-            out.push_str(v);
-        }
-        out.push('}');
-        out
+        self.player.get_slots_str()
     }
 
-    /// Get all cached slot IDs as a JS array.
+    /// Get all slot IDs as a JS array.
     pub fn get_slot_ids(&self) -> JsValue {
         let arr = Array::new();
-        for key in self.slot_cache.keys() {
-            arr.push(&key.as_str().into());
+        for id in self.player.get_slot_ids() {
+            arr.push(&id.as_str().into());
         }
         arr.into()
     }
 
-    /// Get the type string of a cached slot, or `undefined` if not found.
+    /// Get the type string of a slot, or `undefined` if not found.
     pub fn get_slot_type(&self, id: &str) -> Option<String> {
-        self.slot_cache.get(id).map(|(t, _)| t.clone())
+        let s = self.player.get_slot_type(id);
+        if s.is_empty() { None } else { Some(s) }
     }
 
-    /// Reset a slot to its original value and clear its cache entry.
+    /// Reset a slot to its default value from the animation.
     pub fn reset_slot(&mut self, id: &str) -> bool {
-        self.slot_cache.remove(id);
-        self.player.clear_slot(id).is_ok()
+        self.player.reset_slot(id).is_ok()
     }
 
-    /// Reset all slots and clear the cache.
+    /// Reset all slots to their default values from the animation.
     pub fn reset_slots(&mut self) -> bool {
-        self.slot_cache.clear();
-        self.player.clear_slots().is_ok()
+        self.player.reset_slots()
     }
 
     // ── Layer inspection ──────────────────────────────────────────────────────
@@ -1007,44 +983,13 @@ impl DotLottiePlayerWasm {
             }
         }
     }
-}
 
-impl DotLottiePlayerWasm {
-    /// Infer the slot type from the JSON shape.
-    fn infer_slot_type(json: &str) -> String {
-        let Ok(val) = serde_json::from_str::<serde_json::Value>(json) else {
-            return "unknown".to_string();
-        };
-        // Gradient: has "p" key (colorStopCount)
-        if val.get("p").is_some() {
-            return "gradient".to_string();
-        }
-        // Text: k is array where first element has "s" with string "t" field
-        if let Some(k) = val.get("k") {
-            if let Some(arr) = k.as_array() {
-                if let Some(first) = arr.first() {
-                    if let Some(s) = first.get("s") {
-                        if s.get("t").and_then(|t| t.as_str()).is_some() {
-                            return "text".to_string();
-                        }
-                    }
-                }
-            }
-            // Scalar: k is a number
-            if k.is_number() {
-                return "scalar".to_string();
-            }
-            // Color or vector: k is an array of numbers
-            if let Some(arr) = k.as_array() {
-                if arr.len() >= 3 && arr.iter().all(|v| v.is_number()) {
-                    return "color".to_string();
-                }
-                if arr.len() == 2 && arr.iter().all(|v| v.is_number()) {
-                    return "vector".to_string();
-                }
-            }
-        }
-        "unknown".to_string()
+    /// Advance the state machine by one tick.  Returns `false` if no state machine
+    /// is loaded, otherwise `true` (even if the machine is stopped or errored).
+    #[cfg(feature = "state-machines")]
+    pub fn sm_tick(&mut self) -> bool {
+        let Some(ref mut sm) = self.state_machine else { return false };
+        sm.tick().is_ok()
     }
 }
 

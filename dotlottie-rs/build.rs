@@ -84,7 +84,6 @@ mod wgpu_native {
     /// 2. Cached download at `$CARGO_HOME/wgpu-native-cache/{version}/{artifact}/`
     /// 3. Fresh download from GitHub
     ///
-    /// For emscripten: only headers are needed, so `WGPU_NATIVE_INCLUDE` must be set.
     pub fn ensure_available(target: &str) -> io::Result<(PathBuf, PathBuf)> {
         println!("cargo:rerun-if-env-changed=WGPU_NATIVE_INCLUDE");
         println!("cargo:rerun-if-env-changed=WGPU_NATIVE_LIB");
@@ -95,14 +94,6 @@ mod wgpu_native {
             env::var("WGPU_NATIVE_LIB"),
         ) {
             return Ok((PathBuf::from(inc), PathBuf::from(lib)));
-        }
-
-        // Emscripten only needs headers (no lib linking) — require WGPU_NATIVE_INCLUDE
-        if target == "wasm32-unknown-emscripten" {
-            return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "wasm32-unknown-emscripten requires WGPU_NATIVE_INCLUDE to be set (only headers are needed)",
-            ));
         }
 
         let artifact = artifact_name(target).ok_or_else(|| {
@@ -443,9 +434,6 @@ mod thorvg {
             } else if target_triple.contains("armv7") {
                 writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?;
                 simd_flags.push("-mfpu=neon");
-            } else if target_triple == "wasm32-unknown-emscripten" {
-                writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?;
-                simd_flags.push("-msimd128");
             }
         }
 
@@ -493,26 +481,24 @@ mod thorvg {
 
             cc_build.include(&wgpu_include_path);
 
-            if target_triple != "wasm32-unknown-emscripten" {
-                let abs_lib_path = wgpu_lib_path
-                    .canonicalize()
-                    .expect("Failed to canonicalize wgpu lib path");
+            let abs_lib_path = wgpu_lib_path
+                .canonicalize()
+                .expect("Failed to canonicalize wgpu lib path");
 
-                println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
-                println!("cargo:rustc-link-lib=static=wgpu_native");
+            println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
+            println!("cargo:rustc-link-lib=static=wgpu_native");
 
-                if target_triple.contains("apple") || target_triple.contains("ios") {
-                    println!("cargo:rustc-link-lib=framework=Metal");
-                    println!("cargo:rustc-link-lib=framework=QuartzCore");
-                    println!("cargo:rustc-link-lib=framework=Foundation");
-                    if target_triple.contains("darwin") {
-                        println!("cargo:rustc-link-lib=framework=AppKit");
-                    } else {
-                        println!("cargo:rustc-link-lib=framework=UIKit");
-                    }
-                } else if target_triple.contains("linux") && !target_triple.contains("android") {
-                    println!("cargo:rustc-link-lib=vulkan");
+            if target_triple.contains("apple") || target_triple.contains("ios") {
+                println!("cargo:rustc-link-lib=framework=Metal");
+                println!("cargo:rustc-link-lib=framework=QuartzCore");
+                println!("cargo:rustc-link-lib=framework=Foundation");
+                if target_triple.contains("darwin") {
+                    println!("cargo:rustc-link-lib=framework=AppKit");
+                } else {
+                    println!("cargo:rustc-link-lib=framework=UIKit");
                 }
+            } else if target_triple.contains("linux") && !target_triple.contains("android") {
+                println!("cargo:rustc-link-lib=vulkan");
             }
 
             bindgen::Builder::default()

@@ -645,6 +645,25 @@ impl Animation for TvgAnimation {
         result.into_result()
     }
 
+    fn gen_slot(&mut self, slot_json: &CStr) -> Result<u32, TvgError> {
+        let slot_code = unsafe {
+            tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slot_json.as_ptr())
+        };
+        if slot_code == 0 {
+            return Err(TvgError::InvalidArgument);
+        }
+        Ok(slot_code)
+    }
+
+    fn apply_slot(&mut self, slot_code: u32) -> Result<(), TvgError> {
+        unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_code) }
+            .into_result()
+    }
+
+    fn del_slot(&mut self, slot_code: u32) -> Result<(), TvgError> {
+        unsafe { tvg::tvg_lottie_animation_del_slot(self.raw_animation, slot_code) }.into_result()
+    }
+
     fn set_quality(&mut self, quality: u8) -> Result<(), TvgError> {
         unsafe { tvg::tvg_lottie_animation_set_quality(self.raw_animation, quality).into_result() }
     }

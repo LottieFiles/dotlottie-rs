@@ -17,6 +17,13 @@
 WASM_BINDGEN_TARGET := wasm32-unknown-unknown
 WASM_BINDGEN_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-ttf,dotlottie,theming,state-machines,wasm,wasm-bindgen-api
 
+# sed -i behaves differently on macOS (BSD) vs Linux (GNU)
+ifeq ($(shell uname),Darwin)
+  SED_I := sed -i ''
+else
+  SED_I := sed -i
+endif
+
 # Apple's system clang lacks the WebAssembly backend.  Use Homebrew LLVM if
 # present, otherwise fall back to whatever clang/clang++ is on PATH.
 LLVM_PREFIX := $(shell brew --prefix llvm 2>/dev/null)
@@ -43,7 +50,7 @@ wasm-setup:
 #    Webpack/Next.js to try resolving the .wasm file at build time, breaking bundled
 #    consumers. Replace with a throw since DotLottieWasmLoader always provides a URL.
 define strip_env_import
-	sed -i '' \
+	$(SED_I) \
 		-e '/^import \* as __wbg_star0 from .env.;/d' \
 		-e '/imports\[.env.\] = __wbg_star0;/d' \
 		-e "s|module_or_path = new URL('dotlottie_rs_bg.wasm', import.meta.url);|throw new Error('WASM module URL must be provided via DotLottieWasmLoader or setWasmUrl().');|" \

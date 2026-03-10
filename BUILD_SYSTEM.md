@@ -6,7 +6,7 @@ This documentation provides implementation details to help understand and extend
 
 The build process works as follows:
 
-1. **Platform Setup**: Initialize and configure build tools for each target platform (NDK for Android, Xcode for Apple, emsdk for WASM)
+1. **Platform Setup**: Initialize and configure build tools for each target platform (NDK for Android, Xcode for Apple, wasm-pack for WASM)
 2. **C API Header Generation via cbindgen**: Generate the C header from the `c_api` feature in `dotlottie-rs`
 3. **Rust Library Build**: Build the `dotlottie-rs` library for each target architecture using platform-specific toolchains
 4. **Platform-Specific Packaging**: Create platform-appropriate release artifacts (AAR for Android, XCFramework for Apple, JS/WASM modules for Web)
@@ -19,7 +19,7 @@ The build system is organized into modular makefiles, each handling a specific p
 - **Main Makefile**: Orchestrates all builds and provides help/setup targets
 - **make/android.mk**: Handles Android builds across multiple architectures (ARM64, x86_64, x86, ARMv7)
 - **make/apple.mk**: Manages Apple platform builds (macOS, iOS, tvOS, visionOS, macCatalyst)
-- **make/wasm.mk**: Controls WebAssembly builds using Emscripten and wasm-bindgen
+- **make/wasm.mk**: Controls WebAssembly builds using wasm-pack and wasm-bindgen
 - **make/linux.mk**: Handles Linux x86_64 and ARM64 builds
 
 Each platform makefile is responsible for:
@@ -65,21 +65,20 @@ Key targets:
 
 #### WASM Build System (`make/wasm.mk`)
 
-The WASM build system creates WebAssembly modules for web deployment using two strategies:
+The WASM build system creates WebAssembly modules for web deployment targeting `wasm32-unknown-unknown` via wasm-pack:
 
-- **Emscripten (C API)**: Compiles `dotlottie-rs` with the `c_api` feature via Emscripten for maximum compatibility
-- **wasm-bindgen (wasm32-unknown-unknown)**: Uses the `wasm-bindgen-api` feature for direct JS/TS integration with WebGL or WebGPU renderers
-- **TypeScript Support**: Generates TypeScript definition files for both strategies
-- **Optimization**: Aggressive size optimization with LTO and closure compiler
-- **Self-Contained**: Manages emsdk submodule automatically
+- **wasm-bindgen**: Uses the `wasm-bindgen-api` feature for idiomatic JS/TS bindings with software, WebGL, or WebGPU renderers
+- **TypeScript Support**: Generates TypeScript definition files automatically via wasm-pack
+- **Lean output**: No Emscripten runtime overhead — only the wasm binary and a small wasm-bindgen glue file
+- **Standard toolchain**: Builds with stable Rust, no nightly or EMSDK required
 
 Key targets:
 
-- `wasm`: Builds WASM module via Emscripten (C API)
-- `wasm-webgl`: Builds WASM module with WebGL renderer via wasm-bindgen
-- `wasm-webgpu`: Builds WASM module with WebGPU renderer via wasm-bindgen
-- `wasm-all`: Builds all WASM variants
-- `wasm-setup`: Installs emsdk, Rust nightly, and wasm-bindgen CLI
+- `wasm`: Builds software-renderer WASM module → `release/wasm/`
+- `wasm-webgl`: Builds WebGL2 WASM module → `release/wasm-webgl/`
+- `wasm-webgpu`: Builds WebGPU WASM module → `release/wasm-webgpu/`
+- `wasm-all`: Builds all three variants
+- `wasm-setup`: Installs `wasm32-unknown-unknown` Rust target and wasm-pack
 - `wasm-clean`: Cleans WASM-specific build artifacts
 
 #### Native Build System
@@ -137,7 +136,7 @@ Platform-specific environment variables can be overridden:
 
 **WASM:**
 
-- `EMSDK_VERSION`: Emscripten SDK version (default: `3.1.74`)
+- No additional environment variables required — wasm-pack handles the toolchain
 
 #### Version Management
 
@@ -156,8 +155,8 @@ The build system provides a comprehensive set of targets accessible via `make he
 
 - `make android`: Build all Android architectures (ARM64, x86_64, x86, ARMv7)
 - `make apple`: Build all Apple platforms (macOS, iOS, tvOS, visionOS, macCatalyst)
-- `make wasm`: Build WebAssembly module via Emscripten (C API)
-- `make wasm-webgl`: Build WebAssembly module with WebGL renderer via wasm-bindgen
+- `make wasm`: Build WebAssembly module (software renderer) via wasm-bindgen
+- `make wasm-webgl`: Build WebAssembly module with WebGL2 renderer via wasm-bindgen
 - `make wasm-webgpu`: Build WebAssembly module with WebGPU renderer via wasm-bindgen
 - `make wasm-all`: Build all WASM variants
 - `make native`: Build native library for current platform
@@ -183,9 +182,8 @@ The build system automatically manages platform-specific dependencies:
 
 #### WASM Dependencies
 
-- **emsdk submodule**: Automatically initialized and configured for Emscripten WASM builds
-- **wasm-bindgen CLI**: Installed via `make wasm-setup` for wasm-bindgen WASM builds
-- **Node.js dependencies**: TypeScript compiler installed within emsdk environment
+- **wasm-pack**: Installed automatically by `make wasm-setup`; orchestrates wasm-bindgen and wasm-opt
+- **wasm32-unknown-unknown target**: Installed automatically by `make wasm-setup` via rustup
 
 #### Android Dependencies
 

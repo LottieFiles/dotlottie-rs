@@ -254,51 +254,13 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Setup WASM
         run: make wasm-setup
 
-      - name: Set Features
-        run: |
-          features=""
-
-          if [ "${{ github.event.inputs.feature_webp }}" = "true" ]; then
-            features="${features}tvg-webp,"
-          fi
-
-          if [ "${{ github.event.inputs.feature_png }}" = "true" ]; then
-            features="${features}tvg-png,"
-          fi
-
-          if [ "${{ github.event.inputs.feature_jpg }}" = "true" ]; then
-            features="${features}tvg-jpg,"
-          fi
-
-          if [ "${{ github.event.inputs.feature_ttf }}" = "true" ]; then
-            features="${features}tvg-ttf,"
-          fi
-
-          if [ "${{ github.event.inputs.feature_expressions }}" = "true" ]; then
-            features="${features}tvg-lottie-expressions,"
-          fi
-
-          # Remove trailing comma if features exist
-          if [ -n "$features" ]; then
-            features="${features%,}"
-          fi
-
-          echo "FEATURES=$features" >> $GITHUB_ENV
-          echo "Selected features: $features"
-
       - name: Build WASM
         run: make wasm
-        env:
-          FEATURES: ${{ env.FEATURES }}
 
       - name: Create WASM Archive
         run: |

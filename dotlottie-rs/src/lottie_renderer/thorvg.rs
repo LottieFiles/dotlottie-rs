@@ -490,13 +490,14 @@ impl Animation for TvgAnimation {
     type Error = TvgError;
 
     fn load_data(&mut self, data: &CStr, mimetype: &CStr) -> Result<(), TvgError> {
+        let data_owned = data.to_owned();
         let data_len_u32 =
             u32::try_from(data.to_bytes().len()).map_err(|_| TvgError::InvalidArgument)?;
 
         let result = unsafe {
             TvgAnimation::tvg_load_data_dispatch(
                 self.raw_paint,
-                data.as_ptr(),
+                data_owned.as_ptr(),
                 data_len_u32,
                 mimetype.as_ptr(),
             )
@@ -505,7 +506,7 @@ impl Animation for TvgAnimation {
         match result {
             Ok(()) => {
                 // Keep the payload alive for ThorVG
-                self.data = Some(data.to_owned());
+                self.data = Some(data_owned);
                 Ok(())
             }
             Err(e) => {

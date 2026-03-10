@@ -1,17 +1,19 @@
 use std::ffi::CString;
 
-use js_sys::{Array, Float32Array, Object, Uint8Array};
+use js_sys::{Array, Float32Array, Object};
+#[cfg(not(any(feature = "webgl", feature = "webgpu")))]
+use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
 
-use crate::{ColorSpace, DotLottiePlayer, Fit, Layout, Mode as PlayerMode};
+
+#[cfg(not(any(feature = "webgl", feature = "webgpu")))]
+use crate::ColorSpace;
+use crate::{DotLottiePlayer, Fit, Layout, Mode as PlayerMode};
 
 // ─── Renderer mode ───────────────────────────────────────────────────────────
 
-const RENDERER_SW: u8 = 0;
-#[cfg(feature = "webgl")]
-const RENDERER_GL: u8 = 1;
-#[cfg(feature = "webgpu")]
-const RENDERER_WG: u8 = 2;
+// Renderer mode constants are no longer needed — the renderer variant is
+// determined at compile time via feature flags (webgl, webgpu, or software).
 
 // ─── StoredGlContext — wraps the pointer in webgl_stubs::CONTEXT_PTR ────────
 //
@@ -151,6 +153,13 @@ fn fit_to_str(f: Fit) -> &'static str {
 //
 // Field order matters for Drop: `state_machine` MUST come before `player` so
 // the engine (which holds a raw pointer into player) is dropped first.
+//
+// `player` is wrapped in `ManuallyDrop` so that our explicit `Drop` impl can
+// control the exact moment ThorVG is destroyed — specifically, BEFORE the
+// WebGL/WebGPU context is released.  ThorVG's renderer cleanup calls GL
+// functions (glDeleteTextures, glDeleteFramebuffers, …), which require a live
+// context.  If we released the context first (as the old code did) those calls
+// hit a null pointer and trap.
 
 #[wasm_bindgen]
 pub struct DotLottiePlayerWasm {
@@ -158,12 +167,14 @@ pub struct DotLottiePlayerWasm {
     /// dropped first (it holds a raw mutable pointer into `player`).
     #[cfg(feature = "state-machines")]
     state_machine: Option<crate::StateMachineEngine<'static>>,
-    player: DotLottiePlayer,
+    player: std::mem::ManuallyDrop<DotLottiePlayer>,
     /// Owned pixel buffer for the SW renderer (ARGB8888 u32 values).
+    #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
     sw_buffer: Vec<u32>,
     width: u32,
     height: u32,
-    renderer_mode: u8,
+    #[cfg(feature = "webgl")]
+    gl_context_ptr: usize,
     #[cfg(feature = "webgpu")]
     wg_device_ptr: usize,
     #[cfg(feature = "webgpu")]
@@ -179,11 +190,13 @@ impl DotLottiePlayerWasm {
         DotLottiePlayerWasm {
             #[cfg(feature = "state-machines")]
             state_machine: None,
-            player: DotLottiePlayer::new(),
+            player: std::mem::ManuallyDrop::new(DotLottiePlayer::new()),
+            #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
             sw_buffer: Vec::new(),
             width: 0,
             height: 0,
-            renderer_mode: RENDERER_SW,
+            #[cfg(feature = "webgl")]
+            gl_context_ptr: 0,
             #[cfg(feature = "webgpu")]
             wg_device_ptr: 0,
             #[cfg(feature = "webgpu")]
@@ -194,10 +207,20 @@ impl DotLottiePlayerWasm {
     // ── Renderer context setup ────────────────────────────────────────────────
 
     /// Store the WebGL2 context.  Call before `load_animation`.
+    /// Each player instance owns its own context, enabling multiple
+    /// WebGL canvases simultaneously.
     #[cfg(feature = "webgl")]
     pub fn set_webgl_context(&mut self, ctx: web_sys::WebGl2RenderingContext) {
-        crate::webgl_stubs::set_webgl_context(ctx);
-        self.renderer_mode = RENDERER_GL;
+        if self.gl_context_ptr != 0 {
+            unsafe {
+                crate::webgl_stubs::drop_stored_context(
+                    self.gl_context_ptr as *mut web_sys::WebGl2RenderingContext,
+                );
+            }
+        }
+        let ptr = crate::webgl_stubs::store_context(ctx);
+        self.gl_context_ptr = ptr as usize;
+        crate::webgl_stubs::make_current(ptr);
     }
 
     /// Store the WebGPU device.  Call before `set_webgpu_surface` and `load_animation`.
@@ -207,7 +230,6 @@ impl DotLottiePlayerWasm {
             unsafe { drop(Box::from_raw(self.wg_device_ptr as *mut web_sys::GpuDevice)); }
         }
         self.wg_device_ptr = Box::into_raw(Box::new(device)) as usize;
-        self.renderer_mode = RENDERER_WG;
     }
 
     /// Store the WebGPU canvas context (surface).  Call before `load_animation`.
@@ -219,48 +241,66 @@ impl DotLottiePlayerWasm {
         self.wg_surface_ptr = Box::into_raw(Box::new(surface)) as usize;
     }
 
+    // ── GL context activation ─────────────────────────────────────────────────
+
+    /// Swap the global WebGL context to this instance's context.
+    /// Must be called before any operation that touches the GL pipeline.
+    #[cfg(feature = "webgl")]
+    fn activate_gl(&self) {
+        if self.gl_context_ptr != 0 {
+            crate::webgl_stubs::make_current(
+                self.gl_context_ptr as *mut web_sys::WebGl2RenderingContext,
+            );
+        }
+    }
+
     // ── Internal render-target setup ──────────────────────────────────────────
 
+    #[cfg(feature = "webgl")]
     fn setup_target(&mut self, width: u32, height: u32) -> bool {
         self.width  = width;
         self.height = height;
-        match self.renderer_mode {
-            #[cfg(feature = "webgl")]
-            RENDERER_GL => self.player.set_gl_target(&StoredGlContext, 0, width, height).is_ok(),
+        self.player.set_gl_target(&StoredGlContext, 0, width, height).is_ok()
+    }
 
-            #[cfg(feature = "webgpu")]
-            RENDERER_WG => {
-                if self.wg_device_ptr == 0 || self.wg_surface_ptr == 0 {
-                    return false;
-                }
-                self.player
-                    .set_wg_target(
-                        &WgpuDevicePtr(self.wg_device_ptr),
-                        &WgpuSentinelInstance,
-                        &WgpuSurfacePtr(self.wg_surface_ptr),
-                        width,
-                        height,
-                        crate::WgpuTargetType::Surface,
-                    )
-                    .is_ok()
-            }
-
-            _ => {
-                let required = (width * height) as usize;
-                if self.sw_buffer.len() != required {
-                    self.sw_buffer.resize(required, 0);
-                }
-                self.player
-                    .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888)
-                    .is_ok()
-            }
+    #[cfg(feature = "webgpu")]
+    fn setup_target(&mut self, width: u32, height: u32) -> bool {
+        self.width  = width;
+        self.height = height;
+        if self.wg_device_ptr == 0 || self.wg_surface_ptr == 0 {
+            return false;
         }
+        self.player
+            .set_wg_target(
+                &WgpuDevicePtr(self.wg_device_ptr),
+                &WgpuSentinelInstance,
+                &WgpuSurfacePtr(self.wg_surface_ptr),
+                width,
+                height,
+                crate::WgpuTargetType::Surface,
+            )
+            .is_ok()
+    }
+
+    #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
+    fn setup_target(&mut self, width: u32, height: u32) -> bool {
+        self.width  = width;
+        self.height = height;
+        let required = (width * height) as usize;
+        if self.sw_buffer.len() != required {
+            self.sw_buffer.resize(required, 0);
+        }
+        self.player
+            .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888)
+            .is_ok()
     }
 
     // ── Loading ───────────────────────────────────────────────────────────────
 
     /// Load a Lottie JSON animation.  Sets up the rendering target automatically.
     pub fn load_animation(&mut self, data: &str, width: u32, height: u32) -> bool {
+        #[cfg(feature = "webgl")]
+        self.activate_gl();
         if !self.setup_target(width, height) { return false; }
         let Ok(c_data) = CString::new(data) else { return false; };
         self.player.load_animation_data(&c_data, width, height).is_ok()
@@ -269,6 +309,8 @@ impl DotLottiePlayerWasm {
     /// Load a .lottie archive from raw bytes.
     #[cfg(feature = "dotlottie")]
     pub fn load_dotlottie_data(&mut self, data: &[u8], width: u32, height: u32) -> bool {
+        #[cfg(feature = "webgl")]
+        self.activate_gl();
         if !self.setup_target(width, height) { return false; }
         self.player.load_dotlottie_data(data, width, height).is_ok()
     }
@@ -276,6 +318,8 @@ impl DotLottiePlayerWasm {
     /// Load an animation from an already-loaded .lottie archive by its ID.
     #[cfg(feature = "dotlottie")]
     pub fn load_animation_from_id(&mut self, id: &str, width: u32, height: u32) -> bool {
+        #[cfg(feature = "webgl")]
+        self.activate_gl();
         if !self.setup_target(width, height) { return false; }
         let Ok(c_id) = CString::new(id) else { return false; };
         self.player.load_animation(&c_id, width, height).is_ok()
@@ -284,17 +328,32 @@ impl DotLottiePlayerWasm {
     // ── Render loop ───────────────────────────────────────────────────────────
 
     /// Advance time and render.  Call once per `requestAnimationFrame`.
-    pub fn tick(&mut self) -> bool { self.player.tick().is_ok() }
+    pub fn tick(&mut self) -> bool {
+        #[cfg(feature = "webgl")]
+        self.activate_gl();
+        self.player.tick().is_ok()
+    }
 
     /// Render the current frame without advancing time.
-    pub fn render(&mut self) -> bool { self.player.render().is_ok() }
+    pub fn render(&mut self) -> bool {
+        #[cfg(feature = "webgl")]
+        self.activate_gl();
+        self.player.render().is_ok()
+    }
 
     /// Clear the canvas to the background colour.
-    pub fn clear(&mut self) { self.player.clear(); }
+    pub fn clear(&mut self) {
+        #[cfg(feature = "webgl")]
+        self.activate_gl();
+        self.player.clear();
+    }
 
     /// Resize the canvas.  For the SW renderer this also resizes the pixel buffer.
     pub fn resize(&mut self, width: u32, height: u32) -> bool {
-        if self.renderer_mode == RENDERER_SW {
+        #[cfg(feature = "webgl")]
+        self.activate_gl();
+        #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
+        {
             let required = (width * height) as usize;
             self.sw_buffer.resize(required, 0);
             if self.player
@@ -316,6 +375,7 @@ impl DotLottiePlayerWasm {
     /// **Use the returned array immediately.**  Do not store the reference across
     /// any call that may reallocate the buffer (e.g. `resize` / `load_animation`
     /// with different dimensions).
+    #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
     pub fn get_pixel_buffer(&self) -> Uint8Array {
         let bytes = unsafe {
             std::slice::from_raw_parts(
@@ -988,8 +1048,46 @@ impl DotLottiePlayerWasm {
     /// is loaded, otherwise `true` (even if the machine is stopped or errored).
     #[cfg(feature = "state-machines")]
     pub fn sm_tick(&mut self) -> bool {
+        #[cfg(feature = "webgl")]
+        self.activate_gl();
         let Some(ref mut sm) = self.state_machine else { return false };
         sm.tick().is_ok()
+    }
+}
+
+impl Drop for DotLottiePlayerWasm {
+    fn drop(&mut self) {
+        // Drop the state machine first — it holds a raw pointer into `player`.
+        #[cfg(feature = "state-machines")]
+        { self.state_machine = None; }
+
+        // Drop ThorVG BEFORE releasing the GPU context.  ThorVG's renderer
+        // cleanup calls GL/GPU functions (glDeleteTextures, etc.) and requires
+        // a live context.  Because `player` is ManuallyDrop it won't be dropped
+        // again by Rust after this explicit call.
+        unsafe { std::mem::ManuallyDrop::drop(&mut self.player); }
+
+        #[cfg(feature = "webgl")]
+        if self.gl_context_ptr != 0 {
+            unsafe {
+                crate::webgl_stubs::drop_stored_context(
+                    self.gl_context_ptr as *mut web_sys::WebGl2RenderingContext,
+                );
+            }
+            self.gl_context_ptr = 0;
+        }
+
+        #[cfg(feature = "webgpu")]
+        {
+            if self.wg_device_ptr != 0 {
+                unsafe { drop(Box::from_raw(self.wg_device_ptr as *mut web_sys::GpuDevice)); }
+                self.wg_device_ptr = 0;
+            }
+            if self.wg_surface_ptr != 0 {
+                unsafe { drop(Box::from_raw(self.wg_surface_ptr as *mut web_sys::GpuCanvasContext)); }
+                self.wg_surface_ptr = 0;
+            }
+        }
     }
 }
 

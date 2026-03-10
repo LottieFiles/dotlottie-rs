@@ -36,7 +36,7 @@ pub fn context_ptr() -> *mut std::ffi::c_void {
     CONTEXT_PTR.load(Ordering::Relaxed) as *mut std::ffi::c_void
 }
 
-/// Sets the WebGL2 rendering context for the GL stubs
+/// Sets the WebGL2 rendering context for the GL stubs (single-context legacy API).
 pub fn set_webgl_context(context: WebGl2RenderingContext) {
     let ptr = CONTEXT_PTR.load(Ordering::Relaxed);
 
@@ -56,6 +56,34 @@ pub fn set_webgl_context(context: WebGl2RenderingContext) {
     // Convert Box to raw pointer and store expose_provenanceess in atomic
     let ptr = Box::into_raw(context_box);
     CONTEXT_PTR.store(ptr, Ordering::Relaxed);
+}
+
+/// Store a WebGL context in a heap-allocated Box, returning the raw pointer.
+/// Does NOT set it as the current context — call `make_current` for that.
+/// The caller is responsible for calling `drop_stored_context` when done.
+pub fn store_context(context: WebGl2RenderingContext) -> *mut WebGl2RenderingContext {
+    Box::into_raw(Box::new(context))
+}
+
+/// Set the given pointer as the active WebGL context.
+/// All subsequent GL stub calls will use this context.
+pub fn make_current(ptr: *mut WebGl2RenderingContext) {
+    CONTEXT_PTR.store(ptr, Ordering::Relaxed);
+}
+
+/// Drop a stored WebGL context. The pointer must have been returned by `store_context`.
+/// If this context is the current active one, the global is cleared.
+pub unsafe fn drop_stored_context(ptr: *mut WebGl2RenderingContext) {
+    if !ptr.is_null() {
+        // Clear the global if it points to the context being dropped
+        let _ = CONTEXT_PTR.compare_exchange(
+            ptr,
+            std::ptr::null_mut(),
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        );
+        drop(Box::from_raw(ptr));
+    }
 }
 
 // Fast context access
@@ -903,6 +931,9 @@ pub unsafe extern "C" fn emscripten_webgl_get_current_context() -> *mut WebGl2Re
 }
 
 #[cfg_attr(feature = "wasm", no_mangle)]
-pub unsafe extern "C" fn emscripten_webgl_make_context_current(_: *mut c_void) -> i32 {
+pub unsafe extern "C" fn emscripten_webgl_make_context_current(ctx: *mut c_void) -> i32 {
+    if !ctx.is_null() {
+        CONTEXT_PTR.store(ctx as *mut WebGl2RenderingContext, Ordering::Relaxed);
+    }
     0 // success (EMSCRIPTEN_RESULT = int, 0 means OK)
 }

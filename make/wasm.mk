@@ -187,7 +187,7 @@ wasm-link: wasm-build-rust  wasm-install-npm-deps
 			-Wl,-u,ntohs \
 			-Wl,-u,htonl \
 			-flto \
-			-Oz \
+			-O3 \
 			-sWASM=1 \
 			-sALLOW_MEMORY_GROWTH=1 \
 			-sFORCE_FILESYSTEM=0 \

@@ -255,10 +255,6 @@ impl DotLottiePlayerWasm {
     }
 
     // ── Internal render-target setup ──────────────────────────────────────────
-    //
-    // Each WASM binary is built with exactly one renderer variant.  Use
-    // compile-time cfg instead of a runtime match so that the linker does not
-    // pull in ThorVG canvas code for unsupported backends.
 
     #[cfg(feature = "webgl")]
     fn setup_target(&mut self, width: u32, height: u32) -> bool {

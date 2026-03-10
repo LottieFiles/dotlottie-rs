@@ -92,7 +92,7 @@ list-platforms:
 	@echo "==================="
 	@echo "  android     - Android (ARM64, x86_64, x86, ARMv7)"
 	@echo "  apple       - Apple (macOS, iOS, visionOS, tvOS, macCatalyst)"
-	@echo "  wasm        - WebAssembly (Emscripten)"
+	@echo "  wasm        - WebAssembly (wasm-bindgen)"
 	@echo "  linux       - Linux (x86_64, ARM64)"
 	@echo "  native      - Native (current platform)"
 	@echo ""

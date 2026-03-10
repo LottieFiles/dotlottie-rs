@@ -81,7 +81,7 @@ make setup
 This will configure all platforms. You can also setup individual platforms using:
 - `make android-setup` - Setup Android environment (requires Android NDK)
 - `make apple-setup` - Setup Apple environment (requires Xcode)
-- `make wasm-setup` - Setup WASM environment (installs emsdk and dependencies)
+- `make wasm-setup` - Setup WASM environment (installs wasm-pack and wasm32-unknown-unknown target)
 
 ### Performing builds
 
@@ -89,8 +89,8 @@ Builds can be performed for the following groups of targets:
 
 - `android` - All Android architectures (ARM64, x86_64, x86, ARMv7)
 - `apple` - All Apple platforms (macOS, iOS, tvOS, visionOS, macCatalyst)
-- `wasm` - WebAssembly via Emscripten (C API)
-- `wasm-webgl` - WebAssembly with WebGL renderer via wasm-bindgen
+- `wasm` - WebAssembly (software renderer) via wasm-bindgen
+- `wasm-webgl` - WebAssembly with WebGL2 renderer via wasm-bindgen
 - `wasm-webgpu` - WebAssembly with WebGPU renderer via wasm-bindgen
 - `native` - Native library for current platform (C API via cbindgen)
 - `native-opengl` - Native library with OpenGL renderer

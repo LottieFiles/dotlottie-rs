@@ -118,7 +118,7 @@ impl DotLottieManager {
                     // Audio handling (compiled only when the `audio` feature is enabled).
                     #[cfg(feature = "audio")]
                     {
-                        let audio_prefix = if self.version == 2 { "sounds/" } else { "audio/" };
+                        let audio_prefix = if self.version == 2 { "u/" } else { "audio/" };
                         let audio_extensions = ["mp3", "wav", "ogg", "aac", "m4a"];
 
                         // Already an embedded audio data URL — just ensure the flag is set.

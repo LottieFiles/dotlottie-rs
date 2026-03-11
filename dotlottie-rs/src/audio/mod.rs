@@ -160,10 +160,26 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
     // Build a set of known asset IDs for fast lookup when validating layers.
     let asset_ids: HashSet<&str> = assets.iter().map(|a| a.id.as_str()).collect();
 
+    // --- Collect all layer arrays to search (top-level + precomp assets) ---
+    let mut all_layer_arrays: Vec<&Vec<Value>> = Vec::new();
+
+    if let Some(layers_arr) = root.get("layers").and_then(|v| v.as_array()) {
+        all_layer_arrays.push(layers_arr);
+    }
+
+    // Also search layers nested inside precomp assets.
+    if let Some(assets_arr) = root.get("assets").and_then(|v| v.as_array()) {
+        for asset in assets_arr {
+            if let Some(precomp_layers) = asset.get("layers").and_then(|v| v.as_array()) {
+                all_layer_arrays.push(precomp_layers);
+            }
+        }
+    }
+
     // --- Parse audio layers (ty == 6) ---
     let mut layers: Vec<AudioLayer> = Vec::new();
 
-    if let Some(layers_arr) = root.get("layers").and_then(|v| v.as_array()) {
+    for layers_arr in all_layer_arrays {
         for layer in layers_arr {
             // Only audio layers have ty == 6.
             match layer.get("ty").and_then(|v| v.as_u64()) {

@@ -1,23 +1,13 @@
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 pub use core::time::Duration;
 
-unsafe extern "C" {
-    #[cfg(target_os = "emscripten")]
-    fn emscripten_get_now() -> f64;
-}
-
 pub fn now() -> f64 {
-    #[cfg(target_os = "emscripten")]
-    {
-        unsafe { emscripten_get_now() }
-    }
-
-    #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+    #[cfg(target_arch = "wasm32")]
     {
         js_sys::Date::now()
     }
 
-    #[cfg(not(any(target_os = "emscripten", all(target_arch = "wasm32", not(target_os = "emscripten")))))]
+    #[cfg(not(target_arch = "wasm32"))]
     {
         std::time::SystemTime::now()
             .duration_since(std::time::SystemTime::UNIX_EPOCH)

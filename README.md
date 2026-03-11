@@ -10,21 +10,22 @@
 
 <h1 align="center">dotLottie Rust</h1>
 
-This is the Rust implementation of the dotLottie player and its related tools. It utilizes uniffi-rs to generate FFI bindings for Kotlin, Swift, and WebAssembly (WASM). these bindings are then used in the native dotLottie players for [Android](https://github.com/LottieFiles/dotlottie-android), [iOS](https://github.com/LottieFiles/dotlottie-ios), and [Web](https://github.com/LottieFiles/dotlottie-web) bringing consistency of playback and dotLottie features across all platforms.
+**dotlottie-rs** is the cross-platform [dotLottie](https://dotlottie.io/) runtime written in Rust. It is the engine powering all official dotLottie players — delivering the full dotLottie feature set (theming, state machines, multi-animation, and more) with guaranteed visual consistency across every platform.
+
+It exposes a C API (via cbindgen) for native platforms and wasm-bindgen bindings for WebAssembly, serving as the core of the dotLottie players for [Web](https://github.com/LottieFiles/dotlottie-web), [Android](https://github.com/LottieFiles/dotlottie-android), [iOS](https://github.com/LottieFiles/dotlottie-ios), [Flutter](https://github.com/LottieFiles/dotlottie-flutter), and [React Native](https://github.com/LottieFiles/dotlottie-react-native).
 
 ```mermaid
 flowchart TD
-  A[dotLottie-web] --> WASM+Bindings[WASM Bindings]
-  B[dotLottie-ios] --> swift+Bindings[Swift Bindings]
-  C[dotLottie-android] --> kotlin+Bindings[Kotlin Bindings]
+  A[dotLottie-web] --> WASM[WASM / wasm-bindgen]
+  B[dotLottie-ios] --> CAPI[C API]
+  C[dotLottie-android] --> CAPI
+  D[dotLottie-flutter] --> CAPI
+  E[dotLottie-react-native] --> CAPI
 
-  WASM+Bindings --> dotlottie-ffi[dotlottie-ffi <br> 'uniffi bindings']
-  swift+Bindings --> dotlottie-ffi[dotlottie-ffi <br> 'uniffi bindings']
-  kotlin+Bindings --> dotlottie-ffi[dotlottie-ffi <br> 'uniffi bindings']
+  WASM --> dotlottiers[dotlottie-rs]
+  CAPI --> dotlottiers
 
-  dotlottie-ffi --> dotlottiers[dotLottie-rs <br> 'Core player']
-
-  dotlottiers --> Thorvg[Thorvg <br> 'Lottie renderer']
+  dotlottiers --> Thorvg[Thorvg\Lottie renderer]
 ```
 
 ## What is dotLottie?
@@ -35,22 +36,24 @@ dotLottie is an open-source file format that aggregates one or more Lottie files
 
 ## Features
 
-dotLottie-rs builds on the Lottie format, adding powerful quality of life improvements and new features:
-
-- Theming support
-- Multi-animation support
-- Built-in interactivity powered by state machines (in development)
-- Reduced animation file sizes
-- Feature parity across platforms
-- Guarenteed visual consistancy across platforms (Thanks to the [Thorvg renderer](https://github.com/thorvg/thorvg))
+- **Cross-platform**: single Rust codebase targeting Android, iOS, Web, Flutter, React Native, and desktop
+- **Guaranteed visual consistency**: powered by the [ThorVG](https://github.com/thorvg/thorvg) renderer across all platforms
+- **Theming & slots**: runtime color, scalar, text, and vector slot overrides
+- **State machines**: declarative interactivity engine with guards, transitions, and actions
+- **Multi-animation**: playback control over multiple animations within a single `.lottie` file
+- **dotLottie format**: full support for the `.lottie` container (ZIP-based, manifest v1 & v2, embedded assets)
+- **C API**: cbindgen-generated header for native integration (Android NDK, iOS, desktop)
+- **WASM**: wasm-bindgen bindings for WebAssembly targets
 
 ## Available Players
 
-dotLottie-rs serves as a core player from which our framework players use:
+dotlottie-rs is the runtime core used by all official dotLottie framework players:
 
-- [dotlottie-web] (https://github.com/LottieFiles/dotlottie-web)
-- [dotlottie-android] (https://github.com/LottieFiles/dotlottie-android)
-- [dotlottie-ios] (https://github.com/LottieFiles/dotlottie-ios)
+- [dotlottie-web](https://github.com/LottieFiles/dotlottie-web)
+- [dotlottie-android](https://github.com/LottieFiles/dotlottie-android)
+- [dotlottie-ios](https://github.com/LottieFiles/dotlottie-ios)
+- [dotlottie-flutter](https://github.com/LottieFiles/dotlottie-flutter)
+- [dotlottie-react-native](https://github.com/LottieFiles/dotlottie-react-native)
 
 ## Repository contents
 
@@ -60,17 +63,16 @@ dotLottie-rs serves as a core player from which our framework players use:
 
 ## Crates
 
-- [dotlottie-rs](./dotlottie-rs): The core library for dotLottie native players
-- [dotlottie-ffi](./dotlottie-ffi): The FFI bindings for dotLottie core player to kotlin, swift and wasm
-- [demo-player](./examples/demo-player): A demo player for dotLottie written in Rust
+- [dotlottie-rs](./dotlottie-rs): The core library for dotLottie native players, including the C API (feature: `c_api`) and wasm-bindgen bindings (feature: `wasm-bindgen-api`)
+- [examples/c_api](./examples/c_api): Example usage of the native C API
 
 ## Development
 
-### Build Instructions
+### Cross-Platform Release Builds
 
-To build for all target platforms, it would be best to use a Mac. You will also need GNU `make`
-installed, at a bare minimum. To ensure that your local machine has all the other necessary
-tools installed to build the project, run the following from the root of the repo:
+The following instructions cover building release artifacts for Android, Apple, WASM, Linux, and native platforms using the Makefile-based build system. For Rust development, just use `cargo` as usual — no special setup is needed.
+
+You will need GNU `make` installed. Note that Apple platform targets (iOS, macOS, tvOS, visionOS) require a Mac with Xcode. To ensure that your machine has all the necessary tools installed, run the following from the root of the repo:
 
 ```bash
 make setup
@@ -79,7 +81,7 @@ make setup
 This will configure all platforms. You can also setup individual platforms using:
 - `make android-setup` - Setup Android environment (requires Android NDK)
 - `make apple-setup` - Setup Apple environment (requires Xcode)
-- `make wasm-setup` - Setup WASM environment (installs emsdk and dependencies)
+- `make wasm-setup` - Setup WASM environment (installs wasm-pack and wasm32-unknown-unknown target)
 
 ### Performing builds
 
@@ -87,8 +89,13 @@ Builds can be performed for the following groups of targets:
 
 - `android` - All Android architectures (ARM64, x86_64, x86, ARMv7)
 - `apple` - All Apple platforms (macOS, iOS, tvOS, visionOS, macCatalyst)
-- `wasm` - WebAssembly module with TypeScript definitions
-- `native` - Native library for current platform
+- `wasm` - WebAssembly (software renderer) via wasm-bindgen
+- `wasm-webgl` - WebAssembly with WebGL2 renderer via wasm-bindgen
+- `wasm-webgpu` - WebAssembly with WebGPU renderer via wasm-bindgen
+- `native` - Native library for current platform (C API via cbindgen)
+- `native-opengl` - Native library with OpenGL renderer
+- `native-webgpu` - Native library with WebGPU renderer
+- `linux` - Linux x86_64 and ARM64
 
 For `android` and `apple`, builds will be performed for all supported architectures, whereas
 for `wasm`, only a single target will be built. These names refer to Makefile targets that can be

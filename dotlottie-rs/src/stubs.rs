@@ -1,8 +1,11 @@
 #![expect(dead_code)]
 #![allow(non_snake_case)]
 
-//! A small part of stdlib/libc that emscripten ends up adding and the linker
-//! cannot remove.
+//! libc/C++ runtime stubs for wasm32-unknown-unknown.
+//!
+//! ThorVG's C++ sources reference a number of libc symbols that are normally
+//! provided by the platform's C runtime. For `wasm32-unknown-unknown` there is
+//! no such runtime, so we supply minimal Rust implementations here.
 
 use std::{
     alloc::{self, Layout},

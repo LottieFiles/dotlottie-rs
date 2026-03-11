@@ -4,8 +4,8 @@ use std::ffi::{c_char, CStr};
 use std::slice;
 
 use crate::lottie_renderer::{
-    ColorSlot, GlContext, ImageSlot, PositionSlot, ScalarSlot, TextDocument, TextSlot, VectorSlot,
-    WgpuDevice, WgpuInstance, WgpuTarget,
+    ColorSlot, ColorValue, GlContext, ImageSlot, PositionSlot, ScalarSlot, ScalarValue,
+    TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
 };
 use crate::{DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode};
 
@@ -70,8 +70,6 @@ impl WgpuTarget for RawWgpuTarget {
 #[cfg(all(feature = "tvg-wg", target_os = "macos"))]
 pub mod apple;
 
-#[cfg(all(any(feature = "tvg-gl", feature = "tvg-wg"), target_os = "emscripten"))]
-pub mod emscripten;
 
 // Helper macro for DotLottiePlayer operations - wraps every C API call to check
 // if the dotlottie player pointer is valid or not, and converts the body's
@@ -1031,7 +1029,7 @@ pub unsafe extern "C" fn dotlottie_set_color_slot(
         let id = CStr::from_ptr(slot_id);
         match id.to_str() {
             Ok(id_str) => {
-                let slot = ColorSlot::static_value([r, g, b]);
+                let slot = ColorSlot::static_value(ColorValue([r, g, b]));
                 dotlottie_player.set_color_slot(id_str, slot)
             }
             Err(_) => Err(DotLottiePlayerError::InvalidParameter),
@@ -1053,7 +1051,7 @@ pub unsafe extern "C" fn dotlottie_set_scalar_slot(
         let id = CStr::from_ptr(slot_id);
         match id.to_str() {
             Ok(id_str) => {
-                let slot = ScalarSlot::static_value(value);
+                let slot = ScalarSlot::static_value(ScalarValue(value));
                 dotlottie_player.set_scalar_slot(id_str, slot)
             }
             Err(_) => Err(DotLottiePlayerError::InvalidParameter),
@@ -1172,6 +1170,223 @@ pub unsafe extern "C" fn dotlottie_set_image_slot_data_url(
                 dotlottie_player.set_image_slot(id_str, slot)
             }
             _ => Err(DotLottiePlayerError::InvalidParameter),
+        }
+    })
+}
+
+// ============================================================================
+// SLOT GETTERS / RESET C API
+// ============================================================================
+
+/// Returns the number of slot IDs in the current animation.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_get_slot_ids_count(
+    ptr: *mut DotLottiePlayer,
+    count: *mut u32,
+) -> DotLottieResult {
+    if ptr.is_null() || count.is_null() {
+        return DotLottieResult::InvalidParameter;
+    }
+    let player = &*ptr;
+    *count = player.get_slot_ids().len() as u32;
+    DotLottieResult::Success
+}
+
+/// Returns a slot ID by index.
+///
+/// Call `dotlottie_get_slot_ids_count` first to know how many IDs exist.
+/// Pass `buffer = NULL` to query the required size via `size_out`.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_get_slot_id(
+    ptr: *mut DotLottiePlayer,
+    index: u32,
+    buffer: *mut c_char,
+    size_out: *mut usize,
+) -> DotLottieResult {
+    if ptr.is_null() {
+        return DotLottieResult::InvalidParameter;
+    }
+    let player = &*ptr;
+    let ids = player.get_slot_ids();
+    let idx = index as usize;
+    if idx >= ids.len() {
+        return DotLottieResult::InvalidParameter;
+    }
+
+    let id_str = &ids[idx];
+    let bytes_with_nul = id_str.len() + 1;
+
+    if !size_out.is_null() {
+        *size_out = bytes_with_nul;
+    }
+
+    if !buffer.is_null() {
+        std::ptr::copy_nonoverlapping(id_str.as_ptr() as *const c_char, buffer, id_str.len());
+        *buffer.add(id_str.len()) = 0; // null terminator
+    }
+
+    DotLottieResult::Success
+}
+
+/// Returns the type name of a slot (e.g., "color", "scalar", "text").
+///
+/// Pass `buffer = NULL` to query the required size via `size_out`.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_get_slot_type(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+    buffer: *mut c_char,
+    size_out: *mut usize,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if slot_id.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        let id = CStr::from_ptr(slot_id);
+        match id.to_str() {
+            Ok(id_str) => {
+                let type_name = dotlottie_player.get_slot_type(id_str);
+                let bytes_with_nul = type_name.len() + 1;
+
+                if !size_out.is_null() {
+                    *size_out = bytes_with_nul;
+                }
+
+                if !buffer.is_null() {
+                    std::ptr::copy_nonoverlapping(
+                        type_name.as_ptr() as *const c_char,
+                        buffer,
+                        type_name.len(),
+                    );
+                    *buffer.add(type_name.len()) = 0;
+                }
+
+                DotLottieResult::Success
+            }
+            Err(_) => DotLottieResult::InvalidParameter,
+        }
+    })
+}
+
+/// Returns a slot value as a JSON string.
+///
+/// Pass `buffer = NULL` to query the required size via `size_out`.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_get_slot_str(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+    buffer: *mut c_char,
+    size_out: *mut usize,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if slot_id.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        let id = CStr::from_ptr(slot_id);
+        match id.to_str() {
+            Ok(id_str) => {
+                let json = dotlottie_player.get_slot_str(id_str);
+                let bytes_with_nul = json.len() + 1;
+
+                if !size_out.is_null() {
+                    *size_out = bytes_with_nul;
+                }
+
+                if !buffer.is_null() {
+                    std::ptr::copy_nonoverlapping(
+                        json.as_ptr() as *const c_char,
+                        buffer,
+                        json.len(),
+                    );
+                    *buffer.add(json.len()) = 0;
+                }
+
+                DotLottieResult::Success
+            }
+            Err(_) => DotLottieResult::InvalidParameter,
+        }
+    })
+}
+
+/// Returns all slots as a JSON string.
+///
+/// Pass `buffer = NULL` to query the required size via `size_out`.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_get_slots_str(
+    ptr: *mut DotLottiePlayer,
+    buffer: *mut c_char,
+    size_out: *mut usize,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        let json = dotlottie_player.get_slots_str();
+        let bytes_with_nul = json.len() + 1;
+
+        if !size_out.is_null() {
+            *size_out = bytes_with_nul;
+        }
+
+        if !buffer.is_null() {
+            std::ptr::copy_nonoverlapping(
+                json.as_ptr() as *const c_char,
+                buffer,
+                json.len(),
+            );
+            *buffer.add(json.len()) = 0;
+        }
+
+        DotLottieResult::Success
+    })
+}
+
+/// Set a slot value from a JSON string.
+///
+/// The slot must already exist (i.e., its ID must be in the current slot values).
+/// The JSON should match the format for the slot's type.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_slot_str(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+    json: *const c_char,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if slot_id.is_null() || json.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        let id = CStr::from_ptr(slot_id);
+        let json_cstr = CStr::from_ptr(json);
+        match (id.to_str(), json_cstr.to_str()) {
+            (Ok(id_str), Ok(json_str)) => dotlottie_player.set_slot_str(id_str, json_str),
+            _ => Err(DotLottiePlayerError::InvalidParameter),
+        }
+    })
+}
+
+/// Reset a single slot to its default value (from the animation).
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_reset_slot(
+    ptr: *mut DotLottiePlayer,
+    slot_id: *const c_char,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if slot_id.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        let id = CStr::from_ptr(slot_id);
+        match id.to_str() {
+            Ok(id_str) => dotlottie_player.reset_slot(id_str),
+            Err(_) => Err(DotLottiePlayerError::InvalidParameter),
+        }
+    })
+}
+
+/// Reset all slots to their default values (from the animation).
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_reset_slots(ptr: *mut DotLottiePlayer) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if dotlottie_player.reset_slots() {
+            Ok(())
+        } else {
+            Err(DotLottiePlayerError::Unknown)
         }
     })
 }

@@ -1303,7 +1303,12 @@ impl DotLottiePlayer {
             .map_err(|_| DotLottiePlayerError::InvalidParameter)?;
 
         if let Some(manager) = &mut self.dotlottie_manager {
-            let animation_data = manager.get_animation(anim_id_str);
+            let lookup_id = if anim_id_str.is_empty() {
+                manager.active_animation_id()
+            } else {
+                anim_id_str.to_string()
+            };
+            let animation_data = manager.get_animation(&lookup_id);
 
             let result = match animation_data {
                 Ok(animation_data) => {
@@ -1389,6 +1394,13 @@ impl DotLottiePlayer {
     #[cfg(feature = "theming")]
     pub fn set_theme(&mut self, theme_id: &CStr) -> Result<(), DotLottiePlayerError> {
         if self.theme_id.as_deref() == Some(theme_id) {
+            return Ok(());
+        }
+
+        if theme_id.is_empty() {
+            self.theme_id = None;
+            self.renderer
+                .clear_slots()                .map_err(|_| DotLottiePlayerError::Unknown)?;
             return Ok(());
         }
 
@@ -1610,6 +1622,36 @@ impl DotLottiePlayer {
             }
             Err(_) => Err(DotLottiePlayerError::InvalidParameter),
         }
+    }
+
+    pub fn get_slot_ids(&self) -> Vec<String> {
+        self.renderer.get_slot_ids()
+    }
+
+    pub fn get_slot_type(&self, slot_id: &str) -> String {
+        self.renderer.get_slot_type(slot_id)
+    }
+
+    pub fn get_slot_str(&self, slot_id: &str) -> String {
+        self.renderer.get_slot_str(slot_id)
+    }
+
+    pub fn get_slots_str(&self) -> String {
+        self.renderer.get_slots_str()
+    }
+
+    pub fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), DotLottiePlayerError> {
+        self.renderer.set_slot_str(slot_id, json)?;
+        Ok(())
+    }
+
+    pub fn reset_slot(&mut self, slot_id: &str) -> Result<(), DotLottiePlayerError> {
+        self.renderer.reset_slot(slot_id)?;
+        Ok(())
+    }
+
+    pub fn reset_slots(&mut self) -> bool {
+        self.renderer.reset_slots()
     }
 
     pub fn set_quality(&mut self, quality: u8) -> Result<(), DotLottiePlayerError> {

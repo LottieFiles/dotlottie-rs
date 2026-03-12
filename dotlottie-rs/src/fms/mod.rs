@@ -119,7 +119,7 @@ impl DotLottieManager {
                     #[cfg(feature = "audio")]
                     {
                         let audio_prefix = if self.version == 2 { "u/" } else { "audio/" };
-                        let audio_extensions = ["mp3", "wav", "ogg", "aac", "m4a"];
+                        let audio_extensions = ["mp3", "wav"];
 
                         // Already an embedded audio data URL — just ensure the flag is set.
                         if p_str.starts_with(DATA_AUDIO_PREFIX) {

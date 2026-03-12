@@ -4,6 +4,8 @@ use std::{fs, mem};
 
 use crate::poll_events::{DotLottieEvent, EventQueue};
 use crate::DotLottiePlayerError;
+#[cfg(feature = "audio")]
+use crate::{extract_audio, AudioAsset, AudioEvent, AudioManager};
 use crate::{
     extract_markers,
     layout::Layout,
@@ -11,8 +13,6 @@ use crate::{
     Marker,
 };
 use crate::{ColorSpace, Renderer};
-#[cfg(feature = "audio")]
-use crate::{extract_audio, AudioAsset, AudioEvent, AudioManager};
 #[cfg(feature = "dotlottie")]
 use crate::{DotLottieManager, Manifest};
 #[cfg(feature = "state-machines")]
@@ -206,9 +206,6 @@ impl DotLottiePlayer {
     }
 
     /// Returns all audio assets decoded from the current animation.
-    ///
-    /// WASM hosts can use this to pre-create `<audio>` elements or
-    /// `AudioBufferSourceNode`s at load time before the render loop begins.
     #[cfg(feature = "audio")]
     pub fn audio_assets(&self) -> Vec<&AudioAsset> {
         self.audio_manager
@@ -380,8 +377,7 @@ impl DotLottiePlayer {
             for event in am.resume_all() {
                 match event {
                     AudioEvent::Play { ref_id } => {
-                        self.event_queue
-                            .push(DotLottieEvent::AudioPlay { ref_id });
+                        self.event_queue.push(DotLottieEvent::AudioPlay { ref_id });
                     }
                     _ => {}
                 }
@@ -407,8 +403,7 @@ impl DotLottiePlayer {
             for event in am.pause_all() {
                 match event {
                     AudioEvent::Pause { ref_id } => {
-                        self.event_queue
-                            .push(DotLottieEvent::AudioPause { ref_id });
+                        self.event_queue.push(DotLottieEvent::AudioPause { ref_id });
                     }
                     _ => {}
                 }
@@ -446,8 +441,7 @@ impl DotLottiePlayer {
             for event in am.stop_all() {
                 match event {
                     AudioEvent::Stop { ref_id } => {
-                        self.event_queue
-                            .push(DotLottieEvent::AudioStop { ref_id });
+                        self.event_queue.push(DotLottieEvent::AudioStop { ref_id });
                     }
                     _ => {}
                 }
@@ -704,16 +698,13 @@ impl DotLottiePlayer {
                 for event in am.update(no) {
                     match event {
                         AudioEvent::Play { ref_id } => {
-                            self.event_queue
-                                .push(DotLottieEvent::AudioPlay { ref_id });
+                            self.event_queue.push(DotLottieEvent::AudioPlay { ref_id });
                         }
                         AudioEvent::Pause { ref_id } => {
-                            self.event_queue
-                                .push(DotLottieEvent::AudioPause { ref_id });
+                            self.event_queue.push(DotLottieEvent::AudioPause { ref_id });
                         }
                         AudioEvent::Stop { ref_id } => {
-                            self.event_queue
-                                .push(DotLottieEvent::AudioStop { ref_id });
+                            self.event_queue.push(DotLottieEvent::AudioStop { ref_id });
                         }
                     }
                 }
@@ -1400,7 +1391,8 @@ impl DotLottiePlayer {
         if theme_id.is_empty() {
             self.theme_id = None;
             self.renderer
-                .clear_slots()                .map_err(|_| DotLottiePlayerError::Unknown)?;
+                .clear_slots()
+                .map_err(|_| DotLottiePlayerError::Unknown)?;
             return Ok(());
         }
 

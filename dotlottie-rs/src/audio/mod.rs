@@ -34,7 +34,7 @@ pub struct AudioLayer {
 
 /// Events produced by [`AudioManager::update`], [`AudioManager::pause_all`], etc.
 pub enum AudioEvent {
-    Play { ref_id: String, volume: f32 },
+    Play { ref_id: String },
     Pause { ref_id: String },
     Stop { ref_id: String },
 }
@@ -295,7 +295,6 @@ impl AudioManager {
 
                 events.push(AudioEvent::Play {
                     ref_id: layer.ref_id.clone(),
-                    volume: layer.volume,
                 });
             } else if !should_play && is_playing {
                 self.playing.remove(&layer.ref_id);
@@ -342,10 +341,7 @@ impl AudioManager {
         }
 
         ids.into_iter()
-            .map(|id| {
-                let volume = self.get_volume(&id);
-                AudioEvent::Play { ref_id: id, volume }
-            })
+            .map(|id| AudioEvent::Play { ref_id: id })
             .collect()
     }
 
@@ -393,11 +389,4 @@ impl AudioManager {
         self.assets.values()
     }
 
-    fn get_volume(&self, ref_id: &str) -> f32 {
-        self.layers
-            .iter()
-            .find(|l| l.ref_id == ref_id)
-            .map(|l| l.volume)
-            .unwrap_or(1.0)
-    }
 }

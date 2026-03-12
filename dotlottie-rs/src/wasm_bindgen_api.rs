@@ -588,10 +588,9 @@ impl DotLottiePlayerWasm {
                 obj.into()
             }
             #[cfg(feature = "audio")]
-            crate::DotLottieEvent::AudioPlay { ref_id, volume } => {
+            crate::DotLottieEvent::AudioPlay { ref_id } => {
                 let obj = js_obj_with_type("AudioPlay");
                 set_str(&obj, "refId", &ref_id);
-                set_f64(&obj, "volume", volume as f64);
                 obj.into()
             }
             #[cfg(feature = "audio")]

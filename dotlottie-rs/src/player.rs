@@ -379,9 +379,9 @@ impl DotLottiePlayer {
         if let Some(am) = &mut self.audio_manager {
             for event in am.resume_all() {
                 match event {
-                    AudioEvent::Play { ref_id, volume } => {
+                    AudioEvent::Play { ref_id } => {
                         self.event_queue
-                            .push(DotLottieEvent::AudioPlay { ref_id, volume });
+                            .push(DotLottieEvent::AudioPlay { ref_id });
                     }
                     _ => {}
                 }
@@ -703,9 +703,9 @@ impl DotLottiePlayer {
                 // plays AND events fire.
                 for event in am.update(no) {
                     match event {
-                        AudioEvent::Play { ref_id, volume } => {
+                        AudioEvent::Play { ref_id } => {
                             self.event_queue
-                                .push(DotLottieEvent::AudioPlay { ref_id, volume });
+                                .push(DotLottieEvent::AudioPlay { ref_id });
                         }
                         AudioEvent::Pause { ref_id } => {
                             self.event_queue

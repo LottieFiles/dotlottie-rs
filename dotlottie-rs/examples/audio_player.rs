@@ -166,7 +166,7 @@ fn main() {
         while let Some(event) = player.poll_event() {
             let frame = player.current_frame();
             match event {
-                DotLottieEvent::AudioPlay { ref ref_id, volume } => {
+                DotLottieEvent::AudioPlay { ref ref_id } => {
                     println!("  >> AudioPlay   ref_id={ref_id:<12}  frame={frame:.1}");
                 }
                 DotLottieEvent::AudioStop { ref ref_id } => {

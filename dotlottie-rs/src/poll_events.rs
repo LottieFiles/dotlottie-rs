@@ -14,7 +14,7 @@ pub enum DotLottieEvent {
     Loop { loop_count: u32 },
     Complete,
     #[cfg(feature = "audio")]
-    AudioPlay { ref_id: String, volume: f32 },
+    AudioPlay { ref_id: String },
     #[cfg(feature = "audio")]
     AudioPause { ref_id: String },
     #[cfg(feature = "audio")]

@@ -15,7 +15,7 @@
 # ============================================================================
 
 WASM_BINDGEN_TARGET := wasm32-unknown-unknown
-WASM_BINDGEN_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-ttf,dotlottie,theming,state-machines,wasm,wasm-bindgen-api,audio
+WASM_BINDGEN_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,dotlottie,theming,state-machines,wasm,wasm-bindgen-api,audio
 
 # sed -i behaves differently on macOS (BSD) vs Linux (GNU)
 ifeq ($(shell uname),Darwin)

@@ -1,9 +1,11 @@
-// The font is embedded as compressed data and decompressed at runtime using LZSS algorithm.
+// Fallback font: DM Sans Regular (Google Fonts, OFL license)
+// Characters: U+0020..U+007E (95 ASCII printable characters)
+// Compression: LZSS (custom, see decompressor below)
 
 #[cfg(feature = "tvg-ttf")]
-const COMPRESSED_FONT_SIZE: usize = 7703;
+const COMPRESSED_FONT_SIZE: usize = 6887;
 #[cfg(feature = "tvg-ttf")]
-const DEFAULT_FONT_SIZE: usize = 11140;
+const DEFAULT_FONT_SIZE: usize = 8732;
 #[cfg(feature = "tvg-ttf")]
 const COMPRESSED_FONT: &[u8] = include_bytes!("fallback_font.bin");
 #[cfg(feature = "tvg-ttf")]
@@ -52,4 +54,28 @@ pub fn font() -> (&'static str, Vec<u8>) {
     }
 
     (DEFAULT_FONT_NAME, output)
+}
+
+#[cfg(test)]
+#[cfg(feature = "tvg-ttf")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_font_decompresses_to_valid_ttf() {
+        let (name, data) = font();
+        assert_eq!(name, "default");
+        assert!(
+            data.len() >= DEFAULT_FONT_SIZE,
+            "Font data too small: {} bytes",
+            data.len()
+        );
+        // TrueType fonts start with version 0x00010000
+        assert_eq!(
+            &data[0..4],
+            b"\x00\x01\x00\x00",
+            "Invalid TTF header: {:?}",
+            &data[0..4]
+        );
+    }
 }

@@ -431,11 +431,6 @@ mod thorvg {
             } else if target_triple.contains("armv7") {
                 writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?;
                 simd_flags.push("-mfpu=neon");
-            } else if target_triple == "wasm32-unknown-emscripten" {
-                // Emscripten → use Wasm SIMD
-                // https://emscripten.org/docs/porting/simd.html
-                writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?; // maps to Wasm SIMD in ThorVG
-                simd_flags.push("-msimd128");
             }
         }
 
@@ -490,16 +485,13 @@ mod thorvg {
             println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
             println!("cargo:rustc-link-lib=static=wgpu_native");
 
-            // Link platform-specific frameworks/libraries
             if target_triple.contains("apple") || target_triple.contains("ios") {
                 println!("cargo:rustc-link-lib=framework=Metal");
                 println!("cargo:rustc-link-lib=framework=QuartzCore");
                 println!("cargo:rustc-link-lib=framework=Foundation");
                 if target_triple.contains("darwin") {
-                    // macOS
                     println!("cargo:rustc-link-lib=framework=AppKit");
                 } else {
-                    // iOS, Mac Catalyst
                     println!("cargo:rustc-link-lib=framework=UIKit");
                 }
             } else if target_triple.contains("linux") && !target_triple.contains("android") {

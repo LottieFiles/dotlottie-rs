@@ -497,7 +497,14 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         let wgpu_instance = R::WgpuInstance::from_ptr(instance);
         let wgpu_target = R::WgpuTarget::from_ptr(target);
         self.renderer
-            .set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_target, width, height, target_type)
+            .set_wg_target(
+                &wgpu_device,
+                &wgpu_instance,
+                &wgpu_target,
+                width,
+                height,
+                target_type,
+            )
             .map_err(into_lottie::<R>)
     }
 
@@ -581,11 +588,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.flush_slots()?;
 
         if self.updated {
-            // Sync before update to ensure previous frame's rendering is complete.
-            // This is crucial for async renderers like WebGL. For SW rendering the
-            // canvas may not yet have a pending draw (InsufficientCondition), which
-            // is harmless — we proceed regardless.
-            let _ = self.renderer.sync();
+            // Sync before update to ensure previous frame's rendering is complete
+            // This is crucial for async renderers like WebGL
+            self.renderer.sync().map_err(into_lottie::<R>)?;
 
             self.renderer.update().map_err(into_lottie::<R>)?;
             self.renderer.draw(true).map_err(into_lottie::<R>)?;

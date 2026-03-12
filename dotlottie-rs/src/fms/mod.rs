@@ -15,6 +15,8 @@ const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrst
 
 const DATA_IMAGE_PREFIX: &str = "data:image/";
 const DATA_FONT_PREFIX: &str = "data:font/";
+#[cfg(feature = "audio")]
+const DATA_AUDIO_PREFIX: &str = "data:audio/";
 const BASE64_PREFIX: &str = ";base64,";
 const DEFAULT_EXT: &str = "png";
 const DEFAULT_FONT_EXT: &str = "ttf";
@@ -101,32 +103,78 @@ impl DotLottieManager {
 
             for asset in assets.iter_mut() {
                 if let Some(asset_obj) = asset.as_object_mut() {
-                    if let Some(p_str) = asset_obj.get("p").and_then(|v| v.as_str()) {
-                        if p_str.starts_with(DATA_IMAGE_PREFIX) {
+                    // Clone to a String so we can later mutably borrow asset_obj for inserts.
+                    let p_str: String = match asset_obj.get("p").and_then(|v| v.as_str()) {
+                        Some(s) => s.to_string(),
+                        None => continue,
+                    };
+
+                    // Already an embedded image data URL — just ensure the flag is set.
+                    if p_str.starts_with(DATA_IMAGE_PREFIX) {
+                        asset_obj.insert("e".to_string(), embedded_flag.clone());
+                        continue;
+                    }
+
+                    // Audio handling (compiled only when the `audio` feature is enabled).
+                    #[cfg(feature = "audio")]
+                    {
+                        let audio_prefix = if self.version == 2 { "u/" } else { "audio/" };
+                        let audio_extensions = ["mp3", "wav"];
+
+                        // Already an embedded audio data URL — just ensure the flag is set.
+                        if p_str.starts_with(DATA_AUDIO_PREFIX) {
                             asset_obj.insert("e".to_string(), embedded_flag.clone());
-                        } else {
+                            continue;
+                        }
+
+                        // External audio file — try to load from the sounds/audio folder.
+                        let p_lower = p_str.to_lowercase();
+                        if audio_extensions.iter().any(|ext| p_lower.ends_with(ext)) {
                             asset_path.clear();
-                            asset_path.push_str(image_prefix);
+                            asset_path.push_str(audio_prefix);
                             asset_path.push_str(p_str.trim_matches('"'));
 
                             if let Ok(mut result) = archive.by_name(&asset_path) {
                                 let mut content = Vec::with_capacity(result.size() as usize);
                                 if result.read_to_end(&mut content).is_ok() {
-                                    let image_ext = p_str
+                                    let audio_ext = p_str
                                         .rfind('.')
                                         .map(|i| &p_str[i + 1..])
-                                        .unwrap_or(DEFAULT_EXT);
-                                    let image_data_base64 = Self::encode_base64(&content);
-
+                                        .unwrap_or("mp3");
+                                    let audio_data_base64 = Self::encode_base64(&content);
                                     let data_url = format!(
-                                        "{DATA_IMAGE_PREFIX}{image_ext}{BASE64_PREFIX}{image_data_base64}"
+                                        "{DATA_AUDIO_PREFIX}{audio_ext}{BASE64_PREFIX}{audio_data_base64}"
                                     );
-
                                     asset_obj.insert("u".to_string(), empty_u.clone());
                                     asset_obj.insert("p".to_string(), Value::String(data_url));
                                     asset_obj.insert("e".to_string(), embedded_flag.clone());
                                 }
                             }
+                            continue;
+                        }
+                    }
+
+                    // External image file — try to load from the images folder.
+                    asset_path.clear();
+                    asset_path.push_str(image_prefix);
+                    asset_path.push_str(p_str.trim_matches('"'));
+
+                    if let Ok(mut result) = archive.by_name(&asset_path) {
+                        let mut content = Vec::with_capacity(result.size() as usize);
+                        if result.read_to_end(&mut content).is_ok() {
+                            let image_ext = p_str
+                                .rfind('.')
+                                .map(|i| &p_str[i + 1..])
+                                .unwrap_or(DEFAULT_EXT);
+                            let image_data_base64 = Self::encode_base64(&content);
+
+                            let data_url = format!(
+                                "{DATA_IMAGE_PREFIX}{image_ext}{BASE64_PREFIX}{image_data_base64}"
+                            );
+
+                            asset_obj.insert("u".to_string(), empty_u.clone());
+                            asset_obj.insert("p".to_string(), Value::String(data_url));
+                            asset_obj.insert("e".to_string(), embedded_flag.clone());
                         }
                     }
                 }

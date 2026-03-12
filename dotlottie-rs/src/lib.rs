@@ -1,3 +1,5 @@
+#[cfg(feature = "audio")]
+mod audio;
 #[cfg(feature = "dotlottie")]
 mod fms;
 mod layout;
@@ -28,6 +30,8 @@ pub(crate) mod webgpu_stubs;
 #[cfg(all(target_arch = "wasm32", feature = "wasm-bindgen-api"))]
 pub mod wasm_bindgen_api;
 
+#[cfg(feature = "audio")]
+pub use audio::*;
 #[cfg(feature = "dotlottie")]
 pub use fms::*;
 pub use layout::*;

@@ -70,7 +70,6 @@ impl WgpuTarget for RawWgpuTarget {
 #[cfg(all(feature = "tvg-wg", target_os = "macos"))]
 pub mod apple;
 
-
 // Helper macro for DotLottiePlayer operations - wraps every C API call to check
 // if the dotlottie player pointer is valid or not, and converts the body's
 // return value to DotLottieResult
@@ -1326,11 +1325,7 @@ pub unsafe extern "C" fn dotlottie_get_slots_str(
         }
 
         if !buffer.is_null() {
-            std::ptr::copy_nonoverlapping(
-                json.as_ptr() as *const c_char,
-                buffer,
-                json.len(),
-            );
+            std::ptr::copy_nonoverlapping(json.as_ptr() as *const c_char, buffer, json.len());
             *buffer.add(json.len()) = 0;
         }
 
@@ -2694,4 +2689,25 @@ pub unsafe extern "C" fn dotlottie_get_state_machine(
             }
         })
     }
+}
+
+// ============================================================================
+// Android context initialisation (audio support)
+// ============================================================================
+
+/// Initialise the Android JVM context required by cpal/rodio for audio output.
+///
+/// Must be called once before loading any animation that contains audio.
+/// Safe to call multiple times — subsequent calls are ignored by ndk-context.
+///
+/// # Arguments
+/// * `vm`  - pointer to the `JavaVM` struct (cast from `JavaVM*`)
+/// * `ctx` - JNI global reference to an `android.content.Context` object
+#[cfg(all(feature = "audio", target_os = "android"))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_init_android(
+    vm: *mut std::ffi::c_void,
+    ctx: *mut std::ffi::c_void,
+) {
+    ndk_context::initialize_android_context(vm, ctx);
 }

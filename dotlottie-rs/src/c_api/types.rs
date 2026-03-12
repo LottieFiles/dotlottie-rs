@@ -3,11 +3,11 @@
 use bitflags::bitflags;
 use std::ffi::c_char;
 
-#[cfg(feature = "state-machines")]
-use core::str::FromStr;
-
+#[cfg(any(feature = "state-machines", feature = "audio"))]
 #[cfg(feature = "state-machines")]
 use crate::state_machine_engine::events::Event;
+#[cfg(feature = "state-machines")]
+use core::str::FromStr;
 
 use crate::lottie_renderer::LottieRendererError;
 use crate::DotLottiePlayerError;
@@ -181,18 +181,36 @@ pub enum DotLottiePlayerEventType {
     Render = 6,
     Loop = 7,
     Complete = 8,
+    #[cfg(feature = "audio")]
+    AudioPlay = 9,
+    #[cfg(feature = "audio")]
+    AudioPause = 10,
+    #[cfg(feature = "audio")]
+    AudioStop = 11,
 }
 
 #[repr(C)]
 pub union DotLottiePlayerEventData {
     pub frame_no: f32,   // For Frame and Render events
     pub loop_count: u32, // For Loop event
+    #[cfg(feature = "audio")]
+    pub audio_id: [c_char; 64], // Null-terminated asset ref_id for audio events
 }
 
 #[repr(C)]
 pub struct DotLottiePlayerEvent {
     pub event_type: DotLottiePlayerEventType,
     pub data: DotLottiePlayerEventData,
+}
+
+#[cfg(feature = "audio")]
+fn str_to_audio_id(s: &str) -> [c_char; 64] {
+    let mut buf = [0; 64];
+    let bytes = s.as_bytes();
+    for (i, &b) in bytes[..bytes.len().min(63)].iter().enumerate() {
+        buf[i] = b as c_char;
+    }
+    buf
 }
 
 impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
@@ -233,6 +251,27 @@ impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
             crate::DotLottieEvent::Complete => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Complete,
                 data: DotLottiePlayerEventData { frame_no: 0.0 },
+            },
+            #[cfg(feature = "audio")]
+            crate::DotLottieEvent::AudioPlay { ref_id } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::AudioPlay,
+                data: DotLottiePlayerEventData {
+                    audio_id: str_to_audio_id(&ref_id),
+                },
+            },
+            #[cfg(feature = "audio")]
+            crate::DotLottieEvent::AudioPause { ref_id } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::AudioPause,
+                data: DotLottiePlayerEventData {
+                    audio_id: str_to_audio_id(&ref_id),
+                },
+            },
+            #[cfg(feature = "audio")]
+            crate::DotLottieEvent::AudioStop { ref_id } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::AudioStop,
+                data: DotLottiePlayerEventData {
+                    audio_id: str_to_audio_id(&ref_id),
+                },
             },
         }
     }

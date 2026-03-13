@@ -1,3 +1,39 @@
+## 0.1.56 (2026-03-13)
+
+### Features
+
+#### update thorvg to v1.0.x (#460)
+
+#### thorvg wgpu/opengl renderers (#457)
+
+#### feature flagging for theming, state machines and dotlottie  (#464)
+
+#### add WgpuTargetType to distinguish surface vs texture rendering (#467)
+
+#### feature flagging that prevents loss of symbols (#470)
+
+#### add wasm32-unknown-unknown target support via wasm-bindgen (#473)
+
+#### improve slot management with per-slot lifecycle and getter/reset APIs (#474)
+
+#### update thorvg to v1.0.2 (#490)
+
+### Fixes
+
+#### 🐛 ci (#451)
+
+#### make dotlottie-rs publishable to crates.io (#468)
+
+#### reload fallback font on engine re-initialization (#471)
+
+#### fix crash when switching renderer + per-instance GL context (#483)
+
+#### 🐛 use-after-free in TvgAnimation::load_data with threaded (#484)
+
+#### replace fallback font subset to fix number glyph glitches (#487)
+
+#### add tvg-webp to WASM build features (#488)
+
 ## 0.1.55 (2026-03-13)
 
 ### Features

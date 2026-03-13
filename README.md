@@ -64,7 +64,7 @@ dotlottie-rs is the runtime core used by all official dotLottie framework player
 ## Crates
 
 - [dotlottie-rs](./dotlottie-rs): The core library for dotLottie native players, including the C API (feature: `c_api`) and wasm-bindgen bindings (feature: `wasm-bindgen-api`)
-- [examples/c_api](./examples/c_api): Example usage of the native C API
+- [examples/c_api](./dotlottie-rs/examples/c_api/demo-player.c): Example usage of the native C API
 
 ## Development
 

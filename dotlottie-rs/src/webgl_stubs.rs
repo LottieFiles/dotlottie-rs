@@ -1,6 +1,6 @@
 use std::ffi::{c_void, CStr};
 use std::ptr::{copy_nonoverlapping, with_exposed_provenance, with_exposed_provenance_mut};
-use std::sync::atomic::{AtomicPtr, Ordering};
+use std::sync::atomic::{AtomicPtr, AtomicU32, Ordering};
 use web_sys::*;
 
 // -------------------- Primitive Types --------------------
@@ -21,11 +21,16 @@ const GL_MAJOR_VERSION: GLenum = 0x821B;
 const GL_MINOR_VERSION: GLenum = 0x821C;
 const GL_INFO_LOG_LENGTH: GLenum = 0x8B84;
 const GL_INVALID_INDEX: GLuint = 0xFFFFFFFF;
+const GL_ARRAY_BUFFER: GLenum = 0x8892;
+const GL_ARRAY_BUFFER_BINDING: GLenum = 0x8894;
 
 // -------------------- WebGL State --------------------
 
 // Maintain a single static pointer to context
 static CONTEXT_PTR: AtomicPtr<WebGl2RenderingContext> = AtomicPtr::new(std::ptr::null_mut());
+
+// Shadow state for GL bindings that WebGL returns as JS objects (not integers)
+static ARRAY_BUFFER_BINDING: AtomicU32 = AtomicU32::new(0);
 
 /// Returns the stored WebGL2 context pointer as a raw `*mut c_void`.
 ///
@@ -333,6 +338,10 @@ pub unsafe extern "C" fn glGenBuffers(n: GLsizei, buffers: *mut GLuint) {
 pub unsafe extern "C" fn glBindBuffer(target: GLenum, buffer: GLuint) {
     let state = get_context();
 
+    if target == GL_ARRAY_BUFFER {
+        ARRAY_BUFFER_BINDING.store(buffer, Ordering::Relaxed);
+    }
+
     if buffer == 0 {
         state.bind_buffer(target, None);
     } else {
@@ -404,8 +413,17 @@ pub unsafe extern "C" fn glGetIntegerv(pname: GLenum, data: *mut GLint) {
         GL_MINOR_VERSION => {
             *data = 0;
         }
+        GL_ARRAY_BUFFER_BINDING => {
+            *data = ARRAY_BUFFER_BINDING.load(Ordering::Relaxed) as GLint;
+        }
         _ => {
-            *data = state.get_parameter(pname).unwrap().as_f64().unwrap() as GLint;
+            // WebGL binding queries return JS objects, not numbers.
+            // Fall back to 0 for unhandled ones.
+            *data = state
+                .get_parameter(pname)
+                .ok()
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0) as GLint;
         }
     }
 }
@@ -691,6 +709,17 @@ pub unsafe extern "C" fn glEnableVertexAttribArray(index: GLuint) {
 #[cfg_attr(feature = "wasm", no_mangle)]
 pub unsafe extern "C" fn glDisableVertexAttribArray(index: GLuint) {
     get_context().disable_vertex_attrib_array(index);
+}
+
+#[cfg_attr(feature = "wasm", no_mangle)]
+pub unsafe extern "C" fn glVertexAttrib4f(
+    index: GLuint,
+    x: GLfloat,
+    y: GLfloat,
+    z: GLfloat,
+    w: GLfloat,
+) {
+    get_context().vertex_attrib4f(index, x, y, z, w);
 }
 
 #[cfg_attr(feature = "wasm", no_mangle)]

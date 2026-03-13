@@ -103,25 +103,8 @@ unsafe extern "C" fn _ZdlPvm(ptr: Option<NonNull<u8>>, _size: usize) {
 }
 
 #[cfg_attr(feature = "wasm", no_mangle)]
-unsafe extern "C" fn _Znam(size: usize) -> *mut u8 {
-    // C++ operator new[] - allocate array
-    match malloc(size) {
-        Some(ptr) => ptr.as_ptr(),
-        None => ptr::null_mut(),
-    }
-}
-
-#[cfg_attr(feature = "wasm", no_mangle)]
 unsafe extern "C" fn _ZdaPvm(ptr: *mut u8, _size: usize) {
-    // C++ operator delete[] - deallocate array
-    if !ptr.is_null() {
-        free(Some(NonNull::new_unchecked(ptr)));
-    }
-}
-
-#[cfg_attr(feature = "wasm", no_mangle)]
-unsafe extern "C" fn _ZdaPv(ptr: *mut u8) {
-    // C++ operator delete[] - deallocate array
+    // C++ operator delete[](void*, size_t) - sized array deallocation
     if !ptr.is_null() {
         free(Some(NonNull::new_unchecked(ptr)));
     }

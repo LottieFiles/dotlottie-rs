@@ -671,34 +671,36 @@ impl Animation for TvgAnimation {
 
     fn tween(
         &mut self,
-        _to: f32,
-        _duration: Option<f32>,
-        _easing: Option<[f32; 4]>,
+        to: f32,
+        duration: Option<f32>,
+        easing: Option<[f32; 4]>,
     ) -> Result<(), TvgError> {
         if self.is_tweening() {
             return Err(TvgError::InvalidArgument);
         }
-        if _duration.is_some() && _duration.unwrap() <= 0.0 {
+        if duration.is_some() && duration.unwrap() <= 0.0 {
             return Err(TvgError::InvalidArgument);
         }
-        if _easing.is_some() && _easing.unwrap().iter().any(|&x| !(0.0..=1.0).contains(&x)) {
-            return Err(TvgError::InvalidArgument);
+        if let Some([x1, _y1, x2, _y2]) = easing {
+            if !(0.0..=1.0).contains(&x1) || !(0.0..=1.0).contains(&x2) {
+                return Err(TvgError::InvalidArgument);
+            }
         }
 
         let from = self.get_frame()?;
 
         self.tween_state = Some(TweenState {
             start_time: {
-                if _duration.is_some() {
+                if duration.is_some() {
                     Some(Instant::now())
                 } else {
                     None
                 }
             },
             from,
-            to: _to,
-            duration: _duration,
-            easing: _easing,
+            to,
+            duration,
+            easing,
         });
 
         Ok(())
@@ -714,21 +716,28 @@ impl Animation for TvgAnimation {
         Ok(())
     }
 
-    fn tween_update(&mut self, _given_progress: Option<f32>) -> Result<bool, TvgError> {
+    fn tween_update(&mut self, given_progress: Option<f32>) -> Result<bool, TvgError> {
         if let Some(tween_state) = self.tween_state.as_ref() {
             if tween_state.duration.is_none() {
-                if _given_progress.is_none() {
+                if given_progress.is_none() {
                     return Err(TvgError::InvalidArgument);
                 }
+
+                let progress = given_progress.unwrap();
 
                 unsafe {
                     tvg::tvg_lottie_animation_tween(
                         self.raw_animation,
                         tween_state.from,
                         tween_state.to,
-                        _given_progress.unwrap(),
+                        progress,
                     );
                 };
+
+                if progress >= 1.0 {
+                    self.tween_state = None;
+                    return Ok(false);
+                }
 
                 return Ok(true);
             }
@@ -754,9 +763,7 @@ impl Animation for TvgAnimation {
             };
 
             if progress >= 1.0 {
-                let target_frame = tween_state.to;
                 self.tween_state = None;
-                self.set_frame(target_frame)?;
                 Ok(false)
             } else {
                 Ok(true)

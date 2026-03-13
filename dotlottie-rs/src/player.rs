@@ -1633,12 +1633,12 @@ impl DotLottiePlayer {
     pub fn tick(&mut self) -> Result<(), DotLottiePlayerError> {
         if self.is_tweening() {
             match self.tween_update(None) {
-                Ok(_) => return self.render(),
+                Ok(_) => self.render(),
                 Err(e) => {
                     // Clear tween state to prevent infinite error loops
                     // (e.g., manual-progress tween where tick provides no progress)
                     let _ = self.tween_stop();
-                    return Err(e);
+                    Err(e)
                 }
             }
         } else {

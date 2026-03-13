@@ -134,10 +134,10 @@ linux-arm64: linux-check-deps
 			--no-default-features \
 			--features $(LINUX_DEFAULT_FEATURES),$(LINUX_FEATURES); \
 	else \
-		CC="aarch64-linux-gnu-gcc" \
-		CXX="aarch64-linux-gnu-g++" \
-		AR="aarch64-linux-gnu-ar" \
-		RANLIB="aarch64-linux-gnu-ranlib" \
+		CC_aarch64_unknown_linux_gnu="aarch64-linux-gnu-gcc" \
+		CXX_aarch64_unknown_linux_gnu="aarch64-linux-gnu-g++" \
+		AR_aarch64_unknown_linux_gnu="aarch64-linux-gnu-ar" \
+		RANLIB_aarch64_unknown_linux_gnu="aarch64-linux-gnu-ranlib" \
 		CFLAGS="-fPIC" \
 		CXXFLAGS="-fPIC -std=c++14" \
 		CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="aarch64-linux-gnu-gcc" \

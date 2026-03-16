@@ -16,8 +16,7 @@ pub struct RodioPlayer {
 
 impl RodioPlayer {
     pub fn new() -> Result<Self, String> {
-        let (_stream, stream_handle) =
-            OutputStream::try_default().map_err(|e| e.to_string())?;
+        let (_stream, stream_handle) = OutputStream::try_default().map_err(|e| e.to_string())?;
         Ok(Self {
             _stream,
             stream_handle,
@@ -47,21 +46,18 @@ impl RodioPlayer {
         }
     }
 
-    /// Pause without rewinding.
     pub fn pause(&mut self, id: &str) {
         if let Some(sink) = self.sinks.get(id) {
             sink.pause();
         }
     }
 
-    /// Resume from the paused position.
     pub fn resume(&mut self, id: &str) {
         if let Some(sink) = self.sinks.get(id) {
             sink.play();
         }
     }
 
-    /// Stop and discard the active sink (rewound on next play).
     pub fn stop(&mut self, id: &str) {
         self.sinks.remove(id);
     }

@@ -9,8 +9,7 @@ MIN_MACCATALYST_VERSION ?= 13.1
 APPLE_BASE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
 # Default features without audio
 APPLE_DEFAULT_FEATURES_NO_AUDIO = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
-# rodio uses cpal → CoreAudio on all Apple platforms (macOS, iOS, tvOS, visionOS).
-# No SDL2 cmake bundled build required.
+
 # Uncomment for audio
 # APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO),audio
 

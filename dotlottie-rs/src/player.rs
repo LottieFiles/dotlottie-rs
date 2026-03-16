@@ -205,7 +205,6 @@ impl DotLottiePlayer {
             .collect()
     }
 
-    /// Returns all audio assets decoded from the current animation.
     #[cfg(feature = "audio")]
     pub fn audio_assets(&self) -> Vec<&AudioAsset> {
         self.audio_manager
@@ -214,7 +213,6 @@ impl DotLottiePlayer {
             .unwrap_or_default()
     }
 
-    /// Silence all audio without interrupting frame-synchronised playback.
     #[cfg(feature = "audio")]
     pub fn mute_audio(&mut self) {
         if let Some(am) = &mut self.audio_manager {
@@ -222,7 +220,6 @@ impl DotLottiePlayer {
         }
     }
 
-    /// Restore audio output after `mute_audio()`.
     #[cfg(feature = "audio")]
     pub fn unmute_audio(&mut self) {
         if let Some(am) = &mut self.audio_manager {
@@ -239,13 +236,13 @@ impl DotLottiePlayer {
         }
     }
 
-    /// Returns `true` if audio is currently muted.
     #[cfg(feature = "audio")]
     pub fn is_audio_muted(&self) -> bool {
-        self.audio_manager.as_ref().map_or(false, |am| am.is_muted())
+        self.audio_manager
+            .as_ref()
+            .map_or(false, |am| am.is_muted())
     }
 
-    /// Returns the current global audio volume multiplier.
     #[cfg(feature = "audio")]
     pub fn audio_volume(&self) -> f32 {
         self.audio_manager.as_ref().map_or(1.0, |am| am.volume())
@@ -394,7 +391,6 @@ impl DotLottiePlayer {
 
         self.playback_state = PlaybackState::Playing;
 
-        // Resume any audio that was active before a pause.
         #[cfg(feature = "audio")]
         if let Some(am) = &mut self.audio_manager {
             for event in am.resume_all() {
@@ -714,10 +710,6 @@ impl DotLottiePlayer {
         #[cfg(feature = "audio")]
         if self.is_playing() {
             if let Some(am) = &mut self.audio_manager {
-                // Events are always pushed so hosts on every platform (native or
-                // WASM) can observe audio state changes via poll_event().
-                // AudioManager::update() also drives rodio directly, so audio
-                // plays AND events fire.
                 for event in am.update(no) {
                     match event {
                         AudioEvent::Play { ref_id } => {

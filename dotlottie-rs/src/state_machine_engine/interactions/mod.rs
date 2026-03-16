@@ -3,10 +3,10 @@ use serde::Deserialize;
 use super::actions::Action;
 
 pub trait InteractionTrait {
-    fn get_layer_name(&self) -> Option<String>;
+    fn get_layer_name(&self) -> Option<&str>;
     fn get_state_name(&self) -> Option<String>;
     fn get_actions(&self) -> &Vec<Action>;
-    fn type_name(&self) -> String;
+    fn type_name(&self) -> &'static str;
 }
 
 pub enum InteractionAction {
@@ -54,16 +54,16 @@ pub enum Interaction {
 }
 
 impl InteractionTrait for Interaction {
-    fn get_layer_name(&self) -> Option<String> {
+    fn get_layer_name(&self) -> Option<&str> {
         match self {
-            Interaction::PointerUp { layer_name, .. } => layer_name.clone(),
-            Interaction::PointerDown { layer_name, .. } => layer_name.clone(),
-            Interaction::PointerEnter { layer_name, .. } => layer_name.clone(),
+            Interaction::PointerUp { layer_name, .. } => layer_name.as_deref(),
+            Interaction::PointerDown { layer_name, .. } => layer_name.as_deref(),
+            Interaction::PointerEnter { layer_name, .. } => layer_name.as_deref(),
             Interaction::PointerMove { .. } => None,
-            Interaction::PointerExit { layer_name, .. } => layer_name.clone(),
+            Interaction::PointerExit { layer_name, .. } => layer_name.as_deref(),
             Interaction::OnComplete { .. } => None,
             Interaction::OnLoopComplete { .. } => None,
-            Interaction::Click { layer_name, .. } => layer_name.clone(),
+            Interaction::Click { layer_name, .. } => layer_name.as_deref(),
         }
     }
 
@@ -93,16 +93,16 @@ impl InteractionTrait for Interaction {
         }
     }
 
-    fn type_name(&self) -> String {
+    fn type_name(&self) -> &'static str {
         match self {
-            Interaction::PointerUp { .. } => "PointerUp".to_string(),
-            Interaction::PointerDown { .. } => "PointerDown".to_string(),
-            Interaction::PointerEnter { .. } => "PointerEnter".to_string(),
-            Interaction::PointerMove { .. } => "PointerMove".to_string(),
-            Interaction::PointerExit { .. } => "PointerExit".to_string(),
-            Interaction::OnComplete { .. } => "OnComplete".to_string(),
-            Interaction::OnLoopComplete { .. } => "OnLoopComplete".to_string(),
-            Interaction::Click { .. } => "Click".to_string(),
+            Interaction::PointerUp { .. } => "PointerUp",
+            Interaction::PointerDown { .. } => "PointerDown",
+            Interaction::PointerEnter { .. } => "PointerEnter",
+            Interaction::PointerMove { .. } => "PointerMove",
+            Interaction::PointerExit { .. } => "PointerExit",
+            Interaction::OnComplete { .. } => "OnComplete",
+            Interaction::OnLoopComplete { .. } => "OnLoopComplete",
+            Interaction::Click { .. } => "Click",
         }
     }
 }

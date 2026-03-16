@@ -102,9 +102,6 @@ jobs:
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
-      - name: Check ELF Alignment
-        run: ./scripts/check_elf_alignment.sh release/android/dotlottie-player/src/main/jniLibs
-
       - name: Create Android Archive
         run: |
           cd release/android
@@ -194,9 +191,9 @@ jobs:
           path: release
           merge-multiple: true
       - name: Install Knope
-        uses: knope-dev/action@v2.0.0
+        uses: knope-dev/action@v2.1.2
         with:
-          version: 0.13.0
+          version: 0.22.3
       - run: knope release --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

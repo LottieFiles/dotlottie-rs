@@ -515,26 +515,17 @@ impl<'a> StateMachineEngine<'a> {
         self.current_state.clone()
     }
 
-    pub fn interactions(&self, event_type_filter: Option<String>) -> Vec<&Interaction> {
-        let mut interactions_clone = Vec::new();
-        let filter = event_type_filter.unwrap_or("".to_string());
-
-        if let Some(interactions) = &self.state_machine.interactions {
-            for interaction in interactions {
-                if !filter.is_empty() {
-                    // If the filter type and the interaction type don't match, skip
-                    if filter == interaction.type_name() {
-                        // Clones the references
-                        interactions_clone.push(interaction);
-                    }
-                } else {
-                    // No filter used, clone the reference
-                    interactions_clone.push(interaction);
-                }
-            }
-        }
-
-        interactions_clone
+    pub fn interactions<'b>(
+        &'b self,
+        event_type_filter: Option<&'b str>,
+    ) -> impl Iterator<Item = &'b Interaction> {
+        self.state_machine
+            .interactions
+            .iter()
+            .flatten()
+            .filter(move |interaction| {
+                event_type_filter.is_none_or(|f| f == interaction.type_name())
+            })
     }
 
     pub fn framework_setup(&self) -> Vec<String> {
@@ -581,9 +572,7 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     fn init_listened_layers(&mut self) {
-        let mut interactions = vec![];
-
-        interactions.extend(self.interactions(None));
+        let interactions: Vec<_> = self.interactions(None).collect();
 
         let mut all_listened_layers: Vec<(String, String)> = vec![];
 
@@ -1021,16 +1010,16 @@ impl<'a> StateMachineEngine<'a> {
                 if let Some(layer) = interaction.get_layer_name() {
                     // If we have a pointer down event, we need to check if the pointer is outside of the layer
                     if let Event::PointerExit { x, y } = event {
-                        if self.pointer_management.curr_entered_layer == *layer
-                            && !self.player.intersect(*x, *y, &layer)
+                        if self.pointer_management.curr_entered_layer == layer
+                            && !self.player.intersect(*x, *y, layer)
                         {
                             entered_layer = "".to_string();
                             actions_to_execute.extend(interaction.get_actions().clone());
                         }
                     } else {
                         // Hit check will return true if the layer was hit
-                        if self.player.intersect(x, y, &layer) {
-                            entered_layer = layer.clone();
+                        if self.player.intersect(x, y, layer) {
+                            entered_layer = layer.to_string();
                             actions_to_execute.extend(interaction.get_actions().clone());
                         }
                     }
@@ -1053,9 +1042,9 @@ impl<'a> StateMachineEngine<'a> {
         let mut actions_to_execute = Vec::new();
 
         // Manage pointerMove interactions
-        if event.type_name() == *"PointerMove" {
+        if event.type_name() == "PointerMove" {
             let pointer_move_interactions =
-                self.interactions(Some(event_type_name!(PointerMove).to_string()));
+                self.interactions(Some(event_type_name!(PointerMove)));
 
             for interaction in pointer_move_interactions {
                 if let Interaction::PointerMove { actions } = interaction {
@@ -1071,29 +1060,31 @@ impl<'a> StateMachineEngine<'a> {
         let old_layer = self.pointer_management.curr_entered_layer.clone();
 
         // Loop through all layers we're listening to
-        for (layer, event_name) in &self.pointer_management.listened_layers.clone() {
+        for i in 0..self.pointer_management.listened_layers.len() {
             // We're only interested in the listened layers that need enter / exit event
-            if (event_name == event_type_name!(PointerEnter)
-                || event_name == event_type_name!(PointerExit))
-                && self.player.intersect(x, y, layer)
+            if (self.pointer_management.listened_layers[i].1 == event_type_name!(PointerEnter)
+                || self.pointer_management.listened_layers[i].1 == event_type_name!(PointerExit))
+                && self
+                    .player
+                    .intersect(x, y, &self.pointer_management.listened_layers[i].0)
             {
                 hit = true;
 
                 // If it's that same current layer, do nothing
-                if self.pointer_management.curr_entered_layer == *layer {
+                if self.pointer_management.curr_entered_layer
+                    == self.pointer_management.listened_layers[i].0
+                {
                     break;
                 }
 
-                self.pointer_management.curr_entered_layer = layer.to_string();
+                self.pointer_management.curr_entered_layer =
+                    self.pointer_management.listened_layers[i].0.clone();
 
                 // Get all pointer_enter interactions
-                let pointer_enter_interactions =
-                    self.interactions(Some(event_type_name!(PointerEnter).to_string()));
-
                 // Add their actions if their layer name matches the current layer name in loop
-                for interaction in pointer_enter_interactions {
+                for interaction in self.interactions(Some(event_type_name!(PointerEnter))) {
                     if let Some(interaction_layer_name) = interaction.get_layer_name() {
-                        if *interaction_layer_name == self.pointer_management.curr_entered_layer {
+                        if interaction_layer_name == self.pointer_management.curr_entered_layer {
                             actions_to_execute.extend(interaction.get_actions().clone());
                         }
                     }
@@ -1106,13 +1097,13 @@ impl<'a> StateMachineEngine<'a> {
             self.pointer_management.curr_entered_layer = "".to_string();
 
             let pointer_exit_interactions =
-                self.interactions(Some(event_type_name!(PointerExit).to_string()));
+                self.interactions(Some(event_type_name!(PointerExit)));
 
             // Add the actions of every PointerExit interaction that depended on the layer we've just exited
             for interaction in pointer_exit_interactions {
                 if let Some(interaction_layer_name) = interaction.get_layer_name() {
                     // We've exited the desired layer, add its actions to execute
-                    if *interaction_layer_name == old_layer {
+                    if interaction_layer_name == old_layer {
                         actions_to_execute.extend(interaction.get_actions().clone());
                     }
                 }
@@ -1170,15 +1161,9 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     fn manage_player_events(&mut self, event: &Event) {
-        let interactions = self.interactions(Some(event.type_name()));
-
-        if interactions.is_empty() {
-            return;
-        }
-
         let mut actions_to_execute = Vec::new();
 
-        for interaction in interactions {
+        for interaction in self.interactions(Some(event.type_name())) {
             if let Interaction::OnComplete {
                 state_name,
                 actions,

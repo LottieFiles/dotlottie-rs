@@ -4,7 +4,7 @@ pub trait PointerEvent {
 }
 
 pub trait EventName {
-    fn type_name(&self) -> String;
+    fn type_name(&self) -> &'static str;
 }
 
 #[derive(Debug, Clone)]
@@ -44,16 +44,16 @@ impl PointerEvent for Event {
 }
 
 impl EventName for Event {
-    fn type_name(&self) -> String {
+    fn type_name(&self) -> &'static str {
         match self {
-            Event::PointerDown { .. } => "PointerDown".to_string(),
-            Event::PointerUp { .. } => "PointerUp".to_string(),
-            Event::PointerMove { .. } => "PointerMove".to_string(),
-            Event::PointerEnter { .. } => "PointerEnter".to_string(),
-            Event::PointerExit { .. } => "PointerExit".to_string(),
-            Event::Click { .. } => "Click".to_string(),
-            Event::OnComplete => "OnComplete".to_string(),
-            Event::OnLoopComplete => "OnLoopComplete".to_string(),
+            Event::PointerDown { .. } => "PointerDown",
+            Event::PointerUp { .. } => "PointerUp",
+            Event::PointerMove { .. } => "PointerMove",
+            Event::PointerEnter { .. } => "PointerEnter",
+            Event::PointerExit { .. } => "PointerExit",
+            Event::Click { .. } => "Click",
+            Event::OnComplete => "OnComplete",
+            Event::OnLoopComplete => "OnLoopComplete",
         }
     }
 }

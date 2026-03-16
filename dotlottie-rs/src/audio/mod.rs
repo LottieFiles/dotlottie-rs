@@ -7,17 +7,14 @@ mod rodio_player;
 #[cfg(feature = "audio")]
 pub use rodio_player::RodioPlayer;
 
-const BASE64_CHARS: &[u8; 64] =
-    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 const DATA_AUDIO_PREFIX: &str = "data:audio/";
 
 /// An audio asset decoded from a Lottie JSON file.
 pub struct AudioAsset {
     pub id: String,
-    /// Raw audio bytes (decoded from base64).
     pub data: Vec<u8>,
-    /// MIME type, e.g. `"audio/mp3"`.
     pub mime_type: String,
 }
 
@@ -32,16 +29,11 @@ pub struct AudioLayer {
     pub volume: f32,
 }
 
-/// Events produced by [`AudioManager::update`], [`AudioManager::pause_all`], etc.
 pub enum AudioEvent {
     Play { ref_id: String },
     Pause { ref_id: String },
     Stop { ref_id: String },
 }
-
-// ---------------------------------------------------------------------------
-// Base64 decoder (mirrors the encoder in fms/mod.rs)
-// ---------------------------------------------------------------------------
 
 fn decode_base64(input: &str) -> Option<Vec<u8>> {
     // Build reverse lookup table.
@@ -110,7 +102,6 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
         Err(_) => return (Vec::new(), Vec::new()),
     };
 
-    // --- Parse audio assets ---
     let mut assets: Vec<AudioAsset> = Vec::new();
 
     if let Some(assets_arr) = root.get("assets").and_then(|v| v.as_array()) {
@@ -129,16 +120,15 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
                 continue;
             }
 
-            // p looks like: "data:audio/mp3;base64,SUQz..."
-            let after_prefix = &p[DATA_AUDIO_PREFIX.len()..]; // "mp3;base64,SUQz..."
+            let after_prefix = &p[DATA_AUDIO_PREFIX.len()..];
             let semi_pos = match after_prefix.find(';') {
                 Some(pos) => pos,
                 None => continue,
             };
-            let mime_subtype = &after_prefix[..semi_pos]; // "mp3"
+            let mime_subtype = &after_prefix[..semi_pos];
             let mime_type = format!("audio/{mime_subtype}");
 
-            let rest = &after_prefix[semi_pos + 1..]; // "base64,SUQz..."
+            let rest = &after_prefix[semi_pos + 1..];
             let b64_data = match rest.strip_prefix("base64,") {
                 Some(d) => d,
                 None => continue,
@@ -157,76 +147,135 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
         }
     }
 
-    // Build a set of known asset IDs for fast lookup when validating layers.
+    // Build a set of known audio asset IDs for fast lookup.
     let asset_ids: HashSet<&str> = assets.iter().map(|a| a.id.as_str()).collect();
 
-    // --- Collect all layer arrays to search (top-level + precomp assets) ---
-    let mut all_layer_arrays: Vec<&Vec<Value>> = Vec::new();
+    // --- Build a map: precomp_asset_id -> Vec<(audio_ref_id, volume)> ---
+    // Handle audio layers inside precomps
+    let mut audio_precomp_map: HashMap<&str, Vec<(String, f32)>> = HashMap::new();
 
-    if let Some(layers_arr) = root.get("layers").and_then(|v| v.as_array()) {
-        all_layer_arrays.push(layers_arr);
-    }
-
-    // Also search layers nested inside precomp assets.
     if let Some(assets_arr) = root.get("assets").and_then(|v| v.as_array()) {
         for asset in assets_arr {
-            if let Some(precomp_layers) = asset.get("layers").and_then(|v| v.as_array()) {
-                all_layer_arrays.push(precomp_layers);
+            let asset_id = match asset.get("id").and_then(|v| v.as_str()) {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let inner_layers = match asset.get("layers").and_then(|v| v.as_array()) {
+                Some(l) => l,
+                None => continue,
+            };
+
+            for inner in inner_layers {
+                if inner.get("ty").and_then(|v| v.as_u64()) != Some(6) {
+                    continue;
+                }
+
+                let ref_id = match inner.get("refId").and_then(|v| v.as_str()) {
+                    Some(s) => s.to_string(),
+                    None => continue,
+                };
+
+                if !asset_ids.contains(ref_id.as_str()) {
+                    continue;
+                }
+
+                let volume = inner
+                    .get("au")
+                    .and_then(|au| au.get("lv"))
+                    .and_then(|lv| lv.get("k"))
+                    .and_then(|k| {
+                        if let Some(arr) = k.as_array() {
+                            arr.first()
+                                .and_then(|v| v.as_f64())
+                                .map(|v| (v / 100.0) as f32)
+                        } else {
+                            k.as_f64().map(|v| (v / 100.0) as f32)
+                        }
+                    })
+                    .unwrap_or(1.0);
+
+                audio_precomp_map
+                    .entry(asset_id)
+                    .or_default()
+                    .push((ref_id, volume));
             }
         }
     }
 
-    // --- Parse audio layers (ty == 6) ---
+    // --- Extract AudioLayers from the main (root) timeline only ---
     let mut layers: Vec<AudioLayer> = Vec::new();
 
-    for layers_arr in all_layer_arrays {
-        for layer in layers_arr {
-            // Only audio layers have ty == 6.
+    if let Some(root_layers) = root.get("layers").and_then(|v| v.as_array()) {
+        for layer in root_layers {
             match layer.get("ty").and_then(|v| v.as_u64()) {
-                Some(6) => {}
+                Some(0) => {
+                    // Precomp instance layer — check if it wraps an audio precomp.
+                    // The ip/op here are in the parent timeline and give us the
+                    // correct playback window for the audio.
+                    let ref_id = match layer.get("refId").and_then(|v| v.as_str()) {
+                        Some(s) => s,
+                        None => continue,
+                    };
+
+                    let audio_infos = match audio_precomp_map.get(ref_id) {
+                        Some(infos) => infos,
+                        None => continue,
+                    };
+
+                    let start_frame =
+                        layer.get("ip").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
+                    let end_frame = layer.get("op").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
+
+                    for (audio_ref_id, volume) in audio_infos {
+                        layers.push(AudioLayer {
+                            ref_id: audio_ref_id.clone(),
+                            start_frame,
+                            end_frame,
+                            volume: *volume,
+                        });
+                    }
+                }
+                Some(6) => {
+                    // Direct audio layer in the timeline (not wrapped in a precomp).
+                    // Use its own ip/op directly.
+                    let ref_id = match layer.get("refId").and_then(|v| v.as_str()) {
+                        Some(s) => s.to_string(),
+                        None => continue,
+                    };
+
+                    if !asset_ids.contains(ref_id.as_str()) {
+                        continue;
+                    }
+
+                    let start_frame =
+                        layer.get("ip").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
+                    let end_frame = layer.get("op").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
+
+                    let volume = layer
+                        .get("au")
+                        .and_then(|au| au.get("lv"))
+                        .and_then(|lv| lv.get("k"))
+                        .and_then(|k| {
+                            if let Some(arr) = k.as_array() {
+                                arr.first()
+                                    .and_then(|v| v.as_f64())
+                                    .map(|v| (v / 100.0) as f32)
+                            } else {
+                                k.as_f64().map(|v| (v / 100.0) as f32)
+                            }
+                        })
+                        .unwrap_or(1.0);
+
+                    layers.push(AudioLayer {
+                        ref_id,
+                        start_frame,
+                        end_frame,
+                        volume,
+                    });
+                }
                 _ => continue,
             }
-
-            let ref_id = match layer.get("refId").and_then(|v| v.as_str()) {
-                Some(s) => s.to_string(),
-                None => continue,
-            };
-
-            // Skip layers whose asset was not found/decoded.
-            if !asset_ids.contains(ref_id.as_str()) {
-                continue;
-            }
-
-            let start_frame = layer
-                .get("ip")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0) as f32;
-            let end_frame = layer
-                .get("op")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0) as f32;
-
-            // Volume lives at au.lv.k — either a plain number or an array.
-            // MVP: use the first (or only) value, divide by 100 to normalise.
-            let volume = layer
-                .get("au")
-                .and_then(|au| au.get("lv"))
-                .and_then(|lv| lv.get("k"))
-                .and_then(|k| {
-                    if let Some(arr) = k.as_array() {
-                        arr.first().and_then(|v| v.as_f64()).map(|v| (v / 100.0) as f32)
-                    } else {
-                        k.as_f64().map(|v| (v / 100.0) as f32)
-                    }
-                })
-                .unwrap_or(1.0);
-
-            layers.push(AudioLayer {
-                ref_id,
-                start_frame,
-                end_frame,
-                volume,
-            });
         }
     }
 
@@ -240,14 +289,17 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
 /// Manages frame-synchronised audio playback.
 ///
 /// Audio is played via rodio on native targets (macOS, iOS, Android) and on
-/// `wasm32-unknown-unknown` (Web Audio API backend). [`AudioManager::update`]
-/// (and friends) also return [`AudioEvent`]s that the host application may
-/// handle.
+/// `wasm32-unknown-unknown` (Web Audio API backend).
 pub struct AudioManager {
     assets: HashMap<String, AudioAsset>,
     layers: Vec<AudioLayer>,
-    /// Set of `ref_id`s whose audio is currently active (started but not stopped).
-    playing: HashSet<String>,
+    /// Indices into `layers` whose audio is currently active (started but not stopped).
+    /// Using layer index rather than ref_id so that multiple layers sharing the
+    /// same audio asset are tracked independently.
+    playing: HashSet<usize>,
+    muted: bool,
+    /// Global volume multiplier in [0.0, 1.0], applied on top of per-layer volume.
+    volume: f32,
 
     #[cfg(feature = "audio")]
     rodio_player: Option<RodioPlayer>,
@@ -270,8 +322,18 @@ impl AudioManager {
             assets: assets_map,
             layers,
             playing: HashSet::new(),
+            muted: false,
+            volume: 1.0,
             #[cfg(feature = "audio")]
             rodio_player,
+        }
+    }
+
+    fn effective_volume(&self, layer_volume: f32) -> f32 {
+        if self.muted {
+            0.0
+        } else {
+            layer_volume * self.volume
         }
     }
 
@@ -281,23 +343,26 @@ impl AudioManager {
     pub fn update(&mut self, frame: f32) -> Vec<AudioEvent> {
         let mut events = Vec::new();
 
-        for layer in &self.layers {
+        for (idx, layer) in self.layers.iter().enumerate() {
             let should_play = frame >= layer.start_frame && frame < layer.end_frame;
-            let is_playing = self.playing.contains(&layer.ref_id);
+            let is_playing = self.playing.contains(&idx);
 
             if should_play && !is_playing {
-                self.playing.insert(layer.ref_id.clone());
+                self.playing.insert(idx);
 
                 #[cfg(feature = "audio")]
-                if let Some(ref mut player) = self.rodio_player {
-                    player.play(&layer.ref_id, layer.volume);
+                {
+                    let vol = self.effective_volume(layer.volume);
+                    if let Some(ref mut player) = self.rodio_player {
+                        player.play(&layer.ref_id, vol);
+                    }
                 }
 
                 events.push(AudioEvent::Play {
                     ref_id: layer.ref_id.clone(),
                 });
             } else if !should_play && is_playing {
-                self.playing.remove(&layer.ref_id);
+                self.playing.remove(&idx);
 
                 #[cfg(feature = "audio")]
                 if let Some(ref mut player) = self.rodio_player {
@@ -313,52 +378,132 @@ impl AudioManager {
         events
     }
 
-    /// Pause all currently-playing audio streams.
     pub fn pause_all(&mut self) -> Vec<AudioEvent> {
-        let ids: Vec<String> = self.playing.iter().cloned().collect();
+        let ref_ids: Vec<String> = self
+            .playing
+            .iter()
+            .map(|&idx| self.layers[idx].ref_id.clone())
+            .collect();
 
         #[cfg(feature = "audio")]
         if let Some(ref mut player) = self.rodio_player {
-            for id in &ids {
+            for id in &ref_ids {
                 player.pause(id);
             }
         }
 
-        ids.into_iter()
+        ref_ids
+            .into_iter()
             .map(|ref_id| AudioEvent::Pause { ref_id })
             .collect()
     }
 
-    /// Resume all paused audio streams.
     pub fn resume_all(&mut self) -> Vec<AudioEvent> {
-        let ids: Vec<String> = self.playing.iter().cloned().collect();
+        let ref_ids: Vec<String> = self
+            .playing
+            .iter()
+            .map(|&idx| self.layers[idx].ref_id.clone())
+            .collect();
 
         #[cfg(feature = "audio")]
         if let Some(ref mut player) = self.rodio_player {
-            for id in &ids {
+            for id in &ref_ids {
                 player.resume(id);
             }
         }
 
-        ids.into_iter()
-            .map(|id| AudioEvent::Play { ref_id: id })
+        ref_ids
+            .into_iter()
+            .map(|ref_id| AudioEvent::Play { ref_id })
             .collect()
     }
 
-    /// Stop all audio streams and clear the playing set.
     pub fn stop_all(&mut self) -> Vec<AudioEvent> {
-        let ids: Vec<String> = self.playing.drain().collect();
+        let ref_ids: Vec<String> = self
+            .playing
+            .drain()
+            .map(|idx| self.layers[idx].ref_id.clone())
+            .collect();
 
         #[cfg(feature = "audio")]
         if let Some(ref mut player) = self.rodio_player {
-            for id in &ids {
+            for id in &ref_ids {
                 player.stop(id);
             }
         }
 
-        ids.into_iter()
+        ref_ids
+            .into_iter()
             .map(|ref_id| AudioEvent::Stop { ref_id })
             .collect()
+    }
+
+    pub fn mute(&mut self) {
+        self.muted = true;
+
+        #[cfg(feature = "audio")]
+        if let Some(ref mut player) = self.rodio_player {
+            for &idx in &self.playing {
+                player.set_volume(&self.layers[idx].ref_id, 0.0);
+            }
+        }
+    }
+
+    pub fn unmute(&mut self) {
+        self.muted = false;
+
+        #[cfg(feature = "audio")]
+        {
+            let updates: Vec<(String, f32)> = self
+                .playing
+                .iter()
+                .map(|&idx| {
+                    (
+                        self.layers[idx].ref_id.clone(),
+                        self.effective_volume(self.layers[idx].volume),
+                    )
+                })
+                .collect();
+            if let Some(ref mut player) = self.rodio_player {
+                for (ref_id, vol) in updates {
+                    player.set_volume(&ref_id, vol);
+                }
+            }
+        }
+    }
+
+    /// Set the global volume multiplier (clamped to [0.0, 1.0]).
+    /// Applied on top of per-layer volume. Takes effect immediately for any
+    /// currently-playing audio.
+    pub fn set_volume(&mut self, volume: f32) {
+        self.volume = volume.clamp(0.0, 1.0);
+
+        #[cfg(feature = "audio")]
+        {
+            let updates: Vec<(String, f32)> = self
+                .playing
+                .iter()
+                .map(|&idx| {
+                    (
+                        self.layers[idx].ref_id.clone(),
+                        self.effective_volume(self.layers[idx].volume),
+                    )
+                })
+                .collect();
+            if let Some(ref mut player) = self.rodio_player {
+                for (ref_id, vol) in updates {
+                    player.set_volume(&ref_id, vol);
+                }
+            }
+        }
+    }
+
+    pub fn is_muted(&self) -> bool {
+        self.muted
+    }
+
+    pub fn volume(&self) -> f32 {
+        self.volume
     }
 
     /// Recreate the underlying audio player with a fresh output stream.
@@ -388,5 +533,4 @@ impl AudioManager {
     pub fn assets(&self) -> impl Iterator<Item = &AudioAsset> {
         self.assets.values()
     }
-
 }

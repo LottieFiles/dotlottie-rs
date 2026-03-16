@@ -2,18 +2,20 @@
 //!
 //! Loads a Lottie animation (JSON or .lottie) that contains audio layers and
 //! plays it. Audio events are printed to stdout as they fire so you can verify
-//! the correct frame boundaries. Audio is played via rodio on native and
-//! wasm32-unknown-unknown targets.
+//! the correct frame boundaries. Audio is played via rodio on native targets.
 //!
 //! Usage:
 //!   cargo run --example audio_player --features audio,dev -- path/to/animation.json
 //!   cargo run --example audio_player --features audio,dev -- path/to/animation.lottie
 //!
 //! Controls:
-//!   P     – play / resume
-//!   S     – pause
-//!   X     – stop
-//!   ESC   – quit
+//!   P       – play / resume
+//!   S       – pause
+//!   X       – stop
+//!   M       – toggle mute
+//!   +/=     – volume up   (+10%)
+//!   -       – volume down (-10%)
+//!   ESC     – quit
 
 #![allow(clippy::print_stdout)]
 
@@ -77,7 +79,7 @@ fn main() {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
     let mut window = Window::new(
-        "dotLottie Audio — P=play  S=pause  X=stop  ESC=quit",
+        "dotLottie Audio — P=play  S=pause  X=stop  M=mute  +/-=volume  ESC=quit",
         WIDTH,
         HEIGHT,
         WindowOptions::default(),
@@ -118,8 +120,15 @@ fn main() {
         player.total_frames(),
         player.duration(),
     );
-    println!("\nControls:  P = play/resume   S = pause   X = stop   ESC = quit");
-    println!("           (press P to start)\n");
+    println!("\nControls:");
+    println!("  P     – play / resume");
+    println!("  S     – pause");
+    println!("  X     – stop");
+    println!("  M     – toggle mute");
+    println!("  +/=   – volume up   (+10%)");
+    println!("  -     – volume down (-10%)");
+    println!("  ESC   – quit");
+    println!("\n(press P to start)\n");
 
     // -------------------------------------------------------------------------
     // Render loop
@@ -127,11 +136,19 @@ fn main() {
     let mut p_was_down = false;
     let mut s_was_down = false;
     let mut x_was_down = false;
+    let mut m_was_down = false;
+    let mut plus_was_down = false;
+    let mut minus_was_down = false;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let p_down = window.is_key_down(Key::P);
         let s_down = window.is_key_down(Key::S);
         let x_down = window.is_key_down(Key::X);
+        let m_down = window.is_key_down(Key::M);
+        let plus_down =
+            window.is_key_down(Key::Equal) || window.is_key_down(Key::NumPadPlus);
+        let minus_down =
+            window.is_key_down(Key::Minus) || window.is_key_down(Key::NumPadMinus);
 
         if p_was_down && !p_down && (player.is_paused() || player.is_stopped()) {
             let _ = player.play();
@@ -143,12 +160,37 @@ fn main() {
             let _ = player.stop();
         }
 
+        if m_was_down && !m_down {
+            if player.is_audio_muted() {
+                player.unmute_audio();
+                println!("  ** Unmuted  (volume={:.0}%)", player.audio_volume() * 100.0);
+            } else {
+                player.mute_audio();
+                println!("  ** Muted");
+            }
+        }
+
+        if plus_was_down && !plus_down {
+            let new_vol = (player.audio_volume() + 0.1).min(1.0);
+            player.set_audio_volume(new_vol);
+            println!("  ** Volume → {:.0}%", player.audio_volume() * 100.0);
+        }
+        if minus_was_down && !minus_down {
+            let new_vol = (player.audio_volume() - 0.1).max(0.0);
+            player.set_audio_volume(new_vol);
+            println!("  ** Volume → {:.0}%", player.audio_volume() * 100.0);
+        }
+
         p_was_down = p_down;
         s_was_down = s_down;
         x_was_down = x_down;
+        m_was_down = m_down;
+        plus_was_down = plus_down;
+        minus_was_down = minus_down;
 
         let _ = player.tick();
 
+        let mute_indicator = if player.is_audio_muted() { " [MUTED]" } else { "" };
         let state = if player.is_playing() {
             "PLAYING"
         } else if player.is_paused() {
@@ -157,9 +199,12 @@ fn main() {
             "STOPPED"
         };
         let frame = player.current_frame();
-        window.set_title(&format!("dotLottie Audio  [{state}]  frame {frame:.1}"));
-        // Always update the window so the OS event loop runs and
-        // keyboard / close events are processed every frame.
+        let vol = player.audio_volume();
+        window.set_title(&format!(
+            "dotLottie Audio  [{state}]  frame {frame:.1}  vol {:.0}%{mute_indicator}",
+            vol * 100.0,
+        ));
+
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
 
         // Print audio (and notable playback) events as they arrive.

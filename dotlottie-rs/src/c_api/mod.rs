@@ -739,6 +739,102 @@ pub unsafe extern "C" fn dotlottie_stop(ptr: *mut DotLottiePlayer) -> DotLottieR
     exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player.stop())
 }
 
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_mute_audio(ptr: *mut DotLottiePlayer) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        #[cfg(feature = "audio")]
+        {
+            dotlottie_player.mute_audio();
+            DotLottieResult::Success
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            let _ = dotlottie_player;
+            DotLottieResult::FeatureNotEnabled
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_unmute_audio(ptr: *mut DotLottiePlayer) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        #[cfg(feature = "audio")]
+        {
+            dotlottie_player.unmute_audio();
+            DotLottieResult::Success
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            let _ = dotlottie_player;
+            DotLottieResult::FeatureNotEnabled
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_audio_volume(
+    ptr: *mut DotLottiePlayer,
+    volume: f32,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        #[cfg(feature = "audio")]
+        {
+            dotlottie_player.set_audio_volume(volume);
+            DotLottieResult::Success
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            let _ = (dotlottie_player, volume);
+            DotLottieResult::FeatureNotEnabled
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_is_audio_muted(
+    ptr: *mut DotLottiePlayer,
+    result: *mut bool,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if result.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        #[cfg(feature = "audio")]
+        {
+            *result = dotlottie_player.is_audio_muted();
+            DotLottieResult::Success
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            let _ = dotlottie_player;
+            DotLottieResult::FeatureNotEnabled
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_audio_volume(
+    ptr: *mut DotLottiePlayer,
+    result: *mut f32,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if result.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        #[cfg(feature = "audio")]
+        {
+            *result = dotlottie_player.audio_volume();
+            DotLottieResult::Success
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            let _ = dotlottie_player;
+            DotLottieResult::FeatureNotEnabled
+        }
+    })
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_request_frame(
     ptr: *mut DotLottiePlayer,

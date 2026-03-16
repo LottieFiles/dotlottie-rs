@@ -65,4 +65,11 @@ impl RodioPlayer {
     pub fn stop(&mut self, id: &str) {
         self.sinks.remove(id);
     }
+
+    /// Adjust the volume of a currently-playing sink without stopping it.
+    pub fn set_volume(&mut self, id: &str, volume: f32) {
+        if let Some(sink) = self.sinks.get(id) {
+            sink.set_volume(volume);
+        }
+    }
 }

@@ -869,16 +869,38 @@ impl DotLottiePlayerWasm {
         self.player.emit_on_loop();
     }
 
-    /// Recreate the audio output stream so it starts in a running state.
-    ///
-    /// Call this once from any browser user-gesture handler (e.g. a click or
-    /// keydown event) to satisfy the Web Audio API's autoplay policy.  The
-    /// player will automatically resume audio on the next `tick()`.
-    ///
-    /// No-op when the `audio` feature is disabled or no audio is loaded.
-    pub fn unlock_audio(&mut self) {
+    /// Silence all audio without interrupting frame-synchronised playback.
+    pub fn mute_audio(&mut self) {
         #[cfg(feature = "audio")]
-        self.player.unlock_audio();
+        self.player.mute_audio();
+    }
+
+    /// Restore audio output after `mute_audio()`.
+    pub fn unmute_audio(&mut self) {
+        #[cfg(feature = "audio")]
+        self.player.unmute_audio();
+    }
+
+    /// Set the global audio volume multiplier (clamped to [0.0, 1.0]).
+    pub fn set_audio_volume(&mut self, volume: f32) {
+        #[cfg(feature = "audio")]
+        self.player.set_audio_volume(volume);
+    }
+
+    /// Returns `true` if audio is currently muted.
+    pub fn is_audio_muted(&self) -> bool {
+        #[cfg(feature = "audio")]
+        return self.player.is_audio_muted();
+        #[cfg(not(feature = "audio"))]
+        false
+    }
+
+    /// Returns the current global audio volume multiplier.
+    pub fn audio_volume(&self) -> f32 {
+        #[cfg(feature = "audio")]
+        return self.player.audio_volume();
+        #[cfg(not(feature = "audio"))]
+        1.0
     }
 
     // ── Font ──────────────────────────────────────────────────────────────────

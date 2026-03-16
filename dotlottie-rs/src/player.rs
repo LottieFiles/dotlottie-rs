@@ -214,18 +214,41 @@ impl DotLottiePlayer {
             .unwrap_or_default()
     }
 
-    /// Recreate the audio output stream from within a user-gesture context.
-    ///
-    /// Browsers suspend any `AudioContext` created outside a user gesture
-    /// (e.g. during page load).  Call this method once from a click or keydown
-    /// handler to obtain a running context and enable audio playback.
-    ///
-    /// No-op when the `audio` feature is disabled or no audio is loaded.
+    /// Silence all audio without interrupting frame-synchronised playback.
     #[cfg(feature = "audio")]
-    pub fn unlock_audio(&mut self) {
+    pub fn mute_audio(&mut self) {
         if let Some(am) = &mut self.audio_manager {
-            am.recreate_player();
+            am.mute();
         }
+    }
+
+    /// Restore audio output after `mute_audio()`.
+    #[cfg(feature = "audio")]
+    pub fn unmute_audio(&mut self) {
+        if let Some(am) = &mut self.audio_manager {
+            am.unmute();
+        }
+    }
+
+    /// Set the global audio volume multiplier (clamped to [0.0, 1.0]).
+    /// Applied on top of per-layer volume; takes effect immediately.
+    #[cfg(feature = "audio")]
+    pub fn set_audio_volume(&mut self, volume: f32) {
+        if let Some(am) = &mut self.audio_manager {
+            am.set_volume(volume);
+        }
+    }
+
+    /// Returns `true` if audio is currently muted.
+    #[cfg(feature = "audio")]
+    pub fn is_audio_muted(&self) -> bool {
+        self.audio_manager.as_ref().map_or(false, |am| am.is_muted())
+    }
+
+    /// Returns the current global audio volume multiplier.
+    #[cfg(feature = "audio")]
+    pub fn audio_volume(&self) -> f32 {
+        self.audio_manager.as_ref().map_or(1.0, |am| am.volume())
     }
 
     pub fn marker_names(&self) -> &[CString] {
@@ -778,6 +801,16 @@ impl DotLottiePlayer {
                     // Put the animation in a stop state, otherwise we can keep looping if we call tick()
                     // Do it before emiting complete, otherwise it will pause the animation at the wrong stages in state machines
                     let _ = self.stop();
+                }
+
+                // Reset audio state so that audio layers re-trigger on the next loop.
+                #[cfg(feature = "audio")]
+                if let Some(am) = &mut self.audio_manager {
+                    for event in am.stop_all() {
+                        if let AudioEvent::Stop { ref_id } = event {
+                            self.event_queue.push(DotLottieEvent::AudioStop { ref_id });
+                        }
+                    }
                 }
 
                 self.emit_on_loop();

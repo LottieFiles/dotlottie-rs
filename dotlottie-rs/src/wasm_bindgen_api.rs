@@ -824,7 +824,6 @@ impl DotLottiePlayerWasm {
         };
         match evt {
             crate::DotLottieEvent::Load => js_obj_with_type("Load").into(),
-            crate::DotLottieEvent::Load => js_obj_with_type("Load").into(),
             crate::DotLottieEvent::LoadError => js_obj_with_type("LoadError").into(),
             crate::DotLottieEvent::Play => js_obj_with_type("Play").into(),
             crate::DotLottieEvent::Pause => js_obj_with_type("Pause").into(),

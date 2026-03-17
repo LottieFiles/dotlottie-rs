@@ -97,24 +97,6 @@ fn main() {
 
     println!("Loading: {}", path.display());
     load_animation(&mut player, &path);
-
-    // -------------------------------------------------------------------------
-    // Report audio assets
-    // -------------------------------------------------------------------------
-    let assets = player.audio_assets();
-    println!("Audio assets found: {}", assets.len());
-    for asset in &assets {
-        println!(
-            "  id={}  mime={}  decoded={} bytes",
-            asset.id,
-            asset.mime_type,
-            asset.data.len()
-        );
-    }
-    if assets.is_empty() {
-        println!("  (no audio layers — try a Lottie file that contains ty:6 layers)");
-    }
-
     println!(
         "\nAnimation: {:.0} frames  ({:.2} s)",
         player.total_frames(),
@@ -145,10 +127,8 @@ fn main() {
         let s_down = window.is_key_down(Key::S);
         let x_down = window.is_key_down(Key::X);
         let m_down = window.is_key_down(Key::M);
-        let plus_down =
-            window.is_key_down(Key::Equal) || window.is_key_down(Key::NumPadPlus);
-        let minus_down =
-            window.is_key_down(Key::Minus) || window.is_key_down(Key::NumPadMinus);
+        let plus_down = window.is_key_down(Key::Equal) || window.is_key_down(Key::NumPadPlus);
+        let minus_down = window.is_key_down(Key::Minus) || window.is_key_down(Key::NumPadMinus);
 
         if p_was_down && !p_down && (player.is_paused() || player.is_stopped()) {
             let _ = player.play();
@@ -162,10 +142,13 @@ fn main() {
 
         if m_was_down && !m_down {
             if player.is_audio_muted() {
-                player.unmute_audio();
-                println!("  ** Unmuted  (volume={:.0}%)", player.audio_volume() * 100.0);
+                player.set_audio_mute(false);
+                println!(
+                    "  ** Unmuted  (volume={:.0}%)",
+                    player.audio_volume() * 100.0
+                );
             } else {
-                player.mute_audio();
+                player.set_audio_mute(true);
                 println!("  ** Muted");
             }
         }
@@ -190,7 +173,11 @@ fn main() {
 
         let _ = player.tick();
 
-        let mute_indicator = if player.is_audio_muted() { " [MUTED]" } else { "" };
+        let mute_indicator = if player.is_audio_muted() {
+            " [MUTED]"
+        } else {
+            ""
+        };
         let state = if player.is_playing() {
             "PLAYING"
         } else if player.is_paused() {

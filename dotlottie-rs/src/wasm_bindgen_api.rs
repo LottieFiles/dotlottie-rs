@@ -869,16 +869,9 @@ impl DotLottiePlayerWasm {
         self.player.emit_on_loop();
     }
 
-    /// Silence all audio without interrupting frame-synchronised playback.
-    pub fn mute_audio(&mut self) {
+    pub fn set_audio_mute(&mut self, mute: bool) {
         #[cfg(feature = "audio")]
-        self.player.mute_audio();
-    }
-
-    /// Restore audio output after `mute_audio()`.
-    pub fn unmute_audio(&mut self) {
-        #[cfg(feature = "audio")]
-        self.player.unmute_audio();
+        self.player.set_audio_mute(mute);
     }
 
     /// Set the global audio volume multiplier (clamped to [0.0, 1.0]).

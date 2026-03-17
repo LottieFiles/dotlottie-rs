@@ -116,7 +116,7 @@ impl DotLottieManager {
                     #[cfg(feature = "audio")]
                     {
                         let audio_prefix = if self.version == 2 { "u/" } else { "audio/" };
-                        let audio_extensions = ["mp3", "wav"];
+                        let audio_extensions = ["mp3"];
 
                         if p_str.starts_with(DATA_AUDIO_PREFIX) {
                             asset_obj.insert("e".to_string(), embedded_flag.clone());

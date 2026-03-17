@@ -5,7 +5,7 @@ use std::{fs, mem};
 use crate::poll_events::{DotLottieEvent, EventQueue};
 use crate::DotLottiePlayerError;
 #[cfg(feature = "audio")]
-use crate::{extract_audio, AudioAsset, AudioEvent, AudioManager};
+use crate::{extract_audio, AudioEvent, AudioManager};
 use crate::{
     extract_markers,
     layout::Layout,
@@ -206,24 +206,13 @@ impl DotLottiePlayer {
     }
 
     #[cfg(feature = "audio")]
-    pub fn audio_assets(&self) -> Vec<&AudioAsset> {
-        self.audio_manager
-            .as_ref()
-            .map(|am| am.assets().collect())
-            .unwrap_or_default()
-    }
-
-    #[cfg(feature = "audio")]
-    pub fn mute_audio(&mut self) {
+    pub fn set_audio_mute(&mut self, mute: bool) {
         if let Some(am) = &mut self.audio_manager {
-            am.mute();
-        }
-    }
-
-    #[cfg(feature = "audio")]
-    pub fn unmute_audio(&mut self) {
-        if let Some(am) = &mut self.audio_manager {
-            am.unmute();
+            if mute {
+                am.mute();
+            } else {
+                am.unmute();
+            }
         }
     }
 

@@ -44,7 +44,7 @@ serde_json = { version = "1.0", default-features = false, features = ["preserve_
 serde = { version = "1.0", features = ["derive"] }
 zip = { version = "2.4.2", default-features = false, features = ["deflate"], optional = true }
 bitflags = { version = "2.6", optional = true }
-rodio = { version = "0.17", optional = true, default-features = false, features = ["mp3", "wav"] }
+rodio = { version = "0.17", optional = true, default-features = false, features = ["mp3"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 ndk-context = { version = "0.1", optional = true }
@@ -55,7 +55,7 @@ js-sys = "0.3"
 nostd-printf = "0.1.4"
 web-sys = { version = "0.3", optional = true }
 # Features are additive: on wasm32-unknown-unknown this merges with the [dependencies]
-# entry to produce ["mp3", "wav", "wasm-bindgen"] for the audio feature.
+# entry to produce ["mp3", "wasm-bindgen"] for the audio feature.
 rodio = { version = "0.17", optional = true, default-features = false, features = ["wasm-bindgen"] }
 
 [build-dependencies]

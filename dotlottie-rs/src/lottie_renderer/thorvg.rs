@@ -647,9 +647,8 @@ impl Animation for TvgAnimation {
     }
 
     fn gen_slot(&mut self, slot_json: &CStr) -> Result<u32, TvgError> {
-        let slot_code = unsafe {
-            tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slot_json.as_ptr())
-        };
+        let slot_code =
+            unsafe { tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slot_json.as_ptr()) };
         if slot_code == 0 {
             return Err(TvgError::InvalidArgument);
         }
@@ -657,8 +656,7 @@ impl Animation for TvgAnimation {
     }
 
     fn apply_slot(&mut self, slot_code: u32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_code) }
-            .into_result()
+        unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_code) }.into_result()
     }
 
     fn del_slot(&mut self, slot_code: u32) -> Result<(), TvgError> {
@@ -682,8 +680,10 @@ impl Animation for TvgAnimation {
             return Err(TvgError::InvalidArgument);
         }
         if let Some([x1, y1, x2, y2]) = easing {
-            if !(0.0..=1.0).contains(&x1) || !(0.0..=1.0).contains(&x2)
-                || !y1.is_finite() || !y2.is_finite()
+            if !(0.0..=1.0).contains(&x1)
+                || !(0.0..=1.0).contains(&x2)
+                || !y1.is_finite()
+                || !y2.is_finite()
             {
                 return Err(TvgError::InvalidArgument);
             }

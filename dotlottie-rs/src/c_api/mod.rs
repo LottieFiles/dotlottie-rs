@@ -70,7 +70,6 @@ impl WgpuTarget for RawWgpuTarget {
 #[cfg(all(feature = "tvg-wg", target_os = "macos"))]
 pub mod apple;
 
-
 // Helper macro for DotLottiePlayer operations - wraps every C API call to check
 // if the dotlottie player pointer is valid or not, and converts the body's
 // return value to DotLottieResult
@@ -1326,11 +1325,7 @@ pub unsafe extern "C" fn dotlottie_get_slots_str(
         }
 
         if !buffer.is_null() {
-            std::ptr::copy_nonoverlapping(
-                json.as_ptr() as *const c_char,
-                buffer,
-                json.len(),
-            );
+            std::ptr::copy_nonoverlapping(json.as_ptr() as *const c_char, buffer, json.len());
             *buffer.add(json.len()) = 0;
         }
 

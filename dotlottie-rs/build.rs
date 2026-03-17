@@ -89,10 +89,7 @@ mod wgpu_native {
         println!("cargo:rerun-if-env-changed=WGPU_NATIVE_LIB");
 
         // Priority 1: env var overrides
-        if let (Ok(inc), Ok(lib)) = (
-            env::var("WGPU_NATIVE_INCLUDE"),
-            env::var("WGPU_NATIVE_LIB"),
-        ) {
+        if let (Ok(inc), Ok(lib)) = (env::var("WGPU_NATIVE_INCLUDE"), env::var("WGPU_NATIVE_LIB")) {
             return Ok((PathBuf::from(inc), PathBuf::from(lib)));
         }
 
@@ -205,7 +202,8 @@ mod thorvg {
             .chain(stderr.lines())
             .find_map(|l| {
                 l.split_once("clang version ").and_then(|(_, ver)| {
-                    ver.split_once('.').and_then(|(major, _)| major.parse::<u32>().ok())
+                    ver.split_once('.')
+                        .and_then(|(major, _)| major.parse::<u32>().ok())
                 })
             })
             .unwrap_or_else(|| {
@@ -258,8 +256,7 @@ mod thorvg {
             )?;
 
             // Write stub html5_webgl.h (ThorVG's GL engine needs this)
-            let html5_webgl_path =
-                emscripten_dir.join("system/include/emscripten/html5_webgl.h");
+            let html5_webgl_path = emscripten_dir.join("system/include/emscripten/html5_webgl.h");
             fs::write(
                 &html5_webgl_path,
                 "#pragma once\n\

@@ -1269,7 +1269,8 @@ impl DotLottiePlayer {
         if theme_id.is_empty() {
             self.theme_id = None;
             self.renderer
-                .clear_slots()                .map_err(|_| DotLottiePlayerError::Unknown)?;
+                .clear_slots()
+                .map_err(|_| DotLottiePlayerError::Unknown)?;
             return Ok(());
         }
 

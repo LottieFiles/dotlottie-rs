@@ -338,6 +338,57 @@ mod tests {
     }
 
     #[test]
+    fn tweened_transition_falls_through_when_already_tweening() {
+        let sm_json = include_str!("../assets/statemachines/smileys.json");
+        let mut player = DotLottiePlayer::new();
+
+        let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .is_ok());
+
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
+                100,
+                100
+            )
+            .is_ok());
+
+        let mut sm = player
+            .state_machine_load_data(sm_json)
+            .expect("state machine to load successfully");
+
+        sm.start(&OpenUrlPolicy::default())
+            .expect("state machine should start");
+
+        assert_eq!(sm.get_current_state_name(), "star_1");
+
+        // Pre-start a tween so the next tween_to_marker call fails
+        sm.player
+            .tween(5.0, Some(2.0), None)
+            .expect("initial tween should succeed");
+        assert!(sm.player.is_tweening());
+
+        // Trigger a tweened transition (rating=2 → star_2).
+        // tween_to_marker will fail because the player is already tweening,
+        // so the state machine should fall through to an instant transition.
+        sm.set_numeric_input("rating", 2.0, true, false)
+            .expect("input should be set");
+
+        assert_eq!(
+            sm.get_current_state_name(),
+            "star_2",
+            "state machine should have fallen through to instant transition to star_2"
+        );
+        assert_ne!(
+            sm.status,
+            StateMachineEngineStatus::Tweening,
+            "state machine should NOT be stuck in Tweening status"
+        );
+    }
+
+    #[test]
     fn state_machine_get_inputs() {
         let mut player = DotLottiePlayer::new();
         let pointer_down =

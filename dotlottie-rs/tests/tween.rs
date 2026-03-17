@@ -142,18 +142,37 @@ mod tests {
     fn timed_tween_update_returns_false_on_completion() {
         let (mut player, _buf) = setup_player();
 
-        // Very short timed tween (0.001s) so it completes immediately
+        // Use a longer duration so we can observe Ok(true) mid-tween
+        player
+            .tween(20.0, Some(2.0), None)
+            .expect("tween should start");
+        assert!(player.is_tweening());
+
+        // Immediately update — should still be in progress
+        let result = player.tween_update(None);
+        assert_eq!(
+            result,
+            Ok(true),
+            "tween_update should return Ok(true) while tween is in progress"
+        );
+        assert!(
+            player.is_tweening(),
+            "should still be tweening mid-progress"
+        );
+
+        // Now stop and restart with a very short duration so it completes
+        player.tween_stop().expect("tween_stop should succeed");
         player
             .tween(20.0, Some(0.001), None)
             .expect("tween should start");
-        assert!(player.is_tweening());
 
         std::thread::sleep(std::time::Duration::from_millis(10));
 
         let result = player.tween_update(None);
-        assert!(
-            result.is_ok(),
-            "tween_update should succeed when timed tween completes"
+        assert_eq!(
+            result,
+            Ok(false),
+            "tween_update should return Ok(false) when timed tween completes"
         );
         assert!(
             !player.is_tweening(),

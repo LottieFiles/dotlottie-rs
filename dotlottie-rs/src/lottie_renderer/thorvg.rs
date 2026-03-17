@@ -681,8 +681,10 @@ impl Animation for TvgAnimation {
         if duration.is_some() && duration.unwrap() <= 0.0 {
             return Err(TvgError::InvalidArgument);
         }
-        if let Some([x1, _y1, x2, _y2]) = easing {
-            if !(0.0..=1.0).contains(&x1) || !(0.0..=1.0).contains(&x2) {
+        if let Some([x1, y1, x2, y2]) = easing {
+            if !(0.0..=1.0).contains(&x1) || !(0.0..=1.0).contains(&x2)
+                || !y1.is_finite() || !y2.is_finite()
+            {
                 return Err(TvgError::InvalidArgument);
             }
         }
@@ -724,6 +726,9 @@ impl Animation for TvgAnimation {
                 }
 
                 let progress = given_progress.unwrap();
+                if !progress.is_finite() {
+                    return Err(TvgError::InvalidArgument);
+                }
 
                 unsafe {
                     tvg::tvg_lottie_animation_tween(
@@ -746,7 +751,8 @@ impl Animation for TvgAnimation {
         if let Some(tween_state) = self.tween_state.as_mut() {
             let elapsed = Instant::now().duration_since(tween_state.start_time.unwrap());
             let t = elapsed.as_secs_f32() / tween_state.duration.unwrap();
-            let progress = if t >= 1.0 {
+            let completed = t >= 1.0;
+            let progress = if completed {
                 1.0
             } else {
                 let [x1, y1, x2, y2] = tween_state.easing.unwrap_or([0.0, 0.0, 1.0, 1.0]);
@@ -762,7 +768,7 @@ impl Animation for TvgAnimation {
                 );
             };
 
-            if progress >= 1.0 {
+            if completed {
                 self.tween_state = None;
                 Ok(false)
             } else {
@@ -911,7 +917,8 @@ mod bezier {
     }
 
     /// Given a linear progress t in [0,1], uses a cubic Bézier easing function to compute
-    /// an eased progress value in [0,1].
+    /// an eased progress value. Output can exceed [0,1] when y-values are outside that range
+    /// (e.g., overshoot/bounce easing curves).
     ///
     /// The cubic Bézier is defined by:
     ///   P0 = (0, 0)

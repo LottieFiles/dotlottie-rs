@@ -94,12 +94,6 @@ mod tests {
                 DotLottieEvent::Render { frame_no } => format!("on_render: {frame_no}"),
                 DotLottieEvent::Loop { loop_count } => format!("on_loop: {loop_count}"),
                 DotLottieEvent::Complete => "on_complete".to_string(),
-                #[cfg(feature = "audio")]
-                DotLottieEvent::AudioPlay { ref_id } => format!("on_audio_play: {ref_id}"),
-                #[cfg(feature = "audio")]
-                DotLottieEvent::AudioPause { ref_id } => format!("on_audio_pause: {ref_id}"),
-                #[cfg(feature = "audio")]
-                DotLottieEvent::AudioStop { ref_id } => format!("on_audio_stop: {ref_id}"),
             };
 
             events.push(event_str);

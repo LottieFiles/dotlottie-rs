@@ -822,9 +822,6 @@ impl DotLottiePlayerWasm {
         let Some(evt) = self.player.poll_event() else {
             return JsValue::null();
         };
-        let Some(evt) = self.player.poll_event() else {
-            return JsValue::null();
-        };
         match evt {
             crate::DotLottieEvent::Load => js_obj_with_type("Load").into(),
             crate::DotLottieEvent::Load => js_obj_with_type("Load").into(),

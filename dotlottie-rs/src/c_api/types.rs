@@ -3,7 +3,6 @@
 use bitflags::bitflags;
 use std::ffi::c_char;
 
-#[cfg(any(feature = "state-machines", feature = "audio"))]
 #[cfg(feature = "state-machines")]
 use crate::state_machine_engine::events::Event;
 #[cfg(feature = "state-machines")]

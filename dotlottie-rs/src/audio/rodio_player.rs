@@ -1,6 +1,7 @@
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
 use std::collections::HashMap;
 use std::io::Cursor;
+use std::sync::Arc;
 
 /// Native audio backend powered by rodio (cpal → CoreAudio on Apple, WASAPI on
 /// Windows, ALSA/PulseAudio on Linux, OpenSL ES / AAudio on Android).
@@ -9,7 +10,7 @@ pub struct RodioPlayer {
     _stream: OutputStream,
     stream_handle: OutputStreamHandle,
     /// Pre-decoded raw audio bytes, keyed by asset id.
-    buffers: HashMap<String, Vec<u8>>,
+    buffers: HashMap<String, Arc<[u8]>>,
     /// Active sinks, keyed by asset id.
     sinks: HashMap<String, Sink>,
 }
@@ -27,7 +28,8 @@ impl RodioPlayer {
 
     /// Store raw audio bytes for later playback.
     pub fn load(&mut self, id: &str, data: &[u8]) -> bool {
-        self.buffers.insert(id.to_string(), data.to_vec());
+        self.buffers
+            .insert(id.to_string(), Arc::<[u8]>::from(data.to_vec()));
         true
     }
 

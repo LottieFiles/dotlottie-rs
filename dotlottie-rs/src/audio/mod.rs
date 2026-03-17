@@ -94,8 +94,7 @@ fn decode_base64(input: &str) -> Option<Vec<u8>> {
 
 /// Parse audio assets and layers from a Lottie JSON string.
 ///
-/// Returns `(assets, layers)`. Assets without matching layers (or layers
-/// whose `refId` has no matching asset) are silently skipped.
+/// Returns `(assets, layers)`.
 pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
     let root: Value = match serde_json::from_str(json_data) {
         Ok(v) => v,
@@ -300,14 +299,11 @@ pub struct AudioManager {
     muted: bool,
     /// Global volume multiplier in [0.0, 1.0], applied on top of per-layer volume.
     volume: f32,
-
-    #[cfg(feature = "audio")]
     rodio_player: Option<RodioPlayer>,
 }
 
 impl AudioManager {
     pub fn new(assets: Vec<AudioAsset>, layers: Vec<AudioLayer>) -> Self {
-        #[cfg(feature = "audio")]
         let rodio_player = RodioPlayer::new().ok().map(|mut player| {
             for asset in &assets {
                 player.load(&asset.id, &asset.data);
@@ -324,7 +320,6 @@ impl AudioManager {
             playing: HashSet::new(),
             muted: false,
             volume: 1.0,
-            #[cfg(feature = "audio")]
             rodio_player,
         }
     }
@@ -350,12 +345,9 @@ impl AudioManager {
             if should_play && !is_playing {
                 self.playing.insert(idx);
 
-                #[cfg(feature = "audio")]
-                {
-                    let vol = self.effective_volume(layer.volume);
-                    if let Some(ref mut player) = self.rodio_player {
-                        player.play(&layer.ref_id, vol);
-                    }
+                let vol = self.effective_volume(layer.volume);
+                if let Some(ref mut player) = self.rodio_player {
+                    player.play(&layer.ref_id, vol);
                 }
 
                 events.push(AudioEvent::Play {
@@ -364,7 +356,6 @@ impl AudioManager {
             } else if !should_play && is_playing {
                 self.playing.remove(&idx);
 
-                #[cfg(feature = "audio")]
                 if let Some(ref mut player) = self.rodio_player {
                     player.stop(&layer.ref_id);
                 }
@@ -385,7 +376,6 @@ impl AudioManager {
             .map(|&idx| self.layers[idx].ref_id.clone())
             .collect();
 
-        #[cfg(feature = "audio")]
         if let Some(ref mut player) = self.rodio_player {
             for id in &ref_ids {
                 player.pause(id);
@@ -405,7 +395,6 @@ impl AudioManager {
             .map(|&idx| self.layers[idx].ref_id.clone())
             .collect();
 
-        #[cfg(feature = "audio")]
         if let Some(ref mut player) = self.rodio_player {
             for id in &ref_ids {
                 player.resume(id);
@@ -425,7 +414,6 @@ impl AudioManager {
             .map(|idx| self.layers[idx].ref_id.clone())
             .collect();
 
-        #[cfg(feature = "audio")]
         if let Some(ref mut player) = self.rodio_player {
             for id in &ref_ids {
                 player.stop(id);
@@ -441,7 +429,6 @@ impl AudioManager {
     pub fn mute(&mut self) {
         self.muted = true;
 
-        #[cfg(feature = "audio")]
         if let Some(ref mut player) = self.rodio_player {
             for &idx in &self.playing {
                 player.set_volume(&self.layers[idx].ref_id, 0.0);
@@ -452,22 +439,19 @@ impl AudioManager {
     pub fn unmute(&mut self) {
         self.muted = false;
 
-        #[cfg(feature = "audio")]
-        {
-            let updates: Vec<(String, f32)> = self
-                .playing
-                .iter()
-                .map(|&idx| {
-                    (
-                        self.layers[idx].ref_id.clone(),
-                        self.effective_volume(self.layers[idx].volume),
-                    )
-                })
-                .collect();
-            if let Some(ref mut player) = self.rodio_player {
-                for (ref_id, vol) in updates {
-                    player.set_volume(&ref_id, vol);
-                }
+        let updates: Vec<(String, f32)> = self
+            .playing
+            .iter()
+            .map(|&idx| {
+                (
+                    self.layers[idx].ref_id.clone(),
+                    self.effective_volume(self.layers[idx].volume),
+                )
+            })
+            .collect();
+        if let Some(ref mut player) = self.rodio_player {
+            for (ref_id, vol) in updates {
+                player.set_volume(&ref_id, vol);
             }
         }
     }
@@ -478,22 +462,19 @@ impl AudioManager {
     pub fn set_volume(&mut self, volume: f32) {
         self.volume = volume.clamp(0.0, 1.0);
 
-        #[cfg(feature = "audio")]
-        {
-            let updates: Vec<(String, f32)> = self
-                .playing
-                .iter()
-                .map(|&idx| {
-                    (
-                        self.layers[idx].ref_id.clone(),
-                        self.effective_volume(self.layers[idx].volume),
-                    )
-                })
-                .collect();
-            if let Some(ref mut player) = self.rodio_player {
-                for (ref_id, vol) in updates {
-                    player.set_volume(&ref_id, vol);
-                }
+        let updates: Vec<(String, f32)> = self
+            .playing
+            .iter()
+            .map(|&idx| {
+                (
+                    self.layers[idx].ref_id.clone(),
+                    self.effective_volume(self.layers[idx].volume),
+                )
+            })
+            .collect();
+        if let Some(ref mut player) = self.rodio_player {
+            for (ref_id, vol) in updates {
+                player.set_volume(&ref_id, vol);
             }
         }
     }
@@ -518,15 +499,12 @@ impl AudioManager {
     pub fn recreate_player(&mut self) {
         self.playing.clear();
 
-        #[cfg(feature = "audio")]
-        {
-            self.rodio_player = RodioPlayer::new().ok().map(|mut player| {
-                for (id, asset) in &self.assets {
-                    player.load(id, &asset.data);
-                }
-                player
-            });
-        }
+        self.rodio_player = RodioPlayer::new().ok().map(|mut player| {
+            for (id, asset) in &self.assets {
+                player.load(id, &asset.data);
+            }
+            player
+        });
     }
 
     /// Iterate over all decoded audio assets.

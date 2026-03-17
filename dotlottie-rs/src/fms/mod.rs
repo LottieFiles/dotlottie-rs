@@ -116,7 +116,7 @@ impl DotLottieManager {
 
     fn embed_images<R: Read + io::Seek>(
         archive: &mut ZipArchive<R>,
-        assets: &mut Vec<Value>,
+        assets: &mut [Value],
         version: u8,
     ) {
         let image_prefix = if version == 2 { "i/" } else { "images/" };
@@ -126,7 +126,10 @@ impl DotLottieManager {
             let Some(asset_obj) = asset.as_object_mut() else {
                 continue;
             };
-            let Some(p_str) = asset_obj.get("p").and_then(|v| v.as_str()).map(str::to_string)
+            let Some(p_str) = asset_obj
+                .get("p")
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
             else {
                 continue;
             };
@@ -173,7 +176,10 @@ impl DotLottieManager {
             let Some(asset_obj) = asset.as_object_mut() else {
                 continue;
             };
-            let Some(p_str) = asset_obj.get("p").and_then(|v| v.as_str()).map(str::to_string)
+            let Some(p_str) = asset_obj
+                .get("p")
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
             else {
                 continue;
             };
@@ -208,7 +214,7 @@ impl DotLottieManager {
         }
     }
 
-    fn embed_fonts<R: Read + io::Seek>(archive: &mut ZipArchive<R>, font_list: &mut Vec<Value>) {
+    fn embed_fonts<R: Read + io::Seek>(archive: &mut ZipArchive<R>, font_list: &mut [Value]) {
         let mut font_path = String::with_capacity(128);
 
         for font in font_list.iter_mut() {

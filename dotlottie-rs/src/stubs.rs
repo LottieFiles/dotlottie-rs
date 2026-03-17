@@ -326,7 +326,9 @@ unsafe extern "C" fn strtol(s: *const i8, endptr: *mut *mut i8, base: i32) -> i3
     let mut idx = 0;
 
     // Skip leading whitespace
-    while idx < bytes.len() && matches!(bytes[idx], b' ' | b'\t' | b'\n' | b'\x0b' | b'\x0c' | b'\r') {
+    while idx < bytes.len()
+        && matches!(bytes[idx], b' ' | b'\t' | b'\n' | b'\x0b' | b'\x0c' | b'\r')
+    {
         idx += 1;
     }
 
@@ -352,7 +354,11 @@ unsafe extern "C" fn strtol(s: *const i8, endptr: *mut *mut i8, base: i32) -> i3
             10
         }
     } else {
-        if base == 16 && idx + 1 < bytes.len() && bytes[idx] == b'0' && matches!(bytes[idx + 1], b'x' | b'X') {
+        if base == 16
+            && idx + 1 < bytes.len()
+            && bytes[idx] == b'0'
+            && matches!(bytes[idx + 1], b'x' | b'X')
+        {
             idx += 2;
         }
         base as u32
@@ -374,8 +380,16 @@ unsafe extern "C" fn strtol(s: *const i8, endptr: *mut *mut i8, base: i32) -> i3
         idx += 1;
     }
 
-    set_end(if idx == start { s } else { unsafe { s.add(idx) } });
-    if negative { -(result as i32) } else { result as i32 }
+    set_end(if idx == start {
+        s
+    } else {
+        unsafe { s.add(idx) }
+    });
+    if negative {
+        -(result as i32)
+    } else {
+        result as i32
+    }
 }
 
 #[cfg_attr(feature = "wasm", no_mangle)]

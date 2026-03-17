@@ -822,7 +822,11 @@ impl DotLottiePlayerWasm {
         let Some(evt) = self.player.poll_event() else {
             return JsValue::null();
         };
+        let Some(evt) = self.player.poll_event() else {
+            return JsValue::null();
+        };
         match evt {
+            crate::DotLottieEvent::Load => js_obj_with_type("Load").into(),
             crate::DotLottieEvent::Load => js_obj_with_type("Load").into(),
             crate::DotLottieEvent::LoadError => js_obj_with_type("LoadError").into(),
             crate::DotLottieEvent::Play => js_obj_with_type("Play").into(),
@@ -842,24 +846,6 @@ impl DotLottiePlayerWasm {
             crate::DotLottieEvent::Loop { loop_count } => {
                 let obj = js_obj_with_type("Loop");
                 set_f64(&obj, "loopCount", loop_count as f64);
-                obj.into()
-            }
-            #[cfg(feature = "audio")]
-            crate::DotLottieEvent::AudioPlay { ref_id } => {
-                let obj = js_obj_with_type("AudioPlay");
-                set_str(&obj, "refId", &ref_id);
-                obj.into()
-            }
-            #[cfg(feature = "audio")]
-            crate::DotLottieEvent::AudioPause { ref_id } => {
-                let obj = js_obj_with_type("AudioPause");
-                set_str(&obj, "refId", &ref_id);
-                obj.into()
-            }
-            #[cfg(feature = "audio")]
-            crate::DotLottieEvent::AudioStop { ref_id } => {
-                let obj = js_obj_with_type("AudioStop");
-                set_str(&obj, "refId", &ref_id);
                 obj.into()
             }
         }

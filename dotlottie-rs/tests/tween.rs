@@ -54,10 +54,7 @@ mod tests {
         let (mut player, _buf) = setup_player();
 
         let result = player.tween(10.0, Some(0.5), Some([-0.1, 0.0, 0.5, 1.0]));
-        assert!(
-            result.is_err(),
-            "Easing with x1 = -0.1 should be rejected"
-        );
+        assert!(result.is_err(), "Easing with x1 = -0.1 should be rejected");
     }
 
     #[test]
@@ -72,9 +69,7 @@ mod tests {
     fn manual_progress_tween_completes_at_full_progress() {
         let (mut player, _buf) = setup_player();
 
-        player
-            .tween(20.0, None, None)
-            .expect("tween should start");
+        player.tween(20.0, None, None).expect("tween should start");
         assert!(player.is_tweening(), "should be tweening after tween()");
 
         let result = player.tween_update(Some(0.5));
@@ -114,9 +109,7 @@ mod tests {
     fn tick_clears_manual_progress_tween_on_error() {
         let (mut player, _buf) = setup_player();
 
-        player
-            .tween(20.0, None, None)
-            .expect("tween should start");
+        player.tween(20.0, None, None).expect("tween should start");
         assert!(player.is_tweening());
 
         // tick() should fail because no progress is provided for manual-progress tween

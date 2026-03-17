@@ -35,7 +35,9 @@ impl<'de> Deserialize<'de> for ScalarValue {
                     )))
                 }
             }
-            _ => Err(Error::custom("Scalar must be a number or single-element array")),
+            _ => Err(Error::custom(
+                "Scalar must be a number or single-element array",
+            )),
         }
     }
 }

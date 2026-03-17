@@ -5,7 +5,7 @@ use std::{fs, mem};
 use crate::poll_events::{DotLottieEvent, EventQueue};
 use crate::DotLottiePlayerError;
 #[cfg(feature = "audio")]
-use crate::{extract_audio, AudioEvent, AudioManager};
+use crate::{extract_audio, AudioManager};
 use crate::{
     extract_markers,
     layout::Layout,
@@ -382,14 +382,7 @@ impl DotLottiePlayer {
 
         #[cfg(feature = "audio")]
         if let Some(am) = &mut self.audio_manager {
-            for event in am.resume_all() {
-                match event {
-                    AudioEvent::Play { ref_id } => {
-                        self.event_queue.push(DotLottieEvent::AudioPlay { ref_id });
-                    }
-                    _ => {}
-                }
-            }
+            am.resume_all();
         }
 
         self.event_queue.push(DotLottieEvent::Play);
@@ -408,14 +401,7 @@ impl DotLottiePlayer {
 
         #[cfg(feature = "audio")]
         if let Some(am) = &mut self.audio_manager {
-            for event in am.pause_all() {
-                match event {
-                    AudioEvent::Pause { ref_id } => {
-                        self.event_queue.push(DotLottieEvent::AudioPause { ref_id });
-                    }
-                    _ => {}
-                }
-            }
+            am.pause_all();
         }
 
         self.event_queue.push(DotLottieEvent::Pause);
@@ -446,14 +432,7 @@ impl DotLottiePlayer {
 
         #[cfg(feature = "audio")]
         if let Some(am) = &mut self.audio_manager {
-            for event in am.stop_all() {
-                match event {
-                    AudioEvent::Stop { ref_id } => {
-                        self.event_queue.push(DotLottieEvent::AudioStop { ref_id });
-                    }
-                    _ => {}
-                }
-            }
+            am.stop_all();
         }
 
         self.event_queue.push(DotLottieEvent::Stop);
@@ -699,19 +678,7 @@ impl DotLottiePlayer {
         #[cfg(feature = "audio")]
         if self.is_playing() {
             if let Some(am) = &mut self.audio_manager {
-                for event in am.update(no) {
-                    match event {
-                        AudioEvent::Play { ref_id } => {
-                            self.event_queue.push(DotLottieEvent::AudioPlay { ref_id });
-                        }
-                        AudioEvent::Pause { ref_id } => {
-                            self.event_queue.push(DotLottieEvent::AudioPause { ref_id });
-                        }
-                        AudioEvent::Stop { ref_id } => {
-                            self.event_queue.push(DotLottieEvent::AudioStop { ref_id });
-                        }
-                    }
-                }
+                am.update(no);
             }
         }
 
@@ -787,11 +754,7 @@ impl DotLottiePlayer {
                 // Reset audio state so that audio layers re-trigger on the next loop.
                 #[cfg(feature = "audio")]
                 if let Some(am) = &mut self.audio_manager {
-                    for event in am.stop_all() {
-                        if let AudioEvent::Stop { ref_id } = event {
-                            self.event_queue.push(DotLottieEvent::AudioStop { ref_id });
-                        }
-                    }
+                    am.stop_all();
                 }
 
                 self.emit_on_loop();

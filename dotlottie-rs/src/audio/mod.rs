@@ -29,12 +29,6 @@ pub struct AudioLayer {
     pub volume: f32,
 }
 
-pub enum AudioEvent {
-    Play { ref_id: String },
-    Pause { ref_id: String },
-    Stop { ref_id: String },
-}
-
 fn decode_base64(input: &str) -> Option<Vec<u8>> {
     // Build reverse lookup table.
     let mut lookup = [0xFFu8; 256];
@@ -335,9 +329,7 @@ impl AudioManager {
     /// Synchronise audio state with the current animation frame.
     ///
     /// Returns events that the host application may handle.
-    pub fn update(&mut self, frame: f32) -> Vec<AudioEvent> {
-        let mut events = Vec::new();
-
+    pub fn update(&mut self, frame: f32) {
         for (idx, layer) in self.layers.iter().enumerate() {
             let should_play = frame >= layer.start_frame && frame < layer.end_frame;
             let is_playing = self.playing.contains(&idx);
@@ -347,83 +339,41 @@ impl AudioManager {
 
                 let vol = self.effective_volume(layer.volume);
                 if let Some(ref mut player) = self.rodio_player {
-                    player.play(&layer.ref_id, vol);
+                    player.play(idx, &layer.ref_id, vol);
                 }
-
-                events.push(AudioEvent::Play {
-                    ref_id: layer.ref_id.clone(),
-                });
             } else if !should_play && is_playing {
                 self.playing.remove(&idx);
 
                 if let Some(ref mut player) = self.rodio_player {
-                    player.stop(&layer.ref_id);
+                    player.stop(idx);
                 }
-
-                events.push(AudioEvent::Stop {
-                    ref_id: layer.ref_id.clone(),
-                });
             }
         }
-
-        events
     }
 
-    pub fn pause_all(&mut self) -> Vec<AudioEvent> {
-        let ref_ids: Vec<String> = self
-            .playing
-            .iter()
-            .map(|&idx| self.layers[idx].ref_id.clone())
-            .collect();
-
+    pub fn pause_all(&mut self) {
         if let Some(ref mut player) = self.rodio_player {
-            for id in &ref_ids {
-                player.pause(id);
+            for &idx in &self.playing {
+                player.pause(idx);
             }
         }
-
-        ref_ids
-            .into_iter()
-            .map(|ref_id| AudioEvent::Pause { ref_id })
-            .collect()
     }
 
-    pub fn resume_all(&mut self) -> Vec<AudioEvent> {
-        let ref_ids: Vec<String> = self
-            .playing
-            .iter()
-            .map(|&idx| self.layers[idx].ref_id.clone())
-            .collect();
-
+    pub fn resume_all(&mut self) {
         if let Some(ref mut player) = self.rodio_player {
-            for id in &ref_ids {
-                player.resume(id);
+            for &idx in &self.playing {
+                player.resume(idx);
             }
         }
-
-        ref_ids
-            .into_iter()
-            .map(|ref_id| AudioEvent::Play { ref_id })
-            .collect()
     }
 
-    pub fn stop_all(&mut self) -> Vec<AudioEvent> {
-        let ref_ids: Vec<String> = self
-            .playing
-            .drain()
-            .map(|idx| self.layers[idx].ref_id.clone())
-            .collect();
-
+    pub fn stop_all(&mut self) {
         if let Some(ref mut player) = self.rodio_player {
-            for id in &ref_ids {
-                player.stop(id);
+            for &idx in &self.playing {
+                player.stop(idx);
             }
         }
-
-        ref_ids
-            .into_iter()
-            .map(|ref_id| AudioEvent::Stop { ref_id })
-            .collect()
+        self.playing.clear();
     }
 
     pub fn mute(&mut self) {
@@ -431,7 +381,7 @@ impl AudioManager {
 
         if let Some(ref mut player) = self.rodio_player {
             for &idx in &self.playing {
-                player.set_volume(&self.layers[idx].ref_id, 0.0);
+                player.set_volume(idx, 0.0);
             }
         }
     }
@@ -439,19 +389,15 @@ impl AudioManager {
     pub fn unmute(&mut self) {
         self.muted = false;
 
-        let updates: Vec<(String, f32)> = self
+        let updates: Vec<(usize, f32)> = self
             .playing
             .iter()
-            .map(|&idx| {
-                (
-                    self.layers[idx].ref_id.clone(),
-                    self.effective_volume(self.layers[idx].volume),
-                )
-            })
+            .map(|&idx| (idx, self.effective_volume(self.layers[idx].volume)))
             .collect();
+
         if let Some(ref mut player) = self.rodio_player {
-            for (ref_id, vol) in updates {
-                player.set_volume(&ref_id, vol);
+            for (idx, vol) in updates {
+                player.set_volume(idx, vol);
             }
         }
     }
@@ -462,19 +408,15 @@ impl AudioManager {
     pub fn set_volume(&mut self, volume: f32) {
         self.volume = volume.clamp(0.0, 1.0);
 
-        let updates: Vec<(String, f32)> = self
+        let updates: Vec<(usize, f32)> = self
             .playing
             .iter()
-            .map(|&idx| {
-                (
-                    self.layers[idx].ref_id.clone(),
-                    self.effective_volume(self.layers[idx].volume),
-                )
-            })
+            .map(|&idx| (idx, self.effective_volume(self.layers[idx].volume)))
             .collect();
+
         if let Some(ref mut player) = self.rodio_player {
-            for (ref_id, vol) in updates {
-                player.set_volume(&ref_id, vol);
+            for (idx, vol) in updates {
+                player.set_volume(idx, vol);
             }
         }
     }

@@ -11,8 +11,9 @@ pub struct RodioPlayer {
     stream_handle: OutputStreamHandle,
     /// Pre-decoded raw audio bytes, keyed by asset id.
     buffers: HashMap<String, Arc<[u8]>>,
-    /// Active sinks, keyed by asset id.
-    sinks: HashMap<String, Sink>,
+    /// Active sinks, keyed by layer index so that multiple layers sharing the
+    /// same asset each have an independent sink.
+    sinks: HashMap<usize, Sink>,
 }
 
 impl RodioPlayer {
@@ -33,40 +34,40 @@ impl RodioPlayer {
         true
     }
 
-    /// Rewind and start playing from the stored buffer.
-    pub fn play(&mut self, id: &str, volume: f32) {
-        self.sinks.remove(id);
-        if let Some(data) = self.buffers.get(id) {
+    /// Start playing the asset identified by `ref_id` in a sink owned by `layer_idx`.
+    pub fn play(&mut self, layer_idx: usize, ref_id: &str, volume: f32) {
+        self.sinks.remove(&layer_idx);
+        if let Some(data) = self.buffers.get(ref_id) {
             let cursor = Cursor::new(data.clone());
             if let Ok(source) = Decoder::new(cursor) {
                 if let Ok(sink) = Sink::try_new(&self.stream_handle) {
                     sink.set_volume(volume);
                     sink.append(source);
-                    self.sinks.insert(id.to_string(), sink);
+                    self.sinks.insert(layer_idx, sink);
                 }
             }
         }
     }
 
-    pub fn pause(&mut self, id: &str) {
-        if let Some(sink) = self.sinks.get(id) {
+    pub fn pause(&mut self, layer_idx: usize) {
+        if let Some(sink) = self.sinks.get(&layer_idx) {
             sink.pause();
         }
     }
 
-    pub fn resume(&mut self, id: &str) {
-        if let Some(sink) = self.sinks.get(id) {
+    pub fn resume(&mut self, layer_idx: usize) {
+        if let Some(sink) = self.sinks.get(&layer_idx) {
             sink.play();
         }
     }
 
-    pub fn stop(&mut self, id: &str) {
-        self.sinks.remove(id);
+    pub fn stop(&mut self, layer_idx: usize) {
+        self.sinks.remove(&layer_idx);
     }
 
     /// Adjust the volume of a currently-playing sink without stopping it.
-    pub fn set_volume(&mut self, id: &str, volume: f32) {
-        if let Some(sink) = self.sinks.get(id) {
+    pub fn set_volume(&mut self, layer_idx: usize, volume: f32) {
+        if let Some(sink) = self.sinks.get(&layer_idx) {
             sink.set_volume(volume);
         }
     }

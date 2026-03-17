@@ -198,15 +198,6 @@ fn main() {
         while let Some(event) = player.poll_event() {
             let frame = player.current_frame();
             match event {
-                DotLottieEvent::AudioPlay { ref ref_id } => {
-                    println!("  >> AudioPlay   ref_id={ref_id:<12}  frame={frame:.1}");
-                }
-                DotLottieEvent::AudioStop { ref ref_id } => {
-                    println!("  >> AudioStop   ref_id={ref_id:<12}  frame={frame:.1}");
-                }
-                DotLottieEvent::AudioPause { ref ref_id } => {
-                    println!("  >> AudioPause  ref_id={ref_id:<12}  frame={frame:.1}");
-                }
                 DotLottieEvent::Load => println!("  -- Load  (is_loaded={})", player.is_loaded()),
                 DotLottieEvent::LoadError => {
                     eprintln!("  !! LoadError — animation failed to load into ThorVG");

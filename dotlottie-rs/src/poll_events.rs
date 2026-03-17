@@ -13,12 +13,6 @@ pub enum DotLottieEvent {
     Render { frame_no: f32 },
     Loop { loop_count: u32 },
     Complete,
-    #[cfg(feature = "audio")]
-    AudioPlay { ref_id: String },
-    #[cfg(feature = "audio")]
-    AudioPause { ref_id: String },
-    #[cfg(feature = "audio")]
-    AudioStop { ref_id: String },
 }
 
 #[derive(Debug, Clone)]

@@ -33,8 +33,7 @@ mod tests {
         let result = player.tween(10.0, Some(0.5), Some([0.36, 0.0, 0.66, -0.56]));
         assert!(
             result.is_ok(),
-            "Easing with y2 = -0.56 should be accepted, got {:?}",
-            result
+            "Easing with y2 = -0.56 should be accepted, got {result:?}"
         );
     }
 
@@ -46,8 +45,7 @@ mod tests {
         let result = player.tween(10.0, Some(0.5), Some([0.34, 1.56, 0.64, 1.0]));
         assert!(
             result.is_ok(),
-            "Easing with y1 = 1.56 should be accepted, got {:?}",
-            result
+            "Easing with y1 = 1.56 should be accepted, got {result:?}"
         );
     }
 
@@ -108,8 +106,7 @@ mod tests {
         let result = player.tween_to_marker(&marker, Some(1.0), None);
         assert!(
             result.is_err(),
-            "tween_to_marker should propagate error when already tweening, got {:?}",
-            result
+            "tween_to_marker should propagate error when already tweening, got {result:?}"
         );
     }
 
@@ -137,8 +134,7 @@ mod tests {
         let result = player.tick();
         assert!(
             result.is_ok(),
-            "tick() should succeed after tween state is cleared, got {:?}",
-            result
+            "tick() should succeed after tween state is cleared, got {result:?}"
         );
     }
 
@@ -181,7 +177,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(10));
 
         let result = player.tick();
-        assert!(result.is_ok(), "tick() should succeed, got {:?}", result);
+        assert!(result.is_ok(), "tick() should succeed, got {result:?}");
         assert!(
             !player.is_tweening(),
             "should not be tweening after tick completes the tween"
@@ -190,8 +186,7 @@ mod tests {
         let result = player.tick();
         assert!(
             result.is_ok(),
-            "subsequent tick() should succeed, got {:?}",
-            result
+            "subsequent tick() should succeed, got {result:?}"
         );
 
         // Frame should be near tween target (20.0), not jumped far ahead
@@ -200,8 +195,7 @@ mod tests {
         let total_frames = player.total_frames();
         assert!(
             (frame - 20.0).abs() < total_frames * 0.5,
-            "frame after tween should be near target (20.0), not jumped far ahead; got {}",
-            frame
+            "frame after tween should be near target (20.0), not jumped far ahead; got {frame}"
         );
     }
 }

@@ -711,8 +711,7 @@ impl<'a> StateMachineEngine<'a> {
                                 );
 
                                 if tween_result.is_ok() {
-                                    self.tween_transition_target_state =
-                                        Some(new_state.clone());
+                                    self.tween_transition_target_state = Some(new_state.clone());
                                     self.status = StateMachineEngineStatus::Tweening;
                                     return Ok(());
                                 }
@@ -1046,8 +1045,7 @@ impl<'a> StateMachineEngine<'a> {
 
         // Manage pointerMove interactions
         if event.type_name() == "PointerMove" {
-            let pointer_move_interactions =
-                self.interactions(Some(event_type_name!(PointerMove)));
+            let pointer_move_interactions = self.interactions(Some(event_type_name!(PointerMove)));
 
             for interaction in pointer_move_interactions {
                 if let Interaction::PointerMove { actions } = interaction {
@@ -1099,8 +1097,7 @@ impl<'a> StateMachineEngine<'a> {
         if !hit {
             self.pointer_management.curr_entered_layer = "".to_string();
 
-            let pointer_exit_interactions =
-                self.interactions(Some(event_type_name!(PointerExit)));
+            let pointer_exit_interactions = self.interactions(Some(event_type_name!(PointerExit)));
 
             // Add the actions of every PointerExit interaction that depended on the layer we've just exited
             for interaction in pointer_exit_interactions {

@@ -53,6 +53,10 @@ jobs:
         env:
           RUSTFLAGS: "-Dwarnings"
 
+      - name: Check formatting
+        run: |
+          cargo fmt --manifest-path=./dotlottie-rs/Cargo.toml --all -- --check
+
   benchmark:
     if: github.event_name == 'pull_request' && github.head_ref != 'release'
     runs-on: ubuntu-latest

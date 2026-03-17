@@ -12,8 +12,8 @@ pub const HEIGHT: usize = 500;
 
 fn get_animation_files() -> Vec<PathBuf> {
     let animations_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/animations");
-    let dir = fs::read_dir(animations_dir.join("dotlottie/v2"))
-        .expect("Could not read animations dir");
+    let dir =
+        fs::read_dir(animations_dir.join("dotlottie/v2")).expect("Could not read animations dir");
 
     let mut files: Vec<PathBuf> = dir
         .filter_map(|entry| entry.ok())

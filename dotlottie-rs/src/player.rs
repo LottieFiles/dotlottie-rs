@@ -1565,7 +1565,7 @@ impl DotLottiePlayer {
         easing: Option<[f32; 4]>,
     ) -> Result<(), DotLottiePlayerError> {
         if let Some((idx, time, _)) = self.find_marker(marker) {
-            let _ = self.tween(time, duration, easing);
+            self.tween(time, duration, easing)?;
 
             self.marker = Some(idx);
 
@@ -1581,11 +1581,16 @@ impl DotLottiePlayer {
         self.renderer.is_tweening()
     }
 
-    pub fn tween_update(&mut self, progress: Option<f32>) -> Result<(), DotLottiePlayerError> {
+    pub fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, DotLottiePlayerError> {
         match self.renderer.tween_update(progress) {
-            Ok(_) => Ok(()),
+            Ok(still_tweening) => {
+                if !still_tweening {
+                    // Tween completed — reset start_time so tick() calculates the next frame correctly
+                    self.start_time = Instant::now();
+                }
+                Ok(still_tweening)
+            }
             Err(e) => {
-                // so after the tweening is completed, we can start calculating the next frame based on the start time
                 self.start_time = Instant::now();
                 Err(e.into())
             }
@@ -1627,8 +1632,15 @@ impl DotLottiePlayer {
 
     pub fn tick(&mut self) -> Result<(), DotLottiePlayerError> {
         if self.is_tweening() {
-            self.tween_update(None)?;
-            self.render()
+            match self.tween_update(None) {
+                Ok(_) => self.render(),
+                Err(e) => {
+                    // Clear tween state to prevent infinite error loops
+                    // (e.g., manual-progress tween where tick provides no progress)
+                    let _ = self.tween_stop();
+                    Err(e)
+                }
+            }
         } else {
             let next_frame = self.request_frame();
 

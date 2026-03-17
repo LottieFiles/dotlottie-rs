@@ -27,7 +27,10 @@ mod tests {
 
         // bouncy_ball.json has 4 slots: ball_opacity, ball_color, ball_position, ball_scale
         let ids = player.get_slot_ids();
-        assert!(!ids.is_empty(), "get_slot_ids should return slot IDs from animation");
+        assert!(
+            !ids.is_empty(),
+            "get_slot_ids should return slot IDs from animation"
+        );
 
         let mut sorted = ids.clone();
         sorted.sort();
@@ -51,7 +54,10 @@ mod tests {
         let player = load_bouncy_ball();
 
         let color_json = player.get_slot_str("ball_color");
-        assert!(!color_json.is_empty(), "should return JSON for existing slot");
+        assert!(
+            !color_json.is_empty(),
+            "should return JSON for existing slot"
+        );
 
         let empty = player.get_slot_str("nonexistent");
         assert!(empty.is_empty(), "should return empty for nonexistent slot");
@@ -88,7 +94,10 @@ mod tests {
         assert!(result.is_ok(), "reset_slot should succeed");
 
         let restored = player.get_slot_str("ball_color");
-        assert_eq!(original, restored, "slot should return to default after reset");
+        assert_eq!(
+            original, restored,
+            "slot should return to default after reset"
+        );
     }
 
     #[test]
@@ -115,9 +124,15 @@ mod tests {
         let player = load_bouncy_ball();
 
         let all_slots = player.get_slots_str();
-        assert!(!all_slots.is_empty(), "get_slots_str should return non-empty JSON");
+        assert!(
+            !all_slots.is_empty(),
+            "get_slots_str should return non-empty JSON"
+        );
         assert!(all_slots.starts_with('{'), "should be a JSON object");
-        assert!(all_slots.contains("ball_color"), "should contain ball_color slot");
+        assert!(
+            all_slots.contains("ball_color"),
+            "should contain ball_color slot"
+        );
     }
 
     // ── New integration tests ─────────────────────────────────────
@@ -274,12 +289,10 @@ mod tests {
             "image"
         );
         assert_eq!(
-            slots::slot_type_name(&SlotType::Gradient(GradientSlot::new(vec![
-                GradientStop {
-                    offset: 0.0,
-                    color: [1.0, 0.0, 0.0, 1.0]
-                },
-            ]))),
+            slots::slot_type_name(&SlotType::Gradient(GradientSlot::new(vec![GradientStop {
+                offset: 0.0,
+                color: [1.0, 0.0, 0.0, 1.0]
+            },]))),
             "gradient"
         );
     }

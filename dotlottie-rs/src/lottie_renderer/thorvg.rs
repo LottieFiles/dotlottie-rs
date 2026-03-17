@@ -647,9 +647,8 @@ impl Animation for TvgAnimation {
     }
 
     fn gen_slot(&mut self, slot_json: &CStr) -> Result<u32, TvgError> {
-        let slot_code = unsafe {
-            tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slot_json.as_ptr())
-        };
+        let slot_code =
+            unsafe { tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slot_json.as_ptr()) };
         if slot_code == 0 {
             return Err(TvgError::InvalidArgument);
         }
@@ -657,8 +656,7 @@ impl Animation for TvgAnimation {
     }
 
     fn apply_slot(&mut self, slot_code: u32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_code) }
-            .into_result()
+        unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_code) }.into_result()
     }
 
     fn del_slot(&mut self, slot_code: u32) -> Result<(), TvgError> {
@@ -671,34 +669,40 @@ impl Animation for TvgAnimation {
 
     fn tween(
         &mut self,
-        _to: f32,
-        _duration: Option<f32>,
-        _easing: Option<[f32; 4]>,
+        to: f32,
+        duration: Option<f32>,
+        easing: Option<[f32; 4]>,
     ) -> Result<(), TvgError> {
         if self.is_tweening() {
             return Err(TvgError::InvalidArgument);
         }
-        if _duration.is_some() && _duration.unwrap() <= 0.0 {
+        if duration.is_some() && duration.unwrap() <= 0.0 {
             return Err(TvgError::InvalidArgument);
         }
-        if _easing.is_some() && _easing.unwrap().iter().any(|&x| !(0.0..=1.0).contains(&x)) {
-            return Err(TvgError::InvalidArgument);
+        if let Some([x1, y1, x2, y2]) = easing {
+            if !(0.0..=1.0).contains(&x1)
+                || !(0.0..=1.0).contains(&x2)
+                || !y1.is_finite()
+                || !y2.is_finite()
+            {
+                return Err(TvgError::InvalidArgument);
+            }
         }
 
         let from = self.get_frame()?;
 
         self.tween_state = Some(TweenState {
             start_time: {
-                if _duration.is_some() {
+                if duration.is_some() {
                     Some(Instant::now())
                 } else {
                     None
                 }
             },
             from,
-            to: _to,
-            duration: _duration,
-            easing: _easing,
+            to,
+            duration,
+            easing,
         });
 
         Ok(())
@@ -714,10 +718,15 @@ impl Animation for TvgAnimation {
         Ok(())
     }
 
-    fn tween_update(&mut self, _given_progress: Option<f32>) -> Result<bool, TvgError> {
+    fn tween_update(&mut self, given_progress: Option<f32>) -> Result<bool, TvgError> {
         if let Some(tween_state) = self.tween_state.as_ref() {
             if tween_state.duration.is_none() {
-                if _given_progress.is_none() {
+                if given_progress.is_none() {
+                    return Err(TvgError::InvalidArgument);
+                }
+
+                let progress = given_progress.unwrap();
+                if !progress.is_finite() {
                     return Err(TvgError::InvalidArgument);
                 }
 
@@ -726,9 +735,14 @@ impl Animation for TvgAnimation {
                         self.raw_animation,
                         tween_state.from,
                         tween_state.to,
-                        _given_progress.unwrap(),
+                        progress,
                     );
                 };
+
+                if progress >= 1.0 {
+                    self.tween_state = None;
+                    return Ok(false);
+                }
 
                 return Ok(true);
             }
@@ -737,7 +751,8 @@ impl Animation for TvgAnimation {
         if let Some(tween_state) = self.tween_state.as_mut() {
             let elapsed = Instant::now().duration_since(tween_state.start_time.unwrap());
             let t = elapsed.as_secs_f32() / tween_state.duration.unwrap();
-            let progress = if t >= 1.0 {
+            let completed = t >= 1.0;
+            let progress = if completed {
                 1.0
             } else {
                 let [x1, y1, x2, y2] = tween_state.easing.unwrap_or([0.0, 0.0, 1.0, 1.0]);
@@ -753,10 +768,8 @@ impl Animation for TvgAnimation {
                 );
             };
 
-            if progress >= 1.0 {
-                let target_frame = tween_state.to;
+            if completed {
                 self.tween_state = None;
-                self.set_frame(target_frame)?;
                 Ok(false)
             } else {
                 Ok(true)
@@ -904,7 +917,8 @@ mod bezier {
     }
 
     /// Given a linear progress t in [0,1], uses a cubic Bézier easing function to compute
-    /// an eased progress value in [0,1].
+    /// an eased progress value. Output can exceed [0,1] when y-values are outside that range
+    /// (e.g., overshoot/bounce easing curves).
     ///
     /// The cubic Bézier is defined by:
     ///   P0 = (0, 0)

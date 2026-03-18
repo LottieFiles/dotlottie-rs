@@ -307,22 +307,32 @@ impl DotLottiePlayerWasm {
     }
 
     /// Load a .lottie archive from raw bytes.
-    #[cfg(feature = "dotlottie")]
+    #[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
     pub fn load_dotlottie_data(&mut self, data: &[u8], width: u32, height: u32) -> bool {
-        #[cfg(feature = "webgl")]
-        self.activate_gl();
-        if !self.setup_target(width, height) { return false; }
-        self.player.load_dotlottie_data(data, width, height).is_ok()
+        #[cfg(not(feature = "dotlottie"))]
+        { return false; }
+        #[cfg(feature = "dotlottie")]
+        {
+            #[cfg(feature = "webgl")]
+            self.activate_gl();
+            if !self.setup_target(width, height) { return false; }
+            self.player.load_dotlottie_data(data, width, height).is_ok()
+        }
     }
 
     /// Load an animation from an already-loaded .lottie archive by its ID.
-    #[cfg(feature = "dotlottie")]
+    #[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
     pub fn load_animation_from_id(&mut self, id: &str, width: u32, height: u32) -> bool {
-        #[cfg(feature = "webgl")]
-        self.activate_gl();
-        if !self.setup_target(width, height) { return false; }
-        let Ok(c_id) = CString::new(id) else { return false; };
-        self.player.load_animation(&c_id, width, height).is_ok()
+        #[cfg(not(feature = "dotlottie"))]
+        { return false; }
+        #[cfg(feature = "dotlottie")]
+        {
+            #[cfg(feature = "webgl")]
+            self.activate_gl();
+            if !self.setup_target(width, height) { return false; }
+            let Ok(c_id) = CString::new(id) else { return false; };
+            self.player.load_animation(&c_id, width, height).is_ok()
+        }
     }
 
     // ── Render loop ───────────────────────────────────────────────────────────
@@ -707,167 +717,245 @@ impl DotLottiePlayerWasm {
 
     // ── Theming ───────────────────────────────────────────────────────────────
 
-    #[cfg(feature = "theming")]
+    #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
     pub fn set_theme(&mut self, id: &str) -> bool {
-        let Ok(c) = CString::new(id) else { return false; };
-        self.player.set_theme(&c).is_ok()
+        #[cfg(not(feature = "theming"))]
+        { return false; }
+        #[cfg(feature = "theming")]
+        {
+            let Ok(c) = CString::new(id) else { return false; };
+            self.player.set_theme(&c).is_ok()
+        }
     }
 
-    #[cfg(feature = "theming")]
-    pub fn reset_theme(&mut self) -> bool { self.player.reset_theme().is_ok() }
+    pub fn reset_theme(&mut self) -> bool {
+        #[cfg(not(feature = "theming"))]
+        { return false; }
+        #[cfg(feature = "theming")]
+        { self.player.reset_theme().is_ok() }
+    }
 
-    #[cfg(feature = "theming")]
+    #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
     pub fn set_theme_data(&mut self, data: &str) -> bool {
-        let Ok(c) = CString::new(data) else { return false; };
-        self.player.set_theme_data(&c).is_ok()
+        #[cfg(not(feature = "theming"))]
+        { return false; }
+        #[cfg(feature = "theming")]
+        {
+            let Ok(c) = CString::new(data) else { return false; };
+            self.player.set_theme_data(&c).is_ok()
+        }
     }
 
-    #[cfg(feature = "theming")]
     pub fn theme_id(&self) -> Option<String> {
-        self.player.theme_id().map(|c| c.to_string_lossy().into_owned())
+        #[cfg(not(feature = "theming"))]
+        { return None; }
+        #[cfg(feature = "theming")]
+        { self.player.theme_id().map(|c| c.to_string_lossy().into_owned()) }
     }
 
     // ── DotLottie manifest / animation info ───────────────────────────────────
 
-    #[cfg(feature = "dotlottie")]
     pub fn animation_id(&self) -> Option<String> {
-        self.player.animation_id().map(|c| c.to_string_lossy().into_owned())
+        #[cfg(not(feature = "dotlottie"))]
+        { return None; }
+        #[cfg(feature = "dotlottie")]
+        { self.player.animation_id().map(|c| c.to_string_lossy().into_owned()) }
     }
 
     /// Returns the animation manifest as a JSON string, or empty string if unavailable.
-    #[cfg(feature = "dotlottie")]
     pub fn manifest_string(&self) -> String {
-        match self.player.manifest() {
-            Some(m) => serde_json::to_string(m).unwrap_or_default(),
-            None => String::new(),
+        #[cfg(not(feature = "dotlottie"))]
+        { return String::new(); }
+        #[cfg(feature = "dotlottie")]
+        {
+            match self.player.manifest() {
+                Some(m) => serde_json::to_string(m).unwrap_or_default(),
+                None => String::new(),
+            }
         }
     }
 
     // ── State machines ────────────────────────────────────────────────────────
 
     /// Returns the raw JSON definition of a state machine by ID, or `undefined`.
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn get_state_machine(&self, id: &str) -> Option<String> {
-        let Ok(c) = CString::new(id) else { return None; };
-        self.player.get_state_machine(&c)
+        #[cfg(not(feature = "state-machines"))]
+        { return None; }
+        #[cfg(feature = "state-machines")]
+        {
+            let Ok(c) = CString::new(id) else { return None; };
+            self.player.get_state_machine(&c)
+        }
     }
 
     /// Returns the ID of the currently active state machine, or `undefined`.
-    #[cfg(feature = "state-machines")]
     pub fn state_machine_id(&self) -> Option<String> {
-        self.player.state_machine_id().map(|c| c.to_string_lossy().into_owned())
+        #[cfg(not(feature = "state-machines"))]
+        { return None; }
+        #[cfg(feature = "state-machines")]
+        { self.player.state_machine_id().map(|c| c.to_string_lossy().into_owned()) }
     }
 
     /// Load a state machine from a JSON definition string.  Returns `true` on
     /// success.  The engine is kept alive inside the player and interacted
     /// with via the `sm_*` methods.
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn state_machine_load(&mut self, definition: &str) -> bool {
-        // Drop any existing engine first to release its mutable pointer.
-        self.state_machine = None;
-        match self.player.state_machine_load_data(definition) {
-            Ok(engine) => {
-                // SAFETY: `DotLottiePlayerWasm` owns both `player` (field 2) and
-                // `state_machine` (field 1).  The engine holds a raw `&mut player`
-                // reference.  Because `state_machine` is declared before `player`,
-                // it is dropped first, so the pointer is never dangling.  We must
-                // not create additional `&mut player` references while the engine
-                // lives; all player mutations must go through the `sm_*` delegate
-                // methods (which call into the engine) or be done only after
-                // calling `state_machine_unload`.
-                let engine_static = unsafe {
-                    std::mem::transmute::<
-                        crate::StateMachineEngine<'_>,
-                        crate::StateMachineEngine<'static>,
-                    >(engine)
-                };
-                self.state_machine = Some(engine_static);
-                true
+        #[cfg(not(feature = "state-machines"))]
+        { return false; }
+        #[cfg(feature = "state-machines")]
+        {
+            // Drop any existing engine first to release its mutable pointer.
+            self.state_machine = None;
+            match self.player.state_machine_load_data(definition) {
+                Ok(engine) => {
+                    // SAFETY: `DotLottiePlayerWasm` owns both `player` (field 2) and
+                    // `state_machine` (field 1).  The engine holds a raw `&mut player`
+                    // reference.  Because `state_machine` is declared before `player`,
+                    // it is dropped first, so the pointer is never dangling.  We must
+                    // not create additional `&mut player` references while the engine
+                    // lives; all player mutations must go through the `sm_*` delegate
+                    // methods (which call into the engine) or be done only after
+                    // calling `state_machine_unload`.
+                    let engine_static = unsafe {
+                        std::mem::transmute::<
+                            crate::StateMachineEngine<'_>,
+                            crate::StateMachineEngine<'static>,
+                        >(engine)
+                    };
+                    self.state_machine = Some(engine_static);
+                    true
+                }
+                Err(_) => false,
             }
-            Err(_) => false,
         }
     }
 
     /// Load a state machine from a .lottie archive by state-machine ID.
-    #[cfg(all(feature = "state-machines", feature = "dotlottie"))]
+    #[cfg_attr(not(all(feature = "state-machines", feature = "dotlottie")), allow(unused_variables))]
     pub fn state_machine_load_from_id(&mut self, id: &str) -> bool {
-        self.state_machine = None;
-        let Ok(c) = CString::new(id) else { return false; };
-        match self.player.state_machine_load(&c) {
-            Ok(engine) => {
-                let engine_static = unsafe {
-                    std::mem::transmute::<
-                        crate::StateMachineEngine<'_>,
-                        crate::StateMachineEngine<'static>,
-                    >(engine)
-                };
-                self.state_machine = Some(engine_static);
-                true
+        #[cfg(not(all(feature = "state-machines", feature = "dotlottie")))]
+        { return false; }
+        #[cfg(all(feature = "state-machines", feature = "dotlottie"))]
+        {
+            self.state_machine = None;
+            let Ok(c) = CString::new(id) else { return false; };
+            match self.player.state_machine_load(&c) {
+                Ok(engine) => {
+                    let engine_static = unsafe {
+                        std::mem::transmute::<
+                            crate::StateMachineEngine<'_>,
+                            crate::StateMachineEngine<'static>,
+                        >(engine)
+                    };
+                    self.state_machine = Some(engine_static);
+                    true
+                }
+                Err(_) => false,
             }
-            Err(_) => false,
         }
     }
 
     /// Unload the active state machine.
-    #[cfg(feature = "state-machines")]
     pub fn state_machine_unload(&mut self) {
-        self.state_machine = None;
+        #[cfg(not(feature = "state-machines"))]
+        { return; }
+        #[cfg(feature = "state-machines")]
+        { self.state_machine = None; }
     }
 
     /// Fire a named event into the state machine.
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_fire(&mut self, event: &str) -> bool {
-        let Some(ref mut sm) = self.state_machine else { return false };
-        sm.fire(event, true).is_ok()
+        #[cfg(not(feature = "state-machines"))]
+        { return false; }
+        #[cfg(feature = "state-machines")]
+        {
+            let Some(ref mut sm) = self.state_machine else { return false };
+            sm.fire(event, true).is_ok()
+        }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_set_numeric_input(&mut self, key: &str, value: f32) -> bool {
-        let Some(ref mut sm) = self.state_machine else { return false };
-        sm.set_numeric_input(key, value, true, false);
-        true
+        #[cfg(not(feature = "state-machines"))]
+        { return false; }
+        #[cfg(feature = "state-machines")]
+        {
+            let Some(ref mut sm) = self.state_machine else { return false };
+            sm.set_numeric_input(key, value, true, false);
+            true
+        }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_get_numeric_input(&self, key: &str) -> Option<f32> {
-        self.state_machine.as_ref()?.get_numeric_input(key)
+        #[cfg(not(feature = "state-machines"))]
+        { return None; }
+        #[cfg(feature = "state-machines")]
+        { self.state_machine.as_ref()?.get_numeric_input(key) }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_set_string_input(&mut self, key: &str, value: &str) -> bool {
-        let Some(ref mut sm) = self.state_machine else { return false };
-        sm.set_string_input(key, value, true, false);
-        true
+        #[cfg(not(feature = "state-machines"))]
+        { return false; }
+        #[cfg(feature = "state-machines")]
+        {
+            let Some(ref mut sm) = self.state_machine else { return false };
+            sm.set_string_input(key, value, true, false);
+            true
+        }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_get_string_input(&self, key: &str) -> Option<String> {
-        self.state_machine.as_ref()?.get_string_input(key)
+        #[cfg(not(feature = "state-machines"))]
+        { return None; }
+        #[cfg(feature = "state-machines")]
+        { self.state_machine.as_ref()?.get_string_input(key) }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_set_boolean_input(&mut self, key: &str, value: bool) -> bool {
-        let Some(ref mut sm) = self.state_machine else { return false };
-        sm.set_boolean_input(key, value, true, false);
-        true
+        #[cfg(not(feature = "state-machines"))]
+        { return false; }
+        #[cfg(feature = "state-machines")]
+        {
+            let Some(ref mut sm) = self.state_machine else { return false };
+            sm.set_boolean_input(key, value, true, false);
+            true
+        }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_get_boolean_input(&self, key: &str) -> Option<bool> {
-        self.state_machine.as_ref()?.get_boolean_input(key)
+        #[cfg(not(feature = "state-machines"))]
+        { return None; }
+        #[cfg(feature = "state-machines")]
+        { self.state_machine.as_ref()?.get_boolean_input(key) }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_reset_input(&mut self, key: &str) {
-        if let Some(ref mut sm) = self.state_machine {
-            sm.reset_input(key, true, false);
+        #[cfg(not(feature = "state-machines"))]
+        { return; }
+        #[cfg(feature = "state-machines")]
+        {
+            if let Some(ref mut sm) = self.state_machine {
+                sm.reset_input(key, true, false);
+            }
         }
     }
 
     /// Poll the next state machine event.  Returns `null` if the queue is empty,
     /// otherwise a JS object with a `type` field and optional payload.
-    #[cfg(feature = "state-machines")]
     pub fn sm_poll_event(&mut self) -> JsValue {
+        #[cfg(not(feature = "state-machines"))]
+        { return JsValue::null(); }
+        #[cfg(feature = "state-machines")]
+        {
         let Some(ref mut sm) = self.state_machine else { return JsValue::null() };
         let Some(evt) = sm.poll_event() else { return JsValue::null() };
 
@@ -930,100 +1018,133 @@ impl DotLottiePlayerWasm {
                 obj.into()
             }
         }
+        } // end #[cfg(feature = "state-machines")]
     }
 
     // ── SM lifecycle ──────────────────────────────────────────────────────
 
     /// Start the state machine with an open-URL policy.
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_start(&mut self, require_user_interaction: bool, whitelist: Vec<JsValue>) -> bool {
-        let Some(ref mut sm) = self.state_machine else { return false };
-        use crate::actions::open_url_policy::OpenUrlPolicy;
-        let policy = OpenUrlPolicy::new(
-            whitelist.iter().filter_map(|v| v.as_string()).collect(),
-            require_user_interaction,
-        );
-        sm.start(&policy).is_ok()
+        #[cfg(not(feature = "state-machines"))]
+        { return false; }
+        #[cfg(feature = "state-machines")]
+        {
+            let Some(ref mut sm) = self.state_machine else { return false };
+            use crate::actions::open_url_policy::OpenUrlPolicy;
+            let policy = OpenUrlPolicy::new(
+                whitelist.iter().filter_map(|v| v.as_string()).collect(),
+                require_user_interaction,
+            );
+            sm.start(&policy).is_ok()
+        }
     }
 
     /// Stop the state machine.
-    #[cfg(feature = "state-machines")]
     pub fn sm_stop(&mut self) -> bool {
-        let Some(ref mut sm) = self.state_machine else { return false };
-        sm.stop();
-        true
+        #[cfg(not(feature = "state-machines"))]
+        { return false; }
+        #[cfg(feature = "state-machines")]
+        {
+            let Some(ref mut sm) = self.state_machine else { return false };
+            sm.stop();
+            true
+        }
     }
 
     /// Get the current status of the state machine as a string.
-    #[cfg(feature = "state-machines")]
     pub fn sm_status(&self) -> String {
-        self.state_machine.as_ref().map(|sm| sm.status()).unwrap_or_default()
+        #[cfg(not(feature = "state-machines"))]
+        { return String::new(); }
+        #[cfg(feature = "state-machines")]
+        { self.state_machine.as_ref().map(|sm| sm.status()).unwrap_or_default() }
     }
 
     /// Get the name of the current state.
-    #[cfg(feature = "state-machines")]
     pub fn sm_current_state(&self) -> String {
-        self.state_machine.as_ref().map(|sm| sm.get_current_state_name()).unwrap_or_default()
+        #[cfg(not(feature = "state-machines"))]
+        { return String::new(); }
+        #[cfg(feature = "state-machines")]
+        { self.state_machine.as_ref().map(|sm| sm.get_current_state_name()).unwrap_or_default() }
     }
 
     /// Override the current state.
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_override_current_state(&mut self, state: &str, immediate: bool) -> bool {
-        let Some(ref mut sm) = self.state_machine else { return false };
-        sm.override_current_state(state, immediate).is_ok()
+        #[cfg(not(feature = "state-machines"))]
+        { return false; }
+        #[cfg(feature = "state-machines")]
+        {
+            let Some(ref mut sm) = self.state_machine else { return false };
+            sm.override_current_state(state, immediate).is_ok()
+        }
     }
 
     // ── SM introspection ──────────────────────────────────────────────────
 
     /// Returns the framework setup listeners as a JS array of strings.
-    #[cfg(feature = "state-machines")]
     pub fn sm_framework_setup(&self) -> JsValue {
-        let Some(ref sm) = self.state_machine else { return Array::new().into() };
-        let listeners = sm.framework_setup();
-        let arr = Array::new();
-        for l in &listeners { arr.push(&l.as_str().into()); }
-        arr.into()
+        #[cfg(not(feature = "state-machines"))]
+        { return Array::new().into(); }
+        #[cfg(feature = "state-machines")]
+        {
+            let Some(ref sm) = self.state_machine else { return Array::new().into() };
+            let listeners = sm.framework_setup();
+            let arr = Array::new();
+            for l in &listeners { arr.push(&l.as_str().into()); }
+            arr.into()
+        }
     }
 
     /// Returns all state machine inputs as a JS array of strings.
-    #[cfg(feature = "state-machines")]
     pub fn sm_get_inputs(&self) -> JsValue {
-        let Some(ref sm) = self.state_machine else { return Array::new().into() };
-        let inputs = sm.get_inputs();
-        let arr = Array::new();
-        for i in &inputs { arr.push(&i.as_str().into()); }
-        arr.into()
+        #[cfg(not(feature = "state-machines"))]
+        { return Array::new().into(); }
+        #[cfg(feature = "state-machines")]
+        {
+            let Some(ref sm) = self.state_machine else { return Array::new().into() };
+            let inputs = sm.get_inputs();
+            let arr = Array::new();
+            for i in &inputs { arr.push(&i.as_str().into()); }
+            arr.into()
+        }
     }
 
     // ── SM pointer events ─────────────────────────────────────────────────
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_post_click(&mut self, x: f32, y: f32) {
+        #[cfg(feature = "state-machines")]
         if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::Click { x, y }); }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_post_pointer_down(&mut self, x: f32, y: f32) {
+        #[cfg(feature = "state-machines")]
         if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::PointerDown { x, y }); }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_post_pointer_up(&mut self, x: f32, y: f32) {
+        #[cfg(feature = "state-machines")]
         if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::PointerUp { x, y }); }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_post_pointer_move(&mut self, x: f32, y: f32) {
+        #[cfg(feature = "state-machines")]
         if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::PointerMove { x, y }); }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_post_pointer_enter(&mut self, x: f32, y: f32) {
+        #[cfg(feature = "state-machines")]
         if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::PointerEnter { x, y }); }
     }
 
-    #[cfg(feature = "state-machines")]
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_post_pointer_exit(&mut self, x: f32, y: f32) {
+        #[cfg(feature = "state-machines")]
         if let Some(ref mut sm) = self.state_machine { sm.post_event(&crate::Event::PointerExit { x, y }); }
     }
 
@@ -1031,27 +1152,35 @@ impl DotLottiePlayerWasm {
 
     /// Poll the next state machine internal event.  Returns `null` if the
     /// queue is empty, otherwise a JS object `{ type: "Message", message }`.
-    #[cfg(feature = "state-machines")]
     pub fn sm_poll_internal_event(&mut self) -> JsValue {
-        let Some(ref mut sm) = self.state_machine else { return JsValue::null() };
-        let Some(evt) = sm.poll_internal_event() else { return JsValue::null() };
-        match &evt {
-            crate::StateMachineInternalEvent::Message { message } => {
-                let obj = js_obj_with_type("Message");
-                set_str(&obj, "message", &message.to_string_lossy());
-                obj.into()
+        #[cfg(not(feature = "state-machines"))]
+        { return JsValue::null(); }
+        #[cfg(feature = "state-machines")]
+        {
+            let Some(ref mut sm) = self.state_machine else { return JsValue::null() };
+            let Some(evt) = sm.poll_internal_event() else { return JsValue::null() };
+            match &evt {
+                crate::StateMachineInternalEvent::Message { message } => {
+                    let obj = js_obj_with_type("Message");
+                    set_str(&obj, "message", &message.to_string_lossy());
+                    obj.into()
+                }
             }
         }
     }
 
     /// Advance the state machine by one tick.  Returns `false` if no state machine
     /// is loaded, otherwise `true` (even if the machine is stopped or errored).
-    #[cfg(feature = "state-machines")]
     pub fn sm_tick(&mut self) -> bool {
-        #[cfg(feature = "webgl")]
-        self.activate_gl();
-        let Some(ref mut sm) = self.state_machine else { return false };
-        sm.tick().is_ok()
+        #[cfg(not(feature = "state-machines"))]
+        { return false; }
+        #[cfg(feature = "state-machines")]
+        {
+            #[cfg(feature = "webgl")]
+            self.activate_gl();
+            let Some(ref mut sm) = self.state_machine else { return false };
+            sm.tick().is_ok()
+        }
     }
 }
 

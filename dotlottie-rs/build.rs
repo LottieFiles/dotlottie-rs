@@ -514,7 +514,6 @@ mod thorvg {
                 )?;
         }
 
-        // tvgGl.h reads THORVG_GL_TARGET_GLES before including config.h
         if cfg!(feature = "tvg-gl") {
             let is_android = target_triple.contains("android");
             if is_android {

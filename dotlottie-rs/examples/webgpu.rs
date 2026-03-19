@@ -211,7 +211,14 @@ mod webgpu_impl {
                 let wgpu_surface = WebGpuSurface(surface as *mut std::ffi::c_void);
 
                 let success = player
-                    .set_wg_target(&wgpu_device, &wgpu_instance, &wgpu_surface, width, height, WgpuTargetType::Surface)
+                    .set_wg_target(
+                        &wgpu_device,
+                        &wgpu_instance,
+                        &wgpu_surface,
+                        width,
+                        height,
+                        WgpuTargetType::Surface,
+                    )
                     .is_ok();
 
                 if success {

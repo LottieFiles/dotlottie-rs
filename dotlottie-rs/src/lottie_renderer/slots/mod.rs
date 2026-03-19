@@ -177,13 +177,27 @@ pub fn slot_type_name(slot: &SlotType) -> &'static str {
 
 pub fn parse_slot_from_json(slot_type: &str, json: &str) -> Option<SlotType> {
     match slot_type {
-        "color" => serde_json::from_str::<ColorSlot>(json).ok().map(SlotType::Color),
-        "scalar" => serde_json::from_str::<ScalarSlot>(json).ok().map(SlotType::Scalar),
-        "vector" => serde_json::from_str::<VectorSlot>(json).ok().map(SlotType::Vector),
-        "position" => serde_json::from_str::<PositionSlot>(json).ok().map(SlotType::Position),
-        "gradient" => serde_json::from_str::<GradientSlot>(json).ok().map(SlotType::Gradient),
-        "image" => serde_json::from_str::<ImageSlot>(json).ok().map(SlotType::Image),
-        "text" => serde_json::from_str::<TextSlot>(json).ok().map(SlotType::Text),
+        "color" => serde_json::from_str::<ColorSlot>(json)
+            .ok()
+            .map(SlotType::Color),
+        "scalar" => serde_json::from_str::<ScalarSlot>(json)
+            .ok()
+            .map(SlotType::Scalar),
+        "vector" => serde_json::from_str::<VectorSlot>(json)
+            .ok()
+            .map(SlotType::Vector),
+        "position" => serde_json::from_str::<PositionSlot>(json)
+            .ok()
+            .map(SlotType::Position),
+        "gradient" => serde_json::from_str::<GradientSlot>(json)
+            .ok()
+            .map(SlotType::Gradient),
+        "image" => serde_json::from_str::<ImageSlot>(json)
+            .ok()
+            .map(SlotType::Image),
+        "text" => serde_json::from_str::<TextSlot>(json)
+            .ok()
+            .map(SlotType::Text),
         _ => None,
     }
 }
@@ -473,8 +487,7 @@ mod tests {
 
     #[test]
     fn extract_animation_with_no_slots() {
-        let anim =
-            json!({"v": "5.0", "fr": 30, "w": 100, "h": 100, "layers": []}).to_string();
+        let anim = json!({"v": "5.0", "fr": 30, "w": 100, "h": 100, "layers": []}).to_string();
         let slots = extract_slots_from_animation(&anim);
         assert!(slots.is_empty());
     }
@@ -511,8 +524,7 @@ mod tests {
 
     #[test]
     fn parse_gradient_slot() {
-        let val =
-            json!({"p": 2, "k": {"a": 0, "k": [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0]}});
+        let val = json!({"p": 2, "k": {"a": 0, "k": [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0]}});
         let slot = parse_slot_type(&val).unwrap();
         assert_eq!(slot_type_name(&slot), "gradient");
     }
@@ -639,10 +651,7 @@ mod tests {
     #[test]
     fn round_trip_scalar() {
         let mut map = BTreeMap::new();
-        map.insert(
-            "s".to_string(),
-            SlotType::Scalar(ScalarSlot::new(42.0)),
-        );
+        map.insert("s".to_string(), SlotType::Scalar(ScalarSlot::new(42.0)));
         let json = slots_to_json_string(&map).unwrap();
         let parsed = slots_from_json_string(&json).unwrap();
         let json2 = slots_to_json_string(&parsed).unwrap();
@@ -682,10 +691,7 @@ mod tests {
     #[test]
     fn round_trip_text() {
         let mut map = BTreeMap::new();
-        map.insert(
-            "txt".to_string(),
-            SlotType::Text(TextSlot::new("Hello")),
-        );
+        map.insert("txt".to_string(), SlotType::Text(TextSlot::new("Hello")));
         let json = slots_to_json_string(&map).unwrap();
         let parsed = slots_from_json_string(&json).unwrap();
         let json2 = slots_to_json_string(&parsed).unwrap();

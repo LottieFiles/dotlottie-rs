@@ -361,7 +361,8 @@ mod thorvg {
             writeln!(thorvg_config_h, "#define THORVG_GL_RASTER_SUPPORT")?;
             src.push("deps/thorvg/src/renderer/gl_engine");
 
-            if is_wasm {
+            let is_android = target_triple.contains("android");
+            if is_wasm || is_android {
                 writeln!(thorvg_config_h, "#define THORVG_GL_TARGET_GLES 1")?;
             } else {
                 writeln!(thorvg_config_h, "#define THORVG_GL_TARGET_GL 1")?;
@@ -511,6 +512,14 @@ mod thorvg {
                 .write_to_file(
                     PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs"),
                 )?;
+        }
+
+        // tvgGl.h reads THORVG_GL_TARGET_GLES before including config.h
+        if cfg!(feature = "tvg-gl") {
+            let is_android = target_triple.contains("android");
+            if is_android {
+                cc_build.define("THORVG_GL_TARGET_GLES", "1");
+            }
         }
 
         for flag in &simd_flags {

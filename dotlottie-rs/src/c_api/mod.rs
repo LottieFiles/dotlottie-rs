@@ -740,6 +740,89 @@ pub unsafe extern "C" fn dotlottie_stop(ptr: *mut DotLottiePlayer) -> DotLottieR
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_audio_mute(
+    ptr: *mut DotLottiePlayer,
+    mute: bool,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        #[cfg(feature = "audio")]
+        {
+            dotlottie_player.set_audio_mute(mute);
+            DotLottieResult::Success
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            let _ = dotlottie_player;
+            let _ = mute;
+            DotLottieResult::FeatureNotEnabled
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_audio_volume(
+    ptr: *mut DotLottiePlayer,
+    volume: f32,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        #[cfg(feature = "audio")]
+        {
+            dotlottie_player.set_audio_volume(volume);
+            DotLottieResult::Success
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            let _ = (dotlottie_player, volume);
+            DotLottieResult::FeatureNotEnabled
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_is_audio_muted(
+    ptr: *mut DotLottiePlayer,
+    result: *mut bool,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if result.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        #[cfg(feature = "audio")]
+        {
+            *result = dotlottie_player.is_audio_muted();
+            DotLottieResult::Success
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            let _ = dotlottie_player;
+            DotLottieResult::FeatureNotEnabled
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_audio_volume(
+    ptr: *mut DotLottiePlayer,
+    result: *mut f32,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if result.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        #[cfg(feature = "audio")]
+        {
+            *result = dotlottie_player.audio_volume();
+            DotLottieResult::Success
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            let _ = dotlottie_player;
+            DotLottieResult::FeatureNotEnabled
+        }
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn dotlottie_request_frame(
     ptr: *mut DotLottiePlayer,
     result: *mut f32,
@@ -2689,4 +2772,25 @@ pub unsafe extern "C" fn dotlottie_get_state_machine(
             }
         })
     }
+}
+
+// ============================================================================
+// Android context initialisation (audio support)
+// ============================================================================
+
+/// Initialise the Android JVM context required by cpal/rodio for audio output.
+///
+/// Must be called once before loading any animation that contains audio.
+/// Safe to call multiple times — subsequent calls are ignored by ndk-context.
+///
+/// # Arguments
+/// * `vm`  - pointer to the `JavaVM` struct (cast from `JavaVM*`)
+/// * `ctx` - JNI global reference to an `android.content.Context` object
+#[cfg(all(feature = "audio", target_os = "android"))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_init_android(
+    vm: *mut std::ffi::c_void,
+    ctx: *mut std::ffi::c_void,
+) {
+    ndk_context::initialize_android_context(vm, ctx);
 }

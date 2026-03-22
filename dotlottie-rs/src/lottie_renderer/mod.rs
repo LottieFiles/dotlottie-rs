@@ -595,6 +595,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             self.renderer.update().map_err(into_lottie::<R>)?;
             self.renderer.draw(true).map_err(into_lottie::<R>)?;
             self.renderer.sync().map_err(into_lottie::<R>)?;
+
             self.updated = false;
 
             return Ok(());

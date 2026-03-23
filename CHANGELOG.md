@@ -1,3 +1,9 @@
+## 0.1.56 (2026-03-17)
+
+### Fixes
+
+#### correct frame tweening correctness bugs (#491)
+
 ## 0.1.55 (2026-03-13)
 
 ### Features

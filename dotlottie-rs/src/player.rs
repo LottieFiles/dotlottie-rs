@@ -1126,11 +1126,7 @@ impl DotLottiePlayer {
             #[cfg(feature = "audio")]
             {
                 let (audio_assets, audio_layers) = extract_audio(data_str);
-                self.audio_manager = if audio_assets.is_empty() {
-                    None
-                } else {
-                    Some(AudioManager::new(audio_assets, audio_layers))
-                };
+                self.audio_manager = AudioManager::new(audio_assets, audio_layers);
             }
         }
 
@@ -1223,7 +1219,7 @@ impl DotLottiePlayer {
             self.audio_manager = if audio_assets.is_empty() {
                 None
             } else {
-                Some(AudioManager::new(audio_assets, audio_layers))
+                AudioManager::new(audio_assets, audio_layers)
             };
         }
 
@@ -1286,7 +1282,7 @@ impl DotLottiePlayer {
                         self.audio_manager = if audio_assets.is_empty() {
                             None
                         } else {
-                            Some(AudioManager::new(audio_assets, audio_layers))
+                            AudioManager::new(audio_assets, audio_layers)
                         };
                     }
 

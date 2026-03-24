@@ -272,25 +272,28 @@ pub struct AudioManager {
     muted: bool,
     /// Global volume multiplier in [0.0, 1.0], applied on top of per-layer volume.
     volume: f32,
-    rodio_player: Option<RodioPlayer>,
+    rodio_player: RodioPlayer,
 }
 
 impl AudioManager {
-    pub fn new(assets: Vec<AudioAsset>, layers: Vec<AudioLayer>) -> Self {
-        let rodio_player = RodioPlayer::new(layers.len()).ok().map(|mut player| {
-            for asset in &assets {
-                player.load(&asset.id, &asset.data);
-            }
-            player
-        });
+    /// Returns `None` if there are no audio layers or if the audio backend fails to initialize.
+    pub fn new(assets: Vec<AudioAsset>, layers: Vec<AudioLayer>) -> Option<Self> {
+        if layers.is_empty() {
+            return None;
+        }
 
-        AudioManager {
+        let mut rodio_player = RodioPlayer::new(layers.len()).ok()?;
+        for asset in &assets {
+            rodio_player.load(&asset.id, &asset.data);
+        }
+
+        Some(AudioManager {
             layers,
             playing: HashSet::new(),
             muted: false,
             volume: 1.0,
             rodio_player,
-        }
+        })
     }
 
     fn effective_volume(&self, layer_volume: f32) -> f32 {
@@ -313,40 +316,30 @@ impl AudioManager {
                 self.playing.insert(idx);
 
                 let vol = self.effective_volume(layer.volume);
-                if let Some(ref mut player) = self.rodio_player {
-                    player.play(idx, &layer.ref_id, vol);
-                }
+                self.rodio_player.play(idx, &layer.ref_id, vol);
             } else if !should_play && is_playing {
                 self.playing.remove(&idx);
 
-                if let Some(ref mut player) = self.rodio_player {
-                    player.stop(idx);
-                }
+                self.rodio_player.stop(idx);
             }
         }
     }
 
     pub fn pause(&mut self) {
-        if let Some(ref mut player) = self.rodio_player {
-            for &idx in &self.playing {
-                player.pause(idx);
-            }
+        for &idx in &self.playing {
+            self.rodio_player.pause(idx);
         }
     }
 
     pub fn play(&mut self) {
-        if let Some(ref mut player) = self.rodio_player {
-            for &idx in &self.playing {
-                player.resume(idx);
-            }
+        for &idx in &self.playing {
+            self.rodio_player.resume(idx);
         }
     }
 
     pub fn stop(&mut self) {
-        if let Some(ref mut player) = self.rodio_player {
-            for &idx in &self.playing {
-                player.stop(idx);
-            }
+        for &idx in &self.playing {
+            self.rodio_player.stop(idx);
         }
         self.playing.clear();
     }
@@ -369,10 +362,8 @@ impl AudioManager {
             })
             .collect();
 
-        if let Some(ref mut player) = self.rodio_player {
-            for (idx, vol) in updates {
-                player.set_volume(idx, vol);
-            }
+        for (idx, vol) in updates {
+            self.rodio_player.set_volume(idx, vol);
         }
     }
 
@@ -388,10 +379,8 @@ impl AudioManager {
             .map(|&idx| (idx, self.effective_volume(self.layers[idx].volume)))
             .collect();
 
-        if let Some(ref mut player) = self.rodio_player {
-            for (idx, vol) in updates {
-                player.set_volume(idx, vol);
-            }
+        for (idx, vol) in updates {
+            self.rodio_player.set_volume(idx, vol);
         }
     }
 

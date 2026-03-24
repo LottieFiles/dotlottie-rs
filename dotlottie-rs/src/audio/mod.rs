@@ -277,7 +277,7 @@ pub struct AudioManager {
 
 impl AudioManager {
     pub fn new(assets: Vec<AudioAsset>, layers: Vec<AudioLayer>) -> Self {
-        let rodio_player = RodioPlayer::new().ok().map(|mut player| {
+        let rodio_player = RodioPlayer::new(layers.len()).ok().map(|mut player| {
             for asset in &assets {
                 player.load(&asset.id, &asset.data);
             }

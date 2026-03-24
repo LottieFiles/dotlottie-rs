@@ -132,7 +132,10 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
                 None => continue,
             };
 
-            assets.push(AudioAsset { id, data: Arc::from(decoded) });
+            assets.push(AudioAsset {
+                id,
+                data: Arc::from(decoded),
+            });
         }
     }
 
@@ -286,10 +289,8 @@ impl AudioManager {
         }
 
         let rodio_player = RodioPlayer::new(layers.len()).ok()?;
-        let assets: HashMap<String, Arc<[u8]>> = assets
-            .into_iter()
-            .map(|a| (a.id, a.data))
-            .collect();
+        let assets: HashMap<String, Arc<[u8]>> =
+            assets.into_iter().map(|a| (a.id, a.data)).collect();
 
         Some(AudioManager {
             layers,
@@ -310,7 +311,11 @@ impl AudioManager {
             if should_play && !layer.playing {
                 layer.playing = true;
                 if let Some(data) = self.assets.get(&layer.ref_id) {
-                    let vol = if self.muted { 0.0 } else { layer.volume * self.volume };
+                    let vol = if self.muted {
+                        0.0
+                    } else {
+                        layer.volume * self.volume
+                    };
                     self.rodio_player.play(idx, data.clone(), vol);
                 }
             } else if !should_play && layer.playing {
@@ -349,7 +354,11 @@ impl AudioManager {
         self.muted = muted;
         for (idx, layer) in self.layers.iter().enumerate() {
             if layer.playing {
-                let vol = if muted { 0.0 } else { layer.volume * self.volume };
+                let vol = if muted {
+                    0.0
+                } else {
+                    layer.volume * self.volume
+                };
                 self.rodio_player.set_volume(idx, vol);
             }
         }

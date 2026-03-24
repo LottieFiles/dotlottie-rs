@@ -208,11 +208,7 @@ impl DotLottiePlayer {
     #[cfg(feature = "audio")]
     pub fn set_audio_mute(&mut self, mute: bool) {
         if let Some(am) = &mut self.audio_manager {
-            if mute {
-                am.mute();
-            } else {
-                am.unmute();
-            }
+            am.set_mute(mute);
         }
     }
 
@@ -382,7 +378,7 @@ impl DotLottiePlayer {
 
         #[cfg(feature = "audio")]
         if let Some(am) = &mut self.audio_manager {
-            am.resume_all();
+            am.resume();
         }
 
         self.event_queue.push(DotLottieEvent::Play);
@@ -401,7 +397,7 @@ impl DotLottiePlayer {
 
         #[cfg(feature = "audio")]
         if let Some(am) = &mut self.audio_manager {
-            am.pause_all();
+            am.pause();
         }
 
         self.event_queue.push(DotLottieEvent::Pause);
@@ -432,7 +428,7 @@ impl DotLottiePlayer {
 
         #[cfg(feature = "audio")]
         if let Some(am) = &mut self.audio_manager {
-            am.stop_all();
+            am.stop();
         }
 
         self.event_queue.push(DotLottieEvent::Stop);
@@ -754,7 +750,7 @@ impl DotLottiePlayer {
                 // Reset audio state so that audio layers re-trigger on the next loop.
                 #[cfg(feature = "audio")]
                 if let Some(am) = &mut self.audio_manager {
-                    am.stop_all();
+                    am.stop();
                 }
 
                 self.emit_on_loop();

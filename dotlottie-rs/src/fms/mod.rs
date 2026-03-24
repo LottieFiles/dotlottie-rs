@@ -169,8 +169,7 @@ impl DotLottieManager {
         version: u8,
     ) {
         let audio_prefix = if version == 2 { "u/" } else { "audio/" };
-        let audio_extensions = ["mp3"];
-        let mut asset_path = String::with_capacity(128);
+        const SUPPORTED_AUDIO_EXTENSION: &'static str = "mp3";
 
         for asset in assets.iter_mut() {
             let Some(asset_obj) = asset.as_object_mut() else {
@@ -190,20 +189,16 @@ impl DotLottieManager {
             }
 
             let p_lower = p_str.to_lowercase();
-            if !audio_extensions.iter().any(|ext| p_lower.ends_with(ext)) {
+            if !p_lower.ends_with(SUPPORTED_AUDIO_EXTENSION) {
                 continue;
             }
 
-            asset_path.clear();
-            asset_path.push_str(audio_prefix);
-            asset_path.push_str(p_str.trim_matches('"'));
-
+            let asset_path = String::from(format!("{}{}", audio_prefix, p_str));
             if let Ok(mut result) = archive.by_name(&asset_path) {
                 let mut content = Vec::with_capacity(result.size() as usize);
                 if result.read_to_end(&mut content).is_ok() {
-                    let audio_ext = p_str.rfind('.').map(|i| &p_str[i + 1..]).unwrap_or("mp3");
                     let data_url = format!(
-                        "{DATA_AUDIO_PREFIX}{audio_ext}{BASE64_PREFIX}{}",
+                        "{DATA_AUDIO_PREFIX}{SUPPORTED_AUDIO_EXTENSION}{BASE64_PREFIX}{}",
                         Self::encode_base64(&content)
                     );
                     asset_obj.insert("u".to_string(), Value::String(String::new()));

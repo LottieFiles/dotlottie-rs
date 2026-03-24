@@ -186,8 +186,6 @@ pub enum DotLottiePlayerEventType {
 pub union DotLottiePlayerEventData {
     pub frame_no: f32,   // For Frame and Render events
     pub loop_count: u32, // For Loop event
-    #[cfg(feature = "audio")]
-    pub audio_id: [c_char; 64], // Null-terminated asset ref_id for audio events
 }
 
 #[repr(C)]
@@ -195,17 +193,6 @@ pub struct DotLottiePlayerEvent {
     pub event_type: DotLottiePlayerEventType,
     pub data: DotLottiePlayerEventData,
 }
-
-#[cfg(feature = "audio")]
-fn str_to_audio_id(s: &str) -> [c_char; 64] {
-    let mut buf = [0; 64];
-    let bytes = s.as_bytes();
-    for (i, &b) in bytes[..bytes.len().min(63)].iter().enumerate() {
-        buf[i] = b as c_char;
-    }
-    buf
-}
-
 impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
     fn from(event: crate::DotLottieEvent) -> Self {
         match event {

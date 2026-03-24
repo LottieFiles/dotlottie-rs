@@ -15,7 +15,6 @@ const DATA_AUDIO_PREFIX: &str = "data:audio/";
 pub struct AudioAsset {
     pub id: String,
     pub data: Vec<u8>,
-    pub mime_type: String,
 }
 
 /// An audio layer extracted from a Lottie JSON file (`ty == 6`).
@@ -118,8 +117,6 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
                 Some(pos) => pos,
                 None => continue,
             };
-            let mime_subtype = &after_prefix[..semi_pos];
-            let mime_type = format!("audio/{mime_subtype}");
 
             let rest = &after_prefix[semi_pos + 1..];
             let b64_data = match rest.strip_prefix("base64,") {
@@ -132,11 +129,7 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
                 None => continue,
             };
 
-            assets.push(AudioAsset {
-                id,
-                data: decoded,
-                mime_type,
-            });
+            assets.push(AudioAsset { id, data: decoded });
         }
     }
 
@@ -245,20 +238,7 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
                         layer.get("ip").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
                     let end_frame = layer.get("op").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
 
-                    let volume = layer
-                        .get("au")
-                        .and_then(|au| au.get("lv"))
-                        .and_then(|lv| lv.get("k"))
-                        .and_then(|k| {
-                            if let Some(arr) = k.as_array() {
-                                arr.first()
-                                    .and_then(|v| v.as_f64())
-                                    .map(|v| (v / 100.0) as f32)
-                            } else {
-                                k.as_f64().map(|v| (v / 100.0) as f32)
-                            }
-                        })
-                        .unwrap_or(1.0);
+                    let volume = 1.0;
 
                     layers.push(AudioLayer {
                         ref_id,
@@ -351,7 +331,7 @@ impl AudioManager {
         }
     }
 
-    pub fn pause_all(&mut self) {
+    pub fn pause(&mut self) {
         if let Some(ref mut player) = self.rodio_player {
             for &idx in &self.playing {
                 player.pause(idx);
@@ -359,7 +339,7 @@ impl AudioManager {
         }
     }
 
-    pub fn resume_all(&mut self) {
+    pub fn resume(&mut self) {
         if let Some(ref mut player) = self.rodio_player {
             for &idx in &self.playing {
                 player.resume(idx);
@@ -367,7 +347,7 @@ impl AudioManager {
         }
     }
 
-    pub fn stop_all(&mut self) {
+    pub fn stop(&mut self) {
         if let Some(ref mut player) = self.rodio_player {
             for &idx in &self.playing {
                 player.stop(idx);
@@ -376,23 +356,22 @@ impl AudioManager {
         self.playing.clear();
     }
 
-    pub fn mute(&mut self) {
-        self.muted = true;
-
-        if let Some(ref mut player) = self.rodio_player {
-            for &idx in &self.playing {
-                player.set_volume(idx, 0.0);
-            }
-        }
-    }
-
-    pub fn unmute(&mut self) {
-        self.muted = false;
+    pub fn set_mute(&mut self, muted: bool) {
+        self.muted = muted;
 
         let updates: Vec<(usize, f32)> = self
             .playing
             .iter()
-            .map(|&idx| (idx, self.effective_volume(self.layers[idx].volume)))
+            .map(|&idx| {
+                (
+                    idx,
+                    if muted {
+                        0.0
+                    } else {
+                        self.effective_volume(self.layers[idx].volume)
+                    },
+                )
+            })
             .collect();
 
         if let Some(ref mut player) = self.rodio_player {
@@ -427,30 +406,5 @@ impl AudioManager {
 
     pub fn volume(&self) -> f32 {
         self.volume
-    }
-
-    /// Recreate the underlying audio player with a fresh output stream.
-    ///
-    /// On `wasm32-unknown-unknown`, `OutputStream::try_default()` creates a new
-    /// Web Audio `AudioContext`.  If this is called from inside a browser user-
-    /// gesture handler (click, keydown, etc.) the new context starts in
-    /// `running` state, satisfying the browser's autoplay policy.
-    ///
-    /// The `playing` set is cleared so that [`AudioManager::update`] will
-    /// re-issue `play()` calls on the new player during the next tick.
-    pub fn recreate_player(&mut self) {
-        self.playing.clear();
-
-        self.rodio_player = RodioPlayer::new().ok().map(|mut player| {
-            for (id, asset) in &self.assets {
-                player.load(id, &asset.data);
-            }
-            player
-        });
-    }
-
-    /// Iterate over all decoded audio assets.
-    pub fn assets(&self) -> impl Iterator<Item = &AudioAsset> {
-        self.assets.values()
     }
 }

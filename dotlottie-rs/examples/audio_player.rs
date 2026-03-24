@@ -196,7 +196,7 @@ fn main() {
 
         // Print audio (and notable playback) events as they arrive.
         while let Some(event) = player.poll_event() {
-            let frame = player.current_frame();
+            let _ = player.current_frame();
             match event {
                 DotLottieEvent::Load => println!("  -- Load  (is_loaded={})", player.is_loaded()),
                 DotLottieEvent::LoadError => {

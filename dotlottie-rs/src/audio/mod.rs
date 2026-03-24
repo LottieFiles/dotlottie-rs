@@ -264,7 +264,6 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
 /// Audio is played via rodio on native targets (macOS, iOS, Android) and on
 /// `wasm32-unknown-unknown` (Web Audio API backend).
 pub struct AudioManager {
-    assets: HashMap<String, AudioAsset>,
     layers: Vec<AudioLayer>,
     /// Indices into `layers` whose audio is currently active (started but not stopped).
     /// Using layer index rather than ref_id so that multiple layers sharing the
@@ -285,11 +284,7 @@ impl AudioManager {
             player
         });
 
-        let assets_map: HashMap<String, AudioAsset> =
-            assets.into_iter().map(|a| (a.id.clone(), a)).collect();
-
         AudioManager {
-            assets: assets_map,
             layers,
             playing: HashSet::new(),
             muted: false,
@@ -339,7 +334,7 @@ impl AudioManager {
         }
     }
 
-    pub fn resume(&mut self) {
+    pub fn play(&mut self) {
         if let Some(ref mut player) = self.rodio_player {
             for &idx in &self.playing {
                 player.resume(idx);

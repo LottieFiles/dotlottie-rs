@@ -378,7 +378,7 @@ impl DotLottiePlayer {
 
         #[cfg(feature = "audio")]
         if let Some(am) = &mut self.audio_manager {
-            am.resume();
+            am.play();
         }
 
         self.event_queue.push(DotLottieEvent::Play);

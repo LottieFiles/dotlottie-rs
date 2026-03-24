@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use serde_json::Value;
 
@@ -14,7 +15,7 @@ const DATA_AUDIO_PREFIX: &str = "data:audio/";
 /// An audio asset decoded from a Lottie JSON file.
 pub struct AudioAsset {
     pub id: String,
-    pub data: Vec<u8>,
+    pub data: Arc<[u8]>,
 }
 
 /// An audio layer extracted from a Lottie JSON file (`ty == 6`).
@@ -131,7 +132,7 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
                 None => continue,
             };
 
-            assets.push(AudioAsset { id, data: decoded });
+            assets.push(AudioAsset { id, data: Arc::from(decoded) });
         }
     }
 
@@ -269,6 +270,8 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
 /// `wasm32-unknown-unknown` (Web Audio API backend).
 pub struct AudioManager {
     layers: Vec<AudioLayer>,
+    /// Audio data keyed by asset id. Arc allows zero-copy hand-off to the player.
+    assets: HashMap<String, Arc<[u8]>>,
     muted: bool,
     /// Global volume multiplier in [0.0, 1.0], applied on top of per-layer volume.
     volume: f32,
@@ -282,13 +285,15 @@ impl AudioManager {
             return None;
         }
 
-        let mut rodio_player = RodioPlayer::new(layers.len()).ok()?;
-        for asset in &assets {
-            rodio_player.load(&asset.id, &asset.data);
-        }
+        let rodio_player = RodioPlayer::new(layers.len()).ok()?;
+        let assets: HashMap<String, Arc<[u8]>> = assets
+            .into_iter()
+            .map(|a| (a.id, a.data))
+            .collect();
 
         Some(AudioManager {
             layers,
+            assets,
             muted: false,
             volume: 1.0,
             rodio_player,
@@ -304,8 +309,10 @@ impl AudioManager {
 
             if should_play && !layer.playing {
                 layer.playing = true;
-                let vol = if self.muted { 0.0 } else { layer.volume * self.volume };
-                self.rodio_player.play(idx, &layer.ref_id, vol);
+                if let Some(data) = self.assets.get(&layer.ref_id) {
+                    let vol = if self.muted { 0.0 } else { layer.volume * self.volume };
+                    self.rodio_player.play(idx, data.clone(), vol);
+                }
             } else if !should_play && layer.playing {
                 layer.playing = false;
                 self.rodio_player.stop(idx);

@@ -1,5 +1,4 @@
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
-use std::collections::HashMap;
 use std::io::Cursor;
 use std::sync::Arc;
 
@@ -9,8 +8,6 @@ pub struct RodioPlayer {
     /// Kept alive so the audio output chain stays open.
     _stream: OutputStream,
     stream_handle: OutputStreamHandle,
-    /// Pre-decoded raw audio bytes, keyed by asset id.
-    buffers: HashMap<String, Arc<[u8]>>,
     /// One slot per layer. None = not playing, Some(sink) = active sink.
     sinks: Vec<Option<Sink>>,
 }
@@ -21,29 +18,19 @@ impl RodioPlayer {
         Ok(Self {
             _stream,
             stream_handle,
-            buffers: HashMap::new(),
             sinks: (0..layer_count).map(|_| None).collect(),
         })
     }
 
-    /// Store raw audio bytes for later playback.
-    pub fn load(&mut self, id: &str, data: &[u8]) -> bool {
-        self.buffers
-            .insert(id.to_string(), Arc::<[u8]>::from(data.to_vec()));
-        true
-    }
-
-    /// Start playing the asset identified by `ref_id` in a sink owned by `layer_idx`.
-    pub fn play(&mut self, layer_idx: usize, ref_id: &str, volume: f32) {
+    /// Start playing the given audio data in the sink owned by `layer_idx`.
+    pub fn play(&mut self, layer_idx: usize, data: Arc<[u8]>, volume: f32) {
         self.sinks[layer_idx].take();
-        if let Some(data) = self.buffers.get(ref_id) {
-            let cursor = Cursor::new(data.clone());
-            if let Ok(source) = Decoder::new(cursor) {
-                if let Ok(sink) = Sink::try_new(&self.stream_handle) {
-                    sink.set_volume(volume);
-                    sink.append(source);
-                    self.sinks[layer_idx] = Some(sink);
-                }
+        let cursor = Cursor::new(data);
+        if let Ok(source) = Decoder::new(cursor) {
+            if let Ok(sink) = Sink::try_new(&self.stream_handle) {
+                sink.set_volume(volume);
+                sink.append(source);
+                self.sinks[layer_idx] = Some(sink);
             }
         }
     }

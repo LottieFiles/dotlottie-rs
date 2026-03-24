@@ -26,6 +26,8 @@ pub struct AudioLayer {
     pub end_frame: f32,
     /// Normalized volume (0.0–1.0).
     pub volume: f32,
+    /// Whether this layer's audio is currently active (started but not stopped).
+    pub playing: bool,
 }
 
 fn decode_base64(input: &str) -> Option<Vec<u8>> {
@@ -219,6 +221,7 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
                             start_frame,
                             end_frame,
                             volume: *volume,
+                            playing: false,
                         });
                     }
                 }
@@ -245,6 +248,7 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
                         start_frame,
                         end_frame,
                         volume,
+                        playing: false,
                     });
                 }
                 _ => continue,
@@ -265,10 +269,6 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
 /// `wasm32-unknown-unknown` (Web Audio API backend).
 pub struct AudioManager {
     layers: Vec<AudioLayer>,
-    /// Indices into `layers` whose audio is currently active (started but not stopped).
-    /// Using layer index rather than ref_id so that multiple layers sharing the
-    /// same audio asset are tracked independently.
-    playing: HashSet<usize>,
     muted: bool,
     /// Global volume multiplier in [0.0, 1.0], applied on top of per-layer volume.
     volume: f32,
@@ -289,81 +289,62 @@ impl AudioManager {
 
         Some(AudioManager {
             layers,
-            playing: HashSet::new(),
             muted: false,
             volume: 1.0,
             rodio_player,
         })
     }
 
-    fn effective_volume(&self, layer_volume: f32) -> f32 {
-        if self.muted {
-            0.0
-        } else {
-            layer_volume * self.volume
-        }
-    }
-
     /// Synchronise audio state with the current animation frame.
     ///
     /// Returns events that the host application may handle.
     pub fn update(&mut self, frame: f32) {
-        for (idx, layer) in self.layers.iter().enumerate() {
+        for (idx, layer) in self.layers.iter_mut().enumerate() {
             let should_play = frame >= layer.start_frame && frame < layer.end_frame;
-            let is_playing = self.playing.contains(&idx);
 
-            if should_play && !is_playing {
-                self.playing.insert(idx);
-
-                let vol = self.effective_volume(layer.volume);
+            if should_play && !layer.playing {
+                layer.playing = true;
+                let vol = if self.muted { 0.0 } else { layer.volume * self.volume };
                 self.rodio_player.play(idx, &layer.ref_id, vol);
-            } else if !should_play && is_playing {
-                self.playing.remove(&idx);
-
+            } else if !should_play && layer.playing {
+                layer.playing = false;
                 self.rodio_player.stop(idx);
             }
         }
     }
 
     pub fn pause(&mut self) {
-        for &idx in &self.playing {
-            self.rodio_player.pause(idx);
+        for (idx, layer) in self.layers.iter().enumerate() {
+            if layer.playing {
+                self.rodio_player.pause(idx);
+            }
         }
     }
 
     pub fn play(&mut self) {
-        for &idx in &self.playing {
-            self.rodio_player.resume(idx);
+        for (idx, layer) in self.layers.iter().enumerate() {
+            if layer.playing {
+                self.rodio_player.resume(idx);
+            }
         }
     }
 
     pub fn stop(&mut self) {
-        for &idx in &self.playing {
-            self.rodio_player.stop(idx);
+        for (idx, layer) in self.layers.iter_mut().enumerate() {
+            if layer.playing {
+                self.rodio_player.stop(idx);
+                layer.playing = false;
+            }
         }
-        self.playing.clear();
     }
 
     pub fn set_mute(&mut self, muted: bool) {
         self.muted = muted;
-
-        let updates: Vec<(usize, f32)> = self
-            .playing
-            .iter()
-            .map(|&idx| {
-                (
-                    idx,
-                    if muted {
-                        0.0
-                    } else {
-                        self.effective_volume(self.layers[idx].volume)
-                    },
-                )
-            })
-            .collect();
-
-        for (idx, vol) in updates {
-            self.rodio_player.set_volume(idx, vol);
+        for (idx, layer) in self.layers.iter().enumerate() {
+            if layer.playing {
+                let vol = if muted { 0.0 } else { layer.volume * self.volume };
+                self.rodio_player.set_volume(idx, vol);
+            }
         }
     }
 
@@ -372,15 +353,11 @@ impl AudioManager {
     /// currently-playing audio.
     pub fn set_volume(&mut self, volume: f32) {
         self.volume = volume.clamp(0.0, 1.0);
-
-        let updates: Vec<(usize, f32)> = self
-            .playing
-            .iter()
-            .map(|&idx| (idx, self.effective_volume(self.layers[idx].volume)))
-            .collect();
-
-        for (idx, vol) in updates {
-            self.rodio_player.set_volume(idx, vol);
+        for (idx, layer) in self.layers.iter().enumerate() {
+            if layer.playing {
+                let vol = layer.volume * self.volume;
+                self.rodio_player.set_volume(idx, vol);
+            }
         }
     }
 

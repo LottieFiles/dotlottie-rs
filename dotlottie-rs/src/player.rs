@@ -939,20 +939,27 @@ impl DotLottiePlayer {
 
     /// Set OpenGL rendering target.
     ///
-    /// The GL context must remain valid while the player is using it and must be
+    /// `display` and `surface` may hold null pointers on platforms that do not require them
+    /// (e.g., macOS CGL only needs `context`). On EGL-based platforms (Android, Linux) all
+    /// three handles are typically required.
+    ///
+    /// All handles must remain valid while the player is using them and the GL context must be
     /// current on the calling thread when rendering.
-    pub fn set_gl_target<C: crate::lottie_renderer::GlContext>(
+    pub fn set_gl_target<
+        D: crate::lottie_renderer::GlDisplay,
+        S: crate::lottie_renderer::GlSurface,
+        C: crate::lottie_renderer::GlContext,
+    >(
         &mut self,
+        display: &D,
+        surface: &S,
         context: &C,
         id: i32,
         width: u32,
         height: u32,
     ) -> Result<(), DotLottiePlayerError> {
-        unsafe {
-            self.renderer
-                .set_gl_target(context.as_ptr(), id, width, height)?;
-        }
-
+        self.renderer
+            .set_gl_target(display, surface, context, id, width, height)?;
         Ok(())
     }
 
@@ -973,17 +980,8 @@ impl DotLottiePlayer {
         height: u32,
         target_type: crate::lottie_renderer::WgpuTargetType,
     ) -> Result<(), DotLottiePlayerError> {
-        unsafe {
-            self.renderer.set_wg_target(
-                device.as_ptr(),
-                instance.as_ptr(),
-                target.as_ptr(),
-                width,
-                height,
-                target_type,
-            )?;
-        }
-
+        self.renderer
+            .set_wg_target(device, instance, target, width, height, target_type)?;
         Ok(())
     }
 

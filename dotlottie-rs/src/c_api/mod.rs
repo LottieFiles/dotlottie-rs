@@ -4,8 +4,8 @@ use std::ffi::{c_char, CStr};
 use std::slice;
 
 use crate::lottie_renderer::{
-    ColorSlot, ColorValue, GlContext, ImageSlot, PositionSlot, ScalarSlot, ScalarValue,
-    TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
+    ColorSlot, ColorValue, GlContext, GlDisplay, GlSurface, ImageSlot, PositionSlot, ScalarSlot,
+    ScalarValue, TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
 };
 use crate::{DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode};
 
@@ -14,6 +14,34 @@ use crate::ColorSpace;
 use types::*;
 
 pub mod types;
+
+/// Wrapper for a raw GL display pointer (e.g. EGLDisplay, HDC). Pass null for platforms
+/// that do not require a display handle (e.g., macOS CGL).
+struct RawGlDisplay(*mut std::ffi::c_void);
+
+impl GlDisplay for RawGlDisplay {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
+
+/// Wrapper for a raw GL surface pointer (e.g. EGLSurface). Pass null for platforms
+/// that do not require a surface handle (e.g., macOS CGL).
+struct RawGlSurface(*mut std::ffi::c_void);
+
+impl GlSurface for RawGlSurface {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
 
 /// Wrapper for raw OpenGL context pointer that implements GlContext trait
 struct RawGlContext(*mut std::ffi::c_void);
@@ -851,14 +879,18 @@ pub unsafe extern "C" fn dotlottie_set_sw_target(
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_set_gl_target(
     ptr: *mut DotLottiePlayer,
+    display: *mut std::ffi::c_void,
+    surface: *mut std::ffi::c_void,
     context: *mut std::ffi::c_void,
     id: i32,
     width: u32,
     height: u32,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        let gl_display = RawGlDisplay(display);
+        let gl_surface = RawGlSurface(surface);
         let gl_context = RawGlContext(context);
-        dotlottie_player.set_gl_target(&gl_context, id, width, height)
+        dotlottie_player.set_gl_target(&gl_display, &gl_surface, &gl_context, id, width, height)
     })
 }
 

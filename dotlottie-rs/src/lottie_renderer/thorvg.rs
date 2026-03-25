@@ -1,4 +1,4 @@
-use crate::{time::Instant, GlContext, WgpuDevice, WgpuInstance, WgpuTarget};
+use crate::time::Instant;
 
 use std::{
     error::Error,
@@ -10,52 +10,10 @@ use std::{
 #[cfg(feature = "tvg-ttf")]
 use crate::lottie_renderer::fallback_font;
 
-use super::{Animation, ColorSpace, Drawable, Renderer, Shape, WgpuTargetType};
-
-pub struct TvgGlContext(*mut std::ffi::c_void);
-pub struct TvgWgpuDevice(*mut std::ffi::c_void);
-pub struct TvgWgpuInstance(*mut std::ffi::c_void);
-pub struct TvgWgpuTarget(*mut std::ffi::c_void);
-
-impl super::GlContext for TvgGlContext {
-    fn as_ptr(&self) -> *mut std::ffi::c_void {
-        self.0
-    }
-
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
-        Self(ptr)
-    }
-}
-
-impl super::WgpuDevice for TvgWgpuDevice {
-    fn as_ptr(&self) -> *mut std::ffi::c_void {
-        self.0
-    }
-
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
-        Self(ptr)
-    }
-}
-
-impl super::WgpuInstance for TvgWgpuInstance {
-    fn as_ptr(&self) -> *mut std::ffi::c_void {
-        self.0
-    }
-
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
-        Self(ptr)
-    }
-}
-
-impl super::WgpuTarget for TvgWgpuTarget {
-    fn as_ptr(&self) -> *mut std::ffi::c_void {
-        self.0
-    }
-
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
-        Self(ptr)
-    }
-}
+use super::{
+    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Renderer, Shape, WgpuDevice,
+    WgpuInstance, WgpuTarget, WgpuTargetType,
+};
 
 #[expect(non_upper_case_globals)]
 #[allow(non_snake_case)]
@@ -212,10 +170,6 @@ impl Renderer for TvgRenderer {
     type Animation = TvgAnimation;
     type Shape = TvgShape;
     type Error = TvgError;
-    type GlContext = TvgGlContext;
-    type WgpuDevice = TvgWgpuDevice;
-    type WgpuInstance = TvgWgpuInstance;
-    type WgpuTarget = TvgWgpuTarget;
 
     fn load_font(font_name: &str, font_data: &[u8]) -> Result<(), Self::Error> {
         let font_name_cstr = CString::new(font_name).map_err(|_| TvgError::InvalidArgument)?;
@@ -281,7 +235,9 @@ impl Renderer for TvgRenderer {
 
     fn set_gl_target(
         &mut self,
-        context: &Self::GlContext,
+        display: &dyn GlDisplay,
+        surface: &dyn GlSurface,
+        context: &dyn GlContext,
         id: i32,
         width: u32,
         height: u32,
@@ -292,11 +248,10 @@ impl Renderer for TvgRenderer {
 
         if let Some(raw_canvas) = self.raw_canvas {
             unsafe {
-                // TODO: expose the platform-specific display & surface handle for EGL, HDC for WGL
                 tvg::tvg_glcanvas_set_target(
                     raw_canvas,
-                    ptr::null_mut(),
-                    ptr::null_mut(),
+                    display.as_ptr(),
+                    surface.as_ptr(),
                     context.as_ptr(),
                     id,
                     width,
@@ -312,9 +267,9 @@ impl Renderer for TvgRenderer {
 
     fn set_wg_target(
         &mut self,
-        device: &Self::WgpuDevice,
-        instance: &Self::WgpuInstance,
-        target: &Self::WgpuTarget,
+        device: &dyn WgpuDevice,
+        instance: &dyn WgpuInstance,
+        target: &dyn WgpuTarget,
         width: u32,
         height: u32,
         target_type: WgpuTargetType,
@@ -331,7 +286,7 @@ impl Renderer for TvgRenderer {
                 device_ptr
             };
 
-            let result = unsafe {
+            unsafe {
                 tvg::tvg_wgcanvas_set_target(
                     raw_canvas,
                     actual_device,
@@ -342,9 +297,8 @@ impl Renderer for TvgRenderer {
                     tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
                     target_type.into(),
                 )
-            };
-
-            result.into_result()?;
+            }
+            .into_result()?;
 
             unsafe { tvg::tvg_canvas_sync(raw_canvas).into_result() }?;
 

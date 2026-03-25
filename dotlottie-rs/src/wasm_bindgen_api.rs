@@ -22,6 +22,32 @@ use crate::{DotLottiePlayer, Fit, Layout, Mode as PlayerMode};
 // we cannot pass null_mut here.
 
 #[cfg(feature = "webgl")]
+struct NullGlDisplay;
+
+#[cfg(feature = "webgl")]
+impl crate::GlDisplay for NullGlDisplay {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        std::ptr::null_mut()
+    }
+    unsafe fn from_ptr(_ptr: *mut std::ffi::c_void) -> Self {
+        NullGlDisplay
+    }
+}
+
+#[cfg(feature = "webgl")]
+struct NullGlSurface;
+
+#[cfg(feature = "webgl")]
+impl crate::GlSurface for NullGlSurface {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        std::ptr::null_mut()
+    }
+    unsafe fn from_ptr(_ptr: *mut std::ffi::c_void) -> Self {
+        NullGlSurface
+    }
+}
+
+#[cfg(feature = "webgl")]
 struct StoredGlContext;
 
 #[cfg(feature = "webgl")]
@@ -282,7 +308,7 @@ impl DotLottiePlayerWasm {
         self.width = width;
         self.height = height;
         self.player
-            .set_gl_target(&StoredGlContext, 0, width, height)
+            .set_gl_target(&NullGlDisplay, &NullGlSurface, &StoredGlContext, 0, width, height)
             .is_ok()
     }
 

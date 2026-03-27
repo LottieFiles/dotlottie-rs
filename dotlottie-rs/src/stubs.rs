@@ -427,3 +427,75 @@ pub unsafe extern "C" fn _ZNSt3__212__next_primeEm(n: usize) -> usize {
         }
     }
 }
+
+// ── C++ std::mutex stubs ─────────────────────────────────────────────────
+// ThorVG's renderer files use a raw `static mutex _rendererMtx` for renderer
+// ref-counting.  WASM is single-threaded so these are safe no-ops.
+
+#[cfg_attr(feature = "wasm", no_mangle)]
+unsafe extern "C" fn _ZNSt3__25mutexD1Ev(this: *mut u8) -> *mut u8 {
+    this
+}
+
+#[cfg_attr(feature = "wasm", no_mangle)]
+unsafe extern "C" fn _ZNSt3__25mutex4lockEv(_this: *mut u8) {}
+
+#[cfg_attr(feature = "wasm", no_mangle)]
+unsafe extern "C" fn _ZNSt3__25mutex6unlockEv(_this: *mut u8) {}
+
+// ── Math stubs ───────────────────────────────────────────────────────────
+// Used by JerryScript's ecma-helpers-number.cpp and ecma-builtin-math.cpp.
+
+#[cfg_attr(feature = "wasm", no_mangle)]
+unsafe extern "C" fn nextafter(x: f64, y: f64) -> f64 {
+    if x.is_nan() || y.is_nan() {
+        return f64::NAN;
+    }
+    if x == y {
+        return y;
+    }
+    if x == 0.0 {
+        return if y > 0.0 {
+            f64::from_bits(1)
+        } else {
+            f64::from_bits(1 | (1u64 << 63))
+        };
+    }
+    let bits = x.to_bits() as i64;
+    let result_bits = if (x < y) == (x > 0.0) {
+        bits + 1
+    } else {
+        bits - 1
+    };
+    f64::from_bits(result_bits as u64)
+}
+
+#[cfg_attr(feature = "wasm", no_mangle)]
+unsafe extern "C" fn acosh(x: f64) -> f64 {
+    x.acosh()
+}
+
+#[cfg_attr(feature = "wasm", no_mangle)]
+unsafe extern "C" fn asinh(x: f64) -> f64 {
+    x.asinh()
+}
+
+#[cfg_attr(feature = "wasm", no_mangle)]
+unsafe extern "C" fn atanh(x: f64) -> f64 {
+    x.atanh()
+}
+
+// ── setjmp / longjmp stubs ───────────────────────────────────────────────
+// JerryScript's parser uses setjmp/longjmp for error recovery.  True
+// non-local jumps are impossible in WASM's structured control flow, so
+// setjmp always returns 0 (normal path) and longjmp aborts.
+
+#[cfg_attr(feature = "wasm", no_mangle)]
+unsafe extern "C" fn setjmp(_buf: *mut u8) -> i32 {
+    0
+}
+
+#[cfg_attr(feature = "wasm", no_mangle)]
+unsafe extern "C" fn longjmp(_buf: *mut u8, _val: i32) -> ! {
+    process::abort()
+}

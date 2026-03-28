@@ -308,7 +308,14 @@ impl DotLottiePlayerWasm {
         self.width = width;
         self.height = height;
         self.player
-            .set_gl_target(&NullGlDisplay, &NullGlSurface, &StoredGlContext, 0, width, height)
+            .set_gl_target(
+                &NullGlDisplay,
+                &NullGlSurface,
+                &StoredGlContext,
+                0,
+                width,
+                height,
+            )
             .is_ok()
     }
 

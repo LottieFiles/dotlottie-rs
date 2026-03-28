@@ -11,9 +11,7 @@
 #[cfg(feature = "tvg-gl")]
 mod opengl_impl {
     use dotlottie_rs::{
-        DotLottiePlayer,
-        GlContext as DotGlContext,
-        GlDisplay as DotGlDisplay,
+        DotLottiePlayer, GlContext as DotGlContext, GlDisplay as DotGlDisplay,
         GlSurface as DotGlSurface,
     };
     use glutin::config::ConfigTemplateBuilder;

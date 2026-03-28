@@ -295,6 +295,20 @@ unsafe extern "C" fn isspace(c: i32) -> i32 {
     matches!(c as u8, b' ' | b'\t' | b'\n' | b'\x0b' | b'\x0c' | b'\r') as i32
 }
 
+#[cfg_attr(feature = "wasm", no_mangle)]
+unsafe extern "C" fn isdigit(c: i32) -> i32 {
+    matches!(c as u8, b'0'..=b'9') as i32
+}
+
+#[cfg_attr(feature = "wasm", no_mangle)]
+unsafe extern "C" fn tolower(c: i32) -> i32 {
+    if (c as u8).is_ascii_uppercase() {
+        c + 32
+    } else {
+        c
+    }
+}
+
 static RAND_STATE: AtomicU32 = AtomicU32::new(12345);
 
 #[cfg_attr(feature = "wasm", no_mangle)]

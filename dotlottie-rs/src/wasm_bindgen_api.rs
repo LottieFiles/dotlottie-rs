@@ -200,6 +200,8 @@ impl DotLottiePlayerWasm {
 
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
+        console_error_panic_hook::set_once();
+
         DotLottiePlayerWasm {
             #[cfg(feature = "state-machines")]
             state_machine: None,

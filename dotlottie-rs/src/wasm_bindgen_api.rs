@@ -314,7 +314,7 @@ impl DotLottiePlayerWasm {
             self.sw_buffer.resize(required, 0);
         }
         self.player
-            .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888)
+            .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888S)
             .is_ok()
     }
 
@@ -407,7 +407,7 @@ impl DotLottiePlayerWasm {
             self.sw_buffer.resize(required, 0);
             if self
                 .player
-                .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888)
+                .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888S)
                 .is_err()
             {
                 return false;

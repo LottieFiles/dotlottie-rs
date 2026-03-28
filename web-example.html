@@ -290,7 +290,7 @@
 
           if (rendererType === 'sw') {
             const mod = await import('./release/wasm/dotlottie_rs.js');
-            await mod.default("./release/wasm/dotlottie_rs_bg.wasm");
+            await mod.default({ module_or_path: "./release/wasm/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
             // Grab the 2D context after the canvas is fresh.
             ctx2d = canvas.getContext('2d');
@@ -299,7 +299,7 @@
             const gl = canvas.getContext('webgl2');
             if (!gl) throw new Error('WebGL2 not available in this browser');
             const mod = await import('./release/wasm-webgl/dotlottie_rs.js');
-            await mod.default("./release/wasm-webgl/dotlottie_rs_bg.wasm");
+            await mod.default({ module_or_path: "./release/wasm-webgl/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
             // Pass the WebGL2 context into the WASM layer before loading.
             newPlayer.set_webgl_context(gl);
@@ -320,7 +320,7 @@
               alphaMode: 'premultiplied',
             });
             const mod = await import('./release/wasm-webgpu/dotlottie_rs.js');
-            await mod.default("./release/wasm-webgpu/dotlottie_rs_bg.wasm");
+            await mod.default({ module_or_path: "./release/wasm-webgpu/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
             newPlayer.set_webgpu_device(device);
             newPlayer.set_webgpu_surface(gpuCtx);

@@ -305,10 +305,7 @@ mod tests {
         assert_eq!(player.theme_id(), Some(theme_id.as_c_str()));
 
         // Switch to a different animation within the same .lottie — theme should persist
-        assert_eq!(
-            player.load_animation(&second_anim, WIDTH, HEIGHT),
-            Ok(())
-        );
+        assert_eq!(player.load_animation(&second_anim, WIDTH, HEIGHT), Ok(()));
         assert_eq!(
             player.theme_id(),
             Some(theme_id.as_c_str()),

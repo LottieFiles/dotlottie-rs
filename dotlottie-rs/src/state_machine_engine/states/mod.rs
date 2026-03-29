@@ -84,7 +84,6 @@ impl StateTrait for State {
                 let size = engine.player.size();
 
                 // Apply individual settings, preserving layout and use_frame_interpolation
-                engine.player.set_mode(defined_mode);
                 engine.player.set_loop(r#loop.unwrap_or(false));
                 engine.player.set_loop_count(loop_count.unwrap_or(0));
                 engine.player.set_speed(speed.unwrap_or(1.0));
@@ -100,6 +99,11 @@ impl StateTrait for State {
                     .map_err(|_| StateMachineActionError::ParsingError)?;
 
                 engine.player.set_marker(marker_cstr.as_deref());
+
+                // set_mode() after set_marker() — set_marker() internally calls
+                // render(), which detects is_complete() for Reverse mode and fires
+                // a spurious OnComplete before the animation plays
+                engine.player.set_mode(defined_mode);
 
                 // set_autoplay must be called last as it triggers play/pause
                 engine.player.set_autoplay(autoplay.unwrap_or(false));

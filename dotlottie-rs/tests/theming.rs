@@ -274,4 +274,44 @@ mod tests {
 
         assert!(player.is_playing());
     }
+
+    #[test]
+    fn test_theme_persists_after_load_animation() {
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(true);
+
+        let theme_id = CString::new("red").expect("Failed to create CString");
+        let second_anim = CString::new("rect").expect("Failed to create CString");
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
+
+        // Load a .lottie with two animations (circle, rect) and two themes (red, yellow)
+        assert!(player
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v2/multi_anim_theme.lottie"),
+                WIDTH,
+                HEIGHT
+            )
+            .is_ok());
+
+        assert_eq!(
+            player.set_theme(&theme_id),
+            Ok(()),
+            "Expected theme to load"
+        );
+        assert_eq!(player.theme_id(), Some(theme_id.as_c_str()));
+
+        // Switch to a different animation within the same .lottie — theme should persist
+        assert_eq!(player.load_animation(&second_anim, WIDTH, HEIGHT), Ok(()));
+        assert_eq!(
+            player.theme_id(),
+            Some(theme_id.as_c_str()),
+            "Theme should persist after load_animation within the same .lottie container"
+        );
+
+        assert!(player.is_playing());
+    }
 }

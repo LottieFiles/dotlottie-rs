@@ -1182,6 +1182,9 @@ impl DotLottiePlayer {
             .map_err(|_| DotLottiePlayerError::InvalidParameter)?;
 
         if let Some(manager) = &mut self.dotlottie_manager {
+            #[cfg(feature = "theming")]
+            let saved_theme_id = self.theme_id.clone();
+
             let lookup_id = if anim_id_str.is_empty() {
                 manager.active_animation_id()
             } else {
@@ -1208,6 +1211,12 @@ impl DotLottiePlayer {
 
             if result.is_ok() {
                 self.animation_id = Some(animation_id.to_owned());
+
+                #[cfg(feature = "theming")]
+                if let Some(ref theme_id_cstr) = saved_theme_id {
+                    self.theme_id = None;
+                    let _ = self.set_theme(theme_id_cstr);
+                }
 
                 self.event_queue.push(DotLottieEvent::Load);
                 if self.autoplay {

@@ -11,8 +11,8 @@ mod fallback_font;
 mod thorvg;
 
 pub use renderer::{
-    Animation, ColorSpace, Drawable, GlContext, Renderer, Shape, WgpuDevice, WgpuInstance,
-    WgpuTarget, WgpuTargetType,
+    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Renderer, Shape, WgpuDevice,
+    WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 pub use slots::{
     slots_from_json_string, Bezier, BezierValue, ColorSlot, ColorValue, GradientSlot, GradientStop,
@@ -64,30 +64,25 @@ pub trait LottieRenderer {
         color_space: ColorSpace,
     ) -> Result<(), LottieRendererError>;
 
-    /// # Safety
-    ///
-    /// `context` must be a valid pointer to an OpenGL context. The context must
-    /// remain valid for the lifetime of rendering operations using this target.
-    unsafe fn set_gl_target(
+    /// `display` and `surface` may carry null pointers on platforms that do not require them
+    /// (e.g., macOS CGL only needs `context`). On EGL-based platforms (Android, Linux) all
+    /// three handles are typically required.
+    fn set_gl_target(
         &mut self,
-        context: *mut std::ffi::c_void,
+        display: &dyn GlDisplay,
+        surface: &dyn GlSurface,
+        context: &dyn GlContext,
         id: i32,
         width: u32,
         height: u32,
     ) -> Result<(), LottieRendererError>;
 
-    /// # Safety
-    ///
-    /// `device` must be a valid pointer to a WebGPU device, `instance` must be a valid
-    /// pointer to a WebGPU instance, and `target` must be a valid pointer to a WebGPU
-    /// render target. All pointers must remain valid for the lifetime of rendering
-    /// operations using this target.
     #[allow(clippy::too_many_arguments)]
-    unsafe fn set_wg_target(
+    fn set_wg_target(
         &mut self,
-        device: *mut std::ffi::c_void,
-        instance: *mut std::ffi::c_void,
-        target: *mut std::ffi::c_void,
+        device: &dyn WgpuDevice,
+        instance: &dyn WgpuInstance,
+        target: &dyn WgpuTarget,
         width: u32,
         height: u32,
         target_type: WgpuTargetType,
@@ -471,40 +466,31 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)
     }
 
-    unsafe fn set_gl_target(
+    fn set_gl_target(
         &mut self,
-        context: *mut std::ffi::c_void,
+        display: &dyn GlDisplay,
+        surface: &dyn GlSurface,
+        context: &dyn GlContext,
         id: i32,
         width: u32,
         height: u32,
     ) -> Result<(), LottieRendererError> {
-        let gl_context = R::GlContext::from_ptr(context);
         self.renderer
-            .set_gl_target(&gl_context, id, width, height)
+            .set_gl_target(display, surface, context, id, width, height)
             .map_err(into_lottie::<R>)
     }
 
-    unsafe fn set_wg_target(
+    fn set_wg_target(
         &mut self,
-        device: *mut std::ffi::c_void,
-        instance: *mut std::ffi::c_void,
-        target: *mut std::ffi::c_void,
+        device: &dyn WgpuDevice,
+        instance: &dyn WgpuInstance,
+        target: &dyn WgpuTarget,
         width: u32,
         height: u32,
         target_type: WgpuTargetType,
     ) -> Result<(), LottieRendererError> {
-        let wgpu_device = R::WgpuDevice::from_ptr(device);
-        let wgpu_instance = R::WgpuInstance::from_ptr(instance);
-        let wgpu_target = R::WgpuTarget::from_ptr(target);
         self.renderer
-            .set_wg_target(
-                &wgpu_device,
-                &wgpu_instance,
-                &wgpu_target,
-                width,
-                height,
-                target_type,
-            )
+            .set_wg_target(device, instance, target, width, height, target_type)
             .map_err(into_lottie::<R>)
     }
 

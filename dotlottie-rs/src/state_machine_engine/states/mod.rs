@@ -47,7 +47,6 @@ pub enum State {
     GlobalState {
         name: String,
         transitions: Vec<Transition>,
-        animation: Option<String>,
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
     },
@@ -133,24 +132,9 @@ impl StateTrait for State {
                 }
             }
             State::GlobalState {
-                animation,
                 entry_actions,
                 ..
             } => {
-                let size = engine.player.size();
-
-                let anim_cstr = animation
-                    .as_deref()
-                    .map(CString::new)
-                    .transpose()
-                    .map_err(|_| StateMachineActionError::ParsingError)?;
-
-                if let Some(cstr) = anim_cstr {
-                    if engine.player.animation_id() != Some(&cstr) {
-                        let _ = engine.player.load_animation(&cstr, size.0, size.1);
-                    }
-                }
-
                 // Perform entry actions
                 if let Some(actions) = entry_actions {
                     for action in actions {

@@ -131,10 +131,7 @@ impl StateTrait for State {
                     }
                 }
             }
-            State::GlobalState {
-                entry_actions,
-                ..
-            } => {
+            State::GlobalState { entry_actions, .. } => {
                 // Perform entry actions
                 if let Some(actions) = entry_actions {
                     for action in actions {

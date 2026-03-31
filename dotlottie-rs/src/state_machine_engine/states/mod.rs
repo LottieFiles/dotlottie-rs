@@ -103,8 +103,8 @@ impl StateTrait for State {
                     return Err(StateMachineActionError::ParsingError);
                 };
 
-                let needs_load = !animation.is_empty()
-                    && engine.player.animation_id() != Some(&anim_cstr);
+                let needs_load =
+                    !animation.is_empty() && engine.player.animation_id() != Some(&anim_cstr);
 
                 if needs_load {
                     engine.player.set_autoplay(false);
@@ -128,25 +128,7 @@ impl StateTrait for State {
                     }
                 }
             }
-            State::GlobalState {
-                animation,
-                entry_actions,
-                ..
-            } => {
-                let size = engine.player.size();
-
-                let anim_cstr = animation
-                    .as_deref()
-                    .map(CString::new)
-                    .transpose()
-                    .map_err(|_| StateMachineActionError::ParsingError)?;
-
-                if let Some(cstr) = anim_cstr {
-                    if engine.player.animation_id() != Some(&cstr) {
-                        let _ = engine.player.load_animation(&cstr, size.0, size.1);
-                    }
-                }
-
+            State::GlobalState { entry_actions, .. } => {
                 // Perform entry actions
                 if let Some(actions) = entry_actions {
                     for action in actions {

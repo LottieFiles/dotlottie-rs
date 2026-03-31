@@ -106,6 +106,14 @@ impl StateTrait for State {
 
                 if needs_load {
                     engine.player.set_autoplay(false);
+                    // Clear any active theme before loading a different animation.
+                    // load_animation() restores the saved theme after loading, but
+                    // themes are animation-specific — the old theme's slot values
+                    // may not exist in the new animation, causing render failures.
+                    #[cfg(feature = "theming")]
+                    {
+                        let _ = engine.player.reset_theme();
+                    }
                     let _ = engine.player.load_animation(&anim_cstr, size.0, size.1);
                 }
 

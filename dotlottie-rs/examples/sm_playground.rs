@@ -98,7 +98,10 @@ impl Playground {
         let mut data = vec![0u8; metadata.len() as usize];
         file.read_exact(&mut data).unwrap();
 
-        match self.player.load_dotlottie_data(&data, CANVAS_WIDTH, CANVAS_HEIGHT) {
+        match self
+            .player
+            .load_dotlottie_data(&data, CANVAS_WIDTH, CANVAS_HEIGHT)
+        {
             Ok(_) => {
                 let name = path
                     .file_name()
@@ -369,38 +372,36 @@ impl eframe::App for Playground {
                     let mut fires: Vec<String> = Vec::new();
 
                     for (i, input) in self.inputs.iter_mut().enumerate() {
-                        ui.horizontal(|ui| {
-                            match &mut input.kind {
-                                InputKind::Boolean(val) => {
-                                    let prev = *val;
-                                    ui.checkbox(val, &input.name);
-                                    if *val != prev {
-                                        changes.push((i, InputKind::Boolean(*val)));
-                                    }
+                        ui.horizontal(|ui| match &mut input.kind {
+                            InputKind::Boolean(val) => {
+                                let prev = *val;
+                                ui.checkbox(val, &input.name);
+                                if *val != prev {
+                                    changes.push((i, InputKind::Boolean(*val)));
                                 }
-                                InputKind::Numeric(val) => {
-                                    ui.label(&input.name);
-                                    let prev = *val;
-                                    ui.add(
-                                        egui::Slider::new(val, -100.0..=100.0)
-                                            .clamping(egui::SliderClamping::Never),
-                                    );
-                                    if (*val - prev).abs() > f32::EPSILON {
-                                        changes.push((i, InputKind::Numeric(*val)));
-                                    }
+                            }
+                            InputKind::Numeric(val) => {
+                                ui.label(&input.name);
+                                let prev = *val;
+                                ui.add(
+                                    egui::Slider::new(val, -100.0..=100.0)
+                                        .clamping(egui::SliderClamping::Never),
+                                );
+                                if (*val - prev).abs() > f32::EPSILON {
+                                    changes.push((i, InputKind::Numeric(*val)));
                                 }
-                                InputKind::StringInput(val) => {
-                                    ui.label(&input.name);
-                                    let prev = val.clone();
-                                    ui.text_edit_singleline(val);
-                                    if *val != prev {
-                                        changes.push((i, InputKind::StringInput(val.clone())));
-                                    }
+                            }
+                            InputKind::StringInput(val) => {
+                                ui.label(&input.name);
+                                let prev = val.clone();
+                                ui.text_edit_singleline(val);
+                                if *val != prev {
+                                    changes.push((i, InputKind::StringInput(val.clone())));
                                 }
-                                InputKind::Event => {
-                                    if ui.button(format!("Fire: {}", input.name)).clicked() {
-                                        fires.push(input.name.clone());
-                                    }
+                            }
+                            InputKind::Event => {
+                                if ui.button(format!("Fire: {}", input.name)).clicked() {
+                                    fires.push(input.name.clone());
                                 }
                             }
                         });
@@ -471,14 +472,12 @@ impl eframe::App for Playground {
                         self.event_log.clear();
                     }
                     if ui.button("Copy").clicked() {
-                        let text: String = self.event_log.iter().fold(
-                            String::new(),
-                            |mut acc, entry| {
+                        let text: String =
+                            self.event_log.iter().fold(String::new(), |mut acc, entry| {
                                 acc.push_str(entry);
                                 acc.push('\n');
                                 acc
-                            },
-                        );
+                            });
                         ui.ctx().copy_text(text);
                     }
                     ui.checkbox(&mut self.auto_scroll_log, "Auto-scroll");

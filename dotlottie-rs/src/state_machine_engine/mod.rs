@@ -699,8 +699,12 @@ impl<'a> StateMachineEngine<'a> {
                         _ => None,
                     };
                     match &new_state {
-                        State::PlaybackState { animation: target_animation, .. } => {
-                            let same_animation = self.current_state
+                        State::PlaybackState {
+                            animation: target_animation,
+                            ..
+                        } => {
+                            let same_animation = self
+                                .current_state
                                 .as_ref()
                                 .map(|s| s.animation() == target_animation.as_str())
                                 .unwrap_or(false);

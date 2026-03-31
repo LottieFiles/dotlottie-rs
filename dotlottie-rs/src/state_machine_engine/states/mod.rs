@@ -102,8 +102,7 @@ impl StateTrait for State {
                     return Err(StateMachineActionError::ParsingError);
                 };
 
-                let needs_load =
-                    !animation.is_empty() && engine.player.animation_id() != Some(&anim_cstr);
+                let needs_load = engine.player.animation_id() != Some(&anim_cstr);
 
                 if needs_load {
                     engine.player.set_autoplay(false);

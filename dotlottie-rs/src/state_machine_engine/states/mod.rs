@@ -47,7 +47,6 @@ pub enum State {
     GlobalState {
         name: String,
         transitions: Vec<Transition>,
-        animation: Option<String>,
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
     },

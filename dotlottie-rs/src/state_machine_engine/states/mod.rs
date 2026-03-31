@@ -47,6 +47,7 @@ pub enum State {
     GlobalState {
         name: String,
         transitions: Vec<Transition>,
+        animation: Option<String>,
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
     },
@@ -90,6 +91,7 @@ impl StateTrait for State {
                     background_color.unwrap_or(DEFAULT_BACKGROUND_COLOR),
                 ));
                 let _ = engine.player.set_segment(None);
+                engine.player.set_marker(None);
 
                 let marker_cstr = segment
                     .as_deref()
@@ -97,27 +99,22 @@ impl StateTrait for State {
                     .transpose()
                     .map_err(|_| StateMachineActionError::ParsingError)?;
 
-                engine.player.set_marker(marker_cstr.as_deref());
-
-                // set_mode() after set_marker() — set_marker() internally calls
-                // render(), which detects is_complete() for Reverse mode and fires
-                // a spurious OnComplete before the animation plays
-                engine.player.set_mode(defined_mode);
-
-                // set_autoplay must be called last as it triggers play/pause
-                engine.player.set_autoplay(autoplay.unwrap_or(false));
-
                 let Ok(anim_cstr) = CString::new(animation.as_str()) else {
                     return Err(StateMachineActionError::ParsingError);
                 };
 
-                if !animation.is_empty()
-                    && engine.player.animation_id() != Some(&anim_cstr)
-                    && engine.player.render().is_ok()
-                {
+                let needs_load = !animation.is_empty()
+                    && engine.player.animation_id() != Some(&anim_cstr);
+
+                if needs_load {
+                    engine.player.set_autoplay(false);
                     let _ = engine.player.load_animation(&anim_cstr, size.0, size.1);
                 }
 
+                engine.player.set_marker(marker_cstr.as_deref());
+
+                engine.player.set_mode(defined_mode);
+                engine.player.set_autoplay(autoplay.unwrap_or(false));
                 /* Perform entry actions */
                 if let Some(actions) = entry_actions {
                     for action in actions {
@@ -131,7 +128,25 @@ impl StateTrait for State {
                     }
                 }
             }
-            State::GlobalState { entry_actions, .. } => {
+            State::GlobalState {
+                animation,
+                entry_actions,
+                ..
+            } => {
+                let size = engine.player.size();
+
+                let anim_cstr = animation
+                    .as_deref()
+                    .map(CString::new)
+                    .transpose()
+                    .map_err(|_| StateMachineActionError::ParsingError)?;
+
+                if let Some(cstr) = anim_cstr {
+                    if engine.player.animation_id() != Some(&cstr) {
+                        let _ = engine.player.load_animation(&cstr, size.0, size.1);
+                    }
+                }
+
                 // Perform entry actions
                 if let Some(actions) = entry_actions {
                     for action in actions {

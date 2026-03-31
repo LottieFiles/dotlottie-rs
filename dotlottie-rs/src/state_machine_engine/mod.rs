@@ -699,26 +699,31 @@ impl<'a> StateMachineEngine<'a> {
                         _ => None,
                     };
                     match &new_state {
-                        // If we're transitioning to a PlaybackState, grab the start segment
-                        State::PlaybackState { .. } => {
-                            if let Some(target_segment) = segment_clone {
-                                let target_segment_str =
-                                    CString::new(target_segment).unwrap_or_default();
-                                let tween_result = self.player.tween_to_marker(
-                                    &target_segment_str,
-                                    Some(causing_transition.duration()),
-                                    Some(causing_transition.easing()),
-                                );
+                        State::PlaybackState { animation: target_animation, .. } => {
+                            let same_animation = self.current_state
+                                .as_ref()
+                                .map(|s| s.animation() == target_animation.as_str())
+                                .unwrap_or(false);
 
-                                if tween_result.is_ok() {
-                                    self.tween_transition_target_state = Some(new_state.clone());
-                                    self.status = StateMachineEngineStatus::Tweening;
-                                    return Ok(());
+                            if same_animation {
+                                if let Some(target_segment) = segment_clone {
+                                    let target_segment_str =
+                                        CString::new(target_segment).unwrap_or_default();
+                                    let tween_result = self.player.tween_to_marker(
+                                        &target_segment_str,
+                                        Some(causing_transition.duration()),
+                                        Some(causing_transition.easing()),
+                                    );
+
+                                    if tween_result.is_ok() {
+                                        self.tween_transition_target_state =
+                                            Some(new_state.clone());
+                                        self.status = StateMachineEngineStatus::Tweening;
+                                        return Ok(());
+                                    }
                                 }
-                                // On tween failure, fall through to instant transition
                             }
                         }
-                        // If we're transitioning to a GlobalState, do nothing
                         State::GlobalState { .. } => {
                             return Ok(());
                         }

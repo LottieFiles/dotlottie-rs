@@ -70,6 +70,8 @@ raw-window-handle = "0.6"
 glutin = "0.32"
 glutin-winit = "0.5"
 gl = "0.14"
+eframe = "0.31"
+rfd = "0.15"
 
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 core-foundation = "0.9"
@@ -99,6 +101,10 @@ required-features = ["theming"]
 
 [[example]]
 name = "state_machine"
+required-features = ["state-machines"]
+
+[[example]]
+name = "sm_playground"
 required-features = ["state-machines"]
 
 [[bench]]

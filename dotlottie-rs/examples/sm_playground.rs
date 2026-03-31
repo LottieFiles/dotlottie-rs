@@ -324,11 +324,9 @@ impl eframe::App for Playground {
                             self.load_dotlottie(path);
                         }
                     }
-                    if self.file_path.is_some() {
-                        if ui.button("Reload").clicked() {
-                            let path = self.file_path.clone().unwrap();
-                            self.load_dotlottie(path);
-                        }
+                    if self.file_path.is_some() && ui.button("Reload").clicked() {
+                        let path = self.file_path.clone().unwrap();
+                        self.load_dotlottie(path);
                     }
                 });
 
@@ -435,7 +433,8 @@ impl eframe::App for Playground {
                     let (mx, my) = self.last_mouse_pos;
                     ui.label(format!("Mouse pos: ({mx:.0}, {my:.0})"));
 
-                    let events_to_post: &[(&str, fn(f32, f32) -> Event)] = &[
+                    type EventFactory = fn(f32, f32) -> Event;
+                    let events_to_post: &[(&str, EventFactory)] = &[
                         ("PointerDown", |x, y| Event::PointerDown { x, y }),
                         ("PointerUp", |x, y| Event::PointerUp { x, y }),
                         ("PointerMove", |x, y| Event::PointerMove { x, y }),

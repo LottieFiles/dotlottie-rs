@@ -267,6 +267,8 @@ impl<R: Renderer> LottieRendererImpl<R> {
             self.animation = None;
             self.background_shape = None;
         }
+        self.current_frame = 0.0;
+        self.updated = false;
         self.batch_slot_code = None;
         self.slots_dirty = false;
         self.slot_json_buffer.clear();

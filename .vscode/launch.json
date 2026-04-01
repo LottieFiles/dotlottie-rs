@@ -31,7 +31,8 @@
         "position_slot",
         "scalar_slot",
         "text_slot",
-        "vector_slot"
+        "vector_slot",
+        "sm_playground"
       ],
       "default": "simple_player"
     }

@@ -90,6 +90,7 @@ impl StateTrait for State {
                     background_color.unwrap_or(DEFAULT_BACKGROUND_COLOR),
                 ));
                 let _ = engine.player.set_segment(None);
+                engine.player.set_marker(None);
 
                 let marker_cstr = segment
                     .as_deref()
@@ -97,27 +98,31 @@ impl StateTrait for State {
                     .transpose()
                     .map_err(|_| StateMachineActionError::ParsingError)?;
 
-                engine.player.set_marker(marker_cstr.as_deref());
+                if !animation.is_empty() {
+                    let Ok(anim_cstr) = CString::new(animation.as_str()) else {
+                        return Err(StateMachineActionError::ParsingError);
+                    };
 
-                // set_mode() after set_marker() — set_marker() internally calls
-                // render(), which detects is_complete() for Reverse mode and fires
-                // a spurious OnComplete before the animation plays
-                engine.player.set_mode(defined_mode);
+                    let needs_load = engine.player.animation_id() != Some(&anim_cstr);
 
-                // set_autoplay must be called last as it triggers play/pause
-                engine.player.set_autoplay(autoplay.unwrap_or(false));
-
-                let Ok(anim_cstr) = CString::new(animation.as_str()) else {
-                    return Err(StateMachineActionError::ParsingError);
-                };
-
-                if !animation.is_empty()
-                    && engine.player.animation_id() != Some(&anim_cstr)
-                    && engine.player.render().is_ok()
-                {
-                    let _ = engine.player.load_animation(&anim_cstr, size.0, size.1);
+                    if needs_load {
+                        engine.player.set_autoplay(false);
+                        // Clear any active theme before loading a different animation.
+                        // load_animation() restores the saved theme after loading, but
+                        // themes are animation-specific — the old theme's slot values
+                        // may not exist in the new animation, causing render failures.
+                        #[cfg(feature = "theming")]
+                        {
+                            let _ = engine.player.reset_theme();
+                        }
+                        let _ = engine.player.load_animation(&anim_cstr, size.0, size.1);
+                    }
                 }
 
+                engine.player.set_marker(marker_cstr.as_deref());
+
+                engine.player.set_mode(defined_mode);
+                engine.player.set_autoplay(autoplay.unwrap_or(false));
                 /* Perform entry actions */
                 if let Some(actions) = entry_actions {
                     for action in actions {

@@ -98,23 +98,25 @@ impl StateTrait for State {
                     .transpose()
                     .map_err(|_| StateMachineActionError::ParsingError)?;
 
-                let Ok(anim_cstr) = CString::new(animation.as_str()) else {
-                    return Err(StateMachineActionError::ParsingError);
-                };
+                if !animation.is_empty() {
+                    let Ok(anim_cstr) = CString::new(animation.as_str()) else {
+                        return Err(StateMachineActionError::ParsingError);
+                    };
 
-                let needs_load = engine.player.animation_id() != Some(&anim_cstr);
+                    let needs_load = engine.player.animation_id() != Some(&anim_cstr);
 
-                if needs_load {
-                    engine.player.set_autoplay(false);
-                    // Clear any active theme before loading a different animation.
-                    // load_animation() restores the saved theme after loading, but
-                    // themes are animation-specific — the old theme's slot values
-                    // may not exist in the new animation, causing render failures.
-                    #[cfg(feature = "theming")]
-                    {
-                        let _ = engine.player.reset_theme();
+                    if needs_load {
+                        engine.player.set_autoplay(false);
+                        // Clear any active theme before loading a different animation.
+                        // load_animation() restores the saved theme after loading, but
+                        // themes are animation-specific — the old theme's slot values
+                        // may not exist in the new animation, causing render failures.
+                        #[cfg(feature = "theming")]
+                        {
+                            let _ = engine.player.reset_theme();
+                        }
+                        let _ = engine.player.load_animation(&anim_cstr, size.0, size.1);
                     }
-                    let _ = engine.player.load_animation(&anim_cstr, size.0, size.1);
                 }
 
                 engine.player.set_marker(marker_cstr.as_deref());

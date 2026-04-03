@@ -779,43 +779,6 @@ impl DotLottiePlayerWasm {
         self.player.set_transform(data.to_vec()).is_ok()
     }
 
-    // ── Tween ─────────────────────────────────────────────────────────────────
-
-    /// Tween to `to` frame.  `duration` in seconds; pass `undefined` for default.
-    pub fn tween(&mut self, to: f32, duration: Option<f32>) -> bool {
-        self.player.tween(to, duration, None).is_ok()
-    }
-
-    /// Tween with a cubic-bezier easing (`e0..e3`).
-    pub fn tween_with_easing(
-        &mut self,
-        to: f32,
-        duration: Option<f32>,
-        e0: f32,
-        e1: f32,
-        e2: f32,
-        e3: f32,
-    ) -> bool {
-        self.player
-            .tween(to, duration, Some([e0, e1, e2, e3]))
-            .is_ok()
-    }
-
-    pub fn tween_stop(&mut self) -> bool {
-        self.player.tween_stop().is_ok()
-    }
-
-    pub fn tween_update(&mut self, progress: Option<f32>) -> bool {
-        self.player.tween_update(progress).is_ok()
-    }
-
-    pub fn tween_to_marker(&mut self, marker: &str, duration: Option<f32>) -> bool {
-        let Ok(c) = CString::new(marker) else {
-            return false;
-        };
-        self.player.tween_to_marker(&c, duration, None).is_ok()
-    }
-
     // ── Markers ───────────────────────────────────────────────────────────────
 
     /// Returns an array of `{ name, time, duration }` objects.

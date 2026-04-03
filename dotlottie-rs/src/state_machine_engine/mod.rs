@@ -120,6 +120,7 @@ pub struct StateMachineEngine<'a> {
 
     // The state to target once blending has finished
     tween_transition_target_state: Option<State>,
+    tween_target_frame: Option<f32>,
 }
 
 impl<'a> StateMachineEngine<'a> {
@@ -324,7 +325,7 @@ impl<'a> StateMachineEngine<'a> {
             cached_background_color: player.background_color(),
             cached_segment: player.segment(),
             cached_marker: player.marker().map(CStr::to_owned),
-            cached_layout: *player.layout(),
+            cached_layout: player.layout(),
             player, // `player` Moved. Don't use after this point
             global_state: None,
             state_machine: StateMachine::default(),
@@ -344,6 +345,7 @@ impl<'a> StateMachineEngine<'a> {
             current_cycle_count: 0,
             action_mutated_inputs: false,
             tween_transition_target_state: None,
+            tween_target_frame: None,
         };
 
         if parsed_state_machine.is_err() {
@@ -646,7 +648,10 @@ impl<'a> StateMachineEngine<'a> {
 
             // Now use the extracted information
             if let Some(state) = state {
-                // Enter the state
+                if let Some(target_frame) = self.tween_target_frame.take() {
+                    self.player.sync_tween_frame(target_frame);
+                }
+
                 let _ = state.enter(self);
 
                 // Don't forget to put things back
@@ -689,14 +694,18 @@ impl<'a> StateMachineEngine<'a> {
             // Since the blended transition will take time
             // We have to save the target state and do the final transition when tweening has completed
             // The state machine is alerted of tweening finishing because the player calls the resume_from_tweening() method
-            //  Note: If the tweened transition targets a State without a segment, it will not tween and the target state is treated it usually would.
             if let Some(causing_transition) = causing_transition {
                 // If we dealing with a tweened transition
                 if let Transition::Tweened { .. } = causing_transition {
-                    // Clone segment before match to avoid partial move
-                    let segment_clone = match &new_state {
-                        State::PlaybackState { segment, .. } => segment.clone(),
+                    let segment_ref = match &new_state {
+                        State::PlaybackState { segment, .. } => segment.as_deref(),
                         _ => None,
+                    };
+                    let is_reverse = match &new_state {
+                        State::PlaybackState { mode, .. } => {
+                            matches!(mode, Some(Mode::Reverse | Mode::ReverseBounce))
+                        }
+                        _ => false,
                     };
                     match &new_state {
                         State::PlaybackState {
@@ -710,18 +719,43 @@ impl<'a> StateMachineEngine<'a> {
                                 .unwrap_or(false);
 
                             if same_animation {
-                                if let Some(target_segment) = segment_clone {
-                                    let target_segment_str =
-                                        CString::new(target_segment).unwrap_or_default();
-                                    let tween_result = self.player.tween_to_marker(
-                                        &target_segment_str,
-                                        Some(causing_transition.duration()),
-                                        Some(causing_transition.easing()),
+                                let target_frame = if let Some(target_segment) = segment_ref {
+                                    let marker_lookup = self
+                                        .player
+                                        .marker_names()
+                                        .iter()
+                                        .position(|n| n.to_str() == Ok(target_segment))
+                                        .and_then(|idx| {
+                                            self.player.marker_data().get(idx).copied()
+                                        });
+
+                                    marker_lookup.map(|(time, duration)| {
+                                        if is_reverse {
+                                            (time + duration)
+                                                .min(self.player.total_frames() - 1.0)
+                                        } else {
+                                            time
+                                        }
+                                    })
+                                } else {
+                                    Some(if is_reverse {
+                                        self.player.total_frames() - 1.0
+                                    } else {
+                                        0.0
+                                    })
+                                };
+
+                                if let Some(target_frame) = target_frame {
+                                    let tween_result = self.player.tween(
+                                        target_frame,
+                                        causing_transition.duration(),
+                                        causing_transition.easing(),
                                     );
 
                                     if tween_result.is_ok() {
                                         self.tween_transition_target_state =
                                             Some(new_state.clone());
+                                        self.tween_target_frame = Some(target_frame);
                                         self.status = StateMachineEngineStatus::Tweening;
                                         return Ok(());
                                     }

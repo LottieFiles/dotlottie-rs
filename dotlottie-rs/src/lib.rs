@@ -11,6 +11,7 @@ mod state_machine_engine;
 #[cfg(feature = "theming")]
 mod theme;
 pub(crate) mod time;
+mod tween;
 
 #[cfg(feature = "c_api")]
 pub mod c_api;
@@ -36,6 +37,7 @@ pub use markers::*;
 pub use player::*;
 pub use poll_events::*;
 pub use result::*;
+pub use tween::TweenStatus;
 #[cfg(feature = "state-machines")]
 pub use state_machine_engine::events::*;
 #[cfg(feature = "state-machines")]

@@ -1,0 +1,76 @@
+{
+  "initial": "forward_state",
+  "states": [
+    {
+      "name": "global",
+      "type": "GlobalState",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "reverse_state",
+          "duration": 0.001,
+          "easing": [0.76, 0.0, 0.24, 1.0],
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "trigger",
+              "compareTo": 1
+            }
+          ]
+        },
+        {
+          "type": "Tweened",
+          "toState": "reverse_no_segment_state",
+          "duration": 0.001,
+          "easing": [0.76, 0.0, 0.24, 1.0],
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "trigger",
+              "compareTo": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "forward_state",
+      "animation": "",
+      "autoplay": false,
+      "loop": false,
+      "segment": "angry",
+      "transitions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "reverse_state",
+      "animation": "",
+      "autoplay": false,
+      "loop": false,
+      "segment": "sad",
+      "mode": "Reverse",
+      "transitions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "reverse_no_segment_state",
+      "animation": "",
+      "autoplay": false,
+      "loop": false,
+      "mode": "Reverse",
+      "transitions": []
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    {
+      "type": "Numeric",
+      "name": "trigger",
+      "value": 0
+    }
+  ]
+}

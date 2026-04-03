@@ -1,0 +1,51 @@
+{
+  "initial": "segment_state",
+  "states": [
+    {
+      "name": "global",
+      "type": "GlobalState",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "no_segment_state",
+          "duration": 2.0,
+          "easing": [0.76, 0.0, 0.24, 1.0],
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "trigger",
+              "compareTo": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "segment_state",
+      "animation": "",
+      "autoplay": false,
+      "loop": false,
+      "segment": "angry",
+      "transitions": []
+    },
+    {
+      "type": "PlaybackState",
+      "name": "no_segment_state",
+      "animation": "",
+      "autoplay": false,
+      "loop": false,
+      "transitions": []
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    {
+      "type": "Numeric",
+      "name": "trigger",
+      "value": 0
+    }
+  ]
+}

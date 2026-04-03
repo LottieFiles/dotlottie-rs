@@ -116,7 +116,7 @@ pub struct DotLottiePlayer {
     segment: Option<[f32; 2]>,
     background_color: u32,
     layout: Layout,
-    marker: Option<usize>,    // marker id
+    marker: Option<usize>, // marker id
     tween_state: Option<TweenState>,
     #[cfg(feature = "theming")]
     theme_id: Option<CString>,

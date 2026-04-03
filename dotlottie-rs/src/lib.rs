@@ -37,7 +37,6 @@ pub use markers::*;
 pub use player::*;
 pub use poll_events::*;
 pub use result::*;
-pub use tween::TweenStatus;
 #[cfg(feature = "state-machines")]
 pub use state_machine_engine::events::*;
 #[cfg(feature = "state-machines")]
@@ -46,3 +45,4 @@ pub use state_machine_engine::security::*;
 pub use state_machine_engine::*;
 #[cfg(feature = "theming")]
 pub use theme::*;
+pub use tween::TweenStatus;

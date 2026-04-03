@@ -731,8 +731,7 @@ impl<'a> StateMachineEngine<'a> {
 
                                     marker_lookup.map(|(time, duration)| {
                                         if is_reverse {
-                                            (time + duration)
-                                                .min(self.player.total_frames() - 1.0)
+                                            (time + duration).min(self.player.total_frames() - 1.0)
                                         } else {
                                             time
                                         }

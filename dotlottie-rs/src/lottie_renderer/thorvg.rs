@@ -1,4 +1,3 @@
-
 use std::{
     error::Error,
     ffi::{c_char, CStr, CString},

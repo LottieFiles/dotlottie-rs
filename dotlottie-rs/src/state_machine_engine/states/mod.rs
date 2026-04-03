@@ -37,7 +37,7 @@ pub enum State {
         loop_count: Option<u32>,
         r#final: Option<bool>,
         autoplay: Option<bool>,
-        mode: Option<String>,
+        mode: Option<Mode>,
         speed: Option<f32>,
         segment: Option<String>,
         background_color: Option<u32>,
@@ -68,17 +68,10 @@ impl StateTrait for State {
                 entry_actions,
                 ..
             } => {
-                let mut defined_mode = Mode::Forward;
-
-                if let Some(new_mode) = mode {
-                    match new_mode.as_str() {
-                        "Forward" => defined_mode = Mode::Forward,
-                        "Reverse" => defined_mode = Mode::Reverse,
-                        "Bounce" => defined_mode = Mode::Bounce,
-                        "ReverseBounce" => defined_mode = Mode::ReverseBounce,
-                        _ => return Err(StateMachineActionError::ParsingError),
-                    }
-                }
+                let defined_mode = match mode {
+                    Some(m) => *m,
+                    None => Mode::Forward,
+                };
 
                 let size = engine.player.size();
 

@@ -187,18 +187,9 @@ pub trait LottieRenderer {
 
     fn updated(&self) -> bool;
 
-    fn tween(
-        &mut self,
-        to: f32,
-        duration: Option<f32>,
-        easing: Option<[f32; 4]>,
-    ) -> Result<(), LottieRendererError>;
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), LottieRendererError>;
 
-    fn is_tweening(&self) -> bool;
-
-    fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, LottieRendererError>;
-
-    fn tween_stop(&mut self) -> Result<(), LottieRendererError>;
+    fn sync_current_frame(&mut self, frame: f32);
 
     fn get_transform(&self) -> Result<[f32; 9], LottieRendererError>;
 
@@ -841,40 +832,16 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.updated
     }
 
-    fn tween(
-        &mut self,
-        to: f32,
-        duration: Option<f32>,
-        easing: Option<[f32; 4]>,
-    ) -> Result<(), LottieRendererError> {
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), LottieRendererError> {
         self.get_animation_mut()?
-            .tween(to, duration, easing)
-            .map_err(into_lottie::<R>)
+            .tween(from, to, progress)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
     }
 
-    fn is_tweening(&self) -> bool {
-        self.get_animation()
-            .map(|animation| animation.is_tweening())
-            .unwrap_or(false)
-    }
-
-    fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, LottieRendererError> {
-        let result = self
-            .get_animation_mut()?
-            .tween_update(progress)
-            .map_err(into_lottie::<R>);
-
-        if result.is_ok() {
-            self.updated = true;
-        }
-
-        result
-    }
-
-    fn tween_stop(&mut self) -> Result<(), LottieRendererError> {
-        self.get_animation_mut()?
-            .tween_stop()
-            .map_err(into_lottie::<R>)
+    fn sync_current_frame(&mut self, frame: f32) {
+        self.current_frame = frame;
     }
 
     fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError> {

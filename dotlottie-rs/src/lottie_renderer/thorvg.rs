@@ -1,5 +1,3 @@
-use crate::time::Instant;
-
 use std::{
     error::Error,
     ffi::{c_char, CStr, CString},
@@ -375,18 +373,9 @@ impl Drop for TvgRenderer {
     }
 }
 
-struct TweenState {
-    from: f32,
-    to: f32,
-    start_time: Option<Instant>,
-    duration: Option<f32>,
-    easing: Option<[f32; 4]>,
-}
-
 pub struct TvgAnimation {
     raw_animation: tvg::Tvg_Animation,
     raw_paint: tvg::Tvg_Paint,
-    tween_state: Option<TweenState>,
     data: Option<CString>,
 }
 
@@ -398,7 +387,6 @@ impl Default for TvgAnimation {
         Self {
             raw_animation,
             raw_paint,
-            tween_state: None,
             data: None,
         }
     }
@@ -621,116 +609,11 @@ impl Animation for TvgAnimation {
         unsafe { tvg::tvg_lottie_animation_set_quality(self.raw_animation, quality).into_result() }
     }
 
-    fn tween(
-        &mut self,
-        to: f32,
-        duration: Option<f32>,
-        easing: Option<[f32; 4]>,
-    ) -> Result<(), TvgError> {
-        if self.is_tweening() {
-            return Err(TvgError::InvalidArgument);
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), TvgError> {
+        unsafe {
+            tvg::tvg_lottie_animation_tween(self.raw_animation, from, to, progress);
         }
-        if duration.is_some() && duration.unwrap() <= 0.0 {
-            return Err(TvgError::InvalidArgument);
-        }
-        if let Some([x1, y1, x2, y2]) = easing {
-            if !(0.0..=1.0).contains(&x1)
-                || !(0.0..=1.0).contains(&x2)
-                || !y1.is_finite()
-                || !y2.is_finite()
-            {
-                return Err(TvgError::InvalidArgument);
-            }
-        }
-
-        let from = self.get_frame()?;
-
-        self.tween_state = Some(TweenState {
-            start_time: {
-                if duration.is_some() {
-                    Some(Instant::now())
-                } else {
-                    None
-                }
-            },
-            from,
-            to,
-            duration,
-            easing,
-        });
-
         Ok(())
-    }
-
-    fn is_tweening(&self) -> bool {
-        self.tween_state.is_some()
-    }
-
-    fn tween_stop(&mut self) -> Result<(), TvgError> {
-        self.tween_state = None;
-
-        Ok(())
-    }
-
-    fn tween_update(&mut self, given_progress: Option<f32>) -> Result<bool, TvgError> {
-        if let Some(tween_state) = self.tween_state.as_ref() {
-            if tween_state.duration.is_none() {
-                if given_progress.is_none() {
-                    return Err(TvgError::InvalidArgument);
-                }
-
-                let progress = given_progress.unwrap();
-                if !progress.is_finite() {
-                    return Err(TvgError::InvalidArgument);
-                }
-
-                unsafe {
-                    tvg::tvg_lottie_animation_tween(
-                        self.raw_animation,
-                        tween_state.from,
-                        tween_state.to,
-                        progress,
-                    );
-                };
-
-                if progress >= 1.0 {
-                    self.tween_state = None;
-                    return Ok(false);
-                }
-
-                return Ok(true);
-            }
-        }
-
-        if let Some(tween_state) = self.tween_state.as_mut() {
-            let elapsed = Instant::now().duration_since(tween_state.start_time.unwrap());
-            let t = elapsed.as_secs_f32() / tween_state.duration.unwrap();
-            let completed = t >= 1.0;
-            let progress = if completed {
-                1.0
-            } else {
-                let [x1, y1, x2, y2] = tween_state.easing.unwrap_or([0.0, 0.0, 1.0, 1.0]);
-                bezier::cubic_bezier(t, x1, y1, x2, y2)
-            };
-
-            unsafe {
-                tvg::tvg_lottie_animation_tween(
-                    self.raw_animation,
-                    tween_state.from,
-                    tween_state.to,
-                    progress,
-                );
-            };
-
-            if completed {
-                self.tween_state = None;
-                Ok(false)
-            } else {
-                Ok(true)
-            }
-        } else {
-            Ok(false)
-        }
     }
 
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), TvgError> {
@@ -826,88 +709,6 @@ impl Shape for TvgShape {
 
     fn reset(&mut self) -> Result<(), TvgError> {
         unsafe { tvg::tvg_shape_reset(self.raw_shape).into_result() }
-    }
-}
-
-mod bezier {
-    /// Computes the x-coordinate of the cubic Bézier for parameter `u`.
-    /// P0 = 0, P1 = (x1, _), P2 = (x2, _), P3 = 1.
-    pub(super) fn sample_curve_x(u: f32, x1: f32, x2: f32) -> f32 {
-        let inv_u = 1.0 - u;
-        3.0 * inv_u * inv_u * u * x1 + 3.0 * inv_u * u * u * x2 + u * u * u
-    }
-
-    /// Computes the y-coordinate of the cubic Bézier for parameter `u`.
-    /// P0 = 0, P1 = (_, y1), P2 = (_, y2), P3 = 1.
-    pub(super) fn sample_curve_y(u: f32, y1: f32, y2: f32) -> f32 {
-        let inv_u = 1.0 - u;
-        3.0 * inv_u * inv_u * u * y1 + 3.0 * inv_u * u * u * y2 + u * u * u
-    }
-
-    /// Computes the derivative dx/du for a given u.
-    fn sample_curve_derivative_x(u: f32, x1: f32, x2: f32) -> f32 {
-        let inv_u = 1.0 - u;
-        3.0 * inv_u * inv_u * x1 + 6.0 * inv_u * u * (x2 - x1) + 3.0 * u * u * (1.0 - x2)
-    }
-
-    /// Uses binary subdivision to find a parameter u such that sample_curve_x(u) ≈ t.
-    fn binary_subdivide(t: f32, x1: f32, x2: f32) -> f32 {
-        let mut a = 0.0;
-        let mut b = 1.0;
-        let mut u = t;
-        for _ in 0..10 {
-            let x = sample_curve_x(u, x1, x2);
-            if (x - t).abs() < 1e-6 {
-                return u;
-            }
-            if x > t {
-                b = u;
-            } else {
-                a = u;
-            }
-            u = (a + b) * 0.5;
-        }
-        u
-    }
-
-    /// Given a linear progress t in [0,1], uses a cubic Bézier easing function to compute
-    /// an eased progress value. Output can exceed [0,1] when y-values are outside that range
-    /// (e.g., overshoot/bounce easing curves).
-    ///
-    /// The cubic Bézier is defined by:
-    ///   P0 = (0, 0)
-    ///   P1 = (x1, y1)
-    ///   P2 = (x2, y2)
-    ///   P3 = (1, 1)
-    pub(super) fn cubic_bezier(t: f32, x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
-        if t <= 0.0 {
-            return 0.0;
-        }
-        if t >= 1.0 {
-            return 1.0;
-        }
-
-        // First try Newton–Raphson iteration.
-        let mut u = t;
-        for _ in 0..8 {
-            let x = sample_curve_x(u, x1, x2);
-            let dx = sample_curve_derivative_x(u, x1, x2);
-            if dx.abs() < 1e-6 {
-                break;
-            }
-            let delta = (x - t) / dx;
-            u -= delta;
-            if delta.abs() < 1e-6 {
-                break;
-            }
-        }
-
-        // Fallback to binary subdivision if necessary.
-        if !(0.0..=1.0).contains(&u) {
-            u = binary_subdivide(t, x1, x2);
-        }
-        u = u.clamp(0.0, 1.0);
-        sample_curve_y(u, y1, y2)
     }
 }
 

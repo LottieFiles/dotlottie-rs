@@ -1,4 +1,5 @@
 use crate::time::{Duration, Instant};
+use serde::Deserialize;
 use std::ffi::{CStr, CString};
 use std::{fs, mem};
 
@@ -8,6 +9,7 @@ use crate::{
     extract_markers,
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
+    tween::{TweenState, TweenStatus},
     Marker,
 };
 use crate::{ColorSpace, Renderer};
@@ -22,7 +24,7 @@ pub enum PlaybackState {
     Stopped,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 #[repr(C)]
 pub enum Mode {
     Forward,
@@ -115,6 +117,7 @@ pub struct DotLottiePlayer {
     background_color: u32,
     layout: Layout,
     marker: Option<usize>, // marker id
+    tween_state: Option<TweenState>,
     #[cfg(feature = "theming")]
     theme_id: Option<CString>,
     #[cfg(feature = "dotlottie")]
@@ -170,6 +173,7 @@ impl DotLottiePlayer {
             background_color: DEFAULT_BACKGROUND_COLOR,
             layout: Layout::default(),
             marker: None,
+            tween_state: None,
             #[cfg(feature = "theming")]
             theme_id: None,
             #[cfg(feature = "dotlottie")]
@@ -255,7 +259,7 @@ impl DotLottiePlayer {
         max_frame
     }
 
-    fn start_frame(&self) -> f32 {
+    pub(crate) fn start_frame(&self) -> f32 {
         if let Some((start, _)) = self.cached_start_end_frame {
             start
         } else {
@@ -263,7 +267,7 @@ impl DotLottiePlayer {
         }
     }
 
-    fn end_frame(&self) -> f32 {
+    pub(crate) fn end_frame(&self) -> f32 {
         if let Some((_, end)) = self.cached_start_end_frame {
             end
         } else {
@@ -757,13 +761,16 @@ impl DotLottiePlayer {
         }
 
         if let Some(name) = marker_name {
-            if let Some((idx, time, _)) = self.find_marker(name) {
-                self.start_time = Instant::now();
+            if let Some((idx, time, duration)) = self.find_marker(name) {
                 self.marker = Some(idx);
                 self.invalidate_frame_cache();
 
-                let _ = self.set_frame(time);
-                let _ = self.render();
+                let frame = self.current_frame();
+                if frame < time || frame > time + duration {
+                    self.start_time = Instant::now();
+                    let _ = self.set_frame(time);
+                    let _ = self.render();
+                }
             } else {
                 self.marker = None;
                 self.invalidate_frame_cache();
@@ -788,8 +795,8 @@ impl DotLottiePlayer {
         Ok(())
     }
 
-    pub fn layout(&self) -> &Layout {
-        &self.layout
+    pub fn layout(&self) -> Layout {
+        self.layout
     }
 
     pub fn set_mode(&mut self, mode: Mode) {
@@ -1554,55 +1561,45 @@ impl DotLottiePlayer {
     pub fn tween(
         &mut self,
         to: f32,
-        duration: Option<f32>,
-        easing: Option<[f32; 4]>,
+        duration: f32,
+        easing: [f32; 4],
     ) -> Result<(), DotLottiePlayerError> {
-        self.renderer.tween(to, duration, easing)?;
-        Ok(())
-    }
-
-    pub fn tween_stop(&mut self) -> Result<(), DotLottiePlayerError> {
-        self.renderer.tween_stop()?;
-        Ok(())
-    }
-
-    pub fn tween_to_marker(
-        &mut self,
-        marker: &CStr,
-        duration: Option<f32>,
-        easing: Option<[f32; 4]>,
-    ) -> Result<(), DotLottiePlayerError> {
-        if let Some((idx, time, _)) = self.find_marker(marker) {
-            self.tween(time, duration, easing)?;
-
-            self.marker = Some(idx);
-
-            self.invalidate_frame_cache();
-
-            Ok(())
-        } else {
-            Err(DotLottiePlayerError::InvalidParameter)
+        if self.is_tweening() {
+            return Err(DotLottiePlayerError::InsufficientCondition);
         }
+        let from = self.current_frame();
+        self.tween_state = Some(TweenState::new(from, to, duration, easing)?);
+        Ok(())
     }
 
+    #[inline]
     pub fn is_tweening(&self) -> bool {
-        self.renderer.is_tweening()
+        self.tween_state.is_some()
     }
 
-    pub fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, DotLottiePlayerError> {
-        match self.renderer.tween_update(progress) {
-            Ok(still_tweening) => {
-                if !still_tweening {
-                    // Tween completed — reset start_time so tick() calculates the next frame correctly
-                    self.start_time = Instant::now();
-                }
-                Ok(still_tweening)
-            }
-            Err(e) => {
-                self.start_time = Instant::now();
-                Err(e.into())
-            }
+    pub(crate) fn sync_tween_frame(&mut self, frame: f32) {
+        self.renderer.sync_current_frame(frame);
+        self.update_start_time_for_frame(frame);
+    }
+
+    pub fn tween_advance(&mut self) -> Result<TweenStatus, DotLottiePlayerError> {
+        let tween = self
+            .tween_state
+            .as_ref()
+            .ok_or(DotLottiePlayerError::InsufficientCondition)?;
+
+        let (status, progress) = tween.update();
+        let from = tween.from;
+        let to = tween.to;
+
+        self.renderer.tween(from, to, progress)?;
+
+        if status == TweenStatus::Completed {
+            self.update_start_time_for_frame(to);
+            self.tween_state = None;
         }
+
+        Ok(status)
     }
 
     pub fn get_transform(&self) -> Vec<f32> {
@@ -1640,12 +1637,10 @@ impl DotLottiePlayer {
 
     pub fn tick(&mut self) -> Result<(), DotLottiePlayerError> {
         if self.is_tweening() {
-            match self.tween_update(None) {
+            match self.tween_advance() {
                 Ok(_) => self.render(),
                 Err(e) => {
-                    // Clear tween state to prevent infinite error loops
-                    // (e.g., manual-progress tween where tick provides no progress)
-                    let _ = self.tween_stop();
+                    self.tween_state = None;
                     Err(e)
                 }
             }

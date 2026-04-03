@@ -652,7 +652,7 @@ pub unsafe extern "C" fn dotlottie_get_layout(
         if result.is_null() {
             return DotLottieResult::InvalidParameter;
         }
-        *result = *dotlottie_player.layout();
+        *result = dotlottie_player.layout();
         DotLottieResult::Success
     })
 }

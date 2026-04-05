@@ -30,7 +30,7 @@ tvg-ttf = []
 tvg-threads = []
 tvg-simd = []
 tracking_allocator = []
-dotlottie = ["dep:zip"]
+dotlottie = []
 state-machines = ["dotlottie"]
 theming = ["dotlottie"]
 wasm-bindgen-api = ["dep:console_error_panic_hook"] # OOP JS wrapper via wasm-bindgen
@@ -43,7 +43,6 @@ audio = ["dotlottie", "dep:rodio", "dep:ndk-context", "web-sys/HtmlAudioElement"
 serde_json = { version = "1.0", default-features = false, features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
 rustc-hash = "2.1.1"
-zip = { version = "2.4.2", default-features = false, features = ["deflate"], optional = true }
 bitflags = { version = "2.6", optional = true }
 
 [target.'cfg(target_os = "android")'.dependencies]

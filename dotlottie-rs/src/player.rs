@@ -4,6 +4,8 @@ use std::{fs, mem};
 
 #[cfg(feature = "audio")]
 use crate::audio::AudioManager;
+#[cfg(feature = "dotlottie")]
+use crate::dotlottie::{Manifest, Reader};
 use crate::poll_events::{EventQueue, PlayerEvent};
 use crate::PlayerError;
 use crate::{
@@ -13,8 +15,6 @@ use crate::{
     Marker,
 };
 use crate::{ColorSpace, Renderer, Rgba};
-#[cfg(feature = "dotlottie")]
-use crate::{DotLottieManager, Manifest};
 #[cfg(feature = "state-machines")]
 use crate::{StateMachineEngine, StateMachineEngineError};
 
@@ -62,7 +62,7 @@ pub struct Player {
     elapsed_frames: f32,
     current_loop_count: u32,
     #[cfg(feature = "dotlottie")]
-    dotlottie_manager: Option<DotLottieManager>,
+    dotlottie_reader: Option<Reader>,
     #[cfg(feature = "audio")]
     audio_manager: Option<AudioManager>,
     direction: Direction,
@@ -136,7 +136,7 @@ impl Player {
             #[cfg(feature = "dotlottie")]
             animation_id: None,
             #[cfg(feature = "dotlottie")]
-            dotlottie_manager: None,
+            dotlottie_reader: None,
             #[cfg(feature = "audio")]
             audio_manager: None,
             direction: Direction::Forward,
@@ -293,7 +293,7 @@ impl Player {
 
     #[cfg(feature = "dotlottie")]
     pub fn manifest(&self) -> Option<&Manifest> {
-        self.dotlottie_manager
+        self.dotlottie_reader
             .as_ref()
             .map(|manager| manager.manifest())
     }
@@ -306,9 +306,9 @@ impl Player {
     pub fn get_state_machine(&self, state_machine_id: &CStr) -> Option<String> {
         let id_str = state_machine_id.to_str().ok()?;
 
-        self.dotlottie_manager
+        self.dotlottie_reader
             .as_ref()
-            .and_then(|manager| manager.get_state_machine(id_str).ok())
+            .and_then(|manager| manager.state_machine(id_str).ok())
     }
 
     fn next_frame(&mut self) -> f32 {
@@ -857,7 +857,7 @@ impl Player {
     pub fn load_animation_data(&mut self, animation_data: &CStr) -> Result<(), PlayerError> {
         #[cfg(feature = "dotlottie")]
         {
-            self.dotlottie_manager = None;
+            self.dotlottie_reader = None;
             self.animation_id = None;
         }
         #[cfg(feature = "theming")]
@@ -882,7 +882,7 @@ impl Player {
     pub fn load_animation_path(&mut self, file_path: &CStr) -> Result<(), PlayerError> {
         #[cfg(feature = "dotlottie")]
         {
-            self.dotlottie_manager = None;
+            self.dotlottie_reader = None;
             self.animation_id = None;
         }
         #[cfg(feature = "theming")]
@@ -914,30 +914,30 @@ impl Player {
         {
             self.theme_id = None;
         }
-        let manager = DotLottieManager::new(file_data).map_err(|_| PlayerError::Unknown)?;
+        let manager = Reader::new(file_data).map_err(|_| PlayerError::Unknown)?;
 
-        let (active_animation, active_animation_id) =
+        let (initial_animation, initial_animation_id) =
             if let Some(anim_id) = self.animation_id.as_deref().and_then(|c| c.to_str().ok()) {
-                (manager.get_animation(anim_id), self.animation_id.clone())
+                (manager.animation(anim_id), self.animation_id.clone())
             } else {
                 (
-                    manager.get_active_animation(),
-                    CString::new(manager.active_animation_id()).ok(),
+                    manager.initial_animation(),
+                    CString::new(manager.initial_animation_id()).ok(),
                 )
             };
 
-        let animation_data = active_animation.map_err(|_| PlayerError::Unknown)?;
+        let animation_data = initial_animation.map_err(|_| PlayerError::Unknown)?;
 
         let animation_data_cstr = CString::new(animation_data).map_err(|_| PlayerError::Unknown)?;
 
-        self.dotlottie_manager = Some(manager);
+        self.dotlottie_reader = Some(manager);
 
         #[cfg(feature = "audio")]
         {
             self.audio_manager = self
-                .dotlottie_manager
+                .dotlottie_reader
                 .as_ref()
-                .and_then(|dm| dm.get_audio_assets())
+                .and_then(|dm| dm.audio_assets())
                 .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
         }
 
@@ -945,7 +945,7 @@ impl Player {
             self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr));
 
         if result.is_ok() {
-            self.animation_id = active_animation_id;
+            self.animation_id = initial_animation_id;
         }
 
         if result.is_ok() {
@@ -967,16 +967,16 @@ impl Player {
             .to_str()
             .map_err(|_| PlayerError::InvalidParameter)?;
 
-        if let Some(manager) = &mut self.dotlottie_manager {
+        if let Some(manager) = &mut self.dotlottie_reader {
             #[cfg(feature = "theming")]
             let saved_theme_id = self.theme_id.clone();
 
             let lookup_id = if anim_id_str.is_empty() {
-                manager.active_animation_id()
+                manager.initial_animation_id()
             } else {
                 anim_id_str.to_string()
             };
-            let animation_data = manager.get_animation(&lookup_id);
+            let animation_data = manager.animation(&lookup_id);
 
             let result = match animation_data {
                 Ok(animation_data) => {
@@ -993,9 +993,9 @@ impl Player {
                 #[cfg(feature = "audio")]
                 {
                     self.audio_manager = self
-                        .dotlottie_manager
+                        .dotlottie_reader
                         .as_ref()
-                        .and_then(|dm| dm.get_audio_assets())
+                        .and_then(|dm| dm.audio_assets())
                         .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
                 }
 
@@ -1065,7 +1065,7 @@ impl Player {
             return Ok(());
         }
 
-        if self.dotlottie_manager.is_none() {
+        if self.dotlottie_reader.is_none() {
             return Err(PlayerError::InsufficientCondition);
         }
 
@@ -1100,9 +1100,9 @@ impl Player {
         };
 
         let result = self
-            .dotlottie_manager
+            .dotlottie_reader
             .as_mut()
-            .and_then(|manager| manager.get_theme(theme_id_str).ok())
+            .and_then(|manager| manager.theme(theme_id_str).ok())
             .map(|theme| {
                 let anim_id_str = self
                     .animation_id

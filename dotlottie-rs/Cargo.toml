@@ -29,7 +29,7 @@ tvg-webp = []
 tvg-ttf = []
 tvg-threads = []
 tvg-simd = []
-dotlottie = ["dep:zip"]
+dotlottie = []
 state-machines = ["dotlottie"]
 theming = ["dotlottie"]
 wasm = []                                       # base: enables libc/C++ stubs for wasm32-unknown-unknown
@@ -41,7 +41,6 @@ webgpu = ["wasm-bindgen-api", "web-sys/Gpu", "web-sys/GpuAdapter", "web-sys/GpuA
 [dependencies]
 serde_json = { version = "1.0", default-features = false, features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
-zip = { version = "2.4.2", default-features = false, features = ["deflate"], optional = true }
 bitflags = { version = "2.6", optional = true }
 
 [target.wasm32-unknown-unknown.dependencies]

@@ -1,5 +1,4 @@
-#[cfg(feature = "dotlottie")]
-mod fms;
+pub mod io;
 mod layout;
 mod lottie_renderer;
 mod markers;
@@ -30,7 +29,7 @@ pub(crate) mod webgpu_stubs;
 pub mod wasm_bindgen_api;
 
 #[cfg(feature = "dotlottie")]
-pub use fms::*;
+pub use io::dotlottie;
 pub use layout::*;
 pub use lottie_renderer::*;
 pub use markers::*;

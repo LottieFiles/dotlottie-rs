@@ -16,6 +16,8 @@ mod tween;
 #[cfg(feature = "c_api")]
 pub mod c_api;
 
+pub mod tools;
+
 // wasm32-unknown-unknown modules
 #[cfg(all(target_arch = "wasm32", feature = "wasm"))]
 mod stubs;

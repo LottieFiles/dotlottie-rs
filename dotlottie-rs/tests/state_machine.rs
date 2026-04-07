@@ -33,10 +33,7 @@ mod tests {
             .read_exact(&mut markers_buffer)
             .expect("buffer overflow");
 
-        assert_eq!(
-            player.load_dotlottie_data(&markers_buffer, 500, 500),
-            Ok(())
-        );
+        assert_eq!(player.load_dotlottie_data(&markers_buffer), Ok(()));
 
         assert!(player.is_playing());
 
@@ -348,11 +345,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok());
 
         let mut sm = player
@@ -399,11 +394,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok());
 
         let mut sm = player
@@ -446,11 +439,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok());
 
         let mut sm = player
@@ -500,11 +491,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok());
 
         let mut sm = player

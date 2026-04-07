@@ -233,7 +233,7 @@ mod webgpu_impl {
 
                 let c_data = CString::new(animation_data).expect("CString conversion failed");
 
-                if player.load_animation_data(&c_data, width, height).is_err() {
+                if player.load_animation_data(&c_data).is_err() {
                     eprintln!("Failed to load animation");
                     return;
                 }
@@ -318,7 +318,7 @@ mod webgpu_impl {
                     if success {
                         // Reload animation with new size
                         let path = CString::new("src/bouncy_ball.json").unwrap();
-                        let _ = player.load_animation_path(&path, new_width, new_height);
+                        let _ = player.load_animation_path(&path);
                         let _ = player.play();
 
                         self.current_width = new_width;

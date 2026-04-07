@@ -73,8 +73,6 @@ impl StateTrait for State {
                     None => Mode::Forward,
                 };
 
-                let size = engine.player.size();
-
                 // Apply individual settings, preserving layout and use_frame_interpolation
                 engine.player.set_loop(r#loop.unwrap_or(false));
                 engine.player.set_loop_count(loop_count.unwrap_or(0));
@@ -108,7 +106,7 @@ impl StateTrait for State {
                         {
                             let _ = engine.player.reset_theme();
                         }
-                        let _ = engine.player.load_animation(&anim_cstr, size.0, size.1);
+                        let _ = engine.player.load_animation(&anim_cstr);
                     }
                 }
 

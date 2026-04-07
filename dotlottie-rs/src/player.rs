@@ -992,21 +992,16 @@ impl DotLottiePlayer {
         Ok(())
     }
 
-    fn load_animation_common<F>(
-        &mut self,
-        loader: F,
-        width: u32,
-        height: u32,
-    ) -> Result<(), DotLottiePlayerError>
+    fn load_animation_common<F>(&mut self, loader: F) -> Result<(), DotLottiePlayerError>
     where
-        F: FnOnce(&mut dyn LottieRenderer, u32, u32) -> Result<(), LottieRendererError>,
+        F: FnOnce(&mut dyn LottieRenderer) -> Result<(), LottieRendererError>,
     {
         self.clear();
         self.playback_state = PlaybackState::Stopped;
         self.start_time = Instant::now();
         self.current_loop_count = 0;
 
-        let loaded = loader(&mut *self.renderer, width, height).is_ok()
+        let loaded = loader(&mut *self.renderer).is_ok()
             && self
                 .renderer
                 .set_background_color(self.background_color)
@@ -1044,8 +1039,6 @@ impl DotLottiePlayer {
     pub fn load_animation_data(
         &mut self,
         animation_data: &CStr,
-        width: u32,
-        height: u32,
     ) -> Result<(), DotLottiePlayerError> {
         #[cfg(feature = "dotlottie")]
         {
@@ -1064,11 +1057,7 @@ impl DotLottiePlayer {
             self.marker_data = data;
         }
 
-        let result = self.load_animation_common(
-            |renderer, w, h| renderer.load_data(animation_data, w, h),
-            width,
-            height,
-        );
+        let result = self.load_animation_common(|renderer| renderer.load_data(animation_data));
 
         if result.is_ok() {
             self.event_queue.push(DotLottieEvent::Load);
@@ -1082,12 +1071,7 @@ impl DotLottiePlayer {
         result
     }
 
-    pub fn load_animation_path(
-        &mut self,
-        file_path: &CStr,
-        width: u32,
-        height: u32,
-    ) -> Result<(), DotLottiePlayerError> {
+    pub fn load_animation_path(&mut self, file_path: &CStr) -> Result<(), DotLottiePlayerError> {
         #[cfg(feature = "dotlottie")]
         {
             self.dotlottie_manager = None;
@@ -1105,7 +1089,7 @@ impl DotLottiePlayer {
                 fs::read_to_string(path_str).map_err(|_| DotLottiePlayerError::InvalidParameter)?;
             let c_data = CString::new(data).map_err(|_| DotLottiePlayerError::InvalidParameter)?;
 
-            self.load_animation_data(&c_data, width, height)
+            self.load_animation_data(&c_data)
         })();
 
         result.inspect_err(|_| {
@@ -1114,12 +1098,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(feature = "dotlottie")]
-    pub fn load_dotlottie_data(
-        &mut self,
-        file_data: &[u8],
-        width: u32,
-        height: u32,
-    ) -> Result<(), DotLottiePlayerError> {
+    pub fn load_dotlottie_data(&mut self, file_data: &[u8]) -> Result<(), DotLottiePlayerError> {
         #[cfg(feature = "dotlottie")]
         {
             self.animation_id = None;
@@ -1152,11 +1131,8 @@ impl DotLottiePlayer {
 
         self.dotlottie_manager = Some(manager);
 
-        let result = self.load_animation_common(
-            |renderer, w, h| renderer.load_data(&animation_data_cstr, w, h),
-            width,
-            height,
-        );
+        let result =
+            self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr));
 
         if result.is_ok() {
             self.animation_id = active_animation_id;
@@ -1176,12 +1152,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(feature = "dotlottie")]
-    pub fn load_animation(
-        &mut self,
-        animation_id: &CStr,
-        width: u32,
-        height: u32,
-    ) -> Result<(), DotLottiePlayerError> {
+    pub fn load_animation(&mut self, animation_id: &CStr) -> Result<(), DotLottiePlayerError> {
         let anim_id_str = animation_id
             .to_str()
             .map_err(|_| DotLottiePlayerError::InvalidParameter)?;
@@ -1205,11 +1176,7 @@ impl DotLottiePlayer {
 
                     let animation_data_cstr =
                         CString::new(animation_data).expect("Failed to create CString");
-                    self.load_animation_common(
-                        |renderer, w, h| renderer.load_data(&animation_data_cstr, w, h),
-                        width,
-                        height,
-                    )
+                    self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr))
                 }
                 Err(_error) => Err(DotLottiePlayerError::Unknown),
             };
@@ -1235,11 +1202,6 @@ impl DotLottiePlayer {
         } else {
             Err(DotLottiePlayerError::Unknown)
         }
-    }
-
-    pub fn resize(&mut self, width: u32, height: u32) -> Result<(), DotLottiePlayerError> {
-        self.renderer.resize(width, height)?;
-        Ok(())
     }
 
     pub fn is_complete(&self) -> bool {

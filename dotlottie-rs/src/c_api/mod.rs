@@ -174,15 +174,13 @@ pub unsafe extern "C" fn dotlottie_destroy(ptr: *mut DotLottiePlayer) -> DotLott
 pub unsafe extern "C" fn dotlottie_load_animation_data(
     ptr: *mut DotLottiePlayer,
     animation_data: *const c_char,
-    width: u32,
-    height: u32,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if animation_data.is_null() {
             return DotLottieResult::InvalidParameter;
         }
         let data = CStr::from_ptr(animation_data);
-        dotlottie_player.load_animation_data(data, width, height)
+        dotlottie_player.load_animation_data(data)
     })
 }
 
@@ -190,15 +188,13 @@ pub unsafe extern "C" fn dotlottie_load_animation_data(
 pub unsafe extern "C" fn dotlottie_load_animation_path(
     ptr: *mut DotLottiePlayer,
     animation_path: *const c_char,
-    width: u32,
-    height: u32,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if animation_path.is_null() {
             return DotLottieResult::InvalidParameter;
         }
         let path = CStr::from_ptr(animation_path);
-        dotlottie_player.load_animation_path(path, width, height)
+        dotlottie_player.load_animation_path(path)
     })
 }
 
@@ -207,8 +203,6 @@ pub unsafe extern "C" fn dotlottie_load_animation_path(
 pub unsafe extern "C" fn dotlottie_load_animation(
     ptr: *mut DotLottiePlayer,
     animation_id: *const c_char,
-    width: u32,
-    height: u32,
 ) -> DotLottieResult {
     #[cfg(not(feature = "dotlottie"))]
     {
@@ -221,7 +215,7 @@ pub unsafe extern "C" fn dotlottie_load_animation(
                 return DotLottieResult::InvalidParameter;
             }
             let id = CStr::from_ptr(animation_id);
-            dotlottie_player.load_animation(id, width, height)
+            dotlottie_player.load_animation(id)
         })
     }
 }
@@ -232,8 +226,6 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     ptr: *mut DotLottiePlayer,
     file_data: *const c_char,
     file_size: usize,
-    width: u32,
-    height: u32,
 ) -> DotLottieResult {
     #[cfg(not(feature = "dotlottie"))]
     {
@@ -246,7 +238,7 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
                 return DotLottieResult::InvalidParameter;
             }
             let file_slice = slice::from_raw_parts(file_data as *const u8, file_size);
-            dotlottie_player.load_dotlottie_data(file_slice, width, height)
+            dotlottie_player.load_dotlottie_data(file_slice)
         })
     }
 }
@@ -820,17 +812,6 @@ pub unsafe extern "C" fn dotlottie_render(ptr: *mut DotLottiePlayer) -> DotLotti
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_tick(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player.tick())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_resize(
-    ptr: *mut DotLottiePlayer,
-    width: u32,
-    height: u32,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        dotlottie_player.resize(width, height)
-    })
 }
 
 #[no_mangle]

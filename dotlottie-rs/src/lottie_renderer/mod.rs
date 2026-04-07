@@ -88,12 +88,7 @@ pub trait LottieRenderer {
         target_type: WgpuTargetType,
     ) -> Result<(), LottieRendererError>;
 
-    fn load_data(
-        &mut self,
-        data: &CStr,
-        width: u32,
-        height: u32,
-    ) -> Result<(), LottieRendererError>;
+    fn load_data(&mut self, data: &CStr) -> Result<(), LottieRendererError>;
 
     fn picture_width(&self) -> f32;
 
@@ -118,8 +113,6 @@ pub trait LottieRenderer {
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), LottieRendererError>;
 
     fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError>;
-
-    fn resize(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError>;
 
     fn set_background_color(&mut self, hex_color: u32) -> Result<(), LottieRendererError>;
 
@@ -265,6 +258,29 @@ impl<R: Renderer> LottieRendererImpl<R> {
         self.slot_json_buffer.clear();
         self.slot_values.clear();
         self.default_slots.clear();
+        Ok(())
+    }
+
+    /// Updates the animation layout after the canvas dimensions have changed.
+    /// Called by `set_*_target` when width/height differ from the previous values.
+    fn resize(&mut self) -> Result<(), LottieRendererError> {
+        if self.animation.is_some() {
+            let _ = self.renderer.sync();
+            self.apply_user_transform()?;
+        }
+
+        if self.background_shape.is_some() {
+            let w = self.width as f32;
+            let h = self.height as f32;
+            self.get_background_shape_mut()?
+                .append_rect(0.0, 0.0, w, h, 0.0, 0.0)
+                .map_err(into_lottie::<R>)?;
+        }
+
+        if self.animation.is_some() || self.background_shape.is_some() {
+            self.updated = true;
+        }
+
         Ok(())
     }
 
@@ -456,7 +472,14 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     ) -> Result<(), LottieRendererError> {
         self.renderer
             .set_sw_target(buffer_ptr, stride, width, height, color_space)
-            .map_err(into_lottie::<R>)
+            .map_err(into_lottie::<R>)?;
+        let changed = (self.width, self.height) != (width, height);
+        self.width = width;
+        self.height = height;
+        if changed {
+            self.resize()?;
+        }
+        Ok(())
     }
 
     fn set_gl_target(
@@ -470,7 +493,14 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     ) -> Result<(), LottieRendererError> {
         self.renderer
             .set_gl_target(display, surface, context, id, width, height)
-            .map_err(into_lottie::<R>)
+            .map_err(into_lottie::<R>)?;
+        let changed = (self.width, self.height) != (width, height);
+        self.width = width;
+        self.height = height;
+        if changed {
+            self.resize()?;
+        }
+        Ok(())
     }
 
     fn set_wg_target(
@@ -484,19 +514,18 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     ) -> Result<(), LottieRendererError> {
         self.renderer
             .set_wg_target(device, instance, target, width, height, target_type)
-            .map_err(into_lottie::<R>)
-    }
-
-    fn load_data(
-        &mut self,
-        data: &CStr,
-        width: u32,
-        height: u32,
-    ) -> Result<(), LottieRendererError> {
-        self.clear()?;
-
+            .map_err(into_lottie::<R>)?;
+        let changed = (self.width, self.height) != (width, height);
         self.width = width;
         self.height = height;
+        if changed {
+            self.resize()?;
+        }
+        Ok(())
+    }
+
+    fn load_data(&mut self, data: &CStr) -> Result<(), LottieRendererError> {
+        self.clear()?;
 
         // Extract default slot values BEFORE passing to ThorVG, because
         // ThorVG's load_data with copy=false may parse the JSON in-place
@@ -603,40 +632,6 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.updated = true;
 
         self.current_frame = no;
-
-        Ok(())
-    }
-
-    fn resize(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError> {
-        if (width, height) == (self.width, self.height) {
-            return Ok(());
-        }
-
-        if width == 0 || height == 0 {
-            return Err(LottieRendererError::InvalidArgument);
-        }
-
-        let _ = self.renderer.sync();
-
-        self.width = width;
-        self.height = height;
-
-        if self.animation.is_some() {
-            self.apply_user_transform()?;
-        }
-
-        if self.background_shape.is_some() {
-            let current_width = self.width as f32;
-            let current_height = self.height as f32;
-
-            self.get_background_shape_mut()?
-                .append_rect(0.0, 0.0, current_width, current_height, 0.0, 0.0)
-                .map_err(into_lottie::<R>)?;
-        }
-
-        self.updated = true;
-
-        self.render()?;
 
         Ok(())
     }

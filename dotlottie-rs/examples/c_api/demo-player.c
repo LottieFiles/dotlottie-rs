@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
   dotlottie_set_autoplay(player, true);
 
   // Load the animation file
-  ret = dotlottie_load_animation_path(player, animation_path, WIDTH, HEIGHT);
+  ret = dotlottie_load_animation_path(player, animation_path);
   if (ret != DOTLOTTIE_SUCCESS) {
     fprintf(stderr, "Could not load dotlottie animation file\n");
     free(buffer);

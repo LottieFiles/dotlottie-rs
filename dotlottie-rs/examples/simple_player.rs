@@ -61,7 +61,10 @@ fn main() {
         "dotLottie Player - Left/Right to change, ESC to exit",
         WIDTH,
         HEIGHT,
-        WindowOptions::default(),
+        WindowOptions {
+            resize: true,
+            ..WindowOptions::default()
+        },
     )
     .expect("Failed to create window");
 
@@ -70,14 +73,16 @@ fn main() {
     player.set_loop(true);
     let _ = player.set_background_color(Some(0xffffffff));
 
-    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+    let mut current_width = WIDTH;
+    let mut current_height = HEIGHT;
+    let mut buffer: Vec<u32> = vec![0; current_width * current_height];
 
     if player
         .set_sw_target(
             &mut buffer,
-            WIDTH as u32,
-            HEIGHT as u32,
-            ColorSpace::ABGR8888,
+            current_width as u32,
+            current_height as u32,
+            ColorSpace::ARGB8888,
         )
         .is_err()
     {
@@ -116,8 +121,28 @@ fn main() {
         left_was_down = left_is_down;
         right_was_down = right_is_down;
 
+        let (new_width, new_height) = window.get_size();
+        if new_width != current_width || new_height != current_height {
+            current_width = new_width;
+            current_height = new_height;
+            buffer = vec![0; current_width * current_height];
+            if player
+                .set_sw_target(
+                    &mut buffer,
+                    current_width as u32,
+                    current_height as u32,
+                    ColorSpace::ARGB8888,
+                )
+                .is_err()
+            {
+                eprintln!("Failed to resize software rendering target");
+            }
+        }
+
         if player.tick().is_ok() {
-            window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
+            window
+                .update_with_buffer(&buffer, current_width, current_height)
+                .unwrap();
         }
     }
 }

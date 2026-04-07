@@ -35,7 +35,7 @@ mod tests {
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
 
@@ -96,7 +96,7 @@ mod tests {
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
 

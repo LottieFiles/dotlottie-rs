@@ -15,7 +15,7 @@ fn setup_player() -> (DotLottiePlayer, Vec<u32>) {
 
     let path = CString::new("assets/animations/lottie/test.json").unwrap();
     player
-        .load_animation_path(&path, WIDTH, HEIGHT)
+        .load_animation_path(&path)
         .expect("animation should load");
 
     (player, buffer)

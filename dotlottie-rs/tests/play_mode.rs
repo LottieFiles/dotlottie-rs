@@ -38,7 +38,7 @@ mod play_mode_tests {
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -88,7 +88,7 @@ mod play_mode_tests {
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -132,7 +132,7 @@ mod play_mode_tests {
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -213,7 +213,7 @@ mod play_mode_tests {
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -304,7 +304,7 @@ mod play_mode_tests {
             );
 
             assert!(
-                player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+                player.load_animation_path(&path).is_ok(),
                 "Animation should load"
             );
 
@@ -356,7 +356,7 @@ mod play_mode_tests {
             .is_ok());
 
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -414,7 +414,7 @@ mod play_mode_tests {
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -462,7 +462,7 @@ mod play_mode_tests {
             .is_ok());
 
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
 
@@ -518,7 +518,7 @@ mod play_mode_tests {
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");
@@ -566,7 +566,7 @@ mod play_mode_tests {
             .is_ok());
 
         assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
+            player.load_animation_path(&path),
             Ok(()),
             "Animation should load"
         );
@@ -640,7 +640,7 @@ mod play_mode_tests {
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert_eq!(
-            player.load_animation_path(&path, WIDTH, HEIGHT),
+            player.load_animation_path(&path),
             Ok(()),
             "Animation should load"
         );
@@ -687,7 +687,7 @@ mod play_mode_tests {
             .is_ok());
 
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
 
@@ -760,7 +760,7 @@ mod play_mode_tests {
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
         assert!(player.is_playing(), "Animation should be playing");

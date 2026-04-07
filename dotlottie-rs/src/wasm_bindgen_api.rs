@@ -301,10 +301,12 @@ impl DotLottiePlayerWasm {
         }
     }
 
-    // ── Internal render-target setup ──────────────────────────────────────────
+    // ── Render-target setup ─────────────────────────────────────────────────
 
+    /// Set up (or resize) the rendering target.
     #[cfg(feature = "webgl")]
-    fn setup_target(&mut self, width: u32, height: u32) -> bool {
+    pub fn setup_target(&mut self, width: u32, height: u32) -> bool {
+        self.activate_gl();
         self.width = width;
         self.height = height;
         self.player
@@ -319,8 +321,9 @@ impl DotLottiePlayerWasm {
             .is_ok()
     }
 
+    /// Set up (or resize) the rendering target.
     #[cfg(feature = "webgpu")]
-    fn setup_target(&mut self, width: u32, height: u32) -> bool {
+    pub fn setup_target(&mut self, width: u32, height: u32) -> bool {
         self.width = width;
         self.height = height;
         if self.wg_device_ptr == 0 || self.wg_surface_ptr == 0 {
@@ -338,8 +341,9 @@ impl DotLottiePlayerWasm {
             .is_ok()
     }
 
+    /// Set up (or resize) the rendering target.
     #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
-    fn setup_target(&mut self, width: u32, height: u32) -> bool {
+    pub fn setup_target(&mut self, width: u32, height: u32) -> bool {
         self.width = width;
         self.height = height;
         let required = (width * height) as usize;
@@ -353,24 +357,23 @@ impl DotLottiePlayerWasm {
 
     // ── Loading ───────────────────────────────────────────────────────────────
 
-    /// Load a Lottie JSON animation.  Sets up the rendering target automatically.
-    pub fn load_animation(&mut self, data: &str, width: u32, height: u32) -> bool {
+    /// Load a Lottie JSON animation.
+    ///
+    /// `setup_target` must have been called first.
+    pub fn load_animation(&mut self, data: &str) -> bool {
         #[cfg(feature = "webgl")]
         self.activate_gl();
-        if !self.setup_target(width, height) {
-            return false;
-        }
         let Ok(c_data) = CString::new(data) else {
             return false;
         };
-        self.player
-            .load_animation_data(&c_data, width, height)
-            .is_ok()
+        self.player.load_animation_data(&c_data).is_ok()
     }
 
     /// Load a .lottie archive from raw bytes.
+    ///
+    /// `setup_target` must have been called first.
     #[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
-    pub fn load_dotlottie_data(&mut self, data: &[u8], width: u32, height: u32) -> bool {
+    pub fn load_dotlottie_data(&mut self, data: &[u8]) -> bool {
         #[cfg(not(feature = "dotlottie"))]
         {
             return false;
@@ -379,16 +382,15 @@ impl DotLottiePlayerWasm {
         {
             #[cfg(feature = "webgl")]
             self.activate_gl();
-            if !self.setup_target(width, height) {
-                return false;
-            }
-            self.player.load_dotlottie_data(data, width, height).is_ok()
+            self.player.load_dotlottie_data(data).is_ok()
         }
     }
 
     /// Load an animation from an already-loaded .lottie archive by its ID.
+    ///
+    /// `setup_target` must have been called first.
     #[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
-    pub fn load_animation_from_id(&mut self, id: &str, width: u32, height: u32) -> bool {
+    pub fn load_animation_from_id(&mut self, id: &str) -> bool {
         #[cfg(not(feature = "dotlottie"))]
         {
             return false;
@@ -397,13 +399,10 @@ impl DotLottiePlayerWasm {
         {
             #[cfg(feature = "webgl")]
             self.activate_gl();
-            if !self.setup_target(width, height) {
-                return false;
-            }
             let Ok(c_id) = CString::new(id) else {
                 return false;
             };
-            self.player.load_animation(&c_id, width, height).is_ok()
+            self.player.load_animation(&c_id).is_ok()
         }
     }
 
@@ -428,27 +427,6 @@ impl DotLottiePlayerWasm {
         #[cfg(feature = "webgl")]
         self.activate_gl();
         self.player.clear();
-    }
-
-    /// Resize the canvas.  For the SW renderer this also resizes the pixel buffer.
-    pub fn resize(&mut self, width: u32, height: u32) -> bool {
-        #[cfg(feature = "webgl")]
-        self.activate_gl();
-        #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
-        {
-            let required = (width * height) as usize;
-            self.sw_buffer.resize(required, 0);
-            if self
-                .player
-                .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888S)
-                .is_err()
-            {
-                return false;
-            }
-        }
-        self.width = width;
-        self.height = height;
-        self.player.resize(width, height).is_ok()
     }
 
     // ── SW pixel buffer ───────────────────────────────────────────────────────

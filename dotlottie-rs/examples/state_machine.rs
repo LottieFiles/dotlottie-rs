@@ -107,16 +107,12 @@ fn load_animation(player: &mut DotLottiePlayer, path: &PathBuf) -> bool {
             let metadata = fs::metadata(path).expect("Could not read metadata");
             let mut buffer = vec![0; metadata.len() as usize];
             file.read_exact(&mut buffer).expect("Buffer overflow");
-            player
-                .load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32)
-                .is_ok()
+            player.load_dotlottie_data(&buffer).is_ok()
         }
         "json" => {
             let data = fs::read_to_string(path).expect("Could not read JSON file");
             let c_data = CString::new(data).expect("CString conversion failed");
-            player
-                .load_animation_data(&c_data, WIDTH as u32, HEIGHT as u32)
-                .is_ok()
+            player.load_animation_data(&c_data).is_ok()
         }
         _ => false,
     };

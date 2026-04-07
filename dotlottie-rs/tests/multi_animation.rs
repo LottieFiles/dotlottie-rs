@@ -22,14 +22,12 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
-                WIDTH,
-                HEIGHT
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/emojis.lottie"
+            ))
             .is_ok(),);
 
-        assert_eq!(player.load_animation(&animation_id, WIDTH, HEIGHT), Ok(()));
+        assert_eq!(player.load_animation(&animation_id), Ok(()));
 
         assert_eq!(player.animation_id(), Some(animation_id.as_c_str()));
     }
@@ -45,11 +43,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
-                WIDTH,
-                HEIGHT
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/emojis.lottie"
+            ))
             .is_ok());
 
         let manifest = player.manifest();
@@ -70,7 +66,7 @@ mod tests {
         for animation in &animations {
             let anim_id = CString::new(animation.id.clone()).unwrap();
             assert_eq!(
-                player.load_animation(&anim_id, WIDTH, HEIGHT),
+                player.load_animation(&anim_id),
                 Ok(()),
                 "Failed to load animation with id {}",
                 animation.id
@@ -91,7 +87,7 @@ mod tests {
 
         let invalid_id = CString::new("invalid_id").unwrap();
         assert_ne!(
-            player.load_animation(&invalid_id, WIDTH, HEIGHT),
+            player.load_animation(&invalid_id),
             Ok(()),
             "Loaded animation with invalid id"
         );

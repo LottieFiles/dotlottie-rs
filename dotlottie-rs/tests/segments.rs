@@ -24,7 +24,7 @@ mod tests {
             .is_ok());
 
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
 
@@ -62,7 +62,7 @@ mod tests {
             .is_ok());
 
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
 
@@ -105,7 +105,7 @@ mod tests {
                 .is_ok());
 
             assert!(
-                player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+                player.load_animation_path(&path).is_ok(),
                 "Animation should load for mode {mode:?}"
             );
 
@@ -142,7 +142,7 @@ mod tests {
             .is_ok());
 
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load with valid segment"
         );
 
@@ -178,7 +178,7 @@ mod tests {
             .is_ok());
 
         assert!(
-            player.load_animation_path(&path, WIDTH, HEIGHT).is_ok(),
+            player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
 

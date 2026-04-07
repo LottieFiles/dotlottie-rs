@@ -98,10 +98,7 @@ impl Playground {
         let mut data = vec![0u8; metadata.len() as usize];
         file.read_exact(&mut data).unwrap();
 
-        match self
-            .player
-            .load_dotlottie_data(&data, CANVAS_WIDTH, CANVAS_HEIGHT)
-        {
+        match self.player.load_dotlottie_data(&data) {
             Ok(_) => {
                 let name = path
                     .file_name()

@@ -187,6 +187,9 @@
       let raf            = null;
       let activeRenderer = 'sw';
 
+      let gpuDevice = null;
+      let gpuCtx    = null;
+
       // ── Canvas replacement ───────────────────────────────────────────────
       // A canvas can only have one context type (2d / webgl2 / webgpu).
       // Replacing the element resets that lock so every renderer gets a
@@ -275,6 +278,8 @@
         // Stop previous loop and release old player.
         if (raf) { cancelAnimationFrame(raf); raf = null; }
         if (player) { player.free(); player = null; }
+        gpuDevice = null;
+        gpuCtx    = null;
 
         // Replace the canvas so the new context type can be requested.
         freshCanvas();
@@ -308,26 +313,30 @@
             if (!navigator.gpu) throw new Error('WebGPU not available in this browser');
             const adapter = await navigator.gpu.requestAdapter();
             if (!adapter) throw new Error('No WebGPU adapter found');
-            const device  = await adapter.requestDevice();
-            const gpuCtx  = canvas.getContext('webgpu');
+            gpuDevice = await adapter.requestDevice();
+            gpuCtx    = canvas.getContext('webgpu');
             if (!gpuCtx) throw new Error('Canvas WebGPU context unavailable');
             // 'premultiplied' lets transparent ThorVG pixels show the CSS
             // background instead of rendering as solid black (the default
             // 'opaque' mode discards the alpha channel entirely).
             gpuCtx.configure({
-              device,
+              device: gpuDevice,
               format: navigator.gpu.getPreferredCanvasFormat(),
               alphaMode: 'premultiplied',
             });
             const mod = await import('./release/wasm-webgpu/dotlottie_rs.js');
             await mod.default({ module_or_path: "./release/wasm-webgpu/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
-            newPlayer.set_webgpu_device(device);
+            newPlayer.set_webgpu_device(gpuDevice);
             newPlayer.set_webgpu_surface(gpuCtx);
           }
 
+          if (!newPlayer.setup_target(W, H)) {
+            throw new Error('setup_target() returned false — check the console');
+          }
+
           const animData = await fetch(ANIMATION_URL).then(r => r.text());
-          if (!newPlayer.load_animation(animData, W, H)) {
+          if (!newPlayer.load_animation(animData)) {
             throw new Error('load_animation() returned false — check the console');
           }
 
@@ -373,6 +382,29 @@
           tab.classList.add('active');
           init(tab.dataset.renderer);
         };
+      });
+
+      let resizeTimer;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          if (!player) return;
+          const { cssW, cssH, pixW, pixH } = canvasSize();
+          canvas.width  = pixW;
+          canvas.height = pixH;
+          canvas.style.width  = cssW + 'px';
+          canvas.style.height = cssH + 'px';
+
+          player.setup_target(pixW, pixH);
+
+          if (activeRenderer === 'webgpu' && gpuCtx && gpuDevice) {
+            gpuCtx.configure({
+              device: gpuDevice,
+              format: navigator.gpu.getPreferredCanvasFormat(),
+              alphaMode: 'premultiplied',
+            });
+          }
+        }, 100);
       });
 
       // ── Start with SW renderer ───────────────────────────────────────────

@@ -19,7 +19,7 @@ mod tests {
             .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
-        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
+        assert!(player.load_animation_path(&path).is_ok());
 
         let _ = player.render();
 
@@ -38,10 +38,7 @@ mod tests {
 
         let test_data_str = r#"{"v":"5.5.7","fr":60,"ip":0,"op":60,"w":100,"h":100,"nm":"Test","ddd":0,"assets":[],"layers":[],"markers":[]}"#;
         let test_data = CString::new(test_data_str).expect("Failed to create CString");
-        assert_eq!(
-            player.load_animation_data(&test_data, WIDTH, HEIGHT),
-            Ok(())
-        );
+        assert_eq!(player.load_animation_data(&test_data), Ok(()));
 
         let _ = player.render();
 

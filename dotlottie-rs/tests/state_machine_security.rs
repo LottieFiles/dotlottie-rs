@@ -8,11 +8,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/security_tests/compare_to.json");
         let mut player = DotLottiePlayer::new();
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
             .is_ok(),);
 
         let global_state_cstring =
@@ -29,11 +27,9 @@ mod tests {
             include_str!("../assets/statemachines/security_tests/guardless_transitions.json");
         let mut player = DotLottiePlayer::new();
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
             .is_ok(),);
         let global_state_cstring =
             std::ffi::CString::new(global_state).expect("Invalid JSON for CString");
@@ -48,11 +44,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/security_tests/event_guards.json");
         let mut player = DotLottiePlayer::new();
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
             .is_ok(),);
 
         let global_state_cstring =
@@ -67,11 +61,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/security_tests/multi_global.json");
         let mut player = DotLottiePlayer::new();
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
             .is_ok(),);
 
         let sm = player.state_machine_load_data(global_state);

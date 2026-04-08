@@ -32,16 +32,12 @@ mod tests {
             .is_ok());
 
         assert!(
-            player
-                .load_animation_path(&invalid_path, WIDTH, HEIGHT)
-                .is_err(),
+            player.load_animation_path(&invalid_path).is_err(),
             "Invalid path should not load"
         );
 
         assert!(
-            player
-                .load_animation_path(&valid_path, WIDTH, HEIGHT)
-                .is_ok(),
+            player.load_animation_path(&valid_path).is_ok(),
             "Valid path should load"
         );
 
@@ -108,7 +104,7 @@ mod tests {
         }
 
         assert_eq!(
-            player.load_animation_path(&valid_path, WIDTH, HEIGHT),
+            player.load_animation_path(&valid_path),
             Ok(()),
             "Valid path should load"
         );

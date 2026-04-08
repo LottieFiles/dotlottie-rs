@@ -442,6 +442,63 @@ mod thorvg {
         thorvg_config_h.flush()?;
         drop(thorvg_config_h);
 
+        if cfg!(all(feature = "tracking_allocator", feature = "tvg")) {
+            let alloc_header_path = out_dir.join("tvgAllocator.h");
+            let mut alloc_h = OpenOptions::new()
+                .create(true)
+                .truncate(true)
+                .write(true)
+                .open(&alloc_header_path)?;
+
+            write!(
+                alloc_h,
+                r#"
+#ifndef _TVG_ALLOCATOR_H_
+#define _TVG_ALLOCATOR_H_
+
+#include <cstdlib>
+#include <cstddef>
+
+extern "C" {{
+    void* tvg_malloc(size_t size);
+    void* tvg_calloc(size_t nmemb, size_t size);
+    void* tvg_realloc(void* ptr, size_t size);
+    void  tvg_free(void* ptr);
+}}
+
+namespace tvg
+{{
+    template<typename T = void>
+    static inline T* malloc(size_t size)
+    {{
+        return static_cast<T*>(tvg_malloc(size));
+    }}
+
+    template<typename T = void>
+    static inline T* calloc(size_t nmem, size_t size)
+    {{
+        return static_cast<T*>(tvg_calloc(nmem, size));
+    }}
+
+    template<typename T = void>
+    static inline T* realloc(T* ptr, size_t size)
+    {{
+        return static_cast<T*>(tvg_realloc(static_cast<void*>(ptr), size));
+    }}
+
+    template<typename T = void>
+    static inline void free(T* ptr)
+    {{
+        tvg_free(static_cast<void*>(ptr));
+    }}
+}}
+
+#endif //_TVG_ALLOCATOR_H_
+"#
+            )?;
+            alloc_h.flush()?;
+        }
+
         // --- cc::Build setup ---
         let mut cc_build = cc::Build::new();
         // Only override compiler when CXX is explicitly set or for non-MSVC targets.
@@ -552,6 +609,11 @@ mod thorvg {
         {
             cc_build.flag("-pthread");
             println!("cargo:rustc-link-lib=pthread");
+        }
+
+        if cfg!(all(feature = "tracking_allocator", feature = "tvg")) {
+            let alloc_header = out_dir.join("tvgAllocator.h");
+            cc_build.flag(format!("-include{}", alloc_header.display()));
         }
 
         cc_build.compile("thorvg");

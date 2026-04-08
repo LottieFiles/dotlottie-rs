@@ -9,11 +9,9 @@ mod tests {
             include_str!("../assets/statemachines/sanity_tests/test_global_and_guardless.json");
         let mut player = DotLottiePlayer::new();
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -44,11 +42,9 @@ mod tests {
             include_str!("../assets/statemachines/sanity_tests/test_guarded_and_guardless.json");
         let mut player = DotLottiePlayer::new();
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -82,11 +78,9 @@ mod tests {
             include_str!("../assets/statemachines/sanity_tests/test_guardless_and_event.json");
         let mut player = DotLottiePlayer::new();
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -118,11 +112,9 @@ mod tests {
         );
         let mut player = DotLottiePlayer::new();
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -172,11 +164,9 @@ mod tests {
         );
         let mut player = DotLottiePlayer::new();
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -222,11 +212,9 @@ mod tests {
         );
         let mut player = DotLottiePlayer::new();
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -272,11 +260,9 @@ mod tests {
         );
         let mut player = DotLottiePlayer::new();
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)

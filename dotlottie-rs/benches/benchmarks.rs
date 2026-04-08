@@ -19,7 +19,7 @@ fn load_animation_data_benchmark(c: &mut Criterion) {
     c.bench_function("load_animation_data", |b| {
         b.iter(|| {
             let data = CString::new(data_str).expect("Failed to create CString");
-            assert!(player.load_animation_data(&data, WIDTH, HEIGHT).is_ok());
+            assert!(player.load_animation_data(&data).is_ok());
         });
     });
 }
@@ -39,7 +39,7 @@ fn load_animation_path_benchmark(c: &mut Criterion) {
 
     c.bench_function("load_animation_path", |b| {
         b.iter(|| {
-            assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
+            assert!(player.load_animation_path(&path).is_ok());
         });
     });
 }
@@ -55,7 +55,7 @@ fn load_dotlottie_data_benchmark(c: &mut Criterion) {
 
     c.bench_function("load_dotlottie_data", |b| {
         b.iter(|| {
-            assert!(player.load_dotlottie_data(data, WIDTH, HEIGHT).is_ok());
+            assert!(player.load_dotlottie_data(data).is_ok());
         });
     });
 }
@@ -71,11 +71,9 @@ fn animation_loop_benchmark(c: &mut Criterion) {
         .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
         .unwrap();
     assert!(player
-        .load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
-            WIDTH,
-            HEIGHT
-        )
+        .load_dotlottie_data(include_bytes!(
+            "../assets/animations/dotlottie/v1/emojis.lottie"
+        ),)
         .is_ok());
 
     c.bench_function("animation_loop_no_frame_interpolation", |b| {
@@ -96,18 +94,14 @@ fn animation_loop_benchmark(c: &mut Criterion) {
         .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
         .unwrap();
     assert!(player
-        .load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
-            WIDTH,
-            HEIGHT
-        )
+        .load_dotlottie_data(include_bytes!(
+            "../assets/animations/dotlottie/v1/emojis.lottie"
+        ),)
         .is_ok());
     assert!(player
-        .load_dotlottie_data(
-            include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
-            WIDTH,
-            HEIGHT
-        )
+        .load_dotlottie_data(include_bytes!(
+            "../assets/animations/dotlottie/v1/emojis.lottie"
+        ),)
         .is_ok());
 
     c.bench_function("animation_loop_frame_interpolation", |b| {
@@ -129,7 +123,7 @@ fn set_theme_benchmark(c: &mut Criterion) {
         .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
         .unwrap();
     let data = include_bytes!("../assets/animations/dotlottie/v2/themed.lottie");
-    assert!(player.load_dotlottie_data(data, WIDTH, HEIGHT).is_ok());
+    assert!(player.load_dotlottie_data(data).is_ok());
 
     c.bench_function("set_theme", |b| {
         b.iter(|| {
@@ -146,7 +140,7 @@ fn state_machine_load_benchmark(c: &mut Criterion) {
         .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
         .unwrap();
     let data = include_bytes!("../assets/statemachines/normal_usecases/sm_exploding_pigeon.lottie");
-    assert!(player.load_dotlottie_data(data, WIDTH, HEIGHT).is_ok());
+    assert!(player.load_dotlottie_data(data).is_ok());
 
     c.bench_function("state_machine_load", |b| {
         b.iter(|| {
@@ -169,9 +163,7 @@ fn state_machine_load_data_benchmark(c: &mut Criterion) {
 
     let animation_data =
         include_bytes!("../assets/statemachines/normal_usecases/sm_exploding_pigeon.lottie");
-    assert!(player
-        .load_dotlottie_data(animation_data, WIDTH, HEIGHT)
-        .is_ok());
+    assert!(player.load_dotlottie_data(animation_data).is_ok());
 
     c.bench_function("state_machine_load_data", |b| {
         b.iter(|| {

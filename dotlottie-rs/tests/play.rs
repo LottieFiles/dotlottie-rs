@@ -26,7 +26,7 @@ mod tests {
         );
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
-        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
+        assert!(player.load_animation_path(&path).is_ok());
 
         assert_eq!(
             player.play(),
@@ -46,7 +46,7 @@ mod tests {
             .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
-        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
+        assert!(player.load_animation_path(&path).is_ok());
 
         assert_eq!(player.play(), Ok(()));
 
@@ -71,7 +71,7 @@ mod tests {
             .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
-        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
+        assert!(player.load_animation_path(&path).is_ok());
 
         assert_eq!(player.play(), Ok(()));
 
@@ -125,7 +125,7 @@ mod tests {
             .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
-        assert!(player.load_animation_path(&path, WIDTH, HEIGHT).is_ok());
+        assert!(player.load_animation_path(&path).is_ok());
 
         assert_eq!(player.play(), Ok(()));
 
@@ -171,7 +171,7 @@ mod tests {
             .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
-        assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));
+        assert_eq!(player.load_animation_path(&path), Ok(()));
 
         let mid_frame = player.total_frames() / 2.0;
 

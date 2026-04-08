@@ -488,9 +488,7 @@ impl<'a> StateMachineEngine<'a> {
         self.player.set_loop_count(self.cached_loop_count);
         self.player
             .set_use_frame_interpolation(self.cached_use_frame_interpolation);
-        let _ = self
-            .player
-            .set_background(self.cached_background);
+        let _ = self.player.set_background(self.cached_background);
         let _ = self.player.set_segment(self.cached_segment);
         self.player.set_marker(self.cached_marker.as_deref());
         let _ = self.player.set_layout(self.cached_layout);

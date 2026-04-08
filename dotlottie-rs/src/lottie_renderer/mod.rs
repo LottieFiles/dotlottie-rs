@@ -899,7 +899,6 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 }
 
-
 fn multiply_matrices(a: &[f32; 9], b: &[f32; 9]) -> [f32; 9] {
     [
         a[0] * b[0] + a[1] * b[3] + a[2] * b[6], // e11

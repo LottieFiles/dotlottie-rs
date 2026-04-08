@@ -40,7 +40,7 @@ pub enum State {
         mode: Option<Mode>,
         speed: Option<f32>,
         segment: Option<String>,
-        background_color: Option<Rgba>,
+        background_color: Option<u32>,
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
     },
@@ -79,7 +79,7 @@ impl StateTrait for State {
                 engine.player.set_speed(speed.unwrap_or(1.0));
                 let _ = engine
                     .player
-                    .set_background(background_color.unwrap_or(Rgba::TRANSPARENT));
+                    .set_background(background_color.map_or(Rgba::TRANSPARENT, Rgba::from));
                 let _ = engine.player.set_segment(None);
                 engine.player.set_marker(None);
 

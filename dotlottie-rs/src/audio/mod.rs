@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde_json::Value;
@@ -12,15 +12,11 @@ const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrst
 
 const DATA_AUDIO_PREFIX: &str = "data:audio/";
 
-/// An audio asset decoded from a Lottie JSON file.
-pub struct AudioAsset {
-    pub id: String,
-    pub data: Arc<[u8]>,
-}
-
-/// An audio layer extracted from a Lottie JSON file (`ty == 6`).
+/// An audio layer extracted from a Lottie JSON file (`ty == 6`),
+/// with its asset already resolved to a direct index.
 pub struct AudioLayer {
-    pub ref_id: String,
+    /// Index into the asset `Vec` held by `AudioManager`.
+    pub asset_idx: usize,
     /// In-point frame (inclusive).
     pub start_frame: f32,
     /// Out-point frame (exclusive).
@@ -90,16 +86,13 @@ fn decode_base64(input: &str) -> Option<Vec<u8>> {
 
 /// Parse audio assets and layers from a Lottie JSON string.
 ///
-/// Returns `(assets, layers)`.
-pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
-    let root: Value = match serde_json::from_str(json_data) {
-        Ok(v) => v,
-        Err(_) => return (Vec::new(), Vec::new()),
-    };
+/// Returns `(assets, layers)` where each layer's `asset_idx` is already
+/// resolved to its position in the returned `assets` Vec.
+pub fn extract_audio(json_data: &Value) -> (Vec<Arc<[u8]>>, Vec<AudioLayer>) {
+    // --- Pass 1: collect audio assets and build id → index map ---
+    let mut raw_assets: Vec<(String, Arc<[u8]>)> = Vec::new();
 
-    let mut assets: Vec<AudioAsset> = Vec::new();
-
-    if let Some(assets_arr) = root.get("assets").and_then(|v| v.as_array()) {
+    if let Some(assets_arr) = json_data.get("assets").and_then(|v| v.as_array()) {
         for asset in assets_arr {
             let id = match asset.get("id").and_then(|v| v.as_str()) {
                 Some(s) => s.to_string(),
@@ -132,21 +125,20 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
                 None => continue,
             };
 
-            assets.push(AudioAsset {
-                id,
-                data: Arc::from(decoded),
-            });
+            raw_assets.push((id, Arc::from(decoded)));
         }
     }
 
-    // Build a set of known audio asset IDs for fast lookup.
-    let asset_ids: HashSet<&str> = assets.iter().map(|a| a.id.as_str()).collect();
+    let id_to_idx: HashMap<&str, usize> = raw_assets
+        .iter()
+        .enumerate()
+        .map(|(i, (id, _))| (id.as_str(), i))
+        .collect();
 
-    // --- Build a map: precomp_asset_id -> Vec<(audio_ref_id, volume)> ---
-    // Handle audio layers inside precomps
-    let mut audio_precomp_map: HashMap<&str, Vec<(String, f32)>> = HashMap::new();
+    // --- Pass 2: build precomp map storing resolved asset indices ---
+    let mut audio_precomp_map: HashMap<&str, Vec<(usize, f32)>> = HashMap::new();
 
-    if let Some(assets_arr) = root.get("assets").and_then(|v| v.as_array()) {
+    if let Some(assets_arr) = json_data.get("assets").and_then(|v| v.as_array()) {
         for asset in assets_arr {
             let asset_id = match asset.get("id").and_then(|v| v.as_str()) {
                 Some(s) => s,
@@ -164,41 +156,29 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
                 }
 
                 let ref_id = match inner.get("refId").and_then(|v| v.as_str()) {
-                    Some(s) => s.to_string(),
+                    Some(s) => s,
                     None => continue,
                 };
 
-                if !asset_ids.contains(ref_id.as_str()) {
-                    continue;
-                }
+                let asset_idx = match id_to_idx.get(ref_id) {
+                    Some(&i) => i,
+                    None => continue,
+                };
 
-                let volume = inner
-                    .get("au")
-                    .and_then(|au| au.get("lv"))
-                    .and_then(|lv| lv.get("k"))
-                    .and_then(|k| {
-                        if let Some(arr) = k.as_array() {
-                            arr.first()
-                                .and_then(|v| v.as_f64())
-                                .map(|v| (v / 100.0) as f32)
-                        } else {
-                            k.as_f64().map(|v| (v / 100.0) as f32)
-                        }
-                    })
-                    .unwrap_or(1.0);
+                let volume = parse_volume(inner);
 
                 audio_precomp_map
                     .entry(asset_id)
                     .or_default()
-                    .push((ref_id, volume));
+                    .push((asset_idx, volume));
             }
         }
     }
 
-    // --- Extract AudioLayers from the main (root) timeline only ---
+    // --- Pass 3: extract AudioLayers from the main (root) timeline ---
     let mut layers: Vec<AudioLayer> = Vec::new();
 
-    if let Some(root_layers) = root.get("layers").and_then(|v| v.as_array()) {
+    if let Some(root_layers) = json_data.get("layers").and_then(|v| v.as_array()) {
         for layer in root_layers {
             match layer.get("ty").and_then(|v| v.as_u64()) {
                 Some(0) => {
@@ -219,39 +199,37 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
                         layer.get("ip").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
                     let end_frame = layer.get("op").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
 
-                    for (audio_ref_id, volume) in audio_infos {
+                    for &(asset_idx, volume) in audio_infos {
                         layers.push(AudioLayer {
-                            ref_id: audio_ref_id.clone(),
+                            asset_idx,
                             start_frame,
                             end_frame,
-                            volume: *volume,
+                            volume,
                             playing: false,
                         });
                     }
                 }
                 Some(6) => {
                     // Direct audio layer in the timeline (not wrapped in a precomp).
-                    // Use its own ip/op directly.
                     let ref_id = match layer.get("refId").and_then(|v| v.as_str()) {
-                        Some(s) => s.to_string(),
+                        Some(s) => s,
                         None => continue,
                     };
 
-                    if !asset_ids.contains(ref_id.as_str()) {
-                        continue;
-                    }
+                    let asset_idx = match id_to_idx.get(ref_id) {
+                        Some(&i) => i,
+                        None => continue,
+                    };
 
                     let start_frame =
                         layer.get("ip").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
                     let end_frame = layer.get("op").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
 
-                    let volume = 1.0;
-
                     layers.push(AudioLayer {
-                        ref_id,
+                        asset_idx,
                         start_frame,
                         end_frame,
-                        volume,
+                        volume: parse_volume(layer),
                         playing: false,
                     });
                 }
@@ -260,7 +238,25 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
         }
     }
 
+    let assets = raw_assets.into_iter().map(|(_, data)| data).collect();
     (assets, layers)
+}
+
+fn parse_volume(layer: &Value) -> f32 {
+    layer
+        .get("au")
+        .and_then(|au| au.get("lv"))
+        .and_then(|lv| lv.get("k"))
+        .and_then(|k| {
+            if let Some(arr) = k.as_array() {
+                arr.first()
+                    .and_then(|v| v.as_f64())
+                    .map(|v| (v / 100.0) as f32)
+            } else {
+                k.as_f64().map(|v| (v / 100.0) as f32)
+            }
+        })
+        .unwrap_or(1.0)
 }
 
 // ---------------------------------------------------------------------------
@@ -273,9 +269,8 @@ pub fn extract_audio(json_data: &str) -> (Vec<AudioAsset>, Vec<AudioLayer>) {
 /// `wasm32-unknown-unknown` (Web Audio API backend).
 pub struct AudioManager {
     layers: Vec<AudioLayer>,
-    /// Audio data keyed by asset id. Arc allows zero-copy hand-off to the player.
-    assets: HashMap<String, Arc<[u8]>>,
-    muted: bool,
+    /// Audio data indexed by asset position; Arc allows zero-copy hand-off to the player.
+    assets: Vec<Arc<[u8]>>,
     /// Global volume multiplier in [0.0, 1.0], applied on top of per-layer volume.
     volume: f32,
     rodio_player: RodioPlayer,
@@ -283,41 +278,31 @@ pub struct AudioManager {
 
 impl AudioManager {
     /// Returns `None` if there are no audio layers or if the audio backend fails to initialize.
-    pub fn new(assets: Vec<AudioAsset>, layers: Vec<AudioLayer>) -> Option<Self> {
+    pub fn new(assets: Vec<Arc<[u8]>>, layers: Vec<AudioLayer>) -> Option<Self> {
         if layers.is_empty() {
             return None;
         }
 
         let rodio_player = RodioPlayer::new(layers.len()).ok()?;
-        let assets: HashMap<String, Arc<[u8]>> =
-            assets.into_iter().map(|a| (a.id, a.data)).collect();
 
         Some(AudioManager {
             layers,
             assets,
-            muted: false,
             volume: 1.0,
             rodio_player,
         })
     }
 
     /// Synchronise audio state with the current animation frame.
-    ///
-    /// Returns events that the host application may handle.
     pub fn update(&mut self, frame: f32) {
         for (idx, layer) in self.layers.iter_mut().enumerate() {
             let should_play = frame >= layer.start_frame && frame < layer.end_frame;
 
             if should_play && !layer.playing {
                 layer.playing = true;
-                if let Some(data) = self.assets.get(&layer.ref_id) {
-                    let vol = if self.muted {
-                        0.0
-                    } else {
-                        layer.volume * self.volume
-                    };
-                    self.rodio_player.play(idx, data.clone(), vol);
-                }
+                let data = &self.assets[layer.asset_idx];
+                let vol = layer.volume * self.volume;
+                self.rodio_player.play(idx, data.clone(), vol);
             } else if !should_play && layer.playing {
                 layer.playing = false;
                 self.rodio_player.stop(idx);
@@ -350,20 +335,6 @@ impl AudioManager {
         }
     }
 
-    pub fn set_mute(&mut self, muted: bool) {
-        self.muted = muted;
-        for (idx, layer) in self.layers.iter().enumerate() {
-            if layer.playing {
-                let vol = if muted {
-                    0.0
-                } else {
-                    layer.volume * self.volume
-                };
-                self.rodio_player.set_volume(idx, vol);
-            }
-        }
-    }
-
     /// Set the global volume multiplier (clamped to [0.0, 1.0]).
     /// Applied on top of per-layer volume. Takes effect immediately for any
     /// currently-playing audio.
@@ -375,10 +346,6 @@ impl AudioManager {
                 self.rodio_player.set_volume(idx, vol);
             }
         }
-    }
-
-    pub fn is_muted(&self) -> bool {
-        self.muted
     }
 
     pub fn volume(&self) -> f32 {

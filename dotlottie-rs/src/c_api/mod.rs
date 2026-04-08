@@ -740,26 +740,6 @@ pub unsafe extern "C" fn dotlottie_stop(ptr: *mut DotLottiePlayer) -> DotLottieR
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_audio_mute(
-    ptr: *mut DotLottiePlayer,
-    mute: bool,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        #[cfg(feature = "audio")]
-        {
-            dotlottie_player.set_audio_mute(mute);
-            DotLottieResult::Success
-        }
-        #[cfg(not(feature = "audio"))]
-        {
-            let _ = dotlottie_player;
-            let _ = mute;
-            DotLottieResult::FeatureNotEnabled
-        }
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn dotlottie_set_audio_volume(
     ptr: *mut DotLottiePlayer,
     volume: f32,
@@ -773,28 +753,6 @@ pub unsafe extern "C" fn dotlottie_set_audio_volume(
         #[cfg(not(feature = "audio"))]
         {
             let _ = (dotlottie_player, volume);
-            DotLottieResult::FeatureNotEnabled
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_audio_muted(
-    ptr: *mut DotLottiePlayer,
-    result: *mut bool,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if result.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        #[cfg(feature = "audio")]
-        {
-            *result = dotlottie_player.is_audio_muted();
-            DotLottieResult::Success
-        }
-        #[cfg(not(feature = "audio"))]
-        {
-            let _ = dotlottie_player;
             DotLottieResult::FeatureNotEnabled
         }
     })

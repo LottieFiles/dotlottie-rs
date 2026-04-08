@@ -141,14 +141,14 @@ fn main() {
         }
 
         if m_was_down && !m_down {
-            if player.is_audio_muted() {
-                player.set_audio_mute(false);
+            if player.audio_volume() == 0.0 {
+                player.set_audio_volume(1.0);
                 println!(
                     "  ** Unmuted  (volume={:.0}%)",
                     player.audio_volume() * 100.0
                 );
             } else {
-                player.set_audio_mute(true);
+                player.set_audio_volume(0.0);
                 println!("  ** Muted");
             }
         }
@@ -173,7 +173,7 @@ fn main() {
 
         let _ = player.tick();
 
-        let mute_indicator = if player.is_audio_muted() {
+        let mute_indicator = if player.audio_volume() == 0.0 {
             " [MUTED]"
         } else {
             ""

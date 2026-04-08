@@ -4,8 +4,6 @@ use std::{fs, mem};
 
 use crate::poll_events::{DotLottieEvent, EventQueue};
 use crate::DotLottiePlayerError;
-#[cfg(feature = "audio")]
-use crate::{extract_audio, AudioManager};
 use crate::{
     extract_markers,
     layout::Layout,
@@ -123,8 +121,6 @@ pub struct DotLottiePlayer {
     animation_id: Option<CString>,
     #[cfg(feature = "state-machines")]
     state_machine_id: Option<CString>,
-    #[cfg(feature = "audio")]
-    audio_manager: Option<AudioManager>,
 }
 
 #[cfg(feature = "tvg")]
@@ -188,8 +184,6 @@ impl DotLottiePlayer {
             cached_start_end_frame: None,
             event_queue: EventQueue::new(),
             completion_event: CompletionEvent::None,
-            #[cfg(feature = "audio")]
-            audio_manager: None,
         }
     }
 
@@ -205,32 +199,18 @@ impl DotLottiePlayer {
             .collect()
     }
 
-    #[cfg(feature = "audio")]
-    pub fn set_audio_mute(&mut self, mute: bool) {
-        if let Some(am) = &mut self.audio_manager {
-            am.set_mute(mute);
-        }
-    }
-
     /// Set the global audio volume multiplier (clamped to [0.0, 1.0]).
     /// Applied on top of per-layer volume; takes effect immediately.
-    #[cfg(feature = "audio")]
+    #[cfg(all(feature = "audio", feature = "dotlottie"))]
     pub fn set_audio_volume(&mut self, volume: f32) {
-        if let Some(am) = &mut self.audio_manager {
-            am.set_volume(volume);
+        if let Some(dm) = &self.dotlottie_manager {
+            dm.audio_set_volume(volume);
         }
     }
 
-    #[cfg(feature = "audio")]
-    pub fn is_audio_muted(&self) -> bool {
-        self.audio_manager
-            .as_ref()
-            .map_or(false, |am| am.is_muted())
-    }
-
-    #[cfg(feature = "audio")]
+    #[cfg(all(feature = "audio", feature = "dotlottie"))]
     pub fn audio_volume(&self) -> f32 {
-        self.audio_manager.as_ref().map_or(1.0, |am| am.volume())
+        self.dotlottie_manager.as_ref().map_or(1.0, |dm| dm.audio_volume())
     }
 
     pub fn marker_names(&self) -> &[CString] {
@@ -376,9 +356,9 @@ impl DotLottiePlayer {
 
         self.playback_state = PlaybackState::Playing;
 
-        #[cfg(feature = "audio")]
-        if let Some(am) = &mut self.audio_manager {
-            am.play();
+        #[cfg(all(feature = "audio", feature = "dotlottie"))]
+        if let Some(dm) = &self.dotlottie_manager {
+            dm.audio_play();
         }
 
         self.event_queue.push(DotLottieEvent::Play);
@@ -395,9 +375,9 @@ impl DotLottiePlayer {
         }
         self.playback_state = PlaybackState::Paused;
 
-        #[cfg(feature = "audio")]
-        if let Some(am) = &mut self.audio_manager {
-            am.pause();
+        #[cfg(all(feature = "audio", feature = "dotlottie"))]
+        if let Some(dm) = &self.dotlottie_manager {
+            dm.audio_pause();
         }
 
         self.event_queue.push(DotLottieEvent::Pause);
@@ -426,9 +406,9 @@ impl DotLottiePlayer {
             }
         }
 
-        #[cfg(feature = "audio")]
-        if let Some(am) = &mut self.audio_manager {
-            am.stop();
+        #[cfg(all(feature = "audio", feature = "dotlottie"))]
+        if let Some(dm) = &self.dotlottie_manager {
+            dm.audio_stop();
         }
 
         self.event_queue.push(DotLottieEvent::Stop);
@@ -671,10 +651,10 @@ impl DotLottiePlayer {
             .push(DotLottieEvent::Frame { frame_no: no });
 
         // Only sync audio when the animation is actively playing.
-        #[cfg(feature = "audio")]
+        #[cfg(all(feature = "audio", feature = "dotlottie"))]
         if self.is_playing() {
-            if let Some(am) = &mut self.audio_manager {
-                am.update(no);
+            if let Some(dm) = &self.dotlottie_manager {
+                dm.audio_update(no);
             }
         }
 
@@ -748,9 +728,9 @@ impl DotLottiePlayer {
                 }
 
                 // Reset audio state so that audio layers re-trigger on the next loop.
-                #[cfg(feature = "audio")]
-                if let Some(am) = &mut self.audio_manager {
-                    am.stop();
+                #[cfg(all(feature = "audio", feature = "dotlottie"))]
+                if let Some(dm) = &self.dotlottie_manager {
+                    dm.audio_stop();
                 }
 
                 self.emit_on_loop();
@@ -1122,12 +1102,6 @@ impl DotLottiePlayer {
             let (names, data) = extract_markers(data_str);
             self.marker_names = names;
             self.marker_data = data;
-
-            #[cfg(feature = "audio")]
-            {
-                let (audio_assets, audio_layers) = extract_audio(data_str);
-                self.audio_manager = AudioManager::new(audio_assets, audio_layers);
-            }
         }
 
         let result = self.load_animation_common(
@@ -1213,16 +1187,6 @@ impl DotLottiePlayer {
         self.marker_names = names;
         self.marker_data = data;
 
-        #[cfg(feature = "audio")]
-        {
-            let (audio_assets, audio_layers) = extract_audio(&animation_data);
-            self.audio_manager = if audio_assets.is_empty() {
-                None
-            } else {
-                AudioManager::new(audio_assets, audio_layers)
-            };
-        }
-
         let animation_data_cstr =
             CString::new(animation_data).map_err(|_| DotLottiePlayerError::Unknown)?;
 
@@ -1275,16 +1239,6 @@ impl DotLottiePlayer {
                     let (names, data) = extract_markers(&animation_data);
                     self.marker_names = names;
                     self.marker_data = data;
-
-                    #[cfg(feature = "audio")]
-                    {
-                        let (audio_assets, audio_layers) = extract_audio(&animation_data);
-                        self.audio_manager = if audio_assets.is_empty() {
-                            None
-                        } else {
-                            AudioManager::new(audio_assets, audio_layers)
-                        };
-                    }
 
                     let animation_data_cstr =
                         CString::new(animation_data).expect("Failed to create CString");

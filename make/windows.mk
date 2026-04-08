@@ -68,8 +68,18 @@ define WINDOWS_CARGO_BUILD
 	MANIFEST_WIN=$$(cygpath -w "$$(pwd)/dotlottie-rs/Cargo.toml"); \
 	TMPBAT=$$(mktemp /tmp/vcbuild_XXXXXX.bat); \
 	TMPBAT_WIN=$$(cygpath -w "$$TMPBAT"); \
-	printf '@echo off\ncall "%s" %s\nif errorlevel 1 exit /b 1\nif exist "C:\\Program Files\\LLVM\\bin\\libclang.dll" set LIBCLANG_PATH=C:\\Program Files\\LLVM\\bin\n"%s" build --manifest-path "%s" --target %s --release %s --features %s\n' \
-		"$$VCVARS_WIN" "$(1)" "$$CARGO_WIN" "$$MANIFEST_WIN" "$(2)" \
+	VS_LLVM_X64="$$VS_PATH/VC/Tools/Llvm/x64/bin"; \
+	if [ "$(1)" = "arm64" ] && [ -d "$$VS_LLVM_X64" ]; then \
+		LLVM_LINE='set LIBCLANG_PATH='"$$(cygpath -w "$$VS_LLVM_X64")"; \
+	elif [ -f "/c/Program Files/LLVM/bin/libclang.dll" ]; then \
+		LLVM_LINE='set LIBCLANG_PATH=C:\Program Files\LLVM\bin'; \
+	elif [ -d "$$VS_LLVM_X64" ]; then \
+		LLVM_LINE='set LIBCLANG_PATH='"$$(cygpath -w "$$VS_LLVM_X64")"; \
+	else \
+		LLVM_LINE='rem no LLVM override'; \
+	fi; \
+	printf '@echo off\ncall "%s" %s\nif errorlevel 1 exit /b 1\n%s\n"%s" build --manifest-path "%s" --target %s --release %s --features %s\n' \
+		"$$VCVARS_WIN" "$(1)" "$$LLVM_LINE" "$$CARGO_WIN" "$$MANIFEST_WIN" "$(2)" \
 		"$(4)" "$(3)" > "$$TMPBAT"; \
 	echo "-> Building $(2) with cargo..."; \
 	cmd //C "$$TMPBAT_WIN"; \

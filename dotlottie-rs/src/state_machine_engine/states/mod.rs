@@ -3,7 +3,7 @@ use std::ffi::CString;
 use serde::Deserialize;
 
 use crate::player::Mode;
-use crate::DEFAULT_BACKGROUND_COLOR;
+use crate::Rgba;
 
 use super::{actions::StateMachineActionError, transitions::Transition, StateMachineEngine};
 
@@ -77,9 +77,9 @@ impl StateTrait for State {
                 engine.player.set_loop(r#loop.unwrap_or(false));
                 engine.player.set_loop_count(loop_count.unwrap_or(0));
                 engine.player.set_speed(speed.unwrap_or(1.0));
-                let _ = engine.player.set_background_color(Some(
-                    background_color.unwrap_or(DEFAULT_BACKGROUND_COLOR),
-                ));
+                let _ = engine
+                    .player
+                    .set_background(background_color.map_or(Rgba::TRANSPARENT, Rgba::from));
                 let _ = engine.player.set_segment(None);
                 engine.player.set_marker(None);
 

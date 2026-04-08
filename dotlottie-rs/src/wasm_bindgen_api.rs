@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 
 #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
 use crate::ColorSpace;
-use crate::{DotLottiePlayer, Fit, Layout, Mode as PlayerMode};
+use crate::{DotLottiePlayer, Fit, Layout, Mode as PlayerMode, Rgba};
 
 // ─── Renderer mode ───────────────────────────────────────────────────────────
 
@@ -572,18 +572,25 @@ impl DotLottiePlayerWasm {
         self.player.set_use_frame_interpolation(v);
     }
 
-    pub fn background_color(&self) -> u32 {
-        self.player.background_color()
+    pub fn background_r(&self) -> u8 {
+        self.player.background().r
     }
 
-    /// Set background colour (`0xAARRGGBB`).
-    pub fn set_background_color(&mut self, color: u32) -> bool {
-        self.player.set_background_color(Some(color)).is_ok()
+    pub fn background_g(&self) -> u8 {
+        self.player.background().g
     }
 
-    /// Clear the background colour (transparent).
-    pub fn clear_background_color(&mut self) -> bool {
-        self.player.set_background_color(None).is_ok()
+    pub fn background_b(&self) -> u8 {
+        self.player.background().b
+    }
+
+    pub fn background_a(&self) -> u8 {
+        self.player.background().a
+    }
+
+    /// Set background colour. Pass `(0, 0, 0, 0)` to clear.
+    pub fn set_background(&mut self, r: u8, g: u8, b: u8, a: u8) -> bool {
+        self.player.set_background(Rgba::new(r, g, b, a)).is_ok()
     }
 
     pub fn set_quality(&mut self, quality: u8) -> bool {

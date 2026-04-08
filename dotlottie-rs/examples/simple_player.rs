@@ -1,6 +1,6 @@
 #![allow(clippy::print_stdout)]
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Rgba};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -56,9 +56,20 @@ fn load_animation(player: &mut DotLottiePlayer, path: &PathBuf) {
     );
 }
 
+const BACKGROUNDS: &[(Key, Rgba, &str)] = &[
+    (Key::Key0, Rgba::TRANSPARENT, "transparent"),
+    (Key::Key1, Rgba::new(255, 255, 255, 255), "white"),
+    (Key::Key2, Rgba::new(0, 0, 0, 255), "black"),
+    (Key::Key3, Rgba::new(255, 59, 48, 255), "red"),
+    (Key::Key4, Rgba::new(52, 199, 89, 255), "green"),
+    (Key::Key5, Rgba::new(0, 122, 255, 255), "blue"),
+    (Key::Key6, Rgba::new(255, 204, 0, 255), "yellow"),
+    (Key::Key7, Rgba::new(175, 82, 222, 255), "purple"),
+];
+
 fn main() {
     let mut window = Window::new(
-        "dotLottie Player - Left/Right to change, ESC to exit",
+        "dotLottie Player - Left/Right: animation, 0-7: background, ESC: exit",
         WIDTH,
         HEIGHT,
         WindowOptions {
@@ -71,7 +82,6 @@ fn main() {
     let mut player = DotLottiePlayer::new();
     player.set_autoplay(true);
     player.set_loop(true);
-    let _ = player.set_background_color(Some(0xffffffff));
 
     let mut current_width = WIDTH;
     let mut current_height = HEIGHT;
@@ -120,6 +130,13 @@ fn main() {
 
         left_was_down = left_is_down;
         right_was_down = right_is_down;
+
+        for &(key, color, name) in BACKGROUNDS {
+            if window.is_key_pressed(key, minifb::KeyRepeat::No) {
+                let _ = player.set_background(color);
+                println!("Background: {name}");
+            }
+        }
 
         let (new_width, new_height) = window.get_size();
         if new_width != current_width || new_height != current_height {

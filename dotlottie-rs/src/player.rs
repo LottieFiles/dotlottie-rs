@@ -12,7 +12,7 @@ use crate::{
     tween::{TweenState, TweenStatus},
     Marker,
 };
-use crate::{ColorSpace, Renderer};
+use crate::{ColorSpace, Renderer, Rgba};
 #[cfg(feature = "dotlottie")]
 use crate::{DotLottieManager, Manifest};
 #[cfg(feature = "state-machines")]
@@ -47,8 +47,6 @@ impl Direction {
         }
     }
 }
-
-pub const DEFAULT_BACKGROUND_COLOR: u32 = 0x00000000;
 
 #[repr(C)]
 pub struct LayerBoundingBox {
@@ -114,7 +112,6 @@ pub struct DotLottiePlayer {
     use_frame_interpolation: bool,
     autoplay: bool,
     segment: Option<[f32; 2]>,
-    background_color: u32,
     layout: Layout,
     marker: Option<usize>, // marker id
     tween_state: Option<TweenState>,
@@ -170,7 +167,6 @@ impl DotLottiePlayer {
             use_frame_interpolation: true,
             autoplay: false,
             segment: None,
-            background_color: DEFAULT_BACKGROUND_COLOR,
             layout: Layout::default(),
             marker: None,
             tween_state: None,
@@ -823,23 +819,14 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn set_background_color(&mut self, color: Option<u32>) -> Result<(), DotLottiePlayerError> {
-        let new_color = color.unwrap_or(DEFAULT_BACKGROUND_COLOR);
-
-        if self.background_color == new_color {
-            return Ok(());
-        }
-
-        if self.renderer.set_background_color(new_color).is_ok() {
-            self.background_color = new_color;
-            Ok(())
-        } else {
-            Err(DotLottiePlayerError::Unknown)
-        }
+    pub fn set_background(&mut self, color: Rgba) -> Result<(), DotLottiePlayerError> {
+        self.renderer
+            .set_background(color)
+            .map_err(|_| DotLottiePlayerError::Unknown)
     }
 
-    pub fn background_color(&self) -> u32 {
-        self.background_color
+    pub fn background(&self) -> Rgba {
+        self.renderer.background()
     }
 
     pub fn set_speed(&mut self, speed: f32) {
@@ -1001,11 +988,7 @@ impl DotLottiePlayer {
         self.start_time = Instant::now();
         self.current_loop_count = 0;
 
-        let loaded = loader(&mut *self.renderer).is_ok()
-            && self
-                .renderer
-                .set_background_color(self.background_color)
-                .is_ok();
+        let loaded = loader(&mut *self.renderer).is_ok();
 
         if self.renderer.set_layout(&self.layout).is_err() {
             return Err(DotLottiePlayerError::Unknown);

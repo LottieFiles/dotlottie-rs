@@ -68,13 +68,8 @@ define WINDOWS_CARGO_BUILD
 	MANIFEST_WIN=$$(cygpath -w "$$(pwd)/dotlottie-rs/Cargo.toml"); \
 	TMPBAT=$$(mktemp /tmp/vcbuild_XXXXXX.bat); \
 	TMPBAT_WIN=$$(cygpath -w "$$TMPBAT"); \
-	VS_LLVM_X64="$$VS_PATH/VC/Tools/Llvm/x64/bin"; \
-	if [ "$(1)" = "arm64" ] && [ -d "$$VS_LLVM_X64" ]; then \
-		LLVM_LINE='set LIBCLANG_PATH='"$$(cygpath -w "$$VS_LLVM_X64")"; \
-	elif [ -f "/c/Program Files/LLVM/bin/libclang.dll" ]; then \
+	if [ -f "/c/Program Files/LLVM/bin/libclang.dll" ]; then \
 		LLVM_LINE='set LIBCLANG_PATH=C:\Program Files\LLVM\bin'; \
-	elif [ -d "$$VS_LLVM_X64" ]; then \
-		LLVM_LINE='set LIBCLANG_PATH='"$$(cygpath -w "$$VS_LLVM_X64")"; \
 	else \
 		LLVM_LINE='rem no LLVM override'; \
 	fi; \
@@ -154,7 +149,7 @@ windows-x86_64: windows-check-deps
 windows-arm64: windows-check-deps
 	$(call check_windows_platform_support)
 	@echo "-> Building Windows ARM64..."
-	$(call WINDOWS_CARGO_BUILD,arm64,$(WINDOWS_TARGET_arm64),$(WINDOWS_DEFAULT_FEATURES)$(comma)$(WINDOWS_FEATURES),--no-default-features)
+	$(call WINDOWS_CARGO_BUILD,x64_arm64,$(WINDOWS_TARGET_arm64),$(WINDOWS_DEFAULT_FEATURES)$(comma)$(WINDOWS_FEATURES),--no-default-features)
 	@$(call WINDOWS_PACKAGE_ARCH,arm64)
 	@echo "Done: Windows ARM64 build complete"
 

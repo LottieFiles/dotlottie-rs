@@ -12,6 +12,7 @@ on:
           - "android"
           - "wasm"
           - "linux"
+          - "windows"
           - "all"
       feature_threads:
         type: boolean
@@ -345,4 +346,98 @@ jobs:
         with:
           name: dotlottie-player.linux.tar.gz
           path: release/linux/dotlottie-player.linux.tar.gz
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    if: github.event.inputs.target == 'windows' || github.event.inputs.target == 'all'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install GNU Make and LLVM
+        shell: pwsh
+        run: |
+          choco install make -y
+          choco install llvm -y
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
+
+      - name: Install ARM64 build tools
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" modify `
+            --installPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" `
+            --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
+            --quiet --norestart --wait
+          # Also try BuildTools path (runner may use either)
+          & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" modify `
+            --installPath "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools" `
+            --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
+            --quiet --norestart --wait
+
+      - name: Setup Windows
+        run: make windows-setup
+
+      - name: Set Features
+        run: |
+          features=""
+
+          if [ "${{ github.event.inputs.feature_threads }}" = "true" ]; then
+            features="${features}tvg-threads,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_webp }}" = "true" ]; then
+            features="${features}tvg-webp,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_png }}" = "true" ]; then
+            features="${features}tvg-png,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_jpg }}" = "true" ]; then
+            features="${features}tvg-jpg,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_ttf }}" = "true" ]; then
+            features="${features}tvg-ttf,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_expressions }}" = "true" ]; then
+            features="${features}tvg-lottie-expressions,"
+          fi
+
+          if [ "${{ github.event.inputs.feature_simd }}" = "true" ]; then
+            features="${features}tvg-simd,"
+          fi
+
+          # Remove trailing comma if features exist
+          if [ -n "$features" ]; then
+            features="${features%,}"
+          fi
+
+          echo "FEATURES=$features" >> $GITHUB_ENV
+          echo "Selected features: $features"
+
+      - name: Build Windows
+        run: make windows
+        env:
+          FEATURES: ${{ env.FEATURES }}
+
+      - name: Create Windows Archive
+        run: |
+          cd release/windows
+          tar -czf dotlottie-player.windows.tar.gz *
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.windows.tar.gz
+          path: release/windows/dotlottie-player.windows.tar.gz
           if-no-files-found: error

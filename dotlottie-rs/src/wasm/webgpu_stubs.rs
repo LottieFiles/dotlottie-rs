@@ -1523,7 +1523,7 @@ fn convert_wgpu_render_pipeline_descriptor(
 
 // -------------------- WebGPU API --------------------
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuCreateInstance(_descriptor: *const c_void) -> *mut c_void {
     // This function is now just a stub since the actual instance creation is handled in webgpu_init_async
     // This prevents errors when the C++ code tries to call this function
@@ -1532,7 +1532,7 @@ unsafe extern "C" fn wgpuCreateInstance(_descriptor: *const c_void) -> *mut c_vo
 
 // Methods of Adapter
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuAdapterRequestDevice(
     _adapter: *mut c_void,
     _descriptor: *const c_void,
@@ -1542,54 +1542,54 @@ unsafe extern "C" fn wgpuAdapterRequestDevice(
     std::ptr::null_mut()
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuAdapterRelease(adapter: *mut GpuAdapter) {
     drop(Box::from_raw(adapter));
 }
 
 // Methods of BindGroup
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuBindGroupRelease(bind_group: *mut GpuBindGroup) {
     drop(Box::from_raw(bind_group));
 }
 
 // Methods of BindGroupLayout
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuBindGroupLayoutRelease(layout: *mut GpuBindGroupLayout) {
     drop(Box::from_raw(layout));
 }
 
 // Methods of Buffer
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuBufferDestroy(buffer: *mut GpuBuffer) {
     let buffer = &*buffer;
     buffer.destroy();
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuBufferGetSize(buffer: *mut GpuBuffer) -> u64 {
     let buffer = &*buffer;
     buffer.size() as u64
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuBufferRelease(buffer: *mut GpuBuffer) {
     drop(Box::from_raw(buffer));
 }
 
 // Methods of CommandBuffer
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuCommandBufferRelease(buffer: *mut GpuCommandBuffer) {
     drop(Box::from_raw(buffer));
 }
 
 // Methods of CommandEncoder
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
     encoder: *mut GpuCommandEncoder,
     descriptor: *const WGPUComputePassDescriptor,
@@ -1600,7 +1600,7 @@ unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
     Box::into_raw(Box::new(pass))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
     encoder: *mut GpuCommandEncoder,
     descriptor: *const WGPURenderPassDescriptor,
@@ -1613,7 +1613,7 @@ unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
     Box::into_raw(Box::new(render_pass))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
     encoder: *mut GpuCommandEncoder,
     source: *const WGPUImageCopyTexture,
@@ -1630,7 +1630,7 @@ unsafe extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuCommandEncoderFinish(
     encoder: *mut GpuCommandEncoder,
     descriptor: *const WGPUCommandBufferDescriptor,
@@ -1646,14 +1646,14 @@ unsafe extern "C" fn wgpuCommandEncoderFinish(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuCommandEncoderRelease(encoder: *mut GpuCommandEncoder) {
     drop(Box::from_raw(encoder));
 }
 
 // Methods of ComputePassEncoder
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroups(
     pass: *mut GpuComputePassEncoder,
     workgroup_count_x: u32,
@@ -1668,13 +1668,13 @@ unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroups(
     );
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: *mut GpuComputePassEncoder) {
     let pass = &*pass;
     pass.end();
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
     pass: *mut GpuComputePassEncoder,
     index: u32,
@@ -1696,7 +1696,7 @@ unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuComputePassEncoderSetPipeline(
     pass: *mut GpuComputePassEncoder,
     pipeline: *mut GpuComputePipeline,
@@ -1706,21 +1706,21 @@ unsafe extern "C" fn wgpuComputePassEncoderSetPipeline(
     pass.set_pipeline(pipeline);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuComputePassEncoderRelease(pass: *mut GpuComputePassEncoder) {
     drop(Box::from_raw(pass));
 }
 
 // Methods of ComputePipeline
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuComputePipelineRelease(pipeline: *mut GpuComputePipeline) {
     drop(Box::from_raw(pipeline));
 }
 
 // Methods of Device
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuDeviceCreateBindGroup(
     device: *mut GpuDevice,
     descriptor: *const WGPUBindGroupDescriptor,
@@ -1731,7 +1731,7 @@ unsafe extern "C" fn wgpuDeviceCreateBindGroup(
     Box::into_raw(Box::new(bind_group))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
     device: *mut GpuDevice,
     descriptor: *const WGPUBindGroupLayoutDescriptor,
@@ -1744,7 +1744,7 @@ unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
     Box::into_raw(Box::new(layout))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuDeviceCreateBuffer(
     device: *mut GpuDevice,
     descriptor: *const WGPUBufferDescriptor,
@@ -1757,7 +1757,7 @@ unsafe extern "C" fn wgpuDeviceCreateBuffer(
     Box::into_raw(Box::new(buffer))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
     device: *mut GpuDevice,
     descriptor: *const WGPUCommandEncoderDescriptor,
@@ -1768,7 +1768,7 @@ unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
     Box::into_raw(Box::new(encoder))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
     device: *mut GpuDevice,
     descriptor: *const WGPUComputePipelineDescriptor,
@@ -1779,7 +1779,7 @@ unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
     Box::into_raw(Box::new(pipeline))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
     device: *mut GpuDevice,
     descriptor: *const WGPUPipelineLayoutDescriptor,
@@ -1790,7 +1790,7 @@ unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
     Box::into_raw(Box::new(layout))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     device: *mut GpuDevice,
     descriptor: *const WGPURenderPipelineDescriptor,
@@ -1803,7 +1803,7 @@ unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     Box::into_raw(Box::new(pipeline))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuDeviceCreateSampler(
     device: *mut GpuDevice,
     descriptor: *const WGPUSamplerDescriptor,
@@ -1814,7 +1814,7 @@ unsafe extern "C" fn wgpuDeviceCreateSampler(
     Box::into_raw(Box::new(sampler))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     device: *mut GpuDevice,
     descriptor: *const WGPUShaderModuleDescriptor,
@@ -1825,7 +1825,7 @@ unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     Box::into_raw(Box::new(module))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuDeviceCreateTexture(
     device: *mut GpuDevice,
     descriptor: *const WGPUTextureDescriptor,
@@ -1838,7 +1838,7 @@ unsafe extern "C" fn wgpuDeviceCreateTexture(
     Box::into_raw(Box::new(texture))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuDeviceGetQueue(device: *mut GpuDevice) -> *mut GpuQueue {
     let device = &*device;
     let queue = device.queue();
@@ -1847,14 +1847,14 @@ unsafe extern "C" fn wgpuDeviceGetQueue(device: *mut GpuDevice) -> *mut GpuQueue
 
 // Methods of PipelineLayout
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuPipelineLayoutRelease(layout: *mut GpuPipelineLayout) {
     drop(Box::from_raw(layout));
 }
 
 // Methods of Queue
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuQueueSubmit(
     queue: *mut GpuQueue,
     command_count: usize,
@@ -1880,7 +1880,7 @@ unsafe extern "C" fn wgpuQueueSubmit(
     queue.submit(&cmd_array);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuQueueWriteBuffer(
     queue: *mut GpuQueue,
     buffer: *mut GpuBuffer,
@@ -1913,7 +1913,7 @@ unsafe extern "C" fn wgpuQueueWriteBuffer(
         queue.write_buffer_with_f64_and_buffer_source(buffer, buffer_offset as f64, &uint8_array);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuQueueWriteTexture(
     queue: *mut GpuQueue,
     destination: *const WGPUImageCopyTexture,
@@ -1938,14 +1938,14 @@ unsafe extern "C" fn wgpuQueueWriteTexture(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuQueueRelease(queue: *mut GpuQueue) {
     drop(Box::from_raw(queue));
 }
 
 // Methods of RenderPassEncoder
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderDraw(
     pass: *mut GpuRenderPassEncoder,
     vertex_count: u32,
@@ -1962,7 +1962,7 @@ unsafe extern "C" fn wgpuRenderPassEncoderDraw(
     );
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(
     pass: *mut GpuRenderPassEncoder,
     index_count: u32,
@@ -1981,13 +1981,13 @@ unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(
     );
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass: *mut GpuRenderPassEncoder) {
     let pass = &*pass;
     pass.end();
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
     pass: *mut GpuRenderPassEncoder,
     index: u32,
@@ -2009,7 +2009,7 @@ unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
     pass: *mut GpuRenderPassEncoder,
     buffer: *mut GpuBuffer,
@@ -2023,7 +2023,7 @@ unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
     pass.set_index_buffer_with_f64_and_f64(buffer, format, offset as f64, size as f64);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderSetPipeline(
     pass: *mut GpuRenderPassEncoder,
     pipeline: *mut GpuRenderPipeline,
@@ -2033,7 +2033,7 @@ unsafe extern "C" fn wgpuRenderPassEncoderSetPipeline(
     pass.set_pipeline(pipeline);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderSetScissorRect(
     pass: *mut GpuRenderPassEncoder,
     x: u32,
@@ -2045,7 +2045,7 @@ unsafe extern "C" fn wgpuRenderPassEncoderSetScissorRect(
     pass.set_scissor_rect(x, y, width, height);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderSetStencilReference(
     pass: *mut GpuRenderPassEncoder,
     reference: u32,
@@ -2054,7 +2054,7 @@ unsafe extern "C" fn wgpuRenderPassEncoderSetStencilReference(
     pass.set_stencil_reference(reference);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
     pass: *mut GpuRenderPassEncoder,
     slot: u32,
@@ -2067,35 +2067,35 @@ unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
     pass.set_vertex_buffer_with_f64_and_f64(slot, buffer, offset as f64, size as f64);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderRelease(pass: *mut GpuRenderPassEncoder) {
     drop(Box::from_raw(pass));
 }
 
 // Methods of RenderPipeline
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuRenderPipelineRelease(pipeline: *mut GpuRenderPipeline) {
     drop(Box::from_raw(pipeline));
 }
 
 // Methods of Sampler
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuSamplerRelease(sampler: *mut GpuSampler) {
     drop(Box::from_raw(sampler));
 }
 
 // Methods of ShaderModule
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuShaderModuleRelease(module: *mut GpuShaderModule) {
     drop(Box::from_raw(module));
 }
 
 // Methods of Surface
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuSurfaceConfigure(
     surface: *mut GpuCanvasContext,
     config: *const GpuCanvasConfiguration,
@@ -2105,7 +2105,7 @@ unsafe extern "C" fn wgpuSurfaceConfigure(
     let _ = surface.configure(config);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
     surface: *mut GpuCanvasContext,
     surface_texture: *mut WGPUSurfaceTexture,
@@ -2125,7 +2125,7 @@ unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuSurfaceUnconfigure(surface: *mut GpuCanvasContext) {
     let surface = &*surface;
     surface.unconfigure();
@@ -2133,7 +2133,7 @@ unsafe extern "C" fn wgpuSurfaceUnconfigure(surface: *mut GpuCanvasContext) {
 
 // Methods of Texture
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuTextureCreateView(
     texture: *mut GpuTexture,
     descriptor: *const WGPUTextureViewDescriptor,
@@ -2147,38 +2147,38 @@ unsafe extern "C" fn wgpuTextureCreateView(
     Box::into_raw(Box::new(view))
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuTextureDestroy(texture: *mut GpuTexture) {
     let texture = &*texture;
     texture.destroy();
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuTextureGetFormat(texture: *mut GpuTexture) -> WGPUTextureFormat {
     let texture = &*texture;
     enum_wgpu_texture_format_from_gpu(texture.format())
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuTextureGetHeight(texture: *mut GpuTexture) -> u32 {
     let texture = &*texture;
     texture.height()
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuTextureGetWidth(texture: *mut GpuTexture) -> u32 {
     let texture = &*texture;
     texture.width()
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuTextureRelease(texture: *mut GpuTexture) {
     drop(Box::from_raw(texture));
 }
 
 // Methods of TextureView
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn wgpuTextureViewRelease(view: *mut GpuTextureView) {
     drop(Box::from_raw(view));
 }

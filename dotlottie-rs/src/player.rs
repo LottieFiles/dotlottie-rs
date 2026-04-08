@@ -210,7 +210,9 @@ impl DotLottiePlayer {
 
     #[cfg(all(feature = "audio", feature = "dotlottie"))]
     pub fn audio_volume(&self) -> f32 {
-        self.dotlottie_manager.as_ref().map_or(1.0, |dm| dm.audio_volume())
+        self.dotlottie_manager
+            .as_ref()
+            .map_or(1.0, |dm| dm.audio_volume())
     }
 
     pub fn marker_names(&self) -> &[CString] {

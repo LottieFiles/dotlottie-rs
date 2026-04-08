@@ -5,7 +5,7 @@ pub use errors::*;
 pub use manifest::*;
 
 #[cfg(feature = "audio")]
-use crate::audio::{AudioManager, extract_audio};
+use crate::audio::{extract_audio, AudioManager};
 #[cfg(feature = "theming")]
 use crate::theme::Theme;
 use serde_json::Value;
@@ -386,7 +386,10 @@ impl DotLottieManager {
 
     #[cfg(feature = "audio")]
     pub fn audio_volume(&self) -> f32 {
-        self.audio_manager.borrow().as_ref().map_or(1.0, |am| am.volume())
+        self.audio_manager
+            .borrow()
+            .as_ref()
+            .map_or(1.0, |am| am.volume())
     }
 }
 

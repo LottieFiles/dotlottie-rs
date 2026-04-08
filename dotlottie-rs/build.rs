@@ -339,9 +339,6 @@ mod thorvg {
         writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
         writeln!(thorvg_config_h, "#define TVG_STATIC")?;
         writeln!(thorvg_config_h, "#define WIN32_LEAN_AND_MEAN")?;
-        if is_windows_msvc {
-            writeln!(thorvg_config_h, "#define NOMINMAX")?;
-        }
 
         if !is_wasm {
             writeln!(thorvg_config_h, "#define THORVG_FILE_IO_SUPPORT 1")?;

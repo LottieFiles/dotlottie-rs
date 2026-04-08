@@ -7,7 +7,7 @@ use crate::lottie_renderer::{
     ColorSlot, ColorValue, GlContext, GlDisplay, GlSurface, ImageSlot, PositionSlot, ScalarSlot,
     ScalarValue, TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
 };
-use crate::{DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode};
+use crate::{DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode, Rgba};
 
 use crate::ColorSpace;
 
@@ -372,12 +372,15 @@ pub unsafe extern "C" fn dotlottie_set_use_frame_interpolation(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_background_color(
+pub unsafe extern "C" fn dotlottie_set_background(
     ptr: *mut DotLottiePlayer,
-    color: u32,
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        dotlottie_player.set_background_color(Some(color))
+        dotlottie_player.set_background(Rgba::new(r, g, b, a))
     })
 }
 
@@ -543,19 +546,25 @@ pub unsafe extern "C" fn dotlottie_get_use_frame_interpolation(ptr: *mut DotLott
     }
 }
 
-/// Returns the current background color.
-///
-/// # Parameters
-/// - `ptr`: Pointer to the DotLottiePlayer instance
-///
-/// # Returns
-/// The background color as ARGB u32, or 0 if the pointer is invalid
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_get_background_color(ptr: *mut DotLottiePlayer) -> u32 {
-    match ptr.as_mut() {
-        Some(p) => p.background_color(),
-        _ => 0,
-    }
+pub unsafe extern "C" fn dotlottie_background(
+    ptr: *mut DotLottiePlayer,
+    r: *mut u8,
+    g: *mut u8,
+    b: *mut u8,
+    a: *mut u8,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if r.is_null() || g.is_null() || b.is_null() || a.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        let bg = dotlottie_player.background();
+        *r = bg.r;
+        *g = bg.g;
+        *b = bg.b;
+        *a = bg.a;
+        DotLottieResult::Success
+    })
 }
 
 /// Returns the current segment.

@@ -1,6 +1,49 @@
 use core::error;
 use std::ffi::CStr;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct Rgba {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
+}
+
+impl Rgba {
+    pub const TRANSPARENT: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    };
+
+    pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self { r, g, b, a }
+    }
+
+    pub const fn is_transparent(&self) -> bool {
+        self.a == 0
+    }
+}
+
+/// Layout: 0xRRGGBBAA
+impl From<u32> for Rgba {
+    fn from(hex: u32) -> Self {
+        Self {
+            r: ((hex >> 24) & 0xFF) as u8,
+            g: ((hex >> 16) & 0xFF) as u8,
+            b: ((hex >> 8) & 0xFF) as u8,
+            a: (hex & 0xFF) as u8,
+        }
+    }
+}
+
+impl From<Rgba> for u32 {
+    fn from(c: Rgba) -> u32 {
+        (c.r as u32) << 24 | (c.g as u32) << 16 | (c.b as u32) << 8 | c.a as u32
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 pub enum ColorSpace {
@@ -152,7 +195,7 @@ pub enum Drawable<'d, R: Renderer> {
 pub trait Shape: Default {
     type Error: error::Error;
 
-    fn fill(&mut self, color: (u8, u8, u8, u8)) -> Result<(), Self::Error>;
+    fn fill(&mut self, color: Rgba) -> Result<(), Self::Error>;
 
     fn append_rect(
         &mut self,
@@ -267,6 +310,9 @@ pub trait Renderer: Sized + 'static {
     fn clear(&self) -> Result<(), Self::Error>;
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), Self::Error>;
+
+    /// Insert `drawable` immediately before `at` in the scene.
+    fn insert(&mut self, drawable: Drawable<Self>, at: Drawable<Self>) -> Result<(), Self::Error>;
 
     fn draw(&mut self, clear_buffer: bool) -> Result<(), Self::Error>;
 

@@ -1,6 +1,6 @@
 #![allow(clippy::print_stdout)]
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Rgba};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -71,7 +71,7 @@ fn main() {
     let mut player = DotLottiePlayer::new();
     player.set_autoplay(true);
     player.set_loop(true);
-    let _ = player.set_background_color(Some(0xffffffff));
+    let _ = player.set_background(Rgba::from(0xffffffff));
 
     let mut current_width = WIDTH;
     let mut current_height = HEIGHT;

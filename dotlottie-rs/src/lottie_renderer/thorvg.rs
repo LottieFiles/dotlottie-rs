@@ -9,8 +9,8 @@ use std::{
 use crate::lottie_renderer::fallback_font;
 
 use super::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Renderer, Shape, WgpuDevice,
-    WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Renderer, Rgba, Shape,
+    WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 
 #[expect(non_upper_case_globals)]
@@ -322,6 +322,23 @@ impl Renderer for TvgRenderer {
             };
 
             unsafe { tvg::tvg_canvas_add(raw_canvas, raw_paint).into_result() }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
+    }
+
+    fn insert(&mut self, drawable: Drawable<Self>, at: Drawable<Self>) -> Result<(), TvgError> {
+        if let Some(raw_canvas) = self.raw_canvas {
+            let target = match drawable {
+                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Shape(shape) => shape.raw_shape,
+            };
+            let at_paint = match at {
+                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Shape(shape) => shape.raw_shape,
+            };
+
+            unsafe { tvg::tvg_canvas_insert(raw_canvas, target, at_paint).into_result() }
         } else {
             Err(TvgError::InvalidArgument)
         }
@@ -686,9 +703,9 @@ impl Default for TvgShape {
 impl Shape for TvgShape {
     type Error = TvgError;
 
-    fn fill(&mut self, color: (u8, u8, u8, u8)) -> Result<(), TvgError> {
+    fn fill(&mut self, color: Rgba) -> Result<(), TvgError> {
         unsafe {
-            tvg::tvg_shape_set_fill_color(self.raw_shape, color.0, color.1, color.2, color.3)
+            tvg::tvg_shape_set_fill_color(self.raw_shape, color.r, color.g, color.b, color.a)
                 .into_result()
         }
     }

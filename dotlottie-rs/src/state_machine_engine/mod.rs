@@ -26,7 +26,7 @@ use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEven
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, CompletionEvent, DotLottiePlayer,
-    EventName, Layout, Mode, PointerEvent, StateMachineEngineSecurityError,
+    EventName, Layout, Mode, PointerEvent, Rgba, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -79,7 +79,7 @@ pub struct StateMachineEngine<'a> {
     cached_loop_count: u32,
     cached_autoplay: bool,
     cached_use_frame_interpolation: bool,
-    cached_background_color: u32,
+    cached_background: Rgba,
     cached_segment: Option<[f32; 2]>,
     cached_marker: Option<CString>,
     cached_layout: Layout,
@@ -322,7 +322,7 @@ impl<'a> StateMachineEngine<'a> {
             cached_loop_count: player.current_loop_count(),
             cached_autoplay: player.autoplay(),
             cached_use_frame_interpolation: player.use_frame_interpolation(),
-            cached_background_color: player.background_color(),
+            cached_background: player.background(),
             cached_segment: player.segment(),
             cached_marker: player.marker().map(CStr::to_owned),
             cached_layout: player.layout(),
@@ -490,7 +490,7 @@ impl<'a> StateMachineEngine<'a> {
             .set_use_frame_interpolation(self.cached_use_frame_interpolation);
         let _ = self
             .player
-            .set_background_color(Some(self.cached_background_color));
+            .set_background(self.cached_background);
         let _ = self.player.set_segment(self.cached_segment);
         self.player.set_marker(self.cached_marker.as_deref());
         let _ = self.player.set_layout(self.cached_layout);

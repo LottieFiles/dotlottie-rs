@@ -53,7 +53,7 @@ struct StoredGlContext;
 #[cfg(feature = "webgl")]
 impl crate::GlContext for StoredGlContext {
     fn as_ptr(&self) -> *mut std::ffi::c_void {
-        crate::webgl_stubs::context_ptr()
+        super::webgl_stubs::context_ptr()
     }
     unsafe fn from_ptr(_ptr: *mut std::ffi::c_void) -> Self {
         StoredGlContext
@@ -254,14 +254,14 @@ impl DotLottiePlayerWasm {
     pub fn set_webgl_context(&mut self, ctx: web_sys::WebGl2RenderingContext) {
         if self.gl_context_ptr != 0 {
             unsafe {
-                crate::webgl_stubs::drop_stored_context(
+                super::webgl_stubs::drop_stored_context(
                     self.gl_context_ptr as *mut web_sys::WebGl2RenderingContext,
                 );
             }
         }
-        let ptr = crate::webgl_stubs::store_context(ctx);
+        let ptr = super::webgl_stubs::store_context(ctx);
         self.gl_context_ptr = ptr as usize;
-        crate::webgl_stubs::make_current(ptr);
+        super::webgl_stubs::make_current(ptr);
     }
 
     /// Store the WebGPU device.  Call before `set_webgpu_surface` and `load_animation`.
@@ -295,7 +295,7 @@ impl DotLottiePlayerWasm {
     #[cfg(feature = "webgl")]
     fn activate_gl(&self) {
         if self.gl_context_ptr != 0 {
-            crate::webgl_stubs::make_current(
+            super::webgl_stubs::make_current(
                 self.gl_context_ptr as *mut web_sys::WebGl2RenderingContext,
             );
         }
@@ -303,9 +303,9 @@ impl DotLottiePlayerWasm {
 
     // ── Render-target setup ─────────────────────────────────────────────────
 
-    /// Set up (or resize) the rendering target.
+    /// Set up (or resize) the OpenGL rendering target.
     #[cfg(feature = "webgl")]
-    pub fn setup_target(&mut self, width: u32, height: u32) -> bool {
+    pub fn setup_gl_target(&mut self, width: u32, height: u32) -> bool {
         self.activate_gl();
         self.width = width;
         self.height = height;
@@ -321,9 +321,9 @@ impl DotLottiePlayerWasm {
             .is_ok()
     }
 
-    /// Set up (or resize) the rendering target.
+    /// Set up (or resize) the WebGPU rendering target.
     #[cfg(feature = "webgpu")]
-    pub fn setup_target(&mut self, width: u32, height: u32) -> bool {
+    pub fn setup_wg_target(&mut self, width: u32, height: u32) -> bool {
         self.width = width;
         self.height = height;
         if self.wg_device_ptr == 0 || self.wg_surface_ptr == 0 {
@@ -341,9 +341,9 @@ impl DotLottiePlayerWasm {
             .is_ok()
     }
 
-    /// Set up (or resize) the rendering target.
+    /// Set up (or resize) the software rendering target.
     #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
-    pub fn setup_target(&mut self, width: u32, height: u32) -> bool {
+    pub fn setup_sw_target(&mut self, width: u32, height: u32) -> bool {
         self.width = width;
         self.height = height;
         let required = (width * height) as usize;
@@ -1505,7 +1505,7 @@ impl Drop for DotLottiePlayerWasm {
         #[cfg(feature = "webgl")]
         if self.gl_context_ptr != 0 {
             unsafe {
-                crate::webgl_stubs::drop_stored_context(
+                super::webgl_stubs::drop_stored_context(
                     self.gl_context_ptr as *mut web_sys::WebGl2RenderingContext,
                 );
             }

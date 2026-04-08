@@ -18,18 +18,17 @@ pub mod c_api;
 
 pub mod tools;
 
-// wasm32-unknown-unknown modules
-#[cfg(all(target_arch = "wasm32", feature = "wasm"))]
-mod stubs;
+// wasm32-unknown-unknown: auto-enabled when targeting wasm32 (excluding emscripten) with ThorVG
+#[cfg(all(feature = "tvg", target_arch = "wasm32", not(target_os = "emscripten")))]
+mod wasm;
 
-#[cfg(all(target_arch = "wasm32", feature = "webgl"))]
-pub(crate) mod webgl_stubs;
-
-#[cfg(all(target_arch = "wasm32", feature = "webgpu"))]
-pub(crate) mod webgpu_stubs;
-
-#[cfg(all(target_arch = "wasm32", feature = "wasm-bindgen-api"))]
-pub mod wasm_bindgen_api;
+#[cfg(all(
+    feature = "tvg",
+    target_arch = "wasm32",
+    not(target_os = "emscripten"),
+    feature = "wasm-bindgen-api"
+))]
+pub use wasm::wasm_bindgen_api;
 
 #[cfg(feature = "dotlottie")]
 pub use fms::*;

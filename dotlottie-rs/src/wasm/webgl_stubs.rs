@@ -103,7 +103,7 @@ fn get_context() -> &'static WebGl2RenderingContext {
 
 // -------------------- WebGL Stubs --------------------
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDeleteTextures(n: GLsizei, textures: *const GLuint) {
     let state = get_context();
     let textures_slice = std::slice::from_raw_parts(textures, n as usize);
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn glDeleteTextures(n: GLsizei, textures: *const GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glBindFramebuffer(target: GLenum, framebuffer: GLuint) {
     let state = get_context();
 
@@ -131,7 +131,7 @@ pub unsafe extern "C" fn glBindFramebuffer(target: GLenum, framebuffer: GLuint) 
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDeleteFramebuffers(n: GLsizei, framebuffers: *const GLuint) {
     let state = get_context();
     let framebuffers_slice = std::slice::from_raw_parts(framebuffers, n as usize);
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn glDeleteFramebuffers(n: GLsizei, framebuffers: *const G
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDeleteRenderbuffers(n: GLsizei, renderbuffers: *const GLuint) {
     let state = get_context();
     let renderbuffers_slice = std::slice::from_raw_parts(renderbuffers, n as usize);
@@ -161,7 +161,7 @@ pub unsafe extern "C" fn glDeleteRenderbuffers(n: GLsizei, renderbuffers: *const
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGenFramebuffers(n: GLsizei, framebuffers: *mut GLuint) {
     let state = get_context();
     let framebuffers_slice = std::slice::from_raw_parts_mut(framebuffers, n as usize);
@@ -173,7 +173,7 @@ pub unsafe extern "C" fn glGenFramebuffers(n: GLsizei, framebuffers: *mut GLuint
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGenRenderbuffers(n: GLsizei, renderbuffers: *mut GLuint) {
     let state = get_context();
     let renderbuffers_slice = std::slice::from_raw_parts_mut(renderbuffers, n as usize);
@@ -185,7 +185,7 @@ pub unsafe extern "C" fn glGenRenderbuffers(n: GLsizei, renderbuffers: *mut GLui
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glBindRenderbuffer(target: GLenum, renderbuffer: GLuint) {
     let state = get_context();
 
@@ -197,7 +197,7 @@ pub unsafe extern "C" fn glBindRenderbuffer(target: GLenum, renderbuffer: GLuint
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glRenderbufferStorageMultisample(
     target: GLenum,
     samples: GLsizei,
@@ -208,7 +208,7 @@ pub unsafe extern "C" fn glRenderbufferStorageMultisample(
     get_context().renderbuffer_storage_multisample(target, samples, internalformat, width, height);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glFramebufferRenderbuffer(
     target: GLenum,
     attachment: GLenum,
@@ -225,7 +225,7 @@ pub unsafe extern "C" fn glFramebufferRenderbuffer(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGenTextures(n: GLsizei, textures: *mut GLuint) {
     let state = get_context();
     let textures_slice = std::slice::from_raw_parts_mut(textures, n as usize);
@@ -239,7 +239,7 @@ pub unsafe extern "C" fn glGenTextures(n: GLsizei, textures: *mut GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glBindTexture(target: GLenum, texture: GLuint) {
     // Fast path - most common case
     if texture == 0 {
@@ -252,7 +252,7 @@ pub unsafe extern "C" fn glBindTexture(target: GLenum, texture: GLuint) {
     get_context().bind_texture(target, Some(tex_ref));
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glTexImage2D(
     target: GLenum,
     level: GLint,
@@ -282,12 +282,12 @@ pub unsafe extern "C" fn glTexImage2D(
         .unwrap();
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glTexParameteri(target: GLenum, pname: GLenum, param: GLint) {
     get_context().tex_parameteri(target, pname, param);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glFramebufferTexture2D(
     target: GLenum,
     attachment: GLenum,
@@ -305,7 +305,7 @@ pub unsafe extern "C" fn glFramebufferTexture2D(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glBufferData(
     target: GLenum,
     size: GLsizeiptr,
@@ -322,7 +322,7 @@ pub unsafe extern "C" fn glBufferData(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGenBuffers(n: GLsizei, buffers: *mut GLuint) {
     let state = get_context();
     let buffers_slice = std::slice::from_raw_parts_mut(buffers, n as usize);
@@ -334,7 +334,7 @@ pub unsafe extern "C" fn glGenBuffers(n: GLsizei, buffers: *mut GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glBindBuffer(target: GLenum, buffer: GLuint) {
     let state = get_context();
 
@@ -350,7 +350,7 @@ pub unsafe extern "C" fn glBindBuffer(target: GLenum, buffer: GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDeleteBuffers(n: GLsizei, buffers: *const GLuint) {
     let state = get_context();
     let buffers_slice = std::slice::from_raw_parts(buffers, n as usize);
@@ -364,7 +364,7 @@ pub unsafe extern "C" fn glDeleteBuffers(n: GLsizei, buffers: *const GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGenVertexArrays(n: GLsizei, arrays: *mut GLuint) {
     let state = get_context();
     let arrays_slice = std::slice::from_raw_parts_mut(arrays, n as usize);
@@ -376,7 +376,7 @@ pub unsafe extern "C" fn glGenVertexArrays(n: GLsizei, arrays: *mut GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glBindVertexArray(array: GLuint) {
     let state = get_context();
 
@@ -388,7 +388,7 @@ pub unsafe extern "C" fn glBindVertexArray(array: GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDeleteVertexArrays(n: GLsizei, arrays: *const GLuint) {
     let state = get_context();
     let arrays_slice = std::slice::from_raw_parts(arrays, n as usize);
@@ -403,7 +403,7 @@ pub unsafe extern "C" fn glDeleteVertexArrays(n: GLsizei, arrays: *const GLuint)
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGetIntegerv(pname: GLenum, data: *mut GLint) {
     let state = get_context();
     match pname {
@@ -428,7 +428,7 @@ pub unsafe extern "C" fn glGetIntegerv(pname: GLenum, data: *mut GLint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glCreateShader(type_: GLenum) -> GLuint {
     let state = get_context();
     let shader = state.create_shader(type_).unwrap();
@@ -436,7 +436,7 @@ pub unsafe extern "C" fn glCreateShader(type_: GLenum) -> GLuint {
     shader_ptr.expose_provenance() as GLuint
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glShaderSource(
     shader: GLuint,
     count: GLsizei,
@@ -473,7 +473,7 @@ pub unsafe extern "C" fn glShaderSource(
     state.shader_source(shader_ref, &source);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glCompileShader(shader: GLuint) {
     let state = get_context();
 
@@ -483,7 +483,7 @@ pub unsafe extern "C" fn glCompileShader(shader: GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGetShaderiv(shader: GLuint, pname: GLenum, params: *mut GLint) {
     let state = get_context();
 
@@ -512,7 +512,7 @@ pub unsafe extern "C" fn glGetShaderiv(shader: GLuint, pname: GLenum, params: *m
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGetShaderInfoLog(
     shader: GLuint,
     buf_size: GLsizei,
@@ -535,7 +535,7 @@ pub unsafe extern "C" fn glGetShaderInfoLog(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDeleteShader(shader: GLuint) {
     let state = get_context();
 
@@ -545,7 +545,7 @@ pub unsafe extern "C" fn glDeleteShader(shader: GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glCreateProgram() -> GLuint {
     let state = get_context();
     let program = state.create_program().unwrap();
@@ -553,7 +553,7 @@ pub unsafe extern "C" fn glCreateProgram() -> GLuint {
     program_ptr.expose_provenance() as GLuint
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glAttachShader(program: GLuint, shader: GLuint) {
     let state = get_context();
 
@@ -564,7 +564,7 @@ pub unsafe extern "C" fn glAttachShader(program: GLuint, shader: GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glLinkProgram(program: GLuint) {
     let state = get_context();
 
@@ -574,7 +574,7 @@ pub unsafe extern "C" fn glLinkProgram(program: GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGetProgramiv(program: GLuint, pname: GLenum, params: *mut GLint) {
     let state = get_context();
 
@@ -603,7 +603,7 @@ pub unsafe extern "C" fn glGetProgramiv(program: GLuint, pname: GLenum, params: 
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGetProgramInfoLog(
     program: GLuint,
     buf_size: GLsizei,
@@ -626,7 +626,7 @@ pub unsafe extern "C" fn glGetProgramInfoLog(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDeleteProgram(program: GLuint) {
     let state = get_context();
 
@@ -638,7 +638,7 @@ pub unsafe extern "C" fn glDeleteProgram(program: GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glUseProgram(program: GLuint) {
     let state = get_context();
 
@@ -650,7 +650,7 @@ pub unsafe extern "C" fn glUseProgram(program: GLuint) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGetUniformLocation(program: GLuint, name: *const i8) -> GLint {
     let state = get_context();
 
@@ -667,7 +667,7 @@ pub unsafe extern "C" fn glGetUniformLocation(program: GLuint, name: *const i8) 
     -1 // Location not found
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glGetUniformBlockIndex(
     program: GLuint,
     uniform_block_name: *const i8,
@@ -685,7 +685,7 @@ pub unsafe extern "C" fn glGetUniformBlockIndex(
     GL_INVALID_INDEX
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glUniform1iv(location: GLint, count: GLsizei, value: *const GLint) {
     let state = get_context();
 
@@ -701,17 +701,17 @@ pub unsafe extern "C" fn glUniform1iv(location: GLint, count: GLsizei, value: *c
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glEnableVertexAttribArray(index: GLuint) {
     get_context().enable_vertex_attrib_array(index);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDisableVertexAttribArray(index: GLuint) {
     get_context().disable_vertex_attrib_array(index);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glVertexAttrib4f(
     index: GLuint,
     x: GLfloat,
@@ -722,7 +722,7 @@ pub unsafe extern "C" fn glVertexAttrib4f(
     get_context().vertex_attrib4f(index, x, y, z, w);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glVertexAttribPointer(
     index: GLuint,
     size: GLint,
@@ -741,12 +741,12 @@ pub unsafe extern "C" fn glVertexAttribPointer(
     );
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glActiveTexture(texture: GLenum) {
     get_context().active_texture(texture);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glUniformBlockBinding(
     program: GLuint,
     uniform_block_index: GLuint,
@@ -760,7 +760,7 @@ pub unsafe extern "C" fn glUniformBlockBinding(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glBindBufferRange(
     target: GLenum,
     index: GLuint,
@@ -776,7 +776,7 @@ pub unsafe extern "C" fn glBindBufferRange(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDrawElements(
     mode: GLenum,
     count: GLsizei,
@@ -786,47 +786,47 @@ pub unsafe extern "C" fn glDrawElements(
     get_context().draw_elements_with_i32(mode, count, type_, indices as i32);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glEnable(cap: GLenum) {
     get_context().enable(cap);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDisable(cap: GLenum) {
     get_context().disable(cap);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glViewport(x: GLint, y: GLint, width: GLsizei, height: GLsizei) {
     get_context().viewport(x, y, width, height);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glClearColor(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat) {
     get_context().clear_color(red, green, blue, alpha);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glClearStencil(s: GLint) {
     get_context().clear_stencil(s);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glClearDepthf(d: GLfloat) {
     get_context().clear_depth(d);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDepthMask(flag: GLboolean) {
     get_context().depth_mask(flag != 0);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glClear(mask: GLbitfield) {
     get_context().clear(mask);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glBlitFramebuffer(
     src_x0: GLint,
     src_y0: GLint,
@@ -844,32 +844,32 @@ pub unsafe extern "C" fn glBlitFramebuffer(
     );
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glBlendFunc(sfactor: GLenum, dfactor: GLenum) {
     get_context().blend_func(sfactor, dfactor);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glBlendEquation(mode: GLenum) {
     get_context().blend_equation(mode);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glCullFace(mode: GLenum) {
     get_context().cull_face(mode);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glFrontFace(mode: GLenum) {
     get_context().front_face(mode);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glDepthFunc(func: GLenum) {
     get_context().depth_func(func);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glInvalidateFramebuffer(
     target: GLenum,
     num_attachments: GLsizei,
@@ -884,7 +884,7 @@ pub unsafe extern "C" fn glInvalidateFramebuffer(
     state.invalidate_framebuffer(target, &js_array).unwrap();
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glUniform1f(location: GLint, v0: GLfloat) {
     if location >= 0 {
         let location_ref = &*(with_exposed_provenance::<WebGlUniformLocation>(location as usize));
@@ -892,7 +892,7 @@ pub unsafe extern "C" fn glUniform1f(location: GLint, v0: GLfloat) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glUniformMatrix3fv(
     location: GLint,
     count: GLsizei,
@@ -909,22 +909,22 @@ pub unsafe extern "C" fn glUniformMatrix3fv(
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glScissor(x: GLint, y: GLint, width: GLsizei, height: GLsizei) {
     get_context().scissor(x, y, width, height);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glStencilFunc(func: GLenum, ref_: GLint, mask: GLuint) {
     get_context().stencil_func(func, ref_, mask);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glStencilOp(fail: GLenum, zfail: GLenum, zpass: GLenum) {
     get_context().stencil_op(fail, zfail, zpass);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glStencilFuncSeparate(
     face: GLenum,
     func: GLenum,
@@ -934,7 +934,7 @@ pub unsafe extern "C" fn glStencilFuncSeparate(
     get_context().stencil_func_separate(face, func, ref_, mask);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glStencilOpSeparate(
     face: GLenum,
     sfail: GLenum,
@@ -944,7 +944,7 @@ pub unsafe extern "C" fn glStencilOpSeparate(
     get_context().stencil_op_separate(face, sfail, dpfail, dppass);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn glColorMask(
     red: GLboolean,
     green: GLboolean,
@@ -954,12 +954,12 @@ pub unsafe extern "C" fn glColorMask(
     get_context().color_mask(red != 0, green != 0, blue != 0, alpha != 0);
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn emscripten_webgl_get_current_context() -> *mut WebGl2RenderingContext {
     CONTEXT_PTR.load(Ordering::Relaxed)
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn emscripten_webgl_make_context_current(ctx: *mut c_void) -> i32 {
     if !ctx.is_null() {
         CONTEXT_PTR.store(ctx as *mut WebGl2RenderingContext, Ordering::Relaxed);

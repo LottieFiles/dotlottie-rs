@@ -331,8 +331,11 @@
             newPlayer.set_webgpu_surface(gpuCtx);
           }
 
-          if (!newPlayer.setup_target(W, H)) {
-            throw new Error('setup_target() returned false — check the console');
+          const setupOk = rendererType === 'sw'    ? newPlayer.setup_sw_target(W, H)
+                        : rendererType === 'webgl' ? newPlayer.setup_gl_target(W, H)
+                        :                            newPlayer.setup_wg_target(W, H);
+          if (!setupOk) {
+            throw new Error('setup target returned false — check the console');
           }
 
           const animData = await fetch(ANIMATION_URL).then(r => r.text());
@@ -395,7 +398,9 @@
           canvas.style.width  = cssW + 'px';
           canvas.style.height = cssH + 'px';
 
-          player.setup_target(pixW, pixH);
+          if (activeRenderer === 'sw')         player.setup_sw_target(pixW, pixH);
+          else if (activeRenderer === 'webgl') player.setup_gl_target(pixW, pixH);
+          else                                 player.setup_wg_target(pixW, pixH);
 
           if (activeRenderer === 'webgpu' && gpuCtx && gpuDevice) {
             gpuCtx.configure({

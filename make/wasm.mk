@@ -15,7 +15,7 @@
 # ============================================================================
 
 WASM_BINDGEN_TARGET := wasm32-unknown-unknown
-WASM_BINDGEN_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-lottie-expressions,dotlottie,theming,state-machines,wasm,wasm-bindgen-api
+WASM_BINDGEN_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-lottie-expressions,dotlottie,theming,state-machines,wasm-bindgen-api
 
 # Apple's system clang lacks the WebAssembly backend.  Use Homebrew LLVM if
 # present, otherwise fall back to whatever clang/clang++ is on PATH.

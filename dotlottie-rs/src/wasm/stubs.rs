@@ -17,10 +17,9 @@ use std::{
 };
 
 // Imports snprintf.
-#[cfg(feature = "wasm")]
 use nostd_printf as _;
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn modff(val: f32, i: *mut f32) -> f32 {
     unsafe {
         *i = val.trunc();
@@ -58,12 +57,12 @@ unsafe fn read_info(alloc_ptr: NonNull<u8>) -> Info {
     unsafe { info_ptr.cast().read_unaligned() }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn malloc(size: usize) -> Option<NonNull<u8>> {
     with_allocator(size, |layout| unsafe { alloc::alloc(layout) })
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn free(ptr: Option<NonNull<u8>>) {
     if let Some(alloc_ptr) = ptr {
         let info: Info = read_info(alloc_ptr);
@@ -74,7 +73,7 @@ unsafe extern "C" fn free(ptr: Option<NonNull<u8>>) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn realloc(ptr: Option<NonNull<u8>>, size: usize) -> Option<NonNull<u8>> {
     let Some(alloc_ptr) = ptr else {
         return malloc(size);
@@ -92,17 +91,17 @@ unsafe extern "C" fn realloc(ptr: Option<NonNull<u8>>, size: usize) -> Option<No
     })
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn calloc(num: usize, size: usize) -> Option<NonNull<u8>> {
     with_allocator(num * size, |layout| unsafe { alloc::alloc_zeroed(layout) })
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn _ZdlPvm(ptr: Option<NonNull<u8>>, _size: usize) {
     free(ptr)
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn _ZdaPvm(ptr: *mut u8, _size: usize) {
     // C++ operator delete[](void*, size_t) - sized array deallocation
     if !ptr.is_null() {
@@ -110,7 +109,7 @@ unsafe extern "C" fn _ZdaPvm(ptr: *mut u8, _size: usize) {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn atoi(s: Option<NonNull<i8>>) -> i32 {
     fn conv(s: Option<NonNull<i8>>) -> Option<i32> {
         let s = unsafe { CStr::from_ptr(s?.as_ptr()).to_str().ok()? };
@@ -127,10 +126,10 @@ unsafe extern "C" fn atoi(s: Option<NonNull<i8>>) -> i32 {
     conv(s).unwrap_or_default()
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn __cxa_pure_virtual() {}
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn __cxa_atexit(
     _func: extern "C" fn(*const ()),
     _arg: *const (),
@@ -139,12 +138,12 @@ unsafe extern "C" fn __cxa_atexit(
     0
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn abort() -> ! {
     process::abort()
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn __assert_fail(
     expr: *const i8,
     file: *const i8,
@@ -160,7 +159,7 @@ unsafe extern "C" fn __assert_fail(
     );
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn strchr(s: Option<NonNull<i8>>, c: u32) -> Option<NonNull<i8>> {
     let c = u8::try_from(c).ok()?;
     s.and_then(|p| {
@@ -172,7 +171,7 @@ unsafe extern "C" fn strchr(s: Option<NonNull<i8>>, c: u32) -> Option<NonNull<i8
     })
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn strdup(s: Option<NonNull<i8>>) -> Option<NonNull<i8>> {
     s.and_then(|p| {
         let bytes = CStr::from_ptr(p.as_ptr() as *const i8).to_bytes_with_nul();
@@ -186,12 +185,12 @@ unsafe extern "C" fn strdup(s: Option<NonNull<i8>>) -> Option<NonNull<i8>> {
     })
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn strcmp(s1: *const i8, s2: *const i8) -> i32 {
     CStr::from_ptr(s1).cmp(CStr::from_ptr(s2)) as i32
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn strcpy(dest: *mut i8, src: *const i8) -> *mut i8 {
     let src = CStr::from_ptr(src).to_bytes_with_nul();
     let dest_slice = slice::from_raw_parts_mut(dest as *mut u8, src.len());
@@ -201,7 +200,7 @@ unsafe extern "C" fn strcpy(dest: *mut i8, src: *const i8) -> *mut i8 {
     dest
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn strcat(dest: *mut i8, src: *const i8) -> *mut i8 {
     let dest_len = CStr::from_ptr(dest).to_bytes().len();
     let src = CStr::from_ptr(src).to_bytes_with_nul();
@@ -212,7 +211,7 @@ unsafe extern "C" fn strcat(dest: *mut i8, src: *const i8) -> *mut i8 {
     dest
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn strstr(haystack: *const i8, needle: *const i8) -> *mut i8 {
     if haystack.is_null() || needle.is_null() {
         return ptr::null_mut();
@@ -240,7 +239,7 @@ unsafe extern "C" fn strstr(haystack: *const i8, needle: *const i8) -> *mut i8 {
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn bsearch(
     key: *const (),
     base: *const (),
@@ -273,7 +272,7 @@ unsafe extern "C" fn bsearch(
     ptr::null_mut()
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn strncmp(s1: *const i8, s2: *const i8, n: usize) -> i32 {
     let mut i = 0;
     while i < n {
@@ -290,17 +289,17 @@ unsafe extern "C" fn strncmp(s1: *const i8, s2: *const i8, n: usize) -> i32 {
     0
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn isspace(c: i32) -> i32 {
     matches!(c as u8, b' ' | b'\t' | b'\n' | b'\x0b' | b'\x0c' | b'\r') as i32
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn isdigit(c: i32) -> i32 {
     matches!(c as u8, b'0'..=b'9') as i32
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn tolower(c: i32) -> i32 {
     if (c as u8).is_ascii_uppercase() {
         c + 32
@@ -311,7 +310,7 @@ unsafe extern "C" fn tolower(c: i32) -> i32 {
 
 static RAND_STATE: AtomicU32 = AtomicU32::new(12345);
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn rand() -> i32 {
     // Xorshift32 — fast, no libc dependency
     let mut x = RAND_STATE.load(Ordering::Relaxed);
@@ -323,7 +322,7 @@ unsafe extern "C" fn rand() -> i32 {
 }
 
 /// `strtol(s, endptr, base)` — string to long (wasm32: long == i32).
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn strtol(s: *const i8, endptr: *mut *mut i8, base: i32) -> i32 {
     let set_end = |p: *const i8| {
         if !endptr.is_null() {
@@ -406,7 +405,7 @@ unsafe extern "C" fn strtol(s: *const i8, endptr: *mut *mut i8, base: i32) -> i3
     }
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 pub unsafe extern "C" fn _ZNSt3__212__next_primeEm(n: usize) -> usize {
     let mut current = n;
 
@@ -446,21 +445,21 @@ pub unsafe extern "C" fn _ZNSt3__212__next_primeEm(n: usize) -> usize {
 // ThorVG's renderer files use a raw `static mutex _rendererMtx` for renderer
 // ref-counting.  WASM is single-threaded so these are safe no-ops.
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn _ZNSt3__25mutexD1Ev(this: *mut u8) -> *mut u8 {
     this
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn _ZNSt3__25mutex4lockEv(_this: *mut u8) {}
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn _ZNSt3__25mutex6unlockEv(_this: *mut u8) {}
 
 // ── Math stubs ───────────────────────────────────────────────────────────
 // Used by JerryScript's ecma-helpers-number.cpp and ecma-builtin-math.cpp.
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn nextafter(x: f64, y: f64) -> f64 {
     if x.is_nan() || y.is_nan() {
         return f64::NAN;
@@ -484,17 +483,17 @@ unsafe extern "C" fn nextafter(x: f64, y: f64) -> f64 {
     f64::from_bits(result_bits as u64)
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn acosh(x: f64) -> f64 {
     x.acosh()
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn asinh(x: f64) -> f64 {
     x.asinh()
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn atanh(x: f64) -> f64 {
     x.atanh()
 }
@@ -504,12 +503,12 @@ unsafe extern "C" fn atanh(x: f64) -> f64 {
 // non-local jumps are impossible in WASM's structured control flow, so
 // setjmp always returns 0 (normal path) and longjmp aborts.
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn setjmp(_buf: *mut u8) -> i32 {
     0
 }
 
-#[cfg_attr(feature = "wasm", no_mangle)]
+#[no_mangle]
 unsafe extern "C" fn longjmp(_buf: *mut u8, _val: i32) -> ! {
     process::abort()
 }

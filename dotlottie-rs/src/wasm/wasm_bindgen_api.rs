@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 
 #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
 use crate::ColorSpace;
-use crate::{DotLottiePlayer, Fit, Layout, Mode as PlayerMode};
+use crate::{DotLottiePlayer, Fit, Layout, Mode as PlayerMode, Rgba};
 
 // ─── Renderer mode ───────────────────────────────────────────────────────────
 
@@ -22,12 +22,38 @@ use crate::{DotLottiePlayer, Fit, Layout, Mode as PlayerMode};
 // we cannot pass null_mut here.
 
 #[cfg(feature = "webgl")]
+struct NullGlDisplay;
+
+#[cfg(feature = "webgl")]
+impl crate::GlDisplay for NullGlDisplay {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        std::ptr::null_mut()
+    }
+    unsafe fn from_ptr(_ptr: *mut std::ffi::c_void) -> Self {
+        NullGlDisplay
+    }
+}
+
+#[cfg(feature = "webgl")]
+struct NullGlSurface;
+
+#[cfg(feature = "webgl")]
+impl crate::GlSurface for NullGlSurface {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        std::ptr::null_mut()
+    }
+    unsafe fn from_ptr(_ptr: *mut std::ffi::c_void) -> Self {
+        NullGlSurface
+    }
+}
+
+#[cfg(feature = "webgl")]
 struct StoredGlContext;
 
 #[cfg(feature = "webgl")]
 impl crate::GlContext for StoredGlContext {
     fn as_ptr(&self) -> *mut std::ffi::c_void {
-        crate::webgl_stubs::context_ptr()
+        super::webgl_stubs::context_ptr()
     }
     unsafe fn from_ptr(_ptr: *mut std::ffi::c_void) -> Self {
         StoredGlContext
@@ -200,6 +226,8 @@ impl DotLottiePlayerWasm {
 
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
+        console_error_panic_hook::set_once();
+
         DotLottiePlayerWasm {
             #[cfg(feature = "state-machines")]
             state_machine: None,
@@ -226,14 +254,14 @@ impl DotLottiePlayerWasm {
     pub fn set_webgl_context(&mut self, ctx: web_sys::WebGl2RenderingContext) {
         if self.gl_context_ptr != 0 {
             unsafe {
-                crate::webgl_stubs::drop_stored_context(
+                super::webgl_stubs::drop_stored_context(
                     self.gl_context_ptr as *mut web_sys::WebGl2RenderingContext,
                 );
             }
         }
-        let ptr = crate::webgl_stubs::store_context(ctx);
+        let ptr = super::webgl_stubs::store_context(ctx);
         self.gl_context_ptr = ptr as usize;
-        crate::webgl_stubs::make_current(ptr);
+        super::webgl_stubs::make_current(ptr);
     }
 
     /// Store the WebGPU device.  Call before `set_webgpu_surface` and `load_animation`.
@@ -267,25 +295,35 @@ impl DotLottiePlayerWasm {
     #[cfg(feature = "webgl")]
     fn activate_gl(&self) {
         if self.gl_context_ptr != 0 {
-            crate::webgl_stubs::make_current(
+            super::webgl_stubs::make_current(
                 self.gl_context_ptr as *mut web_sys::WebGl2RenderingContext,
             );
         }
     }
 
-    // ── Internal render-target setup ──────────────────────────────────────────
+    // ── Render-target setup ─────────────────────────────────────────────────
 
+    /// Set up (or resize) the OpenGL rendering target.
     #[cfg(feature = "webgl")]
-    fn setup_target(&mut self, width: u32, height: u32) -> bool {
+    pub fn setup_gl_target(&mut self, width: u32, height: u32) -> bool {
+        self.activate_gl();
         self.width = width;
         self.height = height;
         self.player
-            .set_gl_target(&StoredGlContext, 0, width, height)
+            .set_gl_target(
+                &NullGlDisplay,
+                &NullGlSurface,
+                &StoredGlContext,
+                0,
+                width,
+                height,
+            )
             .is_ok()
     }
 
+    /// Set up (or resize) the WebGPU rendering target.
     #[cfg(feature = "webgpu")]
-    fn setup_target(&mut self, width: u32, height: u32) -> bool {
+    pub fn setup_wg_target(&mut self, width: u32, height: u32) -> bool {
         self.width = width;
         self.height = height;
         if self.wg_device_ptr == 0 || self.wg_surface_ptr == 0 {
@@ -303,8 +341,9 @@ impl DotLottiePlayerWasm {
             .is_ok()
     }
 
+    /// Set up (or resize) the software rendering target.
     #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
-    fn setup_target(&mut self, width: u32, height: u32) -> bool {
+    pub fn setup_sw_target(&mut self, width: u32, height: u32) -> bool {
         self.width = width;
         self.height = height;
         let required = (width * height) as usize;
@@ -312,30 +351,29 @@ impl DotLottiePlayerWasm {
             self.sw_buffer.resize(required, 0);
         }
         self.player
-            .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888)
+            .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888S)
             .is_ok()
     }
 
     // ── Loading ───────────────────────────────────────────────────────────────
 
-    /// Load a Lottie JSON animation.  Sets up the rendering target automatically.
-    pub fn load_animation(&mut self, data: &str, width: u32, height: u32) -> bool {
+    /// Load a Lottie JSON animation.
+    ///
+    /// `setup_target` must have been called first.
+    pub fn load_animation(&mut self, data: &str) -> bool {
         #[cfg(feature = "webgl")]
         self.activate_gl();
-        if !self.setup_target(width, height) {
-            return false;
-        }
         let Ok(c_data) = CString::new(data) else {
             return false;
         };
-        self.player
-            .load_animation_data(&c_data, width, height)
-            .is_ok()
+        self.player.load_animation_data(&c_data).is_ok()
     }
 
     /// Load a .lottie archive from raw bytes.
+    ///
+    /// `setup_target` must have been called first.
     #[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
-    pub fn load_dotlottie_data(&mut self, data: &[u8], width: u32, height: u32) -> bool {
+    pub fn load_dotlottie_data(&mut self, data: &[u8]) -> bool {
         #[cfg(not(feature = "dotlottie"))]
         {
             return false;
@@ -344,16 +382,15 @@ impl DotLottiePlayerWasm {
         {
             #[cfg(feature = "webgl")]
             self.activate_gl();
-            if !self.setup_target(width, height) {
-                return false;
-            }
-            self.player.load_dotlottie_data(data, width, height).is_ok()
+            self.player.load_dotlottie_data(data).is_ok()
         }
     }
 
     /// Load an animation from an already-loaded .lottie archive by its ID.
+    ///
+    /// `setup_target` must have been called first.
     #[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
-    pub fn load_animation_from_id(&mut self, id: &str, width: u32, height: u32) -> bool {
+    pub fn load_animation_from_id(&mut self, id: &str) -> bool {
         #[cfg(not(feature = "dotlottie"))]
         {
             return false;
@@ -362,13 +399,10 @@ impl DotLottiePlayerWasm {
         {
             #[cfg(feature = "webgl")]
             self.activate_gl();
-            if !self.setup_target(width, height) {
-                return false;
-            }
             let Ok(c_id) = CString::new(id) else {
                 return false;
             };
-            self.player.load_animation(&c_id, width, height).is_ok()
+            self.player.load_animation(&c_id).is_ok()
         }
     }
 
@@ -393,27 +427,6 @@ impl DotLottiePlayerWasm {
         #[cfg(feature = "webgl")]
         self.activate_gl();
         self.player.clear();
-    }
-
-    /// Resize the canvas.  For the SW renderer this also resizes the pixel buffer.
-    pub fn resize(&mut self, width: u32, height: u32) -> bool {
-        #[cfg(feature = "webgl")]
-        self.activate_gl();
-        #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
-        {
-            let required = (width * height) as usize;
-            self.sw_buffer.resize(required, 0);
-            if self
-                .player
-                .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888)
-                .is_err()
-            {
-                return false;
-            }
-        }
-        self.width = width;
-        self.height = height;
-        self.player.resize(width, height).is_ok()
     }
 
     // ── SW pixel buffer ───────────────────────────────────────────────────────
@@ -559,18 +572,25 @@ impl DotLottiePlayerWasm {
         self.player.set_use_frame_interpolation(v);
     }
 
-    pub fn background_color(&self) -> u32 {
-        self.player.background_color()
+    pub fn background_r(&self) -> u8 {
+        self.player.background().r
     }
 
-    /// Set background colour (`0xAARRGGBB`).
-    pub fn set_background_color(&mut self, color: u32) -> bool {
-        self.player.set_background_color(Some(color)).is_ok()
+    pub fn background_g(&self) -> u8 {
+        self.player.background().g
     }
 
-    /// Clear the background colour (transparent).
-    pub fn clear_background_color(&mut self) -> bool {
-        self.player.set_background_color(None).is_ok()
+    pub fn background_b(&self) -> u8 {
+        self.player.background().b
+    }
+
+    pub fn background_a(&self) -> u8 {
+        self.player.background().a
+    }
+
+    /// Set background colour. Pass `(0, 0, 0, 0)` to clear.
+    pub fn set_background(&mut self, r: u8, g: u8, b: u8, a: u8) -> bool {
+        self.player.set_background(Rgba::new(r, g, b, a)).is_ok()
     }
 
     pub fn set_quality(&mut self, quality: u8) -> bool {
@@ -742,43 +762,6 @@ impl DotLottiePlayerWasm {
 
     pub fn set_transform(&mut self, data: &[f32]) -> bool {
         self.player.set_transform(data.to_vec()).is_ok()
-    }
-
-    // ── Tween ─────────────────────────────────────────────────────────────────
-
-    /// Tween to `to` frame.  `duration` in seconds; pass `undefined` for default.
-    pub fn tween(&mut self, to: f32, duration: Option<f32>) -> bool {
-        self.player.tween(to, duration, None).is_ok()
-    }
-
-    /// Tween with a cubic-bezier easing (`e0..e3`).
-    pub fn tween_with_easing(
-        &mut self,
-        to: f32,
-        duration: Option<f32>,
-        e0: f32,
-        e1: f32,
-        e2: f32,
-        e3: f32,
-    ) -> bool {
-        self.player
-            .tween(to, duration, Some([e0, e1, e2, e3]))
-            .is_ok()
-    }
-
-    pub fn tween_stop(&mut self) -> bool {
-        self.player.tween_stop().is_ok()
-    }
-
-    pub fn tween_update(&mut self, progress: Option<f32>) -> bool {
-        self.player.tween_update(progress).is_ok()
-    }
-
-    pub fn tween_to_marker(&mut self, marker: &str, duration: Option<f32>) -> bool {
-        let Ok(c) = CString::new(marker) else {
-            return false;
-        };
-        self.player.tween_to_marker(&c, duration, None).is_ok()
     }
 
     // ── Markers ───────────────────────────────────────────────────────────────
@@ -1537,7 +1520,7 @@ impl Drop for DotLottiePlayerWasm {
         #[cfg(feature = "webgl")]
         if self.gl_context_ptr != 0 {
             unsafe {
-                crate::webgl_stubs::drop_stored_context(
+                super::webgl_stubs::drop_stored_context(
                     self.gl_context_ptr as *mut web_sys::WebGl2RenderingContext,
                 );
             }

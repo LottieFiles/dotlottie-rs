@@ -11,8 +11,8 @@ mod fallback_font;
 mod thorvg;
 
 pub use renderer::{
-    Animation, ColorSpace, Drawable, GlContext, Renderer, Shape, WgpuDevice, WgpuInstance,
-    WgpuTarget, WgpuTargetType,
+    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Renderer, Rgba, Shape,
+    WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 pub use slots::{
     slots_from_json_string, Bezier, BezierValue, ColorSlot, ColorValue, GradientSlot, GradientStop,
@@ -64,41 +64,31 @@ pub trait LottieRenderer {
         color_space: ColorSpace,
     ) -> Result<(), LottieRendererError>;
 
-    /// # Safety
-    ///
-    /// `context` must be a valid pointer to an OpenGL context. The context must
-    /// remain valid for the lifetime of rendering operations using this target.
-    unsafe fn set_gl_target(
+    /// `display` and `surface` may carry null pointers on platforms that do not require them
+    /// (e.g., macOS CGL only needs `context`). On EGL-based platforms (Android, Linux) all
+    /// three handles are typically required.
+    fn set_gl_target(
         &mut self,
-        context: *mut std::ffi::c_void,
+        display: &dyn GlDisplay,
+        surface: &dyn GlSurface,
+        context: &dyn GlContext,
         id: i32,
         width: u32,
         height: u32,
     ) -> Result<(), LottieRendererError>;
 
-    /// # Safety
-    ///
-    /// `device` must be a valid pointer to a WebGPU device, `instance` must be a valid
-    /// pointer to a WebGPU instance, and `target` must be a valid pointer to a WebGPU
-    /// render target. All pointers must remain valid for the lifetime of rendering
-    /// operations using this target.
     #[allow(clippy::too_many_arguments)]
-    unsafe fn set_wg_target(
+    fn set_wg_target(
         &mut self,
-        device: *mut std::ffi::c_void,
-        instance: *mut std::ffi::c_void,
-        target: *mut std::ffi::c_void,
+        device: &dyn WgpuDevice,
+        instance: &dyn WgpuInstance,
+        target: &dyn WgpuTarget,
         width: u32,
         height: u32,
         target_type: WgpuTargetType,
     ) -> Result<(), LottieRendererError>;
 
-    fn load_data(
-        &mut self,
-        data: &CStr,
-        width: u32,
-        height: u32,
-    ) -> Result<(), LottieRendererError>;
+    fn load_data(&mut self, data: &CStr) -> Result<(), LottieRendererError>;
 
     fn picture_width(&self) -> f32;
 
@@ -124,9 +114,9 @@ pub trait LottieRenderer {
 
     fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError>;
 
-    fn resize(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError>;
+    fn background(&self) -> Rgba;
 
-    fn set_background_color(&mut self, hex_color: u32) -> Result<(), LottieRendererError>;
+    fn set_background(&mut self, color: Rgba) -> Result<(), LottieRendererError>;
 
     fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot)
         -> Result<(), LottieRendererError>;
@@ -192,18 +182,9 @@ pub trait LottieRenderer {
 
     fn updated(&self) -> bool;
 
-    fn tween(
-        &mut self,
-        to: f32,
-        duration: Option<f32>,
-        easing: Option<[f32; 4]>,
-    ) -> Result<(), LottieRendererError>;
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), LottieRendererError>;
 
-    fn is_tweening(&self) -> bool;
-
-    fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, LottieRendererError>;
-
-    fn tween_stop(&mut self) -> Result<(), LottieRendererError>;
+    fn sync_current_frame(&mut self, frame: f32);
 
     fn get_transform(&self) -> Result<[f32; 9], LottieRendererError>;
 
@@ -226,7 +207,7 @@ impl dyn LottieRenderer {
             picture_height: 0.0,
             current_frame: 0.0,
             updated: false,
-            background_color: 0,
+            background: Rgba::TRANSPARENT,
             buffer: vec![],
             layout: Layout::default(),
             user_transform: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
@@ -250,7 +231,7 @@ struct LottieRendererImpl<R: Renderer> {
     picture_height: f32,
     current_frame: f32,
     updated: bool,
-    background_color: u32,
+    background: Rgba,
     buffer: Vec<u32>,
     layout: Layout,
     user_transform: [f32; 9],
@@ -272,11 +253,36 @@ impl<R: Renderer> LottieRendererImpl<R> {
             self.animation = None;
             self.background_shape = None;
         }
+        self.current_frame = 0.0;
+        self.updated = false;
         self.batch_slot_code = None;
         self.slots_dirty = false;
         self.slot_json_buffer.clear();
         self.slot_values.clear();
         self.default_slots.clear();
+        Ok(())
+    }
+
+    /// Updates the animation layout after the canvas dimensions have changed.
+    /// Called by `set_*_target` when width/height differ from the previous values.
+    fn resize(&mut self) -> Result<(), LottieRendererError> {
+        if self.animation.is_some() {
+            let _ = self.renderer.sync();
+            self.apply_user_transform()?;
+        }
+
+        if self.background_shape.is_some() {
+            let w = self.width as f32;
+            let h = self.height as f32;
+            self.get_background_shape_mut()?
+                .append_rect(0.0, 0.0, w, h, 0.0, 0.0)
+                .map_err(into_lottie::<R>)?;
+        }
+
+        if self.animation.is_some() || self.background_shape.is_some() {
+            self.updated = true;
+        }
+
         Ok(())
     }
 
@@ -332,9 +338,8 @@ impl<R: Renderer> LottieRendererImpl<R> {
             .append_rect(0.0, 0.0, self.width as f32, self.height as f32, 0.0, 0.0)
             .map_err(into_lottie::<R>)?;
 
-        let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
         background_shape
-            .fill((red, green, blue, alpha))
+            .fill(self.background)
             .map_err(into_lottie::<R>)?;
 
         Ok(background_shape)
@@ -342,12 +347,14 @@ impl<R: Renderer> LottieRendererImpl<R> {
 
     fn setup_drawables(
         &mut self,
-        background_shape: &R::Shape,
+        background_shape: Option<&R::Shape>,
         animation: &R::Animation,
     ) -> Result<(), LottieRendererError> {
-        self.renderer
-            .push(Drawable::Shape(background_shape))
-            .map_err(into_lottie::<R>)?;
+        if let Some(bg) = background_shape {
+            self.renderer
+                .push(Drawable::Shape(bg))
+                .map_err(into_lottie::<R>)?;
+        }
 
         self.renderer
             .push(Drawable::Animation(animation))
@@ -468,56 +475,60 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     ) -> Result<(), LottieRendererError> {
         self.renderer
             .set_sw_target(buffer_ptr, stride, width, height, color_space)
-            .map_err(into_lottie::<R>)
+            .map_err(into_lottie::<R>)?;
+        let changed = (self.width, self.height) != (width, height);
+        self.width = width;
+        self.height = height;
+        if changed {
+            self.resize()?;
+        }
+        Ok(())
     }
 
-    unsafe fn set_gl_target(
+    fn set_gl_target(
         &mut self,
-        context: *mut std::ffi::c_void,
+        display: &dyn GlDisplay,
+        surface: &dyn GlSurface,
+        context: &dyn GlContext,
         id: i32,
         width: u32,
         height: u32,
     ) -> Result<(), LottieRendererError> {
-        let gl_context = R::GlContext::from_ptr(context);
         self.renderer
-            .set_gl_target(&gl_context, id, width, height)
-            .map_err(into_lottie::<R>)
+            .set_gl_target(display, surface, context, id, width, height)
+            .map_err(into_lottie::<R>)?;
+        let changed = (self.width, self.height) != (width, height);
+        self.width = width;
+        self.height = height;
+        if changed {
+            self.resize()?;
+        }
+        Ok(())
     }
 
-    unsafe fn set_wg_target(
+    fn set_wg_target(
         &mut self,
-        device: *mut std::ffi::c_void,
-        instance: *mut std::ffi::c_void,
-        target: *mut std::ffi::c_void,
+        device: &dyn WgpuDevice,
+        instance: &dyn WgpuInstance,
+        target: &dyn WgpuTarget,
         width: u32,
         height: u32,
         target_type: WgpuTargetType,
     ) -> Result<(), LottieRendererError> {
-        let wgpu_device = R::WgpuDevice::from_ptr(device);
-        let wgpu_instance = R::WgpuInstance::from_ptr(instance);
-        let wgpu_target = R::WgpuTarget::from_ptr(target);
         self.renderer
-            .set_wg_target(
-                &wgpu_device,
-                &wgpu_instance,
-                &wgpu_target,
-                width,
-                height,
-                target_type,
-            )
-            .map_err(into_lottie::<R>)
-    }
-
-    fn load_data(
-        &mut self,
-        data: &CStr,
-        width: u32,
-        height: u32,
-    ) -> Result<(), LottieRendererError> {
-        self.clear()?;
-
+            .set_wg_target(device, instance, target, width, height, target_type)
+            .map_err(into_lottie::<R>)?;
+        let changed = (self.width, self.height) != (width, height);
         self.width = width;
         self.height = height;
+        if changed {
+            self.resize()?;
+        }
+        Ok(())
+    }
+
+    fn load_data(&mut self, data: &CStr) -> Result<(), LottieRendererError> {
+        self.clear()?;
 
         // Extract default slot values BEFORE passing to ThorVG, because
         // ThorVG's load_data with copy=false may parse the JSON in-place
@@ -529,12 +540,16 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
         let animation = self.load_animation(data)?;
 
-        let background_shape = self.create_background_shape()?;
+        let background_shape = if !self.background.is_transparent() {
+            Some(self.create_background_shape()?)
+        } else {
+            None
+        };
 
-        self.setup_drawables(&background_shape, &animation)?;
+        self.setup_drawables(background_shape.as_ref(), &animation)?;
 
         self.animation = Some(animation);
-        self.background_shape = Some(background_shape);
+        self.background_shape = background_shape;
         self.updated = true;
 
         self.store_default_slots(default_slots);
@@ -556,6 +571,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn height(&self) -> u32 {
         self.height
+    }
+
+    fn background(&self) -> Rgba {
+        self.background
     }
 
     fn total_frames(&self) -> Result<f32, LottieRendererError> {
@@ -629,57 +648,31 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn resize(&mut self, width: u32, height: u32) -> Result<(), LottieRendererError> {
-        if (width, height) == (self.width, self.height) {
-            return Ok(());
-        }
+    fn set_background(&mut self, color: Rgba) -> Result<(), LottieRendererError> {
+        self.background = color;
 
-        if width == 0 || height == 0 {
-            return Err(LottieRendererError::InvalidArgument);
-        }
-
-        let _ = self.renderer.sync();
-
-        self.width = width;
-        self.height = height;
-
-        if self.animation.is_some() {
-            self.apply_user_transform()?;
-        }
-
-        if self.background_shape.is_some() {
-            let current_width = self.width as f32;
-            let current_height = self.height as f32;
-
-            self.get_background_shape_mut()?
-                .append_rect(0.0, 0.0, current_width, current_height, 0.0, 0.0)
+        if let Some(bg) = self.background_shape.as_mut() {
+            bg.fill(color).map_err(into_lottie::<R>)?;
+            self.updated = true;
+        } else if !color.is_transparent() && self.animation.is_some() {
+            // Background shape was skipped at load (was transparent). Now need it.
+            // Insert before the animation to maintain correct z-order.
+            let background_shape = self.create_background_shape()?;
+            let animation = self
+                .animation
+                .as_ref()
+                .ok_or(LottieRendererError::AnimationNotLoaded)?;
+            self.renderer
+                .insert(
+                    Drawable::Shape(&background_shape),
+                    Drawable::Animation(animation),
+                )
                 .map_err(into_lottie::<R>)?;
+            self.background_shape = Some(background_shape);
+            self.updated = true;
         }
-
-        self.updated = true;
-
-        self.render()?;
 
         Ok(())
-    }
-
-    fn set_background_color(&mut self, hex_color: u32) -> Result<(), LottieRendererError> {
-        self.background_color = hex_color;
-
-        if self.background_shape.is_none() {
-            return Ok(());
-        }
-
-        let (red, green, blue, alpha) = hex_to_rgba(self.background_color);
-
-        let set_background = self
-            .get_background_shape_mut()?
-            .fill((red, green, blue, alpha))
-            .map_err(into_lottie::<R>);
-
-        self.updated = true;
-
-        set_background
     }
 
     fn set_color_slot(
@@ -854,40 +847,16 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.updated
     }
 
-    fn tween(
-        &mut self,
-        to: f32,
-        duration: Option<f32>,
-        easing: Option<[f32; 4]>,
-    ) -> Result<(), LottieRendererError> {
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), LottieRendererError> {
         self.get_animation_mut()?
-            .tween(to, duration, easing)
-            .map_err(into_lottie::<R>)
+            .tween(from, to, progress)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
     }
 
-    fn is_tweening(&self) -> bool {
-        self.get_animation()
-            .map(|animation| animation.is_tweening())
-            .unwrap_or(false)
-    }
-
-    fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, LottieRendererError> {
-        let result = self
-            .get_animation_mut()?
-            .tween_update(progress)
-            .map_err(into_lottie::<R>);
-
-        if result.is_ok() {
-            self.updated = true;
-        }
-
-        result
-    }
-
-    fn tween_stop(&mut self) -> Result<(), LottieRendererError> {
-        self.get_animation_mut()?
-            .tween_stop()
-            .map_err(into_lottie::<R>)
+    fn sync_current_frame(&mut self, frame: f32) {
+        self.current_frame = frame;
     }
 
     fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError> {
@@ -929,16 +898,6 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
         Ok(())
     }
-}
-
-#[inline]
-fn hex_to_rgba(hex_color: u32) -> (u8, u8, u8, u8) {
-    let red = ((hex_color >> 24) & 0xFF) as u8;
-    let green = ((hex_color >> 16) & 0xFF) as u8;
-    let blue = ((hex_color >> 8) & 0xFF) as u8;
-    let alpha = (hex_color & 0xFF) as u8;
-
-    (red, green, blue, alpha)
 }
 
 fn multiply_matrices(a: &[f32; 9], b: &[f32; 9]) -> [f32; 9] {

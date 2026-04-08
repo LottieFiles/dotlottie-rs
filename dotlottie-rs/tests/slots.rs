@@ -17,7 +17,7 @@ mod tests {
 
         let data = include_str!("../assets/animations/lottie/bouncy_ball.json");
         let c_data = CString::new(data).unwrap();
-        player.load_animation_data(&c_data, WIDTH, HEIGHT).unwrap();
+        player.load_animation_data(&c_data).unwrap();
         player
     }
 

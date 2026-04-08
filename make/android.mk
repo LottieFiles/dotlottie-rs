@@ -11,9 +11,7 @@ else ifeq ($(UNAME_S),Linux)
     ANDROID_NDK_HOME ?= /opt/android-ndk
 else
     # Unknown platform: require user to set ANDROID_NDK_HOME
-    ifndef ANDROID_NDK_HOME
-        $(error "Please set ANDROID_NDK_HOME to your Android NDK installation path for $(UNAME_S).")
-    endif
+    ANDROID_NDK_HOME ?=
 endif
 API_LEVEL ?= 21
 
@@ -36,6 +34,7 @@ LIBCPP_SHARED_LIB ?= libc++_shared.so
 
 # Function to check platform support - only called when Android targets are invoked
 define check_android_platform_support
+$(if $(ANDROID_NDK_HOME),,$(error "Please set ANDROID_NDK_HOME to your Android NDK installation path."))
 $(if $(filter Darwin Linux,$(UNAME_S)),,$(error "Android builds not supported on $(UNAME_S). Requires macOS or Linux with Android NDK."))
 endef
 

@@ -26,7 +26,7 @@ use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEven
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, CompletionEvent, DotLottiePlayer,
-    EventName, Layout, Mode, PointerEvent, StateMachineEngineSecurityError,
+    EventName, Layout, Mode, PointerEvent, Rgba, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -79,7 +79,7 @@ pub struct StateMachineEngine<'a> {
     cached_loop_count: u32,
     cached_autoplay: bool,
     cached_use_frame_interpolation: bool,
-    cached_background_color: u32,
+    cached_background: Rgba,
     cached_segment: Option<[f32; 2]>,
     cached_marker: Option<CString>,
     cached_layout: Layout,
@@ -120,6 +120,7 @@ pub struct StateMachineEngine<'a> {
 
     // The state to target once blending has finished
     tween_transition_target_state: Option<State>,
+    tween_target_frame: Option<f32>,
 }
 
 impl<'a> StateMachineEngine<'a> {
@@ -321,10 +322,10 @@ impl<'a> StateMachineEngine<'a> {
             cached_loop_count: player.current_loop_count(),
             cached_autoplay: player.autoplay(),
             cached_use_frame_interpolation: player.use_frame_interpolation(),
-            cached_background_color: player.background_color(),
+            cached_background: player.background(),
             cached_segment: player.segment(),
             cached_marker: player.marker().map(CStr::to_owned),
-            cached_layout: *player.layout(),
+            cached_layout: player.layout(),
             player, // `player` Moved. Don't use after this point
             global_state: None,
             state_machine: StateMachine::default(),
@@ -344,6 +345,7 @@ impl<'a> StateMachineEngine<'a> {
             current_cycle_count: 0,
             action_mutated_inputs: false,
             tween_transition_target_state: None,
+            tween_target_frame: None,
         };
 
         if parsed_state_machine.is_err() {
@@ -486,9 +488,7 @@ impl<'a> StateMachineEngine<'a> {
         self.player.set_loop_count(self.cached_loop_count);
         self.player
             .set_use_frame_interpolation(self.cached_use_frame_interpolation);
-        let _ = self
-            .player
-            .set_background_color(Some(self.cached_background_color));
+        let _ = self.player.set_background(self.cached_background);
         let _ = self.player.set_segment(self.cached_segment);
         self.player.set_marker(self.cached_marker.as_deref());
         let _ = self.player.set_layout(self.cached_layout);
@@ -646,7 +646,10 @@ impl<'a> StateMachineEngine<'a> {
 
             // Now use the extracted information
             if let Some(state) = state {
-                // Enter the state
+                if let Some(target_frame) = self.tween_target_frame.take() {
+                    self.player.sync_tween_frame(target_frame);
+                }
+
                 let _ = state.enter(self);
 
                 // Don't forget to put things back
@@ -689,36 +692,73 @@ impl<'a> StateMachineEngine<'a> {
             // Since the blended transition will take time
             // We have to save the target state and do the final transition when tweening has completed
             // The state machine is alerted of tweening finishing because the player calls the resume_from_tweening() method
-            //  Note: If the tweened transition targets a State without a segment, it will not tween and the target state is treated it usually would.
             if let Some(causing_transition) = causing_transition {
                 // If we dealing with a tweened transition
                 if let Transition::Tweened { .. } = causing_transition {
-                    // Clone segment before match to avoid partial move
-                    let segment_clone = match &new_state {
-                        State::PlaybackState { segment, .. } => segment.clone(),
+                    let segment_ref = match &new_state {
+                        State::PlaybackState { segment, .. } => segment.as_deref(),
                         _ => None,
                     };
+                    let is_reverse = match &new_state {
+                        State::PlaybackState { mode, .. } => {
+                            matches!(mode, Some(Mode::Reverse | Mode::ReverseBounce))
+                        }
+                        _ => false,
+                    };
                     match &new_state {
-                        // If we're transitioning to a PlaybackState, grab the start segment
-                        State::PlaybackState { .. } => {
-                            if let Some(target_segment) = segment_clone {
-                                let target_segment_str =
-                                    CString::new(target_segment).unwrap_or_default();
-                                let tween_result = self.player.tween_to_marker(
-                                    &target_segment_str,
-                                    Some(causing_transition.duration()),
-                                    Some(causing_transition.easing()),
-                                );
+                        State::PlaybackState {
+                            animation: target_animation,
+                            ..
+                        } => {
+                            let same_animation = self
+                                .current_state
+                                .as_ref()
+                                .map(|s| s.animation() == target_animation.as_str())
+                                .unwrap_or(false);
 
-                                if tween_result.is_ok() {
-                                    self.tween_transition_target_state = Some(new_state.clone());
-                                    self.status = StateMachineEngineStatus::Tweening;
-                                    return Ok(());
+                            if same_animation {
+                                let target_frame = if let Some(target_segment) = segment_ref {
+                                    let marker_lookup = self
+                                        .player
+                                        .marker_names()
+                                        .iter()
+                                        .position(|n| n.to_str() == Ok(target_segment))
+                                        .and_then(|idx| {
+                                            self.player.marker_data().get(idx).copied()
+                                        });
+
+                                    marker_lookup.map(|(time, duration)| {
+                                        if is_reverse {
+                                            (time + duration).min(self.player.total_frames() - 1.0)
+                                        } else {
+                                            time
+                                        }
+                                    })
+                                } else {
+                                    Some(if is_reverse {
+                                        self.player.total_frames() - 1.0
+                                    } else {
+                                        0.0
+                                    })
+                                };
+
+                                if let Some(target_frame) = target_frame {
+                                    let tween_result = self.player.tween(
+                                        target_frame,
+                                        causing_transition.duration(),
+                                        causing_transition.easing(),
+                                    );
+
+                                    if tween_result.is_ok() {
+                                        self.tween_transition_target_state =
+                                            Some(new_state.clone());
+                                        self.tween_target_frame = Some(target_frame);
+                                        self.status = StateMachineEngineStatus::Tweening;
+                                        return Ok(());
+                                    }
                                 }
-                                // On tween failure, fall through to instant transition
                             }
                         }
-                        // If we're transitioning to a GlobalState, do nothing
                         State::GlobalState { .. } => {
                             return Ok(());
                         }

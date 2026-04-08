@@ -72,11 +72,11 @@ int main(int argc, char **argv) {
 
   // Configure the player
   dotlottie_set_loop(player, true);
-  dotlottie_set_background_color(player, 0xffffffff);
+  dotlottie_set_background(player, 255, 255, 255, 255);
   dotlottie_set_autoplay(player, true);
 
   // Load the animation file
-  ret = dotlottie_load_animation_path(player, animation_path, WIDTH, HEIGHT);
+  ret = dotlottie_load_animation_path(player, animation_path);
   if (ret != DOTLOTTIE_SUCCESS) {
     fprintf(stderr, "Could not load dotlottie animation file\n");
     free(buffer);

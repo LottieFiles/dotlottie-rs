@@ -10,7 +10,10 @@
 // ==============================================================================
 #[cfg(feature = "tvg-gl")]
 mod opengl_impl {
-    use dotlottie_rs::{DotLottiePlayer, GlContext};
+    use dotlottie_rs::{
+        DotLottiePlayer, GlContext as DotGlContext, GlDisplay as DotGlDisplay,
+        GlSurface as DotGlSurface,
+    };
     use glutin::config::ConfigTemplateBuilder;
     use glutin::context::{ContextAttributesBuilder, NotCurrentGlContext, PossiblyCurrentContext};
     use glutin::display::GetGlDisplay;
@@ -39,10 +42,38 @@ mod opengl_impl {
         std::ptr::null_mut()
     }
 
+    // Wrapper for the platform display handle (e.g. EGLDisplay on Linux/Android).
+    // Pass null on platforms that don't require it (macOS CGL, WGL).
+    struct OpenGLDisplay(*mut std::ffi::c_void);
+
+    impl DotGlDisplay for OpenGLDisplay {
+        fn as_ptr(&self) -> *mut std::ffi::c_void {
+            self.0
+        }
+
+        unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+            Self(ptr)
+        }
+    }
+
+    // Wrapper for the platform surface handle (e.g. EGLSurface on Linux/Android).
+    // Pass null on platforms that don't require it (macOS CGL, WGL).
+    struct OpenGLSurface(*mut std::ffi::c_void);
+
+    impl DotGlSurface for OpenGLSurface {
+        fn as_ptr(&self) -> *mut std::ffi::c_void {
+            self.0
+        }
+
+        unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+            Self(ptr)
+        }
+    }
+
     // Wrapper type for OpenGL context pointer
     struct OpenGLContext(*mut std::ffi::c_void);
 
-    impl GlContext for OpenGLContext {
+    impl DotGlContext for OpenGLContext {
         fn as_ptr(&self) -> *mut std::ffi::c_void {
             self.0
         }
@@ -213,6 +244,10 @@ mod opengl_impl {
 
             // Try multiple times if it fails - sometimes GL needs a moment
             let mut success = false;
+            // On macOS (CGL), display and surface handles are not required — pass null.
+            // On EGL platforms (Linux/Android), pass the EGLDisplay and EGLSurface here.
+            let gl_display = OpenGLDisplay(std::ptr::null_mut());
+            let gl_surface_handle = OpenGLSurface(std::ptr::null_mut());
             let gl_ctx = OpenGLContext(context_ptr);
 
             for attempt in 1..=5 {
@@ -225,7 +260,16 @@ mod opengl_impl {
                     gl::Finish();
                 }
 
-                success = player.set_gl_target(&gl_ctx, fbo_id, WIDTH, HEIGHT).is_ok();
+                success = player
+                    .set_gl_target(
+                        &gl_display,
+                        &gl_surface_handle,
+                        &gl_ctx,
+                        fbo_id,
+                        WIDTH,
+                        HEIGHT,
+                    )
+                    .is_ok();
 
                 if success {
                     println!("✓ OpenGL target set successfully on attempt {attempt}");
@@ -255,7 +299,7 @@ mod opengl_impl {
 
             let c_data = CString::new(animation_data).expect("CString conversion failed");
 
-            if player.load_animation_data(&c_data, WIDTH, HEIGHT).is_err() {
+            if player.load_animation_data(&c_data).is_err() {
                 eprintln!("Failed to load animation");
                 return;
             }

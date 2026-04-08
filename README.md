@@ -125,10 +125,11 @@ files in `release/native`:
 make native
 ```
 
-On Windows, you should use the `Makefile.win` make file:
+On Windows, use the Windows-specific targets (requires MSVC Build Tools):
 
 ```bash
-make -f Makefile.win native
+make windows-setup
+make windows-x86_64
 ```
 
 Examples for using the native interface can be found in the `examples` directory, which also contains a

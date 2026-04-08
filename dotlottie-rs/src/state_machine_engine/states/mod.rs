@@ -3,7 +3,7 @@ use std::ffi::CString;
 use serde::Deserialize;
 
 use crate::player::Mode;
-use crate::DEFAULT_BACKGROUND_COLOR;
+use crate::Rgba;
 
 use super::{actions::StateMachineActionError, transitions::Transition, StateMachineEngine};
 
@@ -37,7 +37,7 @@ pub enum State {
         loop_count: Option<u32>,
         r#final: Option<bool>,
         autoplay: Option<bool>,
-        mode: Option<String>,
+        mode: Option<Mode>,
         speed: Option<f32>,
         segment: Option<String>,
         background_color: Option<u32>,
@@ -47,7 +47,6 @@ pub enum State {
     GlobalState {
         name: String,
         transitions: Vec<Transition>,
-        animation: Option<String>,
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
     },
@@ -69,29 +68,20 @@ impl StateTrait for State {
                 entry_actions,
                 ..
             } => {
-                let mut defined_mode = Mode::Forward;
-
-                if let Some(new_mode) = mode {
-                    match new_mode.as_str() {
-                        "Forward" => defined_mode = Mode::Forward,
-                        "Reverse" => defined_mode = Mode::Reverse,
-                        "Bounce" => defined_mode = Mode::Bounce,
-                        "ReverseBounce" => defined_mode = Mode::ReverseBounce,
-                        _ => return Err(StateMachineActionError::ParsingError),
-                    }
-                }
-
-                let size = engine.player.size();
+                let defined_mode = match mode {
+                    Some(m) => *m,
+                    None => Mode::Forward,
+                };
 
                 // Apply individual settings, preserving layout and use_frame_interpolation
-                engine.player.set_mode(defined_mode);
                 engine.player.set_loop(r#loop.unwrap_or(false));
                 engine.player.set_loop_count(loop_count.unwrap_or(0));
                 engine.player.set_speed(speed.unwrap_or(1.0));
-                let _ = engine.player.set_background_color(Some(
-                    background_color.unwrap_or(DEFAULT_BACKGROUND_COLOR),
-                ));
+                let _ = engine
+                    .player
+                    .set_background(background_color.map_or(Rgba::TRANSPARENT, Rgba::from));
                 let _ = engine.player.set_segment(None);
+                engine.player.set_marker(None);
 
                 let marker_cstr = segment
                     .as_deref()
@@ -99,22 +89,31 @@ impl StateTrait for State {
                     .transpose()
                     .map_err(|_| StateMachineActionError::ParsingError)?;
 
-                engine.player.set_marker(marker_cstr.as_deref());
+                if !animation.is_empty() {
+                    let Ok(anim_cstr) = CString::new(animation.as_str()) else {
+                        return Err(StateMachineActionError::ParsingError);
+                    };
 
-                // set_autoplay must be called last as it triggers play/pause
-                engine.player.set_autoplay(autoplay.unwrap_or(false));
+                    let needs_load = engine.player.animation_id() != Some(&anim_cstr);
 
-                let Ok(anim_cstr) = CString::new(animation.as_str()) else {
-                    return Err(StateMachineActionError::ParsingError);
-                };
-
-                if !animation.is_empty()
-                    && engine.player.animation_id() != Some(&anim_cstr)
-                    && engine.player.render().is_ok()
-                {
-                    let _ = engine.player.load_animation(&anim_cstr, size.0, size.1);
+                    if needs_load {
+                        engine.player.set_autoplay(false);
+                        // Clear any active theme before loading a different animation.
+                        // load_animation() restores the saved theme after loading, but
+                        // themes are animation-specific — the old theme's slot values
+                        // may not exist in the new animation, causing render failures.
+                        #[cfg(feature = "theming")]
+                        {
+                            let _ = engine.player.reset_theme();
+                        }
+                        let _ = engine.player.load_animation(&anim_cstr);
+                    }
                 }
 
+                engine.player.set_marker(marker_cstr.as_deref());
+
+                engine.player.set_mode(defined_mode);
+                engine.player.set_autoplay(autoplay.unwrap_or(false));
                 /* Perform entry actions */
                 if let Some(actions) = entry_actions {
                     for action in actions {
@@ -128,25 +127,7 @@ impl StateTrait for State {
                     }
                 }
             }
-            State::GlobalState {
-                animation,
-                entry_actions,
-                ..
-            } => {
-                let size = engine.player.size();
-
-                let anim_cstr = animation
-                    .as_deref()
-                    .map(CString::new)
-                    .transpose()
-                    .map_err(|_| StateMachineActionError::ParsingError)?;
-
-                if let Some(cstr) = anim_cstr {
-                    if engine.player.animation_id() != Some(&cstr) {
-                        let _ = engine.player.load_animation(&cstr, size.0, size.1);
-                    }
-                }
-
+            State::GlobalState { entry_actions, .. } => {
                 // Perform entry actions
                 if let Some(actions) = entry_actions {
                     for action in actions {

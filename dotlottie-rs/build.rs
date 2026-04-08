@@ -295,11 +295,12 @@ mod thorvg {
         let is_wasm = target_triple.starts_with("wasm32-unknown-");
         let is_wasm_unknown = target_triple == "wasm32-unknown-unknown";
 
-        let compiler = env::var("CXX").unwrap_or_else(|_| "clang++".to_string());
+        let compiler = env::var("CXX").ok();
+        let is_windows_msvc = target_triple.contains("windows-msvc");
 
         // wasm32-unknown-unknown needs clang++ >= 16 and emscripten system headers
         if is_wasm_unknown {
-            verify_clang_version(&compiler);
+            verify_clang_version(compiler.as_deref().unwrap_or("clang++"));
         }
         let emscripten_dir = if is_wasm_unknown {
             Some(setup_emscripten_headers(&out_dir)?)
@@ -436,11 +437,76 @@ mod thorvg {
         }
 
         thorvg_config_h.flush()?;
+        drop(thorvg_config_h);
+
+        if cfg!(all(feature = "tracking_allocator", feature = "tvg")) {
+            let alloc_header_path = out_dir.join("tvgAllocator.h");
+            let mut alloc_h = OpenOptions::new()
+                .create(true)
+                .truncate(true)
+                .write(true)
+                .open(&alloc_header_path)?;
+
+            write!(
+                alloc_h,
+                r#"
+#ifndef _TVG_ALLOCATOR_H_
+#define _TVG_ALLOCATOR_H_
+
+#include <cstdlib>
+#include <cstddef>
+
+extern "C" {{
+    void* tvg_malloc(size_t size);
+    void* tvg_calloc(size_t nmemb, size_t size);
+    void* tvg_realloc(void* ptr, size_t size);
+    void  tvg_free(void* ptr);
+}}
+
+namespace tvg
+{{
+    template<typename T = void>
+    static inline T* malloc(size_t size)
+    {{
+        return static_cast<T*>(tvg_malloc(size));
+    }}
+
+    template<typename T = void>
+    static inline T* calloc(size_t nmem, size_t size)
+    {{
+        return static_cast<T*>(tvg_calloc(nmem, size));
+    }}
+
+    template<typename T = void>
+    static inline T* realloc(T* ptr, size_t size)
+    {{
+        return static_cast<T*>(tvg_realloc(static_cast<void*>(ptr), size));
+    }}
+
+    template<typename T = void>
+    static inline void free(T* ptr)
+    {{
+        tvg_free(static_cast<void*>(ptr));
+    }}
+}}
+
+#endif //_TVG_ALLOCATOR_H_
+"#
+            )?;
+            alloc_h.flush()?;
+        }
 
         // --- cc::Build setup ---
         let mut cc_build = cc::Build::new();
+        // Only override compiler when CXX is explicitly set or for non-MSVC targets.
+        // For MSVC targets, let cc crate auto-detect cl.exe.
+        if let Some(ref comp) = compiler {
+            cc_build.compiler(comp);
+        } else if !is_windows_msvc {
+            cc_build.compiler("clang++");
+        }
+
         cc_build
-            .compiler(&compiler)
             .std("c++14")
             .cpp(true)
             .include(&out_dir)
@@ -451,6 +517,13 @@ mod thorvg {
                     .collect::<Vec<_>>(),
             )
             .warnings(false);
+
+        // On Windows MSVC, prevent <windows.h> min/max macros from colliding
+        // with std::min/std::max used in thorvg. Define as compiler flag so it
+        // applies before any headers are included.
+        if is_windows_msvc {
+            cc_build.define("NOMINMAX", None);
+        }
 
         // wasm32-unknown-unknown: add emscripten system headers and defines
         if let Some(ref emscripten_dir) = emscripten_dir {
@@ -533,6 +606,11 @@ mod thorvg {
         {
             cc_build.flag("-pthread");
             println!("cargo:rustc-link-lib=pthread");
+        }
+
+        if cfg!(all(feature = "tracking_allocator", feature = "tvg")) {
+            let alloc_header = out_dir.join("tvgAllocator.h");
+            cc_build.flag(format!("-include{}", alloc_header.display()));
         }
 
         cc_build.compile("thorvg");

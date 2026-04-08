@@ -28,11 +28,9 @@ mod tests {
         );
 
         assert_eq!(
-            player.load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
-                WIDTH,
-                HEIGHT
-            ),
+            player.load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v2/test.lottie"
+            )),
             Ok(())
         );
         assert!(player.theme_id().is_none());
@@ -66,11 +64,9 @@ mod tests {
         );
 
         assert_eq!(
-            player.load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
-                WIDTH,
-                HEIGHT
-            ),
+            player.load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v2/test.lottie"
+            )),
             Ok(())
         );
 
@@ -91,11 +87,9 @@ mod tests {
         let theme_id = CString::new("test_theme").expect("Failed to create CString");
 
         assert_eq!(
-            player.load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
-                WIDTH,
-                HEIGHT
-            ),
+            player.load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v2/test.lottie"
+            )),
             Ok(())
         );
 
@@ -106,11 +100,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
-                WIDTH,
-                HEIGHT
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v2/test.lottie"
+            ))
             .is_ok());
 
         assert_eq!(
@@ -127,11 +119,9 @@ mod tests {
         player.set_autoplay(true);
 
         assert_eq!(
-            player.load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
-                WIDTH,
-                HEIGHT
-            ),
+            player.load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v2/test.lottie"
+            )),
             Ok(())
         );
 
@@ -142,11 +132,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
-                WIDTH,
-                HEIGHT
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v2/test.lottie"
+            ))
             .is_ok());
 
         assert_eq!(player.reset_theme(), Ok(()), "Expected theme to unload");
@@ -171,11 +159,9 @@ mod tests {
         );
 
         assert_eq!(
-            player.load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
-                WIDTH,
-                HEIGHT
-            ),
+            player.load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v2/test.lottie"
+            )),
             Ok(())
         );
 
@@ -189,7 +175,7 @@ mod tests {
         let data_str = std::str::from_utf8(include_bytes!("../assets/animations/lottie/test.json"))
             .expect("Invalid data.");
         let data = CString::new(data_str).expect("Failed to create CString");
-        assert_eq!(player.load_animation_data(&data, WIDTH, HEIGHT), Ok(()));
+        assert_eq!(player.load_animation_data(&data), Ok(()));
         assert!(player.theme_id().is_none());
 
         assert!(player.is_playing());
@@ -214,11 +200,9 @@ mod tests {
         );
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
-                WIDTH,
-                HEIGHT
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v2/test.lottie"
+            ))
             .is_ok(),);
 
         assert!(
@@ -229,7 +213,7 @@ mod tests {
 
         let path =
             CString::new("assets/animations/lottie/test.json").expect("Failed to create CString");
-        assert_eq!(player.load_animation_path(&path, WIDTH, HEIGHT), Ok(()));
+        assert_eq!(player.load_animation_path(&path), Ok(()));
         assert!(player.theme_id().is_none());
 
         assert!(player.is_playing());
@@ -249,11 +233,9 @@ mod tests {
         let valid_theme_id = CString::new("test_theme").expect("Failed to create CString");
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v2/test.lottie"),
-                WIDTH,
-                HEIGHT
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v2/test.lottie"
+            ))
             .is_ok());
         assert!(player.theme_id().is_none());
 
@@ -264,13 +246,49 @@ mod tests {
         assert_eq!(player.theme_id(), Some(valid_theme_id.as_c_str()));
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie"),
-                WIDTH,
-                HEIGHT
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/emojis.lottie"
+            ))
             .is_ok());
         assert!(player.theme_id().is_none());
+
+        assert!(player.is_playing());
+    }
+
+    #[test]
+    fn test_theme_persists_after_load_animation() {
+        let mut player = DotLottiePlayer::new();
+        player.set_autoplay(true);
+
+        let theme_id = CString::new("red").expect("Failed to create CString");
+        let second_anim = CString::new("rect").expect("Failed to create CString");
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
+
+        // Load a .lottie with two animations (circle, rect) and two themes (red, yellow)
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v2/multi_anim_theme.lottie"
+            ))
+            .is_ok());
+
+        assert_eq!(
+            player.set_theme(&theme_id),
+            Ok(()),
+            "Expected theme to load"
+        );
+        assert_eq!(player.theme_id(), Some(theme_id.as_c_str()));
+
+        // Switch to a different animation within the same .lottie — theme should persist
+        assert_eq!(player.load_animation(&second_anim), Ok(()));
+        assert_eq!(
+            player.theme_id(),
+            Some(theme_id.as_c_str()),
+            "Theme should persist after load_animation within the same .lottie container"
+        );
 
         assert!(player.is_playing());
     }

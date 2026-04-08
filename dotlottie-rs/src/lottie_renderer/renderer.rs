@@ -1,6 +1,49 @@
 use core::error;
 use std::ffi::CStr;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct Rgba {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
+}
+
+impl Rgba {
+    pub const TRANSPARENT: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    };
+
+    pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self { r, g, b, a }
+    }
+
+    pub const fn is_transparent(&self) -> bool {
+        self.a == 0
+    }
+}
+
+/// Layout: 0xRRGGBBAA
+impl From<u32> for Rgba {
+    fn from(hex: u32) -> Self {
+        Self {
+            r: ((hex >> 24) & 0xFF) as u8,
+            g: ((hex >> 16) & 0xFF) as u8,
+            b: ((hex >> 8) & 0xFF) as u8,
+            a: (hex & 0xFF) as u8,
+        }
+    }
+}
+
+impl From<Rgba> for u32 {
+    fn from(c: Rgba) -> u32 {
+        (c.r as u32) << 24 | (c.g as u32) << 16 | (c.b as u32) << 8 | c.a as u32
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 pub enum ColorSpace {
@@ -15,6 +58,48 @@ pub enum ColorSpace {
 pub enum WgpuTargetType {
     Surface = 0,
     Texture = 1,
+}
+
+/// Trait for OpenGL display types that can be used with the renderer.
+///
+/// Implement this trait for your platform's display handle
+/// (e.g., EGLDisplay on Linux/Android, HDC on Windows).
+/// Pass a null pointer when the platform does not require a display handle (e.g., macOS CGL).
+pub trait GlDisplay {
+    /// Returns the raw display pointer, or null if not applicable.
+    ///
+    /// # Safety
+    /// The returned pointer must be valid for the lifetime of the display.
+    fn as_ptr(&self) -> *mut std::ffi::c_void;
+
+    /// Creates a wrapper from a raw pointer.
+    ///
+    /// # Safety
+    /// The pointer must be valid for the lifetime of the resulting wrapper.
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self
+    where
+        Self: Sized;
+}
+
+/// Trait for OpenGL surface types that can be used with the renderer.
+///
+/// Implement this trait for your platform's surface handle
+/// (e.g., EGLSurface on Linux/Android).
+/// Pass a null pointer when the platform does not require a surface handle (e.g., macOS CGL).
+pub trait GlSurface {
+    /// Returns the raw surface pointer, or null if not applicable.
+    ///
+    /// # Safety
+    /// The returned pointer must be valid for the lifetime of the surface.
+    fn as_ptr(&self) -> *mut std::ffi::c_void;
+
+    /// Creates a wrapper from a raw pointer.
+    ///
+    /// # Safety
+    /// The pointer must be valid for the lifetime of the resulting wrapper.
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self
+    where
+        Self: Sized;
 }
 
 /// Trait for OpenGL context types that can be used with the renderer.
@@ -34,7 +119,9 @@ pub trait GlContext {
     /// # Safety
     /// The pointer must be valid for the lifetime of the resulting wrapper
     /// and point to a valid OpenGL context.
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self;
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self
+    where
+        Self: Sized;
 }
 
 /// Trait for WebGPU device types that can be used with the renderer.
@@ -53,7 +140,9 @@ pub trait WgpuDevice {
     /// # Safety
     /// The pointer must be valid for the lifetime of the resulting wrapper
     /// and point to a valid WebGPU device, or be null.
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self;
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self
+    where
+        Self: Sized;
 }
 
 /// Trait for WebGPU instance types that can be used with the renderer.
@@ -72,7 +161,9 @@ pub trait WgpuInstance {
     /// # Safety
     /// The pointer must be valid for the lifetime of the resulting wrapper
     /// and point to a valid WebGPU instance.
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self;
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self
+    where
+        Self: Sized;
 }
 
 /// Trait for WebGPU render target types that can be used with the renderer.
@@ -91,7 +182,9 @@ pub trait WgpuTarget {
     /// # Safety
     /// The pointer must be valid for the lifetime of the resulting wrapper
     /// and point to a valid WebGPU render target.
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self;
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self
+    where
+        Self: Sized;
 }
 
 pub enum Drawable<'d, R: Renderer> {
@@ -102,7 +195,7 @@ pub enum Drawable<'d, R: Renderer> {
 pub trait Shape: Default {
     type Error: error::Error;
 
-    fn fill(&mut self, color: (u8, u8, u8, u8)) -> Result<(), Self::Error>;
+    fn fill(&mut self, color: Rgba) -> Result<(), Self::Error>;
 
     fn append_rect(
         &mut self,
@@ -155,18 +248,7 @@ pub trait Animation: Default {
 
     fn set_quality(&mut self, quality: u8) -> Result<(), Self::Error>;
 
-    fn tween(
-        &mut self,
-        to: f32,
-        duration: Option<f32>,
-        easing: Option<[f32; 4]>,
-    ) -> Result<(), Self::Error>;
-
-    fn tween_update(&mut self, progress: Option<f32>) -> Result<bool, Self::Error>;
-
-    fn tween_stop(&mut self) -> Result<(), Self::Error>;
-
-    fn is_tweening(&self) -> bool;
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), Self::Error>;
 
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), Self::Error>;
 
@@ -177,10 +259,6 @@ pub trait Renderer: Sized + 'static {
     type Shape: Shape<Error = Self::Error>;
     type Animation: Animation<Error = Self::Error>;
     type Error: error::Error + 'static;
-    type GlContext: GlContext;
-    type WgpuDevice: WgpuDevice;
-    type WgpuInstance: WgpuInstance;
-    type WgpuTarget: WgpuTarget;
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), Self::Error>;
 
@@ -198,26 +276,32 @@ pub trait Renderer: Sized + 'static {
         color_space: ColorSpace,
     ) -> Result<(), Self::Error>;
 
-    /// Sets an OpenGL rendering target using the associated context type.
+    /// Sets an OpenGL rendering target.
     ///
-    /// The GL context must remain valid for the lifetime of rendering operations.
+    /// `display` and `surface` may carry null pointers on platforms that do not require them
+    /// (e.g., macOS CGL only needs `context`). On EGL-based platforms (Android, Linux) all
+    /// three handles are typically required.
+    ///
+    /// All non-null handles must remain valid for the lifetime of rendering operations.
     fn set_gl_target(
         &mut self,
-        context: &Self::GlContext,
+        display: &dyn GlDisplay,
+        surface: &dyn GlSurface,
+        context: &dyn GlContext,
         id: i32,
         width: u32,
         height: u32,
     ) -> Result<(), Self::Error>;
 
-    /// Sets a WebGPU rendering target using the associated types.
+    /// Sets a WebGPU rendering target.
     ///
-    /// All WebGPU objects must remain valid for the lifetime of rendering operations.
+    /// All handles must remain valid for the lifetime of rendering operations.
     #[allow(clippy::too_many_arguments)]
     fn set_wg_target(
         &mut self,
-        device: &Self::WgpuDevice,
-        instance: &Self::WgpuInstance,
-        target: &Self::WgpuTarget,
+        device: &dyn WgpuDevice,
+        instance: &dyn WgpuInstance,
+        target: &dyn WgpuTarget,
         width: u32,
         height: u32,
         target_type: WgpuTargetType,
@@ -226,6 +310,9 @@ pub trait Renderer: Sized + 'static {
     fn clear(&self) -> Result<(), Self::Error>;
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), Self::Error>;
+
+    /// Insert `drawable` immediately before `at` in the scene.
+    fn insert(&mut self, drawable: Drawable<Self>, at: Drawable<Self>) -> Result<(), Self::Error>;
 
     fn draw(&mut self, clear_buffer: bool) -> Result<(), Self::Error>;
 

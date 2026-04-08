@@ -213,9 +213,9 @@
       let canvas = document.getElementById("canvas");
       let ctx2d = null; // only set in SW mode
 
-      let player = null;
-      let raf = null;
-      let activeRenderer = "sw";
+      let player         = null;
+      let raf            = null;
+      let activeRenderer = 'sw';
 
       // ── Canvas replacement ───────────────────────────────────────────────
       // A canvas can only have one context type (2d / webgl2 / webgpu).
@@ -317,14 +317,8 @@
       // ── Initialise a renderer ────────────────────────────────────────────
       async function init(rendererType) {
         // Stop previous loop and release old player.
-        if (raf) {
-          cancelAnimationFrame(raf);
-          raf = null;
-        }
-        if (player) {
-          player.free();
-          player = null;
-        }
+        if (raf) { cancelAnimationFrame(raf); raf = null; }
+        if (player) { player.free(); player = null; }
 
         // Replace the canvas so the new context type can be requested.
         freshCanvas();
@@ -339,16 +333,17 @@
           const W = canvas.width,
             H = canvas.height;
 
-          if (rendererType === "sw") {
-            const mod = await import("./release/wasm/dotlottie_rs.js");
+          if (rendererType === 'sw') {
+            const mod = await import('./release/wasm/dotlottie_rs.js');
             await mod.default("./release/wasm/dotlottie_rs_bg.wasm");
             newPlayer = new mod.DotLottiePlayerWasm();
             // Grab the 2D context after the canvas is fresh.
-            ctx2d = canvas.getContext("2d");
-          } else if (rendererType === "webgl") {
-            const gl = canvas.getContext("webgl2");
-            if (!gl) throw new Error("WebGL2 not available in this browser");
-            const mod = await import("./release/wasm-webgl/dotlottie_rs.js");
+            ctx2d = canvas.getContext('2d');
+
+          } else if (rendererType === 'webgl') {
+            const gl = canvas.getContext('webgl2');
+            if (!gl) throw new Error('WebGL2 not available in this browser');
+            const mod = await import('./release/wasm-webgl/dotlottie_rs.js');
             await mod.default("./release/wasm-webgl/dotlottie_rs_bg.wasm");
             newPlayer = new mod.DotLottiePlayerWasm();
             // Pass the WebGL2 context into the WASM layer before loading.
@@ -357,30 +352,35 @@
             if (!navigator.gpu)
               throw new Error("WebGPU not available in this browser");
             const adapter = await navigator.gpu.requestAdapter();
-            if (!adapter) throw new Error("No WebGPU adapter found");
-            const device = await adapter.requestDevice();
-            const gpuCtx = canvas.getContext("webgpu");
-            if (!gpuCtx) throw new Error("Canvas WebGPU context unavailable");
+            if (!adapter) throw new Error('No WebGPU adapter found');
+            const device  = await adapter.requestDevice();
+            const gpuCtx  = canvas.getContext('webgpu');
+            if (!gpuCtx) throw new Error('Canvas WebGPU context unavailable');
             // 'premultiplied' lets transparent ThorVG pixels show the CSS
             // background instead of rendering as solid black (the default
             // 'opaque' mode discards the alpha channel entirely).
             gpuCtx.configure({
-              device,
+              device: gpuDevice,
               format: navigator.gpu.getPreferredCanvasFormat(),
               alphaMode: "premultiplied",
             });
-            const mod = await import("./release/wasm-webgpu/dotlottie_rs.js");
+            const mod = await import('./release/wasm-webgpu/dotlottie_rs.js');
             await mod.default("./release/wasm-webgpu/dotlottie_rs_bg.wasm");
             newPlayer = new mod.DotLottiePlayerWasm();
-            newPlayer.set_webgpu_device(device);
+            newPlayer.set_webgpu_device(gpuDevice);
             newPlayer.set_webgpu_surface(gpuCtx);
           }
 
-          const animData = await fetch(ANIMATION_URL).then((r) => r.text());
+          const setupOk = rendererType === 'sw'    ? newPlayer.setup_sw_target(W, H)
+                        : rendererType === 'webgl' ? newPlayer.setup_gl_target(W, H)
+                        :                            newPlayer.setup_wg_target(W, H);
+          if (!setupOk) {
+            throw new Error('setup target returned false — check the console');
+          }
+
+          const animData = await fetch(ANIMATION_URL).then(r => r.text());
           if (!newPlayer.load_animation(animData, W, H)) {
-            throw new Error(
-              "load_animation() returned false — check the console",
-            );
+            throw new Error('load_animation() returned false — check the console');
           }
 
           newPlayer.set_loop(true);
@@ -431,6 +431,31 @@
           tab.classList.add("active");
           init(tab.dataset.renderer);
         };
+      });
+
+      let resizeTimer;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          if (!player) return;
+          const { cssW, cssH, pixW, pixH } = canvasSize();
+          canvas.width  = pixW;
+          canvas.height = pixH;
+          canvas.style.width  = cssW + 'px';
+          canvas.style.height = cssH + 'px';
+
+          if (activeRenderer === 'sw')         player.setup_sw_target(pixW, pixH);
+          else if (activeRenderer === 'webgl') player.setup_gl_target(pixW, pixH);
+          else                                 player.setup_wg_target(pixW, pixH);
+
+          if (activeRenderer === 'webgpu' && gpuCtx && gpuDevice) {
+            gpuCtx.configure({
+              device: gpuDevice,
+              format: navigator.gpu.getPreferredCanvasFormat(),
+              alphaMode: 'premultiplied',
+            });
+          }
+        }, 100);
       });
 
       // ── Start with SW renderer ───────────────────────────────────────────

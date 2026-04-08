@@ -4,16 +4,44 @@ use std::ffi::{c_char, CStr};
 use std::slice;
 
 use crate::lottie_renderer::{
-    ColorSlot, ColorValue, GlContext, ImageSlot, PositionSlot, ScalarSlot, ScalarValue,
-    TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
+    ColorSlot, ColorValue, GlContext, GlDisplay, GlSurface, ImageSlot, PositionSlot, ScalarSlot,
+    ScalarValue, TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
 };
-use crate::{DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode};
+use crate::{DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode, Rgba};
 
 use crate::ColorSpace;
 
 use types::*;
 
 pub mod types;
+
+/// Wrapper for a raw GL display pointer (e.g. EGLDisplay, HDC). Pass null for platforms
+/// that do not require a display handle (e.g., macOS CGL).
+struct RawGlDisplay(*mut std::ffi::c_void);
+
+impl GlDisplay for RawGlDisplay {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
+
+/// Wrapper for a raw GL surface pointer (e.g. EGLSurface). Pass null for platforms
+/// that do not require a surface handle (e.g., macOS CGL).
+struct RawGlSurface(*mut std::ffi::c_void);
+
+impl GlSurface for RawGlSurface {
+    fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+
+    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
+        Self(ptr)
+    }
+}
 
 /// Wrapper for raw OpenGL context pointer that implements GlContext trait
 struct RawGlContext(*mut std::ffi::c_void);
@@ -146,15 +174,13 @@ pub unsafe extern "C" fn dotlottie_destroy(ptr: *mut DotLottiePlayer) -> DotLott
 pub unsafe extern "C" fn dotlottie_load_animation_data(
     ptr: *mut DotLottiePlayer,
     animation_data: *const c_char,
-    width: u32,
-    height: u32,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if animation_data.is_null() {
             return DotLottieResult::InvalidParameter;
         }
         let data = CStr::from_ptr(animation_data);
-        dotlottie_player.load_animation_data(data, width, height)
+        dotlottie_player.load_animation_data(data)
     })
 }
 
@@ -162,15 +188,13 @@ pub unsafe extern "C" fn dotlottie_load_animation_data(
 pub unsafe extern "C" fn dotlottie_load_animation_path(
     ptr: *mut DotLottiePlayer,
     animation_path: *const c_char,
-    width: u32,
-    height: u32,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if animation_path.is_null() {
             return DotLottieResult::InvalidParameter;
         }
         let path = CStr::from_ptr(animation_path);
-        dotlottie_player.load_animation_path(path, width, height)
+        dotlottie_player.load_animation_path(path)
     })
 }
 
@@ -179,8 +203,6 @@ pub unsafe extern "C" fn dotlottie_load_animation_path(
 pub unsafe extern "C" fn dotlottie_load_animation(
     ptr: *mut DotLottiePlayer,
     animation_id: *const c_char,
-    width: u32,
-    height: u32,
 ) -> DotLottieResult {
     #[cfg(not(feature = "dotlottie"))]
     {
@@ -193,7 +215,7 @@ pub unsafe extern "C" fn dotlottie_load_animation(
                 return DotLottieResult::InvalidParameter;
             }
             let id = CStr::from_ptr(animation_id);
-            dotlottie_player.load_animation(id, width, height)
+            dotlottie_player.load_animation(id)
         })
     }
 }
@@ -204,8 +226,6 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     ptr: *mut DotLottiePlayer,
     file_data: *const c_char,
     file_size: usize,
-    width: u32,
-    height: u32,
 ) -> DotLottieResult {
     #[cfg(not(feature = "dotlottie"))]
     {
@@ -218,7 +238,7 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
                 return DotLottieResult::InvalidParameter;
             }
             let file_slice = slice::from_raw_parts(file_data as *const u8, file_size);
-            dotlottie_player.load_dotlottie_data(file_slice, width, height)
+            dotlottie_player.load_dotlottie_data(file_slice)
         })
     }
 }
@@ -352,12 +372,15 @@ pub unsafe extern "C" fn dotlottie_set_use_frame_interpolation(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_background_color(
+pub unsafe extern "C" fn dotlottie_set_background(
     ptr: *mut DotLottiePlayer,
-    color: u32,
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        dotlottie_player.set_background_color(Some(color))
+        dotlottie_player.set_background(Rgba::new(r, g, b, a))
     })
 }
 
@@ -523,19 +546,25 @@ pub unsafe extern "C" fn dotlottie_get_use_frame_interpolation(ptr: *mut DotLott
     }
 }
 
-/// Returns the current background color.
-///
-/// # Parameters
-/// - `ptr`: Pointer to the DotLottiePlayer instance
-///
-/// # Returns
-/// The background color as ARGB u32, or 0 if the pointer is invalid
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_get_background_color(ptr: *mut DotLottiePlayer) -> u32 {
-    match ptr.as_mut() {
-        Some(p) => p.background_color(),
-        _ => 0,
-    }
+pub unsafe extern "C" fn dotlottie_background(
+    ptr: *mut DotLottiePlayer,
+    r: *mut u8,
+    g: *mut u8,
+    b: *mut u8,
+    a: *mut u8,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if r.is_null() || g.is_null() || b.is_null() || a.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        let bg = dotlottie_player.background();
+        *r = bg.r;
+        *g = bg.g;
+        *b = bg.b;
+        *a = bg.a;
+        DotLottieResult::Success
+    })
 }
 
 /// Returns the current segment.
@@ -624,7 +653,7 @@ pub unsafe extern "C" fn dotlottie_get_layout(
         if result.is_null() {
             return DotLottieResult::InvalidParameter;
         }
-        *result = *dotlottie_player.layout();
+        *result = dotlottie_player.layout();
         DotLottieResult::Success
     })
 }
@@ -836,17 +865,6 @@ pub unsafe extern "C" fn dotlottie_tick(ptr: *mut DotLottiePlayer) -> DotLottieR
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_resize(
-    ptr: *mut DotLottiePlayer,
-    width: u32,
-    height: u32,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        dotlottie_player.resize(width, height)
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn dotlottie_clear(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         dotlottie_player.clear();
@@ -892,14 +910,18 @@ pub unsafe extern "C" fn dotlottie_set_sw_target(
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_set_gl_target(
     ptr: *mut DotLottiePlayer,
+    display: *mut std::ffi::c_void,
+    surface: *mut std::ffi::c_void,
     context: *mut std::ffi::c_void,
     id: i32,
     width: u32,
     height: u32,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        let gl_display = RawGlDisplay(display);
+        let gl_surface = RawGlSurface(surface);
         let gl_context = RawGlContext(context);
-        dotlottie_player.set_gl_target(&gl_context, id, width, height)
+        dotlottie_player.set_gl_target(&gl_display, &gl_surface, &gl_context, id, width, height)
     })
 }
 

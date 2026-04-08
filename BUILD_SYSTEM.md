@@ -1,6 +1,6 @@
 ## Build System
 
-The build system uses GNU `make` to build all artifacts for `android`, `apple`, `wasm`, and `native` platforms.
+The build system uses GNU `make` to build all artifacts for `android`, `apple`, `wasm`, `linux`, `windows`, and `native` platforms.
 The system is modular with a main orchestrator `Makefile` and platform-specific makefiles in the `make/` directory.
 This documentation provides implementation details to help understand and extend the build system.
 
@@ -21,6 +21,7 @@ The build system is organized into modular makefiles, each handling a specific p
 - **make/apple.mk**: Manages Apple platform builds (macOS, iOS, tvOS, visionOS, macCatalyst)
 - **make/wasm.mk**: Controls WebAssembly builds using wasm-pack and wasm-bindgen
 - **make/linux.mk**: Handles Linux x86_64 and ARM64 builds
+- **make/windows.mk**: Handles Windows x86_64 and ARM64 builds (MSVC toolchain)
 
 Each platform makefile is responsible for:
 
@@ -96,6 +97,28 @@ Key targets:
 - `native-webgpu`: Builds native library with WebGPU renderer
 - `native-clean`: Cleans native build artifacts
 
+#### Windows Build System (`make/windows.mk`)
+
+The Windows build system creates MSVC-linked libraries for x86_64 and ARM64:
+
+- **MSVC Toolchain**: Uses Visual Studio Build Tools; the `cc` crate auto-detects `cl.exe`
+- **C API**: cbindgen-generated header for C/C++ integration
+- **Output**: Static library (`.lib`), dynamic library (`.dll`), and import library (`.dll.lib`)
+
+Key targets:
+
+- `windows`: Builds all Windows architectures
+- `windows-x86_64`: Builds for x86_64-pc-windows-msvc
+- `windows-arm64`: Builds for aarch64-pc-windows-msvc
+- `windows-setup`: Installs required Rust targets
+- `windows-clean`: Cleans Windows-specific build artifacts
+
+Prerequisites:
+
+- Visual Studio 2019+ or Build Tools with "Desktop development with C++" workload
+- GNU Make (via MSYS2, Git Bash, or `choco install make`)
+- For ARM64 cross-compilation: ARM64 build tools installed via VS Installer
+
 ### Build Features and Configuration
 
 The build system includes several configurable features:
@@ -163,12 +186,14 @@ The build system provides a comprehensive set of targets accessible via `make he
 - `make native-opengl`: Build native library with OpenGL renderer
 - `make native-webgpu`: Build native library with WebGPU renderer
 - `make linux`: Build Linux x86_64 and ARM64
+- `make windows`: Build Windows x86_64 and ARM64
 
 #### Architecture-Specific Targets
 
 - **Android**: `android-aarch64`, `android-x86_64`, `android-x86`, `android-armv7`
 - **Apple**: `apple-macos-arm64`, `apple-ios-arm64`, `apple-tvos-sim-arm64`, etc.
 - **Linux**: `linux-x86_64`, `linux-aarch64`
+- **Windows**: `windows-x86_64`, `windows-arm64`
 
 #### Development Targets
 
@@ -189,6 +214,12 @@ The build system automatically manages platform-specific dependencies:
 
 - **Android NDK**: Must be installed separately (minimum version r28)
 - **Rust targets**: Automatically installed via `make android-setup`
+
+#### Windows Dependencies
+
+- **Visual Studio Build Tools**: "Desktop development with C++" workload required
+- **GNU Make**: Available via MSYS2, Git Bash, or `choco install make`
+- **Rust targets**: Installed via `make windows-setup`
 
 #### Apple Dependencies
 

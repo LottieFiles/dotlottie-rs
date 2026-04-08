@@ -1,3 +1,29 @@
+## 0.1.56 (2026-03-29)
+
+### Features
+
+#### upgrade to thorvg v1.0.3 (#506)
+
+#### add console_error_panic_hook for wasm builds (#507)
+
+#### allow passing display and surface handle to the tvg gl target (#505)
+
+### Fixes
+
+#### correct frame tweening correctness bugs (#491)
+
+#### align wasm-bindgen feature flag with c_api's (#502)
+
+#### 🐛 gl build for android (#503)
+
+#### add missing isdigit/tolower stubs and remove JS post-processing (#508)
+
+#### use straight alpha for SW renderer to fix dark colors (#509)
+
+#### reapply active theme after load_animation (#511)
+
+#### adjust playback mode setting to prevent spurious OnComplete event (#510)
+
 ## 0.1.55 (2026-03-13)
 
 ### Features

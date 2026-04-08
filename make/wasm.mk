@@ -15,14 +15,7 @@
 # ============================================================================
 
 WASM_BINDGEN_TARGET := wasm32-unknown-unknown
-WASM_BINDGEN_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-lottie-expressions,dotlottie,theming,state-machines,wasm,wasm-bindgen-api
-
-# sed -i behaves differently on macOS (BSD) vs Linux (GNU)
-ifeq ($(shell uname),Darwin)
-  SED_I := sed -i ''
-else
-  SED_I := sed -i
-endif
+WASM_BINDGEN_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-lottie-expressions,dotlottie,theming,state-machines,wasm-bindgen-api
 
 # Apple's system clang lacks the WebAssembly backend.  Use Homebrew LLVM if
 # present, otherwise fall back to whatever clang/clang++ is on PATH.
@@ -42,28 +35,12 @@ wasm-setup:
 	@rustup target add $(WASM_BINDGEN_TARGET)
 	@command -v wasm-pack >/dev/null 2>&1 || curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
-# Post-process wasm-bindgen output to fix two issues:
-# 1. wasm-bindgen >=0.2 generates `import * as __wbg_star0 from 'env'` unconditionally
-#    even when the wasm binary has no env imports.  Browsers reject the bare 'env'
-#    specifier, so strip the two dead lines.
-# 2. The default module path fallback `new URL('...wasm', import.meta.url)` causes
-#    Webpack/Next.js to try resolving the .wasm file at build time, breaking bundled
-#    consumers. Replace with a throw since DotLottieWasmLoader always provides a URL.
-define strip_env_import
-	$(SED_I) \
-		-e '/^import \* as __wbg_star0 from .env.;/d' \
-		-e '/imports\[.env.\] = __wbg_star0;/d' \
-		-e "s|module_or_path = new URL('dotlottie_rs_bg.wasm', import.meta.url);|throw new Error('WASM module URL must be provided via DotLottieWasmLoader or setWasmUrl().');|" \
-		$(1)/dotlottie_rs.js
-endef
-
 # Software-renderer build — no graphics API required
 wasm:
 	CC=$(WASM_CC) CXX=$(WASM_CXX) \
 		wasm-pack build dotlottie-rs --target web \
 		--out-dir ../release/wasm \
 		--no-default-features --features $(WASM_BINDGEN_COMMON)
-	$(call strip_env_import,release/wasm)
 
 # WebGL2 build
 wasm-webgl:
@@ -71,7 +48,6 @@ wasm-webgl:
 		wasm-pack build dotlottie-rs --target web \
 		--out-dir ../release/wasm-webgl \
 		--no-default-features --features $(WASM_BINDGEN_COMMON),tvg-gl,webgl
-	$(call strip_env_import,release/wasm-webgl)
 
 # WebGPU build — requires web_sys_unstable_apis cfg for all Gpu* web-sys types
 wasm-webgpu:
@@ -80,7 +56,6 @@ wasm-webgpu:
 		wasm-pack build dotlottie-rs --target web \
 		--out-dir ../release/wasm-webgpu \
 		--no-default-features --features $(WASM_BINDGEN_COMMON),tvg-wg,webgpu
-	$(call strip_env_import,release/wasm-webgpu)
 
 # Build all three variants
 wasm-all: wasm wasm-webgl wasm-webgpu

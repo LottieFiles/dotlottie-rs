@@ -33,10 +33,7 @@ mod tests {
             .read_exact(&mut markers_buffer)
             .expect("buffer overflow");
 
-        assert_eq!(
-            player.load_dotlottie_data(&markers_buffer, 500, 500),
-            Ok(())
-        );
+        assert_eq!(player.load_dotlottie_data(&markers_buffer), Ok(()));
 
         assert!(player.is_playing());
 
@@ -348,11 +345,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie"),
-                100,
-                100
-            )
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
             .is_ok());
 
         let mut sm = player
@@ -364,14 +359,14 @@ mod tests {
 
         assert_eq!(sm.get_current_state_name(), "star_1");
 
-        // Pre-start a tween so the next tween_to_marker call fails
+        // Pre-start a tween so the next tween call fails
         sm.player
-            .tween(5.0, Some(2.0), None)
+            .tween(5.0, 2.0, [0.0, 0.0, 1.0, 1.0])
             .expect("initial tween should succeed");
         assert!(sm.player.is_tweening());
 
         // Trigger a tweened transition (rating=2 → star_2).
-        // tween_to_marker will fail because the player is already tweening,
+        // tween will fail because the player is already tweening,
         // so the state machine should fall through to an instant transition.
         sm.set_numeric_input("rating", 2.0, true, false)
             .expect("input should be set");
@@ -385,6 +380,162 @@ mod tests {
             sm.status,
             StateMachineEngineStatus::Tweening,
             "state machine should NOT be stuck in Tweening status"
+        );
+    }
+
+    #[test]
+    fn tweened_transition_to_state_without_segment_should_tween() {
+        let sm_json = include_str!("../assets/statemachines/tween_no_segment.json");
+        let mut player = DotLottiePlayer::new();
+
+        let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .is_ok());
+
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
+            .is_ok());
+
+        let mut sm = player
+            .state_machine_load_data(sm_json)
+            .expect("state machine to load successfully");
+
+        sm.start(&OpenUrlPolicy::default())
+            .expect("state machine should start");
+
+        assert_eq!(sm.get_current_state_name(), "segment_state");
+
+        sm.set_numeric_input("trigger", 1.0, true, false)
+            .expect("input should be set");
+
+        assert_eq!(
+            sm.status,
+            StateMachineEngineStatus::Tweening,
+            "state machine should be in Tweening status when tweened transition targets a state without a segment"
+        );
+        assert!(
+            sm.player.is_tweening(),
+            "player should be tweening after a tweened transition to a state without a segment"
+        );
+
+        assert_eq!(
+            sm.get_current_state_name(),
+            "segment_state",
+            "current state should still be the source state while tweening"
+        );
+    }
+
+    #[test]
+    fn tweened_transition_to_reverse_state_with_segment_should_tween() {
+        let sm_json = include_str!("../assets/statemachines/tween_reverse_segment.json");
+        let mut player = DotLottiePlayer::new();
+
+        let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .is_ok());
+
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
+            .is_ok());
+
+        let mut sm = player
+            .state_machine_load_data(sm_json)
+            .expect("state machine to load successfully");
+
+        sm.start(&OpenUrlPolicy::default())
+            .expect("state machine should start");
+
+        assert_eq!(sm.get_current_state_name(), "forward_state");
+
+        sm.set_numeric_input("trigger", 1.0, true, false)
+            .expect("input should be set");
+
+        assert_eq!(
+            sm.status,
+            StateMachineEngineStatus::Tweening,
+            "state machine should be in Tweening status for a reverse mode state with segment"
+        );
+        assert!(sm.player.is_tweening(), "player should be tweening");
+
+        assert_eq!(sm.get_current_state_name(), "forward_state");
+
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let _ = sm.tick();
+
+        assert_eq!(
+            sm.get_current_state_name(),
+            "reverse_state",
+            "should have transitioned to reverse_state after tween completed"
+        );
+        assert_eq!(
+            sm.status,
+            StateMachineEngineStatus::Running,
+            "status should be Running after tween completes"
+        );
+    }
+
+    #[test]
+    fn tweened_transition_to_reverse_state_without_segment_should_tween() {
+        let sm_json = include_str!("../assets/statemachines/tween_reverse_segment.json");
+        let mut player = DotLottiePlayer::new();
+
+        let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .is_ok());
+
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
+            .is_ok());
+
+        let mut sm = player
+            .state_machine_load_data(sm_json)
+            .expect("state machine to load successfully");
+
+        sm.start(&OpenUrlPolicy::default())
+            .expect("state machine should start");
+
+        assert_eq!(sm.get_current_state_name(), "forward_state");
+
+        sm.set_numeric_input("trigger", 2.0, true, false)
+            .expect("input should be set");
+
+        assert_eq!(
+            sm.status,
+            StateMachineEngineStatus::Tweening,
+            "state machine should be in Tweening status for a reverse mode state without segment"
+        );
+        assert!(sm.player.is_tweening(), "player should be tweening");
+
+        assert_eq!(sm.get_current_state_name(), "forward_state");
+
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let _ = sm.tick();
+
+        assert_eq!(
+            sm.get_current_state_name(),
+            "reverse_no_segment_state",
+            "should have transitioned to reverse_no_segment_state after tween completed"
+        );
+        assert_eq!(
+            sm.status,
+            StateMachineEngineStatus::Running,
+            "status should be Running after tween completes"
+        );
+
+        let expected_target = sm.player.total_frames() - 1.0;
+        assert_eq!(
+            sm.player.current_frame(),
+            expected_target,
+            "current_frame should be at tween target (last frame) after tween to reverse state, not the pre-tween frame"
         );
     }
 

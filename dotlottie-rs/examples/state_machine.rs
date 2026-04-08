@@ -2,7 +2,7 @@
 
 use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
 use dotlottie_rs::events::Event;
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, StateMachineEngine, StateMachineEvent};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Rgba, StateMachineEngine, StateMachineEvent};
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -107,16 +107,12 @@ fn load_animation(player: &mut DotLottiePlayer, path: &PathBuf) -> bool {
             let metadata = fs::metadata(path).expect("Could not read metadata");
             let mut buffer = vec![0; metadata.len() as usize];
             file.read_exact(&mut buffer).expect("Buffer overflow");
-            player
-                .load_dotlottie_data(&buffer, WIDTH as u32, HEIGHT as u32)
-                .is_ok()
+            player.load_dotlottie_data(&buffer).is_ok()
         }
         "json" => {
             let data = fs::read_to_string(path).expect("Could not read JSON file");
             let c_data = CString::new(data).expect("CString conversion failed");
-            player
-                .load_animation_data(&c_data, WIDTH as u32, HEIGHT as u32)
-                .is_ok()
+            player.load_animation_data(&c_data).is_ok()
         }
         _ => false,
     };
@@ -150,7 +146,7 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
     let mut player = DotLottiePlayer::new();
-    let _ = player.set_background_color(Some(0xffffffff));
+    let _ = player.set_background(Rgba::from(0xffffffff));
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 

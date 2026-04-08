@@ -1,5 +1,3 @@
-use crate::{time::Instant, GlContext, WgpuDevice, WgpuInstance, WgpuTarget};
-
 use std::{
     error::Error,
     ffi::{c_char, CStr, CString},
@@ -10,52 +8,10 @@ use std::{
 #[cfg(feature = "tvg-ttf")]
 use crate::lottie_renderer::fallback_font;
 
-use super::{Animation, ColorSpace, Drawable, Renderer, Shape, WgpuTargetType};
-
-pub struct TvgGlContext(*mut std::ffi::c_void);
-pub struct TvgWgpuDevice(*mut std::ffi::c_void);
-pub struct TvgWgpuInstance(*mut std::ffi::c_void);
-pub struct TvgWgpuTarget(*mut std::ffi::c_void);
-
-impl super::GlContext for TvgGlContext {
-    fn as_ptr(&self) -> *mut std::ffi::c_void {
-        self.0
-    }
-
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
-        Self(ptr)
-    }
-}
-
-impl super::WgpuDevice for TvgWgpuDevice {
-    fn as_ptr(&self) -> *mut std::ffi::c_void {
-        self.0
-    }
-
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
-        Self(ptr)
-    }
-}
-
-impl super::WgpuInstance for TvgWgpuInstance {
-    fn as_ptr(&self) -> *mut std::ffi::c_void {
-        self.0
-    }
-
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
-        Self(ptr)
-    }
-}
-
-impl super::WgpuTarget for TvgWgpuTarget {
-    fn as_ptr(&self) -> *mut std::ffi::c_void {
-        self.0
-    }
-
-    unsafe fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
-        Self(ptr)
-    }
-}
+use super::{
+    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Renderer, Rgba, Shape,
+    WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+};
 
 #[expect(non_upper_case_globals)]
 #[allow(non_snake_case)]
@@ -212,10 +168,6 @@ impl Renderer for TvgRenderer {
     type Animation = TvgAnimation;
     type Shape = TvgShape;
     type Error = TvgError;
-    type GlContext = TvgGlContext;
-    type WgpuDevice = TvgWgpuDevice;
-    type WgpuInstance = TvgWgpuInstance;
-    type WgpuTarget = TvgWgpuTarget;
 
     fn load_font(font_name: &str, font_data: &[u8]) -> Result<(), Self::Error> {
         let font_name_cstr = CString::new(font_name).map_err(|_| TvgError::InvalidArgument)?;
@@ -281,7 +233,9 @@ impl Renderer for TvgRenderer {
 
     fn set_gl_target(
         &mut self,
-        context: &Self::GlContext,
+        display: &dyn GlDisplay,
+        surface: &dyn GlSurface,
+        context: &dyn GlContext,
         id: i32,
         width: u32,
         height: u32,
@@ -292,11 +246,10 @@ impl Renderer for TvgRenderer {
 
         if let Some(raw_canvas) = self.raw_canvas {
             unsafe {
-                // TODO: expose the platform-specific display & surface handle for EGL, HDC for WGL
                 tvg::tvg_glcanvas_set_target(
                     raw_canvas,
-                    ptr::null_mut(),
-                    ptr::null_mut(),
+                    display.as_ptr(),
+                    surface.as_ptr(),
                     context.as_ptr(),
                     id,
                     width,
@@ -312,9 +265,9 @@ impl Renderer for TvgRenderer {
 
     fn set_wg_target(
         &mut self,
-        device: &Self::WgpuDevice,
-        instance: &Self::WgpuInstance,
-        target: &Self::WgpuTarget,
+        device: &dyn WgpuDevice,
+        instance: &dyn WgpuInstance,
+        target: &dyn WgpuTarget,
         width: u32,
         height: u32,
         target_type: WgpuTargetType,
@@ -331,7 +284,7 @@ impl Renderer for TvgRenderer {
                 device_ptr
             };
 
-            let result = unsafe {
+            unsafe {
                 tvg::tvg_wgcanvas_set_target(
                     raw_canvas,
                     actual_device,
@@ -342,9 +295,8 @@ impl Renderer for TvgRenderer {
                     tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888S,
                     target_type.into(),
                 )
-            };
-
-            result.into_result()?;
+            }
+            .into_result()?;
 
             unsafe { tvg::tvg_canvas_sync(raw_canvas).into_result() }?;
 
@@ -370,6 +322,23 @@ impl Renderer for TvgRenderer {
             };
 
             unsafe { tvg::tvg_canvas_add(raw_canvas, raw_paint).into_result() }
+        } else {
+            Err(TvgError::InvalidArgument)
+        }
+    }
+
+    fn insert(&mut self, drawable: Drawable<Self>, at: Drawable<Self>) -> Result<(), TvgError> {
+        if let Some(raw_canvas) = self.raw_canvas {
+            let target = match drawable {
+                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Shape(shape) => shape.raw_shape,
+            };
+            let at_paint = match at {
+                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Shape(shape) => shape.raw_shape,
+            };
+
+            unsafe { tvg::tvg_canvas_insert(raw_canvas, target, at_paint).into_result() }
         } else {
             Err(TvgError::InvalidArgument)
         }
@@ -421,18 +390,9 @@ impl Drop for TvgRenderer {
     }
 }
 
-struct TweenState {
-    from: f32,
-    to: f32,
-    start_time: Option<Instant>,
-    duration: Option<f32>,
-    easing: Option<[f32; 4]>,
-}
-
 pub struct TvgAnimation {
     raw_animation: tvg::Tvg_Animation,
     raw_paint: tvg::Tvg_Paint,
-    tween_state: Option<TweenState>,
     data: Option<CString>,
 }
 
@@ -444,7 +404,6 @@ impl Default for TvgAnimation {
         Self {
             raw_animation,
             raw_paint,
-            tween_state: None,
             data: None,
         }
     }
@@ -667,116 +626,11 @@ impl Animation for TvgAnimation {
         unsafe { tvg::tvg_lottie_animation_set_quality(self.raw_animation, quality).into_result() }
     }
 
-    fn tween(
-        &mut self,
-        to: f32,
-        duration: Option<f32>,
-        easing: Option<[f32; 4]>,
-    ) -> Result<(), TvgError> {
-        if self.is_tweening() {
-            return Err(TvgError::InvalidArgument);
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), TvgError> {
+        unsafe {
+            tvg::tvg_lottie_animation_tween(self.raw_animation, from, to, progress);
         }
-        if duration.is_some() && duration.unwrap() <= 0.0 {
-            return Err(TvgError::InvalidArgument);
-        }
-        if let Some([x1, y1, x2, y2]) = easing {
-            if !(0.0..=1.0).contains(&x1)
-                || !(0.0..=1.0).contains(&x2)
-                || !y1.is_finite()
-                || !y2.is_finite()
-            {
-                return Err(TvgError::InvalidArgument);
-            }
-        }
-
-        let from = self.get_frame()?;
-
-        self.tween_state = Some(TweenState {
-            start_time: {
-                if duration.is_some() {
-                    Some(Instant::now())
-                } else {
-                    None
-                }
-            },
-            from,
-            to,
-            duration,
-            easing,
-        });
-
         Ok(())
-    }
-
-    fn is_tweening(&self) -> bool {
-        self.tween_state.is_some()
-    }
-
-    fn tween_stop(&mut self) -> Result<(), TvgError> {
-        self.tween_state = None;
-
-        Ok(())
-    }
-
-    fn tween_update(&mut self, given_progress: Option<f32>) -> Result<bool, TvgError> {
-        if let Some(tween_state) = self.tween_state.as_ref() {
-            if tween_state.duration.is_none() {
-                if given_progress.is_none() {
-                    return Err(TvgError::InvalidArgument);
-                }
-
-                let progress = given_progress.unwrap();
-                if !progress.is_finite() {
-                    return Err(TvgError::InvalidArgument);
-                }
-
-                unsafe {
-                    tvg::tvg_lottie_animation_tween(
-                        self.raw_animation,
-                        tween_state.from,
-                        tween_state.to,
-                        progress,
-                    );
-                };
-
-                if progress >= 1.0 {
-                    self.tween_state = None;
-                    return Ok(false);
-                }
-
-                return Ok(true);
-            }
-        }
-
-        if let Some(tween_state) = self.tween_state.as_mut() {
-            let elapsed = Instant::now().duration_since(tween_state.start_time.unwrap());
-            let t = elapsed.as_secs_f32() / tween_state.duration.unwrap();
-            let completed = t >= 1.0;
-            let progress = if completed {
-                1.0
-            } else {
-                let [x1, y1, x2, y2] = tween_state.easing.unwrap_or([0.0, 0.0, 1.0, 1.0]);
-                bezier::cubic_bezier(t, x1, y1, x2, y2)
-            };
-
-            unsafe {
-                tvg::tvg_lottie_animation_tween(
-                    self.raw_animation,
-                    tween_state.from,
-                    tween_state.to,
-                    progress,
-                );
-            };
-
-            if completed {
-                self.tween_state = None;
-                Ok(false)
-            } else {
-                Ok(true)
-            }
-        } else {
-            Ok(false)
-        }
     }
 
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), TvgError> {
@@ -849,9 +703,9 @@ impl Default for TvgShape {
 impl Shape for TvgShape {
     type Error = TvgError;
 
-    fn fill(&mut self, color: (u8, u8, u8, u8)) -> Result<(), TvgError> {
+    fn fill(&mut self, color: Rgba) -> Result<(), TvgError> {
         unsafe {
-            tvg::tvg_shape_set_fill_color(self.raw_shape, color.0, color.1, color.2, color.3)
+            tvg::tvg_shape_set_fill_color(self.raw_shape, color.r, color.g, color.b, color.a)
                 .into_result()
         }
     }
@@ -872,88 +726,6 @@ impl Shape for TvgShape {
 
     fn reset(&mut self) -> Result<(), TvgError> {
         unsafe { tvg::tvg_shape_reset(self.raw_shape).into_result() }
-    }
-}
-
-mod bezier {
-    /// Computes the x-coordinate of the cubic Bézier for parameter `u`.
-    /// P0 = 0, P1 = (x1, _), P2 = (x2, _), P3 = 1.
-    pub(super) fn sample_curve_x(u: f32, x1: f32, x2: f32) -> f32 {
-        let inv_u = 1.0 - u;
-        3.0 * inv_u * inv_u * u * x1 + 3.0 * inv_u * u * u * x2 + u * u * u
-    }
-
-    /// Computes the y-coordinate of the cubic Bézier for parameter `u`.
-    /// P0 = 0, P1 = (_, y1), P2 = (_, y2), P3 = 1.
-    pub(super) fn sample_curve_y(u: f32, y1: f32, y2: f32) -> f32 {
-        let inv_u = 1.0 - u;
-        3.0 * inv_u * inv_u * u * y1 + 3.0 * inv_u * u * u * y2 + u * u * u
-    }
-
-    /// Computes the derivative dx/du for a given u.
-    fn sample_curve_derivative_x(u: f32, x1: f32, x2: f32) -> f32 {
-        let inv_u = 1.0 - u;
-        3.0 * inv_u * inv_u * x1 + 6.0 * inv_u * u * (x2 - x1) + 3.0 * u * u * (1.0 - x2)
-    }
-
-    /// Uses binary subdivision to find a parameter u such that sample_curve_x(u) ≈ t.
-    fn binary_subdivide(t: f32, x1: f32, x2: f32) -> f32 {
-        let mut a = 0.0;
-        let mut b = 1.0;
-        let mut u = t;
-        for _ in 0..10 {
-            let x = sample_curve_x(u, x1, x2);
-            if (x - t).abs() < 1e-6 {
-                return u;
-            }
-            if x > t {
-                b = u;
-            } else {
-                a = u;
-            }
-            u = (a + b) * 0.5;
-        }
-        u
-    }
-
-    /// Given a linear progress t in [0,1], uses a cubic Bézier easing function to compute
-    /// an eased progress value. Output can exceed [0,1] when y-values are outside that range
-    /// (e.g., overshoot/bounce easing curves).
-    ///
-    /// The cubic Bézier is defined by:
-    ///   P0 = (0, 0)
-    ///   P1 = (x1, y1)
-    ///   P2 = (x2, y2)
-    ///   P3 = (1, 1)
-    pub(super) fn cubic_bezier(t: f32, x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
-        if t <= 0.0 {
-            return 0.0;
-        }
-        if t >= 1.0 {
-            return 1.0;
-        }
-
-        // First try Newton–Raphson iteration.
-        let mut u = t;
-        for _ in 0..8 {
-            let x = sample_curve_x(u, x1, x2);
-            let dx = sample_curve_derivative_x(u, x1, x2);
-            if dx.abs() < 1e-6 {
-                break;
-            }
-            let delta = (x - t) / dx;
-            u -= delta;
-            if delta.abs() < 1e-6 {
-                break;
-            }
-        }
-
-        // Fallback to binary subdivision if necessary.
-        if !(0.0..=1.0).contains(&u) {
-            u = binary_subdivide(t, x1, x2);
-        }
-        u = u.clamp(0.0, 1.0);
-        sample_curve_y(u, y1, y2)
     }
 }
 

@@ -14,6 +14,7 @@ include make/android.mk
 include make/apple.mk
 include make/wasm.mk
 include make/linux.mk
+include make/windows.mk
 
 # Main help menu
 help:
@@ -26,6 +27,7 @@ help:
 	@echo "  make apple                                        - Build all Apple targets" 
 	@echo "  make wasm                                         - Build WASM module"
 	@echo "  make linux                                        - Build all Linux targets"
+	@echo "  make windows                                      - Build all Windows targets"
 	@echo "  make native                                       - Build native (current platform)"
 	@echo "  make native-opengl                                - Build native (current platform) with opengl renderer"
 	@echo "  make native-webgpu                                - Build native (current platform) with webgpu renderer"
@@ -69,6 +71,11 @@ help:
 	@echo "  make linux-x86_64                                  - Build Linux x86_64"
 	@echo "  make linux-arm64                                    - Build Linux ARM64"
 	@echo ""
+	@echo "Windows Targets:"
+	@echo "================"
+	@echo "  make windows-x86_64                                - Build Windows x86_64"
+	@echo "  make windows-arm64                                  - Build Windows ARM64"
+	@echo ""
 	@echo "Setup Targets:"
 	@echo "=============="
 	@echo "  make setup                                        - Setup all platforms"
@@ -76,6 +83,7 @@ help:
 	@echo "  make apple-setup                                  - Setup Apple environment"
 	@echo "  make wasm-setup                                   - Setup WASM environment"
 	@echo "  make linux-setup                                  - Setup Linux environment"
+	@echo "  make windows-setup                                - Setup Windows environment"
 	@echo ""
 	@echo "Clean Targets:"
 	@echo "=============="
@@ -84,6 +92,7 @@ help:
 	@echo "  make apple-clean                                  - Clean Apple artifacts"
 	@echo "  make wasm-clean                                   - Clean WASM artifacts"
 	@echo "  make linux-clean                                  - Clean Linux artifacts"
+	@echo "  make windows-clean                                - Clean Windows artifacts"
 	@echo "  make native-clean                                 - Clean Native artifacts"
 	@echo ""
 # List all supported platforms
@@ -94,11 +103,12 @@ list-platforms:
 	@echo "  apple       - Apple (macOS, iOS, visionOS, tvOS, macCatalyst)"
 	@echo "  wasm        - WebAssembly (wasm-bindgen)"
 	@echo "  linux       - Linux (x86_64, ARM64)"
+	@echo "  windows     - Windows (x86_64, ARM64)"
 	@echo "  native      - Native (current platform)"
 	@echo ""
 
 # Setup all platforms
-setup: android-setup apple-setup wasm-setup linux-setup
+setup: android-setup apple-setup wasm-setup linux-setup windows-setup
 	@echo "✓ All platform setup complete"
 
 # Clean all build artifacts
@@ -172,7 +182,11 @@ native-webgpu:
 # Build native libraries using dotlottie-rs c_api
 native:
 	@echo "Building native libraries with dotlottie-rs c_api..."
+ifeq ($(OS),Windows_NT)
+	$(call WINDOWS_CARGO_BUILD,x64,x86_64-pc-windows-msvc,$(NATIVE_FEATURES),)
+else
 	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features $(NATIVE_FEATURES) --release
+endif
 
 	$(NATIVE_RELEASE)
 

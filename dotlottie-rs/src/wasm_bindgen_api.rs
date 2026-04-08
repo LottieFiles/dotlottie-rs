@@ -866,6 +866,7 @@ impl DotLottiePlayerWasm {
     }
 
     /// Set the global audio volume multiplier (clamped to [0.0, 1.0]).
+    #[cfg_attr(not(feature = "audio"), allow(unused_variables))]
     pub fn set_audio_volume(&mut self, volume: f32) {
         #[cfg(feature = "audio")]
         self.player.set_audio_volume(volume);

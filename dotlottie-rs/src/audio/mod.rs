@@ -3,10 +3,15 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-#[cfg(feature = "audio")]
+#[cfg(all(feature = "audio", not(target_arch = "wasm32")))]
 mod rodio_player;
-#[cfg(feature = "audio")]
+#[cfg(all(feature = "audio", not(target_arch = "wasm32")))]
 pub use rodio_player::RodioPlayer;
+
+#[cfg(all(feature = "audio", target_arch = "wasm32"))]
+mod web_audio_player;
+#[cfg(all(feature = "audio", target_arch = "wasm32"))]
+use web_audio_player::WebAudioPlayer;
 
 const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -265,15 +270,19 @@ fn parse_volume(layer: &Value) -> f32 {
 
 /// Manages frame-synchronised audio playback.
 ///
-/// Audio is played via rodio on native targets (macOS, iOS, Android) and on
-/// `wasm32-unknown-unknown` (Web Audio API backend).
+/// On native targets (macOS, iOS, Android) audio is played via
+/// rodio. On `wasm32-unknown-unknown` it delegates to the browser's native
+/// `HtmlAudioElement` so no audio decoder needs to be bundled in the wasm binary.
 pub struct AudioManager {
     layers: Vec<AudioLayer>,
     /// Audio data indexed by asset position; Arc allows zero-copy hand-off to the player.
     assets: Vec<Arc<[u8]>>,
     /// Global volume multiplier in [0.0, 1.0], applied on top of per-layer volume.
     volume: f32,
-    rodio_player: RodioPlayer,
+    #[cfg(not(target_arch = "wasm32"))]
+    player: RodioPlayer,
+    #[cfg(target_arch = "wasm32")]
+    player: WebAudioPlayer,
 }
 
 impl AudioManager {
@@ -283,13 +292,16 @@ impl AudioManager {
             return None;
         }
 
-        let rodio_player = RodioPlayer::new(layers.len()).ok()?;
+        #[cfg(not(target_arch = "wasm32"))]
+        let player = RodioPlayer::new(layers.len()).ok()?;
+        #[cfg(target_arch = "wasm32")]
+        let player = WebAudioPlayer::new(layers.len()).ok()?;
 
         Some(AudioManager {
             layers,
             assets,
             volume: 1.0,
-            rodio_player,
+            player,
         })
     }
 
@@ -302,10 +314,10 @@ impl AudioManager {
                 layer.playing = true;
                 let data = &self.assets[layer.asset_idx];
                 let vol = layer.volume * self.volume;
-                self.rodio_player.play(idx, data.clone(), vol);
+                self.player.play(idx, data.clone(), vol);
             } else if !should_play && layer.playing {
                 layer.playing = false;
-                self.rodio_player.stop(idx);
+                self.player.stop(idx);
             }
         }
     }
@@ -313,7 +325,7 @@ impl AudioManager {
     pub fn pause(&mut self) {
         for (idx, layer) in self.layers.iter().enumerate() {
             if layer.playing {
-                self.rodio_player.pause(idx);
+                self.player.pause(idx);
             }
         }
     }
@@ -321,7 +333,7 @@ impl AudioManager {
     pub fn play(&mut self) {
         for (idx, layer) in self.layers.iter().enumerate() {
             if layer.playing {
-                self.rodio_player.resume(idx);
+                self.player.resume(idx);
             }
         }
     }
@@ -329,7 +341,7 @@ impl AudioManager {
     pub fn stop(&mut self) {
         for (idx, layer) in self.layers.iter_mut().enumerate() {
             if layer.playing {
-                self.rodio_player.stop(idx);
+                self.player.stop(idx);
                 layer.playing = false;
             }
         }
@@ -343,7 +355,7 @@ impl AudioManager {
         for (idx, layer) in self.layers.iter().enumerate() {
             if layer.playing {
                 let vol = layer.volume * self.volume;
-                self.rodio_player.set_volume(idx, vol);
+                self.player.set_volume(idx, vol);
             }
         }
     }

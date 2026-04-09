@@ -5,7 +5,9 @@ pub use errors::*;
 pub use manifest::*;
 
 #[cfg(feature = "audio")]
-use crate::audio::{extract_audio, AudioManager};
+use crate::audio::{extract_audio, AudioLayer};
+#[cfg(feature = "audio")]
+use std::sync::Arc;
 #[cfg(feature = "theming")]
 use crate::theme::Theme;
 use serde_json::Value;
@@ -29,7 +31,7 @@ pub struct DotLottieManager {
     version: u8,
     archive: RefCell<ZipArchive<io::Cursor<Vec<u8>>>>,
     #[cfg(feature = "audio")]
-    audio_manager: RefCell<Option<AudioManager>>,
+    audio_data: RefCell<Option<(Vec<Arc<[u8]>>, Vec<AudioLayer>)>>,
 }
 
 impl DotLottieManager {
@@ -64,7 +66,7 @@ impl DotLottieManager {
             version,
             archive: RefCell::new(archive),
             #[cfg(feature = "audio")]
-            audio_manager: RefCell::new(None),
+            audio_data: RefCell::new(None),
         })
     }
 
@@ -119,8 +121,7 @@ impl DotLottieManager {
 
         #[cfg(feature = "audio")]
         {
-            let (audio_assets, audio_layers) = extract_audio(&lottie_animation);
-            *self.audio_manager.borrow_mut() = AudioManager::new(audio_assets, audio_layers);
+            *self.audio_data.borrow_mut() = Some(extract_audio(&lottie_animation));
         }
 
         serde_json::to_string(&lottie_animation).map_err(|_| DotLottieError::ReadContentError)
@@ -350,46 +351,8 @@ impl DotLottieManager {
     }
 
     #[cfg(feature = "audio")]
-    pub fn audio_update(&self, frame: f32) {
-        if let Some(am) = self.audio_manager.borrow_mut().as_mut() {
-            am.update(frame);
-        }
-    }
-
-    #[cfg(feature = "audio")]
-    pub fn audio_play(&self) {
-        if let Some(am) = self.audio_manager.borrow_mut().as_mut() {
-            am.play();
-        }
-    }
-
-    #[cfg(feature = "audio")]
-    pub fn audio_pause(&self) {
-        if let Some(am) = self.audio_manager.borrow_mut().as_mut() {
-            am.pause();
-        }
-    }
-
-    #[cfg(feature = "audio")]
-    pub fn audio_stop(&self) {
-        if let Some(am) = self.audio_manager.borrow_mut().as_mut() {
-            am.stop();
-        }
-    }
-
-    #[cfg(feature = "audio")]
-    pub fn audio_set_volume(&self, volume: f32) {
-        if let Some(am) = self.audio_manager.borrow_mut().as_mut() {
-            am.set_volume(volume);
-        }
-    }
-
-    #[cfg(feature = "audio")]
-    pub fn audio_volume(&self) -> f32 {
-        self.audio_manager
-            .borrow()
-            .as_ref()
-            .map_or(1.0, |am| am.volume())
+    pub fn get_audio_assets(&self) -> Option<(Vec<Arc<[u8]>>, Vec<AudioLayer>)> {
+        self.audio_data.borrow().clone()
     }
 }
 

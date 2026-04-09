@@ -39,14 +39,14 @@ fn load_animation(player: &mut DotLottiePlayer, path: &PathBuf) {
         "lottie" => {
             let data = fs::read(path).expect("Failed to read .lottie file");
             player
-                .load_dotlottie_data(&data, WIDTH as u32, HEIGHT as u32)
+                .load_dotlottie_data(&data)
                 .expect("Failed to load .lottie animation");
         }
         "json" => {
             let data = fs::read_to_string(path).expect("Failed to read JSON file");
             let c_data = CString::new(data).expect("CString conversion failed");
             player
-                .load_animation_data(&c_data, WIDTH as u32, HEIGHT as u32)
+                .load_animation_data(&c_data)
                 .expect("Failed to load JSON animation");
         }
         other => panic!("Unsupported file extension: {other:?}  (expected .json or .lottie)"),
@@ -74,7 +74,7 @@ fn main() {
     player.set_autoplay(false);
     player.set_loop(true);
     player.set_mode(dotlottie_rs::Mode::Forward);
-    let _ = player.set_background_color(Some(0x000000));
+    // let _ = player.set_background(Some(0x000000));
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 

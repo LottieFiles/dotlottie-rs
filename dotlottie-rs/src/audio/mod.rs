@@ -19,6 +19,7 @@ const DATA_AUDIO_PREFIX: &str = "data:audio/";
 
 /// An audio layer extracted from a Lottie JSON file (`ty == 6`),
 /// with its asset already resolved to a direct index.
+#[derive(Clone)]
 pub struct AudioLayer {
     /// Index into the asset `Vec` held by `AudioManager`.
     pub asset_idx: usize,
@@ -287,7 +288,7 @@ pub struct AudioManager {
 
 impl AudioManager {
     /// Returns `None` if there are no audio layers or if the audio backend fails to initialize.
-    pub fn new(assets: Vec<Arc<[u8]>>, layers: Vec<AudioLayer>) -> Option<Self> {
+    pub fn with_assets(assets: Vec<Arc<[u8]>>, layers: Vec<AudioLayer>) -> Option<Self> {
         if layers.is_empty() {
             return None;
         }

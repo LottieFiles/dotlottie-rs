@@ -6,13 +6,13 @@ pub use manifest::*;
 
 #[cfg(feature = "audio")]
 use crate::audio::{extract_audio, AudioLayer};
-#[cfg(feature = "audio")]
-use std::sync::Arc;
 #[cfg(feature = "theming")]
 use crate::theme::Theme;
 use serde_json::Value;
 use std::cell::RefCell;
 use std::io::{self, Read};
+#[cfg(feature = "audio")]
+use std::sync::Arc;
 use zip::ZipArchive;
 
 const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

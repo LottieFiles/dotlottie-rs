@@ -3,6 +3,8 @@ use serde::Deserialize;
 use std::ffi::{CStr, CString};
 use std::{fs, mem};
 
+#[cfg(feature = "audio")]
+use crate::audio::AudioManager;
 use crate::poll_events::{DotLottieEvent, EventQueue};
 use crate::DotLottiePlayerError;
 use crate::{
@@ -15,8 +17,6 @@ use crate::{
 use crate::{ColorSpace, Renderer, Rgba};
 #[cfg(feature = "dotlottie")]
 use crate::{DotLottieManager, Manifest};
-#[cfg(feature = "audio")]
-use crate::audio::AudioManager;
 #[cfg(feature = "state-machines")]
 use crate::{StateMachineEngine, StateMachineEngineError};
 
@@ -1167,7 +1167,8 @@ impl DotLottiePlayer {
 
         #[cfg(feature = "audio")]
         {
-            self.audio_manager = self.dotlottie_manager
+            self.audio_manager = self
+                .dotlottie_manager
                 .as_ref()
                 .and_then(|dm| dm.get_audio_assets())
                 .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
@@ -1228,7 +1229,8 @@ impl DotLottiePlayer {
 
                 #[cfg(feature = "audio")]
                 {
-                    self.audio_manager = self.dotlottie_manager
+                    self.audio_manager = self
+                        .dotlottie_manager
                         .as_ref()
                         .and_then(|dm| dm.get_audio_assets())
                         .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));

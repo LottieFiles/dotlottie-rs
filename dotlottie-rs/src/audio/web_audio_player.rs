@@ -23,7 +23,7 @@ impl WebAudioPlayer {
     }
 
     /// Start playing the given audio data in the slot owned by `layer_idx`.
-    pub fn play(&mut self, layer_idx: usize, data: Arc<[u8]>, volume: f32) {
+    pub fn play(&mut self, layer_idx: usize, data: Arc<[u8]>) {
         // Wrap the raw bytes in a Blob with the appropriate MIME type so the
         // browser knows how to decode the audio.
         let uint8_array = js_sys::Uint8Array::from(data.as_ref());
@@ -51,7 +51,6 @@ impl WebAudioPlayer {
             }
         };
 
-        element.set_volume(volume as f64);
         // `.play()` returns a Promise; we fire-and-forget since playback is
         // driven by frame updates rather than a completion callback.
         let _ = element.play();

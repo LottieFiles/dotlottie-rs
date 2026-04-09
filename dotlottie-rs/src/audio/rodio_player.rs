@@ -23,12 +23,11 @@ impl RodioPlayer {
     }
 
     /// Start playing the given audio data in the sink owned by `layer_idx`.
-    pub fn play(&mut self, layer_idx: usize, data: Arc<[u8]>, volume: f32) {
+    pub fn play(&mut self, layer_idx: usize, data: Arc<[u8]>) {
         self.sinks[layer_idx].take();
         let cursor = Cursor::new(data);
         if let Ok(source) = Decoder::new(cursor) {
             if let Ok(sink) = Sink::try_new(&self.stream_handle) {
-                sink.set_volume(volume);
                 sink.append(source);
                 self.sinks[layer_idx] = Some(sink);
             }

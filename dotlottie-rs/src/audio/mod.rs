@@ -314,8 +314,8 @@ impl AudioManager {
             if should_play && !layer.playing {
                 layer.playing = true;
                 let data = &self.assets[layer.asset_idx];
-                let vol = layer.volume * self.volume;
-                self.player.play(idx, data.clone(), vol);
+                self.player.play(idx, data.clone());
+                self.player.set_volume(idx, layer.volume * self.volume);
             } else if !should_play && layer.playing {
                 layer.playing = false;
                 self.player.stop(idx);
@@ -354,10 +354,8 @@ impl AudioManager {
     pub fn set_volume(&mut self, volume: f32) {
         self.volume = volume.clamp(0.0, 1.0);
         for (idx, layer) in self.layers.iter().enumerate() {
-            if layer.playing {
-                let vol = layer.volume * self.volume;
-                self.player.set_volume(idx, vol);
-            }
+            let vol = layer.volume * self.volume;
+            self.player.set_volume(idx, vol);
         }
     }
 

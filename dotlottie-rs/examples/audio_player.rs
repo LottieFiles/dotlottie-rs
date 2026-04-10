@@ -91,7 +91,7 @@ fn main() {
             &mut buffer,
             WIDTH as u32,
             HEIGHT as u32,
-            ColorSpace::ABGR8888,
+            ColorSpace::ARGB8888,
         )
         .expect("Failed to set software rendering target");
 

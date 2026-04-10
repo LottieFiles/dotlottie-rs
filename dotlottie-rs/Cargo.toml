@@ -1,6 +1,6 @@
 [package]
 name = "dotlottie-rs"
-version = "0.1.56"
+version = "0.1.57"
 edition = "2021"
 description = "A high-performance Lottie and dotLottie player built with Rust"
 license = "MIT"

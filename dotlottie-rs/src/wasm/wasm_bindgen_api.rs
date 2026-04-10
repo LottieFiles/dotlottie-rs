@@ -848,6 +848,21 @@ impl DotLottiePlayerWasm {
         self.player.emit_on_loop();
     }
 
+    /// Set the global audio volume multiplier (clamped to [0.0, 1.0]).
+    #[cfg_attr(not(feature = "audio"), allow(unused_variables))]
+    pub fn set_audio_volume(&mut self, volume: f32) {
+        #[cfg(feature = "audio")]
+        self.player.set_audio_volume(volume);
+    }
+
+    /// Returns the current global audio volume multiplier.
+    pub fn audio_volume(&self) -> f32 {
+        #[cfg(feature = "audio")]
+        return self.player.audio_volume();
+        #[cfg(not(feature = "audio"))]
+        1.0
+    }
+
     // ── Font ──────────────────────────────────────────────────────────────────
 
     #[cfg(feature = "tvg")]

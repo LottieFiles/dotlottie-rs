@@ -4,17 +4,23 @@ mod manifest;
 pub use errors::*;
 pub use manifest::*;
 
+#[cfg(feature = "audio")]
+use crate::audio::{extract_audio, AudioLayer};
 #[cfg(feature = "theming")]
 use crate::theme::Theme;
 use serde_json::Value;
 use std::cell::RefCell;
 use std::io::{self, Read};
+#[cfg(feature = "audio")]
+use std::sync::Arc;
 use zip::ZipArchive;
 
 const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 const DATA_IMAGE_PREFIX: &str = "data:image/";
 const DATA_FONT_PREFIX: &str = "data:font/";
+#[cfg(feature = "audio")]
+const DATA_AUDIO_PREFIX: &str = "data:audio/";
 const BASE64_PREFIX: &str = ";base64,";
 const DEFAULT_EXT: &str = "png";
 const DEFAULT_FONT_EXT: &str = "ttf";
@@ -24,6 +30,8 @@ pub struct DotLottieManager {
     manifest: Manifest,
     version: u8,
     archive: RefCell<ZipArchive<io::Cursor<Vec<u8>>>>,
+    #[cfg(feature = "audio")]
+    audio_data: RefCell<Option<(Vec<Arc<[u8]>>, Vec<AudioLayer>)>>,
 }
 
 impl DotLottieManager {
@@ -57,6 +65,8 @@ impl DotLottieManager {
             manifest,
             version,
             archive: RefCell::new(archive),
+            #[cfg(feature = "audio")]
+            audio_data: RefCell::new(None),
         })
     }
 
@@ -93,95 +103,161 @@ impl DotLottieManager {
             .get_mut("assets")
             .and_then(|v| v.as_array_mut())
         {
-            let image_prefix = if self.version == 2 { "i/" } else { "images/" };
-            let mut asset_path = String::with_capacity(128); // Larger initial capacity
-
-            let embedded_flag = Value::Number(1.into());
-            let empty_u = Value::String(String::new());
-
-            for asset in assets.iter_mut() {
-                if let Some(asset_obj) = asset.as_object_mut() {
-                    if let Some(p_str) = asset_obj.get("p").and_then(|v| v.as_str()) {
-                        if p_str.starts_with(DATA_IMAGE_PREFIX) {
-                            asset_obj.insert("e".to_string(), embedded_flag.clone());
-                        } else {
-                            asset_path.clear();
-                            asset_path.push_str(image_prefix);
-                            asset_path.push_str(p_str.trim_matches('"'));
-
-                            if let Ok(mut result) = archive.by_name(&asset_path) {
-                                let mut content = Vec::with_capacity(result.size() as usize);
-                                if result.read_to_end(&mut content).is_ok() {
-                                    let image_ext = p_str
-                                        .rfind('.')
-                                        .map(|i| &p_str[i + 1..])
-                                        .unwrap_or(DEFAULT_EXT);
-                                    let image_data_base64 = Self::encode_base64(&content);
-
-                                    let data_url = format!(
-                                        "{DATA_IMAGE_PREFIX}{image_ext}{BASE64_PREFIX}{image_data_base64}"
-                                    );
-
-                                    asset_obj.insert("u".to_string(), empty_u.clone());
-                                    asset_obj.insert("p".to_string(), Value::String(data_url));
-                                    asset_obj.insert("e".to_string(), embedded_flag.clone());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            Self::embed_images(&mut archive, assets, self.version);
+            #[cfg(feature = "audio")]
+            Self::embed_audio(&mut archive, assets, self.version);
         }
 
         if self.version == 2 {
-            if let Some(fonts) = lottie_animation
+            if let Some(font_list) = lottie_animation
                 .get_mut("fonts")
                 .and_then(|v| v.as_object_mut())
+                .and_then(|fonts| fonts.get_mut("list"))
+                .and_then(|v| v.as_array_mut())
             {
-                if let Some(font_list) = fonts.get_mut("list").and_then(|v| v.as_array_mut()) {
-                    let mut font_path = String::with_capacity(128);
-
-                    for font in font_list.iter_mut() {
-                        if let Some(font_obj) = font.as_object_mut() {
-                            if let Some(f_path_str) = font_obj.get("fPath").and_then(|v| v.as_str())
-                            {
-                                // only process fonts with /f/ prefix (package-internal fonts)
-                                if f_path_str.starts_with("/f/") {
-                                    font_path.clear();
-                                    font_path.push_str("f/");
-                                    let path_without_prefix =
-                                        f_path_str.strip_prefix("/f/").unwrap_or(f_path_str);
-                                    font_path.push_str(path_without_prefix);
-
-                                    if let Ok(mut result) = archive.by_name(&font_path) {
-                                        let mut content =
-                                            Vec::with_capacity(result.size() as usize);
-                                        if result.read_to_end(&mut content).is_ok() {
-                                            let font_ext = path_without_prefix
-                                                .rfind('.')
-                                                .map(|i| &path_without_prefix[i + 1..])
-                                                .unwrap_or(DEFAULT_FONT_EXT);
-                                            let font_data_base64 = Self::encode_base64(&content);
-
-                                            let data_url = format!(
-                                                "{DATA_FONT_PREFIX}{font_ext}{BASE64_PREFIX}{font_data_base64}"
-                                            );
-
-                                            font_obj.insert(
-                                                "fPath".to_string(),
-                                                Value::String(data_url),
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                Self::embed_fonts(&mut archive, font_list);
             }
         }
 
+        #[cfg(feature = "audio")]
+        {
+            *self.audio_data.borrow_mut() = Some(extract_audio(&lottie_animation));
+        }
+
         serde_json::to_string(&lottie_animation).map_err(|_| DotLottieError::ReadContentError)
+    }
+
+    fn embed_images<R: Read + io::Seek>(
+        archive: &mut ZipArchive<R>,
+        assets: &mut [Value],
+        version: u8,
+    ) {
+        let image_prefix = if version == 2 { "i/" } else { "images/" };
+        let mut asset_path = String::with_capacity(128);
+
+        for asset in assets.iter_mut() {
+            let Some(asset_obj) = asset.as_object_mut() else {
+                continue;
+            };
+            let Some(p_str) = asset_obj.get("p").and_then(|v| v.as_str()) else {
+                continue;
+            };
+
+            if p_str.starts_with(DATA_IMAGE_PREFIX) {
+                asset_obj.insert("e".to_string(), Value::Number(1.into()));
+                continue;
+            }
+
+            asset_path.clear();
+            asset_path.push_str(image_prefix);
+            asset_path.push_str(p_str.trim_matches('"'));
+
+            if let Ok(mut result) = archive.by_name(&asset_path) {
+                let mut content = Vec::with_capacity(result.size() as usize);
+                if result.read_to_end(&mut content).is_ok() {
+                    let image_ext = p_str
+                        .rfind('.')
+                        .map(|i| &p_str[i + 1..])
+                        .unwrap_or(DEFAULT_EXT);
+                    let data_url = format!(
+                        "{DATA_IMAGE_PREFIX}{image_ext}{BASE64_PREFIX}{}",
+                        Self::encode_base64(&content)
+                    );
+                    asset_obj.insert("u".to_string(), Value::String(String::new()));
+                    asset_obj.insert("p".to_string(), Value::String(data_url));
+                    asset_obj.insert("e".to_string(), Value::Number(1.into()));
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "audio")]
+    fn embed_audio<R: Read + io::Seek>(
+        archive: &mut ZipArchive<R>,
+        assets: &mut Vec<Value>,
+        version: u8,
+    ) {
+        let audio_prefix = if version == 2 { "u/" } else { "audio/" };
+        const SUPPORTED_AUDIO_EXTENSION: &'static str = "mp3";
+
+        for asset in assets.iter_mut() {
+            let Some(asset_obj) = asset.as_object_mut() else {
+                continue;
+            };
+            let Some(p_str) = asset_obj
+                .get("p")
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+            else {
+                continue;
+            };
+
+            if p_str.starts_with(DATA_AUDIO_PREFIX) {
+                asset_obj.insert("e".to_string(), Value::Number(1.into()));
+                continue;
+            }
+
+            let p_lower = p_str.to_lowercase();
+            if !p_lower.ends_with(SUPPORTED_AUDIO_EXTENSION) {
+                continue;
+            }
+
+            let asset_path = String::from(format!("{}{}", audio_prefix, p_str));
+            if let Ok(mut result) = archive.by_name(&asset_path) {
+                let mut content = Vec::with_capacity(result.size() as usize);
+                if result.read_to_end(&mut content).is_ok() {
+                    let data_url = format!(
+                        "{DATA_AUDIO_PREFIX}{SUPPORTED_AUDIO_EXTENSION}{BASE64_PREFIX}{}",
+                        Self::encode_base64(&content)
+                    );
+                    asset_obj.insert("u".to_string(), Value::String(String::new()));
+                    asset_obj.insert("p".to_string(), Value::String(data_url));
+                    asset_obj.insert("e".to_string(), Value::Number(1.into()));
+                }
+            }
+        }
+    }
+
+    fn embed_fonts<R: Read + io::Seek>(archive: &mut ZipArchive<R>, font_list: &mut [Value]) {
+        let mut font_path = String::with_capacity(128);
+
+        for font in font_list.iter_mut() {
+            let Some(font_obj) = font.as_object_mut() else {
+                continue;
+            };
+            // Clone to release the immutable borrow before mutating font_obj below.
+            let Some(f_path_str) = font_obj
+                .get("fPath")
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+            else {
+                continue;
+            };
+
+            // Only process package-internal fonts with the /f/ prefix.
+            let Some(path_without_prefix) = f_path_str.strip_prefix("/f/") else {
+                continue;
+            };
+
+            font_path.clear();
+            font_path.push_str("f/");
+            font_path.push_str(path_without_prefix);
+
+            if let Ok(mut result) = archive.by_name(&font_path) {
+                let mut content = Vec::with_capacity(result.size() as usize);
+                if result.read_to_end(&mut content).is_ok() {
+                    let font_ext = path_without_prefix
+                        .rfind('.')
+                        .map(|i| &path_without_prefix[i + 1..])
+                        .unwrap_or(DEFAULT_FONT_EXT);
+                    let data_url = format!(
+                        "{DATA_FONT_PREFIX}{font_ext}{BASE64_PREFIX}{}",
+                        Self::encode_base64(&content)
+                    );
+                    font_obj.insert("fPath".to_string(), Value::String(data_url));
+                }
+            }
+        }
     }
 
     #[inline]
@@ -272,6 +348,11 @@ impl DotLottieManager {
             .map_err(|_| DotLottieError::ReadContentError)?;
 
         Ok(buf)
+    }
+
+    #[cfg(feature = "audio")]
+    pub fn get_audio_assets(&self) -> Option<(Vec<Arc<[u8]>>, Vec<AudioLayer>)> {
+        self.audio_data.borrow().clone()
     }
 }
 

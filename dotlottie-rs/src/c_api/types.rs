@@ -4,10 +4,9 @@ use bitflags::bitflags;
 use std::ffi::c_char;
 
 #[cfg(feature = "state-machines")]
-use core::str::FromStr;
-
-#[cfg(feature = "state-machines")]
 use crate::state_machine_engine::events::Event;
+#[cfg(feature = "state-machines")]
+use core::str::FromStr;
 
 use crate::lottie_renderer::LottieRendererError;
 use crate::DotLottiePlayerError;
@@ -194,7 +193,6 @@ pub struct DotLottiePlayerEvent {
     pub event_type: DotLottiePlayerEventType,
     pub data: DotLottiePlayerEventData,
 }
-
 impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
     fn from(event: crate::DotLottieEvent) -> Self {
         match event {

@@ -1,3 +1,5 @@
+#[cfg(feature = "audio")]
+mod audio;
 #[cfg(feature = "dotlottie")]
 mod fms;
 mod layout;
@@ -30,6 +32,8 @@ mod wasm;
 ))]
 pub use wasm::wasm_bindgen_api;
 
+#[cfg(feature = "audio")]
+pub use audio::*;
 #[cfg(feature = "dotlottie")]
 pub use fms::*;
 pub use layout::*;

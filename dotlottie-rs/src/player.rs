@@ -3,6 +3,8 @@ use serde::Deserialize;
 use std::ffi::{CStr, CString};
 use std::{fs, mem};
 
+#[cfg(feature = "audio")]
+use crate::audio::AudioManager;
 use crate::poll_events::{DotLottieEvent, EventQueue};
 use crate::DotLottiePlayerError;
 use crate::{
@@ -98,6 +100,8 @@ pub struct DotLottiePlayer {
     current_loop_count: u32,
     #[cfg(feature = "dotlottie")]
     dotlottie_manager: Option<DotLottieManager>,
+    #[cfg(feature = "audio")]
+    audio_manager: Option<AudioManager>,
     direction: Direction,
     marker_names: Vec<CString>,
     marker_data: Vec<(f32, f32)>, // (time, duration)
@@ -176,6 +180,8 @@ impl DotLottiePlayer {
             animation_id: None,
             #[cfg(feature = "dotlottie")]
             dotlottie_manager: None,
+            #[cfg(feature = "audio")]
+            audio_manager: None,
             direction: Direction::Forward,
             marker_names: Vec::new(),
             marker_data: Vec::new(),
@@ -197,6 +203,20 @@ impl DotLottiePlayer {
                 duration: *duration,
             })
             .collect()
+    }
+
+    /// Set the global audio volume multiplier (clamped to [0.0, 1.0]).
+    /// Applied on top of per-layer volume; takes effect immediately.
+    #[cfg(feature = "audio")]
+    pub fn set_audio_volume(&mut self, volume: f32) {
+        if let Some(am) = &mut self.audio_manager {
+            am.set_volume(volume);
+        }
+    }
+
+    #[cfg(feature = "audio")]
+    pub fn audio_volume(&self) -> f32 {
+        self.audio_manager.as_ref().map_or(1.0, |am| am.volume())
     }
 
     pub fn marker_names(&self) -> &[CString] {
@@ -342,6 +362,11 @@ impl DotLottiePlayer {
 
         self.playback_state = PlaybackState::Playing;
 
+        #[cfg(feature = "audio")]
+        if let Some(am) = &mut self.audio_manager {
+            am.play();
+        }
+
         self.event_queue.push(DotLottieEvent::Play);
 
         Ok(())
@@ -355,6 +380,12 @@ impl DotLottiePlayer {
             return Err(DotLottiePlayerError::InsufficientCondition);
         }
         self.playback_state = PlaybackState::Paused;
+
+        #[cfg(feature = "audio")]
+        if let Some(am) = &mut self.audio_manager {
+            am.pause();
+        }
+
         self.event_queue.push(DotLottieEvent::Pause);
         Ok(())
     }
@@ -380,6 +411,12 @@ impl DotLottiePlayer {
                 let _ = self.set_frame(end_frame);
             }
         }
+
+        #[cfg(feature = "audio")]
+        if let Some(am) = &mut self.audio_manager {
+            am.stop();
+        }
+
         self.event_queue.push(DotLottieEvent::Stop);
 
         Ok(())
@@ -618,6 +655,15 @@ impl DotLottiePlayer {
         self.renderer.set_frame(no)?;
         self.event_queue
             .push(DotLottieEvent::Frame { frame_no: no });
+
+        // Only sync audio when the animation is actively playing.
+        #[cfg(feature = "audio")]
+        if self.is_playing() {
+            if let Some(am) = &mut self.audio_manager {
+                am.update(no);
+            }
+        }
+
         Ok(())
     }
 
@@ -685,6 +731,12 @@ impl DotLottiePlayer {
                     // Put the animation in a stop state, otherwise we can keep looping if we call tick()
                     // Do it before emiting complete, otherwise it will pause the animation at the wrong stages in state machines
                     let _ = self.stop();
+                }
+
+                // Reset audio state so that audio layers re-trigger on the next loop.
+                #[cfg(feature = "audio")]
+                if let Some(am) = &mut self.audio_manager {
+                    am.stop();
                 }
 
                 self.emit_on_loop();
@@ -1033,7 +1085,6 @@ impl DotLottiePlayer {
             self.theme_id = None;
         }
 
-        // Convert to &str only for marker extraction (JSON parsing)
         if let Ok(data_str) = animation_data.to_str() {
             let (names, data) = extract_markers(data_str);
             self.marker_names = names;
@@ -1114,6 +1165,15 @@ impl DotLottiePlayer {
 
         self.dotlottie_manager = Some(manager);
 
+        #[cfg(feature = "audio")]
+        {
+            self.audio_manager = self
+                .dotlottie_manager
+                .as_ref()
+                .and_then(|dm| dm.get_audio_assets())
+                .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
+        }
+
         let result =
             self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr));
 
@@ -1166,6 +1226,15 @@ impl DotLottiePlayer {
 
             if result.is_ok() {
                 self.animation_id = Some(animation_id.to_owned());
+
+                #[cfg(feature = "audio")]
+                {
+                    self.audio_manager = self
+                        .dotlottie_manager
+                        .as_ref()
+                        .and_then(|dm| dm.get_audio_assets())
+                        .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
+                }
 
                 #[cfg(feature = "theming")]
                 if let Some(ref theme_id_cstr) = saved_theme_id {

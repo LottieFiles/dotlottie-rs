@@ -181,8 +181,61 @@ jobs:
           path: release/linux/dotlottie-player.linux.tar.gz
           if-no-files-found: error
 
+  build-windows:
+    runs-on: windows-latest
+    if: github.head_ref == 'release' && github.event.pull_request.merged == true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install GNU Make and LLVM
+        shell: pwsh
+        run: |
+          choco install make -y
+          choco install llvm -y
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
+
+      - name: Install ARM64 build tools
+        shell: pwsh
+        run: |
+          $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -products '*' -latest -property installationPath
+          Write-Host "VS install path: $vsPath"
+          & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" modify `
+            --installPath "$vsPath" `
+            --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
+            --quiet --norestart --wait
+          # Verify ARM64 tools installed
+          $arm64cl = Get-ChildItem "$vsPath\VC\Tools\MSVC\*\bin\Hostx64\arm64\cl.exe" -ErrorAction SilentlyContinue
+          if ($arm64cl) { Write-Host "ARM64 cl.exe found: $($arm64cl.FullName)" }
+          else { Write-Warning "ARM64 cl.exe not found after install" }
+
+      - name: Setup Windows
+        run: make windows-setup
+
+      - name: Build Windows
+        run: make windows
+
+      - name: Create Windows Archive
+        run: |
+          cd release/windows
+          tar -czf dotlottie-player.windows.tar.gz *
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotlottie-player.windows.tar.gz
+          path: release/windows/dotlottie-player.windows.tar.gz
+          if-no-files-found: error
+
   release:
-    needs: [build-apple, build-android, build-wasm, build-linux]
+    needs: [build-apple, build-android, build-wasm, build-linux, build-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

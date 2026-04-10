@@ -1,3 +1,23 @@
+## 0.1.57 (2026-04-10)
+
+### Features
+
+#### Added windows build support (#534)
+
+#### experimental dotlottie audio support (#469)
+
+### Fixes
+
+#### ignore animation property on GlobalState (#512)
+
+#### cross-animation state machine transitions (#513)
+
+#### SM tweening for no-segment states and reverse playback modes (#514)
+
+#### remove redundant width/height from load methods and remove resize (#531)
+
+#### skip background shape when fully transparent (#533)
+
 ## 0.1.56 (2026-03-29)
 
 ### Features

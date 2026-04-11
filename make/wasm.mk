@@ -13,15 +13,15 @@ else
 endif
 
 WASM_LOCKFILE := dotlottie-rs/Cargo.lock
-WASM_BINDGEN_VERSION := $(shell grep -A1 'name = "wasm-bindgen"' $(WASM_LOCKFILE) 2>/dev/null | grep version | head -1 | sed 's/.*"\(.*\)"/\1/')
 
 .PHONY: wasm-setup wasm wasm-webgl wasm-webgpu wasm-all wasm-clean
 
 wasm-setup:
 	@rustup target add $(WASM_TARGET)
 	@if [ ! -f $(WASM_LOCKFILE) ]; then cargo generate-lockfile --manifest-path $(WASM_MANIFEST); fi
-	$(eval WASM_BINDGEN_VERSION := $(shell grep -A1 'name = "wasm-bindgen"' $(WASM_LOCKFILE) | grep version | head -1 | sed 's/.*"\(.*\)"/\1/'))
-	@cargo install wasm-bindgen-cli --version $(WASM_BINDGEN_VERSION) --locked
+	@cargo install wasm-bindgen-cli \
+		--version "$$(grep -A1 'name = "wasm-bindgen"' $(WASM_LOCKFILE) | grep version | head -1 | sed 's/.*"\(.*\)"/\1/')" \
+		--locked
 
 define wasm_build
 	@mkdir -p $(3)

@@ -123,11 +123,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Setup WASM
         run: make wasm-setup

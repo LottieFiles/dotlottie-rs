@@ -1,24 +1,8 @@
-# ============================================================================
-# WASM Build System — wasm32-unknown-unknown + wasm-pack
-# ============================================================================
-# Prerequisites:
-#   rustup target add wasm32-unknown-unknown
-#   cargo install wasm-pack  (or: make wasm-setup)
-#
-# Usage:
-#   make wasm-setup     — install Rust target + wasm-pack
-#   make wasm           — software-renderer build  → release/wasm/
-#   make wasm-webgl     — WebGL2 build             → release/wasm-webgl/
-#   make wasm-webgpu    — WebGPU build             → release/wasm-webgpu/
-#   make wasm-all       — all three variants
-#   make wasm-clean     — remove build artefacts
-# ============================================================================
+WASM_TARGET  := wasm32-unknown-unknown
+WASM_FEATURES_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-lottie-expressions,dotlottie,theming,state-machines,wasm-bindgen-api
+WASM_MANIFEST := dotlottie-rs/Cargo.toml
+WASM_ARTIFACT := dotlottie-rs/target/$(WASM_TARGET)/release/dotlottie_rs.wasm
 
-WASM_BINDGEN_TARGET := wasm32-unknown-unknown
-WASM_BINDGEN_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-lottie-expressions,dotlottie,theming,state-machines,wasm-bindgen-api
-
-# Apple's system clang lacks the WebAssembly backend.  Use Homebrew LLVM if
-# present, otherwise fall back to whatever clang/clang++ is on PATH.
 LLVM_PREFIX := $(shell brew --prefix llvm 2>/dev/null)
 ifneq ($(LLVM_PREFIX),)
   WASM_CC  := $(LLVM_PREFIX)/bin/clang
@@ -28,39 +12,46 @@ else
   WASM_CXX := clang++
 endif
 
+WASM_BINDGEN_VERSION := $(shell grep -A1 'name = "wasm-bindgen"' Cargo.lock | grep version | head -1 | sed 's/.*"\(.*\)"/\1/')
+
 .PHONY: wasm-setup wasm wasm-webgl wasm-webgpu wasm-all wasm-clean
 
-# Install the wasm32-unknown-unknown Rust target and wasm-pack
 wasm-setup:
-	@rustup target add $(WASM_BINDGEN_TARGET)
-	@command -v wasm-pack >/dev/null 2>&1 || curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+	@rustup target add $(WASM_TARGET)
+	@cargo install wasm-bindgen-cli --version $(WASM_BINDGEN_VERSION) --locked
 
-# Software-renderer build — no graphics API required
+define wasm_build
+	@mkdir -p $(3)
+	CC=$(WASM_CC) CXX=$(WASM_CXX) RUSTFLAGS="$(2)" \
+		cargo rustc \
+			--manifest-path $(WASM_MANIFEST) \
+			--crate-type cdylib \
+			--target $(WASM_TARGET) \
+			--release \
+			--no-default-features \
+			--features $(WASM_FEATURES_COMMON)$(if $(1),$(comma)$(1))
+	wasm-bindgen $(WASM_ARTIFACT) \
+		--out-dir $(3) \
+		--target web \
+		--typescript
+	@if command -v wasm-opt >/dev/null 2>&1; then \
+		wasm-opt $(3)/dotlottie_rs_bg.wasm -o $(3)/dotlottie_rs_bg.wasm -O; \
+	fi
+endef
+
+comma := ,
+
 wasm:
-	CC=$(WASM_CC) CXX=$(WASM_CXX) \
-		wasm-pack build dotlottie-rs --target web \
-		--out-dir ../release/wasm \
-		--no-default-features --features $(WASM_BINDGEN_COMMON)
+	$(call wasm_build,,,release/wasm)
 
-# WebGL2 build
 wasm-webgl:
-	CC=$(WASM_CC) CXX=$(WASM_CXX) \
-		wasm-pack build dotlottie-rs --target web \
-		--out-dir ../release/wasm-webgl \
-		--no-default-features --features $(WASM_BINDGEN_COMMON),tvg-gl,webgl
+	$(call wasm_build,tvg-gl$(comma)webgl,,release/wasm-webgl)
 
-# WebGPU build — requires web_sys_unstable_apis cfg for all Gpu* web-sys types
 wasm-webgpu:
-	CC=$(WASM_CC) CXX=$(WASM_CXX) \
-		RUSTFLAGS="--cfg=web_sys_unstable_apis" \
-		wasm-pack build dotlottie-rs --target web \
-		--out-dir ../release/wasm-webgpu \
-		--no-default-features --features $(WASM_BINDGEN_COMMON),tvg-wg,webgpu
+	$(call wasm_build,tvg-wg$(comma)webgpu,--cfg=web_sys_unstable_apis,release/wasm-webgpu)
 
-# Build all three variants
 wasm-all: wasm wasm-webgl wasm-webgpu
 
-# Remove wasm artefacts
 wasm-clean:
-	@cargo clean --manifest-path dotlottie-rs/Cargo.toml --target $(WASM_BINDGEN_TARGET)
+	@cargo clean --manifest-path $(WASM_MANIFEST) --target $(WASM_TARGET)
 	@rm -rf release/wasm release/wasm-webgl release/wasm-webgpu

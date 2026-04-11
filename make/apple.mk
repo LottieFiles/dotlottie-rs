@@ -217,8 +217,9 @@ apple-macos-arm64: apple-check-xcode
 	CFLAGS="-arch arm64 -isysroot $(MACOS_SDK) -mmacosx-version-min=$(MIN_MACOS_VERSION)" \
 	CXXFLAGS="-arch arm64 -isysroot $(MACOS_SDK) -mmacosx-version-min=$(MIN_MACOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER="$(shell xcrun -sdk macosx --find clang)" \
-	cargo build \
+	cargo rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		--target $(APPLE_TARGET_macos_arm64) \
 		--release \
 		--no-default-features \
@@ -237,8 +238,9 @@ apple-macos-x86_64: apple-check-xcode
 	CFLAGS="-arch x86_64 -isysroot $(MACOS_SDK) -mmacosx-version-min=$(MIN_MACOS_VERSION)" \
 	CXXFLAGS="-arch x86_64 -isysroot $(MACOS_SDK) -mmacosx-version-min=$(MIN_MACOS_VERSION)" \
 	CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER="$(shell xcrun -sdk macosx --find clang)" \
-	cargo build \
+	cargo rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		--target $(APPLE_TARGET_macos_x86_64) \
 		--release \
 		--no-default-features \
@@ -257,8 +259,9 @@ apple-ios-arm64: apple-check-xcode
 	CFLAGS="-arch arm64 -isysroot $(IOS_SDK) -miphoneos-version-min=$(MIN_IOS_VERSION)" \
 	CXXFLAGS="-arch arm64 -isysroot $(IOS_SDK) -miphoneos-version-min=$(MIN_IOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_IOS_LINKER="$(shell xcrun -sdk iphoneos --find clang)" \
-	cargo build \
+	cargo rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		--target $(APPLE_TARGET_ios_arm64) \
 		--release \
 		--no-default-features \
@@ -277,8 +280,9 @@ apple-ios-x86_64: apple-check-xcode
 	CFLAGS="-arch x86_64 -isysroot $(IOS_SIMULATOR_SDK) -miphoneos-version-min=$(MIN_IOS_VERSION)" \
 	CXXFLAGS="-arch x86_64 -isysroot $(IOS_SIMULATOR_SDK) -miphoneos-version-min=$(MIN_IOS_VERSION)" \
 	CARGO_TARGET_X86_64_APPLE_IOS_LINKER="$(shell xcrun -sdk iphonesimulator --find clang)" \
-	cargo build \
+	cargo rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		--target $(APPLE_TARGET_ios_x86_64) \
 		--release \
 		--no-default-features \
@@ -297,8 +301,9 @@ apple-ios-sim-arm64: apple-check-xcode
 	CFLAGS="-arch arm64 -isysroot $(IOS_SIMULATOR_SDK) -miphoneos-version-min=$(MIN_IOS_VERSION)" \
 	CXXFLAGS="-arch arm64 -isysroot $(IOS_SIMULATOR_SDK) -miphoneos-version-min=$(MIN_IOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_IOS_SIM_LINKER="$(shell xcrun -sdk iphonesimulator --find clang)" \
-	cargo build \
+	cargo rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		--target $(APPLE_TARGET_ios_sim_arm64) \
 		--release \
 		--no-default-features \
@@ -317,8 +322,9 @@ apple-maccatalyst-arm64: apple-check-xcode
 	CFLAGS="-arch arm64 -isysroot $(MACOS_SDK) -target arm64-apple-ios$(MIN_MACCATALYST_VERSION)-macabi" \
 	CXXFLAGS="-arch arm64 -isysroot $(MACOS_SDK) -target arm64-apple-ios$(MIN_MACCATALYST_VERSION)-macabi" \
 	CARGO_TARGET_AARCH64_APPLE_IOS_MACABI_LINKER="$(shell xcrun -sdk macosx --find clang)" \
-	cargo +nightly build \
+	cargo +nightly rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_maccatalyst_arm64) \
 		--no-default-features \
@@ -338,8 +344,9 @@ apple-maccatalyst-x86_64: apple-check-xcode
 	CFLAGS="-arch x86_64 -isysroot $(MACOS_SDK) -target x86_64-apple-ios$(MIN_MACCATALYST_VERSION)-macabi" \
 	CXXFLAGS="-arch x86_64 -isysroot $(MACOS_SDK) -target x86_64-apple-ios$(MIN_MACCATALYST_VERSION)-macabi" \
 	CARGO_TARGET_X86_64_APPLE_IOS_MACABI_LINKER="$(shell xcrun -sdk macosx --find clang)" \
-	cargo +nightly build \
+	cargo +nightly rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_maccatalyst_x86_64) \
 		--no-default-features \
@@ -359,8 +366,9 @@ apple-visionos-arm64: apple-check-xcode
 	CFLAGS="-arch arm64 -isysroot $(VISIONOS_SDK) -target arm64-apple-xros$(MIN_VISIONOS_VERSION)" \
 	CXXFLAGS="-arch arm64 -isysroot $(VISIONOS_SDK) -target arm64-apple-xros$(MIN_VISIONOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_VISIONOS_LINKER="$(shell xcrun -sdk xros --find clang)" \
-	cargo +nightly build \
+	cargo +nightly rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_visionos_arm64) \
 		--no-default-features \
@@ -380,8 +388,9 @@ apple-visionos-sim-arm64: apple-check-xcode
 	CFLAGS="-arch arm64 -isysroot $(VISIONOS_SIMULATOR_SDK) -target arm64-apple-xros$(MIN_VISIONOS_VERSION)-simulator" \
 	CXXFLAGS="-arch arm64 -isysroot $(VISIONOS_SIMULATOR_SDK) -target arm64-apple-xros$(MIN_VISIONOS_VERSION)-simulator" \
 	CARGO_TARGET_AARCH64_APPLE_VISIONOS_SIM_LINKER="$(shell xcrun -sdk xrsimulator --find clang)" \
-	cargo +nightly build \
+	cargo +nightly rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_visionos_sim_arm64) \
 		--no-default-features \
@@ -401,8 +410,9 @@ apple-tvos-arm64: apple-check-xcode
 	CFLAGS="-arch arm64 -isysroot $(TVOS_SDK) -mtvos-version-min=$(MIN_TVOS_VERSION)" \
 	CXXFLAGS="-arch arm64 -isysroot $(TVOS_SDK) -mtvos-version-min=$(MIN_TVOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_TVOS_LINKER="$(shell xcrun -sdk appletvos --find clang)" \
-	cargo +nightly build \
+	cargo +nightly rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_tvos_arm64) \
 		--no-default-features \
@@ -422,8 +432,9 @@ apple-tvos-sim-arm64: apple-check-xcode
 	CFLAGS="-arch arm64 -isysroot $(TVOS_SIMULATOR_SDK) -mtvos-version-min=$(MIN_TVOS_VERSION)" \
 	CXXFLAGS="-arch arm64 -isysroot $(TVOS_SIMULATOR_SDK) -mtvos-version-min=$(MIN_TVOS_VERSION)" \
 	CARGO_TARGET_AARCH64_APPLE_TVOS_SIM_LINKER="$(shell xcrun -sdk appletvsimulator --find clang)" \
-	cargo +nightly build \
+	cargo +nightly rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		-Z build-std=std,panic_abort \
 		--target $(APPLE_TARGET_tvos_sim_arm64) \
 		--no-default-features \

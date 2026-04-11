@@ -73,7 +73,7 @@ define WINDOWS_CARGO_BUILD
 	else \
 		LLVM_LINE='rem no LLVM override'; \
 	fi; \
-	printf '@echo off\ncall "%s" %s\nif errorlevel 1 exit /b 1\n%s\n"%s" build --manifest-path "%s" --target %s --release %s --features %s\n' \
+	printf '@echo off\ncall "%s" %s\nif errorlevel 1 exit /b 1\n%s\n"%s" rustc --manifest-path "%s" --crate-type staticlib --crate-type cdylib --target %s --release %s --features %s\n' \
 		"$$VCVARS_WIN" "$(1)" "$$LLVM_LINE" "$$CARGO_WIN" "$$MANIFEST_WIN" "$(2)" \
 		"$(4)" "$(3)" > "$$TMPBAT"; \
 	echo "-> Building $(2) with cargo..."; \

@@ -158,8 +158,9 @@ android-aarch64: android-check-ndk
 	AR="$(ANDROID_AR)" \
 	RANLIB="$(ANDROID_RANLIB)" \
 	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
-	cargo build \
+	cargo rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		--target $(RUST_TARGET_aarch64) \
 		--release \
 		--no-default-features \
@@ -187,8 +188,9 @@ android-x86_64: android-check-ndk
 	AR="$(ANDROID_AR)" \
 	RANLIB="$(ANDROID_RANLIB)" \
 	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
-	cargo build \
+	cargo rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		--target $(RUST_TARGET_x86_64) \
 		--release \
 		--no-default-features \
@@ -216,8 +218,9 @@ android-x86: android-check-ndk
 	AR="$(ANDROID_AR)" \
 	RANLIB="$(ANDROID_RANLIB)" \
 	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
-	cargo build \
+	cargo rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		--target $(RUST_TARGET_x86) \
 		--release \
 		--no-default-features \
@@ -245,8 +248,9 @@ android-armv7: android-check-ndk
 	AR="$(ANDROID_AR)" \
 	RANLIB="$(ANDROID_RANLIB)" \
 	BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(ANDROID_TOOLCHAIN)/sysroot" \
-	cargo build \
+	cargo rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type cdylib \
 		--target $(RUST_TARGET_armv7) \
 		--release \
 		--no-default-features \

@@ -615,6 +615,8 @@ namespace tvg
 
         cc_build.compile("thorvg");
 
+        println!("cargo:root={}", out_dir.display());
+
         // Generate ThorVG C API bindings
         let bindings = bindgen::Builder::default()
             .header("deps/thorvg/src/bindings/capi/thorvg_capi.h")

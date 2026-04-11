@@ -309,9 +309,13 @@ mod thorvg {
         };
 
         // C++ standard library linking
-        if is_wasm_unknown {
+        println!("cargo:rerun-if-env-changed=CXXSTDLIB");
+        let cxxstdlib = env::var("CXXSTDLIB").ok();
+        if is_wasm_unknown && cxxstdlib.is_none() {
             // Prevent cc from linking stdc++ — no C++ runtime available
             env::set_var("CXXSTDLIB", "");
+        } else if cxxstdlib.as_deref() == Some("") {
+            // External CXXSTDLIB="" — skip manual C++ stdlib linking (cc crate also respects this)
         } else {
             get_cpp_standard_library()
                 .iter()

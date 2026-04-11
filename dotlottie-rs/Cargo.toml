@@ -11,7 +11,7 @@ categories = ["graphics", "multimedia", "rendering"]
 links = "thorvg"
 
 [lib]
-crate-type = ["staticlib", "cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [features]
 default = ["dotlottie", "state-machines", "theming"]

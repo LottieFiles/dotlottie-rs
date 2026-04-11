@@ -103,8 +103,9 @@ linux-x86_64: linux-check-deps
 	RANLIB="ranlib" \
 	CFLAGS="-fPIC" \
 	CXXFLAGS="-fPIC -std=c++14" \
-	cargo build \
+	cargo rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type staticlib --crate-type cdylib \
 		--target $(LINUX_TARGET_x86_64) \
 		--release \
 		--no-default-features \
@@ -127,8 +128,9 @@ linux-arm64: linux-check-deps
 		CFLAGS="-fPIC" \
 		CXXFLAGS="-fPIC -std=c++14" \
 		CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="gcc" \
-		cargo build \
+		cargo rustc \
 			--manifest-path dotlottie-rs/Cargo.toml \
+			--crate-type staticlib --crate-type cdylib \
 			--target $(LINUX_TARGET_arm64) \
 			--release \
 			--no-default-features \
@@ -141,8 +143,9 @@ linux-arm64: linux-check-deps
 		CFLAGS="-fPIC" \
 		CXXFLAGS="-fPIC -std=c++14" \
 		CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="aarch64-linux-gnu-gcc" \
-		cargo build \
+		cargo rustc \
 			--manifest-path dotlottie-rs/Cargo.toml \
+			--crate-type staticlib --crate-type cdylib \
 			--target $(LINUX_TARGET_arm64) \
 			--release \
 			--no-default-features \

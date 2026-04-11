@@ -160,7 +160,7 @@ NATIVE_INCLUDE_DIR = $(NATIVE_RELEASE_DIR)/include
 native-opengl:
 	@echo "→ Building OpenGL-only variant..."
 	@echo "Building native libraries with dotlottie-rs c_api and OpenGL..."
-	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features c_api,tvg,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
+	cargo rustc --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --crate-type cdylib --features c_api,tvg,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
 
 	$(NATIVE_RELEASE)
 
@@ -171,7 +171,7 @@ native-opengl:
 native-webgpu:
 	@echo "→ Building WebGPU-only variant..."
 	@echo "Building native libraries with dotlottie-rs c_api and WebGPU..."
-	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features c_api,tvg,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
+	cargo rustc --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --crate-type cdylib --features c_api,tvg,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
 
 	$(NATIVE_RELEASE)
 
@@ -185,7 +185,7 @@ native:
 ifeq ($(OS),Windows_NT)
 	$(call WINDOWS_CARGO_BUILD,x64,x86_64-pc-windows-msvc,$(NATIVE_FEATURES),)
 else
-	cargo build --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --features $(NATIVE_FEATURES) --release
+	cargo rustc --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --crate-type cdylib --features $(NATIVE_FEATURES) --release
 endif
 
 	$(NATIVE_RELEASE)

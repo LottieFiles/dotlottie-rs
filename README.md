@@ -88,7 +88,7 @@ This will configure all platforms. You can also setup individual platforms using
 Builds can be performed for the following groups of targets:
 
 - `android` - All Android architectures (ARM64, x86_64, x86, ARMv7)
-- `apple` - All Apple platforms (macOS, iOS, tvOS, visionOS, macCatalyst)
+- `apple` - All Apple platforms (macOS, iOS, tvOS, visionOS, watchOS, macCatalyst)
 - `wasm` - WebAssembly (software renderer) via wasm-bindgen
 - `wasm-webgl` - WebAssembly with WebGL2 renderer via wasm-bindgen
 - `wasm-webgpu` - WebAssembly with WebGPU renderer via wasm-bindgen

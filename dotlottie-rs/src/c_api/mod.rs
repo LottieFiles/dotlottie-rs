@@ -7,7 +7,7 @@ use crate::lottie_renderer::{
     ColorSlot, ColorValue, GlContext, GlDisplay, GlSurface, ImageSlot, PositionSlot, ScalarSlot,
     ScalarValue, TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
 };
-use crate::{DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode, Rgba};
+use crate::{DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode, Rgba, Segment};
 
 use crate::ColorSpace;
 
@@ -402,7 +402,8 @@ pub unsafe extern "C" fn dotlottie_set_segment(
         let segment_opt = if segment.is_null() {
             None
         } else {
-            Some(*segment)
+            let [start, end] = *segment;
+            Some(Segment { start, end })
         };
         dotlottie_player.set_segment(segment_opt)
     })
@@ -586,11 +587,11 @@ pub unsafe extern "C" fn dotlottie_get_segment(
             return DotLottieResult::InvalidParameter;
         }
         match dotlottie_player.segment() {
-            Some(segment) => {
-                *result = segment;
+            Ok(Segment { start, end }) => {
+                *result = [start, end];
                 DotLottieResult::Success
             }
-            None => DotLottieResult::InvalidParameter,
+            Err(_) => DotLottieResult::InvalidParameter,
         }
     })
 }
@@ -620,7 +621,7 @@ pub unsafe extern "C" fn dotlottie_get_active_marker(
     size_out: *mut usize,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        match dotlottie_player.marker() {
+        match dotlottie_player.active_marker() {
             Some(marker) => {
                 let marker_bytes = marker.to_bytes_with_nul();
                 let size = marker_bytes.len();
@@ -1467,7 +1468,7 @@ pub unsafe extern "C" fn dotlottie_markers_count(
         return DotLottieResult::InvalidParameter;
     }
     let player = &*ptr;
-    *count = player.marker_names().len() as u32;
+    *count = player.markers().len() as u32;
     DotLottieResult::Success
 }
 
@@ -1477,8 +1478,8 @@ pub unsafe extern "C" fn dotlottie_markers_count(
 /// - `ptr`: Pointer to the DotLottiePlayer instance
 /// - `idx`: Index of the marker (0-based)
 /// - `name`: Pointer to receive the marker name (library-owned, do not free)
-/// - `time`: Pointer to receive the marker time (start frame), or NULL to skip
-/// - `duration`: Pointer to receive the marker duration (in frames), or NULL to skip
+/// - `start`: Pointer to receive the marker start frame, or NULL to skip
+/// - `end`: Pointer to receive the marker end frame, or NULL to skip
 ///
 /// # Returns
 /// - `DOTLOTTIE_SUCCESS` on success
@@ -1488,28 +1489,27 @@ pub unsafe extern "C" fn dotlottie_marker(
     ptr: *mut DotLottiePlayer,
     idx: u32,
     name: *mut *const c_char,
-    time: *mut f32,
-    duration: *mut f32,
+    start: *mut f32,
+    end: *mut f32,
 ) -> DotLottieResult {
     if ptr.is_null() || name.is_null() {
         return DotLottieResult::InvalidParameter;
     }
     let player = &*ptr;
+    let markers = player.markers();
     let idx = idx as usize;
 
-    let marker_names = player.marker_names();
-    let marker_data = player.marker_data();
-
-    if idx >= marker_names.len() {
+    if idx >= markers.len() {
         return DotLottieResult::InvalidParameter;
     }
 
-    *name = marker_names[idx].as_ptr();
-    if !time.is_null() {
-        *time = marker_data[idx].0;
+    let marker = &markers[idx];
+    *name = marker.name.as_ptr();
+    if !start.is_null() {
+        *start = marker.segment.start;
     }
-    if !duration.is_null() {
-        *duration = marker_data[idx].1;
+    if !end.is_null() {
+        *end = marker.segment.end;
     }
 
     DotLottieResult::Success
@@ -1626,20 +1626,7 @@ pub unsafe extern "C" fn dotlottie_set_viewport(
     })
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_segment_duration(
-    ptr: *mut DotLottiePlayer,
-    result: *mut f32,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if !result.is_null() {
-            *result = dotlottie_player.segment_duration();
-            DotLottieResult::Success
-        } else {
-            DotLottieResult::InvalidParameter
-        }
-    })
-}
+
 
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_animation_size(

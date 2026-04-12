@@ -1,5 +1,19 @@
 use core::error;
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
+
+/// A frame range within a Lottie animation.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Segment {
+    pub start: f32,
+    pub end: f32,
+}
+
+/// A named marker within a Lottie animation.
+#[derive(Debug, Clone)]
+pub struct Marker {
+    pub name: CString,
+    pub segment: Segment,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Rgba {
@@ -253,6 +267,14 @@ pub trait Animation: Default {
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), Self::Error>;
 
     fn get_transform(&self) -> Result<[f32; 9], Self::Error>;
+
+    // ── Markers & Segments ───────────────────────────────────────────────
+
+    fn markers(&self) -> &[Marker];
+
+    fn set_segment(&mut self, segment: Option<Segment>);
+
+    fn segment(&self) -> Result<Segment, Self::Error>;
 }
 
 pub trait Renderer: Sized + 'static {

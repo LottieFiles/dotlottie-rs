@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Segment};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -13,7 +13,7 @@ mod tests {
     struct TestConfig {
         speed: f32,
         autoplay: bool,
-        segment: Option<[f32; 2]>,
+        segment: Option<Segment>,
     }
 
     #[test]
@@ -65,7 +65,7 @@ mod tests {
             (
                 TestConfig {
                     speed: 2.0,
-                    segment: Some([10.0, 30.0]),
+                    segment: Some(Segment { start: 10.0, end: 30.0 }),
                     autoplay: true,
                 },
                 2.0,
@@ -74,7 +74,7 @@ mod tests {
                 TestConfig {
                     speed: 0.4,
                     autoplay: true,
-                    segment: Some([10.0, 30.0]),
+                    segment: Some(Segment { start: 10.0, end: 30.0 }),
                 },
                 0.4,
             ),
@@ -102,7 +102,9 @@ mod tests {
             );
             assert!(player.is_playing(), "Animation should be playing");
 
-            let expected_duration = player.segment_duration();
+            let seg = player.segment().unwrap();
+            let expected_duration =
+                (seg.end - seg.start) / player.total_frames() * player.duration();
 
             let start_time = std::time::Instant::now();
 

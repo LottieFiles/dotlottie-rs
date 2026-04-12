@@ -3,7 +3,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, Mode};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Mode, Segment};
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +13,6 @@ mod tests {
     fn test_invalid_segment_rejected() {
         let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
-        let _ = player.set_segment(Some([50.0, 30.0]));
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
@@ -27,6 +26,9 @@ mod tests {
             player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
+
+        let result = player.set_segment(Some(Segment { start: 50.0, end: 30.0 }));
+        assert!(result.is_err(), "Invalid segment should be rejected");
 
         assert!(player.is_playing(), "Animation should be playing");
 
@@ -51,7 +53,6 @@ mod tests {
     fn test_same_start_end_rejected() {
         let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
-        let _ = player.set_segment(Some([0.0, 0.0]));
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
@@ -65,6 +66,9 @@ mod tests {
             player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
+
+        let result = player.set_segment(Some(Segment { start: 0.0, end: 0.0 }));
+        assert!(result.is_err(), "Same start/end segment should be rejected");
 
         let total_frames = player.total_frames();
 
@@ -95,11 +99,9 @@ mod tests {
             let mut player = DotLottiePlayer::new();
             player.set_mode(mode);
             player.set_autoplay(true);
-            let _ = player.set_segment(Some([50.0, 30.0]));
 
             let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
-            // Set software rendering target
             assert!(player
                 .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
                 .is_ok());
@@ -107,6 +109,12 @@ mod tests {
             assert!(
                 player.load_animation_path(&path).is_ok(),
                 "Animation should load for mode {mode:?}"
+            );
+
+            let result = player.set_segment(Some(Segment { start: 50.0, end: 30.0 }));
+            assert!(
+                result.is_err(),
+                "Invalid segment should be rejected for mode {mode:?}"
             );
 
             let total_frames = player.total_frames();
@@ -131,7 +139,6 @@ mod tests {
     fn test_valid_segments_unchanged() {
         let mut player = DotLottiePlayer::new();
         player.set_autoplay(true);
-        let _ = player.set_segment(Some([30.0, 50.0]));
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
@@ -145,6 +152,8 @@ mod tests {
             player.load_animation_path(&path).is_ok(),
             "Animation should load with valid segment"
         );
+
+        assert!(player.set_segment(Some(Segment { start: 30.0, end: 50.0 })).is_ok());
 
         let total_frames = player.total_frames();
 
@@ -167,7 +176,6 @@ mod tests {
     fn test_set_segment_rejects_invalid() {
         let mut player = DotLottiePlayer::new();
         player.set_autoplay(false);
-        let _ = player.set_segment(Some([10.0, 20.0]));
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
@@ -182,31 +190,33 @@ mod tests {
             "Animation should load"
         );
 
-        let initial_segment = player.segment();
-        assert_eq!(initial_segment, Some([10.0, 20.0]));
+        assert!(player.set_segment(Some(Segment { start: 10.0, end: 20.0 })).is_ok());
+
+        let initial_segment = player.segment().unwrap();
+        assert_eq!(initial_segment, Segment { start: 10.0, end: 20.0 });
 
         // Try to set invalid segment
-        let result = player.set_segment(Some([50.0, 30.0]));
+        let result = player.set_segment(Some(Segment { start: 50.0, end: 30.0 }));
         assert!(result.is_err(), "Invalid segment should be rejected");
 
-        let updated_segment = player.segment();
+        let updated_segment = player.segment().unwrap();
         assert_eq!(
             updated_segment,
-            Some([10.0, 20.0]),
+            Segment { start: 10.0, end: 20.0 },
             "Invalid segment should be rejected, keeping previous valid segment"
         );
 
         // Try to set same start/end segment
-        let result2 = player.set_segment(Some([25.0, 25.0]));
+        let result2 = player.set_segment(Some(Segment { start: 25.0, end: 25.0 }));
         assert!(
             result2.is_err(),
             "Same start/end segment should be rejected"
         );
 
-        let final_segment = player.segment();
+        let final_segment = player.segment().unwrap();
         assert_eq!(
             final_segment,
-            Some([10.0, 20.0]),
+            Segment { start: 10.0, end: 20.0 },
             "Invalid segment [25, 25] should be rejected"
         );
     }

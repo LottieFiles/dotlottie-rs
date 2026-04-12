@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, Marker};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Segment};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -14,7 +14,10 @@ mod tests {
     fn test_default_marker() {
         let player = DotLottiePlayer::new();
 
-        assert!(player.marker().is_none(), "Expected no marker by default");
+        assert!(
+            player.active_marker().is_none(),
+            "Expected no marker by default"
+        );
     }
 
     #[test]
@@ -43,41 +46,21 @@ mod tests {
 
         assert_eq!(actual_markers.len(), 4);
 
-        let expected_markers = [
-            Marker {
-                name: "Marker_1".to_string(),
-                time: 0.0,
-                duration: 10.0,
-            },
-            Marker {
-                name: "Marker_2".to_string(),
-                time: 10.0,
-                duration: 10.0,
-            },
-            Marker {
-                name: "Marker_3".to_string(),
-                time: 20.0,
-                duration: 10.0,
-            },
-            Marker {
-                name: "Marker_4".to_string(),
-                time: 30.0,
-                duration: 12.0,
-            },
+        let expected: &[(&str, f32, f32)] = &[
+            ("Marker_1", 0.0, 10.0),
+            ("Marker_2", 10.0, 20.0),
+            ("Marker_3", 20.0, 30.0),
+            ("Marker_4", 30.0, 42.0),
         ];
 
-        for marker in actual_markers {
-            let expected = expected_markers
+        for (name, start, end) in expected {
+            let marker = actual_markers
                 .iter()
-                .find(|m| m.name == marker.name)
-                .unwrap();
+                .find(|m| m.name.to_str() == Ok(*name))
+                .unwrap_or_else(|| panic!("Marker {name} not found"));
 
-            assert_eq!(marker.name, expected.name, "Expected marker name to match");
-            assert_eq!(marker.time, expected.time, "Expected marker time to match");
-            assert_eq!(
-                marker.duration, expected.duration,
-                "Expected marker duration to match"
-            );
+            assert_eq!(marker.segment.start, *start, "start mismatch for {name}");
+            assert_eq!(marker.segment.end, *end, "end mismatch for {name}");
         }
     }
 
@@ -92,21 +75,20 @@ mod tests {
             .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
             .is_ok());
 
-        let marker_name = CString::new("Marker_3").unwrap();
-
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(
             player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
 
+        let marker_name = CString::new("Marker_3").unwrap();
         player.set_marker(Some(&marker_name));
 
-        assert_eq!(player.marker(), Some(marker_name.as_c_str()));
+        assert_eq!(player.active_marker(), Some(marker_name.as_c_str()));
 
         assert!(player.is_playing(), "Animation should be playing");
 
-        // assert current frame is the marker time
+        // assert current frame is the marker start
         assert_eq!(player.current_frame(), 20.0);
 
         let mut rendered_frames: Vec<f32> = vec![];
@@ -121,18 +103,42 @@ mod tests {
             }
         }
 
-        // assert if all rendered frames are within the marker time and time+duration and in increasing order, as the mode is forward
+        // assert if all rendered frames are within the marker start..end
         let marker = player
             .markers()
-            .into_iter()
-            .find(|m| m.name == "Marker_3")
+            .iter()
+            .find(|m| m.name.to_str() == Ok("Marker_3"))
             .unwrap();
 
         for frame in rendered_frames {
             assert!(
-                frame >= marker.time && frame <= marker.time + marker.duration,
-                "Expected frame to be within marker time and time+duration"
+                frame >= marker.segment.start && frame <= marker.segment.end,
+                "Expected frame to be within marker start and end"
             );
         }
+    }
+
+    #[test]
+    fn test_set_frame_outside_segment_rejected() {
+        let mut player = DotLottiePlayer::new();
+
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .is_ok());
+
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path).is_ok());
+
+        // Set a segment [10, 20]
+        assert!(player.set_segment(Some(Segment { start: 10.0, end: 20.0 })).is_ok());
+
+        // Frame within segment should succeed
+        assert!(player.set_frame(15.0).is_ok());
+
+        // Frame outside segment should fail
+        assert!(player.set_frame(5.0).is_err());
+        assert!(player.set_frame(25.0).is_err());
     }
 }

@@ -26,7 +26,7 @@ use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEven
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, CompletionEvent, DotLottiePlayer,
-    EventName, Layout, Mode, PointerEvent, Rgba, StateMachineEngineSecurityError,
+    EventName, Layout, Mode, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -80,7 +80,7 @@ pub struct StateMachineEngine<'a> {
     cached_autoplay: bool,
     cached_use_frame_interpolation: bool,
     cached_background: Rgba,
-    cached_segment: Option<[f32; 2]>,
+    cached_segment: Option<Segment>,
     cached_marker: Option<CString>,
     cached_layout: Layout,
 
@@ -323,8 +323,8 @@ impl<'a> StateMachineEngine<'a> {
             cached_autoplay: player.autoplay(),
             cached_use_frame_interpolation: player.use_frame_interpolation(),
             cached_background: player.background(),
-            cached_segment: player.segment(),
-            cached_marker: player.marker().map(CStr::to_owned),
+            cached_segment: player.segment().ok(),
+            cached_marker: player.active_marker().map(CStr::to_owned),
             cached_layout: player.layout(),
             player, // `player` Moved. Don't use after this point
             global_state: None,
@@ -490,7 +490,8 @@ impl<'a> StateMachineEngine<'a> {
             .set_use_frame_interpolation(self.cached_use_frame_interpolation);
         let _ = self.player.set_background(self.cached_background);
         let _ = self.player.set_segment(self.cached_segment);
-        self.player.set_marker(self.cached_marker.as_deref());
+        self.player
+            .set_marker(self.cached_marker.as_deref());
         let _ = self.player.set_layout(self.cached_layout);
         self.player.set_autoplay(self.cached_autoplay);
     }
@@ -720,18 +721,15 @@ impl<'a> StateMachineEngine<'a> {
                                 let target_frame = if let Some(target_segment) = segment_ref {
                                     let marker_lookup = self
                                         .player
-                                        .marker_names()
+                                        .markers()
                                         .iter()
-                                        .position(|n| n.to_str() == Ok(target_segment))
-                                        .and_then(|idx| {
-                                            self.player.marker_data().get(idx).copied()
-                                        });
+                                        .find(|m| m.name.to_str() == Ok(target_segment));
 
-                                    marker_lookup.map(|(time, duration)| {
+                                    marker_lookup.map(|m| {
                                         if is_reverse {
-                                            (time + duration).min(self.player.total_frames() - 1.0)
+                                            m.segment.end.min(self.player.total_frames() - 1.0)
                                         } else {
-                                            time
+                                            m.segment.start
                                         }
                                     })
                                 } else {

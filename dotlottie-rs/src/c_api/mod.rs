@@ -1626,8 +1626,6 @@ pub unsafe extern "C" fn dotlottie_set_viewport(
     })
 }
 
-
-
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_animation_size(
     ptr: *mut DotLottiePlayer,

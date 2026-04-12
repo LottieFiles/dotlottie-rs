@@ -207,15 +207,11 @@ impl DotLottiePlayer {
     }
 
     pub(crate) fn start_frame(&self) -> f32 {
-        self.renderer
-            .segment()
-            .map_or(0.0, |seg| seg.start)
+        self.renderer.segment().map_or(0.0, |seg| seg.start)
     }
 
     pub(crate) fn end_frame(&self) -> f32 {
-        self.renderer
-            .segment()
-            .map_or(0.0, |seg| seg.end)
+        self.renderer.segment().map_or(0.0, |seg| seg.end)
     }
 
     pub fn intersect(&self, x: f32, y: f32, layer_name: &str) -> bool {
@@ -677,7 +673,6 @@ impl DotLottiePlayer {
     pub fn duration(&self) -> f32 {
         self.renderer.duration().unwrap_or(0.0)
     }
-
 
     pub fn current_frame(&self) -> f32 {
         self.renderer.current_frame()

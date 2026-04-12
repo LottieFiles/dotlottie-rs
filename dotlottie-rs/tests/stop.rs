@@ -43,22 +43,34 @@ mod tests {
             TestConfig {
                 mode: Mode::Forward,
                 autoplay: true,
-                segment: Some(Segment { start: 10.0, end: 30.0 }),
+                segment: Some(Segment {
+                    start: 10.0,
+                    end: 30.0,
+                }),
             },
             TestConfig {
                 mode: Mode::Reverse,
                 autoplay: true,
-                segment: Some(Segment { start: 10.0, end: 30.0 }),
+                segment: Some(Segment {
+                    start: 10.0,
+                    end: 30.0,
+                }),
             },
             TestConfig {
                 mode: Mode::Bounce,
                 autoplay: true,
-                segment: Some(Segment { start: 10.0, end: 30.0 }),
+                segment: Some(Segment {
+                    start: 10.0,
+                    end: 30.0,
+                }),
             },
             TestConfig {
                 mode: Mode::ReverseBounce,
                 autoplay: true,
-                segment: Some(Segment { start: 10.0, end: 30.0 }),
+                segment: Some(Segment {
+                    start: 10.0,
+                    end: 30.0,
+                }),
             },
         ];
 
@@ -85,7 +97,10 @@ mod tests {
 
             assert!(player.is_playing(), "Animation should be playing");
 
-            let Segment { start: start_frame, end: end_frame } = player.segment().unwrap();
+            let Segment {
+                start: start_frame,
+                end: end_frame,
+            } = player.segment().unwrap();
 
             // wait until we're half way to the end
             let mid_frame = (start_frame + end_frame) / 2.0;

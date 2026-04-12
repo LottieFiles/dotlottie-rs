@@ -27,7 +27,10 @@ mod tests {
             "Animation should load"
         );
 
-        let result = player.set_segment(Some(Segment { start: 50.0, end: 30.0 }));
+        let result = player.set_segment(Some(Segment {
+            start: 50.0,
+            end: 30.0,
+        }));
         assert!(result.is_err(), "Invalid segment should be rejected");
 
         assert!(player.is_playing(), "Animation should be playing");
@@ -67,7 +70,10 @@ mod tests {
             "Animation should load"
         );
 
-        let result = player.set_segment(Some(Segment { start: 0.0, end: 0.0 }));
+        let result = player.set_segment(Some(Segment {
+            start: 0.0,
+            end: 0.0,
+        }));
         assert!(result.is_err(), "Same start/end segment should be rejected");
 
         let total_frames = player.total_frames();
@@ -111,7 +117,10 @@ mod tests {
                 "Animation should load for mode {mode:?}"
             );
 
-            let result = player.set_segment(Some(Segment { start: 50.0, end: 30.0 }));
+            let result = player.set_segment(Some(Segment {
+                start: 50.0,
+                end: 30.0,
+            }));
             assert!(
                 result.is_err(),
                 "Invalid segment should be rejected for mode {mode:?}"
@@ -153,7 +162,12 @@ mod tests {
             "Animation should load with valid segment"
         );
 
-        assert!(player.set_segment(Some(Segment { start: 30.0, end: 50.0 })).is_ok());
+        assert!(player
+            .set_segment(Some(Segment {
+                start: 30.0,
+                end: 50.0
+            }))
+            .is_ok());
 
         let total_frames = player.total_frames();
 
@@ -190,24 +204,44 @@ mod tests {
             "Animation should load"
         );
 
-        assert!(player.set_segment(Some(Segment { start: 10.0, end: 20.0 })).is_ok());
+        assert!(player
+            .set_segment(Some(Segment {
+                start: 10.0,
+                end: 20.0
+            }))
+            .is_ok());
 
         let initial_segment = player.segment().unwrap();
-        assert_eq!(initial_segment, Segment { start: 10.0, end: 20.0 });
+        assert_eq!(
+            initial_segment,
+            Segment {
+                start: 10.0,
+                end: 20.0
+            }
+        );
 
         // Try to set invalid segment
-        let result = player.set_segment(Some(Segment { start: 50.0, end: 30.0 }));
+        let result = player.set_segment(Some(Segment {
+            start: 50.0,
+            end: 30.0,
+        }));
         assert!(result.is_err(), "Invalid segment should be rejected");
 
         let updated_segment = player.segment().unwrap();
         assert_eq!(
             updated_segment,
-            Segment { start: 10.0, end: 20.0 },
+            Segment {
+                start: 10.0,
+                end: 20.0
+            },
             "Invalid segment should be rejected, keeping previous valid segment"
         );
 
         // Try to set same start/end segment
-        let result2 = player.set_segment(Some(Segment { start: 25.0, end: 25.0 }));
+        let result2 = player.set_segment(Some(Segment {
+            start: 25.0,
+            end: 25.0,
+        }));
         assert!(
             result2.is_err(),
             "Same start/end segment should be rejected"
@@ -216,7 +250,10 @@ mod tests {
         let final_segment = player.segment().unwrap();
         assert_eq!(
             final_segment,
-            Segment { start: 10.0, end: 20.0 },
+            Segment {
+                start: 10.0,
+                end: 20.0
+            },
             "Invalid segment [25, 25] should be rejected"
         );
     }

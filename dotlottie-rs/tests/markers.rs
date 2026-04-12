@@ -132,7 +132,12 @@ mod tests {
         assert!(player.load_animation_path(&path).is_ok());
 
         // Set a segment [10, 20]
-        assert!(player.set_segment(Some(Segment { start: 10.0, end: 20.0 })).is_ok());
+        assert!(player
+            .set_segment(Some(Segment {
+                start: 10.0,
+                end: 20.0
+            }))
+            .is_ok());
 
         // Frame within segment should succeed
         assert!(player.set_frame(15.0).is_ok());

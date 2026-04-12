@@ -65,7 +65,10 @@ mod tests {
             (
                 TestConfig {
                     speed: 2.0,
-                    segment: Some(Segment { start: 10.0, end: 30.0 }),
+                    segment: Some(Segment {
+                        start: 10.0,
+                        end: 30.0,
+                    }),
                     autoplay: true,
                 },
                 2.0,
@@ -74,7 +77,10 @@ mod tests {
                 TestConfig {
                     speed: 0.4,
                     autoplay: true,
-                    segment: Some(Segment { start: 10.0, end: 30.0 }),
+                    segment: Some(Segment {
+                        start: 10.0,
+                        end: 30.0,
+                    }),
                 },
                 0.4,
             ),

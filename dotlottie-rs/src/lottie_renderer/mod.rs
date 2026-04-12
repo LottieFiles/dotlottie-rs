@@ -201,7 +201,6 @@ pub trait LottieRenderer {
     fn set_segment(&mut self, segment: Option<Segment>) -> Result<(), LottieRendererError>;
 
     fn segment(&self) -> Result<Segment, LottieRendererError>;
-
 }
 
 impl dyn LottieRenderer {
@@ -922,11 +921,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn segment(&self) -> Result<Segment, LottieRendererError> {
-        self.get_animation()?
-            .segment()
-            .map_err(into_lottie::<R>)
+        self.get_animation()?.segment().map_err(into_lottie::<R>)
     }
-
 }
 
 fn multiply_matrices(a: &[f32; 9], b: &[f32; 9]) -> [f32; 9] {

@@ -597,20 +597,16 @@ impl DotLottiePlayerWasm {
     // ── Segment ───────────────────────────────────────────────────────────────
 
     pub fn segment_start(&self) -> f32 {
-        self.player
-            .segment()
-            .map(|seg| seg.start)
-            .unwrap_or(0.0)
+        self.player.segment().map(|seg| seg.start).unwrap_or(0.0)
     }
     pub fn segment_end(&self) -> f32 {
-        self.player
-            .segment()
-            .map(|seg| seg.end)
-            .unwrap_or(0.0)
+        self.player.segment().map(|seg| seg.end).unwrap_or(0.0)
     }
 
     pub fn set_segment(&mut self, start: f32, end: f32) -> bool {
-        self.player.set_segment(Some(Segment { start, end })).is_ok()
+        self.player
+            .set_segment(Some(Segment { start, end }))
+            .is_ok()
     }
 
     pub fn clear_segment(&mut self) -> bool {
@@ -773,9 +769,16 @@ impl DotLottiePlayerWasm {
             let obj = Object::new();
             let name_str: JsValue = m.name.to_string_lossy().as_ref().into();
             let _ = js_sys::Reflect::set(&obj, &"name".into(), &name_str);
-            let _ =
-                js_sys::Reflect::set(&obj, &"start".into(), &JsValue::from_f64(m.segment.start as f64));
-            let _ = js_sys::Reflect::set(&obj, &"end".into(), &JsValue::from_f64(m.segment.end as f64));
+            let _ = js_sys::Reflect::set(
+                &obj,
+                &"start".into(),
+                &JsValue::from_f64(m.segment.start as f64),
+            );
+            let _ = js_sys::Reflect::set(
+                &obj,
+                &"end".into(),
+                &JsValue::from_f64(m.segment.end as f64),
+            );
             arr.push(&obj);
         }
         arr.into()

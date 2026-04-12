@@ -183,6 +183,25 @@ mod thorvg {
         files
     }
 
+    /// Track ThorVG changes                                                
+    fn emit_rerun_directives(dirs: &[&str], extensions: &[&str]) {
+        for dir in dirs {
+            println!("cargo:rerun-if-changed={dir}");
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file()
+                        && path
+                            .extension()
+                            .is_some_and(|e| extensions.iter().any(|ext| e == *ext))
+                    {
+                        println!("cargo:rerun-if-changed={}", path.display());
+                    }
+                }
+            }
+        }
+    }
+
     /// Verify that the CXX compiler is clang++ >= 16 (required for wasm32-unknown-unknown).
     fn verify_clang_version(compiler: &str) {
         let output = std::process::Command::new(compiler)
@@ -499,6 +518,8 @@ namespace tvg
             )?;
             alloc_h.flush()?;
         }
+
+        emit_rerun_directives(&src, &["h", "cpp"]);
 
         // --- cc::Build setup ---
         let mut cc_build = cc::Build::new();

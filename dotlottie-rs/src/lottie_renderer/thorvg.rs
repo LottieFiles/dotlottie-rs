@@ -9,8 +9,8 @@ use std::{
 use crate::lottie_renderer::fallback_font;
 
 use super::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Renderer, Rgba, Shape,
-    WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Renderer, Rgba,
+    Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 
 #[expect(non_upper_case_globals)]
@@ -394,6 +394,10 @@ pub struct TvgAnimation {
     raw_animation: tvg::Tvg_Animation,
     raw_paint: tvg::Tvg_Paint,
     data: Option<CString>,
+    segment: Option<Segment>,
+    markers: Vec<Marker>,
+    total_frames: f32,
+    duration: f32,
 }
 
 impl Default for TvgAnimation {
@@ -405,11 +409,67 @@ impl Default for TvgAnimation {
             raw_animation,
             raw_paint,
             data: None,
+            segment: None,
+            markers: Vec::new(),
+            total_frames: 0.0,
+            duration: 0.0,
         }
     }
 }
 
 impl TvgAnimation {
+    fn load_markers(&mut self) {
+        let mut cnt: u32 = 0;
+        unsafe {
+            tvg::tvg_lottie_animation_get_markers_cnt(self.raw_animation, &mut cnt);
+        }
+
+        self.markers.clear();
+        self.markers.reserve(cnt as usize);
+
+        for i in 0..cnt {
+            let mut name_ptr: *const c_char = ptr::null();
+            let mut begin: f32 = 0.0;
+            let mut end: f32 = 0.0;
+
+            let ok = unsafe {
+                tvg::tvg_lottie_animation_get_marker_info(
+                    self.raw_animation,
+                    i,
+                    &mut name_ptr,
+                    &mut begin,
+                    &mut end,
+                )
+            };
+
+            if ok == tvg::Tvg_Result_TVG_RESULT_SUCCESS && !name_ptr.is_null() {
+                let name = unsafe { CStr::from_ptr(name_ptr) }.to_owned();
+                self.markers.push(Marker {
+                    name,
+                    segment: Segment { start: begin, end },
+                });
+            }
+        }
+    }
+
+    fn get_total_frame(&self) -> Result<f32, TvgError> {
+        let mut total_frame: f32 = 0.0;
+        unsafe {
+            tvg::tvg_animation_get_total_frame(self.raw_animation, &mut total_frame as *mut f32)
+                .into_result()
+        }?;
+        Ok(total_frame)
+    }
+
+    fn get_duration(&self) -> Result<f32, TvgError> {
+        let mut duration: f32 = 0.0;
+        unsafe {
+            tvg::tvg_animation_get_duration(self.raw_animation, &mut duration as *mut f32)
+                .into_result()
+        }?;
+        Ok(duration)
+    }
+
     fn get_layer_obb(&self, layer_name: &str) -> Result<Option<[tvg::Tvg_Point; 4]>, TvgError> {
         unsafe {
             let mut obb: [tvg::Tvg_Point; 4] = [tvg::Tvg_Point { x: 0.0, y: 0.0 }; 4];
@@ -466,10 +526,16 @@ impl Animation for TvgAnimation {
             Ok(()) => {
                 // Keep the payload alive for ThorVG
                 self.data = Some(data_owned);
+                self.total_frames = self.get_total_frame()?;
+                self.duration = self.get_duration()?;
+                self.load_markers();
                 Ok(())
             }
             Err(e) => {
                 self.data = None;
+                self.markers.clear();
+                self.total_frames = 0.0;
+                self.duration = 0.0;
                 Err(e)
             }
         }
@@ -553,28 +619,19 @@ impl Animation for TvgAnimation {
     }
 
     fn get_total_frame(&self) -> Result<f32, TvgError> {
-        let mut total_frame: f32 = 0.0;
-
-        unsafe {
-            tvg::tvg_animation_get_total_frame(self.raw_animation, &mut total_frame as *mut f32)
-                .into_result()
-        }?;
-
-        Ok(total_frame)
+        Ok(self.total_frames)
     }
 
     fn get_duration(&self) -> Result<f32, TvgError> {
-        let mut duration: f32 = 0.0;
-
-        unsafe {
-            tvg::tvg_animation_get_duration(self.raw_animation, &mut duration as *mut f32)
-                .into_result()
-        }?;
-
-        Ok(duration)
+        Ok(self.duration)
     }
 
     fn set_frame(&mut self, frame_no: f32) -> Result<(), TvgError> {
+        if let Some(Segment { start, end }) = self.segment {
+            if frame_no < start || frame_no > end {
+                return Err(TvgError::InvalidArgument);
+            }
+        }
         unsafe { tvg::tvg_animation_set_frame(self.raw_animation, frame_no).into_result() }
     }
 
@@ -677,6 +734,26 @@ impl Animation for TvgAnimation {
             tvg_matrix.e32,
             tvg_matrix.e33,
         ])
+    }
+
+    // ── Markers & Segments ───────────────────────────────────────────────
+
+    fn markers(&self) -> &[Marker] {
+        &self.markers
+    }
+
+    fn set_segment(&mut self, segment: Option<Segment>) {
+        self.segment = segment;
+    }
+
+    fn segment(&self) -> Result<Segment, TvgError> {
+        match self.segment {
+            Some(seg) => Ok(seg),
+            None => Ok(Segment {
+                start: 0.0,
+                end: self.total_frames - 1.0,
+            }),
+        }
     }
 }
 

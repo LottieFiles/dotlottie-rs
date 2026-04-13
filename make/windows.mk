@@ -20,7 +20,7 @@ WINDOWS_STATIC_LIB := $(WINDOWS_FFI_LIB_BASE).lib
 WINDOWS_SHARED_LIB := $(WINDOWS_FFI_LIB_BASE).dll
 WINDOWS_IMPORT_LIB := $(WINDOWS_FFI_LIB_BASE).dll.lib
 
-# Release artifact names (consumer-facing, aligned with other platforms)
+# Release artifact names (consumer-facing)
 WINDOWS_RELEASE_LIB_BASE ?= dotlottie_player
 WINDOWS_RELEASE_STATIC_LIB := $(WINDOWS_RELEASE_LIB_BASE).lib
 WINDOWS_RELEASE_SHARED_LIB := $(WINDOWS_RELEASE_LIB_BASE).dll

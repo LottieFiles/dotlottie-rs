@@ -19,6 +19,12 @@ WINDOWS_FFI_LIB_BASE ?= dotlottie_rs
 WINDOWS_STATIC_LIB := $(WINDOWS_FFI_LIB_BASE).lib
 WINDOWS_SHARED_LIB := $(WINDOWS_FFI_LIB_BASE).dll
 WINDOWS_IMPORT_LIB := $(WINDOWS_FFI_LIB_BASE).dll.lib
+
+# Release artifact names (consumer-facing)
+WINDOWS_RELEASE_LIB_BASE ?= dotlottie_player
+WINDOWS_RELEASE_STATIC_LIB := $(WINDOWS_RELEASE_LIB_BASE).lib
+WINDOWS_RELEASE_SHARED_LIB := $(WINDOWS_RELEASE_LIB_BASE).dll
+WINDOWS_RELEASE_IMPORT_LIB := $(WINDOWS_RELEASE_LIB_BASE).dll.lib
 WINDOWS_HEADER_FILE := dotlottie_player.h
 WINDOWS_HEADER_DIR := dotlottie-rs/build
 
@@ -103,7 +109,7 @@ define WINDOWS_PACKAGE_ARCH
 	# Copy static library
 	@if [ -f "dotlottie-rs/target/$(WINDOWS_TARGET_$(1))/release/$(WINDOWS_STATIC_LIB)" ]; then \
 		cp dotlottie-rs/target/$(WINDOWS_TARGET_$(1))/release/$(WINDOWS_STATIC_LIB) \
-		   $(WINDOWS_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/; \
+		   $(WINDOWS_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/$(WINDOWS_RELEASE_STATIC_LIB); \
 	else \
 		echo "Warning: $(WINDOWS_STATIC_LIB) not found for $(1)"; \
 	fi
@@ -111,7 +117,7 @@ define WINDOWS_PACKAGE_ARCH
 	# Copy shared library (DLL)
 	@if [ -f "dotlottie-rs/target/$(WINDOWS_TARGET_$(1))/release/$(WINDOWS_SHARED_LIB)" ]; then \
 		cp dotlottie-rs/target/$(WINDOWS_TARGET_$(1))/release/$(WINDOWS_SHARED_LIB) \
-		   $(WINDOWS_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/; \
+		   $(WINDOWS_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/$(WINDOWS_RELEASE_SHARED_LIB); \
 	else \
 		echo "Warning: $(WINDOWS_SHARED_LIB) not found for $(1)"; \
 	fi
@@ -119,7 +125,7 @@ define WINDOWS_PACKAGE_ARCH
 	# Copy import library (.dll.lib)
 	@if [ -f "dotlottie-rs/target/$(WINDOWS_TARGET_$(1))/release/$(WINDOWS_IMPORT_LIB)" ]; then \
 		cp dotlottie-rs/target/$(WINDOWS_TARGET_$(1))/release/$(WINDOWS_IMPORT_LIB) \
-		   $(WINDOWS_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/; \
+		   $(WINDOWS_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/$(WINDOWS_RELEASE_IMPORT_LIB); \
 	else \
 		echo "Warning: $(WINDOWS_IMPORT_LIB) not found for $(1)"; \
 	fi

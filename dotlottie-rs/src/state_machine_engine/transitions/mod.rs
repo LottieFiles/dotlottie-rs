@@ -1,6 +1,6 @@
-pub mod guard;
-use guard::Guard;
 use serde::Deserialize;
+
+use crate::guard::Guard;
 
 pub trait TransitionTrait {
     fn target_state(&self) -> &str;

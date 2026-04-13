@@ -4,15 +4,12 @@ use super::{
     inputs::Input,
     state_machine::StringBool,
     states::StateTrait,
-    transitions::{
-        guard::{self, Guard},
-        Transition, TransitionTrait,
-    },
+    transitions::{Transition, TransitionTrait},
     StateMachineEngine,
 };
 
-use crate::state_machine::StringNumberBool;
-use crate::state_machine_engine::State::GlobalState;
+use crate::{guard, state_machine::StringNumberBool};
+use crate::{guard::Guard, state_machine_engine::State::GlobalState};
 
 #[derive(Debug)]
 pub enum StateMachineEngineSecurityError {

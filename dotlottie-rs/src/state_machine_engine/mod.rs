@@ -5,6 +5,7 @@ use std::ffi::{CStr, CString};
 pub mod actions;
 pub mod errors;
 pub mod events;
+pub mod guard;
 pub mod inputs;
 pub mod interactions;
 pub mod security;
@@ -14,11 +15,11 @@ pub mod transitions;
 
 use actions::open_url_policy::OpenUrlPolicy;
 use actions::{Action, ActionTrait};
+use guard::GuardTrait;
 use inputs::{Input, InputManager, InputTrait, InputValue};
 use interactions::InteractionTrait;
 use state_machine::StateMachine;
 use states::StateTrait;
-use transitions::guard::GuardTrait;
 use transitions::{Transition, TransitionTrait};
 
 use crate::actions::whitelist::Whitelist;
@@ -814,25 +815,25 @@ impl<'a> StateMachineEngine<'a> {
 
                     for guard in guards {
                         match guard {
-                            transitions::guard::Guard::Numeric { .. } => {
+                            guard::Guard::Numeric { .. } => {
                                 if !guard.numeric_input_is_satisfied(&self.inputs) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
-                            transitions::guard::Guard::String { .. } => {
+                            guard::Guard::String { .. } => {
                                 if !guard.string_input_is_satisfied(&self.inputs) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
-                            transitions::guard::Guard::Boolean { .. } => {
+                            guard::Guard::Boolean { .. } => {
                                 if !guard.boolean_input_is_satisfied(&self.inputs) {
                                     all_guards_satisfied = false;
                                     break;
                                 }
                             }
-                            transitions::guard::Guard::Event { .. } => {
+                            guard::Guard::Event { .. } => {
                                 /* If theres a guard, but no event has been fired, we can't validate any guards. */
                                 if event.is_none() {
                                     all_guards_satisfied = false;

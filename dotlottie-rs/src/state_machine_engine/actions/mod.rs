@@ -3,7 +3,12 @@ use std::ffi::CString;
 
 use serde::Deserialize;
 
-use crate::{state_machine::StringBool, Event};
+use crate::{
+    guard::{self, Guard, GuardTrait},
+    inputs::InputManager,
+    state_machine::StringBool,
+    Event,
+};
 
 use super::{state_machine::StringNumber, StateMachineEngine};
 
@@ -23,6 +28,8 @@ pub trait ActionTrait {
         run_pipeline: bool,
         called_from_interaction: bool,
     ) -> Result<(), StateMachineActionError>;
+
+    fn guards(&self) -> &Option<Vec<Guard>>;
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -32,47 +39,60 @@ pub enum Action {
     OpenUrl {
         url: String,
         target: String,
+        guards: Option<Vec<Guard>>,
     },
     Increment {
         input_name: String,
         value: Option<StringNumber>,
+        guards: Option<Vec<Guard>>,
     },
     Decrement {
         input_name: String,
         value: Option<StringNumber>,
+        guards: Option<Vec<Guard>>,
     },
     Toggle {
         input_name: String,
+        guards: Option<Vec<Guard>>,
     },
     SetBoolean {
         input_name: String,
         value: StringBool,
+        guards: Option<Vec<Guard>>,
     },
     SetString {
         input_name: String,
         value: String,
+        guards: Option<Vec<Guard>>,
     },
     SetNumeric {
         input_name: String,
         value: StringNumber,
+        guards: Option<Vec<Guard>>,
     },
     Fire {
         input_name: String,
+        guards: Option<Vec<Guard>>,
     },
     Reset {
         input_name: String,
+        guards: Option<Vec<Guard>>,
     },
     SetTheme {
         value: String,
+        guards: Option<Vec<Guard>>,
     },
     SetFrame {
         value: StringNumber,
+        guards: Option<Vec<Guard>>,
     },
     SetProgress {
         value: StringNumber,
+        guards: Option<Vec<Guard>>,
     },
     FireCustomEvent {
         value: String,
+        guards: Option<Vec<Guard>>,
     },
 }
 
@@ -84,8 +104,57 @@ impl ActionTrait for Action {
         called_from_action: bool,
     ) -> Result<(), StateMachineActionError> {
         match self {
-            Action::Increment { input_name, value } => {
+            Action::Increment {
+                input_name,
+                value,
+                guards,
+            } => {
                 let val = engine.get_numeric_input(input_name);
+
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
 
                 if let Some(val) = val {
                     if let Some(value) = value {
@@ -125,8 +194,57 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::Decrement { input_name, value } => {
+            Action::Decrement {
+                input_name,
+                value,
+                guards,
+            } => {
                 let val = engine.get_numeric_input(input_name);
+
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
 
                 if let Some(val) = val {
                     if let Some(value) = value {
@@ -170,8 +288,53 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::Toggle { input_name } => {
+            Action::Toggle { input_name, guards } => {
                 let val = engine.get_boolean_input(input_name);
+
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
 
                 if let Some(val) = val {
                     engine.set_boolean_input(input_name, !val, run_pipeline, called_from_action);
@@ -179,8 +342,57 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::SetBoolean { input_name, value } => {
+            Action::SetBoolean {
+                input_name,
+                value,
+                guards,
+            } => {
                 let val = engine.get_boolean_input(input_name);
+
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
 
                 if val.is_some() {
                     match value {
@@ -210,8 +422,57 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::SetNumeric { input_name, value } => {
+            Action::SetNumeric {
+                input_name,
+                value,
+                guards,
+            } => {
                 let val = engine.get_numeric_input(input_name);
+
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
 
                 if val.is_some() {
                     match value {
@@ -241,8 +502,57 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::SetString { input_name, value } => {
+            Action::SetString {
+                input_name,
+                value,
+                guards,
+            } => {
                 let val = engine.get_string_input(input_name);
+
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
 
                 if val.is_some() {
                     let trimmed_value = value.trim_start_matches('$');
@@ -265,17 +575,151 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::Fire { input_name } => {
+            Action::Fire { input_name, guards } => {
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
                 let _ = engine.fire(input_name, run_pipeline);
                 Ok(())
             }
-            Action::Reset { input_name } => {
+            Action::Reset { input_name, guards } => {
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
+
                 engine.reset_input(input_name, run_pipeline, called_from_action);
 
                 Ok(())
             }
             #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
-            Action::SetTheme { value } => {
+            Action::SetTheme { value, guards } => {
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
+
                 #[cfg(feature = "theming")]
                 {
                     let resolved_value = value
@@ -294,7 +738,56 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::OpenUrl { url, target } => {
+            Action::OpenUrl {
+                url,
+                target,
+                guards,
+            } => {
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
+
                 let whitelist = &engine.open_url_whitelist;
                 let user_interaction_required = &engine.open_url_requires_user_interaction;
 
@@ -335,12 +828,102 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::FireCustomEvent { value } => {
+            Action::FireCustomEvent { value, guards } => {
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
+
                 engine.observe_custom_event(value);
 
                 Ok(())
             }
-            Action::SetFrame { value } => {
+            Action::SetFrame { value, guards } => {
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
+
                 match value {
                     StringNumber::String(value) => {
                         // Get the frame number from the input
@@ -363,7 +946,52 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::SetProgress { value } => {
+            Action::SetProgress { value, guards } => {
+                if let Some(guards) = guards {
+                    let mut all_guards_satisfied = true;
+
+                    for guard in guards {
+                        match guard {
+                            guard::Guard::Numeric { .. } => {
+                                if !guard.numeric_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::String { .. } => {
+                                if !guard.string_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Boolean { .. } => {
+                                if !guard.boolean_input_is_satisfied(&engine.inputs) {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+                            }
+                            guard::Guard::Event { .. } => {
+                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
+                                if engine.curr_event.as_ref().is_none() {
+                                    all_guards_satisfied = false;
+                                    break;
+                                }
+
+                                if let Some(event) = engine.curr_event.as_ref() {
+                                    if !guard.event_input_is_satisfied(event) {
+                                        all_guards_satisfied = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !all_guards_satisfied {
+                        return Ok(());
+                    }
+                }
+
                 match value {
                     StringNumber::String(value) => {
                         // Get the frame number from the input
@@ -391,6 +1019,44 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
+        }
+    }
+
+    fn guards(&self) -> &Option<Vec<Guard>> {
+        match self {
+            Action::OpenUrl { guards, .. } => guards,
+            Action::Increment {
+                input_name,
+                value,
+                guards,
+            } => guards,
+            Action::Decrement {
+                input_name,
+                value,
+                guards,
+            } => guards,
+            Action::Toggle { input_name, guards } => guards,
+            Action::SetBoolean {
+                input_name,
+                value,
+                guards,
+            } => guards,
+            Action::SetString {
+                input_name,
+                value,
+                guards,
+            } => guards,
+            Action::SetNumeric {
+                input_name,
+                value,
+                guards,
+            } => guards,
+            Action::Fire { input_name, guards } => guards,
+            Action::Reset { input_name, guards } => guards,
+            Action::SetTheme { value, guards } => guards,
+            Action::SetFrame { value, guards } => guards,
+            Action::SetProgress { value, guards } => guards,
+            Action::FireCustomEvent { value, guards } => guards,
         }
     }
 }

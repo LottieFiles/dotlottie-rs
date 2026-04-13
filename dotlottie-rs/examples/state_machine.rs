@@ -13,8 +13,8 @@ pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 const ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets");
 
-pub const ANIMATION_NAME: &str = "smiley-slider.lottie";
-pub const STATE_MACHINE_NAME: &str = "smileys";
+pub const ANIMATION_NAME: &str = "pigeon.lottie";
+pub const STATE_MACHINE_NAME: &str = "pigeon";
 
 fn process_state_machine_events(engine: &mut StateMachineEngine) {
     while let Some(event) = engine.poll_event() {
@@ -159,7 +159,7 @@ fn main() {
         )
         .unwrap();
     let animation_path = PathBuf::from(format!(
-        "{ASSETS_DIR}/animations/dotlottie/v1/{ANIMATION_NAME}"
+        "{ASSETS_DIR}/animations/dotlottie/v2/{ANIMATION_NAME}"
     ));
 
     if !load_animation(&mut player, &animation_path) {

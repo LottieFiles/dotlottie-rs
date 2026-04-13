@@ -82,7 +82,13 @@
       "actions": [
         {
           "type": "Fire",
-          "inputName": "explode"
+          "inputName": "explode",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "explode"
+            }
+          ]
         }
       ]
     },

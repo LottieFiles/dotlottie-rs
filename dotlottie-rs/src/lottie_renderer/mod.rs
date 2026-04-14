@@ -11,8 +11,8 @@ mod fallback_font;
 mod thorvg;
 
 pub use renderer::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Renderer, Rgba, Shape,
-    WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Renderer, Rgba,
+    Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 pub use slots::{
     slots_from_json_string, Bezier, BezierValue, ColorSlot, ColorValue, GradientSlot, GradientStop,
@@ -193,6 +193,14 @@ pub trait LottieRenderer {
     fn load_font(&mut self, name: &str, data: &[u8]) -> Result<(), LottieRendererError>;
 
     fn unload_font(&mut self, name: &str) -> Result<(), LottieRendererError>;
+
+    // ── Markers & Segments ───────────────────────────────────────────────
+
+    fn markers(&self) -> &[Marker];
+
+    fn set_segment(&mut self, segment: Option<Segment>) -> Result<(), LottieRendererError>;
+
+    fn segment(&self) -> Result<Segment, LottieRendererError>;
 }
 
 impl dyn LottieRenderer {
@@ -631,12 +639,6 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError> {
-        let total_frames = self.total_frames()?;
-
-        if no < 0.0 || no >= total_frames {
-            return Err(LottieRendererError::InvalidArgument);
-        }
-
         self.get_animation_mut()?
             .set_frame(no)
             .map_err(into_lottie::<R>)?;
@@ -897,6 +899,29 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         }
 
         Ok(())
+    }
+
+    // ── Markers & Segments ───────────────────────────────────────────────
+
+    fn markers(&self) -> &[Marker] {
+        static EMPTY: &[Marker] = &[];
+        self.animation.as_ref().map_or(EMPTY, |a| a.markers())
+    }
+
+    fn set_segment(&mut self, segment: Option<Segment>) -> Result<(), LottieRendererError> {
+        if let Some(Segment { start, end }) = segment {
+            if start >= end {
+                return Err(LottieRendererError::InvalidArgument);
+            }
+        }
+        if let Some(a) = self.animation.as_mut() {
+            a.set_segment(segment);
+        }
+        Ok(())
+    }
+
+    fn segment(&self) -> Result<Segment, LottieRendererError> {
+        self.get_animation()?.segment().map_err(into_lottie::<R>)
     }
 }
 

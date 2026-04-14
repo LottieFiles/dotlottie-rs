@@ -3,7 +3,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError, Mode};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError, Mode, Segment};
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +13,7 @@ mod tests {
     struct TestConfig {
         mode: Mode,
         autoplay: bool,
-        segment: Option<[f32; 2]>,
+        segment: Option<Segment>,
     }
 
     #[test]
@@ -43,22 +43,34 @@ mod tests {
             TestConfig {
                 mode: Mode::Forward,
                 autoplay: true,
-                segment: Some([10.0, 30.0]),
+                segment: Some(Segment {
+                    start: 10.0,
+                    end: 30.0,
+                }),
             },
             TestConfig {
                 mode: Mode::Reverse,
                 autoplay: true,
-                segment: Some([10.0, 30.0]),
+                segment: Some(Segment {
+                    start: 10.0,
+                    end: 30.0,
+                }),
             },
             TestConfig {
                 mode: Mode::Bounce,
                 autoplay: true,
-                segment: Some([10.0, 30.0]),
+                segment: Some(Segment {
+                    start: 10.0,
+                    end: 30.0,
+                }),
             },
             TestConfig {
                 mode: Mode::ReverseBounce,
                 autoplay: true,
-                segment: Some([10.0, 30.0]),
+                segment: Some(Segment {
+                    start: 10.0,
+                    end: 30.0,
+                }),
             },
         ];
 
@@ -85,10 +97,10 @@ mod tests {
 
             assert!(player.is_playing(), "Animation should be playing");
 
-            let (start_frame, end_frame) = match player.segment() {
-                Some(seg) => (seg[0], seg[1]),
-                None => (0.0, player.total_frames() - 1.0),
-            };
+            let Segment {
+                start: start_frame,
+                end: end_frame,
+            } = player.segment().unwrap();
 
             // wait until we're half way to the end
             let mid_frame = (start_frame + end_frame) / 2.0;

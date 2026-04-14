@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 
 #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
 use crate::ColorSpace;
-use crate::{DotLottiePlayer, Fit, Layout, Mode as PlayerMode, Rgba};
+use crate::{DotLottiePlayer, Fit, Layout, Mode as PlayerMode, Rgba, Segment};
 
 // ─── Renderer mode ───────────────────────────────────────────────────────────
 
@@ -504,9 +504,6 @@ impl DotLottiePlayerWasm {
     pub fn duration(&self) -> f32 {
         self.player.duration()
     }
-    pub fn segment_duration(&self) -> f32 {
-        self.player.segment_duration()
-    }
     pub fn current_loop_count(&self) -> u32 {
         self.player.current_loop_count()
     }
@@ -599,18 +596,17 @@ impl DotLottiePlayerWasm {
 
     // ── Segment ───────────────────────────────────────────────────────────────
 
-    pub fn has_segment(&self) -> bool {
-        self.player.segment().is_some()
-    }
     pub fn segment_start(&self) -> f32 {
-        self.player.segment().map(|s| s[0]).unwrap_or(0.0)
+        self.player.segment().map(|seg| seg.start).unwrap_or(0.0)
     }
     pub fn segment_end(&self) -> f32 {
-        self.player.segment().map(|s| s[1]).unwrap_or(0.0)
+        self.player.segment().map(|seg| seg.end).unwrap_or(0.0)
     }
 
     pub fn set_segment(&mut self, start: f32, end: f32) -> bool {
-        self.player.set_segment(Some([start, end])).is_ok()
+        self.player
+            .set_segment(Some(Segment { start, end }))
+            .is_ok()
     }
 
     pub fn clear_segment(&mut self) -> bool {
@@ -766,17 +762,22 @@ impl DotLottiePlayerWasm {
 
     // ── Markers ───────────────────────────────────────────────────────────────
 
-    /// Returns an array of `{ name, time, duration }` objects.
+    /// Returns an array of `{ name, start, end }` objects.
     pub fn markers(&self) -> JsValue {
         let arr = Array::new();
         for m in self.player.markers() {
             let obj = Object::new();
-            let _ = js_sys::Reflect::set(&obj, &"name".into(), &m.name.into());
-            let _ = js_sys::Reflect::set(&obj, &"time".into(), &JsValue::from_f64(m.time as f64));
+            let name_str: JsValue = m.name.to_string_lossy().as_ref().into();
+            let _ = js_sys::Reflect::set(&obj, &"name".into(), &name_str);
             let _ = js_sys::Reflect::set(
                 &obj,
-                &"duration".into(),
-                &JsValue::from_f64(m.duration as f64),
+                &"start".into(),
+                &JsValue::from_f64(m.segment.start as f64),
+            );
+            let _ = js_sys::Reflect::set(
+                &obj,
+                &"end".into(),
+                &JsValue::from_f64(m.segment.end as f64),
             );
             arr.push(&obj);
         }
@@ -786,8 +787,8 @@ impl DotLottiePlayerWasm {
     /// Returns an array of marker name strings.
     pub fn marker_names(&self) -> JsValue {
         let arr = Array::new();
-        for name in self.player.marker_names() {
-            arr.push(&name.to_string_lossy().as_ref().into());
+        for m in self.player.markers() {
+            arr.push(&m.name.to_string_lossy().as_ref().into());
         }
         arr.into()
     }
@@ -795,7 +796,7 @@ impl DotLottiePlayerWasm {
     /// Name of the currently active marker, or `undefined` if none.
     pub fn current_marker(&self) -> Option<String> {
         self.player
-            .marker()
+            .active_marker()
             .map(|c| c.to_string_lossy().into_owned())
     }
 

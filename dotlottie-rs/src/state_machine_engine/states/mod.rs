@@ -83,12 +83,6 @@ impl StateTrait for State {
                 let _ = engine.player.set_segment(None);
                 engine.player.set_marker(None);
 
-                let marker_cstr = segment
-                    .as_deref()
-                    .map(CString::new)
-                    .transpose()
-                    .map_err(|_| StateMachineActionError::ParsingError)?;
-
                 if !animation.is_empty() {
                     let Ok(anim_cstr) = CString::new(animation.as_str()) else {
                         return Err(StateMachineActionError::ParsingError);
@@ -110,6 +104,11 @@ impl StateTrait for State {
                     }
                 }
 
+                let marker_cstr = segment
+                    .as_deref()
+                    .map(CString::new)
+                    .transpose()
+                    .map_err(|_| StateMachineActionError::ParsingError)?;
                 engine.player.set_marker(marker_cstr.as_deref());
 
                 engine.player.set_mode(defined_mode);

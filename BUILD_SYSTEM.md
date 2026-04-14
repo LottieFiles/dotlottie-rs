@@ -18,7 +18,7 @@ The build system is organized into modular makefiles, each handling a specific p
 
 - **Main Makefile**: Orchestrates all builds and provides help/setup targets
 - **make/android.mk**: Handles Android builds across multiple architectures (ARM64, x86_64, x86, ARMv7)
-- **make/apple.mk**: Manages Apple platform builds (macOS, iOS, tvOS, visionOS, macCatalyst)
+- **make/apple.mk**: Manages Apple platform builds (macOS, iOS, tvOS, visionOS, watchOS, macCatalyst)
 - **make/wasm.mk**: Controls WebAssembly builds using wasm-pack and wasm-bindgen
 - **make/linux.mk**: Handles Linux x86_64 and ARM64 builds
 - **make/windows.mk**: Handles Windows x86_64 and ARM64 builds (MSVC toolchain)
@@ -51,7 +51,7 @@ Key targets:
 
 The Apple build system handles multiple Apple platforms with comprehensive framework generation:
 
-- **Platform Support**: macOS, iOS, tvOS, visionOS, and macCatalyst
+- **Platform Support**: macOS, iOS, tvOS, visionOS, watchOS, and macCatalyst
 - **C API**: cbindgen-generated header for Swift/Objective-C bridging
 - **Framework Creation**: Builds individual frameworks and combines them into XCFramework
 - **Universal Binaries**: Creates universal binaries using `lipo` for multi-architecture support
@@ -177,7 +177,7 @@ The build system provides a comprehensive set of targets accessible via `make he
 #### Platform Targets
 
 - `make android`: Build all Android architectures (ARM64, x86_64, x86, ARMv7)
-- `make apple`: Build all Apple platforms (macOS, iOS, tvOS, visionOS, macCatalyst)
+- `make apple`: Build all Apple platforms (macOS, iOS, tvOS, visionOS, watchOS, macCatalyst)
 - `make wasm`: Build WebAssembly module (software renderer) via wasm-bindgen
 - `make wasm-webgl`: Build WebAssembly module with WebGL2 renderer via wasm-bindgen
 - `make wasm-webgpu`: Build WebAssembly module with WebGPU renderer via wasm-bindgen
@@ -225,7 +225,7 @@ The build system automatically manages platform-specific dependencies:
 
 - **Xcode**: Required for all Apple platform builds
 - **Rust targets**: Multiple targets installed via `make apple-setup`
-- **Nightly toolchain**: Required for newer Apple platforms (visionOS, tvOS)
+- **Nightly toolchain**: Required for newer Apple platforms (visionOS, tvOS, watchOS)
 
 ### Build Management
 

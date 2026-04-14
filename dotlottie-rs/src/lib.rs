@@ -19,10 +19,11 @@ pub mod c_api;
 
 pub mod tools;
 
-// wasm32-unknown-unknown: auto-enabled when targeting wasm32 (excluding emscripten) with ThorVG
+/// cbindgen:ignore
 #[cfg(all(feature = "tvg", target_arch = "wasm32", not(target_os = "emscripten")))]
 mod wasm;
 
+/// cbindgen:ignore
 #[cfg(all(
     feature = "tvg",
     target_arch = "wasm32",

@@ -111,7 +111,7 @@ mod tests {
             let seg = player.segment().unwrap();
             let expected_duration =
                 (seg.end - seg.start) / player.total_frames() * player.duration();
-            let dt = 1.0 / 60.0;
+            let dt = 1000.0 / 60.0;
             let mut tick_count = 0u32;
 
             // animation loop

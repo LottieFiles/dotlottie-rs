@@ -408,8 +408,8 @@ impl DotLottiePlayerWasm {
 
     // ── Render loop ───────────────────────────────────────────────────────────
 
-    /// Advance the animation by `dt` seconds and render if the frame changed.
-    /// Call once per `requestAnimationFrame`, passing the frame delta in seconds.
+    /// Advance the animation by `dt` milliseconds and render if the frame changed.
+    /// Call once per `requestAnimationFrame`, passing the frame delta in milliseconds.
     pub fn tick(&mut self, dt: f32) -> bool {
         #[cfg(feature = "webgl")]
         self.activate_gl();
@@ -1477,7 +1477,7 @@ impl DotLottiePlayerWasm {
         }
     }
 
-    /// Advance the state machine by `dt` seconds and render if the frame changed.
+    /// Advance the state machine by `dt` milliseconds and render if the frame changed.
     /// Returns `true` when a new frame was rendered, `false` otherwise.
     pub fn sm_tick(&mut self, dt: f32) -> bool {
         #[cfg(not(feature = "state-machines"))]

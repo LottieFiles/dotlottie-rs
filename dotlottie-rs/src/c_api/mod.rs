@@ -827,10 +827,10 @@ pub unsafe extern "C" fn dotlottie_render(ptr: *mut DotLottiePlayer) -> DotLotti
 ///
 /// Example of the usage
 /// ```c
-///     double last = get_time();
+///     double last = get_time_ms();
 ///     bool rendered;
 ///     while(true) {
-///       double now = get_time();
+///       double now = get_time_ms();
 ///       float dt = (float)(now - last);
 ///       last = now;
 ///       dotlottie_tick(player, dt, &rendered);
@@ -1881,7 +1881,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_release(sm: *mut DotLottieState
     }
 }
 
-/// Tick the state machine (advances animation by `dt` seconds and processes state logic).
+/// Tick the state machine (advances animation by `dt` milliseconds and processes state logic).
 ///
 /// If `rendered` is non-null, writes `true` when a new frame was rendered
 /// and `false` when the frame was unchanged.

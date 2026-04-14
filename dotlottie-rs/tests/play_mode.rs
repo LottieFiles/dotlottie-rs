@@ -57,7 +57,7 @@ mod play_mode_tests {
                 tick < MAX_TICKS - 1,
                 "Animation did not complete within {MAX_TICKS} ticks"
             );
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
 
         while let Some(event) = player.poll_event() {
@@ -111,7 +111,7 @@ mod play_mode_tests {
                 tick < MAX_TICKS - 1,
                 "Animation did not complete within {MAX_TICKS} ticks"
             );
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
 
         while let Some(event) = player.poll_event() {
@@ -159,7 +159,7 @@ mod play_mode_tests {
                 tick < MAX_TICKS - 1,
                 "Animation did not complete within {MAX_TICKS} ticks"
             );
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
 
         while let Some(event) = player.poll_event() {
@@ -192,7 +192,7 @@ mod play_mode_tests {
                 tick < MAX_TICKS - 1,
                 "Animation did not complete within {MAX_TICKS} ticks"
             );
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
 
         while let Some(event) = player.poll_event() {
@@ -248,7 +248,7 @@ mod play_mode_tests {
                 tick < MAX_TICKS - 1,
                 "Animation did not complete within {MAX_TICKS} ticks"
             );
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
         while let Some(event) = player.poll_event() {
             match event {
@@ -279,7 +279,7 @@ mod play_mode_tests {
                 tick < MAX_TICKS - 1,
                 "Animation did not complete within {MAX_TICKS} ticks"
             );
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
 
         while let Some(event) = player.poll_event() {
@@ -395,7 +395,7 @@ mod play_mode_tests {
 
         // animation loop
         while !player.is_complete() {
-            if player.tick(1.0 / 60.0).unwrap_or(false) {
+            if player.tick(1000.0 / 60.0).unwrap_or(false) {
                 rendered_frames.push(player.current_frame());
             }
         }
@@ -454,7 +454,7 @@ mod play_mode_tests {
                 tick < MAX_TICKS - 1,
                 "Animation did not complete within {MAX_TICKS} ticks"
             );
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
 
         while let Some(event) = player.poll_event() {
@@ -503,7 +503,7 @@ mod play_mode_tests {
 
         // animation loop
         while !player.is_complete() {
-            if player.tick(1.0 / 60.0).unwrap_or(false) {
+            if player.tick(1000.0 / 60.0).unwrap_or(false) {
                 rendered_frames.push(player.current_frame());
             }
         }
@@ -559,7 +559,7 @@ mod play_mode_tests {
                 tick < MAX_TICKS - 1,
                 "Animation did not complete within {MAX_TICKS} ticks"
             );
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
 
         while let Some(event) = player.poll_event() {
@@ -608,7 +608,7 @@ mod play_mode_tests {
         assert!(!player.is_complete(), "Animation should not be complete");
 
         while !player.is_complete() {
-            if player.tick(1.0 / 60.0).unwrap_or(false) {
+            if player.tick(1000.0 / 60.0).unwrap_or(false) {
                 rendered_frames.push(player.current_frame());
             }
         }
@@ -682,7 +682,7 @@ mod play_mode_tests {
                 tick < MAX_TICKS - 1,
                 "Animation did not complete within {MAX_TICKS} ticks"
             );
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
         while let Some(event) = player.poll_event() {
             match event {
@@ -729,7 +729,7 @@ mod play_mode_tests {
 
         // animation loop
         while !player.is_complete() {
-            if player.tick(1.0 / 60.0).unwrap_or(false) {
+            if player.tick(1000.0 / 60.0).unwrap_or(false) {
                 rendered_frames.push(player.current_frame());
             }
         }
@@ -802,7 +802,7 @@ mod play_mode_tests {
                 tick < MAX_TICKS - 1,
                 "Animation did not complete within {MAX_TICKS} ticks"
             );
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
         while let Some(event) = player.poll_event() {
             match event {

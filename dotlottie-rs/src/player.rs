@@ -1497,7 +1497,7 @@ impl DotLottiePlayer {
         self.event_queue.poll()
     }
 
-    /// Advance the animation by `dt` seconds and render if the frame changed.
+    /// Advance the animation by `dt` milliseconds and render if the frame changed.
     ///
     /// Returns `Ok(true)` when a new frame was rendered, `Ok(false)` when the
     /// frame was unchanged and rendering was skipped.

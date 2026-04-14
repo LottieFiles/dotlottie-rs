@@ -78,7 +78,7 @@ mod tests {
         let mid_frame = player.total_frames() / 2.0;
 
         while player.current_frame() < mid_frame {
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
 
         assert_eq!(player.pause(), Ok(()), "Expected pause to succeed");
@@ -94,7 +94,7 @@ mod tests {
         let mut rendered_frames = vec![];
 
         while !player.is_complete() {
-            if player.tick(1.0 / 60.0).unwrap_or(false) {
+            if player.tick(1000.0 / 60.0).unwrap_or(false) {
                 rendered_frames.push(player.current_frame());
             }
         }
@@ -122,7 +122,7 @@ mod tests {
         assert_eq!(player.play(), Ok(()));
 
         while !player.is_complete() {
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
 
         assert!(player.is_complete(), "Expected player to be complete");
@@ -182,7 +182,7 @@ mod tests {
         let mut rendered_frames = vec![];
 
         while !player.is_complete() {
-            if player.tick(1.0 / 60.0).unwrap_or(false) {
+            if player.tick(1000.0 / 60.0).unwrap_or(false) {
                 rendered_frames.push(player.current_frame());
             }
         }
@@ -204,7 +204,7 @@ mod tests {
         assert!(player.load_animation_path(&path).is_ok());
 
         // First tick with real dt to establish a rendered frame
-        let _ = player.tick(1.0 / 60.0);
+        let _ = player.tick(1000.0 / 60.0);
         let frame_after_first = player.current_frame();
 
         // Subsequent ticks with dt=0 should not advance the frame
@@ -233,7 +233,7 @@ mod tests {
         assert!(player.load_animation_path(&path).is_ok());
 
         // A huge dt should jump to the end frame in one tick
-        let result = player.tick(100.0);
+        let result = player.tick(100_000.0);
         assert!(result.is_ok(), "Large dt should not panic");
         assert!(
             player.is_complete(),
@@ -257,7 +257,7 @@ mod tests {
 
         // Advance a few frames normally
         for _ in 0..5 {
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         }
         let frame_before = player.current_frame();
 

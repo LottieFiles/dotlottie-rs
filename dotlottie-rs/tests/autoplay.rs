@@ -46,7 +46,7 @@ mod tests {
         assert_eq!(player.current_frame(), 0.0);
 
         let mut rendered_frames: Vec<f32> = vec![];
-        let dt = 1.0 / 60.0;
+        let dt = 1000.0 / 60.0;
 
         while !player.is_complete() {
             if player.tick(dt).unwrap_or(false) {
@@ -82,7 +82,7 @@ mod tests {
         let times: usize = 10;
 
         for _ in 0..times {
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
             assert_eq!(player.current_frame(), 0.0);
         }
     }

@@ -78,7 +78,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
 
     c.bench_function("animation_loop_no_frame_interpolation", |b| {
         b.iter(|| {
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         });
     });
 
@@ -97,7 +97,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
 
     c.bench_function("animation_loop_frame_interpolation", |b| {
         b.iter(|| {
-            let _ = player.tick(1.0 / 60.0);
+            let _ = player.tick(1000.0 / 60.0);
         });
     });
 }

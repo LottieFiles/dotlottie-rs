@@ -49,7 +49,7 @@ mod tests {
 
         // animation loop
         loop {
-            let rendered = player.tick(1.0 / 60.0).unwrap_or(false);
+            let rendered = player.tick(1000.0 / 60.0).unwrap_or(false);
             if rendered {
                 expected_events.push(format!("on_frame: {}", player.current_frame()));
                 expected_events.push(format!("on_render: {}", player.current_frame()));

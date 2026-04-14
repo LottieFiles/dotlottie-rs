@@ -45,7 +45,7 @@ impl TweenState {
         })
     }
 
-    /// Advance the tween by `dt` seconds and compute eased progress.
+    /// Advance the tween by `dt` milliseconds and compute eased progress.
     /// Returns `(status, progress)` where progress is in [0.0, 1.0]
     /// (or beyond if the easing curve overshoots).
     pub fn update(&mut self, dt: f32) -> (TweenStatus, f32) {

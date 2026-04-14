@@ -45,7 +45,7 @@ mod tests {
         let mut rendered_frames: Vec<f32> = vec![];
 
         while !player.is_complete() {
-            if player.tick(1.0 / 60.0).unwrap_or(false) {
+            if player.tick(1000.0 / 60.0).unwrap_or(false) {
                 rendered_frames.push(player.current_frame());
             }
         }

@@ -29,7 +29,7 @@ mod tests {
     fn tween_accepts_easing_with_y_values_outside_unit_range() {
         let (mut player, _buf) = setup_player();
 
-        let result = player.tween(10.0, 0.5, [0.36, 0.0, 0.66, -0.56]);
+        let result = player.tween(10.0, 500.0, [0.36, 0.0, 0.66, -0.56]);
         assert!(
             result.is_ok(),
             "Easing with y2 = -0.56 should be accepted, got {result:?}"
@@ -40,7 +40,7 @@ mod tests {
     fn tween_accepts_easing_with_y_values_above_one() {
         let (mut player, _buf) = setup_player();
 
-        let result = player.tween(10.0, 0.5, [0.34, 1.56, 0.64, 1.0]);
+        let result = player.tween(10.0, 500.0, [0.34, 1.56, 0.64, 1.0]);
         assert!(
             result.is_ok(),
             "Easing with y1 = 1.56 should be accepted, got {result:?}"
@@ -51,7 +51,7 @@ mod tests {
     fn tween_rejects_easing_with_x_values_outside_unit_range() {
         let (mut player, _buf) = setup_player();
 
-        let result = player.tween(10.0, 0.5, [-0.1, 0.0, 0.5, 1.0]);
+        let result = player.tween(10.0, 500.0, [-0.1, 0.0, 0.5, 1.0]);
         assert!(result.is_err(), "Easing with x1 = -0.1 should be rejected");
     }
 
@@ -59,7 +59,7 @@ mod tests {
     fn tween_rejects_easing_with_x2_above_one() {
         let (mut player, _buf) = setup_player();
 
-        let result = player.tween(10.0, 0.5, [0.0, 0.0, 1.5, 1.0]);
+        let result = player.tween(10.0, 500.0, [0.0, 0.0, 1.5, 1.0]);
         assert!(result.is_err(), "Easing with x2 = 1.5 should be rejected");
     }
 
@@ -68,12 +68,12 @@ mod tests {
         let (mut player, _buf) = setup_player();
 
         player
-            .tween(20.0, 0.001, [0.0, 0.0, 1.0, 1.0])
+            .tween(20.0, 1.0, [0.0, 0.0, 1.0, 1.0])
             .expect("tween should start");
         assert!(player.is_tweening());
 
-        // Pass enough dt to complete the 0.001s tween
-        let result = player.tween_advance(0.01);
+        // Pass enough dt to complete the 1ms tween
+        let result = player.tween_advance(10.0);
         assert_eq!(
             result,
             Ok(TweenStatus::Completed),
@@ -92,21 +92,21 @@ mod tests {
         player.play().expect("play should succeed");
 
         // Advance animation by 100ms
-        let _ = player.tick(0.1);
+        let _ = player.tick(100.0);
 
         player
-            .tween(20.0, 0.001, [0.0, 0.0, 1.0, 1.0])
+            .tween(20.0, 1.0, [0.0, 0.0, 1.0, 1.0])
             .expect("tween should start");
 
-        // Tick with enough dt to complete the 0.001s tween
-        let result = player.tick(0.01);
+        // Tick with enough dt to complete the 1ms tween
+        let result = player.tick(10.0);
         assert!(result.is_ok(), "tick() should succeed, got {result:?}");
         assert!(
             !player.is_tweening(),
             "should not be tweening after tick completes the tween"
         );
 
-        let result = player.tick(1.0 / 60.0);
+        let result = player.tick(1000.0 / 60.0);
         assert!(
             result.is_ok(),
             "subsequent tick() should succeed, got {result:?}"

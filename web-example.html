@@ -443,7 +443,7 @@
         raf = requestAnimationFrame(loop);
         if (!player) return;
 
-        const dt = lastTimestamp ? (timestamp - lastTimestamp) / 1000.0 : 0;
+        const dt = lastTimestamp ? (timestamp - lastTimestamp) : 0;
         lastTimestamp = timestamp;
 
         const rendered = player.tick(dt);

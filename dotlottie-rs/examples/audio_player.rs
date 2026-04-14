@@ -25,6 +25,8 @@ use std::ffi::CString;
 use std::fs;
 use std::path::PathBuf;
 
+mod common;
+
 const WIDTH: usize = 500;
 const HEIGHT: usize = 500;
 
@@ -121,8 +123,10 @@ fn main() {
     let mut m_was_down = false;
     let mut plus_was_down = false;
     let mut minus_was_down = false;
+    let mut clock = common::Clock::new();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        let dt = clock.dt();
         let p_down = window.is_key_down(Key::P);
         let s_down = window.is_key_down(Key::S);
         let x_down = window.is_key_down(Key::X);
@@ -171,7 +175,7 @@ fn main() {
         plus_was_down = plus_down;
         minus_was_down = minus_down;
 
-        let _ = player.tick();
+        let _ = player.tick(dt);
 
         let mute_indicator = if player.audio_volume() == 0.0 {
             " [MUTED]"

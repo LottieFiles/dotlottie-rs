@@ -4,6 +4,8 @@
 */
 #![allow(clippy::print_stdout)]
 
+mod common;
+
 // This example requires WebGPU support, which is only available with specific features
 // ==============================================================================
 // WebGPU Implementation (only compiled when features are available)
@@ -143,6 +145,7 @@ mod webgpu_impl {
         wgpu_context: Option<WgpuContext>,
         current_width: u32,
         current_height: u32,
+        clock: super::common::Clock,
     }
 
     impl App {
@@ -154,6 +157,7 @@ mod webgpu_impl {
                 wgpu_context: None,
                 current_width: 0,
                 current_height: 0,
+                clock: super::common::Clock::new(),
             }
         }
 
@@ -263,7 +267,8 @@ mod webgpu_impl {
                 if let (Some(player), Some(wgpu_context)) =
                     (self.player.as_mut(), &self.wgpu_context)
                 {
-                    let _ = player.tick();
+                    let dt = self.clock.dt();
+                    let _ = player.tick(dt);
 
                     // CRITICAL: Present the surface to display the rendered frame
                     // Without this, rendering happens but nothing appears on screen

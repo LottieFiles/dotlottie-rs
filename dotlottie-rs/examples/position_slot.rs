@@ -12,6 +12,8 @@ use dotlottie_rs::{ColorSpace, DotLottiePlayer, LottieKeyframe, LottieProperty};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
+mod common;
+
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = 512;
 
@@ -56,6 +58,7 @@ fn main() {
     let mut pos_y = 250.0;
     let mut last_key_press = std::time::Instant::now();
     let mut last_toggle_press = std::time::Instant::now();
+    let mut clock = common::Clock::new();
     let mut is_animated = false;
 
     let position_slot = LottieProperty::static_value([pos_x, pos_y]);
@@ -64,6 +67,7 @@ fn main() {
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now();
+        let dt = clock.dt();
 
         if window.is_key_down(Key::T) && now.duration_since(last_toggle_press).as_millis() > 200 {
             is_animated = !is_animated;
@@ -134,8 +138,7 @@ fn main() {
             println!("Mode: STATIC | Current position: X={pos_x:.0}, Y={pos_y:.0}");
         }
 
-        // Update animation frame and render
-        if player.tick().is_ok() {
+        if player.tick(dt).unwrap_or(false) {
             window
                 .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");

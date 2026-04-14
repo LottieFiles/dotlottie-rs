@@ -72,9 +72,8 @@ mod tests {
             .expect("tween should start");
         assert!(player.is_tweening());
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
-
-        let result = player.tween_advance();
+        // Pass enough dt to complete the 0.001s tween
+        let result = player.tween_advance(0.01);
         assert_eq!(
             result,
             Ok(TweenStatus::Completed),
@@ -92,22 +91,22 @@ mod tests {
 
         player.play().expect("play should succeed");
 
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        // Advance animation by 100ms
+        let _ = player.tick(0.1);
 
         player
             .tween(20.0, 0.001, [0.0, 0.0, 1.0, 1.0])
             .expect("tween should start");
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
-
-        let result = player.tick();
+        // Tick with enough dt to complete the 0.001s tween
+        let result = player.tick(0.01);
         assert!(result.is_ok(), "tick() should succeed, got {result:?}");
         assert!(
             !player.is_tweening(),
             "should not be tweening after tick completes the tween"
         );
 
-        let result = player.tick();
+        let result = player.tick(1.0 / 60.0);
         assert!(
             result.is_ok(),
             "subsequent tick() should succeed, got {result:?}"

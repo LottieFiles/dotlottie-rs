@@ -429,7 +429,7 @@ mod tests {
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "Explosion");
         loop {
-            let _ = sm.tick();
+            let _ = sm.tick(1.0 / 60.0);
             if sm.player.is_complete() {
                 break;
             }
@@ -464,7 +464,7 @@ mod tests {
         assert_eq!(s, Ok(()));
 
         loop {
-            let _ = sm.tick();
+            let _ = sm.tick(1.0 / 60.0);
             if sm.status() == "Stopped" {
                 break;
             }

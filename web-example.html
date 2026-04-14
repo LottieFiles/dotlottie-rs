@@ -122,6 +122,27 @@
         width: 100px;
       }
 
+      .scrubber {
+        width: 100%;
+        padding: 6px 16px;
+        border-top: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .scrubber input[type="range"] {
+        flex: 1;
+        margin: 0;
+      }
+
+      .scrubber span {
+        font-family: monospace;
+        font-size: 12px;
+        white-space: nowrap;
+        min-width: 80px;
+      }
+
       .info {
         margin-left: auto;
         padding: 6px 10px;
@@ -144,6 +165,60 @@
       .muted {
         color: #666;
       }
+
+      .event-log {
+        border-top: 1px solid #eee;
+        padding: 8px 16px;
+        max-height: 120px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 12px;
+        line-height: 1.6;
+        background: #fafafa;
+      }
+
+      .event-log .event-entry {
+        display: flex;
+        gap: 8px;
+      }
+
+      .event-log .event-time {
+        color: #999;
+        flex-shrink: 0;
+      }
+
+      .event-log .event-loop {
+        color: #07a;
+        font-weight: bold;
+      }
+
+      .event-log .event-complete {
+        color: #d60;
+        font-weight: bold;
+      }
+
+      .event-log-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 16px 0;
+        border-top: 1px solid #eee;
+      }
+
+      .event-log-header span {
+        font-size: 12px;
+        font-weight: 600;
+        color: #555;
+      }
+
+      .event-log-header button {
+        font-size: 11px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background: white;
+        cursor: pointer;
+        padding: 2px 8px;
+      }
     </style>
   </head>
   <body>
@@ -165,6 +240,17 @@
       <div id="canvas-wrap">
         <canvas id="canvas" width="1280" height="720"></canvas>
       </div>
+
+      <div class="scrubber">
+        <input type="range" id="rng-scrub" min="0" max="1" step="0.1" value="0" />
+        <span id="lbl-scrub">0.0 / 0.0</span>
+      </div>
+
+      <div class="event-log-header">
+        <span>Events</span>
+        <button id="btn-clear-log">Clear</button>
+      </div>
+      <div class="event-log" id="event-log"></div>
 
       <div class="bottom-bar">
         <div class="controls">
@@ -204,10 +290,70 @@
         "./dotlottie-rs/assets/animations/lottie/toggle.json";
 
       const canvasWrap = document.getElementById("canvas-wrap");
+      const scrubRange = document.getElementById("rng-scrub");
+      const scrubLabel = document.getElementById("lbl-scrub");
       const infoStatus = document.getElementById("info-status");
       const infoRenderer = document.getElementById("info-renderer");
       const infoFrame = document.getElementById("info-frame");
       const infoFps = document.getElementById("info-fps");
+      const eventLog = document.getElementById("event-log");
+
+      const MAX_LOG_ENTRIES = 200;
+      let logCount = 0;
+
+      function logEvent(text, className) {
+        const entry = document.createElement("div");
+        entry.className = "event-entry";
+        const time = document.createElement("span");
+        time.className = "event-time";
+        time.textContent = new Date().toLocaleTimeString("en", { hour12: false });
+        const msg = document.createElement("span");
+        msg.className = className || "";
+        msg.textContent = text;
+        entry.appendChild(time);
+        entry.appendChild(msg);
+        eventLog.appendChild(entry);
+        logCount++;
+        // Trim oldest entries
+        while (logCount > MAX_LOG_ENTRIES) {
+          eventLog.removeChild(eventLog.firstChild);
+          logCount--;
+        }
+        // Auto-scroll to bottom
+        eventLog.scrollTop = eventLog.scrollHeight;
+      }
+
+      function drainEvents() {
+        if (!player) return;
+        let evt;
+        while ((evt = player.poll_event()) !== null) {
+          switch (evt.type) {
+            case "Loop":
+              logEvent("Loop (count: " + evt.loopCount + ")", "event-loop");
+              break;
+            case "Complete":
+              logEvent("Complete", "event-complete");
+              break;
+            case "Play":
+              logEvent("Play");
+              break;
+            case "Pause":
+              logEvent("Pause");
+              break;
+            case "Stop":
+              logEvent("Stop");
+              break;
+            case "Load":
+              logEvent("Load");
+              break;
+          }
+        }
+      }
+
+      document.getElementById("btn-clear-log").onclick = () => {
+        while (eventLog.firstChild) eventLog.removeChild(eventLog.firstChild);
+        logCount = 0;
+      };
 
       // Current canvas / 2D context — replaced on every renderer switch.
       let canvas = document.getElementById("canvas");
@@ -216,6 +362,10 @@
       let player         = null;
       let raf            = null;
       let activeRenderer = 'sw';
+      let scrubbing      = false;  
+      let wasPlaying     = false;
+      let gpuDevice      = null;    
+      let gpuCtx         = null;
 
       // ── Canvas replacement ───────────────────────────────────────────────
       // A canvas can only have one context type (2d / webgl2 / webgpu).
@@ -271,41 +421,58 @@
         infoStatus.className = type || "muted";
       }
 
+      // ── Blit SW buffer to canvas ──────────────────────────────────────────
+      function blitSw() {
+        if (activeRenderer !== "sw" || !ctx2d || !player) return;
+        const pixels = player.get_pixel_buffer();
+        const clamped = new Uint8ClampedArray(
+          pixels.buffer,
+          pixels.byteOffset,
+          pixels.byteLength,
+        );
+        ctx2d.putImageData(
+          new ImageData(clamped, canvas.width, canvas.height),
+          0,
+          0,
+        );
+      }
+
       // ── Render loop ──────────────────────────────────────────────────────
-      function loop() {
+      let lastTimestamp = 0;
+      function loop(timestamp) {
         raf = requestAnimationFrame(loop);
         if (!player) return;
 
-        player.tick();
+        const dt = lastTimestamp ? (timestamp - lastTimestamp) / 1000.0 : 0;
+        lastTimestamp = timestamp;
+
+        const rendered = player.tick(dt);
+        drainEvents();
         trackFps();
 
-        if (activeRenderer === "sw" && ctx2d) {
-          // Zero-copy view into WASM linear memory.
-          // Use the data immediately — do NOT store the reference.
-          const pixels = player.get_pixel_buffer();
-          const clamped = new Uint8ClampedArray(
-            pixels.buffer,
-            pixels.byteOffset,
-            pixels.byteLength,
-          );
-          ctx2d.putImageData(
-            new ImageData(clamped, canvas.width, canvas.height),
-            0,
-            0,
-          );
-        }
+        if (rendered) blitSw();
         // WebGL and WebGPU: tick() has already rendered into the canvas
         // framebuffer via the GPU — no blit needed.
 
-        infoFrame.textContent =
-          "Frame: " +
-          player.current_frame().toFixed(1) +
-          " / " +
-          player.total_frames().toFixed(1);
+        if (rendered) {
+          const frame = player.current_frame();
+          const total = player.total_frames();
+          infoFrame.textContent =
+            "Frame: " + frame.toFixed(1) + " / " + total.toFixed(1);
+
+          // Keep scrubber in sync while not being dragged
+          if (!scrubbing) {
+            scrubRange.max = total - 1;
+            scrubRange.value = frame;
+            scrubLabel.textContent =
+              frame.toFixed(1) + " / " + (total - 1).toFixed(1);
+          }
+        }
         infoFps.textContent = "FPS: " + fps;
 
-        // Re-loop when animation completes
+        // Re-loop when animation completes during playback
         if (
+          player.is_playing() &&
           player.is_complete() &&
           document.getElementById("chk-loop").checked
         ) {
@@ -335,7 +502,7 @@
 
           if (rendererType === 'sw') {
             const mod = await import('./release/wasm/dotlottie_rs.js');
-            await mod.default("./release/wasm/dotlottie_rs_bg.wasm");
+            await mod.default({ module_or_path: "./release/wasm/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
             // Grab the 2D context after the canvas is fresh.
             ctx2d = canvas.getContext('2d');
@@ -344,7 +511,7 @@
             const gl = canvas.getContext('webgl2');
             if (!gl) throw new Error('WebGL2 not available in this browser');
             const mod = await import('./release/wasm-webgl/dotlottie_rs.js');
-            await mod.default("./release/wasm-webgl/dotlottie_rs_bg.wasm");
+            await mod.default({ module_or_path: "./release/wasm-webgl/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
             // Pass the WebGL2 context into the WASM layer before loading.
             newPlayer.set_webgl_context(gl);
@@ -353,8 +520,8 @@
               throw new Error("WebGPU not available in this browser");
             const adapter = await navigator.gpu.requestAdapter();
             if (!adapter) throw new Error('No WebGPU adapter found');
-            const gpuDevice = await adapter.requestDevice();
-            const gpuCtx  = canvas.getContext('webgpu');
+            gpuDevice = await adapter.requestDevice();
+            gpuCtx  = canvas.getContext('webgpu');
             if (!gpuCtx) throw new Error('Canvas WebGPU context unavailable');
             // 'premultiplied' lets transparent ThorVG pixels show the CSS
             // background instead of rendering as solid black (the default
@@ -365,7 +532,7 @@
               alphaMode: "premultiplied",
             });
             const mod = await import('./release/wasm-webgpu/dotlottie_rs.js');
-            await mod.default("./release/wasm-webgpu/dotlottie_rs_bg.wasm");
+            await mod.default({ module_or_path: "./release/wasm-webgpu/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
             newPlayer.set_webgpu_device(gpuDevice);
             newPlayer.set_webgpu_surface(gpuCtx);
@@ -386,6 +553,13 @@
           newPlayer.set_loop(true);
           newPlayer.play();
 
+          // Initialise scrubber range to match the loaded animation
+          const totalFrames = newPlayer.total_frames();
+          scrubRange.max = totalFrames - 1;
+          scrubRange.step = newPlayer.use_frame_interpolation() ? 0.1 : 1;
+          scrubRange.value = 0;
+          scrubLabel.textContent = "0.0 / " + (totalFrames - 1).toFixed(1);
+
           player = newPlayer;
           activeRenderer = rendererType;
           setStatus("Playing", "success");
@@ -404,12 +578,23 @@
       }
 
       // ── Controls ─────────────────────────────────────────────────────────
-      document.getElementById("btn-play").onclick = () =>
-        player && player.play();
-      document.getElementById("btn-pause").onclick = () =>
-        player && player.pause();
-      document.getElementById("btn-stop").onclick = () =>
-        player && player.stop();
+      document.getElementById("btn-play").onclick = () => {
+        if (player && player.play()) setStatus("Playing", "success");
+      };
+      document.getElementById("btn-pause").onclick = () => {
+        if (player && player.pause()) setStatus("Paused", "muted");
+      };
+      document.getElementById("btn-stop").onclick = () => {
+        if (player && player.stop()) {
+          player.render();
+          blitSw();
+          const frame = player.current_frame();
+          scrubRange.value = frame;
+          scrubLabel.textContent =
+            frame.toFixed(1) + " / " + scrubRange.max;
+          setStatus("Stopped", "muted");
+        }
+      };
 
       document.getElementById("chk-loop").onchange = (e) =>
         player && player.set_loop(e.target.checked);
@@ -421,6 +606,30 @@
         speedLabel.textContent = v.toFixed(1) + "x";
         player && player.set_speed(v);
       };
+
+      // ── Scrubber ───────────────────────────────────────────────────────
+      scrubRange.addEventListener("pointerdown", () => {
+        if (!player) return;
+        scrubbing = true;
+        wasPlaying = player.is_playing();
+        if (wasPlaying) player.pause();
+      });
+
+      scrubRange.addEventListener("input", () => {
+        if (!player) return;
+        const frame = parseFloat(scrubRange.value);
+        player.set_frame(frame);
+        player.render();
+        blitSw();
+        scrubLabel.textContent =
+          frame.toFixed(1) + " / " + scrubRange.max;
+      });
+
+      scrubRange.addEventListener("pointerup", () => {
+        if (!player) return;
+        scrubbing = false;
+        if (wasPlaying) player.play();
+      });
 
       document.querySelectorAll(".tab").forEach((tab) => {
         tab.onclick = () => {

@@ -78,11 +78,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
 
     c.bench_function("animation_loop_no_frame_interpolation", |b| {
         b.iter(|| {
-            let next_frame = player.request_frame();
-
-            if player.set_frame(next_frame).is_ok() {
-                let _ = player.render();
-            }
+            let _ = player.tick(1.0 / 60.0);
         });
     });
 
@@ -98,19 +94,10 @@ fn animation_loop_benchmark(c: &mut Criterion) {
             "../assets/animations/dotlottie/v1/emojis.lottie"
         ),)
         .is_ok());
-    assert!(player
-        .load_dotlottie_data(include_bytes!(
-            "../assets/animations/dotlottie/v1/emojis.lottie"
-        ),)
-        .is_ok());
 
     c.bench_function("animation_loop_frame_interpolation", |b| {
         b.iter(|| {
-            let next_frame = player.request_frame();
-
-            if player.set_frame(next_frame).is_ok() {
-                let _ = player.render();
-            }
+            let _ = player.tick(1.0 / 60.0);
         });
     });
 }

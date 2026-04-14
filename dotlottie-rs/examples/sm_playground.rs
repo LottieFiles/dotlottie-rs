@@ -10,6 +10,8 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::path::PathBuf;
 
+mod common;
+
 const CANVAS_WIDTH: u32 = 500;
 const CANVAS_HEIGHT: u32 = 500;
 const MAX_LOG_ENTRIES: usize = 500;
@@ -42,6 +44,7 @@ struct Playground {
     available_state_machines: Vec<(String, String)>,
     selected_sm_index: Option<usize>,
     file_path: Option<PathBuf>,
+    clock: common::Clock,
 }
 
 impl Playground {
@@ -73,6 +76,7 @@ impl Playground {
             available_state_machines: Vec::new(),
             selected_sm_index: None,
             file_path: file_path.clone(),
+            clock: common::Clock::new(),
         };
 
         if let Some(path) = &file_path {
@@ -289,8 +293,10 @@ impl eframe::App for Playground {
 
         self.poll_events();
 
+        let dt = self.clock.dt();
+
         if let Some(engine) = &mut self.engine {
-            let _ = engine.tick();
+            let _ = engine.tick(dt);
         }
 
         self.refresh_input_values();

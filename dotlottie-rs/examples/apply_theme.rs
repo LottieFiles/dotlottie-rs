@@ -13,6 +13,8 @@ use std::ffi::CString;
 use dotlottie_rs::{ColorSpace, DotLottiePlayer};
 use minifb::{Key, Window, WindowOptions};
 
+mod common;
+
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = 512;
 
@@ -63,6 +65,7 @@ fn main() {
 
     let mut current_theme_index = 0;
     let mut last_space_press = std::time::Instant::now();
+    let mut clock = common::Clock::new();
 
     println!("Attempting to set theme: '{}'", themes[current_theme_index]);
     let current_theme =
@@ -74,6 +77,7 @@ fn main() {
     }
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        let dt = clock.dt();
         if window.is_key_down(Key::Space) {
             let now = std::time::Instant::now();
             if now.duration_since(last_space_press).as_millis() > 300 {
@@ -92,8 +96,7 @@ fn main() {
             }
         }
 
-        // Update animation frame and render
-        if player.tick().is_ok() {
+        if player.tick(dt).unwrap_or(false) {
             window
                 .update_with_buffer(&buffer, WIDTH as usize, HEIGHT as usize)
                 .expect("Failed to update window");

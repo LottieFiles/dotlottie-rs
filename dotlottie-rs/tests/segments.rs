@@ -38,7 +38,8 @@ mod tests {
         let total_frames = player.total_frames();
 
         for i in 0..50 {
-            let frame = player.request_frame();
+            let _ = player.tick(1.0 / 60.0);
+            let frame = player.current_frame();
 
             assert!(
                 frame.is_finite(),
@@ -79,7 +80,8 @@ mod tests {
         let total_frames = player.total_frames();
 
         for i in 0..20 {
-            let frame = player.request_frame();
+            let _ = player.tick(1.0 / 60.0);
+            let frame = player.current_frame();
 
             assert!(frame.is_finite(), "Frame should be finite at iteration {i}");
 
@@ -129,7 +131,8 @@ mod tests {
             let total_frames = player.total_frames();
 
             for i in 0..20 {
-                let frame = player.request_frame();
+                let _ = player.tick(1.0 / 60.0);
+                let frame = player.current_frame();
 
                 assert!(
                     frame.is_finite(),
@@ -172,7 +175,8 @@ mod tests {
         let total_frames = player.total_frames();
 
         for i in 0..20 {
-            let frame = player.request_frame();
+            let _ = player.tick(1.0 / 60.0);
+            let frame = player.current_frame();
 
             assert!(
                 frame.is_finite(),

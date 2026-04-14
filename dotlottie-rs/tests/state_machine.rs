@@ -465,8 +465,8 @@ mod tests {
 
         assert_eq!(sm.get_current_state_name(), "forward_state");
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        let _ = sm.tick();
+        // Pass enough dt to complete the 0.001s tween
+        let _ = sm.tick(0.01);
 
         assert_eq!(
             sm.get_current_state_name(),
@@ -517,8 +517,8 @@ mod tests {
 
         assert_eq!(sm.get_current_state_name(), "forward_state");
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        let _ = sm.tick();
+        // Pass enough dt to complete the 0.001s tween
+        let _ = sm.tick(0.01);
 
         assert_eq!(
             sm.get_current_state_name(),

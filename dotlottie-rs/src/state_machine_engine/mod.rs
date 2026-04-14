@@ -1390,8 +1390,8 @@ impl<'a> StateMachineEngine<'a> {
         }
     }
 
-    pub fn tick(&mut self) -> Result<(), crate::DotLottiePlayerError> {
-        let ticked = self.player.tick();
+    pub fn tick(&mut self, dt: f32) -> Result<bool, crate::DotLottiePlayerError> {
+        let ticked = self.player.tick(dt);
 
         self.check_completion();
 

@@ -49,24 +49,22 @@ mod tests {
 
         // animation loop
         loop {
-            let next_frame = player.request_frame();
-            if player.set_frame(next_frame).is_ok() {
+            let rendered = player.tick(1.0 / 60.0).unwrap_or(false);
+            if rendered {
                 expected_events.push(format!("on_frame: {}", player.current_frame()));
-                if player.render().is_ok() {
-                    expected_events.push(format!("on_render: {}", player.current_frame()));
-                    if player.is_complete() {
-                        if player.loop_animation() {
-                            let loop_count = player.current_loop_count();
-                            expected_events.push(format!("on_loop: {loop_count}"));
+                expected_events.push(format!("on_render: {}", player.current_frame()));
+                if player.is_complete() {
+                    if player.loop_animation() {
+                        let loop_count = player.current_loop_count();
+                        expected_events.push(format!("on_loop: {loop_count}"));
 
-                            if loop_count == 1 {
-                                let _ = player.pause();
-                                break;
-                            }
-                        } else {
-                            expected_events.push("on_complete".to_string());
+                        if loop_count == 1 {
+                            let _ = player.pause();
                             break;
                         }
+                    } else {
+                        expected_events.push("on_complete".to_string());
+                        break;
                     }
                 }
             }

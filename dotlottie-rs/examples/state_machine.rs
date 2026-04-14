@@ -9,6 +9,8 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::path::PathBuf;
 
+mod common;
+
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 const ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets");
@@ -192,8 +194,10 @@ fn main() {
     let mut left_down = false;
     let mut entered = false;
     let mut last_buffer_update = std::time::Instant::now();
+    let mut clock = common::Clock::new();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        let dt = clock.dt();
         process_state_machine_events(&mut engine);
 
         let mouse_pressed = window.get_mouse_down(MouseButton::Left);
@@ -230,7 +234,7 @@ fn main() {
 
         left_down = mouse_pressed;
 
-        let frame_changed = engine.tick().is_ok();
+        let frame_changed = engine.tick(dt).unwrap_or(false);
 
         if frame_changed || last_buffer_update.elapsed().as_millis() > 100 {
             window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();

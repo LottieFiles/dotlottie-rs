@@ -408,11 +408,12 @@ impl DotLottiePlayerWasm {
 
     // ── Render loop ───────────────────────────────────────────────────────────
 
-    /// Advance time and render.  Call once per `requestAnimationFrame`.
-    pub fn tick(&mut self) -> bool {
+    /// Advance the animation by `dt` seconds and render if the frame changed.
+    /// Call once per `requestAnimationFrame`, passing the frame delta in seconds.
+    pub fn tick(&mut self, dt: f32) -> bool {
         #[cfg(feature = "webgl")]
         self.activate_gl();
-        self.player.tick().is_ok()
+        self.player.tick(dt).unwrap_or(false)
     }
 
     /// Render the current frame without advancing time.
@@ -488,15 +489,8 @@ impl DotLottiePlayerWasm {
     pub fn total_frames(&self) -> f32 {
         self.player.total_frames()
     }
-    pub fn request_frame(&mut self) -> f32 {
-        self.player.request_frame()
-    }
-
     pub fn set_frame(&mut self, no: f32) -> bool {
         self.player.set_frame(no).is_ok()
-    }
-    pub fn seek(&mut self, no: f32) -> bool {
-        self.player.seek(no).is_ok()
     }
 
     // ── Duration / loop queries ───────────────────────────────────────────────
@@ -1483,11 +1477,12 @@ impl DotLottiePlayerWasm {
         }
     }
 
-    /// Advance the state machine by one tick.  Returns `false` if no state machine
-    /// is loaded, otherwise `true` (even if the machine is stopped or errored).
-    pub fn sm_tick(&mut self) -> bool {
+    /// Advance the state machine by `dt` seconds and render if the frame changed.
+    /// Returns `true` when a new frame was rendered, `false` otherwise.
+    pub fn sm_tick(&mut self, dt: f32) -> bool {
         #[cfg(not(feature = "state-machines"))]
         {
+            let _ = dt;
             return false;
         }
         #[cfg(feature = "state-machines")]
@@ -1497,7 +1492,7 @@ impl DotLottiePlayerWasm {
             let Some(ref mut sm) = self.state_machine else {
                 return false;
             };
-            sm.tick().is_ok()
+            sm.tick(dt).unwrap_or(false)
         }
     }
 }

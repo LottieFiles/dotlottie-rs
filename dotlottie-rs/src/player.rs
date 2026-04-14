@@ -1,4 +1,3 @@
-use crate::time::{Duration, Instant};
 use serde::Deserialize;
 use std::ffi::{CStr, CString};
 use std::{fs, mem};
@@ -95,7 +94,7 @@ pub struct DotLottiePlayer {
     renderer: Box<dyn LottieRenderer>,
     playback_state: PlaybackState,
     is_loaded: bool,
-    start_time: Instant,
+    elapsed_frames: f32,
     current_loop_count: u32,
     #[cfg(feature = "dotlottie")]
     dotlottie_manager: Option<DotLottieManager>,
@@ -157,7 +156,7 @@ impl DotLottiePlayer {
             renderer: <dyn LottieRenderer>::new(renderer),
             playback_state: PlaybackState::Stopped,
             is_loaded: false,
-            start_time: Instant::now(),
+            elapsed_frames: 0.0,
             current_loop_count: 0,
             mode: Mode::Forward,
             loop_animation: false,
@@ -206,10 +205,12 @@ impl DotLottiePlayer {
         mem::replace(&mut self.completion_event, CompletionEvent::None)
     }
 
+    #[inline]
     pub(crate) fn start_frame(&self) -> f32 {
         self.renderer.segment().map_or(0.0, |seg| seg.start)
     }
 
+    #[inline]
     pub(crate) fn end_frame(&self) -> f32 {
         self.renderer.segment().map_or(0.0, |seg| seg.end)
     }
@@ -241,14 +242,17 @@ impl DotLottiePlayer {
         self.is_loaded
     }
 
+    #[inline]
     pub fn is_playing(&self) -> bool {
         matches!(self.playback_state, PlaybackState::Playing)
     }
 
+    #[inline]
     pub fn is_paused(&self) -> bool {
         matches!(self.playback_state, PlaybackState::Paused)
     }
 
+    #[inline]
     pub fn is_stopped(&self) -> bool {
         matches!(self.playback_state, PlaybackState::Stopped)
     }
@@ -262,19 +266,23 @@ impl DotLottiePlayer {
         }
 
         if self.is_complete() && self.is_stopped() {
-            self.start_time = Instant::now();
+            self.elapsed_frames = 0.0;
             match self.mode {
                 Mode::Forward | Mode::Bounce => {
-                    let _ = self.set_frame(self.start_frame());
+                    let _ = self.apply_frame(self.start_frame());
                     self.direction = Direction::Forward;
                 }
                 Mode::Reverse | Mode::ReverseBounce => {
-                    let _ = self.set_frame(self.end_frame());
+                    let _ = self.apply_frame(self.end_frame());
                     self.direction = Direction::Reverse;
                 }
             }
         } else {
-            self.update_start_time_for_frame(self.current_frame());
+            let frame = self.current_frame();
+            self.elapsed_frames = match self.direction {
+                Direction::Forward => frame - self.start_frame(),
+                Direction::Reverse => self.end_frame() - frame,
+            };
         }
 
         self.playback_state = PlaybackState::Playing;
@@ -322,12 +330,14 @@ impl DotLottiePlayer {
 
         match self.mode {
             Mode::Forward | Mode::Bounce => {
-                let _ = self.set_frame(start_frame);
+                let _ = self.apply_frame(start_frame);
             }
             Mode::Reverse | Mode::ReverseBounce => {
-                let _ = self.set_frame(end_frame);
+                let _ = self.apply_frame(end_frame);
             }
         }
+
+        self.elapsed_frames = 0.0;
 
         #[cfg(feature = "audio")]
         if let Some(am) = &mut self.audio_manager {
@@ -359,35 +369,18 @@ impl DotLottiePlayer {
             .and_then(|manager| manager.get_state_machine(id_str).ok())
     }
 
-    pub fn request_frame(&mut self) -> f32 {
+    fn next_frame(&mut self) -> f32 {
         if !self.is_loaded || !self.is_playing() {
             return self.current_frame();
         }
 
-        let elapsed_time = self.start_time.elapsed().as_secs_f32();
-
-        // the animation total frames
-        let total_frames = self.total_frames();
-
-        // the animation duration in seconds
-        let duration = self.duration();
-
-        // the animation start & end frames (considering the segment)
         let start_frame = self.start_frame();
         let end_frame = self.end_frame();
 
-        // the effective total frames (considering the segment)
-        let effective_total_frames = end_frame - start_frame;
-
-        // the effective duration in milliseconds (considering the segment & speed)
-        let effective_duration = (duration * effective_total_frames / total_frames) / self.speed;
-
-        let raw_next_frame = (elapsed_time / effective_duration) * effective_total_frames;
-
-        // update the next frame based on the direction
+        // elapsed_frames is already in frame-space (scaled by fps in advance_frames)
         let mut next_frame = match self.direction {
-            Direction::Forward => start_frame + raw_next_frame,
-            Direction::Reverse => end_frame - raw_next_frame,
+            Direction::Forward => start_frame + self.elapsed_frames,
+            Direction::Reverse => end_frame - self.elapsed_frames,
         };
 
         // Apply frame interpolation
@@ -413,6 +406,7 @@ impl DotLottiePlayer {
         next_frame
     }
 
+    #[inline]
     fn should_increment_loop(&self) -> bool {
         if !self.loop_animation {
             return false;
@@ -427,11 +421,12 @@ impl DotLottiePlayer {
         self.current_loop_count < self.loop_count
     }
 
+    #[inline]
     fn handle_forward_mode(&mut self, next_frame: f32, end_frame: f32) -> f32 {
         if next_frame >= end_frame {
             if self.should_increment_loop() {
                 self.current_loop_count += 1;
-                self.start_time = Instant::now();
+                self.elapsed_frames = 0.0;
             }
 
             end_frame
@@ -440,11 +435,12 @@ impl DotLottiePlayer {
         }
     }
 
+    #[inline]
     fn handle_reverse_mode(&mut self, next_frame: f32, start_frame: f32) -> f32 {
         if next_frame <= start_frame {
             if self.should_increment_loop() {
                 self.current_loop_count += 1;
-                self.start_time = Instant::now();
+                self.elapsed_frames = 0.0;
             }
 
             start_frame
@@ -453,12 +449,13 @@ impl DotLottiePlayer {
         }
     }
 
+    #[inline]
     fn handle_bounce_mode(&mut self, next_frame: f32, start_frame: f32, end_frame: f32) -> f32 {
         match self.direction {
             Direction::Forward => {
                 if next_frame >= end_frame {
                     self.direction = Direction::Reverse;
-                    self.start_time = Instant::now();
+                    self.elapsed_frames = 0.0;
 
                     end_frame
                 } else {
@@ -470,7 +467,7 @@ impl DotLottiePlayer {
                     if self.should_increment_loop() {
                         self.current_loop_count += 1;
                         self.direction = Direction::Forward;
-                        self.start_time = Instant::now();
+                        self.elapsed_frames = 0.0;
                     }
 
                     start_frame
@@ -481,6 +478,7 @@ impl DotLottiePlayer {
         }
     }
 
+    #[inline]
     fn handle_reverse_bounce_mode(
         &mut self,
         next_frame: f32,
@@ -491,7 +489,7 @@ impl DotLottiePlayer {
             Direction::Reverse => {
                 if next_frame <= start_frame {
                     self.direction = Direction::Forward;
-                    self.start_time = Instant::now();
+                    self.elapsed_frames = 0.0;
                     start_frame
                 } else {
                     next_frame
@@ -502,7 +500,7 @@ impl DotLottiePlayer {
                     if self.should_increment_loop() {
                         self.current_loop_count += 1;
                         self.direction = Direction::Reverse;
-                        self.start_time = Instant::now();
+                        self.elapsed_frames = 0.0;
                     }
 
                     end_frame
@@ -513,39 +511,14 @@ impl DotLottiePlayer {
         }
     }
 
-    fn update_start_time_for_frame(&mut self, frame_no: f32) {
-        let start_frame = self.start_frame();
-        let end_frame = self.end_frame();
-
-        let total_frames = self.total_frames();
-        let duration = self.duration();
-        let effective_total_frames = end_frame - start_frame;
-
-        if duration.is_finite() && duration > 0.0 && self.speed > 0.0 {
-            let effective_duration =
-                (duration * effective_total_frames / total_frames) / self.speed;
-
-            let frame_duration = effective_duration / effective_total_frames;
-
-            // estimate elapsed time for current frame based on direction and segment
-            let mut elapsed_time_for_frame = match self.direction {
-                Direction::Forward => (frame_no - start_frame) * frame_duration,
-                Direction::Reverse => (end_frame - frame_no) * frame_duration,
-            };
-
-            if elapsed_time_for_frame < 0.0 {
-                elapsed_time_for_frame = 0.0;
+    #[inline]
+    fn advance_frames(&mut self, dt: f32) {
+        if self.is_playing() {
+            let duration = self.duration();
+            if duration > 0.0 {
+                let fps = self.total_frames() / duration;
+                self.elapsed_frames += dt * self.speed * fps;
             }
-            // update start_time to account for the already elapsed time
-            if let Some(start_time) =
-                Instant::now().checked_sub(Duration::from_secs_f32(elapsed_time_for_frame))
-            {
-                self.start_time = start_time;
-            } else {
-                self.start_time = Instant::now();
-            }
-        } else {
-            self.start_time = Instant::now();
         }
     }
 
@@ -561,15 +534,17 @@ impl DotLottiePlayer {
     ///
     /// The frame number is considered valid if it's within the range of the start and end frames.
     ///
-    /// This function does not update the start time for the new frame assuming it's already managed by the `request_frame` method in the animation loop.
-    /// It's the responsibility of the caller to update the start time if needed.
-    ///
-    pub fn set_frame(&mut self, no: f32) -> Result<(), DotLottiePlayerError> {
+    /// Internal: set the renderer frame, push events, sync audio.
+    /// Does NOT update `elapsed_frames`.
+    fn apply_frame(&mut self, no: f32) -> Result<(), DotLottiePlayerError> {
+        if no < self.start_frame() || no > self.end_frame() {
+            return Err(DotLottiePlayerError::InvalidParameter);
+        }
+
         self.renderer.set_frame(no)?;
         self.event_queue
             .push(DotLottieEvent::Frame { frame_no: no });
 
-        // Only sync audio when the animation is actively playing.
         #[cfg(feature = "audio")]
         if self.is_playing() {
             if let Some(am) = &mut self.audio_manager {
@@ -580,23 +555,15 @@ impl DotLottiePlayer {
         Ok(())
     }
 
-    /// Seek to a specific frame number.
+    /// Set the frame number and sync playback position.
     ///
-    /// # Arguments
-    ///
-    /// * `no` - The frame number to seek to.
-    ///
-    /// # Returns
-    ///
-    /// Returns `DotLottieResult::Success` if the frame number is valid and updated and an error variant otherwise.
-    ///
-    /// The frame number is considered valid if it's within the range of the start and end frames.
-    ///
-    /// The start time is updated based on the new frame number.
-    ///
-    pub fn seek(&mut self, no: f32) -> Result<(), DotLottiePlayerError> {
-        self.set_frame(no)?;
-        self.update_start_time_for_frame(no);
+    /// Playback will continue from this frame on the next `tick()`.
+    pub fn set_frame(&mut self, no: f32) -> Result<(), DotLottiePlayerError> {
+        self.apply_frame(no)?;
+        self.elapsed_frames = match self.direction {
+            Direction::Forward => no - self.start_frame(),
+            Direction::Reverse => self.end_frame() - no,
+        };
         Ok(())
     }
 
@@ -626,16 +593,13 @@ impl DotLottiePlayer {
     pub fn render(&mut self) -> Result<(), DotLottiePlayerError> {
         self.renderer.render()?;
 
-        // rendered the last frame successfully
-        if self.is_complete() && !self.loop_animation {
-            self.playback_state = PlaybackState::Stopped;
-        }
-
         let frame_no = self.current_frame();
 
         self.event_queue.push(DotLottieEvent::Render { frame_no });
 
-        if self.is_complete() {
+        // Completion logic only applies during active playback — not when the
+        // caller renders manually (e.g. scrubbing while paused/stopped).
+        if self.is_playing() && self.is_complete() {
             if self.loop_animation {
                 let count_complete =
                     self.loop_count > 0 && self.current_loop_count() >= self.loop_count;
@@ -658,7 +622,8 @@ impl DotLottiePlayer {
                     self.emit_on_complete();
                     self.reset_current_loop_count();
                 }
-            } else if !self.loop_animation {
+            } else {
+                self.playback_state = PlaybackState::Stopped;
                 self.emit_on_complete();
             }
         }
@@ -716,9 +681,8 @@ impl DotLottiePlayer {
 
                 let frame = self.current_frame();
                 if frame < seg.start || frame > seg.end {
-                    self.start_time = Instant::now();
-                    let _ = self.set_frame(seg.start);
-                    let _ = self.render();
+                    self.elapsed_frames = 0.0;
+                    let _ = self.apply_frame(seg.start);
                 }
             }
         } else {
@@ -762,8 +726,12 @@ impl DotLottiePlayer {
         );
 
         if should_flip {
+            let frame = self.current_frame();
             self.direction = self.direction.flip();
-            self.update_start_time_for_frame(self.current_frame());
+            self.elapsed_frames = match self.direction {
+                Direction::Forward => frame - self.start_frame(),
+                Direction::Reverse => self.end_frame() - frame,
+            };
         }
     }
 
@@ -780,8 +748,6 @@ impl DotLottiePlayer {
     pub fn set_speed(&mut self, speed: f32) {
         if self.speed != speed && speed > 0.0 {
             self.speed = speed;
-
-            self.update_start_time_for_frame(self.current_frame());
         }
     }
 
@@ -929,7 +895,7 @@ impl DotLottiePlayer {
     {
         self.clear();
         self.playback_state = PlaybackState::Stopped;
-        self.start_time = Instant::now();
+        self.elapsed_frames = 0.0;
         self.current_loop_count = 0;
 
         let loaded = loader(&mut *self.renderer).is_ok();
@@ -945,11 +911,11 @@ impl DotLottiePlayer {
 
         match self.mode {
             Mode::Forward | Mode::Bounce => {
-                let _ = self.set_frame(start_frame);
+                let _ = self.apply_frame(start_frame);
                 self.direction = Direction::Forward;
             }
             Mode::Reverse | Mode::ReverseBounce => {
-                let _ = self.set_frame(end_frame);
+                let _ = self.apply_frame(end_frame);
                 self.direction = Direction::Reverse;
             }
         }
@@ -1469,23 +1435,29 @@ impl DotLottiePlayer {
 
     pub(crate) fn sync_tween_frame(&mut self, frame: f32) {
         self.renderer.sync_current_frame(frame);
-        self.update_start_time_for_frame(frame);
+        self.elapsed_frames = match self.direction {
+            Direction::Forward => frame - self.start_frame(),
+            Direction::Reverse => self.end_frame() - frame,
+        };
     }
 
-    pub fn tween_advance(&mut self) -> Result<TweenStatus, DotLottiePlayerError> {
+    pub fn tween_advance(&mut self, dt: f32) -> Result<TweenStatus, DotLottiePlayerError> {
         let tween = self
             .tween_state
-            .as_ref()
+            .as_mut()
             .ok_or(DotLottiePlayerError::InsufficientCondition)?;
 
-        let (status, progress) = tween.update();
+        let (status, progress) = tween.update(dt);
         let from = tween.from;
         let to = tween.to;
 
         self.renderer.tween(from, to, progress)?;
 
         if status == TweenStatus::Completed {
-            self.update_start_time_for_frame(to);
+            self.elapsed_frames = match self.direction {
+                Direction::Forward => to - self.start_frame(),
+                Direction::Reverse => self.end_frame() - to,
+            };
             self.tween_state = None;
         }
 
@@ -1525,21 +1497,35 @@ impl DotLottiePlayer {
         self.event_queue.poll()
     }
 
-    pub fn tick(&mut self) -> Result<(), DotLottiePlayerError> {
+    /// Advance the animation by `dt` seconds and render if the frame changed.
+    ///
+    /// Returns `Ok(true)` when a new frame was rendered, `Ok(false)` when the
+    /// frame was unchanged and rendering was skipped.
+    pub fn tick(&mut self, dt: f32) -> Result<bool, DotLottiePlayerError> {
+        let dt = dt.max(0.0);
+
         if self.is_tweening() {
-            match self.tween_advance() {
-                Ok(_) => self.render(),
+            match self.tween_advance(dt) {
+                Ok(_) => {
+                    self.render()?;
+                    Ok(true)
+                }
                 Err(e) => {
                     self.tween_state = None;
                     Err(e)
                 }
             }
         } else {
-            let next_frame = self.request_frame();
+            self.advance_frames(dt);
+            let next_frame = self.next_frame();
 
-            let _ = self.set_frame(next_frame);
+            if next_frame == self.current_frame() {
+                return Ok(false);
+            }
 
-            self.render()
+            let _ = self.apply_frame(next_frame);
+            self.render()?;
+            Ok(true)
         }
     }
 

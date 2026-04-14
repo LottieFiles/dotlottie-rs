@@ -6,6 +6,8 @@
 //! where there is no system C runtime, no native OpenGL loader, and no
 //! wgpu-native library.
 
+/// cbindgen:ignore
+///
 /// Minimal libc/C++ runtime stubs for `wasm32-unknown-unknown`.
 ///
 /// Unlike `wasm32-unknown-emscripten` or `wasm32-wasi`, the `unknown-unknown`
@@ -13,6 +15,8 @@
 /// (`malloc`, `strcmp`, `snprintf`, …) that must be provided by us.
 mod stubs;
 
+/// cbindgen:ignore
+///
 /// WebGL2 FFI stubs that bridge ThorVG's OpenGL calls to `web_sys::WebGl2RenderingContext`.
 ///
 /// ThorVG's GL engine emits standard OpenGL/GLES function calls (`glBindTexture`,
@@ -21,6 +25,8 @@ mod stubs;
 #[cfg(feature = "tvg-gl")]
 mod webgl_stubs;
 
+/// cbindgen:ignore
+///
 /// WebGPU FFI stubs that bridge ThorVG's wgpu-native calls to the browser's WebGPU API.
 ///
 /// ThorVG's WG engine calls wgpu-native C functions (`wgpuDeviceCreateBuffer`,

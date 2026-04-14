@@ -3,6 +3,7 @@
 //! Enable the `tracking_allocator` feature to use [`TrackingAllocator`] as a
 //! `#[global_allocator]` in tests or benchmarks.
 
+/// cbindgen:ignore
 #[cfg(all(feature = "tracking_allocator", feature = "tvg"))]
 mod tvg_alloc;
 

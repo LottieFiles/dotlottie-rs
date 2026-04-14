@@ -26,6 +26,10 @@ exclude = [
     "DeviceCallbackResult",
 ]
 
+[defines]
+"target_os = macos" = "__APPLE__"
+"target_os = android" = "__ANDROID__"
+
 [parse]
 parse_deps = false
 include = ["dotlottie-rs"]

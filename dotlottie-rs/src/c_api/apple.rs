@@ -76,7 +76,6 @@ pub unsafe extern "C" fn dotlottie_free_wgpu_context(context: *mut std::ffi::c_v
 ///
 /// # Safety
 /// context must be a valid pointer from dotlottie_create_wgpu_context_from_metal_layer
-#[cfg(all(feature = "tvg-wg", target_os = "macos"))]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_wgpu_context_present(context: *const std::ffi::c_void) {
     if context.is_null() {

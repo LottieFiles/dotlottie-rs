@@ -31,7 +31,7 @@ endif
 # even when building via the apple-webgpu meta-target
 apple-tvos-arm64 apple-tvos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATURES)
 apple-visionos-arm64 apple-visionos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATURES)
-apple-watchos-arm64 apple-watchos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATURES)
+apple-watchos-arm64 apple-watchos-arm64_32 apple-watchos-armv7k apple-watchos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATURES)
 
 # coreaudio-sys (rodio/cpal dependency) only handles apple-darwin and apple-ios
 # target triples — it panics with unreachable!() on visionOS, tvOS, Mac
@@ -39,7 +39,7 @@ apple-watchos-arm64 apple-watchos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATU
 apple-maccatalyst-arm64 apple-maccatalyst-x86_64: APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO)
 apple-visionos-arm64 apple-visionos-sim-arm64: APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO)
 apple-tvos-arm64 apple-tvos-sim-arm64: APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO)
-apple-watchos-arm64 apple-watchos-sim-arm64: APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO)
+apple-watchos-arm64 apple-watchos-arm64_32 apple-watchos-armv7k apple-watchos-sim-arm64: APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO)
 
 
 # C API Header
@@ -145,7 +145,7 @@ WATCHOS_SDK = $(XCODE_PATH)/Platforms/WatchOS.platform/Developer/SDKs/WatchOS.sd
 WATCHOS_SIMULATOR_SDK = $(XCODE_PATH)/Platforms/WatchSimulator.platform/Developer/SDKs/WatchSimulator.sdk
 
 # Apple targets
-APPLE_TARGETS = aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim aarch64-apple-ios-macabi x86_64-apple-ios-macabi aarch64-apple-visionos aarch64-apple-visionos-sim aarch64-apple-tvos aarch64-apple-tvos-sim aarch64-apple-watchos aarch64-apple-watchos-sim
+APPLE_TARGETS = aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim aarch64-apple-ios-macabi x86_64-apple-ios-macabi aarch64-apple-visionos aarch64-apple-visionos-sim aarch64-apple-tvos aarch64-apple-tvos-sim aarch64-apple-watchos arm64_32-apple-watchos armv7k-apple-watchos aarch64-apple-watchos-sim
 
 # Apple target mapping
 APPLE_TARGET_macos_arm64 = aarch64-apple-darwin
@@ -160,6 +160,8 @@ APPLE_TARGET_visionos_sim_arm64 = aarch64-apple-visionos-sim
 APPLE_TARGET_tvos_arm64 = aarch64-apple-tvos
 APPLE_TARGET_tvos_sim_arm64 = aarch64-apple-tvos-sim
 APPLE_TARGET_watchos_arm64 = aarch64-apple-watchos
+APPLE_TARGET_watchos_arm64_32 = arm64_32-apple-watchos
+APPLE_TARGET_watchos_armv7k = armv7k-apple-watchos
 APPLE_TARGET_watchos_sim_arm64 = aarch64-apple-watchos-sim
 
 # Framework build directories
@@ -179,7 +181,7 @@ WATCHOS_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/watchos
 WATCHOS_SIMULATOR_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/watchos-simulator
 
 # Apple-specific phony targets
-.PHONY: apple apple-webgpu apple-macos apple-ios apple-maccatalyst apple-visionos apple-tvos apple-watchos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-maccatalyst-arm64 apple-maccatalyst-x86_64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 apple-watchos-arm64 apple-watchos-sim-arm64 apple-setup apple-clean apple-code-sign
+.PHONY: apple apple-webgpu apple-macos apple-ios apple-maccatalyst apple-visionos apple-tvos apple-watchos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-maccatalyst-arm64 apple-maccatalyst-x86_64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 apple-watchos-arm64 apple-watchos-arm64_32 apple-watchos-armv7k apple-watchos-sim-arm64 apple-setup apple-clean apple-code-sign
 
 
 
@@ -216,7 +218,7 @@ apple-tvos: $(addprefix apple-tvos-,arm64 sim-arm64) $(TVOS_FRAMEWORK_DIR)/$(DOT
 	@echo "✓ tvOS build complete"
 
 # Build for all watchOS architectures
-apple-watchos: $(addprefix apple-watchos-,arm64 sim-arm64) $(WATCHOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(WATCHOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)
+apple-watchos: $(addprefix apple-watchos-,arm64 arm64_32 armv7k sim-arm64) $(WATCHOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(WATCHOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)
 	@echo "✓ watchOS build complete"
 
 # macOS ARM64
@@ -479,6 +481,52 @@ apple-watchos-arm64: apple-check-xcode
 		--release >/dev/null
 	@echo "✓ watchOS ARM64 build complete"
 
+# watchOS ARM64_32 (device — Series 4-6, SE 1st gen)
+# Uses staticlib because watchOS does not support dynamic linking.
+apple-watchos-arm64_32: apple-check-xcode
+	@echo "→ Building watchOS ARM64_32 (nightly)..."
+	@SDKROOT="$(WATCHOS_SDK)" \
+	WATCHOS_DEPLOYMENT_TARGET="$(MIN_WATCHOS_VERSION)" \
+	CC="$(shell xcrun -sdk watchos --find clang)" \
+	CXX="$(shell xcrun -sdk watchos --find clang++)" \
+	AR="$(shell xcrun -sdk watchos --find ar)" \
+	RANLIB="$(shell xcrun -sdk watchos --find ranlib)" \
+	CFLAGS="-arch arm64_32 -isysroot $(WATCHOS_SDK) -mwatchos-version-min=$(MIN_WATCHOS_VERSION)" \
+	CXXFLAGS="-arch arm64_32 -isysroot $(WATCHOS_SDK) -mwatchos-version-min=$(MIN_WATCHOS_VERSION)" \
+	CARGO_TARGET_ARM64_32_APPLE_WATCHOS_LINKER="$(shell xcrun -sdk watchos --find clang)" \
+	cargo +nightly rustc \
+		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type staticlib \
+		-Z build-std=std,panic_abort \
+		--target $(APPLE_TARGET_watchos_arm64_32) \
+		--no-default-features \
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) \
+		--release >/dev/null
+	@echo "✓ watchOS ARM64_32 build complete"
+
+# watchOS armv7k (device — Series 0-3)
+# Uses staticlib because watchOS does not support dynamic linking.
+apple-watchos-armv7k: apple-check-xcode
+	@echo "→ Building watchOS armv7k (nightly)..."
+	@SDKROOT="$(WATCHOS_SDK)" \
+	WATCHOS_DEPLOYMENT_TARGET="$(MIN_WATCHOS_VERSION)" \
+	CC="$(shell xcrun -sdk watchos --find clang)" \
+	CXX="$(shell xcrun -sdk watchos --find clang++)" \
+	AR="$(shell xcrun -sdk watchos --find ar)" \
+	RANLIB="$(shell xcrun -sdk watchos --find ranlib)" \
+	CFLAGS="-arch armv7k -isysroot $(WATCHOS_SDK) -mwatchos-version-min=$(MIN_WATCHOS_VERSION)" \
+	CXXFLAGS="-arch armv7k -isysroot $(WATCHOS_SDK) -mwatchos-version-min=$(MIN_WATCHOS_VERSION)" \
+	CARGO_TARGET_ARMV7K_APPLE_WATCHOS_LINKER="$(shell xcrun -sdk watchos --find clang)" \
+	cargo +nightly rustc \
+		--manifest-path dotlottie-rs/Cargo.toml \
+		--crate-type staticlib \
+		-Z build-std=std,panic_abort \
+		--target $(APPLE_TARGET_watchos_armv7k) \
+		--no-default-features \
+		--features $(APPLE_DEFAULT_FEATURES),$(APPLE_FEATURES) \
+		--release >/dev/null
+	@echo "✓ watchOS armv7k build complete"
+
 # watchOS ARM64 Simulator
 apple-watchos-sim-arm64: apple-check-xcode
 	@echo "→ Building watchOS ARM64 simulator (nightly)..."
@@ -648,11 +696,17 @@ $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-tvos-sim-ar
 	$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 	@echo "tvOS Simulator framework created: $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)"
 
-$(WATCHOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-watchos-arm64
+$(WATCHOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-watchos-arm64 apple-watchos-arm64_32 apple-watchos-armv7k
 	@echo "Creating watchOS framework..."
 	$(call create_framework_structure,$(WATCHOS_FRAMEWORK_DIR),$(MIN_WATCHOS_VERSION),WatchOS)
-	@echo "Creating watchOS binary..."
-	cp dotlottie-rs/target/$(APPLE_TARGET_watchos_arm64)/release/$(RUNTIME_FFI_STATIC) $(WATCHOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
+	@echo "Creating universal watchOS binary (arm64 + arm64_32 + armv7k)..."
+	@rm -f $(WATCHOS_FRAMEWORK_DIR)/$(RUNTIME_FFI_STATIC)
+	@$(LIPO) -create \
+		dotlottie-rs/target/$(APPLE_TARGET_watchos_arm64)/release/$(RUNTIME_FFI_STATIC) \
+		dotlottie-rs/target/$(APPLE_TARGET_watchos_arm64_32)/release/$(RUNTIME_FFI_STATIC) \
+		dotlottie-rs/target/$(APPLE_TARGET_watchos_armv7k)/release/$(RUNTIME_FFI_STATIC) \
+		-o $(WATCHOS_FRAMEWORK_DIR)/$(RUNTIME_FFI_STATIC)
+	cp $(WATCHOS_FRAMEWORK_DIR)/$(RUNTIME_FFI_STATIC) $(WATCHOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
 	@if [ -f "$(C_HEADER_DIR)/$(C_HEADER_FILE)" ]; then \
 		cp $(C_HEADER_DIR)/$(C_HEADER_FILE) $(WATCHOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_HEADERS)/$(C_HEADER_FILE); \
 	fi

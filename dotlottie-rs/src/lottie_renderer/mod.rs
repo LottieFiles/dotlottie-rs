@@ -20,7 +20,7 @@ pub use slots::{
     TextCaps, TextDocument, TextJustify, TextKeyframe, TextSlot, VectorSlot,
 };
 #[cfg(feature = "tvg")]
-pub use thorvg::{TvgAnimation, TvgEngine, TvgError, TvgRenderer, TvgShape};
+pub use thorvg::{TvgAnimation, TvgError, TvgRenderer, TvgShape};
 
 use std::collections::BTreeMap;
 use std::{error::Error, fmt};

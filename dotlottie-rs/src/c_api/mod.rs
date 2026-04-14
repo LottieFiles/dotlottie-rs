@@ -95,9 +95,6 @@ impl WgpuTarget for RawWgpuTarget {
     }
 }
 
-#[cfg(all(feature = "tvg-wg", target_os = "macos"))]
-pub mod apple;
-
 // Helper macro for DotLottiePlayer operations - wraps every C API call to check
 // if the dotlottie player pointer is valid or not, and converts the body's
 // return value to DotLottieResult

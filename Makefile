@@ -48,7 +48,6 @@ help:
 	@echo ""
 	@echo "Apple Targets:"
 	@echo "=============="
-	@echo "  make apple-webgpu                                 - Build all Apple targets ([Experimntal] WebGPU on macOS, software on others)"
 	@echo "  make apple-macos                                  - Build all macOS targets (software)"
 	@echo "  make apple-ios                                    - Build all iOS targets (software)"
 	@echo "  make apple-visionos                               - Build all visionOS targets"

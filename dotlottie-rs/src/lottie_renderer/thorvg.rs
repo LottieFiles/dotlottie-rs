@@ -77,24 +77,14 @@ impl From<WgpuTargetType> for std::ffi::c_int {
     }
 }
 
-pub enum TvgEngine {
-    TvgEngineSw,
-    TvgEngineGl,
-}
-
-#[allow(dead_code)]
 #[non_exhaustive]
 enum TvgEngineOption {
-    None,
     Default,
-    Smart,
 }
 impl From<TvgEngineOption> for tvg::Tvg_Engine_Option {
     fn from(option: TvgEngineOption) -> Self {
         match option {
-            TvgEngineOption::None => tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_NONE,
             TvgEngineOption::Default => tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_DEFAULT,
-            TvgEngineOption::Smart => tvg::Tvg_Engine_Option_TVG_ENGINE_OPTION_SMART_RENDER,
         }
     }
 }
@@ -610,14 +600,6 @@ impl Animation for TvgAnimation {
         unsafe { tvg::tvg_picture_set_size(self.raw_paint, width, height).into_result() }
     }
 
-    fn scale(&mut self, factor: f32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_paint_scale(self.raw_paint, factor).into_result() }
-    }
-
-    fn translate(&mut self, tx: f32, ty: f32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_paint_translate(self.raw_paint, tx, ty).into_result() }
-    }
-
     fn get_total_frame(&self) -> Result<f32, TvgError> {
         Ok(self.total_frames)
     }
@@ -633,33 +615,6 @@ impl Animation for TvgAnimation {
             }
         }
         unsafe { tvg::tvg_animation_set_frame(self.raw_animation, frame_no).into_result() }
-    }
-
-    fn get_frame(&self) -> Result<f32, TvgError> {
-        let mut curr_frame: f32 = 0.0;
-
-        unsafe {
-            tvg::tvg_animation_get_frame(self.raw_animation, &mut curr_frame as *mut f32)
-                .into_result()
-        }?;
-
-        Ok(curr_frame)
-    }
-
-    fn set_slots_str(&mut self, slots_json: &CStr) -> Result<(), TvgError> {
-        let result = if slots_json.to_bytes().is_empty() {
-            unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, 0) }
-        } else {
-            let slot_id = unsafe {
-                tvg::tvg_lottie_animation_gen_slot(self.raw_animation, slots_json.as_ptr())
-            };
-            if slot_id == 0 {
-                return Err(TvgError::InvalidArgument);
-            }
-            unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_id) }
-        };
-
-        result.into_result()
     }
 
     fn gen_slot(&mut self, slot_json: &CStr) -> Result<u32, TvgError> {
@@ -704,36 +659,6 @@ impl Animation for TvgAnimation {
         };
 
         unsafe { tvg::tvg_paint_set_transform(self.raw_paint, &tvg_matrix).into_result() }
-    }
-
-    fn get_transform(&self) -> Result<[f32; 9], TvgError> {
-        let mut tvg_matrix = tvg::Tvg_Matrix {
-            e11: 1.0,
-            e12: 0.0,
-            e13: 0.0,
-            e21: 0.0,
-            e22: 1.0,
-            e23: 0.0,
-            e31: 0.0,
-            e32: 0.0,
-            e33: 1.0,
-        };
-
-        unsafe {
-            tvg::tvg_paint_get_transform(self.raw_paint, &mut tvg_matrix).into_result()?;
-        }
-
-        Ok([
-            tvg_matrix.e11,
-            tvg_matrix.e12,
-            tvg_matrix.e13,
-            tvg_matrix.e21,
-            tvg_matrix.e22,
-            tvg_matrix.e23,
-            tvg_matrix.e31,
-            tvg_matrix.e32,
-            tvg_matrix.e33,
-        ])
     }
 
     // ── Markers & Segments ───────────────────────────────────────────────

@@ -1268,10 +1268,6 @@ impl<'a> StateMachineEngine<'a> {
         Ok(())
     }
 
-    pub fn get_state_machine(&self) -> &StateMachine {
-        &self.state_machine
-    }
-
     pub fn get_current_state_name(&self) -> String {
         if let Some(state) = &self.current_state {
             return state.name();

@@ -33,8 +33,6 @@ pub trait InputTrait {
     fn get_string(&self, key: &str) -> Option<String>;
     fn get_boolean(&self, key: &str) -> Option<bool>;
     fn get_event(&self, key: &str) -> Option<String>;
-    fn get(&self, key: &str) -> Result<&InputValue, &'static str>;
-    fn reset_all(&mut self);
     fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)>;
 }
 
@@ -67,10 +65,6 @@ impl InputTrait for InputManager {
         }
 
         None
-    }
-
-    fn reset_all(&mut self) {
-        self.inputs = self.default_values.clone();
     }
 
     fn set_numeric(&mut self, key: &str, value: f32) -> Option<InputValue> {
@@ -146,8 +140,4 @@ impl InputTrait for InputManager {
             .insert(key.to_string(), InputValue::Event(value.to_string()));
     }
 
-    // Generic get method that returns a Result
-    fn get(&self, key: &str) -> Result<&InputValue, &'static str> {
-        self.inputs.get(key).ok_or("Input key not found")
-    }
 }

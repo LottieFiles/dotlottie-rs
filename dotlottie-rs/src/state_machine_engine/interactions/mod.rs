@@ -9,13 +9,6 @@ pub trait InteractionTrait {
     fn type_name(&self) -> &'static str;
 }
 
-pub enum InteractionAction {
-    Increment,
-    Decrement,
-    Set,
-    None,
-}
-
 #[derive(Deserialize, Debug)]
 #[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]

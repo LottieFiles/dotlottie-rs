@@ -237,19 +237,11 @@ pub trait Animation: Default {
 
     fn set_size(&mut self, width: f32, height: f32) -> Result<(), Self::Error>;
 
-    fn scale(&mut self, factor: f32) -> Result<(), Self::Error>;
-
-    fn translate(&mut self, tx: f32, ty: f32) -> Result<(), Self::Error>;
-
     fn get_total_frame(&self) -> Result<f32, Self::Error>;
 
     fn get_duration(&self) -> Result<f32, Self::Error>;
 
     fn set_frame(&mut self, frame_no: f32) -> Result<(), Self::Error>;
-
-    fn get_frame(&self) -> Result<f32, Self::Error>;
-
-    fn set_slots_str(&mut self, slots: &CStr) -> Result<(), Self::Error>;
 
     /// Generate a slot override from JSON and return its code for later use
     fn gen_slot(&mut self, slot_json: &CStr) -> Result<u32, Self::Error>;
@@ -265,8 +257,6 @@ pub trait Animation: Default {
     fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), Self::Error>;
 
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), Self::Error>;
-
-    fn get_transform(&self) -> Result<[f32; 9], Self::Error>;
 
     // ── Markers & Segments ───────────────────────────────────────────────
 

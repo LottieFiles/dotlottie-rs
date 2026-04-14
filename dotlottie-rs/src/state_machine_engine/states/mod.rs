@@ -9,11 +9,6 @@ use super::{actions::StateMachineActionError, transitions::Transition, StateMach
 
 use super::actions::{Action, ActionTrait};
 
-#[derive(Debug)]
-pub enum StatesError {
-    ParsingError,
-}
-
 pub trait StateTrait {
     fn enter(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError>;
     fn exit(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError>;

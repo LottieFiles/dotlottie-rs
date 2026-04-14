@@ -29,8 +29,6 @@ exclude = [
 [defines]
 "target_os = macos" = "__APPLE__"
 "target_os = android" = "__ANDROID__"
-"feature = tvg-wg" = "DOTLOTTIE_TVG_WG"
-"feature = audio" = "DOTLOTTIE_AUDIO"
 
 [parse]
 parse_deps = false

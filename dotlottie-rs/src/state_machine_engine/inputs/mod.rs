@@ -139,5 +139,4 @@ impl InputTrait for InputManager {
         self.inputs
             .insert(key.to_string(), InputValue::Event(value.to_string()));
     }
-
 }

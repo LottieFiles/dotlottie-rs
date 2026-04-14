@@ -16,9 +16,6 @@ APPLE_DEFAULT_FEATURES_NO_AUDIO = tvg,tvg-sw,c_api,dotlottie,state-machines,them
 
 APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO)
 
-# WebGPU: base features + tvg-wg (macOS, iOS, Mac Catalyst only)
-APPLE_WEBGPU_FEATURES = tvg-wg,$(APPLE_BASE_FEATURES)
-
 # Active feature set — defaults to base (software-only)
 APPLE_FEATURES ?= $(APPLE_BASE_FEATURES)
 
@@ -26,9 +23,6 @@ ifdef FEATURES
 	APPLE_FEATURES = $(FEATURES)
 endif
 
-# Software-only platforms: tvOS and visionOS don't support WebGPU
-# Target-specific overrides ensure tvg-wg is never passed to these targets,
-# even when building via the apple-webgpu meta-target
 apple-tvos-arm64 apple-tvos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATURES)
 apple-visionos-arm64 apple-visionos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATURES)
 apple-watchos-arm64 apple-watchos-arm64_32 apple-watchos-armv7k apple-watchos-sim-arm64: APPLE_FEATURES = $(APPLE_BASE_FEATURES)
@@ -105,10 +99,6 @@ define perform_codesigning
 	fi
 endef
 
-
-
-
-
 # Helper function to create framework structure and Info.plist
 define create_framework_structure
 	@echo "Creating framework structure for $(1)..."
@@ -181,7 +171,7 @@ WATCHOS_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/watchos
 WATCHOS_SIMULATOR_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/watchos-simulator
 
 # Apple-specific phony targets
-.PHONY: apple apple-webgpu apple-macos apple-ios apple-maccatalyst apple-visionos apple-tvos apple-watchos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-maccatalyst-arm64 apple-maccatalyst-x86_64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 apple-watchos-arm64 apple-watchos-arm64_32 apple-watchos-armv7k apple-watchos-sim-arm64 apple-setup apple-clean apple-code-sign
+.PHONY: apple apple-macos apple-ios apple-maccatalyst apple-visionos apple-tvos apple-watchos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-maccatalyst-arm64 apple-maccatalyst-x86_64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 apple-watchos-arm64 apple-watchos-arm64_32 apple-watchos-armv7k apple-watchos-sim-arm64 apple-setup apple-clean apple-code-sign
 
 
 
@@ -190,12 +180,6 @@ WATCHOS_SIMULATOR_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/watchos-simulator
 
 # Build for all Apple platforms
 apple: $(addprefix apple-,macos ios maccatalyst visionos tvos watchos) apple-package
-
-# Build for all Apple platforms with WebGPU (WebGPU for macOS/iOS, software for others)
-apple-webgpu: APPLE_FEATURES = $(APPLE_WEBGPU_FEATURES)
-apple-webgpu: APPLE_RELEASE_DIR = $(RELEASE_DIR)/apple-webgpu
-apple-webgpu: $(addprefix apple-,macos ios maccatalyst visionos tvos watchos) apple-package
-	@echo "✓ Apple WebGPU build complete (WebGPU on macOS, software on other platforms)"
 
 # Build for all macOS architectures
 apple-macos: $(addprefix apple-macos-,arm64 x86_64) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)

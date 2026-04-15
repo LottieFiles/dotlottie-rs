@@ -501,6 +501,7 @@ apple-watchos-armv7k: apple-check-xcode
 	CFLAGS="-arch armv7k -isysroot $(WATCHOS_SDK) -mwatchos-version-min=$(MIN_WATCHOS_VERSION)" \
 	CXXFLAGS="-arch armv7k -isysroot $(WATCHOS_SDK) -mwatchos-version-min=$(MIN_WATCHOS_VERSION)" \
 	CARGO_TARGET_ARMV7K_APPLE_WATCHOS_LINKER="$(shell xcrun -sdk watchos --find clang)" \
+	RUSTFLAGS="-Ctarget-feature=-neon" \
 	cargo +nightly rustc \
 		--manifest-path dotlottie-rs/Cargo.toml \
 		--crate-type staticlib \

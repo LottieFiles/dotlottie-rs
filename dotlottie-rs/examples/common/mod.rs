@@ -13,10 +13,10 @@ impl Clock {
         }
     }
 
-    /// Returns seconds elapsed since the previous call (or since construction).
+    /// Returns milliseconds elapsed since the previous call (or since construction).
     pub fn dt(&mut self) -> f32 {
         let now = std::time::Instant::now();
-        let dt = (now - self.last).as_secs_f32();
+        let dt = (now - self.last).as_secs_f32() * 1000.0;
         self.last = now;
         dt
     }

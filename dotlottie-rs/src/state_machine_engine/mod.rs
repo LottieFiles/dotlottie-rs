@@ -646,11 +646,11 @@ impl<'a> StateMachineEngine<'a> {
 
             // Now use the extracted information
             if let Some(state) = state {
+                let _ = state.enter(self);
+
                 if let Some(target_frame) = self.tween_target_frame.take() {
                     self.player.sync_tween_frame(target_frame);
                 }
-
-                let _ = state.enter(self);
 
                 // Don't forget to put things back
                 // new_state becomes the current state

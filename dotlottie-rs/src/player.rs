@@ -920,6 +920,8 @@ impl DotLottiePlayer {
             }
         }
 
+        let _ = self.renderer.render();
+
         if loaded {
             Ok(())
         } else {
@@ -1519,11 +1521,13 @@ impl DotLottiePlayer {
             self.advance_frames(dt);
             let next_frame = self.next_frame();
 
-            if next_frame == self.current_frame() {
+            if next_frame == self.current_frame() && !self.renderer.updated() {
                 return Ok(false);
             }
 
-            let _ = self.apply_frame(next_frame);
+            if next_frame != self.current_frame() {
+                let _ = self.apply_frame(next_frame);
+            }
             self.render()?;
             Ok(true)
         }

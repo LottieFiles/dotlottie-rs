@@ -19,7 +19,7 @@
 
 #![allow(clippy::print_stdout)]
 
-use dotlottie_rs::{ColorSpace, DotLottieEvent, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottieEvent, DotLottiePlayer, Status};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs;
@@ -134,13 +134,13 @@ fn main() {
         let plus_down = window.is_key_down(Key::Equal) || window.is_key_down(Key::NumPadPlus);
         let minus_down = window.is_key_down(Key::Minus) || window.is_key_down(Key::NumPadMinus);
 
-        if p_was_down && !p_down && (player.is_paused() || player.is_stopped()) {
+        if p_was_down && !p_down && player.status() != Status::Playing {
             let _ = player.play();
         }
-        if s_was_down && !s_down && player.is_playing() {
+        if s_was_down && !s_down && player.status() == Status::Playing {
             let _ = player.pause();
         }
-        if x_was_down && !x_down && !player.is_stopped() {
+        if x_was_down && !x_down && player.status() != Status::Stopped {
             let _ = player.stop();
         }
 
@@ -182,12 +182,11 @@ fn main() {
         } else {
             ""
         };
-        let state = if player.is_playing() {
-            "PLAYING"
-        } else if player.is_paused() {
-            "PAUSED "
-        } else {
-            "STOPPED"
+        let state = match player.status() {
+            Status::Idle => "IDLE",
+            Status::Playing => "PLAYING",
+            Status::Paused => "PAUSED",
+            Status::Stopped => "STOPPED",
         };
         let frame = player.current_frame();
         let vol = player.audio_volume();
@@ -202,7 +201,7 @@ fn main() {
         while let Some(event) = player.poll_event() {
             let _ = player.current_frame();
             match event {
-                DotLottieEvent::Load => println!("  -- Load  (is_loaded={})", player.is_loaded()),
+                DotLottieEvent::Load => println!("  -- Load  (status={:?})", player.status()),
                 DotLottieEvent::LoadError => {
                     eprintln!("  !! LoadError — animation failed to load into ThorVG");
                 }

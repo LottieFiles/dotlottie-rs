@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, TweenStatus};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Status, TweenStatus};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -70,7 +70,7 @@ mod tests {
         player
             .tween(20.0, 1.0, [0.0, 0.0, 1.0, 1.0])
             .expect("tween should start");
-        assert!(player.is_tweening());
+        assert_eq!(player.status(), Status::Tweening);
 
         // Pass enough dt to complete the 1ms tween
         let result = player.tween_advance(10.0);
@@ -79,8 +79,9 @@ mod tests {
             Ok(TweenStatus::Completed),
             "tween_advance should return Ok(Completed) when tween completes"
         );
-        assert!(
-            !player.is_tweening(),
+        assert_ne!(
+            player.status(),
+            Status::Tweening,
             "should not be tweening after tween completes"
         );
     }
@@ -97,13 +98,15 @@ mod tests {
         player
             .tween(20.0, 1.0, [0.0, 0.0, 1.0, 1.0])
             .expect("tween should start");
+        assert_eq!(player.status(), Status::Tweening);
 
         // Tick with enough dt to complete the 1ms tween
         let result = player.tick(10.0);
         assert!(result.is_ok(), "tick() should succeed, got {result:?}");
-        assert!(
-            !player.is_tweening(),
-            "should not be tweening after tick completes the tween"
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "should resume Playing after tween completes"
         );
 
         let result = player.tick(1000.0 / 60.0);
@@ -117,6 +120,88 @@ mod tests {
         assert!(
             (frame - 20.0).abs() < total_frames * 0.5,
             "frame after tween should be near target (20.0), not jumped far ahead; got {frame}"
+        );
+    }
+
+    #[test]
+    fn tween_from_stopped_resumes_to_stopped() {
+        let (mut player, _buf) = setup_player();
+
+        assert_eq!(player.status(), Status::Stopped);
+
+        player
+            .tween(10.0, 1.0, [0.0, 0.0, 1.0, 1.0])
+            .expect("tween from stopped should succeed");
+        assert_eq!(player.status(), Status::Tweening);
+
+        let result = player.tween_advance(10.0);
+        assert_eq!(result, Ok(TweenStatus::Completed));
+        assert_eq!(
+            player.status(),
+            Status::Stopped,
+            "should resume Stopped after tween completes"
+        );
+    }
+
+    #[test]
+    fn tween_from_paused_resumes_to_paused() {
+        let (mut player, _buf) = setup_player();
+
+        player.play().expect("play should succeed");
+        player.pause().expect("pause should succeed");
+        assert_eq!(player.status(), Status::Paused);
+
+        player
+            .tween(10.0, 1.0, [0.0, 0.0, 1.0, 1.0])
+            .expect("tween from paused should succeed");
+        assert_eq!(player.status(), Status::Tweening);
+
+        let result = player.tween_advance(10.0);
+        assert_eq!(result, Ok(TweenStatus::Completed));
+        assert_eq!(
+            player.status(),
+            Status::Paused,
+            "should resume Paused after tween completes"
+        );
+    }
+
+    #[test]
+    fn play_during_tweening_returns_error() {
+        let (mut player, _buf) = setup_player();
+
+        player
+            .tween(10.0, 0.5, [0.0, 0.0, 1.0, 1.0])
+            .expect("tween should start");
+
+        let result = player.play();
+        assert!(
+            result.is_err(),
+            "play() during tweening should return error"
+        );
+    }
+
+    #[test]
+    fn stop_during_tweening_cancels_tween() {
+        let (mut player, _buf) = setup_player();
+
+        player.play().expect("play should succeed");
+
+        player
+            .tween(10.0, 0.5, [0.0, 0.0, 1.0, 1.0])
+            .expect("tween should start");
+        assert_eq!(player.status(), Status::Tweening);
+
+        let result = player.stop();
+        assert!(result.is_ok(), "stop() during tweening should succeed");
+        assert_eq!(
+            player.status(),
+            Status::Stopped,
+            "should be Stopped after cancelling tween"
+        );
+        assert_ne!(
+            player.status(),
+            Status::Tweening,
+            "should not be tweening after stop"
         );
     }
 }

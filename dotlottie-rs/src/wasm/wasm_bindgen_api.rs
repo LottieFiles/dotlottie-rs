@@ -138,6 +138,29 @@ impl From<PlayerMode> for Mode {
     }
 }
 
+/// Current status of the animation player.
+#[wasm_bindgen]
+#[derive(Clone, Copy, PartialEq)]
+pub enum Status {
+    Idle = 0,
+    Playing = 1,
+    Paused = 2,
+    Stopped = 3,
+    Tweening = 4,
+}
+
+impl From<crate::Status> for Status {
+    fn from(s: crate::Status) -> Self {
+        match s {
+            crate::Status::Idle => Status::Idle,
+            crate::Status::Playing => Status::Playing,
+            crate::Status::Paused => Status::Paused,
+            crate::Status::Stopped => Status::Stopped,
+            crate::Status::Tweening => Status::Tweening,
+        }
+    }
+}
+
 // ─── JS object helpers ────────────────────────────────────────────────────────
 
 fn js_obj_with_type(type_name: &str) -> Object {
@@ -462,23 +485,11 @@ impl DotLottiePlayerWasm {
 
     // ── State queries ─────────────────────────────────────────────────────────
 
-    pub fn is_playing(&self) -> bool {
-        self.player.is_playing()
-    }
-    pub fn is_paused(&self) -> bool {
-        self.player.is_paused()
-    }
-    pub fn is_stopped(&self) -> bool {
-        self.player.is_stopped()
-    }
-    pub fn is_loaded(&self) -> bool {
-        self.player.is_loaded()
+    pub fn status(&self) -> Status {
+        self.player.status().into()
     }
     pub fn is_complete(&self) -> bool {
         self.player.is_complete()
-    }
-    pub fn is_tweening(&self) -> bool {
-        self.player.is_tweening()
     }
 
     // ── Frame queries ─────────────────────────────────────────────────────────

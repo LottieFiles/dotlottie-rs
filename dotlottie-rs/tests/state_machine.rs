@@ -7,7 +7,7 @@ mod tests {
 
     use dotlottie_rs::{
         actions::open_url_policy::OpenUrlPolicy, ColorSpace, DotLottiePlayer, Event,
-        StateMachineEngineStatus,
+        StateMachineEngineStatus, Status,
     };
     use std::io::Read;
 
@@ -35,7 +35,7 @@ mod tests {
 
         assert_eq!(player.load_dotlottie_data(&markers_buffer), Ok(()));
 
-        assert!(player.is_playing());
+        assert_eq!(player.status(), Status::Playing);
 
         let sm_id = CString::new("Exploding Pigeon").unwrap();
         let mut sm = player
@@ -363,7 +363,7 @@ mod tests {
         sm.player
             .tween(5.0, 2000.0, [0.0, 0.0, 1.0, 1.0])
             .expect("initial tween should succeed");
-        assert!(sm.player.is_tweening());
+        assert_eq!(sm.player.status(), Status::Tweening);
 
         // Trigger a tweened transition (rating=2 → star_2).
         // tween will fail because the player is already tweening,
@@ -416,8 +416,9 @@ mod tests {
             StateMachineEngineStatus::Tweening,
             "state machine should be in Tweening status when tweened transition targets a state without a segment"
         );
-        assert!(
-            sm.player.is_tweening(),
+        assert_eq!(
+            sm.player.status(),
+            Status::Tweening,
             "player should be tweening after a tweened transition to a state without a segment"
         );
 
@@ -461,7 +462,11 @@ mod tests {
             StateMachineEngineStatus::Tweening,
             "state machine should be in Tweening status for a reverse mode state with segment"
         );
-        assert!(sm.player.is_tweening(), "player should be tweening");
+        assert_eq!(
+            sm.player.status(),
+            Status::Tweening,
+            "player should be tweening"
+        );
 
         assert_eq!(sm.get_current_state_name(), "forward_state");
 
@@ -513,7 +518,11 @@ mod tests {
             StateMachineEngineStatus::Tweening,
             "state machine should be in Tweening status for a reverse mode state without segment"
         );
-        assert!(sm.player.is_tweening(), "player should be tweening");
+        assert_eq!(
+            sm.player.status(),
+            Status::Tweening,
+            "player should be tweening"
+        );
 
         assert_eq!(sm.get_current_state_name(), "forward_state");
 

@@ -3,7 +3,7 @@ mod test_utils;
 use std::ffi::CString;
 
 use crate::test_utils::{HEIGHT, WIDTH};
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError, Status};
 
 #[cfg(test)]
 mod tests {
@@ -50,7 +50,11 @@ mod tests {
 
         assert_eq!(player.play(), Ok(()));
 
-        assert!(player.is_playing(), "Expected player to be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Expected player to be playing"
+        );
 
         assert_eq!(
             player.play(),
@@ -127,7 +131,11 @@ mod tests {
 
         assert!(player.is_complete(), "Expected player to be complete");
 
-        assert!(!player.is_playing(), "Expected player to not be playing");
+        assert_ne!(
+            player.status(),
+            Status::Playing,
+            "Expected player to not be playing"
+        );
 
         assert!(
             player.current_frame() == player.total_frames() - 1.0,

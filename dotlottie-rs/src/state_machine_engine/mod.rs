@@ -1408,8 +1408,8 @@ impl<'a> StateMachineEngine<'a> {
 
         self.check_completion();
 
-        let needs_resume =
-            self.status == StateMachineEngineStatus::Tweening && !self.player.is_tweening();
+        let needs_resume = self.status == StateMachineEngineStatus::Tweening
+            && self.player.status() != crate::Status::Tweening;
 
         if needs_resume {
             self.resume_from_tweening();

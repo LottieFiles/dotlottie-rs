@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Status};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -39,9 +39,7 @@ mod tests {
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
         assert!(player.load_animation_path(&path).is_ok());
-        assert!(player.is_playing());
-        assert!(!player.is_paused());
-        assert!(!player.is_stopped());
+        assert_eq!(player.status(), Status::Playing);
         assert!(!player.is_complete());
         assert_eq!(player.current_frame(), 0.0);
 
@@ -73,9 +71,7 @@ mod tests {
 
         assert!(loaded.is_ok());
 
-        assert!(!player.is_playing());
-        assert!(!player.is_paused());
-        assert!(player.is_stopped());
+        assert_eq!(player.status(), Status::Stopped);
         assert!(!player.is_complete());
         assert!(player.current_frame() == 0.0);
 

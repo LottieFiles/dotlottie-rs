@@ -3,7 +3,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError, Mode, Segment};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError, Mode, Segment, Status};
 
 #[cfg(test)]
 mod tests {
@@ -95,7 +95,11 @@ mod tests {
                 "Animation should load"
             );
 
-            assert!(player.is_playing(), "Animation should be playing");
+            assert_eq!(
+                player.status(),
+                Status::Playing,
+                "Animation should be playing"
+            );
 
             let Segment {
                 start: start_frame,
@@ -107,13 +111,19 @@ mod tests {
 
             assert_eq!(player.set_frame(mid_frame), Ok(()), "Frame should be set");
             assert_eq!(player.render(), Ok(()), "Frame should render");
-            assert!(player.is_playing(), "Animation should be playing");
+            assert_eq!(
+                player.status(),
+                Status::Playing,
+                "Animation should be playing"
+            );
 
             assert_eq!(player.stop(), Ok(()), "Animation should stop");
 
-            assert!(!player.is_playing(), "Animation should not be playing");
-            assert!(player.is_stopped(), "Animation should be stopped");
-            assert!(!player.is_paused(), "Animation should not be paused");
+            assert_eq!(
+                player.status(),
+                Status::Stopped,
+                "Animation should be stopped"
+            );
 
             // based on the mode the current frame should be at the start or end
             match player.mode() {

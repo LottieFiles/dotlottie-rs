@@ -181,6 +181,29 @@ mod tests {
     }
 
     #[test]
+    fn pause_during_tweening_returns_error() {
+        let (mut player, _buf) = setup_player();
+
+        player.play().expect("play should succeed");
+
+        player
+            .tween(10.0, 0.5, [0.0, 0.0, 1.0, 1.0])
+            .expect("tween should start");
+        assert_eq!(player.status(), Status::Tweening);
+
+        let result = player.pause();
+        assert!(
+            result.is_err(),
+            "pause() during tweening should return error"
+        );
+        assert_eq!(
+            player.status(),
+            Status::Tweening,
+            "status should remain Tweening after rejected pause"
+        );
+    }
+
+    #[test]
     fn stop_during_tweening_cancels_tween() {
         let (mut player, _buf) = setup_player();
 

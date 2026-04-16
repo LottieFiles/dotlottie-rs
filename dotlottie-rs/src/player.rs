@@ -256,6 +256,7 @@ impl DotLottiePlayer {
         }
         if self.status == Status::Tweening {
             self.tween_state = None;
+            self.resume_status = Status::Stopped;
         }
 
         self.status = Status::Stopped;

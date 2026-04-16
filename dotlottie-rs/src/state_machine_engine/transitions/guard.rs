@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 use crate::{
-    inputs::{InputManager, InputTrait},
+    inputs::InputManager,
     state_machine::{StringBool, StringNumberBool},
 };
 
@@ -116,7 +116,7 @@ impl GuardTrait for Guard {
                                 let value = mut_compare_to.trim_start_matches('$');
                                 let opt_string_value = input.get_string(value);
                                 if let Some(string_value) = opt_string_value {
-                                    mut_compare_to = string_value.clone();
+                                    mut_compare_to = string_value.to_string();
                                 } else {
                                     // Failed to get value from inputs
                                     return false;
@@ -125,10 +125,10 @@ impl GuardTrait for Guard {
 
                             match condition_type {
                                 TransitionGuardConditionType::Equal => {
-                                    return input_value == *mut_compare_to;
+                                    return *input_value == *mut_compare_to;
                                 }
                                 TransitionGuardConditionType::NotEqual => {
-                                    return input_value != *mut_compare_to;
+                                    return *input_value != *mut_compare_to;
                                 }
                                 _ => return false,
                             }

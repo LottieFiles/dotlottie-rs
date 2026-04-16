@@ -2,11 +2,7 @@ use serde::Deserialize;
 
 use crate::errors::StateMachineError;
 
-use super::{
-    inputs::Input,
-    interactions::Interaction,
-    states::{State, StateTrait},
-};
+use super::{inputs::Input, interactions::Interaction, states::State};
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(untagged)]
@@ -69,10 +65,6 @@ impl StateMachine {
 
     pub fn inputs(&self) -> Option<&Vec<Input>> {
         self.inputs.as_ref()
-    }
-
-    pub fn get_state_by_name(&self, name: &str) -> Option<&State> {
-        self.states.iter().find(|state| state.name() == name)
     }
 }
 

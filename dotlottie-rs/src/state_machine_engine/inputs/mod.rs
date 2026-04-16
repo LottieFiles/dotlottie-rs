@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -15,128 +13,157 @@ pub enum Input {
 #[derive(Clone, Debug)]
 pub enum InputValue {
     Numeric(f32),
-    String(String),
     Boolean(bool),
+    String(String),
     Event(String),
 }
 
-pub trait InputTrait {
-    fn set_initial_boolean(&mut self, key: &str, value: bool);
-    fn set_initial_string(&mut self, key: &str, value: String);
-    fn set_initial_numeric(&mut self, key: &str, value: f32);
-    fn set_initial_event(&mut self, key: &str, value: &str);
-    fn new() -> Self;
-    fn set_boolean(&mut self, key: &str, value: bool) -> Option<InputValue>;
-    fn set_string(&mut self, key: &str, value: String) -> Option<InputValue>;
-    fn set_numeric(&mut self, key: &str, value: f32) -> Option<InputValue>;
-    fn get_numeric(&self, key: &str) -> Option<f32>;
-    fn get_string(&self, key: &str) -> Option<String>;
-    fn get_boolean(&self, key: &str) -> Option<bool>;
-    fn get_event(&self, key: &str) -> Option<String>;
-    fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)>;
+#[derive(Clone, Debug)]
+struct InputSlot {
+    name: String,
+    current: InputValue,
+    default: InputValue,
 }
 
 pub struct InputManager {
-    pub inputs: HashMap<String, InputValue>,
-    default_values: HashMap<String, InputValue>,
+    slots: Vec<InputSlot>,
+    sorted: bool,
 }
 
-impl InputTrait for InputManager {
-    fn new() -> Self {
-        let inputs = HashMap::new();
+impl InputManager {
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &InputValue)> {
+        self.slots.iter().map(|s| (s.name.as_ref(), &s.current))
+    }
 
-        // Store defaults
-        let default_values = inputs.clone();
+    pub fn len(&self) -> usize {
+        self.slots.len()
+    }
 
-        InputManager {
-            inputs,
-            default_values,
+    pub fn is_empty(&self) -> bool {
+        self.slots.is_empty()
+    }
+
+    pub fn new() -> Self {
+        Self {
+            slots: Vec::new(),
+            sorted: false,
         }
     }
 
-    fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)> {
-        if let Some(default_value) = self.default_values.get(key) {
-            return Some((
-                self.inputs
-                    .insert(key.to_string(), default_value.clone())
-                    .unwrap_or(default_value.clone()),
-                default_value.clone(),
-            ));
+    /// Call once after all `set_initial_*` to enable binary search.
+    pub fn freeze(&mut self) {
+        self.slots.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+        self.sorted = true;
+    }
+
+    fn find(&self, key: &str) -> Option<&InputSlot> {
+        if self.sorted {
+            self.slots
+                .binary_search_by(|s| s.name.as_str().cmp(key))
+                .ok()
+                .map(|i| &self.slots[i])
+        } else {
+            self.slots.iter().find(|s| s.name.as_str() == key)
         }
-
-        None
     }
 
-    fn set_numeric(&mut self, key: &str, value: f32) -> Option<InputValue> {
-        self.inputs
-            .insert(key.to_string(), InputValue::Numeric(value))
+    fn find_mut(&mut self, key: &str) -> Option<&mut InputSlot> {
+        if self.sorted {
+            self.slots
+                .binary_search_by(|s| s.name.as_str().cmp(key))
+                .ok()
+                .map(|i| &mut self.slots[i])
+        } else {
+            self.slots.iter_mut().find(|s| s.name.as_str() == key)
+        }
     }
 
-    // Get methods for each type
-    fn get_numeric(&self, key: &str) -> Option<f32> {
-        match self.inputs.get(key) {
-            Some(InputValue::Numeric(value)) => Some(*value),
+    fn push_initial(&mut self, name: &str, value: InputValue) {
+        self.slots.push(InputSlot {
+            name: name.into(),
+            current: value.clone(),
+            default: value,
+        });
+        self.sorted = false;
+    }
+
+    pub fn set_initial_numeric(&mut self, key: &str, value: f32) {
+        self.push_initial(key, InputValue::Numeric(value));
+    }
+
+    pub fn set_initial_string(&mut self, key: &str, value: &str) {
+        self.push_initial(key, InputValue::String(value.into()));
+    }
+
+    pub fn set_initial_boolean(&mut self, key: &str, value: bool) {
+        self.push_initial(key, InputValue::Boolean(value));
+    }
+
+    pub fn set_numeric(&mut self, key: &str, value: f32) -> Option<f32> {
+        let slot = self.find_mut(key)?;
+        if let InputValue::Numeric(old) = slot.current {
+            slot.current = InputValue::Numeric(value);
+            Some(old)
+        } else {
+            None
+        }
+    }
+
+    pub fn set_boolean(&mut self, key: &str, value: bool) -> Option<bool> {
+        let slot = self.find_mut(key)?;
+        if let InputValue::Boolean(old) = slot.current {
+            slot.current = InputValue::Boolean(value);
+            Some(old)
+        } else {
+            None
+        }
+    }
+
+    pub fn set_string(&mut self, key: &str, value: &str) -> Option<String> {
+        let slot = self.find_mut(key)?;
+        if let InputValue::String(old) = &mut slot.current {
+            let old_value = old.clone();
+            *old = value.to_string();
+            Some(old_value)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_numeric(&self, key: &str) -> Option<f32> {
+        match self.find(key)?.current {
+            InputValue::Numeric(v) => Some(v),
             _ => None,
         }
     }
 
-    fn set_string(&mut self, key: &str, value: String) -> Option<InputValue> {
-        self.inputs
-            .insert(key.to_string(), InputValue::String(value))
-    }
-
-    fn get_string(&self, key: &str) -> Option<String> {
-        match self.inputs.get(key) {
-            Some(InputValue::String(value)) => Some(value.clone()),
+    pub fn get_boolean(&self, key: &str) -> Option<bool> {
+        match self.find(key)?.current {
+            InputValue::Boolean(v) => Some(v),
             _ => None,
         }
     }
 
-    fn set_boolean(&mut self, key: &str, value: bool) -> Option<InputValue> {
-        self.inputs
-            .insert(key.to_string(), InputValue::Boolean(value))
-    }
-
-    fn get_boolean(&self, key: &str) -> Option<bool> {
-        match self.inputs.get(key) {
-            Some(InputValue::Boolean(value)) => Some(*value),
+    pub fn get_string(&self, key: &str) -> Option<&str> {
+        match &self.find(key)?.current {
+            InputValue::String(v) => Some(v.as_ref()),
             _ => None,
         }
     }
 
-    fn get_event(&self, key: &str) -> Option<String> {
-        match self.inputs.get(key) {
-            Some(InputValue::Event(value)) => Some(value.clone()),
+    pub fn get_event(&self, key: &str) -> Option<&str> {
+        match &self.find(key)?.current {
+            InputValue::Event(v) => Some(v.as_ref()),
             _ => None,
         }
     }
 
-    fn set_initial_numeric(&mut self, key: &str, value: f32) {
-        self.inputs
-            .insert(key.to_string(), InputValue::Numeric(value));
-
-        self.default_values
-            .insert(key.to_string(), InputValue::Numeric(value));
-    }
-
-    fn set_initial_string(&mut self, key: &str, value: String) {
-        self.inputs
-            .insert(key.to_string(), InputValue::String(value.clone()));
-
-        self.default_values
-            .insert(key.to_string(), InputValue::String(value.clone()));
-    }
-
-    fn set_initial_boolean(&mut self, key: &str, value: bool) {
-        self.inputs
-            .insert(key.to_string(), InputValue::Boolean(value));
-
-        self.default_values
-            .insert(key.to_string(), InputValue::Boolean(value));
-    }
-
-    fn set_initial_event(&mut self, key: &str, value: &str) {
-        self.inputs
-            .insert(key.to_string(), InputValue::Event(value.to_string()));
+    /// Resets to default. Returns (old, new) for scalars.
+    pub fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)> {
+        let slot = self.find_mut(key)?;
+        let old = slot.current.clone();
+        let new = slot.default.clone();
+        slot.current = new.clone();
+        Some((old, new))
     }
 }

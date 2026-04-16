@@ -10,6 +10,7 @@ mod fallback_font;
 #[cfg(feature = "tvg")]
 mod thorvg;
 
+pub(crate) use renderer::Point;
 pub use renderer::{
     Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Renderer, Rgba,
     Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
@@ -176,9 +177,7 @@ pub trait LottieRenderer {
 
     fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError>;
 
-    fn get_layer_bounds(&self, layer_name: &str) -> Result<[f32; 8], LottieRendererError>;
-
-    fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, LottieRendererError>;
+    fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, LottieRendererError>;
 
     fn updated(&self) -> bool;
 
@@ -875,15 +874,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn get_layer_bounds(&self, layer_name: &str) -> Result<[f32; 8], LottieRendererError> {
+    fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, LottieRendererError> {
         self.get_animation()?
-            .get_layer_bounds(layer_name)
-            .map_err(into_lottie::<R>)
-    }
-
-    fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, LottieRendererError> {
-        self.get_animation()?
-            .intersect(x, y, layer_name)
+            .hit_test(point, layer_name)
             .map_err(into_lottie::<R>)
     }
 

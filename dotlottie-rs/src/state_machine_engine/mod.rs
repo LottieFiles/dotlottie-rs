@@ -26,7 +26,7 @@ use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEven
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, CompletionEvent, DotLottiePlayer,
-    EventName, Layout, Mode, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
+    EventName, Layout, Mode, Point, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -1027,24 +1027,32 @@ impl<'a> StateMachineEngine<'a> {
 
     fn manage_explicit_events(&mut self, event: &Event, x: f32, y: f32) {
         let mut actions_to_execute: Vec<Action> = Vec::new();
-        let interactions = self.interactions(None);
         let mut entered_layer = self.pointer_management.curr_entered_layer.clone();
 
-        for interaction in interactions {
+        for interaction in self.interactions(None) {
             if interaction.type_name() == event.type_name() {
                 // User defined a specific layer to check if hit
                 if let Some(layer) = interaction.get_layer_name() {
-                    // If we have a pointer down event, we need to check if the pointer is outside of the layer
+                    // If we have a pointer exit event, check if the pointer is outside of the layer
                     if let Event::PointerExit { x, y } = event {
                         if self.pointer_management.curr_entered_layer == layer
-                            && !self.player.intersect(*x, *y, layer)
+                            && !self
+                                .player
+                                .renderer
+                                .hit_test(Point { x: *x, y: *y }, layer)
+                                .unwrap_or(false)
                         {
                             entered_layer = "".to_string();
                             actions_to_execute.extend(interaction.get_actions().clone());
                         }
                     } else {
                         // Hit check will return true if the layer was hit
-                        if self.player.intersect(x, y, layer) {
+                        if self
+                            .player
+                            .renderer
+                            .hit_test(Point { x, y }, layer)
+                            .unwrap_or(false)
+                        {
                             entered_layer = layer.to_string();
                             actions_to_execute.extend(interaction.get_actions().clone());
                         }
@@ -1091,7 +1099,12 @@ impl<'a> StateMachineEngine<'a> {
                 || self.pointer_management.listened_layers[i].1 == event_type_name!(PointerExit))
                 && self
                     .player
-                    .intersect(x, y, &self.pointer_management.listened_layers[i].0)
+                    .renderer
+                    .hit_test(
+                        Point { x, y },
+                        &self.pointer_management.listened_layers[i].0,
+                    )
+                    .unwrap_or(false)
             {
                 hit = true;
 

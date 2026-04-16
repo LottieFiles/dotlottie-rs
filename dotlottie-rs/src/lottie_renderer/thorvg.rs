@@ -776,8 +776,7 @@ mod tests {
     fn load_test_animation() -> (TvgRenderer, TvgAnimation) {
         let renderer = TvgRenderer::new(0);
         let mut animation = TvgAnimation::default();
-        let data =
-            CString::new(include_str!("../../assets/animations/lottie/test.json")).unwrap();
+        let data = CString::new(include_str!("../../assets/animations/lottie/test.json")).unwrap();
         animation.load_data(&data, c"lottie+json").unwrap();
         (renderer, animation)
     }
@@ -803,16 +802,20 @@ mod tests {
     fn test_hit_test_solid_layer_origin_hit() {
         let (_r, animation) = load_test_animation();
         // OBB projection uses inclusive [0,1], so the origin corner is inside.
-        assert!(animation
-            .hit_test(Point { x: 0.0, y: 0.0 }, "B")
-            .unwrap());
+        assert!(animation.hit_test(Point { x: 0.0, y: 0.0 }, "B").unwrap());
     }
 
     #[test]
     fn test_hit_test_outside_bounds_miss() {
         let (_r, animation) = load_test_animation();
         assert!(!animation
-            .hit_test(Point { x: 2000.0, y: 2000.0 }, "B")
+            .hit_test(
+                Point {
+                    x: 2000.0,
+                    y: 2000.0
+                },
+                "B"
+            )
             .unwrap());
     }
 

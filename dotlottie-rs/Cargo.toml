@@ -90,11 +90,11 @@ objc2-app-kit = { version = "0.2", features = ["NSWindow", "NSView", "NSOpenGL"]
 objc2-quartz-core = { version = "0.2", features = ["CAMetalLayer", "CALayer"] }
 
 [profile.release]
-lto = "fat"           # Full link-time optimization across all crates
-opt-level = 3         # "z" is what's affecting frame rate / performance. Keeping it at 3
-strip = "debuginfo"   # Strip debug information
-codegen-units = 1     # Better optimization at cost of compile time
-panic = "abort"       # Remove panic unwinding infrastructure
+lto = "fat"
+opt-level = 3
+debug=true
+codegen-units = 1
+panic = "abort"
 
 [[example]]
 name = "opengl"

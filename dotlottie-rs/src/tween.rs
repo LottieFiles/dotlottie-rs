@@ -1,4 +1,3 @@
-use crate::time::Instant;
 use crate::DotLottiePlayerError;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -12,7 +11,7 @@ pub enum TweenStatus {
 pub(crate) struct TweenState {
     pub from: f32,
     pub to: f32,
-    start_time: Instant,
+    elapsed: f32,
     duration: f32,
     easing: [f32; 4],
 }
@@ -40,18 +39,18 @@ impl TweenState {
         Ok(Self {
             from,
             to,
-            start_time: Instant::now(),
+            elapsed: 0.0,
             duration,
             easing,
         })
     }
 
-    /// Compute the current eased progress based on elapsed time.
+    /// Advance the tween by `dt` milliseconds and compute eased progress.
     /// Returns `(status, progress)` where progress is in [0.0, 1.0]
     /// (or beyond if the easing curve overshoots).
-    pub fn update(&self) -> (TweenStatus, f32) {
-        let elapsed = Instant::now().duration_since(self.start_time);
-        let t = elapsed.as_secs_f32() / self.duration;
+    pub fn update(&mut self, dt: f32) -> (TweenStatus, f32) {
+        self.elapsed += dt;
+        let t = self.elapsed / self.duration;
 
         if t >= 1.0 {
             (TweenStatus::Completed, 1.0)
@@ -66,6 +65,7 @@ impl TweenState {
 mod bezier {
     /// Computes the x-coordinate of the cubic Bézier for parameter `u`.
     /// P0 = 0, P1 = (x1, _), P2 = (x2, _), P3 = 1.
+    #[inline]
     fn sample_curve_x(u: f32, x1: f32, x2: f32) -> f32 {
         let inv_u = 1.0 - u;
         3.0 * inv_u * inv_u * u * x1 + 3.0 * inv_u * u * u * x2 + u * u * u
@@ -73,18 +73,21 @@ mod bezier {
 
     /// Computes the y-coordinate of the cubic Bézier for parameter `u`.
     /// P0 = 0, P1 = (_, y1), P2 = (_, y2), P3 = 1.
+    #[inline]
     fn sample_curve_y(u: f32, y1: f32, y2: f32) -> f32 {
         let inv_u = 1.0 - u;
         3.0 * inv_u * inv_u * u * y1 + 3.0 * inv_u * u * u * y2 + u * u * u
     }
 
     /// Computes the derivative dx/du for a given u.
+    #[inline]
     fn sample_curve_derivative_x(u: f32, x1: f32, x2: f32) -> f32 {
         let inv_u = 1.0 - u;
         3.0 * inv_u * inv_u * x1 + 6.0 * inv_u * u * (x2 - x1) + 3.0 * u * u * (1.0 - x2)
     }
 
     /// Uses binary subdivision to find a parameter u such that sample_curve_x(u) ≈ t.
+    #[inline]
     fn binary_subdivide(t: f32, x1: f32, x2: f32) -> f32 {
         let mut a = 0.0;
         let mut b = 1.0;

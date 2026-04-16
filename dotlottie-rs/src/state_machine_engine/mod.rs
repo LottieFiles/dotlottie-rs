@@ -646,11 +646,11 @@ impl<'a> StateMachineEngine<'a> {
 
             // Now use the extracted information
             if let Some(state) = state {
+                let _ = state.enter(self);
+
                 if let Some(target_frame) = self.tween_target_frame.take() {
                     self.player.sync_tween_frame(target_frame);
                 }
-
-                let _ = state.enter(self);
 
                 // Don't forget to put things back
                 // new_state becomes the current state
@@ -1390,8 +1390,8 @@ impl<'a> StateMachineEngine<'a> {
         }
     }
 
-    pub fn tick(&mut self) -> Result<(), crate::DotLottiePlayerError> {
-        let ticked = self.player.tick();
+    pub fn tick(&mut self, dt: f32) -> Result<bool, crate::DotLottiePlayerError> {
+        let ticked = self.player.tick(dt);
 
         self.check_completion();
 

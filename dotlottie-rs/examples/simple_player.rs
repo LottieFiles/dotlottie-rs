@@ -7,6 +7,8 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::path::PathBuf;
 
+mod common;
+
 pub const WIDTH: usize = 500;
 pub const HEIGHT: usize = 500;
 
@@ -109,8 +111,10 @@ fn main() {
 
     let mut left_was_down = false;
     let mut right_was_down = false;
+    let mut clock = common::Clock::new();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        let dt = clock.dt();
         let left_is_down = window.is_key_down(Key::Left);
         let right_is_down = window.is_key_down(Key::Right);
 
@@ -156,7 +160,7 @@ fn main() {
             }
         }
 
-        if player.tick().is_ok() {
+        if player.tick(dt).unwrap_or(false) {
             window
                 .update_with_buffer(&buffer, current_width, current_height)
                 .unwrap();

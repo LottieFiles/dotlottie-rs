@@ -808,21 +808,6 @@ pub unsafe extern "C" fn dotlottie_audio_volume(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_request_frame(
-    ptr: *mut DotLottiePlayer,
-    result: *mut f32,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if !result.is_null() {
-            *result = dotlottie_player.request_frame();
-            DotLottieResult::Success
-        } else {
-            DotLottieResult::InvalidParameter
-        }
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn dotlottie_set_frame(
     ptr: *mut DotLottiePlayer,
     no: f32,
@@ -831,35 +816,40 @@ pub unsafe extern "C" fn dotlottie_set_frame(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_seek(ptr: *mut DotLottiePlayer, no: f32) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player.seek(no))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn dotlottie_render(ptr: *mut DotLottiePlayer) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player.render())
 }
 
-/// This is the primary method for animating in a render loop.
+/// Advance the animation by `dt` seconds and render if the frame changed.
 ///
-/// It operates on a simple principle: on every call it will calculate the
-/// next frame in the animation and render it. After that you just display
-/// it.
-/// `next_frame` is calculated based on multiple factors: the current frame
-/// and the frame rate of the animation and the amount of time since the previous call.
-/// Use the [DotLottiePlayer::request_frame()] method to query what frame will
-/// be set and rendered on the next call to this method.
+/// If `rendered` is non-null, writes `true` when a new frame was rendered
+/// and `false` when the frame was unchanged.
 ///
 /// Example of the usage
 /// ```c
+///     double last = get_time_ms();
+///     bool rendered;
 ///     while(true) {
-///       dotlottie_tick(player);
-///       display(buffer, width, height);
+///       double now = get_time_ms();
+///       float dt = (float)(now - last);
+///       last = now;
+///       dotlottie_tick(player, dt, &rendered);
+///       if (rendered) display(buffer, width, height);
 ///     }
 /// ```
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_tick(ptr: *mut DotLottiePlayer) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player.tick())
+pub unsafe extern "C" fn dotlottie_tick(
+    ptr: *mut DotLottiePlayer,
+    dt: f32,
+    rendered: *mut bool,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player.tick(dt).map(
+        |did_render| {
+            if !rendered.is_null() {
+                *rendered = did_render;
+            }
+        }
+    ))
 }
 
 #[no_mangle]
@@ -1891,11 +1881,16 @@ pub unsafe extern "C" fn dotlottie_state_machine_release(sm: *mut DotLottieState
     }
 }
 
-/// Tick the state machine (advances animation and processes state logic)
+/// Tick the state machine (advances animation by `dt` milliseconds and processes state logic).
+///
+/// If `rendered` is non-null, writes `true` when a new frame was rendered
+/// and `false` when the frame was unchanged.
 #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_state_machine_tick(
     sm: *mut DotLottieStateMachine,
+    dt: f32,
+    rendered: *mut bool,
 ) -> DotLottieResult {
     #[cfg(not(feature = "state-machines"))]
     {
@@ -1903,7 +1898,13 @@ pub unsafe extern "C" fn dotlottie_state_machine_tick(
     }
     #[cfg(feature = "state-machines")]
     {
-        exec_state_machine_op!(sm, |state_machine| state_machine.tick())
+        exec_state_machine_op!(sm, |state_machine| state_machine.tick(dt).map(
+            |did_render| {
+                if !rendered.is_null() {
+                    *rendered = did_render;
+                }
+            }
+        ))
     }
 }
 

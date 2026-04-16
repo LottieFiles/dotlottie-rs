@@ -38,7 +38,7 @@ define wasm_build
 		--target web \
 		--typescript
 	@if command -v wasm-opt >/dev/null 2>&1; then \
-		wasm-opt $(3)/dotlottie_rs_bg.wasm -o $(3)/dotlottie_rs_bg.wasm -O; \
+		wasm-opt $(3)/dotlottie_rs_bg.wasm -o $(3)/dotlottie_rs_bg.wasm -O3; \
 	fi
 endef
 

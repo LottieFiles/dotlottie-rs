@@ -11,7 +11,6 @@ mod result;
 mod state_machine_engine;
 #[cfg(feature = "theming")]
 mod theme;
-pub(crate) mod time;
 mod tween;
 
 #[cfg(feature = "c_api")]

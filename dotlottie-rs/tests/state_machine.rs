@@ -361,7 +361,7 @@ mod tests {
 
         // Pre-start a tween so the next tween call fails
         sm.player
-            .tween(5.0, 2.0, [0.0, 0.0, 1.0, 1.0])
+            .tween(5.0, 2000.0, [0.0, 0.0, 1.0, 1.0])
             .expect("initial tween should succeed");
         assert!(sm.player.is_tweening());
 
@@ -465,8 +465,8 @@ mod tests {
 
         assert_eq!(sm.get_current_state_name(), "forward_state");
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        let _ = sm.tick();
+        // Pass enough dt to complete the 1ms tween
+        let _ = sm.tick(10.0);
 
         assert_eq!(
             sm.get_current_state_name(),
@@ -517,8 +517,8 @@ mod tests {
 
         assert_eq!(sm.get_current_state_name(), "forward_state");
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        let _ = sm.tick();
+        // Pass enough dt to complete the 1ms tween
+        let _ = sm.tick(10.0);
 
         assert_eq!(
             sm.get_current_state_name(),

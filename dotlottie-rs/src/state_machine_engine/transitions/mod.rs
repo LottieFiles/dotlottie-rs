@@ -51,7 +51,7 @@ impl TransitionTrait for Transition {
     fn duration(&self) -> f32 {
         match self {
             Transition::Transition { .. } => 0.0,
-            Transition::Tweened { duration, .. } => *duration,
+            Transition::Tweened { duration, .. } => *duration * 1000.0,
         }
     }
 

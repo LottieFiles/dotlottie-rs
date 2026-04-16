@@ -4,6 +4,8 @@
 */
 #![allow(clippy::print_stdout)]
 
+mod common;
+
 // This example requires OpenGL support, which is only available with specific features
 // ==============================================================================
 // OpenGL Implementation (only compiled when features are available)
@@ -92,6 +94,7 @@ mod opengl_impl {
         gl_surface: Option<Surface<WindowSurface>>,
         player: Option<DotLottiePlayer>,
         first_render: bool,
+        clock: super::common::Clock,
     }
 
     impl App {
@@ -102,6 +105,7 @@ mod opengl_impl {
                 gl_surface: None,
                 player: None,
                 first_render: true,
+                clock: super::common::Clock::new(),
             }
         }
 
@@ -343,7 +347,8 @@ mod opengl_impl {
                     gl::Clear(gl::COLOR_BUFFER_BIT);
                 }
 
-                let rendered = player.tick().is_ok();
+                let dt = self.clock.dt();
+                let rendered = player.tick(dt).unwrap_or(false);
 
                 // Debug: Check if rendering actually happened
                 static mut FRAME_COUNT: u32 = 0;

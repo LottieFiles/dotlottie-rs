@@ -457,7 +457,7 @@ impl TvgAnimation {
             tvg::tvg_animation_get_duration(self.raw_animation, &mut duration as *mut f32)
                 .into_result()
         }?;
-        Ok(duration)
+        Ok(duration * 1000.0)
     }
 
     fn get_layer_obb(&self, layer_name: &str) -> Result<Option<[tvg::Tvg_Point; 4]>, TvgError> {

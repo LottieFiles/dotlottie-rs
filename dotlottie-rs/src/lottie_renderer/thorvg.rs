@@ -771,4 +771,74 @@ mod tests {
             handle.join().expect("Thread panicked");
         }
     }
+
+    /// Load test.json (1500×1500, layers: "B" solid, "R"/"E" shapes) into a fresh TvgAnimation.
+    fn load_test_animation() -> (TvgRenderer, TvgAnimation) {
+        let renderer = TvgRenderer::new(0);
+        let mut animation = TvgAnimation::default();
+        let data =
+            CString::new(include_str!("../../assets/animations/lottie/test.json")).unwrap();
+        animation.load_data(&data, c"lottie+json").unwrap();
+        (renderer, animation)
+    }
+
+    #[test]
+    fn test_hit_test_nonexistent_layer_returns_false() {
+        let (_r, animation) = load_test_animation();
+        assert!(!animation
+            .hit_test(Point { x: 750.0, y: 750.0 }, "nonexistent")
+            .unwrap());
+    }
+
+    #[test]
+    fn test_hit_test_solid_layer_center_hit() {
+        let (_r, animation) = load_test_animation();
+        // "B" spans (0,0)–(1500,1500). Center point is clearly inside.
+        assert!(animation
+            .hit_test(Point { x: 750.0, y: 750.0 }, "B")
+            .unwrap());
+    }
+
+    #[test]
+    fn test_hit_test_solid_layer_origin_hit() {
+        let (_r, animation) = load_test_animation();
+        // OBB projection uses inclusive [0,1], so the origin corner is inside.
+        assert!(animation
+            .hit_test(Point { x: 0.0, y: 0.0 }, "B")
+            .unwrap());
+    }
+
+    #[test]
+    fn test_hit_test_outside_bounds_miss() {
+        let (_r, animation) = load_test_animation();
+        assert!(!animation
+            .hit_test(Point { x: 2000.0, y: 2000.0 }, "B")
+            .unwrap());
+    }
+
+    #[test]
+    fn test_hit_test_negative_coords_miss() {
+        let (_r, animation) = load_test_animation();
+        assert!(!animation
+            .hit_test(Point { x: -10.0, y: -10.0 }, "B")
+            .unwrap());
+    }
+
+    #[test]
+    fn test_hit_test_shape_layer_inside_obb() {
+        let (_r, animation) = load_test_animation();
+        // "E" has OBB (560,404)–(940,784). A centred point should hit.
+        assert!(animation
+            .hit_test(Point { x: 750.0, y: 600.0 }, "E")
+            .unwrap());
+    }
+
+    #[test]
+    fn test_hit_test_shape_layer_outside_obb() {
+        let (_r, animation) = load_test_animation();
+        // "R" has OBB (560,784)–(940,1122). (750,750) is above its top edge.
+        assert!(!animation
+            .hit_test(Point { x: 750.0, y: 750.0 }, "R")
+            .unwrap());
+    }
 }

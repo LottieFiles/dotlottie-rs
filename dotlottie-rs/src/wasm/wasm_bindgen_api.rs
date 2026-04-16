@@ -732,17 +732,6 @@ impl DotLottiePlayerWasm {
         self.player.reset_slots()
     }
 
-    // ── Layer inspection ──────────────────────────────────────────────────────
-
-    pub fn intersect(&self, x: f32, y: f32, layer_name: &str) -> bool {
-        self.player.intersect(x, y, layer_name)
-    }
-
-    /// Returns `[x, y, width, height]` of the layer's bounding box.
-    pub fn get_layer_bounds(&self, layer_name: &str) -> Float32Array {
-        vec_to_f32array(self.player.get_layer_bounds(layer_name))
-    }
-
     // ── Transform ─────────────────────────────────────────────────────────────
 
     /// Returns the current affine transform as a flat `Float32Array`.

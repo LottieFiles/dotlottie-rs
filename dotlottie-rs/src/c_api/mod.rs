@@ -7,7 +7,7 @@ use crate::lottie_renderer::{
     ColorSlot, ColorValue, GlContext, GlDisplay, GlSurface, ImageSlot, PositionSlot, ScalarSlot,
     ScalarValue, TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
 };
-use crate::{DotLottiePlayer, DotLottiePlayerError, LayerBoundingBox, Layout, Mode, Rgba, Segment};
+use crate::{DotLottiePlayer, DotLottiePlayerError, Layout, Mode, Rgba, Segment};
 
 use crate::ColorSpace;
 
@@ -1631,39 +1631,6 @@ pub unsafe extern "C" fn dotlottie_animation_size(
         }
 
         DotLottieResult::Error
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_get_layer_bounds(
-    ptr: *mut DotLottiePlayer,
-    layer_name: *const c_char,
-    result: *mut LayerBoundingBox,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if layer_name.is_null() || result.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let name = CStr::from_ptr(layer_name);
-        match name.to_str() {
-            Ok(name_str) => match dotlottie_player.get_layer_bounds(name_str).as_slice() {
-                [x1, y1, x2, y2, x3, y3, x4, y4] => {
-                    *result = LayerBoundingBox {
-                        x1: *x1,
-                        y1: *y1,
-                        x2: *x2,
-                        y2: *y2,
-                        x3: *x3,
-                        y3: *y3,
-                        x4: *x4,
-                        y4: *y4,
-                    };
-                    DotLottieResult::Success
-                }
-                _ => DotLottieResult::Error,
-            },
-            Err(_) => DotLottieResult::InvalidParameter,
-        }
     })
 }
 

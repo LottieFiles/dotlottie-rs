@@ -1,16 +1,19 @@
 use std::{
+    cell::RefCell,
     error::Error,
     ffi::{c_char, CStr, CString},
     fmt, ptr,
     result::Result,
 };
 
+use rustc_hash::FxHashMap;
+
 #[cfg(feature = "tvg-ttf")]
 use crate::lottie_renderer::fallback_font;
 
 use super::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Renderer, Rgba,
-    Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Point, Renderer,
+    Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 
 #[expect(non_upper_case_globals)]
@@ -380,6 +383,32 @@ impl Drop for TvgRenderer {
     }
 }
 
+struct LayerIdMap {
+    cache: RefCell<FxHashMap<String, u32>>,
+}
+
+impl LayerIdMap {
+    fn new() -> Self {
+        Self {
+            cache: RefCell::new(FxHashMap::default()),
+        }
+    }
+
+    fn get_or_insert(&self, layer_name: &str) -> Result<u32, TvgError> {
+        if let Some(&id) = self.cache.borrow().get(layer_name) {
+            return Ok(id);
+        }
+        let cstr = CString::new(layer_name).map_err(|_| TvgError::InvalidArgument)?;
+        let id = unsafe { tvg::tvg_accessor_generate_id(cstr.as_ptr()) };
+        self.cache.borrow_mut().insert(layer_name.to_owned(), id);
+        Ok(id)
+    }
+
+    fn clear(&self) {
+        self.cache.borrow_mut().clear();
+    }
+}
+
 pub struct TvgAnimation {
     raw_animation: tvg::Tvg_Animation,
     raw_paint: tvg::Tvg_Paint,
@@ -388,6 +417,7 @@ pub struct TvgAnimation {
     markers: Vec<Marker>,
     total_frames: f32,
     duration: f32,
+    layer_id_map: LayerIdMap,
 }
 
 impl Default for TvgAnimation {
@@ -403,6 +433,7 @@ impl Default for TvgAnimation {
             markers: Vec::new(),
             total_frames: 0.0,
             duration: 0.0,
+            layer_id_map: LayerIdMap::new(),
         }
     }
 }
@@ -461,12 +492,10 @@ impl TvgAnimation {
     }
 
     fn get_layer_obb(&self, layer_name: &str) -> Result<Option<[tvg::Tvg_Point; 4]>, TvgError> {
+        let layer_id = self.layer_id_map.get_or_insert(layer_name)?;
         unsafe {
             let mut obb: [tvg::Tvg_Point; 4] = [tvg::Tvg_Point { x: 0.0, y: 0.0 }; 4];
-            let paint = self.raw_paint;
-            let layer_name_cstr = CString::new(layer_name).expect("Failed to create CString");
-            let layer_id = tvg::tvg_accessor_generate_id(layer_name_cstr.as_ptr());
-            let layer_paint = tvg::tvg_picture_get_paint(paint, layer_id);
+            let layer_paint = tvg::tvg_picture_get_paint(self.raw_paint, layer_id);
 
             if !layer_paint.is_null() {
                 tvg::tvg_paint_get_obb(layer_paint as tvg::Tvg_Paint, obb.as_mut_ptr());
@@ -519,6 +548,7 @@ impl Animation for TvgAnimation {
                 self.total_frames = self.get_total_frame()?;
                 self.duration = self.get_duration()?;
                 self.load_markers();
+                self.layer_id_map.clear();
                 Ok(())
             }
             Err(e) => {
@@ -526,57 +556,40 @@ impl Animation for TvgAnimation {
                 self.markers.clear();
                 self.total_frames = 0.0;
                 self.duration = 0.0;
+                self.layer_id_map.clear();
                 Err(e)
             }
         }
     }
 
-    fn intersect(&self, _x: f32, _y: f32, _layer_name: &str) -> Result<bool, TvgError> {
-        if let Some(obb) = self.get_layer_obb(_layer_name)? {
-            let e1 = tvg::Tvg_Point {
-                x: obb[1].x - obb[0].x,
-                y: obb[1].y - obb[0].y,
-            };
-            let e2 = tvg::Tvg_Point {
-                x: obb[3].x - obb[0].x,
-                y: obb[3].y - obb[0].y,
-            };
-            let o = tvg::Tvg_Point {
-                x: _x - obb[0].x,
-                y: _y - obb[0].y,
-            };
-            let u = (o.x * e1.x + o.y * e1.y) / (e1.x * e1.x + e1.y * e1.y);
-            let v = (o.x * e2.x + o.y * e2.y) / (e2.x * e2.x + e2.y * e2.y);
+    fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, TvgError> {
+        if let Some(obb) = self.get_layer_obb(layer_name)? {
+            // OBB edge vectors from the origin corner
+            let (e1x, e1y) = (obb[1].x - obb[0].x, obb[1].y - obb[0].y);
+            let (e2x, e2y) = (obb[3].x - obb[0].x, obb[3].y - obb[0].y);
 
-            // Check if point is inside the OBB
-            Ok((0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v))
-        } else {
-            Ok(false)
-        }
-    }
+            let e1_len_sq = e1x * e1x + e1y * e1y;
+            let e2_len_sq = e2x * e2x + e2y * e2y;
 
-    fn get_layer_bounds(&self, _layer_name: &str) -> Result<[f32; 8], TvgError> {
-        if let Some(obb) = self.get_layer_obb(_layer_name)? {
-            // Return the 8 points out of obb
-            let mut point_vec: Vec<f32> = Vec::with_capacity(8);
-
-            for item in &obb {
-                point_vec.push(item.x);
-                point_vec.push(item.y);
+            // Degenerate OBB (zero-area layer) — cannot contain any point
+            if e1_len_sq == 0.0 || e2_len_sq == 0.0 {
+                return Ok(false);
             }
 
-            Ok([
-                point_vec[0],
-                point_vec[1],
-                point_vec[2],
-                point_vec[3],
-                point_vec[4],
-                point_vec[5],
-                point_vec[6],
-                point_vec[7],
-            ])
+            // Vector from OBB origin to the test point
+            let (ox, oy) = (point.x - obb[0].x, point.y - obb[0].y);
+
+            // Project onto first edge — early exit if outside [0, 1]
+            let u = (ox * e1x + oy * e1y) / e1_len_sq;
+            if !(0.0..=1.0).contains(&u) {
+                return Ok(false);
+            }
+
+            // Project onto second edge
+            let v = (ox * e2x + oy * e2y) / e2_len_sq;
+            Ok((0.0..=1.0).contains(&v))
         } else {
-            Err(TvgError::Unknown)
+            Ok(false)
         }
     }
 

@@ -1,6 +1,13 @@
 use core::error;
 use std::ffi::{CStr, CString};
 
+// A 2D vector for representing a point
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Point {
+    pub x: f32,
+    pub y: f32,
+}
+
 /// A frame range within a Lottie animation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Segment {
@@ -229,9 +236,7 @@ pub trait Animation: Default {
 
     fn load_data(&mut self, data: &CStr, mimetype: &CStr) -> Result<(), Self::Error>;
 
-    fn intersect(&self, x: f32, y: f32, layer_name: &str) -> Result<bool, Self::Error>;
-
-    fn get_layer_bounds(&self, layer_name: &str) -> Result<[f32; 8], Self::Error>;
+    fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Self::Error>;
 
     fn get_size(&self) -> Result<(f32, f32), Self::Error>;
 

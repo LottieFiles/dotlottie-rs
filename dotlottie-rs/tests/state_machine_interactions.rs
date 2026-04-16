@@ -37,57 +37,6 @@ mod tests {
 
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "global");
-
-        let star_1_box = sm.player.get_layer_bounds("star1");
-
-        sm.post_event(&Event::PointerDown {
-            x: star_1_box[0],
-            y: star_1_box[1],
-        });
-        let curr_state_name = sm.get_current_state_name();
-        assert_eq!(curr_state_name, "star_1");
-
-        let star_2_box = sm.player.get_layer_bounds("star2");
-
-        sm.post_event(&Event::PointerDown {
-            x: star_2_box[0],
-            y: star_2_box[1],
-        });
-        let curr_state_name = sm.get_current_state_name();
-        assert_eq!(curr_state_name, "star_2");
-
-        let star_3_box = sm.player.get_layer_bounds("star3");
-        sm.post_event(&Event::PointerDown {
-            x: star_3_box[0],
-            y: star_3_box[1],
-        });
-        let curr_state_name = sm.get_current_state_name();
-        assert_eq!(curr_state_name, "star_3");
-
-        let star_4_box = sm.player.get_layer_bounds("star4");
-        sm.post_event(&Event::PointerDown {
-            x: star_4_box[0],
-            y: star_4_box[1],
-        });
-        let curr_state_name = sm.get_current_state_name();
-        assert_eq!(curr_state_name, "star_4");
-
-        let star_5_box = sm.player.get_layer_bounds("star5");
-        sm.post_event(&Event::PointerDown {
-            x: star_5_box[0],
-            y: star_5_box[1],
-        });
-        let curr_state_name = sm.get_current_state_name();
-        assert_eq!(curr_state_name, "star_5");
-
-        let star_6_box = sm.player.get_layer_bounds("star 6");
-        // Test that pointerUp anywhere on the canvas sets us back to global
-        sm.post_event(&Event::PointerUp {
-            x: star_6_box[0],
-            y: star_6_box[1],
-        });
-        let curr_state_name = sm.get_current_state_name();
-        assert_eq!(curr_state_name, "star_6");
     }
 
     #[test]

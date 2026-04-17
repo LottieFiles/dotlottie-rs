@@ -168,9 +168,7 @@ mod thorvg {
         std::env::var("CARGO_CFG_UNIX").is_ok()
     }
 
-    const EXCLUDED_CPP: &[&str] = &[
-        "tvgLoader.cpp",
-    ];
+    const EXCLUDED_CPP: &[&str] = &["tvgLoader.cpp"];
 
     pub(super) fn collect_files(dir: &str) -> Vec<String> {
         let mut files = Vec::new();

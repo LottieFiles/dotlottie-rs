@@ -139,6 +139,15 @@ unsafe extern "C" fn __cxa_atexit(
 }
 
 #[no_mangle]
+unsafe extern "C" fn __cxa_thread_atexit(
+    _func: extern "C" fn(*const ()),
+    _arg: *const (),
+    _dso_handle: *const (),
+) -> u32 {
+    0
+}
+
+#[no_mangle]
 unsafe extern "C" fn abort() -> ! {
     process::abort()
 }
@@ -495,6 +504,21 @@ unsafe extern "C" fn asinh(x: f64) -> f64 {
 
 #[no_mangle]
 unsafe extern "C" fn atanh(x: f64) -> f64 {
+    x.atanh()
+}
+
+#[no_mangle]
+unsafe extern "C" fn acoshf(x: f32) -> f32 {
+    x.acosh()
+}
+
+#[no_mangle]
+unsafe extern "C" fn asinhf(x: f32) -> f32 {
+    x.asinh()
+}
+
+#[no_mangle]
+unsafe extern "C" fn atanhf(x: f32) -> f32 {
     x.atanh()
 }
 

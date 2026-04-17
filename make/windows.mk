@@ -3,7 +3,7 @@ comma := ,
 
 # Default Rust features for Windows builds
 WINDOWS_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
-WINDOWS_DEFAULT_FEATURES = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
+WINDOWS_DEFAULT_FEATURES = tvg,tvg-cpu,c_api,dotlottie,state-machines,theming
 
 ifdef FEATURES
 	WINDOWS_FEATURES = $(FEATURES)

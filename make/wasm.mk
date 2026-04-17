@@ -1,5 +1,5 @@
 WASM_TARGET  := wasm32-unknown-unknown
-WASM_FEATURES_COMMON := tvg,tvg-sw,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-lottie-expressions,dotlottie,theming,state-machines,wasm-bindgen-api
+WASM_FEATURES_COMMON := tvg,tvg-cpu,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-lottie-expressions,dotlottie,theming,state-machines,wasm-bindgen-api
 WASM_MANIFEST := dotlottie-rs/Cargo.toml
 WASM_ARTIFACT := dotlottie-rs/target/$(WASM_TARGET)/release/dotlottie_rs.wasm
 

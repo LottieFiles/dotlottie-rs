@@ -1,4 +1,4 @@
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError, Status};
 use std::ffi::CString;
 
 mod test_utils;
@@ -42,7 +42,7 @@ mod tests {
         );
         assert_eq!(player.theme_id(), Some(valid_theme_id.as_c_str()));
 
-        assert!(player.is_playing());
+        assert_eq!(player.status(), Status::Playing);
     }
 
     #[test]
@@ -76,7 +76,7 @@ mod tests {
             "Expected theme to not load"
         );
 
-        assert!(player.is_playing());
+        assert_eq!(player.status(), Status::Playing);
     }
 
     #[test]
@@ -178,7 +178,7 @@ mod tests {
         assert_eq!(player.load_animation_data(&data), Ok(()));
         assert!(player.theme_id().is_none());
 
-        assert!(player.is_playing());
+        assert_eq!(player.status(), Status::Playing);
     }
 
     #[test]
@@ -216,7 +216,7 @@ mod tests {
         assert_eq!(player.load_animation_path(&path), Ok(()));
         assert!(player.theme_id().is_none());
 
-        assert!(player.is_playing());
+        assert_eq!(player.status(), Status::Playing);
     }
 
     #[test]
@@ -252,7 +252,7 @@ mod tests {
             .is_ok());
         assert!(player.theme_id().is_none());
 
-        assert!(player.is_playing());
+        assert_eq!(player.status(), Status::Playing);
     }
 
     #[test]
@@ -290,6 +290,6 @@ mod tests {
             "Theme should persist after load_animation within the same .lottie container"
         );
 
-        assert!(player.is_playing());
+        assert_eq!(player.status(), Status::Playing);
     }
 }

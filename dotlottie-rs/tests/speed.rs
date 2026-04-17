@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, Segment};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Segment, Status};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -106,7 +106,11 @@ mod tests {
                 player.load_animation_path(&path).is_ok(),
                 "Animation should load"
             );
-            assert!(player.is_playing(), "Animation should be playing");
+            assert_eq!(
+                player.status(),
+                Status::Playing,
+                "Animation should be playing"
+            );
 
             let seg = player.segment().unwrap();
             let expected_duration =

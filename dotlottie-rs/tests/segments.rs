@@ -3,7 +3,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, Mode, Segment};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Mode, Segment, Status};
 
 #[cfg(test)]
 mod tests {
@@ -33,7 +33,11 @@ mod tests {
         }));
         assert!(result.is_err(), "Invalid segment should be rejected");
 
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
 
         let total_frames = player.total_frames();
 

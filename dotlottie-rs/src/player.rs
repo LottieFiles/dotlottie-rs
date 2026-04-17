@@ -18,10 +18,14 @@ use crate::{DotLottieManager, Manifest};
 #[cfg(feature = "state-machines")]
 use crate::{StateMachineEngine, StateMachineEngineError};
 
-pub enum PlaybackState {
-    Playing,
-    Paused,
-    Stopped,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub enum Status {
+    Idle = 0,
+    Playing = 1,
+    Paused = 2,
+    Stopped = 3,
+    Tweening = 4,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
@@ -57,8 +61,7 @@ pub enum CompletionEvent {
 
 pub struct DotLottiePlayer {
     pub(crate) renderer: Box<dyn LottieRenderer>,
-    playback_state: PlaybackState,
-    is_loaded: bool,
+    status: Status,
     elapsed_frames: f32,
     current_loop_count: u32,
     #[cfg(feature = "dotlottie")]
@@ -69,7 +72,7 @@ pub struct DotLottiePlayer {
     active_marker: Option<CString>,
     event_queue: EventQueue<DotLottieEvent>,
     completion_event: CompletionEvent,
-    // Playback config properties
+    // Config properties
     mode: Mode,
     loop_animation: bool,
     loop_count: u32,
@@ -78,6 +81,7 @@ pub struct DotLottiePlayer {
     autoplay: bool,
     layout: Layout,
     tween_state: Option<TweenState>,
+    resume_status: Status,
     #[cfg(feature = "theming")]
     theme_id: Option<CString>,
     #[cfg(feature = "dotlottie")]
@@ -119,8 +123,7 @@ impl DotLottiePlayer {
     pub fn with_renderer<R: Renderer>(renderer: R) -> Self {
         DotLottiePlayer {
             renderer: <dyn LottieRenderer>::new(renderer),
-            playback_state: PlaybackState::Stopped,
-            is_loaded: false,
+            status: Status::Idle,
             elapsed_frames: 0.0,
             current_loop_count: 0,
             mode: Mode::Forward,
@@ -131,6 +134,7 @@ impl DotLottiePlayer {
             autoplay: false,
             layout: Layout::default(),
             tween_state: None,
+            resume_status: Status::Stopped,
             #[cfg(feature = "theming")]
             theme_id: None,
             #[cfg(feature = "dotlottie")]
@@ -180,34 +184,20 @@ impl DotLottiePlayer {
         self.renderer.segment().map_or(0.0, |seg| seg.end)
     }
 
-    pub fn is_loaded(&self) -> bool {
-        self.is_loaded
-    }
-
     #[inline]
-    pub fn is_playing(&self) -> bool {
-        matches!(self.playback_state, PlaybackState::Playing)
-    }
-
-    #[inline]
-    pub fn is_paused(&self) -> bool {
-        matches!(self.playback_state, PlaybackState::Paused)
-    }
-
-    #[inline]
-    pub fn is_stopped(&self) -> bool {
-        matches!(self.playback_state, PlaybackState::Stopped)
+    pub fn status(&self) -> Status {
+        self.status
     }
 
     pub fn play(&mut self) -> Result<(), DotLottiePlayerError> {
-        if !self.is_loaded {
+        if self.status == Status::Idle {
             return Err(DotLottiePlayerError::AnimationNotLoaded);
         }
-        if self.is_playing() {
+        if self.status == Status::Playing || self.status == Status::Tweening {
             return Err(DotLottiePlayerError::InsufficientCondition);
         }
 
-        if self.is_complete() && self.is_stopped() {
+        if self.is_complete() && self.status == Status::Stopped {
             self.elapsed_frames = 0.0;
             match self.mode {
                 Mode::Forward | Mode::Bounce => {
@@ -227,7 +217,7 @@ impl DotLottiePlayer {
             };
         }
 
-        self.playback_state = PlaybackState::Playing;
+        self.status = Status::Playing;
 
         #[cfg(feature = "audio")]
         if let Some(am) = &mut self.audio_manager {
@@ -240,13 +230,13 @@ impl DotLottiePlayer {
     }
 
     pub fn pause(&mut self) -> Result<(), DotLottiePlayerError> {
-        if !self.is_loaded {
+        if self.status == Status::Idle {
             return Err(DotLottiePlayerError::AnimationNotLoaded);
         }
-        if !self.is_playing() {
+        if self.status != Status::Playing {
             return Err(DotLottiePlayerError::InsufficientCondition);
         }
-        self.playback_state = PlaybackState::Paused;
+        self.status = Status::Paused;
 
         #[cfg(feature = "audio")]
         if let Some(am) = &mut self.audio_manager {
@@ -258,14 +248,18 @@ impl DotLottiePlayer {
     }
 
     pub fn stop(&mut self) -> Result<(), DotLottiePlayerError> {
-        if !self.is_loaded {
+        if self.status == Status::Idle {
             return Err(DotLottiePlayerError::AnimationNotLoaded);
         }
-        if self.is_stopped() {
+        if self.status == Status::Stopped {
             return Err(DotLottiePlayerError::InsufficientCondition);
         }
+        if self.status == Status::Tweening {
+            self.tween_state = None;
+            self.resume_status = Status::Stopped;
+        }
 
-        self.playback_state = PlaybackState::Stopped;
+        self.status = Status::Stopped;
 
         let start_frame = self.start_frame();
         let end_frame = self.end_frame();
@@ -312,7 +306,7 @@ impl DotLottiePlayer {
     }
 
     fn next_frame(&mut self) -> f32 {
-        if !self.is_loaded || !self.is_playing() {
+        if self.status != Status::Playing {
             return self.current_frame();
         }
 
@@ -455,7 +449,7 @@ impl DotLottiePlayer {
 
     #[inline]
     fn advance_frames(&mut self, dt: f32) {
-        if self.is_playing() {
+        if self.status == Status::Playing {
             let duration = self.duration();
             if duration > 0.0 {
                 let fps = self.total_frames() / duration;
@@ -488,7 +482,7 @@ impl DotLottiePlayer {
             .push(DotLottieEvent::Frame { frame_no: no });
 
         #[cfg(feature = "audio")]
-        if self.is_playing() {
+        if self.status == Status::Playing {
             if let Some(am) = &mut self.audio_manager {
                 am.update(no);
             }
@@ -541,7 +535,7 @@ impl DotLottiePlayer {
 
         // Completion logic only applies during active playback — not when the
         // caller renders manually (e.g. scrubbing while paused/stopped).
-        if self.is_playing() && self.is_complete() {
+        if self.status == Status::Playing && self.is_complete() {
             if self.loop_animation {
                 let count_complete =
                     self.loop_count > 0 && self.current_loop_count() >= self.loop_count;
@@ -565,7 +559,7 @@ impl DotLottiePlayer {
                     self.reset_current_loop_count();
                 }
             } else {
-                self.playback_state = PlaybackState::Stopped;
+                self.status = Status::Stopped;
                 self.emit_on_complete();
             }
         }
@@ -836,7 +830,8 @@ impl DotLottiePlayer {
         F: FnOnce(&mut dyn LottieRenderer) -> Result<(), LottieRendererError>,
     {
         self.clear();
-        self.playback_state = PlaybackState::Stopped;
+        self.tween_state = None;
+        self.status = Status::Idle;
         self.elapsed_frames = 0.0;
         self.current_loop_count = 0;
 
@@ -846,7 +841,11 @@ impl DotLottiePlayer {
             return Err(DotLottiePlayerError::Unknown);
         }
 
-        self.is_loaded = loaded;
+        if !loaded {
+            return Err(DotLottiePlayerError::Unknown);
+        }
+
+        self.status = Status::Stopped;
 
         let start_frame = self.start_frame();
         let end_frame = self.end_frame();
@@ -864,11 +863,7 @@ impl DotLottiePlayer {
 
         let _ = self.renderer.render();
 
-        if loaded {
-            Ok(())
-        } else {
-            Err(DotLottiePlayerError::Unknown)
-        }
+        Ok(())
     }
 
     pub fn load_animation_data(
@@ -1043,7 +1038,7 @@ impl DotLottiePlayer {
     }
 
     pub fn is_complete(&self) -> bool {
-        if !self.is_loaded() {
+        if self.status == Status::Idle || self.status == Status::Tweening {
             return false;
         }
 
@@ -1364,17 +1359,17 @@ impl DotLottiePlayer {
         duration: f32,
         easing: [f32; 4],
     ) -> Result<(), DotLottiePlayerError> {
-        if self.is_tweening() {
+        if self.status == Status::Idle {
+            return Err(DotLottiePlayerError::AnimationNotLoaded);
+        }
+        if self.status == Status::Tweening {
             return Err(DotLottiePlayerError::InsufficientCondition);
         }
         let from = self.current_frame();
         self.tween_state = Some(TweenState::new(from, to, duration, easing)?);
+        self.resume_status = self.status;
+        self.status = Status::Tweening;
         Ok(())
-    }
-
-    #[inline]
-    pub fn is_tweening(&self) -> bool {
-        self.tween_state.is_some()
     }
 
     pub(crate) fn sync_tween_frame(&mut self, frame: f32) {
@@ -1403,6 +1398,7 @@ impl DotLottiePlayer {
                 Direction::Reverse => self.end_frame() - to,
             };
             self.tween_state = None;
+            self.status = self.resume_status;
         }
 
         Ok(status)
@@ -1448,7 +1444,7 @@ impl DotLottiePlayer {
     pub fn tick(&mut self, dt: f32) -> Result<bool, DotLottiePlayerError> {
         let dt = dt.max(0.0);
 
-        if self.is_tweening() {
+        if self.status == Status::Tweening {
             match self.tween_advance(dt) {
                 Ok(_) => {
                     self.render()?;
@@ -1456,6 +1452,7 @@ impl DotLottiePlayer {
                 }
                 Err(e) => {
                     self.tween_state = None;
+                    self.status = self.resume_status;
                     Err(e)
                 }
             }

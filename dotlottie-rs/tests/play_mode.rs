@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Status};
 
 mod test_utils;
 
@@ -46,11 +46,15 @@ mod play_mode_tests {
             player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
         assert!(!player.is_complete(), "Animation should not be complete");
 
         for tick in 0..MAX_TICKS {
-            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
+            if player.status() != Status::Playing || player.current_loop_count() > 5 {
                 break;
             }
             assert!(
@@ -100,11 +104,15 @@ mod play_mode_tests {
             player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
         assert!(!player.is_complete(), "Animation should not be complete");
 
         for tick in 0..MAX_TICKS {
-            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
+            if player.status() != Status::Playing || player.current_loop_count() > 5 {
                 break;
             }
             assert!(
@@ -148,11 +156,15 @@ mod play_mode_tests {
             player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
         assert!(!player.is_complete(), "Animation should not be complete");
 
         for tick in 0..MAX_TICKS {
-            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
+            if player.status() != Status::Playing || player.current_loop_count() > 5 {
                 break;
             }
             assert!(
@@ -185,7 +197,7 @@ mod play_mode_tests {
         observed_completed = false;
 
         for tick in 0..MAX_TICKS {
-            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
+            if player.status() != Status::Playing || player.current_loop_count() > 5 {
                 break;
             }
             assert!(
@@ -237,11 +249,15 @@ mod play_mode_tests {
             player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
         assert!(!player.is_complete(), "Animation should not be complete");
 
         for tick in 0..MAX_TICKS {
-            if player.is_paused() || player.is_stopped() || player.current_loop_count() >= 3 {
+            if player.status() != Status::Playing || player.current_loop_count() >= 3 {
                 break;
             }
             assert!(
@@ -272,7 +288,7 @@ mod play_mode_tests {
         let _ = player.play();
 
         for tick in 0..MAX_TICKS {
-            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 10 {
+            if player.status() != Status::Playing || player.current_loop_count() > 10 {
                 break;
             }
             assert!(
@@ -388,7 +404,11 @@ mod play_mode_tests {
             player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
         assert!(!player.is_complete(), "Animation should not be complete");
 
         let mut rendered_frames: Vec<f32> = vec![];
@@ -443,11 +463,15 @@ mod play_mode_tests {
             player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
         assert!(!player.is_complete(), "Animation should not be complete");
 
         for tick in 0..MAX_TICKS {
-            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
+            if player.status() != Status::Playing || player.current_loop_count() > 5 {
                 break;
             }
             assert!(
@@ -496,7 +520,11 @@ mod play_mode_tests {
             "Animation should load"
         );
 
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
         assert!(!player.is_complete(), "Animation should not be complete");
 
         let mut rendered_frames: Vec<f32> = vec![];
@@ -548,11 +576,15 @@ mod play_mode_tests {
             player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
         assert!(!player.is_complete(), "Animation should not be complete");
 
         for tick in 0..MAX_TICKS {
-            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
+            if player.status() != Status::Playing || player.current_loop_count() > 5 {
                 break;
             }
             assert!(
@@ -604,7 +636,11 @@ mod play_mode_tests {
 
         let mut rendered_frames: Vec<f32> = vec![];
 
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
         assert!(!player.is_complete(), "Animation should not be complete");
 
         while !player.is_complete() {
@@ -672,10 +708,14 @@ mod play_mode_tests {
             Ok(()),
             "Animation should load"
         );
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
 
         for tick in 0..MAX_TICKS {
-            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
+            if player.status() != Status::Playing || player.current_loop_count() > 5 {
                 break;
             }
             assert!(
@@ -723,7 +763,11 @@ mod play_mode_tests {
             "Animation should load"
         );
 
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
 
         let mut rendered_frames: Vec<f32> = vec![];
 
@@ -792,10 +836,14 @@ mod play_mode_tests {
             player.load_animation_path(&path).is_ok(),
             "Animation should load"
         );
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
 
         for tick in 0..MAX_TICKS {
-            if player.is_paused() || player.is_stopped() || player.current_loop_count() > 5 {
+            if player.status() != Status::Playing || player.current_loop_count() > 5 {
                 break;
             }
             assert!(

@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, Segment};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, Segment, Status};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -86,7 +86,11 @@ mod tests {
 
         assert_eq!(player.active_marker(), Some(marker_name.as_c_str()));
 
-        assert!(player.is_playing(), "Animation should be playing");
+        assert_eq!(
+            player.status(),
+            Status::Playing,
+            "Animation should be playing"
+        );
 
         // assert current frame is the marker start
         assert_eq!(player.current_frame(), 20.0);

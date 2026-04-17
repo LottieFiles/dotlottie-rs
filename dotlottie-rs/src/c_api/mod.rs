@@ -7,7 +7,7 @@ use crate::lottie_renderer::{
     ColorSlot, ColorValue, GlContext, GlDisplay, GlSurface, ImageSlot, PositionSlot, ScalarSlot,
     ScalarValue, TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
 };
-use crate::{DotLottiePlayer, DotLottiePlayerError, Layout, Mode, Rgba, Segment};
+use crate::{DotLottiePlayer, DotLottiePlayerError, Layout, Mode, Rgba, Segment, Status};
 
 use crate::ColorSpace;
 
@@ -716,38 +716,13 @@ pub unsafe extern "C" fn dotlottie_current_loop_count(
     })
 }
 
-/// Returns whether an animation is loaded.
+/// Returns the current status (Idle, Playing, Paused, or Stopped).
+/// Returns Idle if the pointer is invalid.
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_is_loaded(ptr: *mut DotLottiePlayer) -> bool {
+pub unsafe extern "C" fn dotlottie_status(ptr: *mut DotLottiePlayer) -> Status {
     match ptr.as_mut() {
-        Some(p) => p.is_loaded(),
-        _ => false,
-    }
-}
-
-/// Returns the current playback status.
-///
-/// Priority order: Playing > Paused > Stopped
-///
-/// # Parameters
-/// - `ptr`: Pointer to the DotLottiePlayer instance
-///
-/// # Returns
-/// The current PlaybackStatus (Playing, Paused, or Stopped)
-/// Returns Stopped if the pointer is invalid
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_playback_status(ptr: *mut DotLottiePlayer) -> PlaybackStatus {
-    match ptr.as_mut() {
-        Some(p) => {
-            if p.is_playing() {
-                PlaybackStatus::Playing
-            } else if p.is_paused() {
-                PlaybackStatus::Paused
-            } else {
-                PlaybackStatus::Stopped
-            }
-        }
-        _ => PlaybackStatus::Stopped,
+        Some(p) => p.status(),
+        _ => Status::Idle,
     }
 }
 

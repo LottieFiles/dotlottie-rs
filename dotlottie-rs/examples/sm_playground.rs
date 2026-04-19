@@ -595,20 +595,20 @@ fn format_event(event: &StateMachineEvent) -> String {
             new_state,
         } => format!(
             "[SM] Transition: {} -> {}",
-            previous_state.to_string_lossy(),
-            new_state.to_string_lossy()
+            previous_state,
+            new_state
         ),
         StateMachineEvent::StateEntered { state } => {
-            format!("[SM] StateEntered: {}", state.to_string_lossy())
+            format!("[SM] StateEntered: {}", state)
         }
         StateMachineEvent::StateExit { state } => {
-            format!("[SM] StateExit: {}", state.to_string_lossy())
+            format!("[SM] StateExit: {}", state)
         }
         StateMachineEvent::CustomEvent { message } => {
-            format!("[SM] CustomEvent: {}", message.to_string_lossy())
+            format!("[SM] CustomEvent: {}", message)
         }
         StateMachineEvent::Error { message } => {
-            format!("[SM] Error: {}", message.to_string_lossy())
+            format!("[SM] Error: {}", message)
         }
         StateMachineEvent::StringInputChange {
             name,
@@ -616,9 +616,9 @@ fn format_event(event: &StateMachineEvent) -> String {
             new_value,
         } => format!(
             "[Input] {} (string): {} -> {}",
-            name.to_string_lossy(),
-            old_value.to_string_lossy(),
-            new_value.to_string_lossy()
+            name,
+            old_value,
+            new_value
         ),
         StateMachineEvent::NumericInputChange {
             name,
@@ -626,7 +626,7 @@ fn format_event(event: &StateMachineEvent) -> String {
             new_value,
         } => format!(
             "[Input] {} (numeric): {old_value} -> {new_value}",
-            name.to_string_lossy()
+            name
         ),
         StateMachineEvent::BooleanInputChange {
             name,
@@ -634,10 +634,10 @@ fn format_event(event: &StateMachineEvent) -> String {
             new_value,
         } => format!(
             "[Input] {} (bool): {old_value} -> {new_value}",
-            name.to_string_lossy()
+            name
         ),
         StateMachineEvent::InputFired { name } => {
-            format!("[Input] Fired: {}", name.to_string_lossy())
+            format!("[Input] Fired: {}", name)
         }
     }
 }

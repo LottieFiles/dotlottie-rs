@@ -2,6 +2,8 @@ use core::result::Result::Ok;
 use std::collections::HashSet;
 use std::ffi::{CStr, CString};
 
+use crate::string::{DotString, DotStringInterner};
+
 pub mod actions;
 pub mod errors;
 pub mod events;
@@ -22,11 +24,12 @@ use transitions::guard::GuardTrait;
 use transitions::{Transition, TransitionTrait};
 
 use crate::actions::whitelist::Whitelist;
-use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
+use crate::event_queue::EventQueue;
+use crate::state_machine_engine::events::{StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, CompletionEvent, EventName, Layout, Mode,
-    Player, Point, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, CompletionEvent, Player,
+    EventName, Layout, Mode, Point, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -52,8 +55,10 @@ pub enum StateMachineEngineError {
 }
 
 struct PointerData {
-    curr_entered_layer: String,
-    listened_layers: Vec<(String, String)>,
+    // DotString so comparisons against interned interaction layer names
+    // hit the Arc::ptr_eq fast path.
+    curr_entered_layer: DotString,
+    listened_layers: Vec<(DotString, &'static str)>,
     most_recent_event: Option<Event>,
     pointer_x: f32,
     pointer_y: f32,
@@ -62,7 +67,7 @@ struct PointerData {
 impl Default for PointerData {
     fn default() -> PointerData {
         PointerData {
-            curr_entered_layer: "".to_string(),
+            curr_entered_layer: DotString::empty(),
             listened_layers: Vec::new(),
             most_recent_event: None,
             pointer_x: 0.0,
@@ -98,7 +103,7 @@ pub struct StateMachineEngine<'a> {
     pub player: &'a mut Player,
 
     pub inputs: InputManager,
-    curr_event: Option<String>,
+    curr_event: Option<DotString>,
 
     // PointerEnter/PointerExit management
     pointer_management: PointerData,
@@ -111,9 +116,11 @@ pub struct StateMachineEngine<'a> {
     pub current_event: Option<StateMachineEvent>,
     pub current_internal_event: Option<StateMachineInternalEvent>,
 
+    pub(crate) str_interner: DotStringInterner,
+
     state_machine: StateMachine,
 
-    state_history: Vec<String>,
+    state_history: Vec<DotString>,
     max_cycle_count: usize,
     current_cycle_count: usize,
     action_mutated_inputs: bool,
@@ -294,7 +301,7 @@ impl<'a> StateMachineEngine<'a> {
         if let Some(valid_event) = self.inputs.get_event(event) {
             self.observe_on_input_fired(&valid_event);
 
-            self.curr_event = Some(valid_event.to_string());
+            self.curr_event = Some(self.str_interner.intern(&valid_event));
 
             // Run pipeline is always false if called from an action
             if run_pipeline {
@@ -340,6 +347,7 @@ impl<'a> StateMachineEngine<'a> {
             internal_event_queue: EventQueue::new(),
             current_event: None,
             current_internal_event: None,
+            str_interner: DotStringInterner::new(),
             state_history: Vec::new(),
             max_cycle_count: max_cycle_count.unwrap_or(20),
             current_cycle_count: 0,
@@ -394,6 +402,13 @@ impl<'a> StateMachineEngine<'a> {
                 }
 
                 new_state_machine.state_machine = parsed_state_machine;
+
+                // Canonicalize layer names so runtime comparisons hit ptr_eq.
+                if let Some(interactions) = &mut new_state_machine.state_machine.interactions {
+                    for interaction in interactions {
+                        interaction.intern_layer_name(&mut new_state_machine.str_interner);
+                    }
+                }
 
                 new_state_machine.init_listened_layers();
 
@@ -574,33 +589,28 @@ impl<'a> StateMachineEngine<'a> {
     fn init_listened_layers(&mut self) {
         let interactions: Vec<_> = self.interactions(None).collect();
 
-        let mut all_listened_layers: Vec<(String, String)> = vec![];
+        let mut all_listened_layers: Vec<(DotString, &'static str)> = vec![];
 
-        // Get every layer we listen to
         for interaction in interactions {
             match interaction {
                 Interaction::PointerEnter {
                     layer_name: Some(layer),
                     ..
                 } => {
-                    all_listened_layers
-                        .push((layer.clone(), event_type_name!(PointerEnter).to_string()));
+                    all_listened_layers.push((layer.clone(), event_type_name!(PointerEnter)));
                 }
                 Interaction::PointerExit {
                     layer_name: Some(layer),
                     ..
-                } => all_listened_layers
-                    .push((layer.clone(), event_type_name!(PointerExit).to_string())),
+                } => all_listened_layers.push((layer.clone(), event_type_name!(PointerExit))),
                 Interaction::PointerUp {
                     layer_name: Some(layer),
                     ..
-                } => all_listened_layers
-                    .push((layer.clone(), event_type_name!(PointerUp).to_string())),
+                } => all_listened_layers.push((layer.clone(), event_type_name!(PointerUp))),
                 Interaction::PointerDown {
                     layer_name: Some(layer),
                     ..
-                } => all_listened_layers
-                    .push((layer.clone(), event_type_name!(PointerDown).to_string())),
+                } => all_listened_layers.push((layer.clone(), event_type_name!(PointerDown))),
                 _ => {}
             }
         }
@@ -790,7 +800,7 @@ impl<'a> StateMachineEngine<'a> {
     fn evaluate_transitions(
         &self,
         state_to_evaluate: &State,
-        event: Option<&String>,
+        event: Option<&DotString>,
     ) -> Option<(String, Transition)> {
         let transitions = state_to_evaluate.transitions();
         let mut guardless_transition: Option<&Transition> = None;
@@ -837,7 +847,7 @@ impl<'a> StateMachineEngine<'a> {
                                 }
 
                                 if let Some(event) = event {
-                                    if !guard.event_input_is_satisfied(event) {
+                                    if !guard.event_input_is_satisfied(event.as_str()) {
                                         all_guards_satisfied = false;
                                         break;
                                     }
@@ -929,9 +939,9 @@ impl<'a> StateMachineEngine<'a> {
                 self.state_history.clear();
             }
 
-            // Record the current state
             if let Some(state) = &self.current_state {
-                self.state_history.push(state.name().to_string());
+                let name = self.str_interner.intern(&state.name());
+                self.state_history.push(name);
             }
 
             // --------------- End infinite loop detection
@@ -1013,7 +1023,7 @@ impl<'a> StateMachineEngine<'a> {
         Ok(())
     }
 
-    fn detect_cycle(&self) -> Option<Vec<String>> {
+    fn detect_cycle(&self) -> Option<Vec<DotString>> {
         let mut seen = HashSet::new();
         let mut cycle = Vec::new();
 
@@ -1048,14 +1058,14 @@ impl<'a> StateMachineEngine<'a> {
                 if let Some(layer) = interaction.get_layer_name() {
                     // If we have a pointer exit event, check if the pointer is outside of the layer
                     if let Event::PointerExit { x, y } = event {
-                        if self.pointer_management.curr_entered_layer == layer
+                        if self.pointer_management.curr_entered_layer == *layer
                             && !self
                                 .player
                                 .renderer
                                 .hit_test(Point { x: *x, y: *y }, layer)
                                 .unwrap_or(false)
                         {
-                            entered_layer = "".to_string();
+                            entered_layer = DotString::empty();
                             actions_to_execute.extend(interaction.get_actions().clone());
                         }
                     } else {
@@ -1066,7 +1076,7 @@ impl<'a> StateMachineEngine<'a> {
                             .hit_test(Point { x, y }, layer)
                             .unwrap_or(false)
                         {
-                            entered_layer = layer.to_string();
+                            entered_layer = layer.clone();
                             actions_to_execute.extend(interaction.get_actions().clone());
                         }
                     }
@@ -1135,7 +1145,7 @@ impl<'a> StateMachineEngine<'a> {
                 // Add their actions if their layer name matches the current layer name in loop
                 for interaction in self.interactions(Some(event_type_name!(PointerEnter))) {
                     if let Some(interaction_layer_name) = interaction.get_layer_name() {
-                        if interaction_layer_name == self.pointer_management.curr_entered_layer {
+                        if *interaction_layer_name == self.pointer_management.curr_entered_layer {
                             actions_to_execute.extend(interaction.get_actions().clone());
                         }
                     }
@@ -1145,7 +1155,7 @@ impl<'a> StateMachineEngine<'a> {
 
         // We didn't hit any listened layers
         if !hit {
-            self.pointer_management.curr_entered_layer = "".to_string();
+            self.pointer_management.curr_entered_layer = DotString::empty();
 
             let pointer_exit_interactions = self.interactions(Some(event_type_name!(PointerExit)));
 
@@ -1153,7 +1163,7 @@ impl<'a> StateMachineEngine<'a> {
             for interaction in pointer_exit_interactions {
                 if let Some(interaction_layer_name) = interaction.get_layer_name() {
                     // We've exited the desired layer, add its actions to execute
-                    if interaction_layer_name == old_layer {
+                    if *interaction_layer_name == old_layer {
                         actions_to_execute.extend(interaction.get_actions().clone());
                     }
                 }
@@ -1290,41 +1300,41 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     fn observe_on_state_entered(&mut self, entering_state: &str) {
-        self.event_queue.push(StateMachineEvent::StateEntered {
-            state: CString::new(entering_state).unwrap_or_default(),
-        });
+        let state = self.str_interner.intern(entering_state);
+        self.event_queue
+            .push(StateMachineEvent::StateEntered { state });
     }
 
     fn observe_on_state_exit(&mut self, leaving_state: &str) {
-        self.event_queue.push(StateMachineEvent::StateExit {
-            state: CString::new(leaving_state).unwrap_or_default(),
-        });
+        let state = self.str_interner.intern(leaving_state);
+        self.event_queue
+            .push(StateMachineEvent::StateExit { state });
     }
 
     fn observe_on_transition(&mut self, previous_state: &str, new_state: &str) {
+        let previous_state = self.str_interner.intern(previous_state);
+        let new_state = self.str_interner.intern(new_state);
         self.event_queue.push(StateMachineEvent::Transition {
-            previous_state: CString::new(previous_state).unwrap_or_default(),
-            new_state: CString::new(new_state).unwrap_or_default(),
+            previous_state,
+            new_state,
         });
     }
 
     pub fn observe_internal_event(&mut self, message: &str) {
+        let message = self.str_interner.intern(message);
         self.internal_event_queue
-            .push(StateMachineInternalEvent::Message {
-                message: CString::new(message).unwrap_or_default(),
-            });
+            .push(StateMachineInternalEvent::Message { message });
     }
 
     pub fn observe_custom_event(&mut self, message: &str) {
-        self.event_queue.push(StateMachineEvent::CustomEvent {
-            message: CString::new(message).unwrap_or_default(),
-        });
+        let message = self.str_interner.intern(message);
+        self.event_queue
+            .push(StateMachineEvent::CustomEvent { message });
     }
 
     pub fn observe_on_error(&mut self, message: &str) {
-        self.event_queue.push(StateMachineEvent::Error {
-            message: CString::new(message).unwrap_or_default(),
-        });
+        let message = self.str_interner.intern(message);
+        self.event_queue.push(StateMachineEvent::Error { message });
     }
 
     pub fn observe_string_input_value_change(
@@ -1336,10 +1346,13 @@ impl<'a> StateMachineEngine<'a> {
         if old_value == new_value {
             return;
         }
+        let name = self.str_interner.intern(input_name);
+        let old_value = self.str_interner.intern(old_value);
+        let new_value = self.str_interner.intern(new_value);
         self.event_queue.push(StateMachineEvent::StringInputChange {
-            name: CString::new(input_name).unwrap_or_default(),
-            old_value: CString::new(old_value).unwrap_or_default(),
-            new_value: CString::new(new_value).unwrap_or_default(),
+            name,
+            old_value,
+            new_value,
         });
     }
 
@@ -1352,9 +1365,10 @@ impl<'a> StateMachineEngine<'a> {
         if old_value == new_value {
             return;
         }
+        let name = self.str_interner.intern(input_name);
         self.event_queue
             .push(StateMachineEvent::NumericInputChange {
-                name: CString::new(input_name).unwrap_or_default(),
+                name,
                 old_value,
                 new_value,
             });
@@ -1369,9 +1383,10 @@ impl<'a> StateMachineEngine<'a> {
         if old_value == new_value {
             return;
         }
+        let name = self.str_interner.intern(input_name);
         self.event_queue
             .push(StateMachineEvent::BooleanInputChange {
-                name: CString::new(input_name).unwrap_or_default(),
+                name,
                 old_value,
                 new_value,
             });
@@ -1386,9 +1401,9 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     pub fn observe_on_input_fired(&mut self, input_name: &str) {
-        self.event_queue.push(StateMachineEvent::InputFired {
-            name: CString::new(input_name).unwrap_or_default(),
-        });
+        let name = self.str_interner.intern(input_name);
+        self.event_queue
+            .push(StateMachineEvent::InputFired { name });
     }
 
     fn check_completion(&mut self) {
@@ -1421,7 +1436,7 @@ impl<'a> StateMachineEngine<'a> {
     pub fn get_inputs(&self) -> Vec<String> {
         let mut result = Vec::with_capacity(self.inputs.inputs.len() * 2);
         for (key, value) in self.inputs.inputs.iter() {
-            result.push(key.clone());
+            result.push(key.as_str().to_owned());
             result.push(
                 match value {
                     crate::inputs::InputValue::Numeric(_) => "Numeric",

@@ -53,6 +53,7 @@ jobs:
         if: matrix.native
         uses: Swatinem/rust-cache@v2
         with:
+          workspaces: dotlottie-rs
           shared-key: ${{ matrix.name }}
           cache-on-failure: true
 

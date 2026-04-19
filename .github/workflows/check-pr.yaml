@@ -11,9 +11,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-pr:
+  check:
+    name: ${{ matrix.name }}
     if: github.head_ref != 'release'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: Fmt
+            cmd: cargo fmt --manifest-path=./dotlottie-rs/Cargo.toml --all -- --check
+          - name: Test
+            cmd: cargo test --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" -- --test-threads=1
+            native: true
+          - name: Lint
+            cmd: cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" --all-targets -- -D clippy::print_stdout
+            native: true
+            rustflags: "-Dwarnings"
     env:
       CC: clang
       CXX: clang++
@@ -23,36 +37,27 @@ jobs:
       CXXFLAGS: -O2
       BINDGEN_EXTRA_CLANG_ARGS: "-I/usr/include"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
-          submodules: true
-          fetch-depth: 0
+          submodules: ${{ matrix.native == true }}
+          fetch-depth: ${{ matrix.native && 0 || 1 }}
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential clang llvm-dev libclang-dev
+      - name: Install LLVM tools
+        if: matrix.native
+        run: sudo apt-get update && sudo apt-get install -y llvm
 
       - name: Setup Rust
         uses: ningenMe/setup-rustup@v1.1.0
 
-      - name: Setup Conan
-        uses: turtlebrowser/get-conan@main
+      - name: Cache cargo
+        if: matrix.native
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: dotlottie-rs
+          shared-key: ${{ matrix.name }}
+          cache-on-failure: true
 
-      - name: Build
-        run: |
-          cargo build --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
-
-      - name: Test
-        run: |
-          cargo test --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" -- --test-threads=1
-
-      - name: Lint
-        run: |
-          cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml  --features="dev" --all-targets -- -D clippy::print_stdout
+      - name: ${{ matrix.name }}
+        run: ${{ matrix.cmd }}
         env:
-          RUSTFLAGS: "-Dwarnings"
-
-      - name: Check formatting
-        run: |
-          cargo fmt --manifest-path=./dotlottie-rs/Cargo.toml --all -- --check
+          RUSTFLAGS: ${{ matrix.rustflags }}

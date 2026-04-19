@@ -1,9 +1,7 @@
 #![cfg(feature = "state-machines")]
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Player, Event,
-    };
+    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, ColorSpace, Event, Player};
 
     const WIDTH: u32 = 100;
     const HEIGHT: u32 = 100;

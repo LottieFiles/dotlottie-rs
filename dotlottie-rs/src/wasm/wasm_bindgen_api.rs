@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 
 #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
 use crate::ColorSpace;
-use crate::{Player, Fit, Layout, Mode as PlayerMode, Rgba, Segment};
+use crate::{Fit, Layout, Mode as PlayerMode, Player, Rgba, Segment};
 
 // ─── Renderer mode ───────────────────────────────────────────────────────────
 

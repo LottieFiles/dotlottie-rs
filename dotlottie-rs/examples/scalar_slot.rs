@@ -8,7 +8,7 @@
 ///
 /// Note: Opacity values in Lottie are typically in the range 0-100 (percentage).
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSpace, Player, LottieKeyframe, ScalarSlot, ScalarValue};
+use dotlottie_rs::{ColorSpace, LottieKeyframe, Player, ScalarSlot, ScalarValue};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 

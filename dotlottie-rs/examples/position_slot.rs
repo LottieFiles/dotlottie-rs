@@ -8,7 +8,7 @@
 ///
 /// Position slots support spatial tangents for curved motion paths.
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSpace, Player, LottieKeyframe, LottieProperty};
+use dotlottie_rs::{ColorSpace, LottieKeyframe, LottieProperty, Player};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 

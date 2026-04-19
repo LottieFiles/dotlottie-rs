@@ -19,7 +19,7 @@
 
 #![allow(clippy::print_stdout)]
 
-use dotlottie_rs::{ColorSpace, PlayerEvent, Player};
+use dotlottie_rs::{ColorSpace, Player, PlayerEvent};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs;

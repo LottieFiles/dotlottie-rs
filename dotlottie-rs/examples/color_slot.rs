@@ -7,7 +7,7 @@
 /// slot with ID "ball_color" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSlot, ColorSpace, ColorValue, Player, LottieKeyframe};
+use dotlottie_rs::{ColorSlot, ColorSpace, ColorValue, LottieKeyframe, Player};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 

@@ -4,7 +4,7 @@ use std::{fs, mem};
 
 #[cfg(feature = "audio")]
 use crate::audio::AudioManager;
-use crate::poll_events::{PlayerEvent, EventQueue};
+use crate::poll_events::{EventQueue, PlayerEvent};
 use crate::PlayerError;
 use crate::{
     layout::Layout,
@@ -484,8 +484,7 @@ impl Player {
         }
 
         self.renderer.set_frame(no)?;
-        self.event_queue
-            .push(PlayerEvent::Frame { frame_no: no });
+        self.event_queue.push(PlayerEvent::Frame { frame_no: no });
 
         #[cfg(feature = "audio")]
         if self.is_playing() {

@@ -8,7 +8,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 #[cfg(test)]
 mod play_mode_tests {
-    use dotlottie_rs::{PlayerEvent, Mode};
+    use dotlottie_rs::{Mode, PlayerEvent};
 
     use super::*;
 

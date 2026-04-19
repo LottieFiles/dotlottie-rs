@@ -13,8 +13,7 @@ mod common;
 #[cfg(feature = "tvg-gl")]
 mod opengl_impl {
     use dotlottie_rs::{
-        Player, GlContext as DotGlContext, GlDisplay as DotGlDisplay,
-        GlSurface as DotGlSurface,
+        GlContext as DotGlContext, GlDisplay as DotGlDisplay, GlSurface as DotGlSurface, Player,
     };
     use glutin::config::ConfigTemplateBuilder;
     use glutin::context::{ContextAttributesBuilder, NotCurrentGlContext, PossiblyCurrentContext};

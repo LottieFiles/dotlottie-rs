@@ -25,8 +25,8 @@ use crate::actions::whitelist::Whitelist;
 use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, CompletionEvent, Player,
-    EventName, Layout, Mode, Point, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, CompletionEvent, EventName, Layout, Mode,
+    Player, Point, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;

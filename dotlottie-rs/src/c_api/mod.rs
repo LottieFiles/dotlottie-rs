@@ -7,7 +7,7 @@ use crate::lottie_renderer::{
     ColorSlot, ColorValue, GlContext, GlDisplay, GlSurface, ImageSlot, PositionSlot, ScalarSlot,
     ScalarValue, TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
 };
-use crate::{Player, Layout, Mode, PlayerError, Rgba, Segment};
+use crate::{Layout, Mode, Player, PlayerError, Rgba, Segment};
 
 use crate::ColorSpace;
 
@@ -303,10 +303,7 @@ pub unsafe extern "C" fn dotlottie_manifest(
 // ============================================================================
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_mode(
-    ptr: *mut Player,
-    mode: Mode,
-) -> DotLottieResult {
+pub unsafe extern "C" fn dotlottie_set_mode(ptr: *mut Player, mode: Mode) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         dotlottie_player.set_mode(mode);
         DotLottieResult::Success
@@ -314,10 +311,7 @@ pub unsafe extern "C" fn dotlottie_set_mode(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_speed(
-    ptr: *mut Player,
-    speed: f32,
-) -> DotLottieResult {
+pub unsafe extern "C" fn dotlottie_set_speed(ptr: *mut Player, speed: f32) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         dotlottie_player.set_speed(speed);
         DotLottieResult::Success
@@ -441,10 +435,7 @@ pub unsafe extern "C" fn dotlottie_set_marker(
 /// - `DotLottieResult::Success` on success
 /// - `DotLottieResult::InvalidParameter` if the player pointer is invalid
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_layout(
-    ptr: *mut Player,
-    layout: Layout,
-) -> DotLottieResult {
+pub unsafe extern "C" fn dotlottie_set_layout(ptr: *mut Player, layout: Layout) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         dotlottie_player.set_layout(layout)
     })
@@ -672,10 +663,7 @@ pub unsafe extern "C" fn dotlottie_total_frames(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_duration(
-    ptr: *mut Player,
-    result: *mut f32,
-) -> DotLottieResult {
+pub unsafe extern "C" fn dotlottie_duration(ptr: *mut Player, result: *mut f32) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.duration();
@@ -808,10 +796,7 @@ pub unsafe extern "C" fn dotlottie_audio_volume(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_frame(
-    ptr: *mut Player,
-    no: f32,
-) -> DotLottieResult {
+pub unsafe extern "C" fn dotlottie_set_frame(ptr: *mut Player, no: f32) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player.set_frame(no))
 }
 

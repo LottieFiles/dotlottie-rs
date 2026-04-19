@@ -7,7 +7,7 @@
 /// a slot with ID "gradient_fill" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSpace, Player, GradientSlot, GradientStop, LottieKeyframe};
+use dotlottie_rs::{ColorSpace, GradientSlot, GradientStop, LottieKeyframe, Player};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 

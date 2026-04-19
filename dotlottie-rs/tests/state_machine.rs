@@ -6,7 +6,7 @@ mod tests {
     use std::fs::{self, File};
 
     use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Player, Event,
+        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Event, Player,
         StateMachineEngineStatus,
     };
     use std::io::Read;

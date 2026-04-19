@@ -1,6 +1,6 @@
 #![allow(clippy::print_stdout)]
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, Rgba};
+use dotlottie_rs::{ColorSpace, Player, Rgba};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -31,7 +31,7 @@ fn get_animation_files() -> Vec<PathBuf> {
     files
 }
 
-fn load_animation(player: &mut DotLottiePlayer, path: &PathBuf) {
+fn load_animation(player: &mut Player, path: &PathBuf) {
     let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
     match extension {
@@ -81,7 +81,7 @@ fn main() {
     )
     .expect("Failed to create window");
 
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     player.set_autoplay(true);
     player.set_loop(true);
 

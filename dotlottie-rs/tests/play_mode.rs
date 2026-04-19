@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Player};
 
 mod test_utils;
 
@@ -8,7 +8,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 #[cfg(test)]
 mod play_mode_tests {
-    use dotlottie_rs::{DotLottieEvent, Mode};
+    use dotlottie_rs::{PlayerEvent, Mode};
 
     use super::*;
 
@@ -19,14 +19,14 @@ mod play_mode_tests {
 
     #[test]
     fn test_default_play_mode() {
-        let player = DotLottiePlayer::new();
+        let player = Player::new();
 
         assert_eq!(player.mode(), Mode::Forward);
     }
 
     #[test]
     fn test_loop_count_with_loop_animation_false() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
         player.set_loop(false);
@@ -62,10 +62,10 @@ mod play_mode_tests {
 
         while let Some(event) = player.poll_event() {
             match event {
-                DotLottieEvent::Loop { loop_count } => {
+                PlayerEvent::Loop { loop_count } => {
                     observed_loops = loop_count;
                 }
-                DotLottieEvent::Complete => {
+                PlayerEvent::Complete => {
                     observed_completed = true;
                 }
                 _ => {}
@@ -80,7 +80,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_zero_loop_count() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -115,7 +115,7 @@ mod play_mode_tests {
         }
 
         while let Some(event) = player.poll_event() {
-            if let DotLottieEvent::Loop { loop_count } = event {
+            if let PlayerEvent::Loop { loop_count } = event {
                 observed_loops = loop_count;
             }
         }
@@ -128,7 +128,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_playing_after_loop_has_completed() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -164,10 +164,10 @@ mod play_mode_tests {
 
         while let Some(event) = player.poll_event() {
             match event {
-                DotLottieEvent::Loop { loop_count } => {
+                PlayerEvent::Loop { loop_count } => {
                     observed_loops = loop_count;
                 }
-                DotLottieEvent::Complete => {
+                PlayerEvent::Complete => {
                     observed_completed = true;
                 }
                 _ => {}
@@ -197,10 +197,10 @@ mod play_mode_tests {
 
         while let Some(event) = player.poll_event() {
             match event {
-                DotLottieEvent::Loop { loop_count } => {
+                PlayerEvent::Loop { loop_count } => {
                     observed_loops = loop_count;
                 }
-                DotLottieEvent::Complete => {
+                PlayerEvent::Complete => {
                     observed_completed = true;
                 }
                 _ => {}
@@ -217,7 +217,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_loop_count_paused_mid_play() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -252,10 +252,10 @@ mod play_mode_tests {
         }
         while let Some(event) = player.poll_event() {
             match event {
-                DotLottieEvent::Loop { loop_count } => {
+                PlayerEvent::Loop { loop_count } => {
                     observed_loops = loop_count;
                 }
-                DotLottieEvent::Complete => {
+                PlayerEvent::Complete => {
                     observed_completed = true;
                 }
                 _ => {}
@@ -284,10 +284,10 @@ mod play_mode_tests {
 
         while let Some(event) = player.poll_event() {
             match event {
-                DotLottieEvent::Loop { loop_count } => {
+                PlayerEvent::Loop { loop_count } => {
                     observed_loops = loop_count;
                 }
-                DotLottieEvent::Complete => {
+                PlayerEvent::Complete => {
                     observed_completed = true;
                 }
                 _ => {}
@@ -314,7 +314,7 @@ mod play_mode_tests {
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         for mode in play_modes {
-            let mut player = DotLottiePlayer::new();
+            let mut player = Player::new();
             player.set_mode(mode);
 
             let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
@@ -372,7 +372,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
 
@@ -423,7 +423,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_forward_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::Forward);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -459,10 +459,10 @@ mod play_mode_tests {
 
         while let Some(event) = player.poll_event() {
             match event {
-                DotLottieEvent::Loop { loop_count } => {
+                PlayerEvent::Loop { loop_count } => {
                     observed_loops = loop_count;
                 }
-                DotLottieEvent::Complete => {
+                PlayerEvent::Complete => {
                     observed_completed = true;
                 }
                 _ => {}
@@ -479,7 +479,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_play_mode() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::Reverse);
         player.set_autoplay(true);
 
@@ -528,7 +528,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::Reverse);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -564,10 +564,10 @@ mod play_mode_tests {
 
         while let Some(event) = player.poll_event() {
             match event {
-                DotLottieEvent::Loop { loop_count } => {
+                PlayerEvent::Loop { loop_count } => {
                     observed_loops = loop_count;
                 }
-                DotLottieEvent::Complete => {
+                PlayerEvent::Complete => {
                     observed_completed = true;
                 }
                 _ => {}
@@ -584,7 +584,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_bounce_play_mode() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::Bounce);
         player.set_autoplay(true);
 
@@ -651,7 +651,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_bounce_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::Bounce);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -686,10 +686,10 @@ mod play_mode_tests {
         }
         while let Some(event) = player.poll_event() {
             match event {
-                DotLottieEvent::Loop { loop_count } => {
+                PlayerEvent::Loop { loop_count } => {
                     observed_loops = loop_count;
                 }
-                DotLottieEvent::Complete => {
+                PlayerEvent::Complete => {
                     observed_completed = true;
                 }
                 _ => {}
@@ -706,7 +706,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_bounce_play_mode() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::ReverseBounce);
         player.set_autoplay(true);
 
@@ -772,7 +772,7 @@ mod play_mode_tests {
 
     #[test]
     fn test_reverse_bounce_play_mode_with_loop_count() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_mode(Mode::ReverseBounce);
         player.set_autoplay(true);
         player.set_loop(true);
@@ -806,10 +806,10 @@ mod play_mode_tests {
         }
         while let Some(event) = player.poll_event() {
             match event {
-                DotLottieEvent::Loop { loop_count } => {
+                PlayerEvent::Loop { loop_count } => {
                     observed_loops = loop_count;
                 }
-                DotLottieEvent::Complete => {
+                PlayerEvent::Complete => {
                     observed_completed = true;
                 }
                 _ => {}

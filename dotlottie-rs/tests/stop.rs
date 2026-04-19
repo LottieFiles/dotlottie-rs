@@ -3,7 +3,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, Mode, PlayerError, Segment};
+use dotlottie_rs::{ColorSpace, Player, Mode, PlayerError, Segment};
 
 #[cfg(test)]
 mod tests {
@@ -77,7 +77,7 @@ mod tests {
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         for config in configs {
-            let mut player = DotLottiePlayer::new();
+            let mut player = Player::new();
             player.set_mode(config.mode);
             player.set_autoplay(config.autoplay);
             if let Some(seg) = config.segment {

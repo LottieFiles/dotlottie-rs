@@ -2,13 +2,13 @@
 #[cfg(test)]
 mod tests {
     use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, ColorSpace, DotLottiePlayer, StateMachineEvent,
+        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Player, StateMachineEvent,
     };
 
     #[test]
     fn increment() {
         let global_state = include_str!("../assets/statemachines/action_tests/inc_rating.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn decrement() {
         let global_state = include_str!("../assets/statemachines/action_tests/decr_rating.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
@@ -110,7 +110,7 @@ mod tests {
     #[test]
     fn toggle() {
         let global_state = include_str!("../assets/statemachines/action_tests/toggle.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
@@ -150,7 +150,7 @@ mod tests {
     #[test]
     fn set_boolean() {
         let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn set_numeric() {
         let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
@@ -220,7 +220,7 @@ mod tests {
     #[test]
     fn set_string() {
         let global_state = include_str!("../assets/statemachines/action_tests/set_inputs.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn fire() {
         let global_state = include_str!("../assets/statemachines/action_tests/fire.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn set_frame() {
         let global_state = include_str!("../assets/statemachines/action_tests/set_frame.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
@@ -332,7 +332,7 @@ mod tests {
     #[test]
     fn set_progress() {
         let global_state = include_str!("../assets/statemachines/action_tests/set_progress.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
@@ -375,7 +375,7 @@ mod tests {
     #[test]
     fn reset() {
         let reset_sm = include_str!("../assets/statemachines/action_tests/reset.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 
@@ -414,7 +414,7 @@ mod tests {
     #[test]
     fn fire_custom_event() {
         let reset_sm = include_str!("../assets/statemachines/normal_usecases/rating.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
 

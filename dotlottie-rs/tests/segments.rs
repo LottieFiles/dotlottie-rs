@@ -3,7 +3,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, Mode, Segment};
+use dotlottie_rs::{ColorSpace, Player, Mode, Segment};
 
 #[cfg(test)]
 mod tests {
@@ -11,7 +11,7 @@ mod tests {
 
     #[test]
     fn test_invalid_segment_rejected() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(true);
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn test_same_start_end_rejected() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(true);
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
@@ -104,7 +104,7 @@ mod tests {
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         for mode in modes {
-            let mut player = DotLottiePlayer::new();
+            let mut player = Player::new();
             player.set_mode(mode);
             player.set_autoplay(true);
 
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_valid_segments_unchanged() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(true);
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_set_segment_rejects_invalid() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(false);
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();

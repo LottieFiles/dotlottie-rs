@@ -13,7 +13,7 @@ mod common;
 #[cfg(feature = "tvg-gl")]
 mod opengl_impl {
     use dotlottie_rs::{
-        DotLottiePlayer, GlContext as DotGlContext, GlDisplay as DotGlDisplay,
+        Player, GlContext as DotGlContext, GlDisplay as DotGlDisplay,
         GlSurface as DotGlSurface,
     };
     use glutin::config::ConfigTemplateBuilder;
@@ -92,7 +92,7 @@ mod opengl_impl {
         window: Option<Window>,
         gl_context: Option<glutin::context::PossiblyCurrentContext>,
         gl_surface: Option<Surface<WindowSurface>>,
-        player: Option<DotLottiePlayer>,
+        player: Option<Player>,
         first_render: bool,
         clock: super::common::Clock,
     }
@@ -196,7 +196,7 @@ mod opengl_impl {
                 }
             }
 
-            let mut player = DotLottiePlayer::new();
+            let mut player = Player::new();
             player.set_loop(true);
             player.set_autoplay(true);
 

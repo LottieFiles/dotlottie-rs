@@ -4,7 +4,7 @@ use std::{fs, mem};
 
 #[cfg(feature = "audio")]
 use crate::audio::AudioManager;
-use crate::poll_events::{DotLottieEvent, EventQueue};
+use crate::poll_events::{PlayerEvent, EventQueue};
 use crate::PlayerError;
 use crate::{
     layout::Layout,
@@ -55,7 +55,7 @@ pub enum CompletionEvent {
     LoopCompleted,
 }
 
-pub struct DotLottiePlayer {
+pub struct Player {
     pub(crate) renderer: Box<dyn LottieRenderer>,
     playback_state: PlaybackState,
     is_loaded: bool,
@@ -67,7 +67,7 @@ pub struct DotLottiePlayer {
     audio_manager: Option<AudioManager>,
     direction: Direction,
     active_marker: Option<CString>,
-    event_queue: EventQueue<DotLottieEvent, 16>,
+    event_queue: EventQueue<PlayerEvent, 16>,
     completion_event: CompletionEvent,
     // Playback config properties
     mode: Mode,
@@ -87,13 +87,13 @@ pub struct DotLottiePlayer {
 }
 
 #[cfg(feature = "tvg")]
-impl Default for DotLottiePlayer {
+impl Default for Player {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl DotLottiePlayer {
+impl Player {
     #[cfg(feature = "tvg")]
     pub fn new() -> Self {
         Self::with_renderer(crate::TvgRenderer::new(0))
@@ -117,7 +117,7 @@ impl DotLottiePlayer {
     }
 
     pub fn with_renderer<R: Renderer>(renderer: R) -> Self {
-        DotLottiePlayer {
+        Player {
             renderer: <dyn LottieRenderer>::new(renderer),
             playback_state: PlaybackState::Stopped,
             is_loaded: false,
@@ -234,7 +234,7 @@ impl DotLottiePlayer {
             am.play();
         }
 
-        self.event_queue.push(DotLottieEvent::Play);
+        self.event_queue.push(PlayerEvent::Play);
 
         Ok(())
     }
@@ -253,7 +253,7 @@ impl DotLottiePlayer {
             am.pause();
         }
 
-        self.event_queue.push(DotLottieEvent::Pause);
+        self.event_queue.push(PlayerEvent::Pause);
         Ok(())
     }
 
@@ -286,7 +286,7 @@ impl DotLottiePlayer {
             am.stop();
         }
 
-        self.event_queue.push(DotLottieEvent::Stop);
+        self.event_queue.push(PlayerEvent::Stop);
 
         Ok(())
     }
@@ -485,7 +485,7 @@ impl DotLottiePlayer {
 
         self.renderer.set_frame(no)?;
         self.event_queue
-            .push(DotLottieEvent::Frame { frame_no: no });
+            .push(PlayerEvent::Frame { frame_no: no });
 
         #[cfg(feature = "audio")]
         if self.is_playing() {
@@ -516,12 +516,12 @@ impl DotLottiePlayer {
 
     fn emit_on_complete(&mut self) {
         self.completion_event = CompletionEvent::Completed;
-        self.event_queue.push(DotLottieEvent::Complete);
+        self.event_queue.push(PlayerEvent::Complete);
     }
 
     pub fn emit_on_loop(&mut self) {
         self.completion_event = CompletionEvent::LoopCompleted;
-        self.event_queue.push(DotLottieEvent::Loop {
+        self.event_queue.push(PlayerEvent::Loop {
             loop_count: self.current_loop_count(),
         });
     }
@@ -531,7 +531,7 @@ impl DotLottiePlayer {
 
         let frame_no = self.current_frame();
 
-        self.event_queue.push(DotLottieEvent::Render { frame_no });
+        self.event_queue.push(PlayerEvent::Render { frame_no });
 
         // Completion logic only applies during active playback — not when the
         // caller renders manually (e.g. scrubbing while paused/stopped).
@@ -874,12 +874,12 @@ impl DotLottiePlayer {
         let result = self.load_animation_common(|renderer| renderer.load_data(animation_data));
 
         if result.is_ok() {
-            self.event_queue.push(DotLottieEvent::Load);
+            self.event_queue.push(PlayerEvent::Load);
             if self.autoplay {
                 let _ = self.play();
             }
         } else {
-            self.event_queue.push(DotLottieEvent::LoadError);
+            self.event_queue.push(PlayerEvent::LoadError);
         }
 
         result
@@ -906,7 +906,7 @@ impl DotLottiePlayer {
         })();
 
         result.inspect_err(|_| {
-            self.event_queue.push(DotLottieEvent::LoadError);
+            self.event_queue.push(PlayerEvent::LoadError);
         })
     }
 
@@ -955,13 +955,13 @@ impl DotLottiePlayer {
         }
 
         if result.is_ok() {
-            self.event_queue.push(DotLottieEvent::Load);
+            self.event_queue.push(PlayerEvent::Load);
 
             if self.autoplay {
                 let _ = self.play();
             }
         } else {
-            self.event_queue.push(DotLottieEvent::LoadError);
+            self.event_queue.push(PlayerEvent::LoadError);
         }
 
         Ok(())
@@ -1011,12 +1011,12 @@ impl DotLottiePlayer {
                     let _ = self.set_theme(theme_id_cstr);
                 }
 
-                self.event_queue.push(DotLottieEvent::Load);
+                self.event_queue.push(PlayerEvent::Load);
                 if self.autoplay {
                     let _ = self.play();
                 }
             } else {
-                self.event_queue.push(DotLottieEvent::LoadError);
+                self.event_queue.push(PlayerEvent::LoadError);
             }
 
             result
@@ -1415,7 +1415,7 @@ impl DotLottiePlayer {
     /// Poll for the next event from the event queue
     ///
     /// Returns Some(event) if an event is available, None if the queue is empty.
-    pub fn poll_event(&mut self) -> Option<DotLottieEvent> {
+    pub fn poll_event(&mut self) -> Option<PlayerEvent> {
         self.event_queue.poll()
     }
 

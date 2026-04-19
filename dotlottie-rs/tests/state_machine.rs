@@ -6,14 +6,14 @@ mod tests {
     use std::fs::{self, File};
 
     use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, ColorSpace, DotLottiePlayer, Event,
+        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Player, Event,
         StateMachineEngineStatus,
     };
     use std::io::Read;
 
     #[test]
     fn get_state_machine() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(true);
 
         let mut buffer: Vec<u32> = vec![0; (500 * 500) as usize];
@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn state_machine_start() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let sm = player.state_machine_load_data("bad_data");
 
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn state_machine_stop() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let sm = player.state_machine_load_data("bad_data");
 
@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn state_machine_framework_setup() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         let pointer_down =
             include_str!("../assets/statemachines/interaction_tests/interaction_array.json");
 
@@ -119,7 +119,7 @@ mod tests {
 
     #[test]
     fn state_machine_post_event() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         let pointer_down =
             include_str!("../assets/statemachines/interaction_tests/all_interaction_events.json");
 
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn state_machine_set_get_numeric_input() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         let rating = include_str!("../assets/statemachines/normal_usecases/rating.json");
 
         let mut sm = player
@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     fn state_machine_set_get_boolean_input() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         let sm = include_str!("../assets/statemachines/toggle.json");
 
         let mut sm = player
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn state_machine_set_get_string_input() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         let sm = include_str!("../assets/statemachines/normal_usecases/password.json");
 
         let mut sm = player
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn state_machine_fire_event() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         let sm = include_str!("../assets/statemachines/normal_usecases/password_with_events.json");
 
         let mut sm = player
@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn final_state() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         let sm = include_str!("../assets/statemachines/normal_usecases/final_state.json");
 
         let mut sm = player
@@ -298,7 +298,7 @@ mod tests {
 
     #[test]
     fn state_machine_current_state() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         let pointer_down =
             include_str!("../assets/statemachines/interaction_tests/all_interaction_events.json");
 
@@ -337,7 +337,7 @@ mod tests {
     #[test]
     fn tweened_transition_falls_through_when_already_tweening() {
         let sm_json = include_str!("../assets/statemachines/smileys.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
@@ -386,7 +386,7 @@ mod tests {
     #[test]
     fn tweened_transition_to_state_without_segment_should_tween() {
         let sm_json = include_str!("../assets/statemachines/tween_no_segment.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
@@ -431,7 +431,7 @@ mod tests {
     #[test]
     fn tweened_transition_to_reverse_state_with_segment_should_tween() {
         let sm_json = include_str!("../assets/statemachines/tween_reverse_segment.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
@@ -483,7 +483,7 @@ mod tests {
     #[test]
     fn tweened_transition_to_reverse_state_without_segment_should_tween() {
         let sm_json = include_str!("../assets/statemachines/tween_reverse_segment.json");
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
@@ -541,7 +541,7 @@ mod tests {
 
     #[test]
     fn state_machine_get_inputs() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         let pointer_down =
             include_str!("../assets/statemachines/sanity_tests/test_get_all_inputs.json");
 

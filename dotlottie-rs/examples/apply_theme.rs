@@ -10,7 +10,7 @@ use std::ffi::CString;
 ///
 /// Themes are a convenient way to bundle multiple slot changes together and switch
 /// between different visual styles of the same animation.
-use dotlottie_rs::{ColorSpace, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Player};
 use minifb::{Key, Window, WindowOptions};
 
 mod common;
@@ -30,7 +30,7 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
     // Create player and load .lottie file
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     player.set_loop(true);
     player.set_autoplay(true);
 

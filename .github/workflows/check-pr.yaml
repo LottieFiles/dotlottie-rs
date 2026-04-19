@@ -45,6 +45,10 @@ jobs:
           submodules: ${{ matrix.native == true }}
           fetch-depth: ${{ matrix.native && 0 || 1 }}
 
+      - name: Install LLVM tools
+        if: matrix.native
+        run: sudo apt-get update && sudo apt-get install -y llvm
+
       - name: Setup Rust
         uses: ningenMe/setup-rustup@v1.1.0
 

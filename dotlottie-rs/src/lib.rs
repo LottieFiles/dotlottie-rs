@@ -10,6 +10,7 @@ mod poll_events;
 mod result;
 #[cfg(feature = "state-machines")]
 mod state_machine_engine;
+mod string;
 #[cfg(feature = "theming")]
 mod theme;
 mod tween;
@@ -47,6 +48,7 @@ pub use state_machine_engine::events::*;
 pub use state_machine_engine::security::*;
 #[cfg(feature = "state-machines")]
 pub use state_machine_engine::*;
+pub use string::*;
 #[cfg(feature = "theming")]
 pub use theme::*;
 pub use tween::TweenStatus;

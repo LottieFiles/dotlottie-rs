@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
+use crate::string::DotString;
+
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
@@ -37,8 +39,24 @@ pub trait InputTrait {
 }
 
 pub struct InputManager {
-    pub inputs: HashMap<String, InputValue>,
-    default_values: HashMap<String, InputValue>,
+    pub inputs: HashMap<DotString, InputValue>,
+    default_values: HashMap<DotString, InputValue>,
+}
+
+/// Replace an existing entry's value in-place, or insert a new `DotString`
+/// key if missing. Avoids allocating a fresh `DotString` on every update
+/// (the hot path — reads/writes against keys that were declared at load
+/// time).
+fn insert_or_update(
+    map: &mut HashMap<DotString, InputValue>,
+    key: &str,
+    value: InputValue,
+) -> Option<InputValue> {
+    if let Some(slot) = map.get_mut(key) {
+        return Some(std::mem::replace(slot, value));
+    }
+    map.insert(DotString::new(key), value);
+    None
 }
 
 impl InputTrait for InputManager {
@@ -56,20 +74,17 @@ impl InputTrait for InputManager {
 
     fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)> {
         if let Some(default_value) = self.default_values.get(key) {
-            return Some((
-                self.inputs
-                    .insert(key.to_string(), default_value.clone())
-                    .unwrap_or(default_value.clone()),
-                default_value.clone(),
-            ));
+            let default_value = default_value.clone();
+            let old = insert_or_update(&mut self.inputs, key, default_value.clone())
+                .unwrap_or_else(|| default_value.clone());
+            return Some((old, default_value));
         }
 
         None
     }
 
     fn set_numeric(&mut self, key: &str, value: f32) -> Option<InputValue> {
-        self.inputs
-            .insert(key.to_string(), InputValue::Numeric(value))
+        insert_or_update(&mut self.inputs, key, InputValue::Numeric(value))
     }
 
     // Get methods for each type
@@ -81,8 +96,7 @@ impl InputTrait for InputManager {
     }
 
     fn set_string(&mut self, key: &str, value: String) -> Option<InputValue> {
-        self.inputs
-            .insert(key.to_string(), InputValue::String(value))
+        insert_or_update(&mut self.inputs, key, InputValue::String(value))
     }
 
     fn get_string(&self, key: &str) -> Option<String> {
@@ -93,8 +107,7 @@ impl InputTrait for InputManager {
     }
 
     fn set_boolean(&mut self, key: &str, value: bool) -> Option<InputValue> {
-        self.inputs
-            .insert(key.to_string(), InputValue::Boolean(value))
+        insert_or_update(&mut self.inputs, key, InputValue::Boolean(value))
     }
 
     fn get_boolean(&self, key: &str) -> Option<bool> {
@@ -112,31 +125,25 @@ impl InputTrait for InputManager {
     }
 
     fn set_initial_numeric(&mut self, key: &str, value: f32) {
-        self.inputs
-            .insert(key.to_string(), InputValue::Numeric(value));
-
-        self.default_values
-            .insert(key.to_string(), InputValue::Numeric(value));
+        insert_or_update(&mut self.inputs, key, InputValue::Numeric(value));
+        insert_or_update(&mut self.default_values, key, InputValue::Numeric(value));
     }
 
     fn set_initial_string(&mut self, key: &str, value: String) {
-        self.inputs
-            .insert(key.to_string(), InputValue::String(value.clone()));
-
-        self.default_values
-            .insert(key.to_string(), InputValue::String(value.clone()));
+        insert_or_update(&mut self.inputs, key, InputValue::String(value.clone()));
+        insert_or_update(&mut self.default_values, key, InputValue::String(value));
     }
 
     fn set_initial_boolean(&mut self, key: &str, value: bool) {
-        self.inputs
-            .insert(key.to_string(), InputValue::Boolean(value));
-
-        self.default_values
-            .insert(key.to_string(), InputValue::Boolean(value));
+        insert_or_update(&mut self.inputs, key, InputValue::Boolean(value));
+        insert_or_update(&mut self.default_values, key, InputValue::Boolean(value));
     }
 
     fn set_initial_event(&mut self, key: &str, value: &str) {
-        self.inputs
-            .insert(key.to_string(), InputValue::Event(value.to_string()));
+        insert_or_update(
+            &mut self.inputs,
+            key,
+            InputValue::Event(value.to_string()),
+        );
     }
 }

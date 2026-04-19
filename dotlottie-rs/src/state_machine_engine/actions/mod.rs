@@ -3,6 +3,7 @@ use std::ffi::CString;
 
 use serde::Deserialize;
 
+use crate::string::{DotString, DotStringInterner};
 use crate::{state_machine::StringBool, Event};
 
 use super::{state_machine::StringNumber, StateMachineEngine};
@@ -34,33 +35,33 @@ pub enum Action {
         target: String,
     },
     Increment {
-        input_name: String,
+        input_name: DotString,
         value: Option<StringNumber>,
     },
     Decrement {
-        input_name: String,
+        input_name: DotString,
         value: Option<StringNumber>,
     },
     Toggle {
-        input_name: String,
+        input_name: DotString,
     },
     SetBoolean {
-        input_name: String,
+        input_name: DotString,
         value: StringBool,
     },
     SetString {
-        input_name: String,
+        input_name: DotString,
         value: String,
     },
     SetNumeric {
-        input_name: String,
+        input_name: DotString,
         value: StringNumber,
     },
     Fire {
-        input_name: String,
+        input_name: DotString,
     },
     Reset {
-        input_name: String,
+        input_name: DotString,
     },
     SetTheme {
         value: String,
@@ -74,6 +75,27 @@ pub enum Action {
     FireCustomEvent {
         value: String,
     },
+}
+
+impl Action {
+    pub(crate) fn intern_identifiers(&mut self, interner: &mut DotStringInterner) {
+        let input_name = match self {
+            Action::Increment { input_name, .. }
+            | Action::Decrement { input_name, .. }
+            | Action::Toggle { input_name }
+            | Action::SetBoolean { input_name, .. }
+            | Action::SetString { input_name, .. }
+            | Action::SetNumeric { input_name, .. }
+            | Action::Fire { input_name }
+            | Action::Reset { input_name } => input_name,
+            Action::OpenUrl { .. }
+            | Action::SetTheme { .. }
+            | Action::SetFrame { .. }
+            | Action::SetProgress { .. }
+            | Action::FireCustomEvent { .. } => return,
+        };
+        *input_name = interner.intern(input_name.as_str());
+    }
 }
 
 impl ActionTrait for Action {

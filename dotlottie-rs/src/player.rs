@@ -509,13 +509,7 @@ impl DotLottiePlayer {
         Ok(())
     }
 
-    pub fn set_viewport(
-        &mut self,
-        x: i32,
-        y: i32,
-        w: i32,
-        h: i32,
-    ) -> Result<(), PlayerError> {
+    pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), PlayerError> {
         self.renderer.set_viewport(x, y, w, h)?;
         Ok(())
     }
@@ -740,10 +734,7 @@ impl DotLottiePlayer {
         self.use_frame_interpolation
     }
 
-    pub fn set_segment(
-        &mut self,
-        segment: Option<crate::Segment>,
-    ) -> Result<(), PlayerError> {
+    pub fn set_segment(&mut self, segment: Option<crate::Segment>) -> Result<(), PlayerError> {
         self.renderer
             .set_segment(segment)
             .map_err(|_| PlayerError::InvalidParameter)?;
@@ -752,9 +743,7 @@ impl DotLottiePlayer {
     }
 
     pub fn segment(&self) -> Result<crate::Segment, PlayerError> {
-        self.renderer
-            .segment()
-            .map_err(|_| PlayerError::Unknown)
+        self.renderer.segment().map_err(|_| PlayerError::Unknown)
     }
 
     /// Set software rendering target using a safe Rust slice.
@@ -871,10 +860,7 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn load_animation_data(
-        &mut self,
-        animation_data: &CStr,
-    ) -> Result<(), PlayerError> {
+    pub fn load_animation_data(&mut self, animation_data: &CStr) -> Result<(), PlayerError> {
         #[cfg(feature = "dotlottie")]
         {
             self.dotlottie_manager = None;
@@ -913,8 +899,7 @@ impl DotLottiePlayer {
             let path_str = file_path
                 .to_str()
                 .map_err(|_| PlayerError::InvalidParameter)?;
-            let data =
-                fs::read_to_string(path_str).map_err(|_| PlayerError::InvalidParameter)?;
+            let data = fs::read_to_string(path_str).map_err(|_| PlayerError::InvalidParameter)?;
             let c_data = CString::new(data).map_err(|_| PlayerError::InvalidParameter)?;
 
             self.load_animation_data(&c_data)
@@ -935,8 +920,7 @@ impl DotLottiePlayer {
         {
             self.theme_id = None;
         }
-        let manager =
-            DotLottieManager::new(file_data).map_err(|_| PlayerError::Unknown)?;
+        let manager = DotLottieManager::new(file_data).map_err(|_| PlayerError::Unknown)?;
 
         let (active_animation, active_animation_id) =
             if let Some(anim_id) = self.animation_id.as_deref().and_then(|c| c.to_str().ok()) {
@@ -950,8 +934,7 @@ impl DotLottiePlayer {
 
         let animation_data = active_animation.map_err(|_| PlayerError::Unknown)?;
 
-        let animation_data_cstr =
-            CString::new(animation_data).map_err(|_| PlayerError::Unknown)?;
+        let animation_data_cstr = CString::new(animation_data).map_err(|_| PlayerError::Unknown)?;
 
         self.dotlottie_manager = Some(manager);
 
@@ -1358,12 +1341,7 @@ impl DotLottiePlayer {
         self.state_machine_id.as_deref()
     }
 
-    pub fn tween(
-        &mut self,
-        to: f32,
-        duration: f32,
-        easing: [f32; 4],
-    ) -> Result<(), PlayerError> {
+    pub fn tween(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> Result<(), PlayerError> {
         if self.is_tweening() {
             return Err(PlayerError::InsufficientCondition);
         }

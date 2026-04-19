@@ -7,7 +7,7 @@ use crate::lottie_renderer::{
     ColorSlot, ColorValue, GlContext, GlDisplay, GlSurface, ImageSlot, PositionSlot, ScalarSlot,
     ScalarValue, TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
 };
-use crate::{DotLottiePlayer, PlayerError, Layout, Mode, Rgba, Segment};
+use crate::{DotLottiePlayer, Layout, Mode, PlayerError, Rgba, Segment};
 
 use crate::ColorSpace;
 

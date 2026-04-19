@@ -1,5 +1,6 @@
 #[cfg(feature = "audio")]
 mod audio;
+mod event_queue;
 #[cfg(feature = "dotlottie")]
 mod fms;
 mod layout;

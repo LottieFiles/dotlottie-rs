@@ -40,7 +40,7 @@ jobs:
       CXXFLAGS: -O2
       BINDGEN_EXTRA_CLANG_ARGS: "-I/usr/include"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: ${{ matrix.native == true }}
           fetch-depth: ${{ matrix.native && 0 || 1 }}

@@ -11,9 +11,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-pr:
+  fmt:
     if: github.head_ref != 'release'
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Check formatting
+        run: cargo fmt --manifest-path=./dotlottie-rs/Cargo.toml --all -- --check
+
+  check:
+    if: github.head_ref != 'release'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: Test
+            cmd: cargo test --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" -- --test-threads=1
+          - name: Lint
+            cmd: cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" --all-targets -- -D clippy::print_stdout
+            rustflags: "-Dwarnings"
     env:
       CC: clang
       CXX: clang++
@@ -39,20 +60,7 @@ jobs:
       - name: Setup Conan
         uses: turtlebrowser/get-conan@main
 
-      - name: Build
-        run: |
-          cargo build --manifest-path=./dotlottie-rs/Cargo.toml --features="dev"
-
-      - name: Test
-        run: |
-          cargo test --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" -- --test-threads=1
-
-      - name: Lint
-        run: |
-          cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml  --features="dev" --all-targets -- -D clippy::print_stdout
+      - name: ${{ matrix.name }}
+        run: ${{ matrix.cmd }}
         env:
-          RUSTFLAGS: "-Dwarnings"
-
-      - name: Check formatting
-        run: |
-          cargo fmt --manifest-path=./dotlottie-rs/Cargo.toml --all -- --check
+          RUSTFLAGS: ${{ matrix.rustflags }}

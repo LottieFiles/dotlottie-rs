@@ -3,7 +3,7 @@ mod test_utils;
 use std::ffi::CString;
 
 use crate::test_utils::{HEIGHT, WIDTH};
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, PlayerError};
 
 #[cfg(test)]
 mod tests {
@@ -21,7 +21,7 @@ mod tests {
 
         assert_eq!(
             player.play(),
-            Err(DotLottiePlayerError::AnimationNotLoaded),
+            Err(PlayerError::AnimationNotLoaded),
             "Expected play to fail when animation is not loaded"
         );
 
@@ -54,7 +54,7 @@ mod tests {
 
         assert_eq!(
             player.play(),
-            Err(DotLottiePlayerError::InsufficientCondition),
+            Err(PlayerError::InsufficientCondition),
             "Expected play to fail when already playing"
         );
     }

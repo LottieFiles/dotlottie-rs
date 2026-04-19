@@ -9,7 +9,7 @@ use crate::state_machine_engine::events::Event;
 use core::str::FromStr;
 
 use crate::lottie_renderer::LottieRendererError;
-use crate::DotLottiePlayerError;
+use crate::PlayerError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
@@ -31,14 +31,14 @@ pub enum DotLottieResult {
     FeatureNotEnabled = 6,
 }
 
-impl From<DotLottiePlayerError> for DotLottieResult {
-    fn from(err: DotLottiePlayerError) -> Self {
+impl From<PlayerError> for DotLottieResult {
+    fn from(err: PlayerError) -> Self {
         match err {
-            DotLottiePlayerError::Unknown => DotLottieResult::Error,
-            DotLottiePlayerError::InvalidParameter => DotLottieResult::InvalidParameter,
-            DotLottiePlayerError::ManifestNotAvailable => DotLottieResult::ManifestNotAvailable,
-            DotLottiePlayerError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
-            DotLottiePlayerError::InsufficientCondition => DotLottieResult::InsufficientCondition,
+            PlayerError::Unknown => DotLottieResult::Error,
+            PlayerError::InvalidParameter => DotLottieResult::InvalidParameter,
+            PlayerError::ManifestNotAvailable => DotLottieResult::ManifestNotAvailable,
+            PlayerError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
+            PlayerError::InsufficientCondition => DotLottieResult::InsufficientCondition,
         }
     }
 }

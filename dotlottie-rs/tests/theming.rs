@@ -1,4 +1,4 @@
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, PlayerError};
 use std::ffi::CString;
 
 mod test_utils;
@@ -23,7 +23,7 @@ mod tests {
 
         assert_eq!(
             player.set_theme(&valid_theme_id),
-            Err(DotLottiePlayerError::InsufficientCondition),
+            Err(PlayerError::InsufficientCondition),
             "Expected theme to not load"
         );
 
@@ -59,7 +59,7 @@ mod tests {
 
         assert_eq!(
             player.set_theme(&invalid_theme_id),
-            Err(DotLottiePlayerError::InsufficientCondition),
+            Err(PlayerError::InsufficientCondition),
             "Expected theme to not load"
         );
 
@@ -154,7 +154,7 @@ mod tests {
 
         assert_eq!(
             player.set_theme(&valid_theme_id),
-            Err(DotLottiePlayerError::InsufficientCondition),
+            Err(PlayerError::InsufficientCondition),
             "Expected theme to not load"
         );
 
@@ -195,7 +195,7 @@ mod tests {
 
         assert_eq!(
             player.set_theme(&valid_theme_id),
-            Err(DotLottiePlayerError::InsufficientCondition),
+            Err(PlayerError::InsufficientCondition),
             "Expected theme to not load"
         );
 

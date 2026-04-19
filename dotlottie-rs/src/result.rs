@@ -1,7 +1,7 @@
 use crate::LottieRendererError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DotLottiePlayerError {
+pub enum PlayerError {
     Unknown,
     InvalidParameter,
     ManifestNotAvailable,
@@ -9,14 +9,14 @@ pub enum DotLottiePlayerError {
     InsufficientCondition,
 }
 
-impl From<LottieRendererError> for DotLottiePlayerError {
+impl From<LottieRendererError> for PlayerError {
     fn from(err: LottieRendererError) -> Self {
         match err {
             LottieRendererError::InvalidArgument | LottieRendererError::InvalidColor => {
-                DotLottiePlayerError::InvalidParameter
+                PlayerError::InvalidParameter
             }
-            LottieRendererError::AnimationNotLoaded => DotLottiePlayerError::AnimationNotLoaded,
-            _ => DotLottiePlayerError::Unknown,
+            LottieRendererError::AnimationNotLoaded => PlayerError::AnimationNotLoaded,
+            _ => PlayerError::Unknown,
         }
     }
 }

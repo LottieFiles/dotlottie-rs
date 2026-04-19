@@ -423,7 +423,7 @@ impl<'a> StateMachineEngine<'a> {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> Result<(), crate::DotLottiePlayerError> {
+    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> Result<(), crate::PlayerError> {
         // Reset to first frame
         let _ = self.player.stop();
         self.player.set_mode(Mode::Forward);
@@ -434,7 +434,7 @@ impl<'a> StateMachineEngine<'a> {
 
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
-            return Err(crate::DotLottiePlayerError::Unknown);
+            return Err(crate::PlayerError::Unknown);
         }
 
         self.open_url_requires_user_interaction = open_url.require_user_interaction;
@@ -460,7 +460,7 @@ impl<'a> StateMachineEngine<'a> {
 
                 self.observe_on_error(message.as_str());
 
-                return Err(crate::DotLottiePlayerError::Unknown);
+                return Err(crate::PlayerError::Unknown);
             }
         }
 
@@ -1265,16 +1265,16 @@ impl<'a> StateMachineEngine<'a> {
         &mut self,
         state_name: &str,
         do_tick: bool,
-    ) -> Result<(), crate::DotLottiePlayerError> {
+    ) -> Result<(), crate::PlayerError> {
         if self.set_current_state(state_name, None, false).is_err() {
-            return Err(crate::DotLottiePlayerError::Unknown);
+            return Err(crate::PlayerError::Unknown);
         }
 
         if do_tick {
             return if self.run_current_state_pipeline().is_ok() {
                 Ok(())
             } else {
-                Err(crate::DotLottiePlayerError::Unknown)
+                Err(crate::PlayerError::Unknown)
             };
         }
 
@@ -1403,7 +1403,7 @@ impl<'a> StateMachineEngine<'a> {
         }
     }
 
-    pub fn tick(&mut self, dt: f32) -> Result<bool, crate::DotLottiePlayerError> {
+    pub fn tick(&mut self, dt: f32) -> Result<bool, crate::PlayerError> {
         let ticked = self.player.tick(dt);
 
         self.check_completion();

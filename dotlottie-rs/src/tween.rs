@@ -1,4 +1,4 @@
-use crate::DotLottiePlayerError;
+use crate::PlayerError;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TweenStatus {
@@ -22,9 +22,9 @@ impl TweenState {
         to: f32,
         duration: f32,
         easing: [f32; 4],
-    ) -> Result<Self, DotLottiePlayerError> {
+    ) -> Result<Self, PlayerError> {
         if duration <= 0.0 {
-            return Err(DotLottiePlayerError::InvalidParameter);
+            return Err(PlayerError::InvalidParameter);
         }
 
         let [x1, y1, x2, y2] = easing;
@@ -33,7 +33,7 @@ impl TweenState {
             || !y1.is_finite()
             || !y2.is_finite()
         {
-            return Err(DotLottiePlayerError::InvalidParameter);
+            return Err(PlayerError::InvalidParameter);
         }
 
         Ok(Self {

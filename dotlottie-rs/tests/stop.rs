@@ -3,7 +3,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError, Mode, Segment};
+use dotlottie_rs::{ColorSpace, DotLottiePlayer, PlayerError, Mode, Segment};
 
 #[cfg(test)]
 mod tests {
@@ -133,7 +133,7 @@ mod tests {
 
             assert_eq!(
                 player.stop(),
-                Err(DotLottiePlayerError::InsufficientCondition),
+                Err(PlayerError::InsufficientCondition),
                 "Animation should not stop again"
             );
         }

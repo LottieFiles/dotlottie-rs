@@ -104,8 +104,8 @@ pub struct StateMachineEngine<'a> {
     pointer_management: PointerData,
 
     // Event queues
-    pub event_queue: EventQueue<StateMachineEvent>,
-    pub internal_event_queue: EventQueue<StateMachineInternalEvent>,
+    pub event_queue: EventQueue<StateMachineEvent, 32>,
+    pub internal_event_queue: EventQueue<StateMachineInternalEvent, 8>,
 
     // Holds current event during polling from C API
     pub current_event: Option<StateMachineEvent>,

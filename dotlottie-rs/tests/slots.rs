@@ -1,4 +1,4 @@
-use dotlottie_rs::{ColorSpace, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Player};
 use std::ffi::CString;
 
 mod test_utils;
@@ -8,8 +8,8 @@ use crate::test_utils::{HEIGHT, WIDTH};
 mod tests {
     use super::*;
 
-    fn load_bouncy_ball() -> DotLottiePlayer {
-        let mut player = DotLottiePlayer::new();
+    fn load_bouncy_ball() -> Player {
+        let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
         player
             .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)

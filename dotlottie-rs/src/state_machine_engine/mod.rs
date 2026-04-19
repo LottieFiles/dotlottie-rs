@@ -25,8 +25,8 @@ use crate::actions::whitelist::Whitelist;
 use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, CompletionEvent, DotLottiePlayer,
-    EventName, Layout, Mode, Point, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, CompletionEvent, EventName, Layout, Mode,
+    Player, Point, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -95,7 +95,7 @@ pub struct StateMachineEngine<'a> {
     pub open_url_requires_user_interaction: bool,
     pub open_url_whitelist: Whitelist,
 
-    pub player: &'a mut DotLottiePlayer,
+    pub player: &'a mut Player,
 
     pub inputs: InputManager,
     curr_event: Option<String>,
@@ -126,7 +126,7 @@ pub struct StateMachineEngine<'a> {
 impl<'a> StateMachineEngine<'a> {
     pub fn new(
         state_machine_definition: &str,
-        player: &'a mut DotLottiePlayer,
+        player: &'a mut Player,
         max_cycle_count: Option<usize>,
     ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
         Self::from_definition(state_machine_definition, player, max_cycle_count)
@@ -311,7 +311,7 @@ impl<'a> StateMachineEngine<'a> {
     // Previously called create_state_machine
     pub fn from_definition(
         sm_definition: &str,
-        player: &'a mut DotLottiePlayer,
+        player: &'a mut Player,
         max_cycle_count: Option<usize>,
     ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);

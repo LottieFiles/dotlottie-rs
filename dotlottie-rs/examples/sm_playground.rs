@@ -2,7 +2,7 @@
 
 use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
 use dotlottie_rs::events::Event;
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, Rgba, StateMachineEngine, StateMachineEvent};
+use dotlottie_rs::{ColorSpace, Player, Rgba, StateMachineEngine, StateMachineEvent};
 use eframe::egui;
 use std::collections::VecDeque;
 use std::ffi::CString;
@@ -31,7 +31,7 @@ struct InputEntry {
 }
 
 struct Playground {
-    player: Box<DotLottiePlayer>,
+    player: Box<Player>,
     buffer: Vec<u32>,
     engine: Option<StateMachineEngine<'static>>,
     texture: Option<egui::TextureHandle>,
@@ -49,7 +49,7 @@ struct Playground {
 
 impl Playground {
     fn new(file_path: Option<PathBuf>) -> Self {
-        let mut player = Box::new(DotLottiePlayer::new());
+        let mut player = Box::new(Player::new());
         let _ = player.set_background(Rgba::from(0xffffffff));
 
         let mut buffer = vec![0u32; (CANVAS_WIDTH * CANVAS_HEIGHT) as usize];
@@ -150,8 +150,8 @@ impl Playground {
             None => return,
         };
 
-        let player_ptr: *mut DotLottiePlayer = &mut *self.player;
-        let player_ref: &'static mut DotLottiePlayer = unsafe { &mut *player_ptr };
+        let player_ptr: *mut Player = &mut *self.player;
+        let player_ref: &'static mut Player = unsafe { &mut *player_ptr };
 
         let c_id = match CString::new(id.clone()) {
             Ok(c) => c,

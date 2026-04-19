@@ -1,13 +1,13 @@
 use std::ffi::CString;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use dotlottie_rs::{ColorSpace, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Player};
 
 const WIDTH: u32 = 1000;
 const HEIGHT: u32 = 1000;
 
 fn load_animation_data_benchmark(c: &mut Criterion) {
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     let data_str =
         std::str::from_utf8(include_bytes!("../assets/animations/lottie/test.json")).unwrap();
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
@@ -25,7 +25,7 @@ fn load_animation_data_benchmark(c: &mut Criterion) {
 }
 
 fn load_animation_path_benchmark(c: &mut Criterion) {
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
     player
@@ -45,7 +45,7 @@ fn load_animation_path_benchmark(c: &mut Criterion) {
 }
 
 fn load_dotlottie_data_benchmark(c: &mut Criterion) {
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
     player
@@ -61,7 +61,7 @@ fn load_dotlottie_data_benchmark(c: &mut Criterion) {
 }
 
 fn animation_loop_benchmark(c: &mut Criterion) {
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     player.set_autoplay(true);
     player.set_loop(true);
 
@@ -82,7 +82,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
         });
     });
 
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     player.set_autoplay(true);
     player.set_loop(true);
     player.set_use_frame_interpolation(true);
@@ -103,7 +103,7 @@ fn animation_loop_benchmark(c: &mut Criterion) {
 }
 
 fn set_theme_benchmark(c: &mut Criterion) {
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
     player
@@ -120,7 +120,7 @@ fn set_theme_benchmark(c: &mut Criterion) {
 }
 
 fn state_machine_load_benchmark(c: &mut Criterion) {
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
     player
@@ -137,7 +137,7 @@ fn state_machine_load_benchmark(c: &mut Criterion) {
 }
 
 fn state_machine_load_data_benchmark(c: &mut Criterion) {
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT).try_into().unwrap()];
 
     player

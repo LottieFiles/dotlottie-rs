@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Player};
 
 mod test_utils;
 
@@ -9,7 +9,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 #[cfg(test)]
 mod tests {
 
-    use dotlottie_rs::DotLottieEvent;
+    use dotlottie_rs::PlayerEvent;
 
     use super::*;
 
@@ -17,7 +17,7 @@ mod tests {
     fn test_subscribe_unsubscribe() {
         let mut events: Vec<String> = vec![];
 
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(true);
         player.set_loop(true);
         player.set_use_frame_interpolation(false);
@@ -47,18 +47,18 @@ mod tests {
             "on_play".to_string(),
         ];
 
-        let drain = |player: &mut DotLottiePlayer, events: &mut Vec<String>| {
+        let drain = |player: &mut Player, events: &mut Vec<String>| {
             while let Some(event) = player.poll_event() {
                 events.push(match event {
-                    DotLottieEvent::Load => "on_load".to_string(),
-                    DotLottieEvent::LoadError => "on_load_error".to_string(),
-                    DotLottieEvent::Play => "on_play".to_string(),
-                    DotLottieEvent::Pause => "on_pause".to_string(),
-                    DotLottieEvent::Stop => "on_stop".to_string(),
-                    DotLottieEvent::Frame { frame_no } => format!("on_frame: {frame_no}"),
-                    DotLottieEvent::Render { frame_no } => format!("on_render: {frame_no}"),
-                    DotLottieEvent::Loop { loop_count } => format!("on_loop: {loop_count}"),
-                    DotLottieEvent::Complete => "on_complete".to_string(),
+                    PlayerEvent::Load => "on_load".to_string(),
+                    PlayerEvent::LoadError => "on_load_error".to_string(),
+                    PlayerEvent::Play => "on_play".to_string(),
+                    PlayerEvent::Pause => "on_pause".to_string(),
+                    PlayerEvent::Stop => "on_stop".to_string(),
+                    PlayerEvent::Frame { frame_no } => format!("on_frame: {frame_no}"),
+                    PlayerEvent::Render { frame_no } => format!("on_render: {frame_no}"),
+                    PlayerEvent::Loop { loop_count } => format!("on_loop: {loop_count}"),
+                    PlayerEvent::Complete => "on_complete".to_string(),
                 });
             }
         };

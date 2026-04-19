@@ -4,7 +4,7 @@ pub use crate::event_queue::EventQueue;
 
 /// Events emitted by the DotLottie player.
 #[derive(Debug, Clone, PartialEq)]
-pub enum DotLottieEvent {
+pub enum PlayerEvent {
     Load,
     LoadError,
     Play,

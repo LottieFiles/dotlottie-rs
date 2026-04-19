@@ -22,7 +22,8 @@ use transitions::guard::GuardTrait;
 use transitions::{Transition, TransitionTrait};
 
 use crate::actions::whitelist::Whitelist;
-use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
+use crate::poll_events::EventQueue;
+use crate::state_machine_engine::events::{StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, CompletionEvent, DotLottiePlayer,

@@ -52,6 +52,13 @@ jobs:
       - name: Setup Rust
         uses: ningenMe/setup-rustup@v1.1.0
 
+      - name: Cache cargo
+        if: matrix.native
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: check
+          cache-on-failure: true
+
       - name: ${{ matrix.name }}
         run: ${{ matrix.cmd }}
         env:

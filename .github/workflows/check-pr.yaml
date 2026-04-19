@@ -10,19 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
-  fmt:
-    if: github.head_ref != 'release'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Check formatting
-        run: cargo fmt --manifest-path=./dotlottie-rs/Cargo.toml --all -- --check
-
   check:
     name: ${{ matrix.name }}
     if: github.head_ref != 'release'
@@ -31,10 +22,14 @@ jobs:
       fail-fast: true
       matrix:
         include:
+          - name: Fmt
+            cmd: cargo fmt --manifest-path=./dotlottie-rs/Cargo.toml --all -- --check
           - name: Test
             cmd: cargo test --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" -- --test-threads=1
+            native: true
           - name: Lint
             cmd: cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" --all-targets -- -D clippy::print_stdout
+            native: true
             rustflags: "-Dwarnings"
     env:
       CC: clang
@@ -47,19 +42,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
-          fetch-depth: 0
+          submodules: ${{ matrix.native == true }}
+          fetch-depth: ${{ matrix.native && 0 || 1 }}
 
       - name: Install build dependencies
+        if: matrix.native
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential clang llvm-dev libclang-dev
 
       - name: Setup Rust
         uses: ningenMe/setup-rustup@v1.1.0
-
-      - name: Setup Conan
-        uses: turtlebrowser/get-conan@main
 
       - name: ${{ matrix.name }}
         run: ${{ matrix.cmd }}

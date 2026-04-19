@@ -4,7 +4,7 @@
 # Variables that can be overridden
 BINDINGS_DIR ?= dotlottie-rs/build
 
-.PHONY: all clean help list-platforms test clippy native native-clean
+.PHONY: all clean help list-platforms test clippy fmt native native-clean
 
 # Default target - MUST be defined before includes to ensure it's the first target
 all: help
@@ -127,6 +127,10 @@ test:
 # Run clippy
 clippy:
 	cargo clippy --manifest-path dotlottie-rs/Cargo.toml --all-targets -- -D clippy::print_stdout
+
+# Run rustfmt
+fmt:
+	cargo fmt --manifest-path dotlottie-rs/Cargo.toml
 
 # Native build variables
 NATIVE = native

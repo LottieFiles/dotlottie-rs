@@ -663,7 +663,10 @@ pub unsafe extern "C" fn dotlottie_get_total_frames(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_get_duration(ptr: *mut Player, result: *mut f32) -> DotLottieResult {
+pub unsafe extern "C" fn dotlottie_get_duration(
+    ptr: *mut Player,
+    result: *mut f32,
+) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.duration();

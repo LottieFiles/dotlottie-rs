@@ -10,10 +10,8 @@ pub struct EventQueue<T, const N: usize> {
 }
 
 impl<T, const N: usize> EventQueue<T, N> {
-    const _ASSERT_CAPACITY: () = assert!(N > 0, "EventQueue capacity N must be > 0");
-
     pub fn new() -> Self {
-        let _ = Self::_ASSERT_CAPACITY;
+        const { assert!(N > 0, "EventQueue capacity N must be > 0") };
         Self {
             buf: [const { MaybeUninit::uninit() }; N],
             head: 0,

@@ -255,7 +255,7 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
 /// - `DotLottieResult::Error` if the manifest cannot be serialized to JSON
 #[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_manifest(
+pub unsafe extern "C" fn dotlottie_get_manifest(
     ptr: *mut Player,
     buffer: *mut c_char,
     size_out: *mut usize,
@@ -536,7 +536,7 @@ pub unsafe extern "C" fn dotlottie_get_use_frame_interpolation(ptr: *mut Player)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_background(
+pub unsafe extern "C" fn dotlottie_get_background(
     ptr: *mut Player,
     r: *mut u8,
     g: *mut u8,
@@ -648,7 +648,7 @@ pub unsafe extern "C" fn dotlottie_get_layout(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_total_frames(
+pub unsafe extern "C" fn dotlottie_get_total_frames(
     ptr: *mut Player,
     result: *mut f32,
 ) -> DotLottieResult {
@@ -663,7 +663,7 @@ pub unsafe extern "C" fn dotlottie_total_frames(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_duration(ptr: *mut Player, result: *mut f32) -> DotLottieResult {
+pub unsafe extern "C" fn dotlottie_get_duration(ptr: *mut Player, result: *mut f32) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
         if !result.is_null() {
             *result = dotlottie_player.duration();
@@ -675,7 +675,7 @@ pub unsafe extern "C" fn dotlottie_duration(ptr: *mut Player, result: *mut f32) 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_current_frame(
+pub unsafe extern "C" fn dotlottie_get_current_frame(
     ptr: *mut Player,
     result: *mut f32,
 ) -> DotLottieResult {
@@ -690,7 +690,7 @@ pub unsafe extern "C" fn dotlottie_current_frame(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_current_loop_count(
+pub unsafe extern "C" fn dotlottie_get_current_loop_count(
     ptr: *mut Player,
     result: *mut u32,
 ) -> DotLottieResult {
@@ -724,7 +724,7 @@ pub unsafe extern "C" fn dotlottie_is_loaded(ptr: *mut Player) -> bool {
 /// The current PlaybackStatus (Playing, Paused, or Stopped)
 /// Returns Stopped if the pointer is invalid
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_playback_status(ptr: *mut Player) -> PlaybackStatus {
+pub unsafe extern "C" fn dotlottie_get_playback_status(ptr: *mut Player) -> PlaybackStatus {
     match ptr.as_mut() {
         Some(p) => {
             if p.is_playing() {
@@ -774,7 +774,7 @@ pub unsafe extern "C" fn dotlottie_set_audio_volume(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_audio_volume(
+pub unsafe extern "C" fn dotlottie_get_audio_volume(
     ptr: *mut Player,
     result: *mut f32,
 ) -> DotLottieResult {
@@ -1432,7 +1432,7 @@ pub unsafe extern "C" fn dotlottie_reset_slots(ptr: *mut Player) -> DotLottieRes
 /// - `DOTLOTTIE_SUCCESS` on success
 /// - `DOTLOTTIE_INVALID_PARAMETER` if pointers are null
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_markers_count(
+pub unsafe extern "C" fn dotlottie_get_markers_count(
     ptr: *mut Player,
     count: *mut u32,
 ) -> DotLottieResult {
@@ -1457,7 +1457,7 @@ pub unsafe extern "C" fn dotlottie_markers_count(
 /// - `DOTLOTTIE_SUCCESS` on success
 /// - `DOTLOTTIE_INVALID_PARAMETER` if ptr/name is null or index is out of bounds
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_marker(
+pub unsafe extern "C" fn dotlottie_get_marker(
     ptr: *mut Player,
     idx: u32,
     name: *mut *const c_char,
@@ -1500,7 +1500,7 @@ pub unsafe extern "C" fn dotlottie_marker(
 /// - `DotLottieResult::InvalidParameter` if no animation is active or player pointer is invalid
 #[cfg_attr(not(feature = "dotlottie"), allow(unused_variables))]
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_animation_id(
+pub unsafe extern "C" fn dotlottie_get_animation_id(
     ptr: *mut Player,
     buffer: *mut c_char,
     size_out: *mut usize,
@@ -1549,7 +1549,7 @@ pub unsafe extern "C" fn dotlottie_animation_id(
 /// - `DotLottieResult::InvalidParameter` if no theme is active or player pointer is invalid
 #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_theme_id(
+pub unsafe extern "C" fn dotlottie_get_theme_id(
     ptr: *mut Player,
     buffer: *mut c_char,
     size_out: *mut usize,
@@ -1599,7 +1599,7 @@ pub unsafe extern "C" fn dotlottie_set_viewport(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_animation_size(
+pub unsafe extern "C" fn dotlottie_get_animation_size(
     ptr: *mut Player,
     picture_width: *mut f32,
     picture_height: *mut f32,
@@ -2297,7 +2297,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_boolean_input(
 /// - `DotLottieResult::InvalidParameter` if pointer is invalid
 #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_current_state(
+pub unsafe extern "C" fn dotlottie_state_machine_get_current_state(
     sm: *mut DotLottieStateMachine,
     buffer: *mut c_char,
     size_out: *mut usize,
@@ -2344,7 +2344,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_current_state(
 /// - `DotLottieResult::InvalidParameter` if pointer is invalid
 #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_status(
+pub unsafe extern "C" fn dotlottie_state_machine_get_status(
     sm: *mut DotLottieStateMachine,
     buffer: *mut c_char,
     size_out: *mut usize,
@@ -2384,7 +2384,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_status(
 /// Frameworks should register listeners for the returned interaction types.
 #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_state_machine_framework_setup(
+pub unsafe extern "C" fn dotlottie_state_machine_get_framework_setup(
     sm: *mut DotLottieStateMachine,
     result: *mut u16,
 ) -> DotLottieResult {

@@ -47,6 +47,22 @@ mod tests {
             "on_play".to_string(),
         ];
 
+        let drain = |player: &mut DotLottiePlayer, events: &mut Vec<String>| {
+            while let Some(event) = player.poll_event() {
+                events.push(match event {
+                    DotLottieEvent::Load => "on_load".to_string(),
+                    DotLottieEvent::LoadError => "on_load_error".to_string(),
+                    DotLottieEvent::Play => "on_play".to_string(),
+                    DotLottieEvent::Pause => "on_pause".to_string(),
+                    DotLottieEvent::Stop => "on_stop".to_string(),
+                    DotLottieEvent::Frame { frame_no } => format!("on_frame: {frame_no}"),
+                    DotLottieEvent::Render { frame_no } => format!("on_render: {frame_no}"),
+                    DotLottieEvent::Loop { loop_count } => format!("on_loop: {loop_count}"),
+                    DotLottieEvent::Complete => "on_complete".to_string(),
+                });
+            }
+        };
+
         // animation loop
         loop {
             let rendered = player.tick(1000.0 / 60.0).unwrap_or(false);
@@ -68,6 +84,7 @@ mod tests {
                     }
                 }
             }
+            drain(&mut player, &mut events);
         }
 
         let _ = player.stop();
@@ -77,21 +94,7 @@ mod tests {
         expected_events.push("on_frame: 0".to_string());
         expected_events.push("on_stop".to_string());
 
-        while let Some(event) = player.poll_event() {
-            let event_str = match event {
-                DotLottieEvent::Load => "on_load".to_string(),
-                DotLottieEvent::LoadError => "on_load_error".to_string(),
-                DotLottieEvent::Play => "on_play".to_string(),
-                DotLottieEvent::Pause => "on_pause".to_string(),
-                DotLottieEvent::Stop => "on_stop".to_string(),
-                DotLottieEvent::Frame { frame_no } => format!("on_frame: {frame_no}"),
-                DotLottieEvent::Render { frame_no } => format!("on_render: {frame_no}"),
-                DotLottieEvent::Loop { loop_count } => format!("on_loop: {loop_count}"),
-                DotLottieEvent::Complete => "on_complete".to_string(),
-            };
-
-            events.push(event_str);
-        }
+        drain(&mut player, &mut events);
 
         for (i, event) in events.iter().enumerate() {
             assert_eq!(

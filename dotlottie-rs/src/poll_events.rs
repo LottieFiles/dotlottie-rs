@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-pub use crate::event_queue::{EventQueue, MAX_EVENTS};
+pub use crate::event_queue::EventQueue;
 
 /// Events emitted by the DotLottie player.
 #[derive(Debug, Clone, PartialEq)]

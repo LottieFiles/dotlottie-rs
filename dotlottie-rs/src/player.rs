@@ -67,7 +67,7 @@ pub struct DotLottiePlayer {
     audio_manager: Option<AudioManager>,
     direction: Direction,
     active_marker: Option<CString>,
-    event_queue: EventQueue<DotLottieEvent>,
+    event_queue: EventQueue<DotLottieEvent, 16>,
     completion_event: CompletionEvent,
     // Playback config properties
     mode: Mode,

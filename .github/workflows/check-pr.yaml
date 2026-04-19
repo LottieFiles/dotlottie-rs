@@ -53,7 +53,7 @@ jobs:
         if: matrix.native
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: check
+          shared-key: ${{ matrix.name }}
           cache-on-failure: true
 
       - name: ${{ matrix.name }}

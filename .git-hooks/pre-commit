@@ -7,5 +7,5 @@ cargo fmt --manifest-path=./dotlottie-rs/Cargo.toml --all -- --check
 echo "Running cargo clippy..."
 RUSTFLAGS="-Dwarnings" cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" --all-targets -- -D clippy::print_stdout
 
-echo "Running rests..."
+echo "Running tests..."
 cargo test --manifest-path=./dotlottie-rs/Cargo.toml -- --test-threads=1

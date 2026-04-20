@@ -427,7 +427,6 @@ impl DotLottiePlayerWasm {
     pub fn clear(&mut self) {
         #[cfg(feature = "webgl")]
         self.activate_gl();
-        self.player.clear();
     }
 
     // ── SW pixel buffer ───────────────────────────────────────────────────────

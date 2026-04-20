@@ -104,11 +104,6 @@ pub trait LottieRenderer {
     fn duration(&self) -> Result<f32, LottieRendererError>;
 
     fn current_frame(&self) -> f32;
-
-    fn buffer(&self) -> &[u32];
-
-    fn clear(&mut self);
-
     fn render(&mut self) -> Result<(), LottieRendererError>;
 
     fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), LottieRendererError>;
@@ -215,7 +210,6 @@ impl dyn LottieRenderer {
             current_frame: 0.0,
             updated: false,
             background: Rgba::TRANSPARENT,
-            buffer: vec![],
             layout: Layout::default(),
             user_transform: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
             batch_slot_code: None,
@@ -239,7 +233,6 @@ struct LottieRendererImpl<R: Renderer> {
     current_frame: f32,
     updated: bool,
     background: Rgba,
-    buffer: Vec<u32>,
     layout: Layout,
     user_transform: [f32; 9],
     /// ThorVG slot code for the current batch of all active slots
@@ -256,7 +249,6 @@ struct LottieRendererImpl<R: Renderer> {
 impl<R: Renderer> LottieRendererImpl<R> {
     fn clear(&mut self) -> Result<(), LottieRendererError> {
         if self.animation.is_some() || self.background_shape.is_some() {
-            self.renderer.clear().map_err(into_lottie::<R>)?;
             self.animation = None;
             self.background_shape = None;
         }
@@ -598,16 +590,6 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn current_frame(&self) -> f32 {
         self.current_frame
-    }
-
-    #[inline]
-    fn buffer(&self) -> &[u32] {
-        &self.buffer
-    }
-
-    #[inline]
-    fn clear(&mut self) {
-        self.buffer.clear()
     }
 
     fn render(&mut self) -> Result<(), LottieRendererError> {

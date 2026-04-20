@@ -6,7 +6,6 @@ mod fms;
 mod layout;
 mod lottie_renderer;
 mod player;
-mod poll_events;
 mod result;
 #[cfg(feature = "state-machines")]
 mod state_machine_engine;
@@ -39,8 +38,8 @@ pub use audio::*;
 pub use fms::*;
 pub use layout::*;
 pub use lottie_renderer::*;
+pub use event_queue::*;
 pub use player::*;
-pub use poll_events::*;
 pub use result::*;
 #[cfg(feature = "state-machines")]
 pub use state_machine_engine::events::*;

@@ -27,6 +27,12 @@ pub struct InputManager {
     pub(super) event: HashSet<String>,
 }
 
+impl Default for InputManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InputManager {
     pub fn new() -> Self {
         Self {

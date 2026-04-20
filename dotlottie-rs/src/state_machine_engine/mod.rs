@@ -211,7 +211,7 @@ impl<'a> StateMachineEngine<'a> {
             let _ = self.run_current_state_pipeline();
         }
 
-        ret.map(Into::into)
+        ret
     }
 
     pub fn get_string_input(&self, key: &str) -> Option<String> {

@@ -3,7 +3,7 @@ mod test_utils;
 use std::ffi::CString;
 
 use crate::test_utils::{HEIGHT, WIDTH};
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError};
+use dotlottie_rs::{ColorSpace, Player, PlayerError};
 
 #[cfg(test)]
 mod tests {
@@ -11,7 +11,7 @@ mod tests {
 
     #[test]
     fn test_play_fail_when_animation_is_not_loaded() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -21,7 +21,7 @@ mod tests {
 
         assert_eq!(
             player.play(),
-            Err(DotLottiePlayerError::AnimationNotLoaded),
+            Err(PlayerError::AnimationNotLoaded),
             "Expected play to fail when animation is not loaded"
         );
 
@@ -37,7 +37,7 @@ mod tests {
 
     #[test]
     fn test_play_while_playing() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
@@ -54,14 +54,14 @@ mod tests {
 
         assert_eq!(
             player.play(),
-            Err(DotLottiePlayerError::InsufficientCondition),
+            Err(PlayerError::InsufficientCondition),
             "Expected play to fail when already playing"
         );
     }
 
     #[test]
     fn test_play_after_pause() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_use_frame_interpolation(false);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_play_after_complete() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_use_frame_interpolation(false);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_play_after_setting_frame() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_use_frame_interpolation(false);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_tick_zero_dt_does_not_advance() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(true);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_tick_large_dt_completes_without_panic() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(true);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn test_tick_negative_dt_is_clamped_to_zero() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(true);
         player.set_use_frame_interpolation(false);
 

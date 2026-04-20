@@ -8,7 +8,7 @@
 ///
 /// Vector slots are for 2D properties like scale [x, y] without spatial tangents.
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, LottieKeyframe, LottieProperty};
+use dotlottie_rs::{ColorSpace, LottieKeyframe, LottieProperty, Player};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -28,7 +28,7 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
 
     player.set_autoplay(true);
     player.set_loop(true);

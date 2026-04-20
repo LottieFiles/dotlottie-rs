@@ -1,12 +1,12 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, TweenStatus};
+use dotlottie_rs::{ColorSpace, Player, TweenStatus};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
 
-fn setup_player() -> (DotLottiePlayer, Vec<u32>) {
-    let mut player = DotLottiePlayer::new();
+fn setup_player() -> (Player, Vec<u32>) {
+    let mut player = Player::new();
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
     player

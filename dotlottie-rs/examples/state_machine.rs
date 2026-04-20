@@ -2,7 +2,7 @@
 
 use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
 use dotlottie_rs::events::Event;
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, Rgba, StateMachineEngine, StateMachineEvent};
+use dotlottie_rs::{ColorSpace, Player, Rgba, StateMachineEngine, StateMachineEvent};
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs::{self, File};
@@ -100,7 +100,7 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
     }
 }
 
-fn load_animation(player: &mut DotLottiePlayer, path: &PathBuf) -> bool {
+fn load_animation(player: &mut Player, path: &PathBuf) -> bool {
     let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
     let success = match extension {
@@ -147,7 +147,7 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     let _ = player.set_background(Rgba::from(0xffffffff));
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];

@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Player};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -12,14 +12,14 @@ mod tests {
 
     #[test]
     fn test_default_autoplay() {
-        let player = DotLottiePlayer::new();
+        let player = Player::new();
 
         assert!(!player.autoplay());
     }
 
     #[test]
     fn test_set_autoplay() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         player.set_autoplay(true);
 
@@ -28,7 +28,7 @@ mod tests {
 
     #[test]
     fn test_autoplay() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(true);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
@@ -59,7 +59,7 @@ mod tests {
 
     #[test]
     fn test_no_autoplay() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(false);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];

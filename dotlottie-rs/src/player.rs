@@ -4,8 +4,8 @@ use std::{fs, mem};
 
 #[cfg(feature = "audio")]
 use crate::audio::AudioManager;
-use crate::poll_events::{DotLottieEvent, EventQueue};
-use crate::DotLottiePlayerError;
+use crate::poll_events::{EventQueue, PlayerEvent};
+use crate::PlayerError;
 use crate::{
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},
@@ -55,7 +55,7 @@ pub enum CompletionEvent {
     LoopCompleted,
 }
 
-pub struct DotLottiePlayer {
+pub struct Player {
     pub(crate) renderer: Box<dyn LottieRenderer>,
     playback_state: PlaybackState,
     is_loaded: bool,
@@ -67,7 +67,7 @@ pub struct DotLottiePlayer {
     audio_manager: Option<AudioManager>,
     direction: Direction,
     active_marker: Option<CString>,
-    event_queue: EventQueue<DotLottieEvent>,
+    event_queue: EventQueue<PlayerEvent, 16>,
     completion_event: CompletionEvent,
     // Playback config properties
     mode: Mode,
@@ -87,13 +87,13 @@ pub struct DotLottiePlayer {
 }
 
 #[cfg(feature = "tvg")]
-impl Default for DotLottiePlayer {
+impl Default for Player {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl DotLottiePlayer {
+impl Player {
     #[cfg(feature = "tvg")]
     pub fn new() -> Self {
         Self::with_renderer(crate::TvgRenderer::new(0))
@@ -105,19 +105,19 @@ impl DotLottiePlayer {
     }
 
     #[cfg(feature = "tvg")]
-    pub fn load_font(name: &str, data: &[u8]) -> Result<(), DotLottiePlayerError> {
+    pub fn load_font(name: &str, data: &[u8]) -> Result<(), PlayerError> {
         use crate::lottie_renderer::Renderer;
-        crate::TvgRenderer::load_font(name, data).map_err(|_| DotLottiePlayerError::Unknown)
+        crate::TvgRenderer::load_font(name, data).map_err(|_| PlayerError::Unknown)
     }
 
     #[cfg(feature = "tvg")]
-    pub fn unload_font(name: &str) -> Result<(), DotLottiePlayerError> {
+    pub fn unload_font(name: &str) -> Result<(), PlayerError> {
         use crate::lottie_renderer::Renderer;
-        crate::TvgRenderer::unload_font(name).map_err(|_| DotLottiePlayerError::Unknown)
+        crate::TvgRenderer::unload_font(name).map_err(|_| PlayerError::Unknown)
     }
 
     pub fn with_renderer<R: Renderer>(renderer: R) -> Self {
-        DotLottiePlayer {
+        Player {
             renderer: <dyn LottieRenderer>::new(renderer),
             playback_state: PlaybackState::Stopped,
             is_loaded: false,
@@ -199,12 +199,12 @@ impl DotLottiePlayer {
         matches!(self.playback_state, PlaybackState::Stopped)
     }
 
-    pub fn play(&mut self) -> Result<(), DotLottiePlayerError> {
+    pub fn play(&mut self) -> Result<(), PlayerError> {
         if !self.is_loaded {
-            return Err(DotLottiePlayerError::AnimationNotLoaded);
+            return Err(PlayerError::AnimationNotLoaded);
         }
         if self.is_playing() {
-            return Err(DotLottiePlayerError::InsufficientCondition);
+            return Err(PlayerError::InsufficientCondition);
         }
 
         if self.is_complete() && self.is_stopped() {
@@ -234,17 +234,17 @@ impl DotLottiePlayer {
             am.play();
         }
 
-        self.event_queue.push(DotLottieEvent::Play);
+        self.event_queue.push(PlayerEvent::Play);
 
         Ok(())
     }
 
-    pub fn pause(&mut self) -> Result<(), DotLottiePlayerError> {
+    pub fn pause(&mut self) -> Result<(), PlayerError> {
         if !self.is_loaded {
-            return Err(DotLottiePlayerError::AnimationNotLoaded);
+            return Err(PlayerError::AnimationNotLoaded);
         }
         if !self.is_playing() {
-            return Err(DotLottiePlayerError::InsufficientCondition);
+            return Err(PlayerError::InsufficientCondition);
         }
         self.playback_state = PlaybackState::Paused;
 
@@ -253,16 +253,16 @@ impl DotLottiePlayer {
             am.pause();
         }
 
-        self.event_queue.push(DotLottieEvent::Pause);
+        self.event_queue.push(PlayerEvent::Pause);
         Ok(())
     }
 
-    pub fn stop(&mut self) -> Result<(), DotLottiePlayerError> {
+    pub fn stop(&mut self) -> Result<(), PlayerError> {
         if !self.is_loaded {
-            return Err(DotLottiePlayerError::AnimationNotLoaded);
+            return Err(PlayerError::AnimationNotLoaded);
         }
         if self.is_stopped() {
-            return Err(DotLottiePlayerError::InsufficientCondition);
+            return Err(PlayerError::InsufficientCondition);
         }
 
         self.playback_state = PlaybackState::Stopped;
@@ -286,7 +286,7 @@ impl DotLottiePlayer {
             am.stop();
         }
 
-        self.event_queue.push(DotLottieEvent::Stop);
+        self.event_queue.push(PlayerEvent::Stop);
 
         Ok(())
     }
@@ -478,14 +478,13 @@ impl DotLottiePlayer {
     ///
     /// Internal: set the renderer frame, push events, sync audio.
     /// Does NOT update `elapsed_frames`.
-    fn apply_frame(&mut self, no: f32) -> Result<(), DotLottiePlayerError> {
+    fn apply_frame(&mut self, no: f32) -> Result<(), PlayerError> {
         if no < self.start_frame() || no > self.end_frame() {
-            return Err(DotLottiePlayerError::InvalidParameter);
+            return Err(PlayerError::InvalidParameter);
         }
 
         self.renderer.set_frame(no)?;
-        self.event_queue
-            .push(DotLottieEvent::Frame { frame_no: no });
+        self.event_queue.push(PlayerEvent::Frame { frame_no: no });
 
         #[cfg(feature = "audio")]
         if self.is_playing() {
@@ -500,7 +499,7 @@ impl DotLottiePlayer {
     /// Set the frame number and sync playback position.
     ///
     /// Playback will continue from this frame on the next `tick()`.
-    pub fn set_frame(&mut self, no: f32) -> Result<(), DotLottiePlayerError> {
+    pub fn set_frame(&mut self, no: f32) -> Result<(), PlayerError> {
         self.apply_frame(no)?;
         self.elapsed_frames = match self.direction {
             Direction::Forward => no - self.start_frame(),
@@ -509,35 +508,29 @@ impl DotLottiePlayer {
         Ok(())
     }
 
-    pub fn set_viewport(
-        &mut self,
-        x: i32,
-        y: i32,
-        w: i32,
-        h: i32,
-    ) -> Result<(), DotLottiePlayerError> {
+    pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), PlayerError> {
         self.renderer.set_viewport(x, y, w, h)?;
         Ok(())
     }
 
     fn emit_on_complete(&mut self) {
         self.completion_event = CompletionEvent::Completed;
-        self.event_queue.push(DotLottieEvent::Complete);
+        self.event_queue.push(PlayerEvent::Complete);
     }
 
     pub fn emit_on_loop(&mut self) {
         self.completion_event = CompletionEvent::LoopCompleted;
-        self.event_queue.push(DotLottieEvent::Loop {
+        self.event_queue.push(PlayerEvent::Loop {
             loop_count: self.current_loop_count(),
         });
     }
 
-    pub fn render(&mut self) -> Result<(), DotLottiePlayerError> {
+    pub fn render(&mut self) -> Result<(), PlayerError> {
         self.renderer.render()?;
 
         let frame_no = self.current_frame();
 
-        self.event_queue.push(DotLottieEvent::Render { frame_no });
+        self.event_queue.push(PlayerEvent::Render { frame_no });
 
         // Completion logic only applies during active playback — not when the
         // caller renders manually (e.g. scrubbing while paused/stopped).
@@ -598,10 +591,6 @@ impl DotLottiePlayer {
             self.renderer.picture_width(),
             self.renderer.picture_height(),
         ]
-    }
-
-    pub fn clear(&mut self) {
-        self.renderer.clear()
     }
 
     pub fn set_marker(&mut self, marker_name: Option<&CStr>) {
@@ -677,10 +666,10 @@ impl DotLottiePlayer {
         }
     }
 
-    pub fn set_background(&mut self, color: Rgba) -> Result<(), DotLottiePlayerError> {
+    pub fn set_background(&mut self, color: Rgba) -> Result<(), PlayerError> {
         self.renderer
             .set_background(color)
-            .map_err(|_| DotLottiePlayerError::Unknown)
+            .map_err(|_| PlayerError::Unknown)
     }
 
     pub fn background(&self) -> Rgba {
@@ -740,21 +729,16 @@ impl DotLottiePlayer {
         self.use_frame_interpolation
     }
 
-    pub fn set_segment(
-        &mut self,
-        segment: Option<crate::Segment>,
-    ) -> Result<(), DotLottiePlayerError> {
+    pub fn set_segment(&mut self, segment: Option<crate::Segment>) -> Result<(), PlayerError> {
         self.renderer
             .set_segment(segment)
-            .map_err(|_| DotLottiePlayerError::InvalidParameter)?;
+            .map_err(|_| PlayerError::InvalidParameter)?;
         self.active_marker = None;
         Ok(())
     }
 
-    pub fn segment(&self) -> Result<crate::Segment, DotLottiePlayerError> {
-        self.renderer
-            .segment()
-            .map_err(|_| DotLottiePlayerError::Unknown)
+    pub fn segment(&self) -> Result<crate::Segment, PlayerError> {
+        self.renderer.segment().map_err(|_| PlayerError::Unknown)
     }
 
     /// Set software rendering target using a safe Rust slice.
@@ -770,10 +754,10 @@ impl DotLottiePlayer {
         width: u32,
         height: u32,
         color_space: ColorSpace,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         let required_size = (width * height) as usize;
         if buffer.len() < required_size {
-            return Err(DotLottiePlayerError::InvalidParameter);
+            return Err(PlayerError::InvalidParameter);
         }
 
         let stride = width;
@@ -803,7 +787,7 @@ impl DotLottiePlayer {
         id: i32,
         width: u32,
         height: u32,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         self.renderer
             .set_gl_target(display, surface, context, id, width, height)?;
         Ok(())
@@ -825,17 +809,16 @@ impl DotLottiePlayer {
         width: u32,
         height: u32,
         target_type: crate::lottie_renderer::WgpuTargetType,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         self.renderer
             .set_wg_target(device, instance, target, width, height, target_type)?;
         Ok(())
     }
 
-    fn load_animation_common<F>(&mut self, loader: F) -> Result<(), DotLottiePlayerError>
+    fn load_animation_common<F>(&mut self, loader: F) -> Result<(), PlayerError>
     where
         F: FnOnce(&mut dyn LottieRenderer) -> Result<(), LottieRendererError>,
     {
-        self.clear();
         self.playback_state = PlaybackState::Stopped;
         self.elapsed_frames = 0.0;
         self.current_loop_count = 0;
@@ -843,7 +826,7 @@ impl DotLottiePlayer {
         let loaded = loader(&mut *self.renderer).is_ok();
 
         if self.renderer.set_layout(&self.layout).is_err() {
-            return Err(DotLottiePlayerError::Unknown);
+            return Err(PlayerError::Unknown);
         }
 
         self.is_loaded = loaded;
@@ -867,14 +850,11 @@ impl DotLottiePlayer {
         if loaded {
             Ok(())
         } else {
-            Err(DotLottiePlayerError::Unknown)
+            Err(PlayerError::Unknown)
         }
     }
 
-    pub fn load_animation_data(
-        &mut self,
-        animation_data: &CStr,
-    ) -> Result<(), DotLottiePlayerError> {
+    pub fn load_animation_data(&mut self, animation_data: &CStr) -> Result<(), PlayerError> {
         #[cfg(feature = "dotlottie")]
         {
             self.dotlottie_manager = None;
@@ -888,18 +868,18 @@ impl DotLottiePlayer {
         let result = self.load_animation_common(|renderer| renderer.load_data(animation_data));
 
         if result.is_ok() {
-            self.event_queue.push(DotLottieEvent::Load);
+            self.event_queue.push(PlayerEvent::Load);
             if self.autoplay {
                 let _ = self.play();
             }
         } else {
-            self.event_queue.push(DotLottieEvent::LoadError);
+            self.event_queue.push(PlayerEvent::LoadError);
         }
 
         result
     }
 
-    pub fn load_animation_path(&mut self, file_path: &CStr) -> Result<(), DotLottiePlayerError> {
+    pub fn load_animation_path(&mut self, file_path: &CStr) -> Result<(), PlayerError> {
         #[cfg(feature = "dotlottie")]
         {
             self.dotlottie_manager = None;
@@ -912,21 +892,20 @@ impl DotLottiePlayer {
         let result = (|| {
             let path_str = file_path
                 .to_str()
-                .map_err(|_| DotLottiePlayerError::InvalidParameter)?;
-            let data =
-                fs::read_to_string(path_str).map_err(|_| DotLottiePlayerError::InvalidParameter)?;
-            let c_data = CString::new(data).map_err(|_| DotLottiePlayerError::InvalidParameter)?;
+                .map_err(|_| PlayerError::InvalidParameter)?;
+            let data = fs::read_to_string(path_str).map_err(|_| PlayerError::InvalidParameter)?;
+            let c_data = CString::new(data).map_err(|_| PlayerError::InvalidParameter)?;
 
             self.load_animation_data(&c_data)
         })();
 
         result.inspect_err(|_| {
-            self.event_queue.push(DotLottieEvent::LoadError);
+            self.event_queue.push(PlayerEvent::LoadError);
         })
     }
 
     #[cfg(feature = "dotlottie")]
-    pub fn load_dotlottie_data(&mut self, file_data: &[u8]) -> Result<(), DotLottiePlayerError> {
+    pub fn load_dotlottie_data(&mut self, file_data: &[u8]) -> Result<(), PlayerError> {
         #[cfg(feature = "dotlottie")]
         {
             self.animation_id = None;
@@ -935,8 +914,7 @@ impl DotLottiePlayer {
         {
             self.theme_id = None;
         }
-        let manager =
-            DotLottieManager::new(file_data).map_err(|_| DotLottiePlayerError::Unknown)?;
+        let manager = DotLottieManager::new(file_data).map_err(|_| PlayerError::Unknown)?;
 
         let (active_animation, active_animation_id) =
             if let Some(anim_id) = self.animation_id.as_deref().and_then(|c| c.to_str().ok()) {
@@ -948,10 +926,9 @@ impl DotLottiePlayer {
                 )
             };
 
-        let animation_data = active_animation.map_err(|_| DotLottiePlayerError::Unknown)?;
+        let animation_data = active_animation.map_err(|_| PlayerError::Unknown)?;
 
-        let animation_data_cstr =
-            CString::new(animation_data).map_err(|_| DotLottiePlayerError::Unknown)?;
+        let animation_data_cstr = CString::new(animation_data).map_err(|_| PlayerError::Unknown)?;
 
         self.dotlottie_manager = Some(manager);
 
@@ -972,23 +949,23 @@ impl DotLottiePlayer {
         }
 
         if result.is_ok() {
-            self.event_queue.push(DotLottieEvent::Load);
+            self.event_queue.push(PlayerEvent::Load);
 
             if self.autoplay {
                 let _ = self.play();
             }
         } else {
-            self.event_queue.push(DotLottieEvent::LoadError);
+            self.event_queue.push(PlayerEvent::LoadError);
         }
 
         Ok(())
     }
 
     #[cfg(feature = "dotlottie")]
-    pub fn load_animation(&mut self, animation_id: &CStr) -> Result<(), DotLottiePlayerError> {
+    pub fn load_animation(&mut self, animation_id: &CStr) -> Result<(), PlayerError> {
         let anim_id_str = animation_id
             .to_str()
-            .map_err(|_| DotLottiePlayerError::InvalidParameter)?;
+            .map_err(|_| PlayerError::InvalidParameter)?;
 
         if let Some(manager) = &mut self.dotlottie_manager {
             #[cfg(feature = "theming")]
@@ -1007,7 +984,7 @@ impl DotLottiePlayer {
                         CString::new(animation_data).expect("Failed to create CString");
                     self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr))
                 }
-                Err(_error) => Err(DotLottiePlayerError::Unknown),
+                Err(_error) => Err(PlayerError::Unknown),
             };
 
             if result.is_ok() {
@@ -1028,17 +1005,17 @@ impl DotLottiePlayer {
                     let _ = self.set_theme(theme_id_cstr);
                 }
 
-                self.event_queue.push(DotLottieEvent::Load);
+                self.event_queue.push(PlayerEvent::Load);
                 if self.autoplay {
                     let _ = self.play();
                 }
             } else {
-                self.event_queue.push(DotLottieEvent::LoadError);
+                self.event_queue.push(PlayerEvent::LoadError);
             }
 
             result
         } else {
-            Err(DotLottiePlayerError::Unknown)
+            Err(PlayerError::Unknown)
         }
     }
 
@@ -1075,7 +1052,7 @@ impl DotLottiePlayer {
     }
 
     #[cfg(feature = "theming")]
-    pub fn set_theme(&mut self, theme_id: &CStr) -> Result<(), DotLottiePlayerError> {
+    pub fn set_theme(&mut self, theme_id: &CStr) -> Result<(), PlayerError> {
         if self.theme_id.as_deref() == Some(theme_id) {
             return Ok(());
         }
@@ -1084,12 +1061,12 @@ impl DotLottiePlayer {
             self.theme_id = None;
             self.renderer
                 .clear_slots()
-                .map_err(|_| DotLottiePlayerError::Unknown)?;
+                .map_err(|_| PlayerError::Unknown)?;
             return Ok(());
         }
 
         if self.dotlottie_manager.is_none() {
-            return Err(DotLottiePlayerError::InsufficientCondition);
+            return Err(PlayerError::InsufficientCondition);
         }
 
         let theme_exists = self
@@ -1102,7 +1079,7 @@ impl DotLottiePlayer {
             });
 
         if !theme_exists {
-            return Err(DotLottiePlayerError::InvalidParameter);
+            return Err(PlayerError::InvalidParameter);
         }
 
         let can_set_theme = self.manifest().is_some_and(|manifest| {
@@ -1115,11 +1092,11 @@ impl DotLottiePlayer {
         });
 
         if !can_set_theme {
-            return Err(DotLottiePlayerError::InsufficientCondition);
+            return Err(PlayerError::InsufficientCondition);
         }
 
         let Ok(theme_id_str) = theme_id.to_str() else {
-            return Err(DotLottiePlayerError::InvalidParameter);
+            return Err(PlayerError::InvalidParameter);
         };
 
         let result = self
@@ -1136,7 +1113,7 @@ impl DotLottiePlayer {
                 let slots = theme.to_slot_types(anim_id_str);
                 self.apply_slot_types(slots)
             })
-            .unwrap_or(Err(DotLottiePlayerError::Unknown));
+            .unwrap_or(Err(PlayerError::Unknown));
 
         if result.is_ok() {
             self.theme_id = Some(theme_id.to_owned());
@@ -1146,21 +1123,21 @@ impl DotLottiePlayer {
     }
 
     #[cfg(feature = "theming")]
-    pub fn reset_theme(&mut self) -> Result<(), DotLottiePlayerError> {
+    pub fn reset_theme(&mut self) -> Result<(), PlayerError> {
         self.theme_id = None;
         self.renderer.clear_slots()?;
         Ok(())
     }
 
     #[cfg(feature = "theming")]
-    pub fn set_theme_data(&mut self, theme_data: &CStr) -> Result<(), DotLottiePlayerError> {
+    pub fn set_theme_data(&mut self, theme_data: &CStr) -> Result<(), PlayerError> {
         let theme_data_str = theme_data
             .to_str()
-            .map_err(|_| DotLottiePlayerError::InvalidParameter)?;
+            .map_err(|_| PlayerError::InvalidParameter)?;
 
         let theme = theme_data_str
             .parse::<crate::theme::Theme>()
-            .map_err(|_| DotLottiePlayerError::InvalidParameter)?;
+            .map_err(|_| PlayerError::InvalidParameter)?;
 
         let anim_id_str = self
             .animation_id
@@ -1177,7 +1154,7 @@ impl DotLottiePlayer {
     fn apply_slot_types(
         &mut self,
         slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         use crate::lottie_renderer::SlotType;
 
         for (slot_id, slot_type) in slots {
@@ -1199,7 +1176,7 @@ impl DotLottiePlayer {
         &mut self,
         slot_id: &str,
         slot: crate::lottie_renderer::ColorSlot,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         self.renderer.set_color_slot(slot_id, slot)?;
         Ok(())
     }
@@ -1208,7 +1185,7 @@ impl DotLottiePlayer {
         &mut self,
         slot_id: &str,
         slot: crate::lottie_renderer::GradientSlot,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         self.renderer.set_gradient_slot(slot_id, slot)?;
         Ok(())
     }
@@ -1217,7 +1194,7 @@ impl DotLottiePlayer {
         &mut self,
         slot_id: &str,
         slot: crate::lottie_renderer::ImageSlot,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         self.renderer.set_image_slot(slot_id, slot)?;
         Ok(())
     }
@@ -1226,7 +1203,7 @@ impl DotLottiePlayer {
         &mut self,
         slot_id: &str,
         slot: crate::lottie_renderer::TextSlot,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         self.renderer.set_text_slot(slot_id, slot)?;
         Ok(())
     }
@@ -1235,7 +1212,7 @@ impl DotLottiePlayer {
         &mut self,
         slot_id: &str,
         slot: crate::lottie_renderer::ScalarSlot,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         self.renderer.set_scalar_slot(slot_id, slot)?;
         Ok(())
     }
@@ -1244,7 +1221,7 @@ impl DotLottiePlayer {
         &mut self,
         slot_id: &str,
         slot: crate::lottie_renderer::VectorSlot,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         self.renderer.set_vector_slot(slot_id, slot)?;
         Ok(())
     }
@@ -1253,17 +1230,17 @@ impl DotLottiePlayer {
         &mut self,
         slot_id: &str,
         slot: crate::lottie_renderer::PositionSlot,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         self.renderer.set_position_slot(slot_id, slot)?;
         Ok(())
     }
 
-    pub fn clear_slots(&mut self) -> Result<(), DotLottiePlayerError> {
+    pub fn clear_slots(&mut self) -> Result<(), PlayerError> {
         self.renderer.clear_slots()?;
         Ok(())
     }
 
-    pub fn clear_slot(&mut self, slot_id: &str) -> Result<(), DotLottiePlayerError> {
+    pub fn clear_slot(&mut self, slot_id: &str) -> Result<(), PlayerError> {
         self.renderer.clear_slot(slot_id)?;
         Ok(())
     }
@@ -1271,12 +1248,12 @@ impl DotLottiePlayer {
     pub fn set_slots(
         &mut self,
         slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
-    ) -> Result<(), DotLottiePlayerError> {
+    ) -> Result<(), PlayerError> {
         self.renderer.set_slots(slots)?;
         Ok(())
     }
 
-    pub fn set_slots_str(&mut self, slots_json: &str) -> Result<(), DotLottiePlayerError> {
+    pub fn set_slots_str(&mut self, slots_json: &str) -> Result<(), PlayerError> {
         use crate::lottie_renderer::slots::slots_from_json_string;
 
         if slots_json.is_empty() {
@@ -1304,7 +1281,7 @@ impl DotLottiePlayer {
                 }
                 Ok(())
             }
-            Err(_) => Err(DotLottiePlayerError::InvalidParameter),
+            Err(_) => Err(PlayerError::InvalidParameter),
         }
     }
 
@@ -1324,12 +1301,12 @@ impl DotLottiePlayer {
         self.renderer.get_slots_str()
     }
 
-    pub fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), DotLottiePlayerError> {
+    pub fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), PlayerError> {
         self.renderer.set_slot_str(slot_id, json)?;
         Ok(())
     }
 
-    pub fn reset_slot(&mut self, slot_id: &str) -> Result<(), DotLottiePlayerError> {
+    pub fn reset_slot(&mut self, slot_id: &str) -> Result<(), PlayerError> {
         self.renderer.reset_slot(slot_id)?;
         Ok(())
     }
@@ -1338,7 +1315,7 @@ impl DotLottiePlayer {
         self.renderer.reset_slots()
     }
 
-    pub fn set_quality(&mut self, quality: u8) -> Result<(), DotLottiePlayerError> {
+    pub fn set_quality(&mut self, quality: u8) -> Result<(), PlayerError> {
         self.renderer.set_quality(quality)?;
         Ok(())
     }
@@ -1358,14 +1335,9 @@ impl DotLottiePlayer {
         self.state_machine_id.as_deref()
     }
 
-    pub fn tween(
-        &mut self,
-        to: f32,
-        duration: f32,
-        easing: [f32; 4],
-    ) -> Result<(), DotLottiePlayerError> {
+    pub fn tween(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> Result<(), PlayerError> {
         if self.is_tweening() {
-            return Err(DotLottiePlayerError::InsufficientCondition);
+            return Err(PlayerError::InsufficientCondition);
         }
         let from = self.current_frame();
         self.tween_state = Some(TweenState::new(from, to, duration, easing)?);
@@ -1385,11 +1357,11 @@ impl DotLottiePlayer {
         };
     }
 
-    pub fn tween_advance(&mut self, dt: f32) -> Result<TweenStatus, DotLottiePlayerError> {
+    pub fn tween_advance(&mut self, dt: f32) -> Result<TweenStatus, PlayerError> {
         let tween = self
             .tween_state
             .as_mut()
-            .ok_or(DotLottiePlayerError::InsufficientCondition)?;
+            .ok_or(PlayerError::InsufficientCondition)?;
 
         let (status, progress) = tween.update(dt);
         let from = tween.from;
@@ -1415,9 +1387,9 @@ impl DotLottiePlayer {
             .to_vec()
     }
 
-    pub fn set_transform(&mut self, transform: Vec<f32>) -> Result<(), DotLottiePlayerError> {
+    pub fn set_transform(&mut self, transform: Vec<f32>) -> Result<(), PlayerError> {
         if transform.len() != 9 {
-            return Err(DotLottiePlayerError::InvalidParameter);
+            return Err(PlayerError::InvalidParameter);
         }
         let transform_array: [f32; 9] = [
             transform[0],
@@ -1437,7 +1409,7 @@ impl DotLottiePlayer {
     /// Poll for the next event from the event queue
     ///
     /// Returns Some(event) if an event is available, None if the queue is empty.
-    pub fn poll_event(&mut self) -> Option<DotLottieEvent> {
+    pub fn poll_event(&mut self) -> Option<PlayerEvent> {
         self.event_queue.poll()
     }
 
@@ -1445,7 +1417,7 @@ impl DotLottiePlayer {
     ///
     /// Returns `Ok(true)` when a new frame was rendered, `Ok(false)` when the
     /// frame was unchanged and rendering was skipped.
-    pub fn tick(&mut self, dt: f32) -> Result<bool, DotLottiePlayerError> {
+    pub fn tick(&mut self, dt: f32) -> Result<bool, PlayerError> {
         let dt = dt.max(0.0);
 
         if self.is_tweening() {

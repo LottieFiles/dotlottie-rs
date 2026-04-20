@@ -168,6 +168,8 @@ mod thorvg {
         std::env::var("CARGO_CFG_UNIX").is_ok()
     }
 
+    const EXCLUDED_CPP: &[&str] = &["tvgLoader.cpp"];
+
     pub(super) fn collect_files(dir: &str) -> Vec<String> {
         let mut files = Vec::new();
 
@@ -175,6 +177,10 @@ mod thorvg {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_file() && path.extension().is_some_and(|e| e == "cpp") {
+                    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    if EXCLUDED_CPP.contains(&name) {
+                        continue;
+                    }
                     files.push(path.to_string_lossy().into_owned());
                 }
             }
@@ -375,15 +381,19 @@ mod thorvg {
             writeln!(thorvg_config_h, "#define THORVG_THREAD_SUPPORT")?;
         }
 
-        let tvg_sw_enabled = cfg!(feature = "tvg-sw");
+        let tvg_sw_enabled = cfg!(feature = "tvg-cpu");
         if tvg_sw_enabled {
-            writeln!(thorvg_config_h, "#define THORVG_SW_RASTER_SUPPORT")?;
-            src.push("deps/thorvg/src/renderer/sw_engine");
+            writeln!(thorvg_config_h, "#define THORVG_CPU_ENGINE_SUPPORT")?;
+            src.push("deps/thorvg/src/renderer/cpu_engine");
+        }
+
+        if cfg!(feature = "tvg-gl") || cfg!(feature = "tvg-wg") {
+            src.push("deps/thorvg/src/renderer/gpu_engine");
         }
 
         if cfg!(feature = "tvg-gl") {
-            writeln!(thorvg_config_h, "#define THORVG_GL_RASTER_SUPPORT")?;
-            src.push("deps/thorvg/src/renderer/gl_engine");
+            writeln!(thorvg_config_h, "#define THORVG_GL_ENGINE_SUPPORT")?;
+            src.push("deps/thorvg/src/renderer/gpu_engine/gl");
 
             let is_android = target_triple.contains("android");
             if is_wasm || is_android {
@@ -394,8 +404,8 @@ mod thorvg {
         }
 
         if cfg!(feature = "tvg-wg") {
-            writeln!(thorvg_config_h, "#define THORVG_WG_RASTER_SUPPORT")?;
-            src.push("deps/thorvg/src/renderer/wg_engine");
+            writeln!(thorvg_config_h, "#define THORVG_WG_ENGINE_SUPPORT")?;
+            src.push("deps/thorvg/src/renderer/gpu_engine/wg");
         }
 
         if cfg!(feature = "tvg-jpg") {

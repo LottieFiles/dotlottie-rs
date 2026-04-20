@@ -9,7 +9,7 @@ use crate::state_machine_engine::events::Event;
 use core::str::FromStr;
 
 use crate::lottie_renderer::LottieRendererError;
-use crate::DotLottiePlayerError;
+use crate::PlayerError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
@@ -31,14 +31,14 @@ pub enum DotLottieResult {
     FeatureNotEnabled = 6,
 }
 
-impl From<DotLottiePlayerError> for DotLottieResult {
-    fn from(err: DotLottiePlayerError) -> Self {
+impl From<PlayerError> for DotLottieResult {
+    fn from(err: PlayerError) -> Self {
         match err {
-            DotLottiePlayerError::Unknown => DotLottieResult::Error,
-            DotLottiePlayerError::InvalidParameter => DotLottieResult::InvalidParameter,
-            DotLottiePlayerError::ManifestNotAvailable => DotLottieResult::ManifestNotAvailable,
-            DotLottiePlayerError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
-            DotLottiePlayerError::InsufficientCondition => DotLottieResult::InsufficientCondition,
+            PlayerError::Unknown => DotLottieResult::Error,
+            PlayerError::InvalidParameter => DotLottieResult::InvalidParameter,
+            PlayerError::ManifestNotAvailable => DotLottieResult::ManifestNotAvailable,
+            PlayerError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
+            PlayerError::InsufficientCondition => DotLottieResult::InsufficientCondition,
         }
     }
 }
@@ -136,7 +136,7 @@ impl DotLottieWgpuTargetType {
 // Input events for state machine (pointer interactions)
 #[allow(dead_code)]
 #[repr(C)]
-pub enum DotLottieEvent {
+pub enum PlayerEvent {
     PointerDown { x: f32, y: f32 },
     PointerUp { x: f32, y: f32 },
     PointerMove { x: f32, y: f32 },
@@ -148,17 +148,17 @@ pub enum DotLottieEvent {
 }
 
 #[cfg(feature = "state-machines")]
-impl DotLottieEvent {
+impl PlayerEvent {
     pub unsafe fn to_event(&self) -> Event {
         match self {
-            DotLottieEvent::PointerDown { x, y } => Event::PointerDown { x: *x, y: *y },
-            DotLottieEvent::PointerUp { x, y } => Event::PointerUp { x: *x, y: *y },
-            DotLottieEvent::PointerMove { x, y } => Event::PointerMove { x: *x, y: *y },
-            DotLottieEvent::PointerEnter { x, y } => Event::PointerEnter { x: *x, y: *y },
-            DotLottieEvent::PointerExit { x, y } => Event::PointerExit { x: *x, y: *y },
-            DotLottieEvent::Click { x, y } => Event::Click { x: *x, y: *y },
-            DotLottieEvent::OnComplete => Event::OnComplete,
-            DotLottieEvent::OnLoopComplete => Event::OnLoopComplete,
+            PlayerEvent::PointerDown { x, y } => Event::PointerDown { x: *x, y: *y },
+            PlayerEvent::PointerUp { x, y } => Event::PointerUp { x: *x, y: *y },
+            PlayerEvent::PointerMove { x, y } => Event::PointerMove { x: *x, y: *y },
+            PlayerEvent::PointerEnter { x, y } => Event::PointerEnter { x: *x, y: *y },
+            PlayerEvent::PointerExit { x, y } => Event::PointerExit { x: *x, y: *y },
+            PlayerEvent::Click { x, y } => Event::Click { x: *x, y: *y },
+            PlayerEvent::OnComplete => Event::OnComplete,
+            PlayerEvent::OnLoopComplete => Event::OnLoopComplete,
         }
     }
 }
@@ -193,42 +193,42 @@ pub struct DotLottiePlayerEvent {
     pub event_type: DotLottiePlayerEventType,
     pub data: DotLottiePlayerEventData,
 }
-impl From<crate::DotLottieEvent> for DotLottiePlayerEvent {
-    fn from(event: crate::DotLottieEvent) -> Self {
+impl From<crate::PlayerEvent> for DotLottiePlayerEvent {
+    fn from(event: crate::PlayerEvent) -> Self {
         match event {
-            crate::DotLottieEvent::Load => DotLottiePlayerEvent {
+            crate::PlayerEvent::Load => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Load,
                 data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::LoadError => DotLottiePlayerEvent {
+            crate::PlayerEvent::LoadError => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::LoadError,
                 data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Play => DotLottiePlayerEvent {
+            crate::PlayerEvent::Play => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Play,
                 data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Pause => DotLottiePlayerEvent {
+            crate::PlayerEvent::Pause => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Pause,
                 data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Stop => DotLottiePlayerEvent {
+            crate::PlayerEvent::Stop => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Stop,
                 data: DotLottiePlayerEventData { frame_no: 0.0 },
             },
-            crate::DotLottieEvent::Frame { frame_no } => DotLottiePlayerEvent {
+            crate::PlayerEvent::Frame { frame_no } => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Frame,
                 data: DotLottiePlayerEventData { frame_no },
             },
-            crate::DotLottieEvent::Render { frame_no } => DotLottiePlayerEvent {
+            crate::PlayerEvent::Render { frame_no } => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Render,
                 data: DotLottiePlayerEventData { frame_no },
             },
-            crate::DotLottieEvent::Loop { loop_count } => DotLottiePlayerEvent {
+            crate::PlayerEvent::Loop { loop_count } => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Loop,
                 data: DotLottiePlayerEventData { loop_count },
             },
-            crate::DotLottieEvent::Complete => DotLottiePlayerEvent {
+            crate::PlayerEvent::Complete => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Complete,
                 data: DotLottiePlayerEventData { frame_no: 0.0 },
             },

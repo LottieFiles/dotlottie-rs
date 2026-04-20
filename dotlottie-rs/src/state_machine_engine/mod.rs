@@ -25,8 +25,8 @@ use crate::actions::whitelist::Whitelist;
 use crate::poll_events::{EventQueue, StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, CompletionEvent, DotLottiePlayer,
-    EventName, Layout, Mode, Point, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
+    event_type_name, state_machine_state_check_pipeline, CompletionEvent, EventName, Layout, Mode,
+    Player, Point, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
 };
 
 use self::state_machine::state_machine_parse;
@@ -95,7 +95,7 @@ pub struct StateMachineEngine<'a> {
     pub open_url_requires_user_interaction: bool,
     pub open_url_whitelist: Whitelist,
 
-    pub player: &'a mut DotLottiePlayer,
+    pub player: &'a mut Player,
 
     pub inputs: InputManager,
     curr_event: Option<String>,
@@ -104,8 +104,8 @@ pub struct StateMachineEngine<'a> {
     pointer_management: PointerData,
 
     // Event queues
-    pub event_queue: EventQueue<StateMachineEvent>,
-    pub internal_event_queue: EventQueue<StateMachineInternalEvent>,
+    pub event_queue: EventQueue<StateMachineEvent, 32>,
+    pub internal_event_queue: EventQueue<StateMachineInternalEvent, 8>,
 
     // Holds current event during polling from C API
     pub current_event: Option<StateMachineEvent>,
@@ -126,7 +126,7 @@ pub struct StateMachineEngine<'a> {
 impl<'a> StateMachineEngine<'a> {
     pub fn new(
         state_machine_definition: &str,
-        player: &'a mut DotLottiePlayer,
+        player: &'a mut Player,
         max_cycle_count: Option<usize>,
     ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
         Self::from_definition(state_machine_definition, player, max_cycle_count)
@@ -300,7 +300,7 @@ impl<'a> StateMachineEngine<'a> {
     // Previously called create_state_machine
     pub fn from_definition(
         sm_definition: &str,
-        player: &'a mut DotLottiePlayer,
+        player: &'a mut Player,
         max_cycle_count: Option<usize>,
     ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
         let parsed_state_machine = state_machine_parse(sm_definition);
@@ -410,7 +410,7 @@ impl<'a> StateMachineEngine<'a> {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> Result<(), crate::DotLottiePlayerError> {
+    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> Result<(), crate::PlayerError> {
         // Reset to first frame
         let _ = self.player.stop();
         self.player.set_mode(Mode::Forward);
@@ -421,7 +421,7 @@ impl<'a> StateMachineEngine<'a> {
 
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
-            return Err(crate::DotLottiePlayerError::Unknown);
+            return Err(crate::PlayerError::Unknown);
         }
 
         self.open_url_requires_user_interaction = open_url.require_user_interaction;
@@ -447,7 +447,7 @@ impl<'a> StateMachineEngine<'a> {
 
                 self.observe_on_error(message.as_str());
 
-                return Err(crate::DotLottiePlayerError::Unknown);
+                return Err(crate::PlayerError::Unknown);
             }
         }
 
@@ -1252,16 +1252,16 @@ impl<'a> StateMachineEngine<'a> {
         &mut self,
         state_name: &str,
         do_tick: bool,
-    ) -> Result<(), crate::DotLottiePlayerError> {
+    ) -> Result<(), crate::PlayerError> {
         if self.set_current_state(state_name, None, false).is_err() {
-            return Err(crate::DotLottiePlayerError::Unknown);
+            return Err(crate::PlayerError::Unknown);
         }
 
         if do_tick {
             return if self.run_current_state_pipeline().is_ok() {
                 Ok(())
             } else {
-                Err(crate::DotLottiePlayerError::Unknown)
+                Err(crate::PlayerError::Unknown)
             };
         }
 
@@ -1390,7 +1390,7 @@ impl<'a> StateMachineEngine<'a> {
         }
     }
 
-    pub fn tick(&mut self, dt: f32) -> Result<bool, crate::DotLottiePlayerError> {
+    pub fn tick(&mut self, dt: f32) -> Result<bool, crate::PlayerError> {
         let ticked = self.player.tick(dt);
 
         self.check_completion();

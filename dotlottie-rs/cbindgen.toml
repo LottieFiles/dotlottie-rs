@@ -9,7 +9,7 @@ no_includes = false
 sys_includes = ["stdint.h", "stdbool.h"]
 after_includes = """
 /* Type aliases for cleaner C code */
-typedef struct dotlottieDotLottiePlayer DotLottiePlayer;
+typedef struct dotlottiePlayer DotLottiePlayer;
 typedef struct dotlottieDotLottieConfig DotLottieConfig;
 #define DOTLOTTIE_SUCCESS 0
 """

@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, Segment};
+use dotlottie_rs::{ColorSpace, Player, Segment};
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -12,7 +12,7 @@ mod tests {
 
     #[test]
     fn test_default_marker() {
-        let player = DotLottiePlayer::new();
+        let player = Player::new();
 
         assert!(
             player.active_marker().is_none(),
@@ -22,7 +22,7 @@ mod tests {
 
     #[test]
     fn test_markers() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(true);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
@@ -66,7 +66,7 @@ mod tests {
 
     #[test]
     fn test_set_marker() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
         player.set_autoplay(true);
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_set_frame_outside_segment_rejected() {
-        let mut player = DotLottiePlayer::new();
+        let mut player = Player::new();
 
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 

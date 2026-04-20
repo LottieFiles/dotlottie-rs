@@ -3,7 +3,7 @@ use crate::test_utils::{HEIGHT, WIDTH};
 
 use std::ffi::CString;
 
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, DotLottiePlayerError, Mode, Segment};
+use dotlottie_rs::{ColorSpace, Mode, Player, PlayerError, Segment};
 
 #[cfg(test)]
 mod tests {
@@ -77,7 +77,7 @@ mod tests {
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
 
         for config in configs {
-            let mut player = DotLottiePlayer::new();
+            let mut player = Player::new();
             player.set_mode(config.mode);
             player.set_autoplay(config.autoplay);
             if let Some(seg) = config.segment {
@@ -133,7 +133,7 @@ mod tests {
 
             assert_eq!(
                 player.stop(),
-                Err(DotLottiePlayerError::InsufficientCondition),
+                Err(PlayerError::InsufficientCondition),
                 "Animation should not stop again"
             );
         }

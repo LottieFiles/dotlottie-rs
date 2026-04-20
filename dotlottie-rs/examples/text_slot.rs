@@ -7,7 +7,7 @@
 /// The text.json animation has a slot with ID "my_text" that we can modify.
 ///
 /// Demonstrates both static and animated slot values.
-use dotlottie_rs::{ColorSpace, DotLottiePlayer, TextDocument, TextKeyframe, TextSlot};
+use dotlottie_rs::{ColorSpace, Player, TextDocument, TextKeyframe, TextSlot};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 
@@ -28,7 +28,7 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_millis(16)));
 
     // Create player and load animation
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     player.set_loop(true);
     player.set_autoplay(true);
 

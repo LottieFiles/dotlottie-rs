@@ -13,7 +13,7 @@ mod common;
 #[cfg(all(feature = "tvg-wg", target_os = "macos"))]
 mod webgpu_impl {
     use dotlottie_rs::c_api::apple::WgpuContext;
-    use dotlottie_rs::{DotLottiePlayer, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType};
+    use dotlottie_rs::{Player, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType};
     use std::ffi::CString;
 
     // Wrapper types for WebGPU pointers
@@ -140,7 +140,7 @@ mod webgpu_impl {
 
     struct App {
         window: Option<Window>,
-        player: Option<DotLottiePlayer>,
+        player: Option<Player>,
         #[cfg(all(feature = "tvg-wg", target_os = "macos"))]
         wgpu_context: Option<WgpuContext>,
         current_width: u32,
@@ -204,7 +204,7 @@ mod webgpu_impl {
                 let (device, instance, surface) = wgpu_context.as_pointers();
                 println!("✓ WebGPU context created");
 
-                let mut player = DotLottiePlayer::new();
+                let mut player = Player::new();
                 player.set_loop(true);
                 player.set_autoplay(true);
 

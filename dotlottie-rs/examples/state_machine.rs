@@ -33,27 +33,17 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
             } => {
                 println!(
                     "[state machine event] on_transition: {} -> {}",
-                    previous_state,
-                    new_state
+                    previous_state, new_state
                 );
             }
             StateMachineEvent::StateEntered { state } => {
-                println!(
-                    "[state machine event] on_state_entered: {}",
-                    state
-                );
+                println!("[state machine event] on_state_entered: {}", state);
             }
             StateMachineEvent::StateExit { state } => {
-                println!(
-                    "[state machine event] on_state_exit: {}",
-                    state
-                );
+                println!("[state machine event] on_state_exit: {}", state);
             }
             StateMachineEvent::CustomEvent { message } => {
-                println!(
-                    "[state machine event] custom_event: {}",
-                    message
-                );
+                println!("[state machine event] custom_event: {}", message);
             }
             StateMachineEvent::Error { message } => {
                 println!("[state machine event] error: {}", message);
@@ -65,9 +55,7 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
             } => {
                 println!(
                     "[state machine event] string_input_value_change ==> {} : {} -> {}",
-                    name,
-                    old_value,
-                    new_value
+                    name, old_value, new_value
                 );
             }
             StateMachineEvent::NumericInputChange {
@@ -91,10 +79,7 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 );
             }
             StateMachineEvent::InputFired { name } => {
-                println!(
-                    "[state machine event] input_fired ==> {}",
-                    name
-                );
+                println!("[state machine event] input_fired ==> {}", name);
             }
         }
     }

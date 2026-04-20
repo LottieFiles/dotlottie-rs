@@ -140,10 +140,6 @@ impl InputTrait for InputManager {
     }
 
     fn set_initial_event(&mut self, key: &str, value: &str) {
-        insert_or_update(
-            &mut self.inputs,
-            key,
-            InputValue::Event(value.to_string()),
-        );
+        insert_or_update(&mut self.inputs, key, InputValue::Event(value.to_string()));
     }
 }

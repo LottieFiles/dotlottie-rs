@@ -593,11 +593,7 @@ fn format_event(event: &StateMachineEvent) -> String {
         StateMachineEvent::Transition {
             previous_state,
             new_state,
-        } => format!(
-            "[SM] Transition: {} -> {}",
-            previous_state,
-            new_state
-        ),
+        } => format!("[SM] Transition: {} -> {}", previous_state, new_state),
         StateMachineEvent::StateEntered { state } => {
             format!("[SM] StateEntered: {}", state)
         }
@@ -614,28 +610,17 @@ fn format_event(event: &StateMachineEvent) -> String {
             name,
             old_value,
             new_value,
-        } => format!(
-            "[Input] {} (string): {} -> {}",
-            name,
-            old_value,
-            new_value
-        ),
+        } => format!("[Input] {} (string): {} -> {}", name, old_value, new_value),
         StateMachineEvent::NumericInputChange {
             name,
             old_value,
             new_value,
-        } => format!(
-            "[Input] {} (numeric): {old_value} -> {new_value}",
-            name
-        ),
+        } => format!("[Input] {} (numeric): {old_value} -> {new_value}", name),
         StateMachineEvent::BooleanInputChange {
             name,
             old_value,
             new_value,
-        } => format!(
-            "[Input] {} (bool): {old_value} -> {new_value}",
-            name
-        ),
+        } => format!("[Input] {} (bool): {old_value} -> {new_value}", name),
         StateMachineEvent::InputFired { name } => {
             format!("[Input] Fired: {}", name)
         }

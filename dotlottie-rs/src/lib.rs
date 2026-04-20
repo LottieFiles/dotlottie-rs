@@ -34,11 +34,11 @@ pub use wasm::wasm_bindgen_api;
 
 #[cfg(feature = "audio")]
 pub use audio::*;
+pub use event_queue::*;
 #[cfg(feature = "dotlottie")]
 pub use fms::*;
 pub use layout::*;
 pub use lottie_renderer::*;
-pub use event_queue::*;
 pub use player::*;
 pub use result::*;
 #[cfg(feature = "state-machines")]

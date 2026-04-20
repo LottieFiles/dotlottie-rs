@@ -48,41 +48,6 @@ impl Direction {
     }
 }
 
-#[repr(C)]
-pub struct LayerBoundingBox {
-    pub x1: f32,
-    pub y1: f32,
-    pub x2: f32,
-    pub y2: f32,
-    pub x3: f32,
-    pub y3: f32,
-    pub x4: f32,
-    pub y4: f32,
-}
-
-impl From<LayerBoundingBox> for Vec<f32> {
-    fn from(bbox: LayerBoundingBox) -> Vec<f32> {
-        vec![
-            bbox.x1, bbox.y1, bbox.x2, bbox.y2, bbox.x3, bbox.y3, bbox.x4, bbox.y4,
-        ]
-    }
-}
-
-impl Default for LayerBoundingBox {
-    fn default() -> Self {
-        LayerBoundingBox {
-            x1: 0.0,
-            y1: 0.0,
-            x2: 0.0,
-            y2: 0.0,
-            x3: 0.0,
-            y3: 0.0,
-            x4: 0.0,
-            y4: 0.0,
-        }
-    }
-}
-
 // This is used to pass the loop complete / complete event to the state machine engine
 pub enum CompletionEvent {
     None,
@@ -91,7 +56,7 @@ pub enum CompletionEvent {
 }
 
 pub struct DotLottiePlayer {
-    renderer: Box<dyn LottieRenderer>,
+    pub(crate) renderer: Box<dyn LottieRenderer>,
     playback_state: PlaybackState,
     is_loaded: bool,
     elapsed_frames: f32,
@@ -213,29 +178,6 @@ impl DotLottiePlayer {
     #[inline]
     pub(crate) fn end_frame(&self) -> f32 {
         self.renderer.segment().map_or(0.0, |seg| seg.end)
-    }
-
-    pub fn intersect(&self, x: f32, y: f32, layer_name: &str) -> bool {
-        self.renderer.intersect(x, y, layer_name).unwrap_or(false)
-    }
-
-    pub fn get_layer_bounds(&self, layer_name: &str) -> Vec<f32> {
-        let bbox = self.renderer.get_layer_bounds(layer_name);
-
-        match bbox {
-            Err(_) => LayerBoundingBox::default().into(),
-            Ok(bbox) => LayerBoundingBox {
-                x1: bbox[0],
-                y1: bbox[1],
-                x2: bbox[2],
-                y2: bbox[3],
-                x3: bbox[4],
-                y3: bbox[5],
-                x4: bbox[6],
-                y4: bbox[7],
-            }
-            .into(),
-        }
     }
 
     pub fn is_loaded(&self) -> bool {

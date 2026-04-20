@@ -363,11 +363,11 @@ impl<'a> StateMachineEngine<'a> {
                             Input::Boolean { name, value } => {
                                 new_state_machine.inputs.set_initial_boolean(name, *value);
                             }
-                            // Events can't be renamed
-                            Input::Event { name: _ } => {}
+                            Input::Event { name } => {
+                                new_state_machine.inputs.set_initial_event(name);
+                            }
                         }
                     }
-                    new_state_machine.inputs.freeze();
                 }
 
                 /*
@@ -1394,20 +1394,22 @@ impl<'a> StateMachineEngine<'a> {
 
     pub fn get_inputs(&self) -> Vec<String> {
         let mut result = Vec::with_capacity(self.inputs.len() * 2);
-
-        for (name, value) in self.inputs.iter() {
-            result.push(name.to_string());
-            result.push(
-                match value {
-                    InputValue::Numeric(_) => "Numeric",
-                    InputValue::String(_) => "String",
-                    InputValue::Boolean(_) => "Boolean",
-                    InputValue::Event(_) => "Event",
-                }
-                .to_string(),
-            );
+        for name in self.inputs.numeric.keys() {
+            result.push(name.clone());
+            result.push("Numeric".to_string());
         }
-
+        for name in self.inputs.boolean.keys() {
+            result.push(name.clone());
+            result.push("Boolean".to_string());
+        }
+        for name in self.inputs.string.keys() {
+            result.push(name.clone());
+            result.push("String".to_string());
+        }
+        for name in self.inputs.event.iter() {
+            result.push(name.clone());
+            result.push("Event".to_string());
+        }
         result
     }
 }

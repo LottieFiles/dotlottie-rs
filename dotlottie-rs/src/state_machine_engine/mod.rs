@@ -680,7 +680,7 @@ impl<'a> StateMachineEngine<'a> {
         // We have a new state
         if let Some(new_state) = new_state {
             // Emit transtion occured event
-            self.observe_on_transition(&self.get_current_state_name(), &new_state.name());
+            self.observe_on_transition(&self.get_current_state_name(), new_state.name());
             // Perform exit actions on the current state if there is one.
             if self.current_state.is_some() {
                 let state = self.current_state.take();
@@ -938,7 +938,7 @@ impl<'a> StateMachineEngine<'a> {
             }
 
             if let Some(state) = &self.current_state {
-                let name = self.str_interner.intern(&state.name());
+                let name = self.str_interner.intern(state.name());
                 self.state_history.push(name);
             }
 

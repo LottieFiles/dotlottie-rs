@@ -107,11 +107,26 @@ impl Interaction {
     /// comparisons hit the `Arc::ptr_eq` fast path.
     pub fn intern_identifiers(&mut self, interner: &mut DotStringInterner) {
         match self {
-            Interaction::PointerUp { layer_name, actions }
-            | Interaction::PointerDown { layer_name, actions }
-            | Interaction::PointerEnter { layer_name, actions }
-            | Interaction::PointerExit { layer_name, actions }
-            | Interaction::Click { layer_name, actions } => {
+            Interaction::PointerUp {
+                layer_name,
+                actions,
+            }
+            | Interaction::PointerDown {
+                layer_name,
+                actions,
+            }
+            | Interaction::PointerEnter {
+                layer_name,
+                actions,
+            }
+            | Interaction::PointerExit {
+                layer_name,
+                actions,
+            }
+            | Interaction::Click {
+                layer_name,
+                actions,
+            } => {
                 if let Some(name) = layer_name {
                     *name = interner.intern(name.as_str());
                 }
@@ -124,8 +139,14 @@ impl Interaction {
                     a.intern_identifiers(interner);
                 }
             }
-            Interaction::OnComplete { state_name, actions }
-            | Interaction::OnLoopComplete { state_name, actions } => {
+            Interaction::OnComplete {
+                state_name,
+                actions,
+            }
+            | Interaction::OnLoopComplete {
+                state_name,
+                actions,
+            } => {
                 *state_name = interner.intern(state_name.as_str());
                 for a in actions {
                     a.intern_identifiers(interner);

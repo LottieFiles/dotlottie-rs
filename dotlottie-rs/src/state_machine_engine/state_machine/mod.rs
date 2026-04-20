@@ -37,7 +37,7 @@ pub enum StringString {
     String(String),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct StateMachine {
     pub initial: DotString,
     pub states: Vec<State>,
@@ -87,17 +87,6 @@ impl StateMachine {
             for i in interactions {
                 i.intern_identifiers(interner);
             }
-        }
-    }
-}
-
-impl Default for StateMachine {
-    fn default() -> Self {
-        StateMachine {
-            initial: DotString::empty(),
-            states: Vec::new(),
-            interactions: None,
-            inputs: None,
         }
     }
 }

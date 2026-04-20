@@ -840,14 +840,6 @@ pub unsafe extern "C" fn dotlottie_tick(
     ))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_clear(ptr: *mut Player) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        dotlottie_player.clear();
-        DotLottieResult::Success
-    })
-}
-
 /// Returns whether the animation has completed playback.
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_is_complete(ptr: *mut Player) -> bool {

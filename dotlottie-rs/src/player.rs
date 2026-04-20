@@ -593,10 +593,6 @@ impl Player {
         ]
     }
 
-    pub fn clear(&mut self) {
-        self.renderer.clear()
-    }
-
     pub fn set_marker(&mut self, marker_name: Option<&CStr>) {
         if let Some(name) = marker_name {
             if self.active_marker.as_deref() == Some(name) {
@@ -823,7 +819,6 @@ impl Player {
     where
         F: FnOnce(&mut dyn LottieRenderer) -> Result<(), LottieRendererError>,
     {
-        self.clear();
         self.playback_state = PlaybackState::Stopped;
         self.elapsed_frames = 0.0;
         self.current_loop_count = 0;

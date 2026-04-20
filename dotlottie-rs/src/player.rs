@@ -4,8 +4,22 @@ use std::{fs, mem};
 
 #[cfg(feature = "audio")]
 use crate::audio::AudioManager;
-use crate::poll_events::{EventQueue, PlayerEvent};
+use crate::event_queue::EventQueue;
 use crate::PlayerError;
+
+/// Events emitted by the DotLottie player.
+#[derive(Debug, Clone, PartialEq)]
+pub enum PlayerEvent {
+    Load,
+    LoadError,
+    Play,
+    Pause,
+    Stop,
+    Frame { frame_no: f32 },
+    Render { frame_no: f32 },
+    Loop { loop_count: u32 },
+    Complete,
+}
 use crate::{
     layout::Layout,
     lottie_renderer::{LottieRenderer, LottieRendererError},

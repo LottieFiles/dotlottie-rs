@@ -1013,10 +1013,10 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     fn detect_cycle(&self) -> bool {
-        let Some(last) = self.state_history.last() else {
-            return false;
-        };
-        self.state_history[..self.state_history.len() - 1].contains(last)
+        match self.state_history.split_last() {
+            Some((last, rest)) => rest.contains(last),
+            None => false,
+        }
     }
 
     fn manage_explicit_events(&mut self, event: &Event, x: f32, y: f32) {

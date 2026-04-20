@@ -1131,8 +1131,8 @@ impl<'a> StateMachineEngine<'a> {
         }
 
         // We didn't hit any listened layers
-        if !hit {
-            self.pointer_management.curr_entered_layer = "".to_string();
+        if !hit && !old_layer.is_empty() {
+            self.pointer_management.curr_entered_layer.clear();
 
             let pointer_exit_interactions = self.interactions(Some(event_type_name!(PointerExit)));
 

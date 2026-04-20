@@ -19,7 +19,7 @@
 
 #![allow(clippy::print_stdout)]
 
-use dotlottie_rs::{ColorSpace, DotLottieEvent, DotLottiePlayer};
+use dotlottie_rs::{ColorSpace, Player, PlayerEvent};
 use minifb::{Key, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs;
@@ -30,7 +30,7 @@ mod common;
 const WIDTH: usize = 500;
 const HEIGHT: usize = 500;
 
-fn load_animation(player: &mut DotLottiePlayer, path: &PathBuf) {
+fn load_animation(player: &mut Player, path: &PathBuf) {
     let ext = path
         .extension()
         .and_then(|e| e.to_str())
@@ -72,7 +72,7 @@ fn main() {
     // -------------------------------------------------------------------------
     // Player setup
     // -------------------------------------------------------------------------
-    let mut player = DotLottiePlayer::new();
+    let mut player = Player::new();
     player.set_autoplay(false);
     player.set_loop(true);
     player.set_mode(dotlottie_rs::Mode::Forward);
@@ -202,15 +202,15 @@ fn main() {
         while let Some(event) = player.poll_event() {
             let _ = player.current_frame();
             match event {
-                DotLottieEvent::Load => println!("  -- Load  (is_loaded={})", player.is_loaded()),
-                DotLottieEvent::LoadError => {
+                PlayerEvent::Load => println!("  -- Load  (is_loaded={})", player.is_loaded()),
+                PlayerEvent::LoadError => {
                     eprintln!("  !! LoadError — animation failed to load into ThorVG");
                 }
-                DotLottieEvent::Play => println!("  -- Play"),
-                DotLottieEvent::Pause => println!("  -- Pause"),
-                DotLottieEvent::Stop => println!("  -- Stop"),
-                DotLottieEvent::Loop { loop_count } => println!("  -- Loop #{loop_count}"),
-                DotLottieEvent::Complete => println!("  -- Complete"),
+                PlayerEvent::Play => println!("  -- Play"),
+                PlayerEvent::Pause => println!("  -- Pause"),
+                PlayerEvent::Stop => println!("  -- Stop"),
+                PlayerEvent::Loop { loop_count } => println!("  -- Loop #{loop_count}"),
+                PlayerEvent::Complete => println!("  -- Complete"),
                 _ => {}
             }
         }

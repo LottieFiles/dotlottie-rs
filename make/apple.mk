@@ -9,7 +9,7 @@ MIN_WATCHOS_VERSION ?= 7.0
 # Base features shared by all Apple platforms
 APPLE_BASE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
 # Default features without audio
-APPLE_DEFAULT_FEATURES_NO_AUDIO = tvg,tvg-sw,c_api,dotlottie,state-machines,theming
+APPLE_DEFAULT_FEATURES_NO_AUDIO = tvg,tvg-cpu,c_api,dotlottie,state-machines,theming
 
 # Uncomment for audio
 # APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO),audio

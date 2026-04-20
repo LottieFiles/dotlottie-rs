@@ -140,7 +140,7 @@ All platforms support configurable Rust features through the `FEATURES` variable
 Default features include:
 
 - `tvg`: ThorVG renderer backend
-- `tvg-sw`: Software rendering backend
+- `tvg-cpu`: Software rendering backend
 - `c_api`: C API (cbindgen) for native/Android/Apple builds
 
 #### Environment Variables

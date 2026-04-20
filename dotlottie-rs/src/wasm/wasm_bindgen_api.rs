@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 
 #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
 use crate::ColorSpace;
-use crate::{DotLottiePlayer, Fit, Layout, Mode as PlayerMode, Rgba, Segment};
+use crate::{Fit, Layout, Mode as PlayerMode, Player, Rgba, Segment};
 
 // ─── Renderer mode ───────────────────────────────────────────────────────────
 
@@ -206,7 +206,7 @@ pub struct DotLottiePlayerWasm {
     /// dropped first (it holds a raw mutable pointer into `player`).
     #[cfg(feature = "state-machines")]
     state_machine: Option<crate::StateMachineEngine<'static>>,
-    player: std::mem::ManuallyDrop<DotLottiePlayer>,
+    player: std::mem::ManuallyDrop<Player>,
     /// Owned pixel buffer for the SW renderer (ARGB8888 u32 values).
     #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
     sw_buffer: Vec<u32>,
@@ -231,7 +231,7 @@ impl DotLottiePlayerWasm {
         DotLottiePlayerWasm {
             #[cfg(feature = "state-machines")]
             state_machine: None,
-            player: std::mem::ManuallyDrop::new(DotLottiePlayer::new()),
+            player: std::mem::ManuallyDrop::new(Player::new()),
             #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
             sw_buffer: Vec::new(),
             width: 0,
@@ -427,7 +427,6 @@ impl DotLottiePlayerWasm {
     pub fn clear(&mut self) {
         #[cfg(feature = "webgl")]
         self.activate_gl();
-        self.player.clear();
     }
 
     // ── SW pixel buffer ───────────────────────────────────────────────────────
@@ -804,23 +803,23 @@ impl DotLottiePlayerWasm {
             return JsValue::null();
         };
         match evt {
-            crate::DotLottieEvent::Load => js_obj_with_type("Load").into(),
-            crate::DotLottieEvent::LoadError => js_obj_with_type("LoadError").into(),
-            crate::DotLottieEvent::Play => js_obj_with_type("Play").into(),
-            crate::DotLottieEvent::Pause => js_obj_with_type("Pause").into(),
-            crate::DotLottieEvent::Stop => js_obj_with_type("Stop").into(),
-            crate::DotLottieEvent::Complete => js_obj_with_type("Complete").into(),
-            crate::DotLottieEvent::Frame { frame_no } => {
+            crate::PlayerEvent::Load => js_obj_with_type("Load").into(),
+            crate::PlayerEvent::LoadError => js_obj_with_type("LoadError").into(),
+            crate::PlayerEvent::Play => js_obj_with_type("Play").into(),
+            crate::PlayerEvent::Pause => js_obj_with_type("Pause").into(),
+            crate::PlayerEvent::Stop => js_obj_with_type("Stop").into(),
+            crate::PlayerEvent::Complete => js_obj_with_type("Complete").into(),
+            crate::PlayerEvent::Frame { frame_no } => {
                 let obj = js_obj_with_type("Frame");
                 set_f64(&obj, "frameNo", frame_no as f64);
                 obj.into()
             }
-            crate::DotLottieEvent::Render { frame_no } => {
+            crate::PlayerEvent::Render { frame_no } => {
                 let obj = js_obj_with_type("Render");
                 set_f64(&obj, "frameNo", frame_no as f64);
                 obj.into()
             }
-            crate::DotLottieEvent::Loop { loop_count } => {
+            crate::PlayerEvent::Loop { loop_count } => {
                 let obj = js_obj_with_type("Loop");
                 set_f64(&obj, "loopCount", loop_count as f64);
                 obj.into()
@@ -851,12 +850,12 @@ impl DotLottiePlayerWasm {
 
     #[cfg(feature = "tvg")]
     pub fn load_font(&mut self, name: &str, data: &[u8]) -> bool {
-        DotLottiePlayer::load_font(name, data).is_ok()
+        Player::load_font(name, data).is_ok()
     }
 
     #[cfg(feature = "tvg")]
     pub fn unload_font(name: &str) -> bool {
-        DotLottiePlayer::unload_font(name).is_ok()
+        Player::unload_font(name).is_ok()
     }
 
     // ── Theming ───────────────────────────────────────────────────────────────
@@ -1544,5 +1543,5 @@ impl Default for DotLottiePlayerWasm {
 #[wasm_bindgen]
 #[cfg(feature = "tvg")]
 pub fn register_font(name: &str, data: &[u8]) -> bool {
-    DotLottiePlayer::load_font(name, data).is_ok()
+    Player::load_font(name, data).is_ok()
 }

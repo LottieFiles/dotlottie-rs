@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
 
     next_frame = 0;
     dotlottie_tick(player);
-    dotlottie_current_frame(player, &next_frame);
+    dotlottie_get_current_frame(player, &next_frame);
     if (next_frame != current_frame) {
       // Render the image in the window
       SDL_UpdateTexture(texture, NULL, buffer, WIDTH * sizeof(Uint32));

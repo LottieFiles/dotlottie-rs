@@ -3,6 +3,7 @@ use std::ffi::CString;
 use serde::Deserialize;
 
 use crate::player::Mode;
+use crate::string::{DotString, DotStringInterner};
 use crate::Rgba;
 
 use super::{actions::StateMachineActionError, transitions::Transition, StateMachineEngine};
@@ -16,7 +17,7 @@ pub trait StateTrait {
     fn transitions(&self) -> &Vec<Transition>;
     fn entry_actions(&self) -> Option<&Vec<Action>>;
     fn exit_actions(&self) -> Option<&Vec<Action>>;
-    fn name(&self) -> String;
+    fn name(&self) -> &DotString;
     fn get_type(&self) -> String;
 }
 
@@ -25,9 +26,9 @@ pub trait StateTrait {
 #[serde(tag = "type")]
 pub enum State {
     PlaybackState {
-        name: String,
+        name: DotString,
         transitions: Vec<Transition>,
-        animation: String,
+        animation: DotString,
         r#loop: Option<bool>,
         loop_count: Option<u32>,
         r#final: Option<bool>,
@@ -40,11 +41,63 @@ pub enum State {
         exit_actions: Option<Vec<Action>>,
     },
     GlobalState {
-        name: String,
+        name: DotString,
         transitions: Vec<Transition>,
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
     },
+}
+
+impl State {
+    pub(crate) fn intern_identifiers(&mut self, interner: &mut DotStringInterner) {
+        match self {
+            State::PlaybackState {
+                name,
+                transitions,
+                animation,
+                entry_actions,
+                exit_actions,
+                ..
+            } => {
+                *name = interner.intern(name.as_str());
+                *animation = interner.intern(animation.as_str());
+                for t in transitions {
+                    t.intern_identifiers(interner);
+                }
+                if let Some(actions) = entry_actions {
+                    for a in actions {
+                        a.intern_identifiers(interner);
+                    }
+                }
+                if let Some(actions) = exit_actions {
+                    for a in actions {
+                        a.intern_identifiers(interner);
+                    }
+                }
+            }
+            State::GlobalState {
+                name,
+                transitions,
+                entry_actions,
+                exit_actions,
+            } => {
+                *name = interner.intern(name.as_str());
+                for t in transitions {
+                    t.intern_identifiers(interner);
+                }
+                if let Some(actions) = entry_actions {
+                    for a in actions {
+                        a.intern_identifiers(interner);
+                    }
+                }
+                if let Some(actions) = exit_actions {
+                    for a in actions {
+                        a.intern_identifiers(interner);
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl StateTrait for State {
@@ -148,10 +201,10 @@ impl StateTrait for State {
         }
     }
 
-    fn name(&self) -> String {
+    fn name(&self) -> &DotString {
         match self {
-            State::PlaybackState { name, .. } => name.to_string(),
-            State::GlobalState { name, .. } => name.to_string(),
+            State::PlaybackState { name, .. } => name,
+            State::GlobalState { name, .. } => name,
         }
     }
 

@@ -182,7 +182,7 @@ pub fn check_guards_for_existing_events(
                 if let Some(inputs) = inputs {
                     for input in inputs {
                         if let Input::Event { name } = input {
-                            if name == input_name {
+                            if input_name == name.as_str() {
                                 found = true;
                             }
                         }

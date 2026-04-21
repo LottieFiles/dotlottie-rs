@@ -423,12 +423,6 @@ impl DotLottiePlayerWasm {
         self.player.render().is_ok()
     }
 
-    /// Clear the canvas to the background colour.
-    pub fn clear(&mut self) {
-        #[cfg(feature = "webgl")]
-        self.activate_gl();
-    }
-
     // ── SW pixel buffer ───────────────────────────────────────────────────────
 
     /// Zero-copy `Uint8Array` view into WASM linear memory.

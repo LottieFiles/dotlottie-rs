@@ -2,6 +2,8 @@ use {rustc_hash::FxHashMap, rustc_hash::FxHashSet};
 
 use serde::Deserialize;
 
+use crate::string::DotString;
+
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
@@ -21,10 +23,22 @@ pub enum InputValue {
 }
 
 pub struct InputManager {
-    pub(super) numeric: FxHashMap<String, (f32, f32)>,
-    pub(super) boolean: FxHashMap<String, (bool, bool)>,
-    pub(super) string: FxHashMap<String, (String, String)>,
-    pub(super) event: FxHashSet<String>,
+    pub(super) numeric: FxHashMap<DotString, (f32, f32)>,
+    pub(super) boolean: FxHashMap<DotString, (bool, bool)>,
+    pub(super) string: FxHashMap<DotString, (String, String)>,
+    pub(super) event: FxHashSet<DotString>,
+}
+
+/// Replace an existing entry's value in-place, or insert a new `DotString`
+/// key if missing. Avoids allocating a fresh `DotString` on every update
+/// (the hot path — reads/writes against keys that were declared at load
+/// time).
+fn insert_or_update<V>(map: &mut FxHashMap<DotString, V>, key: &str, value: V) -> Option<V> {
+    if let Some(slot) = map.get_mut(key) {
+        return Some(std::mem::replace(slot, value));
+    }
+    map.insert(DotString::new(key), value);
+    None
 }
 
 impl Default for InputManager {
@@ -55,20 +69,23 @@ impl InputManager {
     }
 
     pub fn set_initial_numeric(&mut self, key: &str, value: f32) {
-        self.numeric.insert(key.to_string(), (value, value));
+        insert_or_update(&mut self.numeric, key, (value, value));
     }
 
     pub fn set_initial_string(&mut self, key: &str, value: &str) {
-        self.string
-            .insert(key.to_string(), (value.to_string(), value.to_string()));
+        insert_or_update(
+            &mut self.string,
+            key,
+            (value.to_string(), value.to_string()),
+        );
     }
 
     pub fn set_initial_boolean(&mut self, key: &str, value: bool) {
-        self.boolean.insert(key.to_string(), (value, value));
+        insert_or_update(&mut self.boolean, key, (value, value));
     }
 
     pub fn set_initial_event(&mut self, key: &str) {
-        self.event.insert(key.to_string());
+        self.event.insert(DotString::new(key));
     }
 
     pub fn set_numeric(&mut self, key: &str, value: f32) -> Option<f32> {
@@ -85,9 +102,9 @@ impl InputManager {
         Some(old)
     }
 
-    pub fn set_string(&mut self, key: &str, value: &str) -> Option<String> {
+    pub fn set_string(&mut self, key: &str, value: String) -> Option<String> {
         let (current, _) = self.string.get_mut(key)?;
-        Some(std::mem::replace(current, value.to_string()))
+        Some(std::mem::replace(current, value))
     }
 
     pub fn get_numeric(&self, key: &str) -> Option<f32> {

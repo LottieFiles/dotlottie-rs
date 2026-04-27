@@ -2,8 +2,10 @@ pub mod guard;
 use guard::Guard;
 use serde::Deserialize;
 
+use crate::string::{DotString, DotStringInterner};
+
 pub trait TransitionTrait {
-    fn target_state(&self) -> &str;
+    fn target_state(&self) -> &DotString;
     fn guards(&self) -> &Option<Vec<Guard>>;
     fn easing(&self) -> [f32; 4];
     fn duration(&self) -> f32;
@@ -15,19 +17,36 @@ pub trait TransitionTrait {
 #[serde(tag = "type")]
 pub enum Transition {
     Transition {
-        to_state: String,
+        to_state: DotString,
         guards: Option<Vec<Guard>>,
     },
     Tweened {
-        to_state: String,
+        to_state: DotString,
         guards: Option<Vec<Guard>>,
         duration: f32,
         easing: [f32; 4],
     },
 }
 
+impl Transition {
+    pub(crate) fn intern_identifiers(&mut self, interner: &mut DotStringInterner) {
+        let (to_state, guards) = match self {
+            Transition::Transition { to_state, guards } => (to_state, guards),
+            Transition::Tweened {
+                to_state, guards, ..
+            } => (to_state, guards),
+        };
+        *to_state = interner.intern(to_state.as_str());
+        if let Some(guards) = guards {
+            for g in guards {
+                g.intern_identifiers(interner);
+            }
+        }
+    }
+}
+
 impl TransitionTrait for Transition {
-    fn target_state(&self) -> &str {
+    fn target_state(&self) -> &DotString {
         match self {
             Transition::Transition { to_state, .. } => to_state,
             Transition::Tweened { to_state, .. } => to_state,

@@ -3,6 +3,7 @@ use serde::Deserialize;
 use crate::{
     inputs::InputManager,
     state_machine::{StringBool, StringNumberBool},
+    string::{DotString, DotStringInterner},
 };
 
 #[derive(Deserialize, PartialEq, Debug, Clone)]
@@ -27,23 +28,35 @@ pub trait GuardTrait {
 #[serde(tag = "type")]
 pub enum Guard {
     Numeric {
-        input_name: String,
+        input_name: DotString,
         condition_type: TransitionGuardConditionType,
         compare_to: StringNumberBool,
     },
     String {
-        input_name: String,
+        input_name: DotString,
         condition_type: TransitionGuardConditionType,
         compare_to: StringNumberBool,
     },
     Boolean {
-        input_name: String,
+        input_name: DotString,
         condition_type: TransitionGuardConditionType,
         compare_to: StringBool,
     },
     Event {
-        input_name: String,
+        input_name: DotString,
     },
+}
+
+impl Guard {
+    pub(crate) fn intern_identifiers(&mut self, interner: &mut DotStringInterner) {
+        let input_name = match self {
+            Guard::Numeric { input_name, .. }
+            | Guard::String { input_name, .. }
+            | Guard::Boolean { input_name, .. }
+            | Guard::Event { input_name } => input_name,
+        };
+        *input_name = interner.intern(input_name.as_str());
+    }
 }
 
 impl GuardTrait for Guard {

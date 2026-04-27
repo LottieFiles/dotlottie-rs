@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use {rustc_hash::FxHashMap, rustc_hash::FxHashSet};
 
 use serde::Deserialize;
 
@@ -21,10 +21,10 @@ pub enum InputValue {
 }
 
 pub struct InputManager {
-    pub(super) numeric: HashMap<String, (f32, f32)>,
-    pub(super) boolean: HashMap<String, (bool, bool)>,
-    pub(super) string: HashMap<String, (String, String)>,
-    pub(super) event: HashSet<String>,
+    pub(super) numeric: FxHashMap<String, (f32, f32)>,
+    pub(super) boolean: FxHashMap<String, (bool, bool)>,
+    pub(super) string: FxHashMap<String, (String, String)>,
+    pub(super) event: FxHashSet<String>,
 }
 
 impl Default for InputManager {
@@ -36,10 +36,10 @@ impl Default for InputManager {
 impl InputManager {
     pub fn new() -> Self {
         Self {
-            numeric: HashMap::new(),
-            boolean: HashMap::new(),
-            string: HashMap::new(),
-            event: HashSet::new(),
+            numeric: FxHashMap::default(),
+            boolean: FxHashMap::default(),
+            string: FxHashMap::default(),
+            event: FxHashSet::default(),
         }
     }
 

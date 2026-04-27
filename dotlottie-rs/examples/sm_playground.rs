@@ -593,36 +593,36 @@ fn format_event(event: &StateMachineEvent) -> String {
         StateMachineEvent::Transition {
             previous_state,
             new_state,
-        } => format!("[SM] Transition: {} -> {}", previous_state, new_state),
+        } => format!("[SM] Transition: {previous_state} -> {new_state}"),
         StateMachineEvent::StateEntered { state } => {
-            format!("[SM] StateEntered: {}", state)
+            format!("[SM] StateEntered: {state}")
         }
         StateMachineEvent::StateExit { state } => {
-            format!("[SM] StateExit: {}", state)
+            format!("[SM] StateExit: {state}")
         }
         StateMachineEvent::CustomEvent { message } => {
-            format!("[SM] CustomEvent: {}", message)
+            format!("[SM] CustomEvent: {message}")
         }
         StateMachineEvent::Error { message } => {
-            format!("[SM] Error: {}", message)
+            format!("[SM] Error: {message}")
         }
         StateMachineEvent::StringInputChange {
             name,
             old_value,
             new_value,
-        } => format!("[Input] {} (string): {} -> {}", name, old_value, new_value),
+        } => format!("[Input] {name} (string): {old_value} -> {new_value}"),
         StateMachineEvent::NumericInputChange {
             name,
             old_value,
             new_value,
-        } => format!("[Input] {} (numeric): {old_value} -> {new_value}", name),
+        } => format!("[Input] {name} (numeric): {old_value} -> {new_value}"),
         StateMachineEvent::BooleanInputChange {
             name,
             old_value,
             new_value,
-        } => format!("[Input] {} (bool): {old_value} -> {new_value}", name),
+        } => format!("[Input] {name} (bool): {old_value} -> {new_value}"),
         StateMachineEvent::InputFired { name } => {
-            format!("[Input] Fired: {}", name)
+            format!("[Input] Fired: {name}")
         }
     }
 }

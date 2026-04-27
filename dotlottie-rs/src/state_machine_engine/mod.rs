@@ -1,5 +1,4 @@
 use core::result::Result::Ok;
-use std::collections::HashSet;
 use std::ffi::{CStr, CString};
 
 use crate::string::{DotString, DotStringInterner};
@@ -924,7 +923,7 @@ impl<'a> StateMachineEngine<'a> {
             let mut ignore_child = false;
 
             // --------------- Start infinite loop detection
-            if let Some(_cycle) = self.detect_cycle() {
+            if self.detect_cycle() {
                 self.current_cycle_count += 1;
 
                 if self.current_cycle_count >= self.max_cycle_count {
@@ -1021,29 +1020,11 @@ impl<'a> StateMachineEngine<'a> {
         Ok(())
     }
 
-    fn detect_cycle(&self) -> Option<Vec<DotString>> {
-        let mut seen = HashSet::new();
-        let mut cycle = Vec::new();
-
-        for state in self.state_history.iter().rev() {
-            if !seen.insert(state) {
-                // We've found the start of a cycle
-                let cycle_start = state;
-                cycle.push(cycle_start.clone());
-
-                for s in self.state_history.iter().rev() {
-                    if s == cycle_start {
-                        break;
-                    }
-                    cycle.push(s.clone());
-                }
-
-                cycle.reverse();
-                return Some(cycle);
-            }
+    fn detect_cycle(&self) -> bool {
+        match self.state_history.split_last() {
+            Some((last, rest)) => rest.contains(last),
+            None => false,
         }
-
-        None
     }
 
     fn manage_explicit_events(&mut self, event: &Event, x: f32, y: f32) {

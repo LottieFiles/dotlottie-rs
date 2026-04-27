@@ -15,7 +15,7 @@ pub mod transitions;
 
 use actions::open_url_policy::OpenUrlPolicy;
 use actions::{Action, ActionTrait};
-use inputs::{Input, InputManager, InputTrait, InputValue};
+use inputs::{Input, InputManager, InputValue};
 use interactions::InteractionTrait;
 use state_machine::StateMachine;
 use states::StateTrait;
@@ -164,7 +164,7 @@ impl<'a> StateMachineEngine<'a> {
         value: f32,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<InputValue> {
+    ) -> Option<f32> {
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
             return None;
@@ -172,8 +172,8 @@ impl<'a> StateMachineEngine<'a> {
 
         let ret = self.inputs.set_numeric(key, value);
 
-        if let Some(InputValue::Numeric(old_value)) = &ret {
-            self.observe_numeric_input_value_change(key, *old_value, value);
+        if let Some(old_value) = ret {
+            self.observe_numeric_input_value_change(key, old_value, value);
         }
 
         if called_from_action {
@@ -197,7 +197,7 @@ impl<'a> StateMachineEngine<'a> {
         value: &str,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<InputValue> {
+    ) -> Option<String> {
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
             return None;
@@ -205,8 +205,8 @@ impl<'a> StateMachineEngine<'a> {
 
         let ret = self.inputs.set_string(key, value.to_string());
 
-        if let Some(InputValue::String(old_value)) = ret.clone() {
-            self.observe_string_input_value_change(key, &old_value, value);
+        if let Some(ref old_value) = ret {
+            self.observe_string_input_value_change(key, old_value, value);
         }
 
         if called_from_action {
@@ -221,7 +221,7 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     pub fn get_string_input(&self, key: &str) -> Option<String> {
-        self.inputs.get_string(key)
+        self.inputs.get_string(key).map(Into::into)
     }
 
     pub fn set_boolean_input(
@@ -230,7 +230,7 @@ impl<'a> StateMachineEngine<'a> {
         value: bool,
         run_pipeline: bool,
         called_from_action: bool,
-    ) -> Option<InputValue> {
+    ) -> Option<bool> {
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
             return None;
@@ -238,7 +238,7 @@ impl<'a> StateMachineEngine<'a> {
 
         let ret = self.inputs.set_boolean(key, value);
 
-        if let Some(InputValue::Boolean(old_value)) = ret.clone() {
+        if let Some(old_value) = ret {
             self.observe_boolean_input_value_change(key, old_value, value);
         }
 
@@ -258,31 +258,22 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     pub fn reset_input(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
-        // Modifying triggers whilst tweening isn't allowed
         if self.status != StateMachineEngineStatus::Running {
             return;
         }
 
-        let ret = self.inputs.reset(key);
-
-        if let Some((old_value, new_value)) = ret {
-            match old_value {
-                InputValue::Numeric(old_value) => {
-                    if let InputValue::Numeric(new_value) = new_value {
-                        self.observe_numeric_input_value_change(key, old_value, new_value);
-                    }
+        if let Some((old, new)) = self.inputs.reset(key) {
+            match (old, new) {
+                (InputValue::Numeric(old), InputValue::Numeric(new)) => {
+                    self.observe_numeric_input_value_change(key, old, new);
                 }
-                InputValue::String(old_value) => {
-                    if let InputValue::String(new_value) = new_value {
-                        self.observe_string_input_value_change(key, &old_value, &new_value);
-                    }
+                (InputValue::String(old), InputValue::String(new)) => {
+                    self.observe_string_input_value_change(key, &old, &new);
                 }
-                InputValue::Boolean(old_value) => {
-                    if let InputValue::Boolean(new_value) = new_value {
-                        self.observe_boolean_input_value_change(key, old_value, new_value);
-                    }
+                (InputValue::Boolean(old), InputValue::Boolean(new)) => {
+                    self.observe_boolean_input_value_change(key, old, new);
                 }
-                InputValue::Event(_) => {}
+                _ => {}
             }
         }
 
@@ -296,11 +287,9 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), StateMachineEngineError> {
-        // If the event is a valid input
-        if let Some(valid_event) = self.inputs.get_event(event) {
-            self.observe_on_input_fired(&valid_event);
-
-            self.curr_event = Some(self.str_interner.intern(&valid_event));
+        if self.inputs.get_event(event).is_some() {
+            self.observe_on_input_fired(event);
+            self.curr_event = Some(self.str_interner.intern(event));
 
             // Run pipeline is always false if called from an action
             if run_pipeline {
@@ -376,15 +365,13 @@ impl<'a> StateMachineEngine<'a> {
                                 new_state_machine.inputs.set_initial_numeric(name, *value);
                             }
                             Input::String { name, value } => {
-                                new_state_machine
-                                    .inputs
-                                    .set_initial_string(name, value.to_string());
+                                new_state_machine.inputs.set_initial_string(name, value);
                             }
                             Input::Boolean { name, value } => {
                                 new_state_machine.inputs.set_initial_boolean(name, *value);
                             }
                             Input::Event { name } => {
-                                new_state_machine.inputs.set_initial_event(name, name);
+                                new_state_machine.inputs.set_initial_event(name);
                             }
                         }
                     }
@@ -1133,7 +1120,7 @@ impl<'a> StateMachineEngine<'a> {
         }
 
         // We didn't hit any listened layers
-        if !hit {
+        if !hit && !old_layer.is_empty() {
             self.pointer_management.curr_entered_layer = DotString::empty();
 
             let pointer_exit_interactions = self.interactions(Some(event_type_name!(PointerExit)));
@@ -1413,18 +1400,22 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     pub fn get_inputs(&self) -> Vec<String> {
-        let mut result = Vec::with_capacity(self.inputs.inputs.len() * 2);
-        for (key, value) in self.inputs.inputs.iter() {
-            result.push(key.as_str().to_owned());
-            result.push(
-                match value {
-                    crate::inputs::InputValue::Numeric(_) => "Numeric",
-                    crate::inputs::InputValue::String(_) => "String",
-                    crate::inputs::InputValue::Boolean(_) => "Boolean",
-                    crate::inputs::InputValue::Event(_) => "Event",
-                }
-                .to_string(),
-            );
+        let mut result = Vec::with_capacity(self.inputs.len() * 2);
+        for name in self.inputs.numeric.keys() {
+            result.push(name.as_str().to_owned());
+            result.push("Numeric".to_string());
+        }
+        for name in self.inputs.boolean.keys() {
+            result.push(name.as_str().to_owned());
+            result.push("Boolean".to_string());
+        }
+        for name in self.inputs.string.keys() {
+            result.push(name.as_str().to_owned());
+            result.push("String".to_string());
+        }
+        for name in self.inputs.event.iter() {
+            result.push(name.as_str().to_owned());
+            result.push("Event".to_string());
         }
         result
     }

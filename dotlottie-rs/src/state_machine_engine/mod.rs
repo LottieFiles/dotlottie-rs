@@ -289,7 +289,7 @@ impl<'a> StateMachineEngine<'a> {
     pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), StateMachineEngineError> {
         if self.inputs.get_event(event).is_some() {
             self.observe_on_input_fired(event);
-            self.curr_event = Some(self.str_interner.intern(&event));
+            self.curr_event = Some(self.str_interner.intern(event));
 
             // Run pipeline is always false if called from an action
             if run_pipeline {

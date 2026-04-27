@@ -1,6 +1,7 @@
 use serde::Deserialize;
 
 use crate::errors::StateMachineError;
+use crate::string::{DotString, DotStringInterner};
 
 use super::{
     inputs::Input,
@@ -36,9 +37,9 @@ pub enum StringString {
     String(String),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct StateMachine {
-    pub initial: String,
+    pub initial: DotString,
     pub states: Vec<State>,
     pub interactions: Option<Vec<Interaction>>,
     pub inputs: Option<Vec<Input>>,
@@ -46,7 +47,7 @@ pub struct StateMachine {
 
 impl StateMachine {
     pub fn new(
-        initial: String,
+        initial: DotString,
         states: Vec<State>,
         interactions: Option<Vec<Interaction>>,
         inputs: Option<Vec<Input>>,
@@ -74,15 +75,18 @@ impl StateMachine {
     pub fn get_state_by_name(&self, name: &str) -> Option<&State> {
         self.states.iter().find(|state| state.name() == name)
     }
-}
 
-impl Default for StateMachine {
-    fn default() -> Self {
-        StateMachine {
-            initial: "".to_string(),
-            states: Vec::new(),
-            interactions: None,
-            inputs: None,
+    /// Canonicalize every identifier through the shared interner so runtime
+    /// comparisons hit the `Arc::ptr_eq` fast path.
+    pub(crate) fn intern_identifiers(&mut self, interner: &mut DotStringInterner) {
+        self.initial = interner.intern(self.initial.as_str());
+        for state in &mut self.states {
+            state.intern_identifiers(interner);
+        }
+        if let Some(interactions) = &mut self.interactions {
+            for i in interactions {
+                i.intern_identifiers(interner);
+            }
         }
     }
 }

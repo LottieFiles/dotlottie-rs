@@ -249,6 +249,7 @@ struct LottieRendererImpl<R: Renderer> {
 impl<R: Renderer> LottieRendererImpl<R> {
     fn clear(&mut self) -> Result<(), LottieRendererError> {
         if self.animation.is_some() || self.background_shape.is_some() {
+            self.renderer.clear().map_err(into_lottie::<R>)?;
             self.animation = None;
             self.background_shape = None;
         }

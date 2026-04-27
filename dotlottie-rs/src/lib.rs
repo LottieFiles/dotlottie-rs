@@ -10,6 +10,7 @@ mod poll_events;
 mod result;
 #[cfg(feature = "state-machines")]
 mod state_machine_engine;
+pub mod string;
 #[cfg(feature = "theming")]
 mod theme;
 mod tween;

@@ -1,0 +1,49 @@
+{
+  "initial": "a",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "a",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Numeric",
+              "inputName": "elapsedTime",
+              "conditionType": "GreaterThan",
+              "compareTo": 0.5
+            }
+          ]
+        }
+      ],
+      "entryActions": [
+        { "type": "Reset", "inputName": "elapsedTime" }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "b",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "a",
+          "guards": [
+            {
+              "type": "Numeric",
+              "inputName": "elapsedTime",
+              "conditionType": "GreaterThan",
+              "compareTo": 0.5
+            }
+          ]
+        }
+      ],
+      "entryActions": [
+        { "type": "Reset", "inputName": "elapsedTime" }
+      ]
+    }
+  ]
+}

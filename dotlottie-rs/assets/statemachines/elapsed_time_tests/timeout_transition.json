@@ -1,0 +1,30 @@
+{
+  "initial": "running",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "running",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "done",
+          "guards": [
+            {
+              "type": "Numeric",
+              "inputName": "elapsedTime",
+              "conditionType": "GreaterThan",
+              "compareTo": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "done",
+      "animation": "",
+      "transitions": []
+    }
+  ]
+}

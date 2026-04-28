@@ -1,0 +1,14 @@
+{
+  "initial": "only",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "only",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
+        { "type": "SetNumeric", "inputName": "elapsedTime", "value": 5 }
+      ]
+    }
+  ]
+}

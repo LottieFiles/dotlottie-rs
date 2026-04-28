@@ -70,4 +70,94 @@ mod tests {
 
         assert!(sm.is_err());
     }
+
+    #[test]
+    fn rejects_user_declared_elapsed_time_input() {
+        let json =
+            include_str!("../assets/statemachines/security_tests/reserved_input_declaration.json");
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player.state_machine_load_data(json);
+        assert!(sm.is_err());
+    }
+
+    #[test]
+    fn rejects_set_numeric_targeting_elapsed_time() {
+        let json = include_str!("../assets/statemachines/security_tests/reserved_set_numeric.json");
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player.state_machine_load_data(json);
+        assert!(sm.is_err());
+    }
+
+    #[test]
+    fn rejects_increment_targeting_elapsed_time() {
+        let json = include_str!("../assets/statemachines/security_tests/reserved_increment.json");
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player.state_machine_load_data(json);
+        assert!(sm.is_err());
+    }
+
+    #[test]
+    fn allows_reset_action_targeting_elapsed_time() {
+        // reset_action.json uses Action::Reset { elapsedTime } in entry actions.
+        let json = include_str!("../assets/statemachines/elapsed_time_tests/reset_action.json");
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player.state_machine_load_data(json);
+        assert!(sm.is_ok());
+    }
+
+    #[test]
+    fn allows_guard_referencing_elapsed_time() {
+        // timeout_transition.json uses elapsedTime as a guard input_name.
+        let json =
+            include_str!("../assets/statemachines/elapsed_time_tests/timeout_transition.json");
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player.state_machine_load_data(json);
+        assert!(sm.is_ok());
+    }
+
+    #[test]
+    fn allows_guard_using_dollar_elapsed_time_compare_to() {
+        // compare_to_elapsed.json uses "$elapsedTime" in compareTo.
+        let json =
+            include_str!("../assets/statemachines/elapsed_time_tests/compare_to_elapsed.json");
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player.state_machine_load_data(json);
+        assert!(sm.is_ok());
+    }
 }

@@ -1,0 +1,19 @@
+{
+  "initial": "only",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "only",
+      "animation": "",
+      "transitions": []
+    }
+  ],
+  "interactions": [
+    {
+      "type": "PointerDown",
+      "actions": [
+        { "type": "Increment", "inputName": "elapsedTime" }
+      ]
+    }
+  ]
+}

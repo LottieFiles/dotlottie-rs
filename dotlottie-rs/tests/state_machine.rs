@@ -553,7 +553,17 @@ mod tests {
         assert_eq!(r, Ok(()));
 
         let predefined_inputs = [
-            "a_exited", "Boolean", "Step", "Event", "rating", "Numeric", "b_exited", "String",
+            "a_exited",
+            "Boolean",
+            "Step",
+            "Event",
+            "rating",
+            "Numeric",
+            "b_exited",
+            "String",
+            // Built-in: every state machine exposes the elapsedTime input.
+            "elapsedTime",
+            "Numeric",
         ];
 
         let inputs = sm.get_inputs();

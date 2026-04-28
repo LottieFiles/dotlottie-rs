@@ -2,7 +2,15 @@ use core::result::Result::Ok;
 use std::collections::HashSet;
 use std::ffi::{CStr, CString};
 
+use rustc_hash::FxHashSet;
+
 use crate::string::{DotString, DotStringInterner};
+
+/// Built-in numeric input that accumulates wall-clock seconds since the most
+/// recent `start()` or `Reset`. Reserved: cannot be declared in JSON `inputs[]`
+/// nor written by any action other than `Reset`.
+pub const ELAPSED_TIME_KEY: &str = "elapsedTime";
+const DOLLAR_ELAPSED_TIME: &str = "$elapsedTime";
 
 pub mod actions;
 pub mod errors;
@@ -20,8 +28,10 @@ use inputs::{Input, InputManager, InputTrait, InputValue};
 use interactions::InteractionTrait;
 use state_machine::StateMachine;
 use states::StateTrait;
-use transitions::guard::GuardTrait;
+use transitions::guard::{Guard, GuardTrait};
 use transitions::{Transition, TransitionTrait};
+
+use crate::state_machine::StringNumberBool;
 
 use crate::actions::whitelist::Whitelist;
 use crate::event_queue::EventQueue;
@@ -128,6 +138,11 @@ pub struct StateMachineEngine<'a> {
     // The state to target once blending has finished
     tween_transition_target_state: Option<State>,
     tween_target_frame: Option<f32>,
+
+    // Names of states whose transitions reference `elapsedTime` in any guard.
+    // Populated at load time. Used to gate per-tick pipeline re-evaluation so
+    // state machines that don't use the built-in pay zero per-frame cost.
+    elapsed_time_states: FxHashSet<DotString>,
 }
 
 impl<'a> StateMachineEngine<'a> {
@@ -166,6 +181,11 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<InputValue> {
+        // The built-in elapsedTime is read-only except via Reset.
+        if key == ELAPSED_TIME_KEY {
+            return None;
+        }
+
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
             return None;
@@ -199,6 +219,11 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<InputValue> {
+        // The built-in elapsedTime is reserved.
+        if key == ELAPSED_TIME_KEY {
+            return None;
+        }
+
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
             return None;
@@ -232,6 +257,11 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<InputValue> {
+        // The built-in elapsedTime is reserved.
+        if key == ELAPSED_TIME_KEY {
+            return None;
+        }
+
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
             return None;
@@ -265,6 +295,17 @@ impl<'a> StateMachineEngine<'a> {
         }
 
         let ret = self.inputs.reset(key);
+
+        // elapsedTime is silent: reset zeroes the value but emits no change event.
+        if key == ELAPSED_TIME_KEY {
+            if called_from_action {
+                self.action_mutated_inputs = true;
+            }
+            if run_pipeline {
+                let _ = self.run_current_state_pipeline();
+            }
+            return;
+        }
 
         if let Some((old_value, new_value)) = ret {
             match old_value {
@@ -354,6 +395,7 @@ impl<'a> StateMachineEngine<'a> {
             action_mutated_inputs: false,
             tween_transition_target_state: None,
             tween_target_frame: None,
+            elapsed_time_states: FxHashSet::default(),
         };
 
         if parsed_state_machine.is_err() {
@@ -366,6 +408,13 @@ impl<'a> StateMachineEngine<'a> {
 
             return Err(StateMachineEngineError::ParsingError(message));
         }
+
+        // Seed the built-in elapsedTime input. Done before processing user
+        // inputs so the security check can reject a colliding declaration
+        // without having to special-case ordering.
+        new_state_machine
+            .inputs
+            .set_initial_numeric(ELAPSED_TIME_KEY, 0.0);
 
         match parsed_state_machine {
             Ok(parsed_state_machine) => {
@@ -407,6 +456,9 @@ impl<'a> StateMachineEngine<'a> {
                 new_state_machine
                     .state_machine
                     .intern_identifiers(&mut new_state_machine.str_interner);
+
+                new_state_machine.elapsed_time_states =
+                    compute_elapsed_time_states(&new_state_machine.state_machine);
 
                 new_state_machine.init_listened_layers();
 
@@ -461,6 +513,12 @@ impl<'a> StateMachineEngine<'a> {
             }
 
             self.open_url_whitelist = whitelist;
+        }
+
+        // Zero the elapsedTime input each session start. Direct write so no
+        // change event is observed.
+        if let Some(InputValue::Numeric(slot)) = self.inputs.inputs.get_mut(ELAPSED_TIME_KEY) {
+            *slot = 0.0;
         }
 
         let initial = &self.state_machine.initial.clone();
@@ -1428,7 +1486,38 @@ impl<'a> StateMachineEngine<'a> {
             self.resume_from_tweening();
         }
 
+        // Advance elapsedTime while Running or Tweening; not while Stopped.
+        // The increment is silent (no NumericInputChange event) by design —
+        // a 60Hz counter would flood the queue and provides no useful signal.
+        if self.status != StateMachineEngineStatus::Stopped {
+            self.elapsed_time_increment(dt);
+
+            // Re-evaluate the pipeline only if the current state has a guard
+            // that references elapsedTime. SMs that don't use it pay nothing.
+            // The pipeline early-returns on Tweening, so we gate on Running.
+            if self.status == StateMachineEngineStatus::Running {
+                let needs_eval = self
+                    .current_state
+                    .as_ref()
+                    .map(|s| self.elapsed_time_states.contains(s.name()))
+                    .unwrap_or(false);
+                if needs_eval {
+                    let _ = self.run_current_state_pipeline();
+                }
+            }
+        }
+
         ticked
+    }
+
+    fn elapsed_time_increment(&mut self, dt: f32) {
+        let inc = (dt / 1000.0).max(0.0);
+        if inc == 0.0 {
+            return;
+        }
+        if let Some(InputValue::Numeric(curr)) = self.inputs.inputs.get_mut(ELAPSED_TIME_KEY) {
+            *curr += inc;
+        }
     }
 
     pub fn get_inputs(&self) -> Vec<String> {
@@ -1447,4 +1536,47 @@ impl<'a> StateMachineEngine<'a> {
         }
         result
     }
+}
+
+/// Walks every state's transitions to find those whose guards reference the
+/// built-in `elapsedTime` input — either as the guard input directly or as a
+/// `$elapsedTime` reference in `compareTo`. The returned set names the states
+/// for which `tick()` must re-evaluate the transition pipeline each frame.
+fn compute_elapsed_time_states(state_machine: &StateMachine) -> FxHashSet<DotString> {
+    let mut set = FxHashSet::default();
+    for state in &state_machine.states {
+        if guards_reference_elapsed_time(state.transitions()) {
+            set.insert(state.name().clone());
+        }
+    }
+    set
+}
+
+fn guards_reference_elapsed_time(transitions: &[Transition]) -> bool {
+    for transition in transitions {
+        let Some(guards) = transition.guards() else {
+            continue;
+        };
+        for guard in guards {
+            match guard {
+                Guard::Numeric {
+                    input_name,
+                    compare_to,
+                    ..
+                } => {
+                    if input_name == ELAPSED_TIME_KEY {
+                        return true;
+                    }
+                    if let StringNumberBool::String(s) = compare_to {
+                        if s == DOLLAR_ELAPSED_TIME {
+                            return true;
+                        }
+                    }
+                }
+                // Other guard types can't reference a numeric input meaningfully.
+                Guard::String { .. } | Guard::Boolean { .. } | Guard::Event { .. } => {}
+            }
+        }
+    }
+    false
 }

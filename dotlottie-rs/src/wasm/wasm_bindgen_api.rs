@@ -1179,7 +1179,6 @@ impl DotLottiePlayerWasm {
             };
 
             use crate::StateMachineEvent;
-            let cstr = |c: &std::ffi::CStr| c.to_string_lossy().into_owned();
 
             match &evt {
                 StateMachineEvent::Start => js_obj_with_type("Start").into(),
@@ -1189,28 +1188,28 @@ impl DotLottiePlayerWasm {
                     new_state,
                 } => {
                     let obj = js_obj_with_type("Transition");
-                    set_str(&obj, "previousState", &cstr(previous_state));
-                    set_str(&obj, "newState", &cstr(new_state));
+                    set_str(&obj, "previousState", previous_state);
+                    set_str(&obj, "newState", new_state);
                     obj.into()
                 }
                 StateMachineEvent::StateEntered { state } => {
                     let obj = js_obj_with_type("StateEntered");
-                    set_str(&obj, "state", &cstr(state));
+                    set_str(&obj, "state", state);
                     obj.into()
                 }
                 StateMachineEvent::StateExit { state } => {
                     let obj = js_obj_with_type("StateExit");
-                    set_str(&obj, "state", &cstr(state));
+                    set_str(&obj, "state", state);
                     obj.into()
                 }
                 StateMachineEvent::CustomEvent { message } => {
                     let obj = js_obj_with_type("CustomEvent");
-                    set_str(&obj, "message", &cstr(message));
+                    set_str(&obj, "message", message);
                     obj.into()
                 }
                 StateMachineEvent::Error { message } => {
                     let obj = js_obj_with_type("Error");
-                    set_str(&obj, "message", &cstr(message));
+                    set_str(&obj, "message", message);
                     obj.into()
                 }
                 StateMachineEvent::StringInputChange {
@@ -1219,9 +1218,9 @@ impl DotLottiePlayerWasm {
                     new_value,
                 } => {
                     let obj = js_obj_with_type("StringInputChange");
-                    set_str(&obj, "name", &cstr(name));
-                    set_str(&obj, "oldValue", &cstr(old_value));
-                    set_str(&obj, "newValue", &cstr(new_value));
+                    set_str(&obj, "name", name);
+                    set_str(&obj, "oldValue", old_value);
+                    set_str(&obj, "newValue", new_value);
                     obj.into()
                 }
                 StateMachineEvent::NumericInputChange {
@@ -1230,7 +1229,7 @@ impl DotLottiePlayerWasm {
                     new_value,
                 } => {
                     let obj = js_obj_with_type("NumericInputChange");
-                    set_str(&obj, "name", &cstr(name));
+                    set_str(&obj, "name", name);
                     set_f64(&obj, "oldValue", *old_value as f64);
                     set_f64(&obj, "newValue", *new_value as f64);
                     obj.into()
@@ -1241,14 +1240,14 @@ impl DotLottiePlayerWasm {
                     new_value,
                 } => {
                     let obj = js_obj_with_type("BooleanInputChange");
-                    set_str(&obj, "name", &cstr(name));
+                    set_str(&obj, "name", name);
                     set_bool(&obj, "oldValue", *old_value);
                     set_bool(&obj, "newValue", *new_value);
                     obj.into()
                 }
                 StateMachineEvent::InputFired { name } => {
                     let obj = js_obj_with_type("InputFired");
-                    set_str(&obj, "name", &cstr(name));
+                    set_str(&obj, "name", name);
                     obj.into()
                 }
             }
@@ -1452,7 +1451,7 @@ impl DotLottiePlayerWasm {
             match &evt {
                 crate::StateMachineInternalEvent::Message { message } => {
                     let obj = js_obj_with_type("Message");
-                    set_str(&obj, "message", &message.to_string_lossy());
+                    set_str(&obj, "message", message);
                     obj.into()
                 }
             }

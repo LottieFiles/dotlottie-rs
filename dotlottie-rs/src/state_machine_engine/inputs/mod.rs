@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use {rustc_hash::FxHashMap, rustc_hash::FxHashSet};
 
 use serde::Deserialize;
 
@@ -17,41 +17,23 @@ pub enum Input {
 #[derive(Clone, Debug)]
 pub enum InputValue {
     Numeric(f32),
-    String(String),
     Boolean(bool),
+    String(String),
     Event(String),
 }
 
-pub trait InputTrait {
-    fn set_initial_boolean(&mut self, key: &str, value: bool);
-    fn set_initial_string(&mut self, key: &str, value: String);
-    fn set_initial_numeric(&mut self, key: &str, value: f32);
-    fn set_initial_event(&mut self, key: &str, value: &str);
-    fn new() -> Self;
-    fn set_boolean(&mut self, key: &str, value: bool) -> Option<InputValue>;
-    fn set_string(&mut self, key: &str, value: String) -> Option<InputValue>;
-    fn set_numeric(&mut self, key: &str, value: f32) -> Option<InputValue>;
-    fn get_numeric(&self, key: &str) -> Option<f32>;
-    fn get_string(&self, key: &str) -> Option<String>;
-    fn get_boolean(&self, key: &str) -> Option<bool>;
-    fn get_event(&self, key: &str) -> Option<String>;
-    fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)>;
-}
-
 pub struct InputManager {
-    pub inputs: HashMap<DotString, InputValue>,
-    default_values: HashMap<DotString, InputValue>,
+    pub(super) numeric: FxHashMap<DotString, (f32, f32)>,
+    pub(super) boolean: FxHashMap<DotString, (bool, bool)>,
+    pub(super) string: FxHashMap<DotString, (String, String)>,
+    pub(super) event: FxHashSet<DotString>,
 }
 
 /// Replace an existing entry's value in-place, or insert a new `DotString`
 /// key if missing. Avoids allocating a fresh `DotString` on every update
 /// (the hot path — reads/writes against keys that were declared at load
 /// time).
-fn insert_or_update(
-    map: &mut HashMap<DotString, InputValue>,
-    key: &str,
-    value: InputValue,
-) -> Option<InputValue> {
+fn insert_or_update<V>(map: &mut FxHashMap<DotString, V>, key: &str, value: V) -> Option<V> {
     if let Some(slot) = map.get_mut(key) {
         return Some(std::mem::replace(slot, value));
     }
@@ -59,87 +41,104 @@ fn insert_or_update(
     None
 }
 
-impl InputTrait for InputManager {
-    fn new() -> Self {
-        let inputs = HashMap::new();
+impl Default for InputManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-        // Store defaults
-        let default_values = inputs.clone();
-
-        InputManager {
-            inputs,
-            default_values,
+impl InputManager {
+    pub fn new() -> Self {
+        Self {
+            numeric: FxHashMap::default(),
+            boolean: FxHashMap::default(),
+            string: FxHashMap::default(),
+            event: FxHashSet::default(),
         }
     }
 
-    fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)> {
-        if let Some(default_value) = self.default_values.get(key) {
-            let default_value = default_value.clone();
-            let old = insert_or_update(&mut self.inputs, key, default_value.clone())
-                .unwrap_or_else(|| default_value.clone());
-            return Some((old, default_value));
-        }
+    pub fn len(&self) -> usize {
+        self.numeric.len() + self.boolean.len() + self.string.len() + self.event.len()
+    }
 
+    pub fn is_empty(&self) -> bool {
+        self.numeric.is_empty()
+            && self.boolean.is_empty()
+            && self.string.is_empty()
+            && self.event.is_empty()
+    }
+
+    pub fn set_initial_numeric(&mut self, key: &str, value: f32) {
+        insert_or_update(&mut self.numeric, key, (value, value));
+    }
+
+    pub fn set_initial_string(&mut self, key: &str, value: &str) {
+        insert_or_update(
+            &mut self.string,
+            key,
+            (value.to_string(), value.to_string()),
+        );
+    }
+
+    pub fn set_initial_boolean(&mut self, key: &str, value: bool) {
+        insert_or_update(&mut self.boolean, key, (value, value));
+    }
+
+    pub fn set_initial_event(&mut self, key: &str) {
+        self.event.insert(DotString::new(key));
+    }
+
+    pub fn set_numeric(&mut self, key: &str, value: f32) -> Option<f32> {
+        let (current, _) = self.numeric.get_mut(key)?;
+        let old = *current;
+        *current = value;
+        Some(old)
+    }
+
+    pub fn set_boolean(&mut self, key: &str, value: bool) -> Option<bool> {
+        let (current, _) = self.boolean.get_mut(key)?;
+        let old = *current;
+        *current = value;
+        Some(old)
+    }
+
+    pub fn set_string(&mut self, key: &str, value: String) -> Option<String> {
+        let (current, _) = self.string.get_mut(key)?;
+        Some(std::mem::replace(current, value))
+    }
+
+    pub fn get_numeric(&self, key: &str) -> Option<f32> {
+        self.numeric.get(key).map(|(v, _)| *v)
+    }
+
+    pub fn get_boolean(&self, key: &str) -> Option<bool> {
+        self.boolean.get(key).map(|(v, _)| *v)
+    }
+
+    pub fn get_string(&self, key: &str) -> Option<&str> {
+        self.string.get(key).map(|(v, _)| v.as_str())
+    }
+
+    pub fn get_event(&self, key: &str) -> Option<&str> {
+        self.event.get(key).map(|s| s.as_str())
+    }
+
+    pub fn reset(&mut self, key: &str) -> Option<(InputValue, InputValue)> {
+        if let Some((current, default)) = self.numeric.get_mut(key) {
+            let old = InputValue::Numeric(*current);
+            *current = *default;
+            return Some((old, InputValue::Numeric(*default)));
+        }
+        if let Some((current, default)) = self.boolean.get_mut(key) {
+            let old = InputValue::Boolean(*current);
+            *current = *default;
+            return Some((old, InputValue::Boolean(*default)));
+        }
+        if let Some((current, default)) = self.string.get_mut(key) {
+            let new_val = default.clone();
+            let old_val = std::mem::replace(current, new_val.clone());
+            return Some((InputValue::String(old_val), InputValue::String(new_val)));
+        }
         None
-    }
-
-    fn set_numeric(&mut self, key: &str, value: f32) -> Option<InputValue> {
-        insert_or_update(&mut self.inputs, key, InputValue::Numeric(value))
-    }
-
-    // Get methods for each type
-    fn get_numeric(&self, key: &str) -> Option<f32> {
-        match self.inputs.get(key) {
-            Some(InputValue::Numeric(value)) => Some(*value),
-            _ => None,
-        }
-    }
-
-    fn set_string(&mut self, key: &str, value: String) -> Option<InputValue> {
-        insert_or_update(&mut self.inputs, key, InputValue::String(value))
-    }
-
-    fn get_string(&self, key: &str) -> Option<String> {
-        match self.inputs.get(key) {
-            Some(InputValue::String(value)) => Some(value.clone()),
-            _ => None,
-        }
-    }
-
-    fn set_boolean(&mut self, key: &str, value: bool) -> Option<InputValue> {
-        insert_or_update(&mut self.inputs, key, InputValue::Boolean(value))
-    }
-
-    fn get_boolean(&self, key: &str) -> Option<bool> {
-        match self.inputs.get(key) {
-            Some(InputValue::Boolean(value)) => Some(*value),
-            _ => None,
-        }
-    }
-
-    fn get_event(&self, key: &str) -> Option<String> {
-        match self.inputs.get(key) {
-            Some(InputValue::Event(value)) => Some(value.clone()),
-            _ => None,
-        }
-    }
-
-    fn set_initial_numeric(&mut self, key: &str, value: f32) {
-        insert_or_update(&mut self.inputs, key, InputValue::Numeric(value));
-        insert_or_update(&mut self.default_values, key, InputValue::Numeric(value));
-    }
-
-    fn set_initial_string(&mut self, key: &str, value: String) {
-        insert_or_update(&mut self.inputs, key, InputValue::String(value.clone()));
-        insert_or_update(&mut self.default_values, key, InputValue::String(value));
-    }
-
-    fn set_initial_boolean(&mut self, key: &str, value: bool) {
-        insert_or_update(&mut self.inputs, key, InputValue::Boolean(value));
-        insert_or_update(&mut self.default_values, key, InputValue::Boolean(value));
-    }
-
-    fn set_initial_event(&mut self, key: &str, value: &str) {
-        insert_or_update(&mut self.inputs, key, InputValue::Event(value.to_string()));
     }
 }

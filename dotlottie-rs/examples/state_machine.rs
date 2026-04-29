@@ -31,22 +31,19 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 previous_state,
                 new_state,
             } => {
-                println!(
-                    "[state machine event] on_transition: {} -> {}",
-                    previous_state, new_state
-                );
+                println!("[state machine event] on_transition: {previous_state} -> {new_state}");
             }
             StateMachineEvent::StateEntered { state } => {
-                println!("[state machine event] on_state_entered: {}", state);
+                println!("[state machine event] on_state_entered: {state}");
             }
             StateMachineEvent::StateExit { state } => {
-                println!("[state machine event] on_state_exit: {}", state);
+                println!("[state machine event] on_state_exit: {state}");
             }
             StateMachineEvent::CustomEvent { message } => {
-                println!("[state machine event] custom_event: {}", message);
+                println!("[state machine event] custom_event: {message}");
             }
             StateMachineEvent::Error { message } => {
-                println!("[state machine event] error: {}", message);
+                println!("[state machine event] error: {message}");
             }
             StateMachineEvent::StringInputChange {
                 name,
@@ -54,8 +51,7 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] string_input_value_change ==> {} : {} -> {}",
-                    name, old_value, new_value
+                    "[state machine event] string_input_value_change ==> {name} : {old_value} -> {new_value}"
                 );
             }
             StateMachineEvent::NumericInputChange {
@@ -64,8 +60,7 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] numeric_input_value_change ==> {} : {old_value} -> {new_value}",
-                    name
+                    "[state machine event] numeric_input_value_change ==> {name} : {old_value} -> {new_value}"
                 );
             }
             StateMachineEvent::BooleanInputChange {
@@ -74,12 +69,11 @@ fn process_state_machine_events(engine: &mut StateMachineEngine) {
                 new_value,
             } => {
                 println!(
-                    "[state machine event] boolean_input_value_change ==> {} : {old_value} -> {new_value}",
-                    name
+                    "[state machine event] boolean_input_value_change ==> {name} : {old_value} -> {new_value}"
                 );
             }
             StateMachineEvent::InputFired { name } => {
-                println!("[state machine event] input_fired ==> {}", name);
+                println!("[state machine event] input_fired ==> {name}");
             }
         }
     }

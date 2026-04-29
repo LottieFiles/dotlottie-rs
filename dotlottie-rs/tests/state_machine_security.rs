@@ -160,6 +160,8 @@ mod tests {
         let sm = player.state_machine_load_data(json);
         assert!(sm.is_ok());
     }
+
+    #[test]
     fn check_infinite_loop() {
         let global_state =
             include_str!("../assets/statemachines/security_tests/infinite_loop.json");

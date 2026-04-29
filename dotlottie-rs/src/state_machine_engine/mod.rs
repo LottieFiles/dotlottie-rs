@@ -288,6 +288,7 @@ impl<'a> StateMachineEngine<'a> {
 
         // elapsedTime is silent: reset zeroes the value but emits no change event.
         if key == ELAPSED_TIME_KEY {
+            let _ = self.inputs.reset(key);
             if called_from_action {
                 self.action_mutated_inputs = true;
             }
@@ -492,8 +493,8 @@ impl<'a> StateMachineEngine<'a> {
             self.open_url_whitelist = whitelist;
         }
 
-        if let Some(InputValue::Numeric(slot)) = self.inputs.inputs.get_mut(ELAPSED_TIME_KEY) {
-            *slot = 0.0;
+        if let Some((current, _)) = self.inputs.numeric.get_mut(ELAPSED_TIME_KEY) {
+            *current = 0.0;
         }
 
         let initial = &self.state_machine.initial.clone();
@@ -1468,8 +1469,8 @@ impl<'a> StateMachineEngine<'a> {
         if inc == 0.0 {
             return;
         }
-        if let Some(InputValue::Numeric(curr)) = self.inputs.inputs.get_mut(ELAPSED_TIME_KEY) {
-            *curr += inc;
+        if let Some((current, _)) = self.inputs.numeric.get_mut(ELAPSED_TIME_KEY) {
+            *current += inc;
         }
     }
 

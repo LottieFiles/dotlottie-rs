@@ -6,9 +6,6 @@ use rustc_hash::FxHashSet;
 
 use crate::string::{DotString, DotStringInterner};
 
-/// Built-in numeric input that accumulates wall-clock seconds since the most
-/// recent `start()` or `Reset`. Reserved: cannot be declared in JSON `inputs[]`
-/// nor written by any action other than `Reset`.
 pub const ELAPSED_TIME_KEY: &str = "elapsedTime";
 const DOLLAR_ELAPSED_TIME: &str = "$elapsedTime";
 
@@ -139,9 +136,6 @@ pub struct StateMachineEngine<'a> {
     tween_transition_target_state: Option<State>,
     tween_target_frame: Option<f32>,
 
-    // Names of states whose transitions reference `elapsedTime` in any guard.
-    // Populated at load time. Used to gate per-tick pipeline re-evaluation so
-    // state machines that don't use the built-in pay zero per-frame cost.
     elapsed_time_states: FxHashSet<DotString>,
 }
 
@@ -409,9 +403,6 @@ impl<'a> StateMachineEngine<'a> {
             return Err(StateMachineEngineError::ParsingError(message));
         }
 
-        // Seed the built-in elapsedTime input. Done before processing user
-        // inputs so the security check can reject a colliding declaration
-        // without having to special-case ordering.
         new_state_machine
             .inputs
             .set_initial_numeric(ELAPSED_TIME_KEY, 0.0);
@@ -515,8 +506,6 @@ impl<'a> StateMachineEngine<'a> {
             self.open_url_whitelist = whitelist;
         }
 
-        // Zero the elapsedTime input each session start. Direct write so no
-        // change event is observed.
         if let Some(InputValue::Numeric(slot)) = self.inputs.inputs.get_mut(ELAPSED_TIME_KEY) {
             *slot = 0.0;
         }
@@ -1486,15 +1475,11 @@ impl<'a> StateMachineEngine<'a> {
             self.resume_from_tweening();
         }
 
-        // Advance elapsedTime while Running or Tweening; not while Stopped.
-        // The increment is silent (no NumericInputChange event) by design —
-        // a 60Hz counter would flood the queue and provides no useful signal.
         if self.status != StateMachineEngineStatus::Stopped {
             self.elapsed_time_increment(dt);
 
             // Re-evaluate the pipeline only if the current state has a guard
-            // that references elapsedTime. SMs that don't use it pay nothing.
-            // The pipeline early-returns on Tweening, so we gate on Running.
+            // that references elapsedTime.
             if self.status == StateMachineEngineStatus::Running {
                 let needs_eval = self
                     .current_state
@@ -1538,10 +1523,6 @@ impl<'a> StateMachineEngine<'a> {
     }
 }
 
-/// Walks every state's transitions to find those whose guards reference the
-/// built-in `elapsedTime` input — either as the guard input directly or as a
-/// `$elapsedTime` reference in `compareTo`. The returned set names the states
-/// for which `tick()` must re-evaluate the transition pipeline each frame.
 fn compute_elapsed_time_states(state_machine: &StateMachine) -> FxHashSet<DotString> {
     let mut set = FxHashSet::default();
     for state in &state_machine.states {

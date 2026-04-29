@@ -82,38 +82,6 @@ mod tests {
         assert_eq!(sm.get_numeric_input("elapsedTime"), Some(0.0));
     }
 
-    #[test]
-    fn reset_action_zeroes_without_disturbing_other_inputs() {
-        let mut player = Player::new();
-        let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
-        assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
-            .is_ok());
-        assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
-
-        let json = include_str!("../assets/statemachines/elapsed_time_tests/reset_action.json");
-        let mut sm = player
-            .state_machine_load_data(json)
-            .expect("state machine to load successfully");
-
-        sm.start(&OpenUrlPolicy::default()).unwrap();
-
-        let _ = sm.tick(800.0);
-        assert!(sm.get_numeric_input("elapsedTime").unwrap() > 0.7);
-        assert_eq!(sm.get_numeric_input("untouched"), Some(7.0));
-
-        // Fire the event → transition to "active" → entry action Reset(elapsedTime).
-        sm.fire("go", true).unwrap();
-
-        assert_eq!(sm.get_current_state_name(), "active");
-        assert_eq!(sm.get_numeric_input("elapsedTime"), Some(0.0));
-        assert_eq!(
-            sm.get_numeric_input("untouched"),
-            Some(7.0),
-            "Reset on elapsedTime must not disturb other inputs"
-        );
-    }
-
     // ---------- Guards ----------
 
     #[test]

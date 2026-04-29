@@ -118,6 +118,10 @@ name = "sm_playground"
 required-features = ["state-machines"]
 
 [[example]]
+name = "elapsed_time"
+required-features = ["state-machines"]
+
+[[example]]
 name = "audio_player"
 required-features = ["audio", "dev"]
 

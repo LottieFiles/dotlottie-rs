@@ -136,6 +136,7 @@ pub struct StateMachineEngine<'a> {
     tween_target_frame: Option<f32>,
 
     elapsed_time_states: FxHashSet<DotString>,
+    elapsed_time_in_global: bool,
 }
 
 impl<'a> StateMachineEngine<'a> {
@@ -379,6 +380,7 @@ impl<'a> StateMachineEngine<'a> {
             tween_transition_target_state: None,
             tween_target_frame: None,
             elapsed_time_states: FxHashSet::default(),
+            elapsed_time_in_global: false,
         };
 
         if parsed_state_machine.is_err() {
@@ -435,8 +437,10 @@ impl<'a> StateMachineEngine<'a> {
                     .state_machine
                     .intern_identifiers(&mut new_state_machine.str_interner);
 
-                new_state_machine.elapsed_time_states =
+                let (states, in_global) =
                     compute_elapsed_time_states(&new_state_machine.state_machine);
+                new_state_machine.elapsed_time_states = states;
+                new_state_machine.elapsed_time_in_global = in_global;
 
                 new_state_machine.init_listened_layers();
 
@@ -1447,14 +1451,16 @@ impl<'a> StateMachineEngine<'a> {
         if self.status != StateMachineEngineStatus::Stopped {
             self.elapsed_time_increment(dt);
 
-            // Re-evaluate the pipeline only if the current state has a guard
-            // that references elapsedTime.
+            // Re-evaluate the pipeline if either the GlobalState routes by
+            // elapsedTime (every tick has to check it) or the current
+            // PlaybackState has its own elapsedTime guard.
             if self.status == StateMachineEngineStatus::Running {
-                let needs_eval = self
-                    .current_state
-                    .as_ref()
-                    .map(|s| self.elapsed_time_states.contains(s.name()))
-                    .unwrap_or(false);
+                let needs_eval = self.elapsed_time_in_global
+                    || self
+                        .current_state
+                        .as_ref()
+                        .map(|s| self.elapsed_time_states.contains(s.name()))
+                        .unwrap_or(false);
                 if needs_eval {
                     let _ = self.run_current_state_pipeline();
                 }
@@ -1496,14 +1502,27 @@ impl<'a> StateMachineEngine<'a> {
     }
 }
 
-fn compute_elapsed_time_states(state_machine: &StateMachine) -> FxHashSet<DotString> {
+/// Returns:
+///   - the set of PlaybackState names whose transitions reference `elapsedTime`
+///   - whether the GlobalState's transitions reference `elapsedTime`
+///
+/// The GlobalState routes regardless of which PlaybackState is current, so the
+/// per-tick gate must fire on every tick when it has elapsedTime guards —
+/// independent of `current_state`.
+fn compute_elapsed_time_states(state_machine: &StateMachine) -> (FxHashSet<DotString>, bool) {
     let mut set = FxHashSet::default();
+    let mut in_global = false;
     for state in &state_machine.states {
         if guards_reference_elapsed_time(state.transitions()) {
-            set.insert(state.name().clone());
+            match state {
+                State::GlobalState { .. } => in_global = true,
+                State::PlaybackState { .. } => {
+                    set.insert(state.name().clone());
+                }
+            }
         }
     }
-    set
+    (set, in_global)
 }
 
 fn guards_reference_elapsed_time(transitions: &[Transition]) -> bool {

@@ -16,8 +16,9 @@
 use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
 use dotlottie_rs::{ColorSpace, Player, Rgba, StateMachineEvent};
 use minifb::{Key, Window, WindowOptions};
+use std::ffi::CString;
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 use std::time::Instant;
 
 mod common;
@@ -26,61 +27,33 @@ const WIDTH: usize = 500;
 const HEIGHT: usize = 500;
 const ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets");
 
-const STATE_MACHINE: &str = r#"{
-  "initial": "wink",
-  "states": [
-    {
-      "type": "PlaybackState",
-      "name": "wink",
-      "animation": "",
-      "autoplay": true,
-      "loop": true,
-      "segment": "wink",
-      "transitions": [
-        {
-          "type": "Transition",
-          "toState": "laugh",
-          "guards": [
-            {
-              "type": "Numeric",
-              "inputName": "elapsedTime",
-              "conditionType": "GreaterThan",
-              "compareTo": 1.0
-            }
-          ]
+// Edit these to swap in your own animation + state machine.
+// Paths are relative to `dotlottie-rs/assets/`.
+// const ANIMATION_PATH: &str = "animations/dotlottie/v1/smiley-slider.lottie";
+// const STATE_MACHINE_PATH: &str = "statemachines/elapsed_time_demo.json";
+
+const ANIMATION_PATH: &str = "animations/lottie/counter.json";
+const STATE_MACHINE_PATH: &str = "statemachines/countdown_timer.json";
+
+fn load_animation(player: &mut Player, path: &str) {
+    let extension = Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    let ok = match extension {
+        "lottie" => {
+            let bytes = fs::read(path).expect("failed to read .lottie");
+            player.load_dotlottie_data(&bytes).is_ok()
         }
-      ],
-      "entryActions": [
-        { "type": "Reset", "inputName": "elapsedTime" }
-      ]
-    },
-    {
-      "type": "PlaybackState",
-      "name": "laugh",
-      "animation": "",
-      "autoplay": true,
-      "loop": true,
-      "segment": "laughing",
-      "transitions": [
-        {
-          "type": "Transition",
-          "toState": "wink",
-          "guards": [
-            {
-              "type": "Numeric",
-              "inputName": "elapsedTime",
-              "conditionType": "GreaterThan",
-              "compareTo": 1.0
-            }
-          ]
+        "json" => {
+            let data = fs::read_to_string(path).expect("failed to read .json");
+            let cdata = CString::new(data).expect("CString conversion failed");
+            player.load_animation_data(&cdata).is_ok()
         }
-      ],
-      "entryActions": [
-        { "type": "Reset", "inputName": "elapsedTime" }
-      ]
-    }
-  ]
-}"#;
+        other => panic!("unsupported animation extension: {other:?}"),
+    };
+    assert!(ok, "failed to load animation: {path}");
+}
 
 fn main() {
     let mut window = Window::new(
@@ -104,16 +77,15 @@ fn main() {
         )
         .expect("failed to set sw target");
 
-    let animation_path = PathBuf::from(format!(
-        "{ASSETS_DIR}/animations/dotlottie/v1/smiley-slider.lottie"
-    ));
-    let bytes = fs::read(&animation_path).expect("failed to read animation");
-    player
-        .load_dotlottie_data(&bytes)
-        .expect("failed to load animation");
+    let animation_path = format!("{ASSETS_DIR}/{ANIMATION_PATH}");
+    load_animation(&mut player, &animation_path);
+
+    let state_machine_path = format!("{ASSETS_DIR}/{STATE_MACHINE_PATH}");
+    let state_machine_def = fs::read_to_string(&state_machine_path)
+        .unwrap_or_else(|e| panic!("failed to read state machine {state_machine_path}: {e}"));
 
     let mut engine = player
-        .state_machine_load_data(STATE_MACHINE)
+        .state_machine_load_data(&state_machine_def)
         .expect("failed to load state machine");
     engine
         .start(&OpenUrlPolicy::default())

@@ -1,0 +1,32 @@
+{
+  "initial": "0",
+  "states": [
+    {
+      "type": "GlobalState",
+      "name": "global",
+      "transitions": [
+        { "type": "Transition", "toState": "0", "guards": [{ "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThanOrEqual", "compareTo": 10 }] },
+        { "type": "Transition", "toState": "9", "guards": [{ "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThanOrEqual", "compareTo": 9 }] },
+        { "type": "Transition", "toState": "8", "guards": [{ "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThanOrEqual", "compareTo": 8 }] },
+        { "type": "Transition", "toState": "7", "guards": [{ "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThanOrEqual", "compareTo": 7 }] },
+        { "type": "Transition", "toState": "6", "guards": [{ "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThanOrEqual", "compareTo": 6 }] },
+        { "type": "Transition", "toState": "5", "guards": [{ "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThanOrEqual", "compareTo": 5 }] },
+        { "type": "Transition", "toState": "4", "guards": [{ "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThanOrEqual", "compareTo": 4 }] },
+        { "type": "Transition", "toState": "3", "guards": [{ "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThanOrEqual", "compareTo": 3 }] },
+        { "type": "Transition", "toState": "2", "guards": [{ "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThanOrEqual", "compareTo": 2 }] },
+        { "type": "Transition", "toState": "1", "guards": [{ "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThanOrEqual", "compareTo": 1 }] }
+      ]
+    },
+    { "type": "PlaybackState", "name": "0", "animation": "", "autoplay": true, "segment": "0", "transitions": [], "entryActions": [{ "type": "Reset", "inputName": "elapsedTime" }] },
+    { "type": "PlaybackState", "name": "1", "animation": "", "autoplay": true, "segment": "1", "transitions": [] },
+    { "type": "PlaybackState", "name": "2", "animation": "", "autoplay": true, "segment": "2", "transitions": [] },
+    { "type": "PlaybackState", "name": "3", "animation": "", "autoplay": true, "segment": "3", "transitions": [] },
+    { "type": "PlaybackState", "name": "4", "animation": "", "autoplay": true, "segment": "4", "transitions": [] },
+    { "type": "PlaybackState", "name": "5", "animation": "", "autoplay": true, "segment": "5", "transitions": [] },
+    { "type": "PlaybackState", "name": "6", "animation": "", "autoplay": true, "segment": "6", "transitions": [] },
+    { "type": "PlaybackState", "name": "7", "animation": "", "autoplay": true, "segment": "7", "transitions": [] },
+    { "type": "PlaybackState", "name": "8", "animation": "", "autoplay": true, "segment": "8", "transitions": [] },
+    { "type": "PlaybackState", "name": "9", "animation": "", "autoplay": true, "segment": "9", "transitions": [] }
+  ],
+  "inputs": []
+}

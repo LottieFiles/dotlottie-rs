@@ -21,7 +21,15 @@ pub enum ReaderError {
 
 impl fmt::Display for ReaderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
+        match self {
+            Self::Zip(e) => write!(f, "ZIP error: {e}"),
+            Self::ManifestNotFound => f.write_str("manifest.json not found"),
+            Self::NoAnimations => f.write_str("no animations listed in manifest"),
+            Self::AnimationNotFound => f.write_str("animation not found in archive"),
+            Self::FileNotFound => f.write_str("file not found in archive"),
+            Self::InvalidUtf8(e) => write!(f, "invalid UTF-8: {e}"),
+            Self::InvalidJson(e) => write!(f, "invalid JSON: {e}"),
+        }
     }
 }
 

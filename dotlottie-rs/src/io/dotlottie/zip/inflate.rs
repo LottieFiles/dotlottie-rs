@@ -4,25 +4,45 @@
 //! Uses two-level lookup tables for fast Huffman decoding.
 
 use std::fmt;
+use std::sync::OnceLock;
 
 // ── Error type ──────────────────────────────────────────────────────────────
 
 #[derive(Debug)]
-pub(crate) enum InflateError {
+pub enum InflateError {
+    /// Reserved (BTYPE=3) block encountered.
     InvalidBlockType,
+    /// Code-length code stream produced lengths that don't form a valid
+    /// canonical Huffman table.
     InvalidHuffmanTable,
+    /// Stored block's LEN doesn't match `!NLEN`.
     InvalidStoredLen,
+    /// Decoded literal/length symbol is outside the 257..=285 range.
     InvalidLengthCode,
+    /// Decoded distance symbol is outside the 0..=29 range.
     InvalidDistanceCode,
+    /// Back-reference distance exceeds the bytes already produced.
     DistanceTooFarBack,
+    /// Input ended mid-block.
     UnexpectedEof,
 }
 
 impl fmt::Display for InflateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
+        let msg = match self {
+            Self::InvalidBlockType => "invalid DEFLATE block type",
+            Self::InvalidHuffmanTable => "malformed Huffman table",
+            Self::InvalidStoredLen => "stored block LEN/NLEN mismatch",
+            Self::InvalidLengthCode => "invalid length code",
+            Self::InvalidDistanceCode => "invalid distance code",
+            Self::DistanceTooFarBack => "back-reference distance exceeds output",
+            Self::UnexpectedEof => "unexpected end of input",
+        };
+        f.write_str(msg)
     }
 }
+
+impl std::error::Error for InflateError {}
 
 // ── Static tables (RFC 1951 §3.2.5) ────────────────────────────────────────
 
@@ -362,6 +382,21 @@ fn reverse_bits(code: u32, len: u8) -> u32 {
 }
 
 // ── Fixed Huffman tables ────────────────────────────────────────────────────
+//
+// The fixed lit/dist tables (RFC 1951 §3.2.6) are immutable and used by every
+// BTYPE=1 block. Cache them in `OnceLock`s so repeated inflate calls (or
+// streams with many fixed blocks) reuse the same allocations.
+
+static FIXED_LIT_TABLE: OnceLock<HuffmanTable> = OnceLock::new();
+static FIXED_DIST_TABLE: OnceLock<HuffmanTable> = OnceLock::new();
+
+fn fixed_lit_table() -> &'static HuffmanTable {
+    FIXED_LIT_TABLE.get_or_init(build_fixed_lit_table)
+}
+
+fn fixed_dist_table() -> &'static HuffmanTable {
+    FIXED_DIST_TABLE.get_or_init(build_fixed_dist_table)
+}
 
 fn build_fixed_lit_table() -> HuffmanTable {
     let mut lengths = [0u8; 288];
@@ -397,11 +432,7 @@ pub(crate) fn inflate(input: &[u8], output: &mut Vec<u8>) -> Result<(), InflateE
 
         match btype {
             0 => inflate_stored(&mut reader, output)?,
-            1 => {
-                let lit_table = build_fixed_lit_table();
-                let dist_table = build_fixed_dist_table();
-                inflate_huffman(&mut reader, output, &lit_table, &dist_table)?;
-            }
+            1 => inflate_huffman(&mut reader, output, fixed_lit_table(), fixed_dist_table())?,
             2 => inflate_dynamic(&mut reader, output)?,
             _ => return Err(InflateError::InvalidBlockType),
         }
@@ -538,11 +569,19 @@ fn inflate_huffman(
                 return Err(InflateError::DistanceTooFarBack);
             }
 
-            // Copy byte-by-byte to handle overlapping (distance < length)
             let start = output.len() - distance;
-            for i in 0..length {
-                let byte = output[start + i];
-                output.push(byte);
+            if distance >= length {
+                // Non-overlapping: source region is fully present, so we can
+                // delegate to a vectorized memcpy.
+                output.extend_from_within(start..start + length);
+            } else {
+                // Overlapping back-reference (e.g. RLE-style "AAAA…"): the
+                // source grows as we write, so we have to step byte-by-byte.
+                output.reserve(length);
+                for i in 0..length {
+                    let byte = output[start + i];
+                    output.push(byte);
+                }
             }
         }
     }

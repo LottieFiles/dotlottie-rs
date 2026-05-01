@@ -6,4 +6,4 @@ mod zip;
 pub use error::ReaderError;
 pub use manifest::*;
 pub use reader::{AssetKind, Reader};
-pub use zip::ZipError;
+pub use zip::{InflateError, ZipError};

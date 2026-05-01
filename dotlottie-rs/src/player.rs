@@ -865,7 +865,8 @@ impl Player {
             self.theme_id = None;
         }
 
-        let result = self.load_animation_common(|renderer| renderer.load_data(animation_data));
+        let result =
+            self.load_animation_common(|renderer| renderer.load_data(animation_data, None));
 
         if result.is_ok() {
             self.event_queue.push(PlayerEvent::Load);
@@ -930,19 +931,26 @@ impl Player {
 
         let animation_data_cstr = CString::new(animation_data).map_err(|_| PlayerError::Unknown)?;
 
+        let resolver = manager.asset_resolver();
+
+        #[cfg(feature = "audio")]
+        let audio_assets = serde_json::from_slice::<serde_json::Value>(
+            animation_data_cstr.to_bytes(),
+        )
+        .ok()
+        .map(|parsed| crate::audio::extract_audio(&parsed, &manager));
+
         self.dotlottie_reader = Some(manager);
 
         #[cfg(feature = "audio")]
         {
-            self.audio_manager = self
-                .dotlottie_reader
-                .as_ref()
-                .and_then(|dm| dm.audio_assets())
+            self.audio_manager = audio_assets
                 .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
         }
 
-        let result =
-            self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr));
+        let result = self.load_animation_common(|renderer| {
+            renderer.load_data(&animation_data_cstr, Some(resolver))
+        });
 
         if result.is_ok() {
             self.animation_id = initial_animation_id;
@@ -967,7 +975,7 @@ impl Player {
             .to_str()
             .map_err(|_| PlayerError::InvalidParameter)?;
 
-        if let Some(manager) = &mut self.dotlottie_reader {
+        if let Some(manager) = self.dotlottie_reader.as_ref() {
             #[cfg(feature = "theming")]
             let saved_theme_id = self.theme_id.clone();
 
@@ -982,22 +990,33 @@ impl Player {
                 Ok(animation_data) => {
                     let animation_data_cstr =
                         CString::new(animation_data).expect("Failed to create CString");
-                    self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr))
+
+                    let resolver = manager.asset_resolver();
+
+                    #[cfg(feature = "audio")]
+                    let audio_assets = serde_json::from_slice::<serde_json::Value>(
+                        animation_data_cstr.to_bytes(),
+                    )
+                    .ok()
+                    .map(|parsed| crate::audio::extract_audio(&parsed, manager));
+
+                    let load_result = self.load_animation_common(|renderer| {
+                        renderer.load_data(&animation_data_cstr, Some(resolver))
+                    });
+
+                    #[cfg(feature = "audio")]
+                    if load_result.is_ok() {
+                        self.audio_manager = audio_assets
+                            .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
+                    }
+
+                    load_result
                 }
                 Err(_error) => Err(PlayerError::Unknown),
             };
 
             if result.is_ok() {
                 self.animation_id = Some(animation_id.to_owned());
-
-                #[cfg(feature = "audio")]
-                {
-                    self.audio_manager = self
-                        .dotlottie_reader
-                        .as_ref()
-                        .and_then(|dm| dm.audio_assets())
-                        .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
-                }
 
                 #[cfg(feature = "theming")]
                 if let Some(ref theme_id_cstr) = saved_theme_id {

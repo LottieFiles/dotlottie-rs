@@ -12,8 +12,8 @@ mod thorvg;
 
 pub(crate) use renderer::Point;
 pub use renderer::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Renderer, Rgba,
-    Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, AssetResolver, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker,
+    Renderer, Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 pub use slots::{
     slots_from_json_string, Bezier, BezierValue, ColorSlot, ColorValue, GradientSlot, GradientStop,
@@ -89,7 +89,11 @@ pub trait LottieRenderer {
         target_type: WgpuTargetType,
     ) -> Result<(), LottieRendererError>;
 
-    fn load_data(&mut self, data: &CStr) -> Result<(), LottieRendererError>;
+    fn load_data(
+        &mut self,
+        data: &CStr,
+        resolver: Option<Box<dyn AssetResolver>>,
+    ) -> Result<(), LottieRendererError>;
 
     fn picture_width(&self) -> f32;
 
@@ -286,12 +290,16 @@ impl<R: Renderer> LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn load_animation(&mut self, data: &CStr) -> Result<R::Animation, LottieRendererError> {
+    fn load_animation(
+        &mut self,
+        data: &CStr,
+        resolver: Option<Box<dyn AssetResolver>>,
+    ) -> Result<R::Animation, LottieRendererError> {
         let mut animation = R::Animation::default();
 
         let mimetype = c"lottie+json";
         animation
-            .load_data(data, mimetype)
+            .load_data(data, mimetype, resolver)
             .map_err(into_lottie::<R>)?;
 
         let (pw, ph) = animation.get_size().map_err(into_lottie::<R>)?;
@@ -527,7 +535,11 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn load_data(&mut self, data: &CStr) -> Result<(), LottieRendererError> {
+    fn load_data(
+        &mut self,
+        data: &CStr,
+        resolver: Option<Box<dyn AssetResolver>>,
+    ) -> Result<(), LottieRendererError> {
         self.clear()?;
 
         // Extract default slot values BEFORE passing to ThorVG, because
@@ -538,7 +550,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .map(slots::extract_slots_from_animation)
             .unwrap_or_default();
 
-        let animation = self.load_animation(data)?;
+        let animation = self.load_animation(data, resolver)?;
 
         let background_shape = if !self.background.is_transparent() {
             Some(self.create_background_shape()?)

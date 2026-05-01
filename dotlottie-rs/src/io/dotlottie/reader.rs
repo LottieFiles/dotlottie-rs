@@ -1,34 +1,29 @@
-use super::base64;
 use super::error::ReaderError;
 use super::manifest::Manifest;
 use super::zip::{DotLottieArchive, ZipError};
-#[cfg(feature = "audio")]
-use crate::audio::{extract_audio, AudioLayer};
+use crate::lottie_renderer::AssetResolver;
 #[cfg(feature = "theming")]
 use crate::theme::Theme;
-use serde_json::Value;
-#[cfg(feature = "audio")]
-use std::cell::RefCell;
-#[cfg(feature = "audio")]
+use std::borrow::Cow;
 use std::sync::Arc;
 
-const DATA_IMAGE_PREFIX: &str = "data:image/";
-const DATA_FONT_PREFIX: &str = "data:font/";
-#[cfg(feature = "audio")]
-const DATA_AUDIO_PREFIX: &str = "data:audio/";
-const BASE64_PREFIX: &str = ";base64,";
-const DEFAULT_EXT: &str = "png";
-const DEFAULT_FONT_EXT: &str = "ttf";
-#[cfg(feature = "audio")]
-const SUPPORTED_AUDIO_EXT: &str = "mp3";
+/// Categorises an asset reference looked up from a `.lottie` archive.
+///
+/// The on-disk prefix differs by archive version:
+/// * v1 — `images/`, `audio/`, fonts not supported
+/// * v2 — `i/`, `u/`, `f/`
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AssetKind {
+    Image,
+    Audio,
+    Font,
+}
 
 pub struct Reader {
     initial_animation_id: Box<str>,
     manifest: Manifest,
     version: u8,
-    archive: DotLottieArchive,
-    #[cfg(feature = "audio")]
-    audio_data: RefCell<Option<(Vec<Arc<[u8]>>, Vec<AudioLayer>)>>,
+    archive: Arc<DotLottieArchive>,
 }
 
 impl Reader {
@@ -61,18 +56,38 @@ impl Reader {
             initial_animation_id: id,
             manifest,
             version,
-            archive,
-            #[cfg(feature = "audio")]
-            audio_data: RefCell::new(None),
+            archive: Arc::new(archive),
+        })
+    }
+
+    /// Build a boxed [`AssetResolver`] backed by this reader's archive.
+    ///
+    /// The resolver clones the archive `Arc`, so it stays valid even if the
+    /// owning [`Reader`] is dropped while the resolver is still registered
+    /// with the renderer.
+    pub fn asset_resolver(&self) -> Box<dyn AssetResolver> {
+        Box::new(DotLottieAssetResolver {
+            archive: Arc::clone(&self.archive),
+            version: self.version,
         })
     }
 
     #[inline]
-    pub fn initial_animation(&self) -> Result<String, ReaderError> {
+    pub fn version(&self) -> u8 {
+        self.version
+    }
+
+    #[inline]
+    pub fn initial_animation(&self) -> Result<Vec<u8>, ReaderError> {
         self.animation(&self.initial_animation_id)
     }
 
-    pub fn animation(&self, animation_id: &str) -> Result<String, ReaderError> {
+    /// Returns the raw, unmodified animation JSON bytes for `animation_id`.
+    ///
+    /// External asset references (images, fonts, audio) are intentionally not
+    /// embedded; pair this with [`Reader::asset_bytes`] (or ThorVG's asset
+    /// resolver via `Player`) to materialise assets on demand.
+    pub fn animation(&self, animation_id: &str) -> Result<Vec<u8>, ReaderError> {
         let (json_path, lot_path) = if self.version == 2 {
             (
                 format!("a/{animation_id}.json"),
@@ -97,42 +112,17 @@ impl Reader {
                 other => ReaderError::Zip(other),
             })?;
 
-        let animation_data = std::str::from_utf8(&file_data)?;
-
-        let mut lottie_animation: Value = serde_json::from_str(animation_data)?;
-
-        if let Some(assets) = lottie_animation
-            .get_mut("assets")
-            .and_then(|v| v.as_array_mut())
-        {
-            self.embed_image_assets(assets)?;
-            #[cfg(feature = "audio")]
-            self.embed_audio_assets(assets)?;
-        }
-
-        if self.version == 2 {
-            if let Some(fonts) = lottie_animation
-                .get_mut("fonts")
-                .and_then(|v| v.as_object_mut())
-            {
-                if let Some(font_list) = fonts.get_mut("list").and_then(|v| v.as_array_mut()) {
-                    self.embed_font_assets(font_list)?;
-                }
-            }
-        }
-
-        #[cfg(feature = "audio")]
-        {
-            *self.audio_data.borrow_mut() = Some(extract_audio(&lottie_animation));
-        }
-
-        Ok(serde_json::to_string(&lottie_animation)?)
+        Ok(file_data.into_owned())
     }
 
-    #[cfg(feature = "audio")]
-    #[inline]
-    pub fn audio_assets(&self) -> Option<(Vec<Arc<[u8]>>, Vec<AudioLayer>)> {
-        self.audio_data.borrow().clone()
+    /// Resolve an external asset by source name and kind.
+    ///
+    /// `src` is the value taken from a Lottie field such as `assets[*].p`
+    /// (image / audio) or `fonts.list[*].fPath` (font, with the leading
+    /// `/f/` already stripped by the caller). Returns `None` when the asset
+    /// is not present in the archive.
+    pub fn asset_bytes(&self, kind: AssetKind, src: &str) -> Option<Cow<'_, [u8]>> {
+        archive_asset_bytes(&self.archive, self.version, kind, src)
     }
 
     #[inline]
@@ -168,146 +158,46 @@ impl Reader {
         let theme_str = std::str::from_utf8(&content)?;
         Ok(theme_str.parse::<Theme>()?)
     }
+}
 
-    fn embed_image_assets(&self, assets: &mut [Value]) -> Result<(), ReaderError> {
-        let image_prefix = if self.version == 2 { "i/" } else { "images/" };
-        let mut asset_path = String::with_capacity(128);
-        let mut data_url_buf = String::with_capacity(1024);
+/// Look up an asset by `(version, kind, src)` in a `.lottie` archive.
+fn archive_asset_bytes<'a>(
+    archive: &'a DotLottieArchive,
+    version: u8,
+    kind: AssetKind,
+    src: &str,
+) -> Option<Cow<'a, [u8]>> {
+    let prefix = match (version, kind) {
+        (2, AssetKind::Image) => "i/",
+        (1, AssetKind::Image) => "images/",
+        (2, AssetKind::Audio) => "u/",
+        (1, AssetKind::Audio) => "audio/",
+        (2, AssetKind::Font) => "f/",
+        _ => return None,
+    };
+    let mut path = String::with_capacity(prefix.len() + src.len());
+    path.push_str(prefix);
+    path.push_str(src);
+    archive.read(&path).ok()
+}
 
-        let embedded_flag = Value::Number(1.into());
-        let empty_u = Value::String(String::new());
-        let key_e = "e".to_owned();
-        let key_u = "u".to_owned();
-        let key_p = "p".to_owned();
+/// Concrete [`AssetResolver`] used to feed ThorVG external assets stored in
+/// the dotLottie archive. ThorVG passes the unprefixed asset name (the value
+/// from the JSON's `p` / `fPath` field, with any `/f/` already stripped); we
+/// try image first, then font.
+struct DotLottieAssetResolver {
+    archive: Arc<DotLottieArchive>,
+    version: u8,
+}
 
-        for asset in assets.iter_mut() {
-            if let Some(asset_obj) = asset.as_object_mut() {
-                if let Some(p_str) = asset_obj.get("p").and_then(|v| v.as_str()) {
-                    if p_str.starts_with(DATA_IMAGE_PREFIX) {
-                        asset_obj.insert(key_e.clone(), embedded_flag.clone());
-                    } else {
-                        asset_path.clear();
-                        asset_path.push_str(image_prefix);
-                        asset_path.push_str(p_str.trim_matches('"'));
-
-                        if let Ok(content) = self.archive.read(&asset_path) {
-                            let image_ext = p_str
-                                .rfind('.')
-                                .map(|i| &p_str[i + 1..])
-                                .unwrap_or(DEFAULT_EXT);
-
-                            data_url_buf.clear();
-                            data_url_buf.push_str(DATA_IMAGE_PREFIX);
-                            data_url_buf.push_str(image_ext);
-                            data_url_buf.push_str(BASE64_PREFIX);
-                            base64::encode_into(&content, &mut data_url_buf);
-
-                            asset_obj.insert(key_u.clone(), empty_u.clone());
-                            asset_obj.insert(
-                                key_p.clone(),
-                                Value::String(std::mem::take(&mut data_url_buf)),
-                            );
-                            asset_obj.insert(key_e.clone(), embedded_flag.clone());
-                        }
-                    }
-                }
-            }
+impl AssetResolver for DotLottieAssetResolver {
+    fn resolve(&self, src: &str) -> Option<Cow<'_, [u8]>> {
+        let src = src.strip_prefix("/f/").unwrap_or(src);
+        if let Some(bytes) = archive_asset_bytes(&self.archive, self.version, AssetKind::Image, src)
+        {
+            return Some(bytes);
         }
-        Ok(())
-    }
-
-    #[cfg(feature = "audio")]
-    fn embed_audio_assets(&self, assets: &mut [Value]) -> Result<(), ReaderError> {
-        let audio_prefix = if self.version == 2 { "u/" } else { "audio/" };
-        let mut asset_path = String::with_capacity(128);
-        let mut data_url_buf = String::with_capacity(1024);
-
-        let embedded_flag = Value::Number(1.into());
-        let empty_u = Value::String(String::new());
-        let key_e = "e".to_owned();
-        let key_u = "u".to_owned();
-        let key_p = "p".to_owned();
-
-        for asset in assets.iter_mut() {
-            let Some(asset_obj) = asset.as_object_mut() else {
-                continue;
-            };
-            let Some(p_str) = asset_obj
-                .get("p")
-                .and_then(|v| v.as_str())
-                .map(str::to_string)
-            else {
-                continue;
-            };
-
-            if p_str.starts_with(DATA_AUDIO_PREFIX) {
-                asset_obj.insert(key_e.clone(), embedded_flag.clone());
-                continue;
-            }
-
-            if !p_str.to_lowercase().ends_with(SUPPORTED_AUDIO_EXT) {
-                continue;
-            }
-
-            asset_path.clear();
-            asset_path.push_str(audio_prefix);
-            asset_path.push_str(&p_str);
-
-            if let Ok(content) = self.archive.read(&asset_path) {
-                data_url_buf.clear();
-                data_url_buf.push_str(DATA_AUDIO_PREFIX);
-                data_url_buf.push_str(SUPPORTED_AUDIO_EXT);
-                data_url_buf.push_str(BASE64_PREFIX);
-                base64::encode_into(&content, &mut data_url_buf);
-
-                asset_obj.insert(key_u.clone(), empty_u.clone());
-                asset_obj.insert(
-                    key_p.clone(),
-                    Value::String(std::mem::take(&mut data_url_buf)),
-                );
-                asset_obj.insert(key_e.clone(), embedded_flag.clone());
-            }
-        }
-        Ok(())
-    }
-
-    fn embed_font_assets(&self, font_list: &mut [Value]) -> Result<(), ReaderError> {
-        let mut font_path = String::with_capacity(128);
-        let mut data_url_buf = String::with_capacity(1024);
-        let key_fpath = "fPath".to_owned();
-
-        for font in font_list.iter_mut() {
-            if let Some(font_obj) = font.as_object_mut() {
-                if let Some(f_path_str) = font_obj.get("fPath").and_then(|v| v.as_str()) {
-                    if f_path_str.starts_with("/f/") {
-                        font_path.clear();
-                        font_path.push_str("f/");
-                        let path_without_prefix =
-                            f_path_str.strip_prefix("/f/").unwrap_or(f_path_str);
-                        font_path.push_str(path_without_prefix);
-
-                        if let Ok(content) = self.archive.read(&font_path) {
-                            let font_ext = path_without_prefix
-                                .rfind('.')
-                                .map(|i| &path_without_prefix[i + 1..])
-                                .unwrap_or(DEFAULT_FONT_EXT);
-
-                            data_url_buf.clear();
-                            data_url_buf.push_str(DATA_FONT_PREFIX);
-                            data_url_buf.push_str(font_ext);
-                            data_url_buf.push_str(BASE64_PREFIX);
-                            base64::encode_into(&content, &mut data_url_buf);
-
-                            font_obj.insert(
-                                key_fpath.clone(),
-                                Value::String(std::mem::take(&mut data_url_buf)),
-                            );
-                        }
-                    }
-                }
-            }
-        }
-        Ok(())
+        archive_asset_bytes(&self.archive, self.version, AssetKind::Font, src)
     }
 }
 

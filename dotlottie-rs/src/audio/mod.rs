@@ -3,6 +3,9 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
+#[cfg(feature = "dotlottie")]
+use crate::dotlottie::{AssetKind, Reader};
+
 #[cfg(all(feature = "audio", not(target_arch = "wasm32")))]
 mod rodio_player;
 #[cfg(all(feature = "audio", not(target_arch = "wasm32")))]
@@ -90,11 +93,19 @@ fn decode_base64(input: &str) -> Option<Vec<u8>> {
 // JSON parsing
 // ---------------------------------------------------------------------------
 
-/// Parse audio assets and layers from a Lottie JSON string.
+/// Parse audio assets and layers from a Lottie JSON tree.
+///
+/// MP3 bytes are pulled from the dotLottie archive on demand via `reader`;
+/// any pre-embedded `data:audio/...;base64,...` URLs are still decoded
+/// inline.
 ///
 /// Returns `(assets, layers)` where each layer's `asset_idx` is already
 /// resolved to its position in the returned `assets` Vec.
-pub fn extract_audio(json_data: &Value) -> (Vec<Arc<[u8]>>, Vec<AudioLayer>) {
+#[cfg(feature = "dotlottie")]
+pub fn extract_audio(
+    json_data: &Value,
+    reader: &Reader,
+) -> (Vec<Arc<[u8]>>, Vec<AudioLayer>) {
     // --- Pass 1: collect audio assets and build id → index map ---
     let mut raw_assets: Vec<(String, Arc<[u8]>)> = Vec::new();
 
@@ -110,28 +121,29 @@ pub fn extract_audio(json_data: &Value) -> (Vec<Arc<[u8]>>, Vec<AudioLayer>) {
                 None => continue,
             };
 
-            if !p.starts_with(DATA_AUDIO_PREFIX) {
+            let bytes = if let Some(rest) = p.strip_prefix(DATA_AUDIO_PREFIX) {
+                // Pre-embedded data URL: decode the base64 payload.
+                let Some(semi_pos) = rest.find(';') else {
+                    continue;
+                };
+                let Some(b64_data) = rest[semi_pos + 1..].strip_prefix("base64,") else {
+                    continue;
+                };
+                let Some(decoded) = decode_base64(b64_data) else {
+                    continue;
+                };
+                Arc::<[u8]>::from(decoded)
+            } else if p.to_ascii_lowercase().ends_with(".mp3") {
+                // External reference: pull bytes from the archive.
+                let Some(content) = reader.asset_bytes(AssetKind::Audio, p) else {
+                    continue;
+                };
+                Arc::<[u8]>::from(content.into_owned())
+            } else {
                 continue;
-            }
-
-            let after_prefix = &p[DATA_AUDIO_PREFIX.len()..];
-            let semi_pos = match after_prefix.find(';') {
-                Some(pos) => pos,
-                None => continue,
             };
 
-            let rest = &after_prefix[semi_pos + 1..];
-            let b64_data = match rest.strip_prefix("base64,") {
-                Some(d) => d,
-                None => continue,
-            };
-
-            let decoded = match decode_base64(b64_data) {
-                Some(d) => d,
-                None => continue,
-            };
-
-            raw_assets.push((id, Arc::from(decoded)));
+            raw_assets.push((id, bytes));
         }
     }
 

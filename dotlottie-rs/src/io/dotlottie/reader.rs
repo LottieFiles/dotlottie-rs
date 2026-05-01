@@ -1,6 +1,6 @@
 use super::error::ReaderError;
 use super::manifest::Manifest;
-use super::zip::{DotLottieArchive, ZipError};
+use super::zip::{Archive, ZipError};
 use crate::lottie_renderer::AssetResolver;
 #[cfg(feature = "theming")]
 use crate::theme::Theme;
@@ -19,16 +19,39 @@ pub enum AssetKind {
     Font,
 }
 
+/// dotLottie archive layout version, derived from `manifest.json`'s `version`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DotLottieVersion {
+    V1,
+    V2,
+}
+
+impl DotLottieVersion {
+    fn from_manifest(version: Option<&str>) -> Self {
+        match version {
+            Some("2") => Self::V2,
+            _ => Self::V1,
+        }
+    }
+
+    fn animation_dir(self) -> &'static str {
+        match self {
+            Self::V1 => "animations",
+            Self::V2 => "a",
+        }
+    }
+}
+
 pub struct Reader {
     initial_animation_id: Box<str>,
     manifest: Manifest,
-    version: u8,
-    archive: Arc<DotLottieArchive>,
+    version: DotLottieVersion,
+    archive: Arc<Archive>,
 }
 
 impl Reader {
     pub fn new(dotlottie: &[u8]) -> Result<Self, ReaderError> {
-        let archive = DotLottieArchive::new(dotlottie.to_vec()).map_err(ReaderError::Zip)?;
+        let archive = Archive::new(dotlottie.to_vec()).map_err(ReaderError::Zip)?;
 
         let manifest_bytes = archive.read("manifest.json").map_err(|e| match e {
             ZipError::FileNotFound => ReaderError::ManifestNotFound,
@@ -46,11 +69,7 @@ impl Reader {
             .clone()
             .into_boxed_str();
 
-        let version = manifest
-            .version
-            .as_deref()
-            .map(|v| if v == "2" { 2 } else { 1 })
-            .unwrap_or(1);
+        let version = DotLottieVersion::from_manifest(manifest.version.as_deref());
 
         Ok(Reader {
             initial_animation_id: id,
@@ -66,14 +85,14 @@ impl Reader {
     /// owning [`Reader`] is dropped while the resolver is still registered
     /// with the renderer.
     pub fn asset_resolver(&self) -> Box<dyn AssetResolver> {
-        Box::new(DotLottieAssetResolver {
+        Box::new(ArchiveAssetResolver {
             archive: Arc::clone(&self.archive),
             version: self.version,
         })
     }
 
     #[inline]
-    pub fn version(&self) -> u8 {
+    pub fn version(&self) -> DotLottieVersion {
         self.version
     }
 
@@ -88,17 +107,9 @@ impl Reader {
     /// embedded; pair this with [`Reader::asset_bytes`] (or ThorVG's asset
     /// resolver via `Player`) to materialise assets on demand.
     pub fn animation(&self, animation_id: &str) -> Result<Vec<u8>, ReaderError> {
-        let (json_path, lot_path) = if self.version == 2 {
-            (
-                format!("a/{animation_id}.json"),
-                format!("a/{animation_id}.lot"),
-            )
-        } else {
-            (
-                format!("animations/{animation_id}.json"),
-                format!("animations/{animation_id}.lot"),
-            )
-        };
+        let dir = self.version.animation_dir();
+        let json_path = format!("{dir}/{animation_id}.json");
+        let lot_path = format!("{dir}/{animation_id}.lot");
 
         let file_data = self
             .archive
@@ -160,21 +171,26 @@ impl Reader {
     }
 }
 
-/// Look up an asset by `(version, kind, src)` in a `.lottie` archive.
+/// On-disk prefix for an `(version, kind)` pair, or `None` if the combination
+/// is not representable (e.g. v1 archives have no fonts).
+fn asset_prefix(version: DotLottieVersion, kind: AssetKind) -> Option<&'static str> {
+    match (version, kind) {
+        (DotLottieVersion::V2, AssetKind::Image) => Some("i/"),
+        (DotLottieVersion::V1, AssetKind::Image) => Some("images/"),
+        (DotLottieVersion::V2, AssetKind::Audio) => Some("u/"),
+        (DotLottieVersion::V1, AssetKind::Audio) => Some("audio/"),
+        (DotLottieVersion::V2, AssetKind::Font) => Some("f/"),
+        (DotLottieVersion::V1, AssetKind::Font) => None,
+    }
+}
+
 fn archive_asset_bytes<'a>(
-    archive: &'a DotLottieArchive,
-    version: u8,
+    archive: &'a Archive,
+    version: DotLottieVersion,
     kind: AssetKind,
     src: &str,
 ) -> Option<Cow<'a, [u8]>> {
-    let prefix = match (version, kind) {
-        (2, AssetKind::Image) => "i/",
-        (1, AssetKind::Image) => "images/",
-        (2, AssetKind::Audio) => "u/",
-        (1, AssetKind::Audio) => "audio/",
-        (2, AssetKind::Font) => "f/",
-        _ => return None,
-    };
+    let prefix = asset_prefix(version, kind)?;
     let mut path = String::with_capacity(prefix.len() + src.len());
     path.push_str(prefix);
     path.push_str(src);
@@ -185,12 +201,12 @@ fn archive_asset_bytes<'a>(
 /// the dotLottie archive. ThorVG passes the unprefixed asset name (the value
 /// from the JSON's `p` / `fPath` field, with any `/f/` already stripped); we
 /// try image first, then font.
-struct DotLottieAssetResolver {
-    archive: Arc<DotLottieArchive>,
-    version: u8,
+struct ArchiveAssetResolver {
+    archive: Arc<Archive>,
+    version: DotLottieVersion,
 }
 
-impl AssetResolver for DotLottieAssetResolver {
+impl AssetResolver for ArchiveAssetResolver {
     fn resolve(&self, src: &str) -> Option<Cow<'_, [u8]>> {
         let src = src.strip_prefix("/f/").unwrap_or(src);
         if let Some(bytes) = archive_asset_bytes(&self.archive, self.version, AssetKind::Image, src)

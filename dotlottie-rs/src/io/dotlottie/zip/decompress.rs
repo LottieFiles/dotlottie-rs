@@ -1,6 +1,6 @@
 use super::crc32;
+use super::error::ZipError;
 use super::inflate;
-use super::parse::ZipError;
 use std::borrow::Cow;
 
 const METHOD_STORE: u16 = 0;

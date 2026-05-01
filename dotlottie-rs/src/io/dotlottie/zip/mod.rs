@@ -1,29 +1,30 @@
 mod crc32;
 mod decompress;
+mod error;
 mod inflate;
 mod parse;
 
+pub use error::ZipError;
 pub use inflate::InflateError;
-pub use parse::ZipError;
 
 use parse::CentralDirEntry;
 use std::borrow::Cow;
 use std::fmt;
 
-pub(crate) struct DotLottieArchive {
+pub(crate) struct Archive {
     data: Vec<u8>,
     entries: Vec<CentralDirEntry>,
 }
 
-impl fmt::Debug for DotLottieArchive {
+impl fmt::Debug for Archive {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DotLottieArchive")
+        f.debug_struct("Archive")
             .field("entries", &self.entries.len())
             .finish()
     }
 }
 
-impl DotLottieArchive {
+impl Archive {
     pub fn new(data: Vec<u8>) -> Result<Self, ZipError> {
         let entries = parse::parse_archive(&data)?;
         Ok(Self { data, entries })

@@ -8,9 +8,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/guard_tests/equal_not_equal.json");
         let mut player = Player::new();
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -34,9 +34,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/guard_tests/equal_not_equal.json");
         let mut player = Player::new();
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -60,9 +60,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/guard_tests/greater_than.json");
         let mut player = Player::new();
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -111,9 +111,9 @@ mod tests {
             include_str!("../assets/statemachines/guard_tests/greater_than_equal.json");
         let mut player = Player::new();
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -149,9 +149,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/guard_tests/less_than_equal.json");
         let mut player = Player::new();
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -193,9 +193,9 @@ mod tests {
         let global_state = include_str!("../assets/statemachines/guard_tests/less_than.json");
         let mut player = Player::new();
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)

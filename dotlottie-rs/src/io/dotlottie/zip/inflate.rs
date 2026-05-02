@@ -274,7 +274,7 @@ impl HuffmanTable {
 
         if max_len > primary_bits {
             // Count how many codes fall into each sub-table bucket
-            for (_, &(code_val, len)) in codes.iter().enumerate() {
+            for &(code_val, len) in codes.iter() {
                 if len > primary_bits {
                     let primary_idx = (reverse_bits(code_val, len) as usize) & (primary_size - 1);
                     sub_offsets[primary_idx] += 1;
@@ -282,15 +282,15 @@ impl HuffmanTable {
             }
             // Compute offsets
             let mut offset = primary_size;
-            for i in 0..primary_size {
-                if sub_offsets[i] > 0 {
-                    let sub_bits = max_len - primary_bits;
-                    let sub_size = 1usize << sub_bits;
+            let sub_bits = max_len - primary_bits;
+            let sub_size = 1usize << sub_bits;
+            for slot in sub_offsets.iter_mut().take(primary_size) {
+                if *slot > 0 {
                     let start = offset;
                     offset += sub_size;
-                    sub_offsets[i] = start as u32;
+                    *slot = start as u32;
                 } else {
-                    sub_offsets[i] = 0;
+                    *slot = 0;
                 }
             }
             total_sub = offset - primary_size;

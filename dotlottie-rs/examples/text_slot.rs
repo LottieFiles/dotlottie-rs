@@ -41,7 +41,7 @@ fn main() {
     let animation_data = include_str!("../assets/animations/lottie/text.json");
     let c_data = CString::new(animation_data).expect("CString conversion failed");
 
-    if player.load_animation_data(&c_data).is_err() {
+    if player.load_animation_data(c_data.into_bytes()).is_err() {
         eprintln!("Failed to load animation");
         return;
     }

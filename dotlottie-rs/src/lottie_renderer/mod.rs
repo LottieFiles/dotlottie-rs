@@ -91,9 +91,17 @@ pub trait LottieRenderer {
 
     fn load_data(
         &mut self,
-        data: &CStr,
+        data: Vec<u8>,
         resolver: Option<Box<dyn AssetResolver>>,
     ) -> Result<(), LottieRendererError>;
+
+    /// Release the asset resolver registered with the underlying renderer.
+    /// Safe after a successful `load_data` — assets have been resolved
+    /// eagerly and the resolver is no longer needed for rendering. Lets
+    /// the caller drop any state the resolver was holding alive.
+    ///
+    /// No-op when no animation is loaded.
+    fn release_resolver(&mut self);
 
     fn picture_width(&self) -> f32;
 
@@ -292,7 +300,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
 
     fn load_animation(
         &mut self,
-        data: &CStr,
+        data: Vec<u8>,
         resolver: Option<Box<dyn AssetResolver>>,
     ) -> Result<R::Animation, LottieRendererError> {
         let mut animation = R::Animation::default();
@@ -537,7 +545,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn load_data(
         &mut self,
-        data: &CStr,
+        data: Vec<u8>,
         resolver: Option<Box<dyn AssetResolver>>,
     ) -> Result<(), LottieRendererError> {
         self.clear()?;
@@ -545,8 +553,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         // Extract default slot values BEFORE passing to ThorVG, because
         // ThorVG's load_data with copy=false may parse the JSON in-place
         // and mutate the buffer (nulling out string terminators).
-        let default_slots = data
-            .to_str()
+        let default_slots = std::str::from_utf8(&data)
             .map(slots::extract_slots_from_animation)
             .unwrap_or_default();
 
@@ -567,6 +574,12 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.store_default_slots(default_slots);
 
         Ok(())
+    }
+
+    fn release_resolver(&mut self) {
+        if let Some(animation) = self.animation.as_mut() {
+            animation.release_resolver();
+        }
     }
 
     fn picture_width(&self) -> f32 {

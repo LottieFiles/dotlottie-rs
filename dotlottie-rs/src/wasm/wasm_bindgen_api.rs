@@ -363,10 +363,9 @@ impl DotLottiePlayerWasm {
     pub fn load_animation(&mut self, data: &str) -> bool {
         #[cfg(feature = "webgl")]
         self.activate_gl();
-        let Ok(c_data) = CString::new(data) else {
-            return false;
-        };
-        self.player.load_animation_data(&c_data).is_ok()
+        self.player
+            .load_animation_data(data.as_bytes().to_vec())
+            .is_ok()
     }
 
     /// Load a .lottie archive from raw bytes.
@@ -382,7 +381,7 @@ impl DotLottiePlayerWasm {
         {
             #[cfg(feature = "webgl")]
             self.activate_gl();
-            self.player.load_dotlottie_data(data).is_ok()
+            self.player.load_dotlottie_data(data.to_vec()).is_ok()
         }
     }
 

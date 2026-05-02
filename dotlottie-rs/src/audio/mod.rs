@@ -102,10 +102,7 @@ fn decode_base64(input: &str) -> Option<Vec<u8>> {
 /// Returns `(assets, layers)` where each layer's `asset_idx` is already
 /// resolved to its position in the returned `assets` Vec.
 #[cfg(feature = "dotlottie")]
-pub fn extract_audio(
-    json_data: &Value,
-    reader: &Reader,
-) -> (Vec<Arc<[u8]>>, Vec<AudioLayer>) {
+pub fn extract_audio(json_data: &Value, reader: &Reader) -> (Vec<Arc<[u8]>>, Vec<AudioLayer>) {
     // --- Pass 1: collect audio assets and build id → index map ---
     let mut raw_assets: Vec<(String, Arc<[u8]>)> = Vec::new();
 

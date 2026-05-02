@@ -248,10 +248,19 @@ pub trait Animation: Default {
 
     fn load_data(
         &mut self,
-        data: &CStr,
+        data: Vec<u8>,
         mimetype: &CStr,
         resolver: Option<Box<dyn AssetResolver>>,
     ) -> Result<(), Self::Error>;
+
+    /// Release the asset resolver registered with the underlying renderer.
+    ///
+    /// Safe to call after a successful [`Animation::load_data`]: at that
+    /// point ThorVG (or equivalent) has already resolved every external
+    /// asset reference the JSON contains, so the resolver is no longer
+    /// needed for rendering. Releasing it lets the caller drop any state
+    /// the resolver was holding alive (e.g. a backing zip archive).
+    fn release_resolver(&mut self);
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Self::Error>;
 

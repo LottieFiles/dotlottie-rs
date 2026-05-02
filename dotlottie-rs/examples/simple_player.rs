@@ -40,12 +40,12 @@ fn load_animation(player: &mut Player, path: &PathBuf) {
             let metadata = fs::metadata(path).expect("Could not read metadata");
             let mut buffer = vec![0; metadata.len() as usize];
             file.read_exact(&mut buffer).expect("Buffer overflow");
-            let _ = player.load_dotlottie_data(&buffer);
+            let _ = player.load_dotlottie_data(buffer.clone());
         }
         "json" => {
             let data = fs::read_to_string(path).expect("Could not read JSON file");
             let c_data = CString::new(data).expect("CString conversion failed");
-            let _ = player.load_animation_data(&c_data);
+            let _ = player.load_animation_data(c_data.into_bytes());
         }
         _ => {}
     }

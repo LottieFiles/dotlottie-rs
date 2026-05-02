@@ -417,7 +417,9 @@ struct ResolverHandle(Box<dyn AssetResolver>);
 pub struct TvgAnimation {
     raw_animation: tvg::Tvg_Animation,
     raw_paint: tvg::Tvg_Paint,
-    data: Option<CString>,
+    /// Owns the JSON bytes ThorVG parses with `copy=false` (no nul terminator
+    /// needed — `tvg_picture_load_data` takes an explicit length).
+    data: Option<Vec<u8>>,
     segment: Option<Segment>,
     markers: Vec<Marker>,
     total_frames: f32,
@@ -599,17 +601,14 @@ impl Animation for TvgAnimation {
 
     fn load_data(
         &mut self,
-        data: &CStr,
+        data: Vec<u8>,
         mimetype: &CStr,
         resolver: Option<Box<dyn AssetResolver>>,
     ) -> Result<(), TvgError> {
         // Drop any resolver from a prior load on this animation. ThorVG
         // requires the resolver to be set before `tvg_picture_load_data` to
         // affect the upcoming load.
-        self.drop_resolver_handle();
-        unsafe {
-            tvg::tvg_picture_set_asset_resolver(self.raw_paint, None, ptr::null_mut());
-        }
+        self.release_resolver();
 
         if let Some(boxed) = resolver {
             let handle = Box::new(ResolverHandle(boxed));
@@ -631,14 +630,19 @@ impl Animation for TvgAnimation {
             }
         }
 
-        let data_owned = data.to_owned();
-        let data_len_u32 =
-            u32::try_from(data.to_bytes().len()).map_err(|_| TvgError::InvalidArgument)?;
+        let data_len_u32 = u32::try_from(data.len()).map_err(|_| TvgError::InvalidArgument)?;
+
+        // ThorVG's Lottie parser uses C-string scanning internally and reads
+        // past the declared length looking for a null sentinel. Append one
+        // before handing off — the byte is cheap and not counted in `len`.
+        // (`Vec::push` will at most realloc once and is amortized O(1).)
+        let mut data = data;
+        data.push(0);
 
         let result = unsafe {
             TvgAnimation::tvg_load_data_dispatch(
                 self.raw_paint,
-                data_owned.as_ptr(),
+                data.as_ptr() as *const c_char,
                 data_len_u32,
                 mimetype.as_ptr(),
             )
@@ -646,8 +650,8 @@ impl Animation for TvgAnimation {
 
         match result {
             Ok(()) => {
-                // Keep the payload alive for ThorVG
-                self.data = Some(data_owned);
+                // Keep the payload alive for ThorVG (copy=false in dispatch).
+                self.data = Some(data);
                 self.total_frames = self.get_total_frame()?;
                 self.duration = self.get_duration()?;
                 self.load_markers();
@@ -657,10 +661,7 @@ impl Animation for TvgAnimation {
             Err(e) => {
                 // Loading failed — clear the resolver registration too so we
                 // don't leave a dangling pointer on the Picture.
-                unsafe {
-                    tvg::tvg_picture_set_asset_resolver(self.raw_paint, None, ptr::null_mut());
-                }
-                self.drop_resolver_handle();
+                self.release_resolver();
                 self.data = None;
                 self.markers.clear();
                 self.total_frames = 0.0;
@@ -669,6 +670,15 @@ impl Animation for TvgAnimation {
                 Err(e)
             }
         }
+    }
+
+    fn release_resolver(&mut self) {
+        // ThorVG must release its pointer before we drop the Box behind it,
+        // otherwise the next render-time lookup would hit freed memory.
+        unsafe {
+            tvg::tvg_picture_set_asset_resolver(self.raw_paint, None, ptr::null_mut());
+        }
+        self.drop_resolver_handle();
     }
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, TvgError> {
@@ -888,8 +898,8 @@ mod tests {
     fn load_test_animation() -> (TvgRenderer, TvgAnimation) {
         let renderer = TvgRenderer::new(0);
         let mut animation = TvgAnimation::default();
-        let data = CString::new(include_str!("../../assets/animations/lottie/test.json")).unwrap();
-        animation.load_data(&data, c"lottie+json", None).unwrap();
+        let data = include_bytes!("../../assets/animations/lottie/test.json").to_vec();
+        animation.load_data(data, c"lottie+json", None).unwrap();
         (renderer, animation)
     }
 

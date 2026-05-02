@@ -40,6 +40,15 @@ impl DotLottieVersion {
             Self::V2 => "a",
         }
     }
+
+    /// Animation directory prefix as bytes, including the trailing `/`
+    /// separator — for prefix-matching against archive entry names.
+    fn animation_prefix_bytes(self) -> &'static [u8] {
+        match self {
+            Self::V1 => b"animations/",
+            Self::V2 => b"a/",
+        }
+    }
 }
 
 pub struct Reader {
@@ -50,8 +59,8 @@ pub struct Reader {
 }
 
 impl Reader {
-    pub fn new(dotlottie: &[u8]) -> Result<Self, ReaderError> {
-        let archive = Archive::new(dotlottie.to_vec()).map_err(ReaderError::Zip)?;
+    pub fn new(dotlottie: Vec<u8>) -> Result<Self, ReaderError> {
+        let archive = Archive::new(dotlottie).map_err(ReaderError::Zip)?;
 
         let manifest_bytes = archive.read("manifest.json").map_err(|e| match e {
             ZipError::FileNotFound => ReaderError::ManifestNotFound,
@@ -96,8 +105,19 @@ impl Reader {
         self.version
     }
 
+    /// Returns `true` when this archive contains a single animation and no
+    /// themes or state machines. In that case the archive can be released
+    /// after the renderer's `load_data` has eagerly resolved any external
+    /// assets — none of the reader-backed APIs (theme, state machine, or
+    /// switching to a different animation) could ever succeed afterwards.
     #[inline]
-    pub fn initial_animation(&self) -> Result<Vec<u8>, ReaderError> {
+    pub fn is_single_shot(&self) -> bool {
+        self.archive
+            .is_single_shot(self.version.animation_prefix_bytes())
+    }
+
+    #[inline]
+    pub fn initial_animation(&self) -> Result<Cow<'_, [u8]>, ReaderError> {
         self.animation(&self.initial_animation_id)
     }
 
@@ -106,24 +126,26 @@ impl Reader {
     /// External asset references (images, fonts, audio) are intentionally not
     /// embedded; pair this with [`Reader::asset_bytes`] (or ThorVG's asset
     /// resolver via `Player`) to materialise assets on demand.
-    pub fn animation(&self, animation_id: &str) -> Result<Vec<u8>, ReaderError> {
+    ///
+    /// The returned `Cow` borrows from the archive when the entry was stored
+    /// uncompressed and owns a fresh `Vec` when it was deflated.
+    pub fn animation(&self, animation_id: &str) -> Result<Cow<'_, [u8]>, ReaderError> {
         let dir = self.version.animation_dir();
         let json_path = format!("{dir}/{animation_id}.json");
-        let lot_path = format!("{dir}/{animation_id}.lot");
 
-        let file_data = self
-            .archive
+        self.archive
             .read(&json_path)
             .or_else(|e| match e {
-                ZipError::FileNotFound => self.archive.read(&lot_path),
+                ZipError::FileNotFound => {
+                    let lot_path = format!("{dir}/{animation_id}.lot");
+                    self.archive.read(&lot_path)
+                }
                 other => Err(other),
             })
             .map_err(|e| match e {
                 ZipError::FileNotFound => ReaderError::AnimationNotFound,
                 other => ReaderError::Zip(other),
-            })?;
-
-        Ok(file_data.into_owned())
+            })
     }
 
     /// Resolve an external asset by source name and kind.
@@ -138,14 +160,18 @@ impl Reader {
 
     #[inline]
     #[cfg(feature = "state-machines")]
-    pub fn state_machine(&self, state_machine_id: &str) -> Result<String, ReaderError> {
+    pub fn state_machine(&self, state_machine_id: &str) -> Result<Cow<'_, str>, ReaderError> {
         let path = format!("s/{state_machine_id}.json");
         let content = self.archive.read(&path).map_err(|e| match e {
             ZipError::FileNotFound => ReaderError::FileNotFound,
             other => ReaderError::Zip(other),
         })?;
-        String::from_utf8(content.into_owned())
-            .map_err(|e| ReaderError::InvalidUtf8(e.utf8_error()))
+        match content {
+            Cow::Borrowed(bytes) => Ok(Cow::Borrowed(std::str::from_utf8(bytes)?)),
+            Cow::Owned(vec) => String::from_utf8(vec)
+                .map(Cow::Owned)
+                .map_err(|e| ReaderError::InvalidUtf8(e.utf8_error())),
+        }
     }
 
     #[inline]
@@ -154,8 +180,8 @@ impl Reader {
     }
 
     #[inline]
-    pub fn initial_animation_id(&self) -> String {
-        self.initial_animation_id.to_string()
+    pub fn initial_animation_id(&self) -> &str {
+        &self.initial_animation_id
     }
 
     #[inline]
@@ -191,10 +217,7 @@ fn archive_asset_bytes<'a>(
     src: &str,
 ) -> Option<Cow<'a, [u8]>> {
     let prefix = asset_prefix(version, kind)?;
-    let mut path = String::with_capacity(prefix.len() + src.len());
-    path.push_str(prefix);
-    path.push_str(src);
-    archive.read(&path).ok()
+    archive.read_concat(prefix, src).ok()
 }
 
 /// Concrete [`AssetResolver`] used to feed ThorVG external assets stored in
@@ -234,7 +257,7 @@ mod tests {
         if let Ok(mut file) = File::open(&file_path) {
             let mut buffer = Vec::new();
             if file.read_to_end(&mut buffer).is_ok() {
-                let reader = Reader::new(&buffer);
+                let reader = Reader::new(buffer);
                 assert!(reader.is_ok());
 
                 if let Ok(mgr) = reader {
@@ -243,5 +266,71 @@ mod tests {
                 }
             }
         }
+    }
+
+    // ── is_single_shot ──────────────────────────────────────────────────
+
+    #[test]
+    fn is_single_shot_with_only_one_animation_and_image_asset_v2() {
+        // image.lottie: 1 animation + 1 image, no themes, no state machines.
+        // External assets don't disqualify — they're resolved during load_data
+        // and the archive isn't needed afterwards.
+        let bytes = include_bytes!("../../../assets/animations/dotlottie/v2/image.lottie").to_vec();
+        let reader = Reader::new(bytes).expect("Reader::new failed");
+        assert!(
+            reader.is_single_shot(),
+            "image.lottie should be single-shot"
+        );
+    }
+
+    #[test]
+    fn is_single_shot_with_themes_v2() {
+        // themed.lottie: 1 animation + 3 themes — themes mean the user might
+        // call apply_theme later, so the archive must stay alive.
+        let bytes =
+            include_bytes!("../../../assets/animations/dotlottie/v2/themed.lottie").to_vec();
+        let reader = Reader::new(bytes).expect("Reader::new failed");
+        assert!(
+            !reader.is_single_shot(),
+            "themed.lottie has themes; archive must be retained"
+        );
+    }
+
+    #[test]
+    fn is_single_shot_with_state_machine_v2() {
+        // pigeon.lottie: 1 animation + 1 state machine.
+        let bytes =
+            include_bytes!("../../../assets/animations/dotlottie/v2/pigeon.lottie").to_vec();
+        let reader = Reader::new(bytes).expect("Reader::new failed");
+        assert!(
+            !reader.is_single_shot(),
+            "pigeon.lottie has a state machine; archive must be retained"
+        );
+    }
+
+    #[test]
+    fn is_single_shot_with_multiple_animations_v2() {
+        // multi_anim_theme.lottie: 2 animations + 2 themes.
+        let bytes =
+            include_bytes!("../../../assets/animations/dotlottie/v2/multi_anim_theme.lottie")
+                .to_vec();
+        let reader = Reader::new(bytes).expect("Reader::new failed");
+        assert!(
+            !reader.is_single_shot(),
+            "multi_anim_theme.lottie has 2 animations; archive must be retained"
+        );
+    }
+
+    #[test]
+    fn is_single_shot_with_many_animations_v1() {
+        // emojis.lottie: many animations under v1 layout (`animations/`).
+        let bytes =
+            include_bytes!("../../../assets/animations/dotlottie/v1/emojis.lottie").to_vec();
+        let reader = Reader::new(bytes).expect("Reader::new failed");
+        assert_eq!(reader.version(), DotLottieVersion::V1);
+        assert!(
+            !reader.is_single_shot(),
+            "emojis.lottie has many animations; archive must be retained"
+        );
     }
 }

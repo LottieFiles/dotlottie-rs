@@ -1,4 +1,5 @@
 use super::error::ZipError;
+use std::ops::Range;
 
 const EOCD_SIGNATURE: u32 = 0x06054b50;
 const CENTRAL_DIR_SIGNATURE: u32 = 0x02014b50;
@@ -11,14 +12,22 @@ const LOCAL_FILE_HEADER_MIN_SIZE: usize = 30;
 // 64KB max comment + 22-byte EOCD
 const EOCD_MAX_SEARCH: usize = 65557;
 
+/// A central-directory entry. `name` is a byte range into the archive's owned
+/// `data` buffer — UTF-8-validated at parse time, sliced on demand. Storing
+/// the range avoids one heap allocation per entry.
 #[derive(Debug, Clone)]
 pub(crate) struct CentralDirEntry {
-    pub name: Box<str>,
+    pub name: Range<u32>,
     pub crc32: u32,
     pub compressed_size: u32,
     pub uncompressed_size: u32,
     pub local_header_offset: u32,
     pub compression_method: u16,
+}
+
+#[inline]
+pub(crate) fn name_bytes<'a>(data: &'a [u8], entry: &CentralDirEntry) -> &'a [u8] {
+    &data[entry.name.start as usize..entry.name.end as usize]
 }
 
 struct Eocd {
@@ -108,13 +117,16 @@ fn parse_central_directory(data: &[u8], eocd: &Eocd) -> Result<Vec<CentralDirEnt
             return Err(ZipError::InvalidCentralDir);
         }
 
-        let name = std::str::from_utf8(&data[name_start..name_end])
-            .map_err(|_| ZipError::InvalidCentralDir)?;
+        let name_bytes = &data[name_start..name_end];
+        std::str::from_utf8(name_bytes).map_err(|_| ZipError::InvalidCentralDir)?;
+
+        let name_start_u32 = u32::try_from(name_start).map_err(|_| ZipError::InvalidCentralDir)?;
+        let name_end_u32 = u32::try_from(name_end).map_err(|_| ZipError::InvalidCentralDir)?;
 
         // Skip directory entries (names ending with '/')
-        if !name.ends_with('/') {
+        if !name_bytes.ends_with(b"/") {
             entries.push(CentralDirEntry {
-                name: Box::from(name),
+                name: name_start_u32..name_end_u32,
                 compression_method,
                 crc32,
                 compressed_size,
@@ -133,7 +145,7 @@ fn parse_central_directory(data: &[u8], eocd: &Eocd) -> Result<Vec<CentralDirEnt
         }
     }
 
-    entries.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+    entries.sort_unstable_by(|a, b| Ord::cmp(name_bytes(data, a), name_bytes(data, b)));
     Ok(entries)
 }
 

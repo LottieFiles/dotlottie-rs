@@ -48,7 +48,7 @@ fn load_animation(player: &mut Player, path: &PathBuf) {
             let data = fs::read_to_string(path).expect("Failed to read JSON file");
             let c_data = CString::new(data).expect("CString conversion failed");
             player
-                .load_animation_data(&c_data)
+                .load_animation_data(c_data.into_bytes())
                 .expect("Failed to load JSON animation");
         }
         other => panic!("Unsupported file extension: {other:?}  (expected .json or .lottie)"),

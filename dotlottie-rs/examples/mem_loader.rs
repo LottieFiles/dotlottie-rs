@@ -8,6 +8,7 @@
 
 use dotlottie_rs::dotlottie::Reader;
 use dotlottie_rs::tools::{MemoryStats, TrackingAllocator};
+use dotlottie_rs::{ColorSpace, Player};
 
 #[global_allocator]
 static GLOBAL: TrackingAllocator = TrackingAllocator::new();
@@ -54,10 +55,15 @@ fn main() {
     );
     print_phase("baseline (input held)", allocator.heap_stats());
 
-    let reader = Reader::new(&bytes).expect("Reader::new failed");
+    // `Reader::new` now consumes the input Vec — the bytes flow straight into
+    // `Archive.data` with zero copies. After this line, `bytes` is gone; the
+    // archive owns the buffer.
+    let reader = Reader::new(bytes).expect("Reader::new failed");
     print_phase("after Reader::new", allocator.heap_stats());
 
-    let json = reader.initial_animation().expect("initial_animation failed");
+    let json = reader
+        .initial_animation()
+        .expect("initial_animation failed");
     let json_len = json.len();
     print_phase("after initial_animation", allocator.heap_stats());
 
@@ -65,11 +71,8 @@ fn main() {
     print_phase("dropped JSON", allocator.heap_stats());
 
     drop(reader);
-    print_phase("dropped Reader", allocator.heap_stats());
-
-    drop(bytes);
     let final_stats = allocator.heap_stats();
-    print_phase("dropped input bytes", final_stats);
+    print_phase("dropped Reader", final_stats);
 
     println!(
         "json output: {} bytes ({})",
@@ -77,8 +80,41 @@ fn main() {
         fmt_bytes(json_len as i64)
     );
     println!(
-        "PEAK heap during load = {}  (input was {})",
+        "PEAK heap during Reader-only load = {}  (input was {})",
         fmt_bytes(final_stats.peak_bytes),
         fmt_bytes(file_len as i64),
+    );
+
+    // Second pass: full Player load. Highlights the single-shot auto-drop —
+    // archives without themes/state-machines and a single animation should
+    // release the zip buffer once load_data finishes resolving assets.
+    println!();
+    let bytes = std::fs::read(&path).expect("failed to read file");
+    allocator.reset();
+    print_phase("baseline (input held)", allocator.heap_stats());
+
+    const W: u32 = 512;
+    const H: u32 = 512;
+    let mut framebuffer: Vec<u32> = vec![0; (W * H) as usize];
+    let mut player = Player::new();
+    player
+        .set_sw_target(&mut framebuffer, W, H, ColorSpace::ABGR8888)
+        .expect("set_sw_target");
+    print_phase("after Player::new", allocator.heap_stats());
+
+    player
+        .load_dotlottie_data(bytes)
+        .expect("load_dotlottie_data");
+    print_phase("after load_dotlottie_data", allocator.heap_stats());
+
+    let after_load = allocator.heap_stats();
+    drop(player);
+    let after_drop = allocator.heap_stats();
+    print_phase("dropped Player", after_drop);
+
+    println!(
+        "PEAK heap during Player load = {}  (resident after load = {})",
+        fmt_bytes(after_load.peak_bytes),
+        fmt_bytes(after_load.current_bytes),
     );
 }

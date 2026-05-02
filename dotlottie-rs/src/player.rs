@@ -309,6 +309,7 @@ impl Player {
         self.dotlottie_reader
             .as_ref()
             .and_then(|manager| manager.state_machine(id_str).ok())
+            .map(|cow| cow.into_owned())
     }
 
     fn next_frame(&mut self) -> f32 {
@@ -854,7 +855,7 @@ impl Player {
         }
     }
 
-    pub fn load_animation_data(&mut self, animation_data: &CStr) -> Result<(), PlayerError> {
+    pub fn load_animation_data(&mut self, animation_data: Vec<u8>) -> Result<(), PlayerError> {
         #[cfg(feature = "dotlottie")]
         {
             self.dotlottie_reader = None;
@@ -894,10 +895,8 @@ impl Player {
             let path_str = file_path
                 .to_str()
                 .map_err(|_| PlayerError::InvalidParameter)?;
-            let data = fs::read_to_string(path_str).map_err(|_| PlayerError::InvalidParameter)?;
-            let c_data = CString::new(data).map_err(|_| PlayerError::InvalidParameter)?;
-
-            self.load_animation_data(&c_data)
+            let data = fs::read(path_str).map_err(|_| PlayerError::InvalidParameter)?;
+            self.load_animation_data(data)
         })();
 
         result.inspect_err(|_| {
@@ -906,7 +905,7 @@ impl Player {
     }
 
     #[cfg(feature = "dotlottie")]
-    pub fn load_dotlottie_data(&mut self, file_data: &[u8]) -> Result<(), PlayerError> {
+    pub fn load_dotlottie_data(&mut self, file_data: Vec<u8>) -> Result<(), PlayerError> {
         #[cfg(feature = "dotlottie")]
         {
             self.animation_id = None;
@@ -917,46 +916,66 @@ impl Player {
         }
         let manager = Reader::new(file_data).map_err(|_| PlayerError::Unknown)?;
 
-        let (initial_animation, initial_animation_id) =
-            if let Some(anim_id) = self.animation_id.as_deref().and_then(|c| c.to_str().ok()) {
-                (manager.animation(anim_id), self.animation_id.clone())
-            } else {
-                (
-                    manager.initial_animation(),
-                    CString::new(manager.initial_animation_id()).ok(),
-                )
-            };
+        // Pick which animation to load: a previously-set id (kept across
+        // reloads) or the manifest's initial animation. Decide here so we
+        // know whether to mint a fresh `animation_id` on success.
+        let saved_anim_id = self.animation_id.as_deref().and_then(|c| c.to_str().ok());
 
-        let animation_data = initial_animation.map_err(|_| PlayerError::Unknown)?;
-
-        let animation_data_cstr = CString::new(animation_data).map_err(|_| PlayerError::Unknown)?;
+        let (animation_data, new_animation_id): (Vec<u8>, Option<CString>) = match saved_anim_id {
+            Some(anim_id) => {
+                let cow = manager
+                    .animation(anim_id)
+                    .map_err(|_| PlayerError::Unknown)?;
+                (cow.into_owned(), None)
+            }
+            None => {
+                let cow = manager
+                    .initial_animation()
+                    .map_err(|_| PlayerError::Unknown)?;
+                let id = CString::new(manager.initial_animation_id()).ok();
+                (cow.into_owned(), id)
+            }
+        };
 
         let resolver = manager.asset_resolver();
 
+        // Single-shot archives (one animation, no themes/state-machines)
+        // can release the zip buffer after `load_data` resolves assets:
+        // none of the surviving APIs could ever do anything with it.
+        let is_single_shot = manager.is_single_shot();
+
+        // Audio extraction must precede the move into `load_data` because it
+        // borrows the JSON bytes. The `Value` AST drops at end-of-statement.
         #[cfg(feature = "audio")]
-        let audio_assets = serde_json::from_slice::<serde_json::Value>(
-            animation_data_cstr.to_bytes(),
-        )
-        .ok()
-        .map(|parsed| crate::audio::extract_audio(&parsed, &manager));
+        let audio_assets = serde_json::from_slice::<serde_json::Value>(&animation_data)
+            .ok()
+            .map(|parsed| crate::audio::extract_audio(&parsed, &manager));
 
         self.dotlottie_reader = Some(manager);
 
         #[cfg(feature = "audio")]
         {
-            self.audio_manager = audio_assets
-                .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
+            self.audio_manager =
+                audio_assets.and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
         }
 
-        let result = self.load_animation_common(|renderer| {
-            renderer.load_data(&animation_data_cstr, Some(resolver))
-        });
+        let result = self
+            .load_animation_common(|renderer| renderer.load_data(animation_data, Some(resolver)));
 
         if result.is_ok() {
-            self.animation_id = initial_animation_id;
-        }
+            if let Some(new_id) = new_animation_id {
+                self.animation_id = Some(new_id);
+            }
 
-        if result.is_ok() {
+            // Drop the archive once the renderer is done with it. Both the
+            // resolver (held inside the renderer) and `dotlottie_reader`
+            // share an `Arc<Archive>` — both must be released for the zip
+            // bytes to actually free.
+            if is_single_shot {
+                self.renderer.release_resolver();
+                self.dotlottie_reader = None;
+            }
+
             self.event_queue.push(PlayerEvent::Load);
 
             if self.autoplay {
@@ -982,26 +1001,22 @@ impl Player {
             let lookup_id = if anim_id_str.is_empty() {
                 manager.initial_animation_id()
             } else {
-                anim_id_str.to_string()
+                anim_id_str
             };
-            let animation_data = manager.animation(&lookup_id);
+            let animation_data = manager.animation(lookup_id);
 
             let result = match animation_data {
                 Ok(animation_data) => {
-                    let animation_data_cstr =
-                        CString::new(animation_data).expect("Failed to create CString");
-
+                    let animation_data: Vec<u8> = animation_data.into_owned();
                     let resolver = manager.asset_resolver();
 
                     #[cfg(feature = "audio")]
-                    let audio_assets = serde_json::from_slice::<serde_json::Value>(
-                        animation_data_cstr.to_bytes(),
-                    )
-                    .ok()
-                    .map(|parsed| crate::audio::extract_audio(&parsed, manager));
+                    let audio_assets = serde_json::from_slice::<serde_json::Value>(&animation_data)
+                        .ok()
+                        .map(|parsed| crate::audio::extract_audio(&parsed, manager));
 
                     let load_result = self.load_animation_common(|renderer| {
-                        renderer.load_data(&animation_data_cstr, Some(resolver))
+                        renderer.load_data(animation_data, Some(resolver))
                     });
 
                     #[cfg(feature = "audio")]

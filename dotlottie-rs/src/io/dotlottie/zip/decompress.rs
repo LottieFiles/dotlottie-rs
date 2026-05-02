@@ -31,7 +31,9 @@ pub(crate) fn decompress(
             Ok(Cow::Borrowed(compressed))
         }
         METHOD_DEFLATE => {
-            let mut buf = Vec::with_capacity(uncompressed_size);
+            // Reserve one extra byte so consumers that need a null sentinel
+            // (e.g. ThorVG's Lottie parser) can push it without reallocating.
+            let mut buf = Vec::with_capacity(uncompressed_size + 1);
             inflate::inflate(compressed, &mut buf).map_err(ZipError::Decompress)?;
             if buf.len() != uncompressed_size {
                 return Err(ZipError::UncompressedSizeMismatch {

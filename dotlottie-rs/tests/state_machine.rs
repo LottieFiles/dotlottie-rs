@@ -33,7 +33,7 @@ mod tests {
             .read_exact(&mut markers_buffer)
             .expect("buffer overflow");
 
-        assert_eq!(player.load_dotlottie_data(&markers_buffer), Ok(()));
+        assert_eq!(player.load_dotlottie_data(markers_buffer.clone()), Ok(()));
 
         assert!(player.is_playing());
 
@@ -345,9 +345,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie").to_vec()
+            )
             .is_ok());
 
         let mut sm = player
@@ -394,9 +394,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie").to_vec()
+            )
             .is_ok());
 
         let mut sm = player
@@ -439,9 +439,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie").to_vec()
+            )
             .is_ok());
 
         let mut sm = player
@@ -491,9 +491,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/smiley-slider.lottie").to_vec()
+            )
             .is_ok());
 
         let mut sm = player

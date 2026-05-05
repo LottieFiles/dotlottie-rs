@@ -2,6 +2,7 @@ use super::inflate::InflateError;
 use std::fmt;
 
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ZipError {
     /// Buffer is smaller than the minimum-size end-of-central-directory record.
     TooSmall,
@@ -25,6 +26,14 @@ pub enum ZipError {
     FileNotFound,
     /// A length-prefixed read would extend past the end of the buffer.
     OutOfBounds,
+    /// Archive uses ZIP64 extensions, which this reader does not support.
+    /// Detected via sentinel `0xFFFF` / `0xFFFFFFFF` values in the legacy
+    /// EOCD or central-directory fields.
+    Zip64NotSupported,
+    /// Two central-directory entries share the same name. Could be a
+    /// directory-traversal attack vector, so we reject rather than picking
+    /// one arbitrarily.
+    DuplicateEntry,
 }
 
 impl fmt::Display for ZipError {
@@ -52,6 +61,8 @@ impl fmt::Display for ZipError {
             ),
             Self::FileNotFound => f.write_str("file not found in archive"),
             Self::OutOfBounds => f.write_str("read out of bounds"),
+            Self::Zip64NotSupported => f.write_str("ZIP64 archives are not supported"),
+            Self::DuplicateEntry => f.write_str("duplicate entry name in archive"),
         }
     }
 }

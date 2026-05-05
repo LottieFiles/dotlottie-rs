@@ -295,7 +295,7 @@ impl Player {
     pub fn manifest(&self) -> Option<&Manifest> {
         self.dotlottie_reader
             .as_ref()
-            .map(|manager| manager.manifest())
+            .map(|reader| reader.manifest())
     }
 
     pub fn size(&self) -> (u32, u32) {
@@ -906,15 +906,12 @@ impl Player {
 
     #[cfg(feature = "dotlottie")]
     pub fn load_dotlottie_data(&mut self, file_data: Vec<u8>) -> Result<(), PlayerError> {
-        #[cfg(feature = "dotlottie")]
-        {
-            self.animation_id = None;
-        }
+        self.animation_id = None;
         #[cfg(feature = "theming")]
         {
             self.theme_id = None;
         }
-        let manager = Reader::new(file_data).map_err(|_| PlayerError::Unknown)?;
+        let reader = Reader::new(file_data).map_err(|_| PlayerError::Unknown)?;
 
         // Pick which animation to load: a previously-set id (kept across
         // reloads) or the manifest's initial animation. Decide here so we
@@ -923,35 +920,35 @@ impl Player {
 
         let (animation_data, new_animation_id): (Vec<u8>, Option<CString>) = match saved_anim_id {
             Some(anim_id) => {
-                let cow = manager
+                let cow = reader
                     .animation(anim_id)
                     .map_err(|_| PlayerError::Unknown)?;
                 (cow.into_owned(), None)
             }
             None => {
-                let cow = manager
+                let cow = reader
                     .initial_animation()
                     .map_err(|_| PlayerError::Unknown)?;
-                let id = CString::new(manager.initial_animation_id()).ok();
+                let id = CString::new(reader.initial_animation_id()).ok();
                 (cow.into_owned(), id)
             }
         };
 
-        let resolver = manager.asset_resolver();
+        let resolver = reader.asset_resolver();
 
         // Single-shot archives (one animation, no themes/state-machines)
         // can release the zip buffer after `load_data` resolves assets:
         // none of the surviving APIs could ever do anything with it.
-        let is_single_shot = manager.is_single_shot();
+        let is_single_shot = reader.is_single_shot();
 
         // Audio extraction must precede the move into `load_data` because it
         // borrows the JSON bytes. The `Value` AST drops at end-of-statement.
         #[cfg(feature = "audio")]
         let audio_assets = serde_json::from_slice::<serde_json::Value>(&animation_data)
             .ok()
-            .map(|parsed| crate::audio::extract_audio(&parsed, &manager));
+            .map(|parsed| crate::audio::extract_audio(&parsed, &reader));
 
-        self.dotlottie_reader = Some(manager);
+        self.dotlottie_reader = Some(reader);
 
         #[cfg(feature = "audio")]
         {
@@ -985,7 +982,7 @@ impl Player {
             self.event_queue.push(PlayerEvent::LoadError);
         }
 
-        Ok(())
+        result
     }
 
     #[cfg(feature = "dotlottie")]
@@ -994,26 +991,26 @@ impl Player {
             .to_str()
             .map_err(|_| PlayerError::InvalidParameter)?;
 
-        if let Some(manager) = self.dotlottie_reader.as_ref() {
+        if let Some(reader) = self.dotlottie_reader.as_ref() {
             #[cfg(feature = "theming")]
             let saved_theme_id = self.theme_id.clone();
 
             let lookup_id = if anim_id_str.is_empty() {
-                manager.initial_animation_id()
+                reader.initial_animation_id()
             } else {
                 anim_id_str
             };
-            let animation_data = manager.animation(lookup_id);
+            let animation_data = reader.animation(lookup_id);
 
             let result = match animation_data {
                 Ok(animation_data) => {
                     let animation_data: Vec<u8> = animation_data.into_owned();
-                    let resolver = manager.asset_resolver();
+                    let resolver = reader.asset_resolver();
 
                     #[cfg(feature = "audio")]
                     let audio_assets = serde_json::from_slice::<serde_json::Value>(&animation_data)
                         .ok()
-                        .map(|parsed| crate::audio::extract_audio(&parsed, manager));
+                        .map(|parsed| crate::audio::extract_audio(&parsed, reader));
 
                     let load_result = self.load_animation_common(|renderer| {
                         renderer.load_data(animation_data, Some(resolver))
@@ -1135,8 +1132,9 @@ impl Player {
 
         let result = self
             .dotlottie_reader
-            .as_mut()
-            .and_then(|manager| manager.theme(theme_id_str).ok())
+            .as_ref()
+            .and_then(|reader| reader.theme(theme_id_str).ok())
+            .and_then(|theme_json| theme_json.parse::<crate::theme::Theme>().ok())
             .map(|theme| {
                 let anim_id_str = self
                     .animation_id

@@ -34,7 +34,10 @@ pub(crate) fn decompress(
             // Reserve one extra byte so consumers that need a null sentinel
             // (e.g. ThorVG's Lottie parser) can push it without reallocating.
             let mut buf = Vec::with_capacity(uncompressed_size + 1);
-            inflate::inflate(compressed, &mut buf).map_err(ZipError::Decompress)?;
+            // Hard-cap inflate at the declared size: malformed streams cannot
+            // grow the buffer beyond the central-directory contract.
+            inflate::inflate(compressed, &mut buf, uncompressed_size)
+                .map_err(ZipError::Decompress)?;
             if buf.len() != uncompressed_size {
                 return Err(ZipError::UncompressedSizeMismatch {
                     expected: uncompressed_size,

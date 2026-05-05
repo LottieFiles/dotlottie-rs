@@ -2,8 +2,6 @@ use super::error::ReaderError;
 use super::manifest::Manifest;
 use super::zip::{Archive, ZipError};
 use crate::lottie_renderer::AssetResolver;
-#[cfg(feature = "theming")]
-use crate::theme::Theme;
 use std::borrow::Cow;
 use std::sync::Arc;
 
@@ -152,10 +150,28 @@ impl Reader {
     ///
     /// `src` is the value taken from a Lottie field such as `assets[*].p`
     /// (image / audio) or `fonts.list[*].fPath` (font, with the leading
-    /// `/f/` already stripped by the caller). Returns `None` when the asset
-    /// is not present in the archive.
-    pub fn asset_bytes(&self, kind: AssetKind, src: &str) -> Option<Cow<'_, [u8]>> {
-        archive_asset_bytes(&self.archive, self.version, kind, src)
+    /// `/f/` already stripped by the caller).
+    ///
+    /// * `Ok(Some(bytes))` — entry was located and successfully decompressed.
+    /// * `Ok(None)` — asset is not in the archive, or this archive version
+    ///   does not store this asset kind (e.g. fonts in a v1 archive).
+    /// * `Err(_)` — the entry exists but failed integrity checks (checksum,
+    ///   length mismatch, unsupported compression). Distinguishing this from
+    ///   "missing" lets callers surface diagnostics rather than silently
+    ///   serving a default.
+    pub fn asset_bytes(
+        &self,
+        kind: AssetKind,
+        src: &str,
+    ) -> Result<Option<Cow<'_, [u8]>>, ZipError> {
+        let Some(prefix) = asset_prefix(self.version, kind) else {
+            return Ok(None);
+        };
+        match self.archive.read_concat(prefix, src) {
+            Ok(bytes) => Ok(Some(bytes)),
+            Err(ZipError::FileNotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
     }
 
     #[inline]
@@ -184,16 +200,24 @@ impl Reader {
         &self.initial_animation_id
     }
 
+    /// Returns the raw theme JSON for `theme_id`. Parsing into a `Theme`
+    /// (or any other shape) is the caller's job — keeping this raw matches
+    /// [`Reader::state_machine`] and avoids forcing the parser dependency
+    /// onto consumers that only want to validate or copy the bytes.
     #[inline]
     #[cfg(feature = "theming")]
-    pub fn theme(&self, theme_id: &str) -> Result<Theme, ReaderError> {
+    pub fn theme(&self, theme_id: &str) -> Result<Cow<'_, str>, ReaderError> {
         let path = format!("t/{theme_id}.json");
         let content = self.archive.read(&path).map_err(|e| match e {
             ZipError::FileNotFound => ReaderError::FileNotFound,
             other => ReaderError::Zip(other),
         })?;
-        let theme_str = std::str::from_utf8(&content)?;
-        Ok(theme_str.parse::<Theme>()?)
+        match content {
+            Cow::Borrowed(bytes) => Ok(Cow::Borrowed(std::str::from_utf8(bytes)?)),
+            Cow::Owned(vec) => String::from_utf8(vec)
+                .map(Cow::Owned)
+                .map_err(|e| ReaderError::InvalidUtf8(e.utf8_error())),
+        }
     }
 }
 
@@ -210,6 +234,10 @@ fn asset_prefix(version: DotLottieVersion, kind: AssetKind) -> Option<&'static s
     }
 }
 
+/// Resolver-internal lookup: collapses both "missing" and "corrupt" into
+/// `None`. Used only by the `AssetResolver` trampoline, where ThorVG cannot
+/// surface a structured error and a missing asset is the appropriate
+/// fallback. Public callers should use [`Reader::asset_bytes`] instead.
 fn archive_asset_bytes<'a>(
     archive: &'a Archive,
     version: DotLottieVersion,

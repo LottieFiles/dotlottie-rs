@@ -9,6 +9,7 @@ use std::sync::OnceLock;
 // ── Error type ──────────────────────────────────────────────────────────────
 
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum InflateError {
     /// Reserved (BTYPE=3) block encountered.
     InvalidBlockType,
@@ -25,6 +26,10 @@ pub enum InflateError {
     DistanceTooFarBack,
     /// Input ended mid-block.
     UnexpectedEof,
+    /// Decoder produced more bytes than the caller-supplied limit.
+    /// Indicates a malformed DEFLATE stream (or one that disagrees with the
+    /// declared uncompressed size); aborts before unbounded `Vec` growth.
+    OutputTooLarge,
 }
 
 impl fmt::Display for InflateError {
@@ -37,6 +42,7 @@ impl fmt::Display for InflateError {
             Self::InvalidDistanceCode => "invalid distance code",
             Self::DistanceTooFarBack => "back-reference distance exceeds output",
             Self::UnexpectedEof => "unexpected end of input",
+            Self::OutputTooLarge => "decoder produced more output than the declared size",
         };
         f.write_str(msg)
     }
@@ -125,6 +131,16 @@ struct BitReader<'a> {
     pos: usize,
     buf: u32,
     bits: u8,
+    /// Bits currently in `buf` that came from real input bytes. The high
+    /// `bits - real_bits` bits are zero-padding from past `data.len()`.
+    /// `fill` loads in 8-bit chunks, so a request for 3 bits at the end of
+    /// a stream may legitimately include zero-pad in the buffer — but as
+    /// long as we don't *consume* those high bits, the decode is sound.
+    real_bits: u8,
+    /// Set when `consume` advanced past `real_bits` — i.e. some committed
+    /// bit was zero-pad rather than real data. Inflater treats this as a
+    /// hard signal that the stream ended mid-symbol.
+    eof_consumed: bool,
 }
 
 impl<'a> BitReader<'a> {
@@ -134,20 +150,23 @@ impl<'a> BitReader<'a> {
             pos: 0,
             buf: 0,
             bits: 0,
+            real_bits: 0,
+            eof_consumed: false,
         }
     }
 
     /// Fill the bit buffer so it contains at least `need` bits (max 25).
+    /// Past-EOF reads load zero bytes silently; the caller only learns it
+    /// was zero-pad if and when those bits get `consume`d.
     #[inline]
     fn fill(&mut self, need: u8) {
         while self.bits < need {
-            let byte = if self.pos < self.data.len() {
-                self.data[self.pos]
-            } else {
-                0 // reads past end produce zeros; callers check EOF via results
-            };
+            if self.pos < self.data.len() {
+                let byte = self.data[self.pos];
+                self.buf |= (byte as u32) << self.bits;
+                self.real_bits += 8;
+            }
             self.pos += 1;
-            self.buf |= (byte as u32) << self.bits;
             self.bits += 8;
         }
     }
@@ -162,6 +181,12 @@ impl<'a> BitReader<'a> {
     fn consume(&mut self, n: u8) {
         self.buf >>= n;
         self.bits -= n;
+        if n > self.real_bits {
+            self.eof_consumed = true;
+            self.real_bits = 0;
+        } else {
+            self.real_bits -= n;
+        }
     }
 
     #[inline]
@@ -188,6 +213,10 @@ impl<'a> BitReader<'a> {
             self.pos -= 1;
             self.bits -= 8;
             self.buf >>= 8;
+            // The byte we just pushed back was the low (oldest) byte in
+            // buf. If it was real data, `real_bits` had >= 8 bits at the
+            // low end; otherwise (zero-pad), real_bits was already 0.
+            self.real_bits = self.real_bits.saturating_sub(8);
         }
         // Now bits == 0 after align()
         let start = self.pos;
@@ -423,17 +452,40 @@ fn build_fixed_dist_table() -> HuffmanTable {
 // ── Core inflate logic ──────────────────────────────────────────────────────
 
 /// Inflate a raw DEFLATE stream (no zlib/gzip wrapper) into `output`.
-pub(crate) fn inflate(input: &[u8], output: &mut Vec<u8>) -> Result<(), InflateError> {
+///
+/// `max_size` caps `output.len()` after every write — the decoder aborts with
+/// [`InflateError::OutputTooLarge`] before any push that would exceed it.
+/// Callers should pass the declared uncompressed size from the ZIP header so
+/// malformed streams cannot drive `Vec` growth past that bound.
+pub(crate) fn inflate(
+    input: &[u8],
+    output: &mut Vec<u8>,
+    max_size: usize,
+) -> Result<(), InflateError> {
     let mut reader = BitReader::new(input);
 
     loop {
         let bfinal = reader.read(1);
         let btype = reader.read(2);
 
+        // The block header may straddle the very last byte of input. We only
+        // treat zero-padding as a hard error once we observe a non-final
+        // block trying to start: legitimate streams must reach a `bfinal=1`
+        // block whose end-of-block symbol arrived from real data.
+        if reader.eof_consumed {
+            return Err(InflateError::UnexpectedEof);
+        }
+
         match btype {
-            0 => inflate_stored(&mut reader, output)?,
-            1 => inflate_huffman(&mut reader, output, fixed_lit_table(), fixed_dist_table())?,
-            2 => inflate_dynamic(&mut reader, output)?,
+            0 => inflate_stored(&mut reader, output, max_size)?,
+            1 => inflate_huffman(
+                &mut reader,
+                output,
+                fixed_lit_table(),
+                fixed_dist_table(),
+                max_size,
+            )?,
+            2 => inflate_dynamic(&mut reader, output, max_size)?,
             _ => return Err(InflateError::InvalidBlockType),
         }
 
@@ -445,7 +497,11 @@ pub(crate) fn inflate(input: &[u8], output: &mut Vec<u8>) -> Result<(), InflateE
     Ok(())
 }
 
-fn inflate_stored(reader: &mut BitReader, output: &mut Vec<u8>) -> Result<(), InflateError> {
+fn inflate_stored(
+    reader: &mut BitReader,
+    output: &mut Vec<u8>,
+    max_size: usize,
+) -> Result<(), InflateError> {
     reader.align();
     let len = reader.read(16) as usize;
     let nlen = reader.read(16) as usize;
@@ -454,12 +510,20 @@ fn inflate_stored(reader: &mut BitReader, output: &mut Vec<u8>) -> Result<(), In
         return Err(InflateError::InvalidStoredLen);
     }
 
+    if output.len().saturating_add(len) > max_size {
+        return Err(InflateError::OutputTooLarge);
+    }
+
     let bytes = reader.read_bytes(len)?;
     output.extend_from_slice(bytes);
     Ok(())
 }
 
-fn inflate_dynamic(reader: &mut BitReader, output: &mut Vec<u8>) -> Result<(), InflateError> {
+fn inflate_dynamic(
+    reader: &mut BitReader,
+    output: &mut Vec<u8>,
+    max_size: usize,
+) -> Result<(), InflateError> {
     let hlit = reader.read(5) as usize + 257;
     let hdist = reader.read(5) as usize + 1;
     let hclen = reader.read(4) as usize + 4;
@@ -522,7 +586,7 @@ fn inflate_dynamic(reader: &mut BitReader, output: &mut Vec<u8>) -> Result<(), I
     let lit_table = HuffmanTable::build(&all_lengths[..hlit], 9)?;
     let dist_table = HuffmanTable::build(&all_lengths[hlit..], 6)?;
 
-    inflate_huffman(reader, output, &lit_table, &dist_table)
+    inflate_huffman(reader, output, &lit_table, &dist_table, max_size)
 }
 
 fn inflate_huffman(
@@ -530,11 +594,23 @@ fn inflate_huffman(
     output: &mut Vec<u8>,
     lit_table: &HuffmanTable,
     dist_table: &HuffmanTable,
+    max_size: usize,
 ) -> Result<(), InflateError> {
     loop {
         let sym = lit_table.decode(reader)?;
 
+        // The end-of-block symbol (256) is the only legal way out of this
+        // loop. If we just decoded a literal or back-ref *after* having
+        // pulled zero-padding past the end of input, the decoded value is
+        // undefined — bail before we emit garbage.
+        if sym != 256 && reader.eof_consumed {
+            return Err(InflateError::UnexpectedEof);
+        }
+
         if sym < 256 {
+            if output.len() >= max_size {
+                return Err(InflateError::OutputTooLarge);
+            }
             output.push(sym as u8);
         } else if sym == 256 {
             return Ok(());
@@ -569,6 +645,10 @@ fn inflate_huffman(
                 return Err(InflateError::DistanceTooFarBack);
             }
 
+            if output.len().saturating_add(length) > max_size {
+                return Err(InflateError::OutputTooLarge);
+            }
+
             let start = output.len() - distance;
             if distance >= length {
                 // Non-overlapping: source region is fully present, so we can
@@ -595,7 +675,7 @@ mod tests {
 
     fn inflate_ok(compressed: &[u8]) -> Vec<u8> {
         let mut out = Vec::new();
-        inflate(compressed, &mut out).expect("inflate failed");
+        inflate(compressed, &mut out, usize::MAX).expect("inflate failed");
         out
     }
 
@@ -686,7 +766,7 @@ mod tests {
         let compressed: &[u8] = &[0x07];
         let mut out = Vec::new();
         assert!(matches!(
-            inflate(compressed, &mut out),
+            inflate(compressed, &mut out, usize::MAX),
             Err(InflateError::InvalidBlockType)
         ));
     }
@@ -699,9 +779,56 @@ mod tests {
         let compressed: &[u8] = &[0x01, 0x05, 0x00, 0x00, 0x00];
         let mut out = Vec::new();
         assert!(matches!(
-            inflate(compressed, &mut out),
+            inflate(compressed, &mut out, usize::MAX),
             Err(InflateError::InvalidStoredLen)
         ));
+    }
+
+    // ── Size / EOF guards ──
+
+    #[test]
+    fn test_inflate_output_too_large_literals() {
+        // Valid fixed-Huffman stream that decodes to "Hello, dotLottie!" (17 bytes).
+        let compressed: &[u8] = &[
+            243, 72, 205, 201, 201, 215, 81, 72, 201, 47, 241, 201, 47, 41, 201, 76, 85, 4, 0,
+        ];
+        let mut out = Vec::new();
+        // Cap below the legitimate output length — decoder must abort.
+        assert!(matches!(
+            inflate(compressed, &mut out, 5),
+            Err(InflateError::OutputTooLarge)
+        ));
+    }
+
+    #[test]
+    fn test_inflate_output_too_large_back_reference() {
+        // "abcabcabcabcabcabcabcabc" — 24 bytes via heavy LZ77 back-refs.
+        let compressed: &[u8] = &[75, 76, 74, 78, 196, 134, 0];
+        let mut out = Vec::new();
+        // Cap below the back-reference length — must abort before extend.
+        assert!(matches!(
+            inflate(compressed, &mut out, 10),
+            Err(InflateError::OutputTooLarge)
+        ));
+    }
+
+    #[test]
+    fn test_inflate_truncated_huffman_stream() {
+        // Take a valid stream and lop off its tail. Decoding past EOF must
+        // surface UnexpectedEof rather than silently producing garbage.
+        let compressed: &[u8] = &[243, 72, 205, 201, 201]; // truncated "Hello, dotLottie!"
+        let mut out = Vec::new();
+        let err = inflate(compressed, &mut out, usize::MAX).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                InflateError::UnexpectedEof
+                    | InflateError::OutputTooLarge
+                    | InflateError::InvalidLengthCode
+                    | InflateError::InvalidDistanceCode
+            ),
+            "expected truncation-related error, got {err:?}"
+        );
     }
 
     // ── BitReader unit tests ──

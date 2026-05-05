@@ -86,15 +86,7 @@ mod tests {
 
         let theme_id = CString::new("test_theme").expect("Failed to create CString");
 
-        assert_eq!(
-            player.load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v2/test.lottie").to_vec()
-            ),
-            Ok(())
-        );
-
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
-
         assert!(player
             .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
             .is_ok());
@@ -118,15 +110,7 @@ mod tests {
         let mut player = Player::new();
         player.set_autoplay(true);
 
-        assert_eq!(
-            player.load_dotlottie_data(
-                include_bytes!("../assets/animations/dotlottie/v2/test.lottie").to_vec()
-            ),
-            Ok(())
-        );
-
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
-
         assert!(player
             .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
             .is_ok());

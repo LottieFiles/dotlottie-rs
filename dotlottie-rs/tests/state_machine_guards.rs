@@ -1,12 +1,23 @@
 #![cfg(feature = "state-machines")]
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Player};
+    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, ColorSpace, Player};
+
+    /// State-machine tests don't render, but `load_dotlottie_data` wires
+    /// drawables into ThorVG eagerly and that step needs a canvas. A leaked
+    /// 1×1 software target is the cheapest valid setup.
+    fn make_test_player() -> Player {
+        let buf: &'static mut [u32] = Box::leak(vec![0u32; 1].into_boxed_slice());
+        let mut p = Player::new();
+        p.set_sw_target(buf, 1, 1, ColorSpace::ABGR8888)
+            .expect("set_sw_target");
+        p
+    }
 
     #[test]
     pub fn not_equal_test() {
         let global_state = include_str!("../assets/statemachines/guard_tests/equal_not_equal.json");
-        let mut player = Player::new();
+        let mut player = make_test_player();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
@@ -32,7 +43,7 @@ mod tests {
     #[test]
     pub fn equal_test() {
         let global_state = include_str!("../assets/statemachines/guard_tests/equal_not_equal.json");
-        let mut player = Player::new();
+        let mut player = make_test_player();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
@@ -58,7 +69,7 @@ mod tests {
     #[test]
     pub fn greater_than() {
         let global_state = include_str!("../assets/statemachines/guard_tests/greater_than.json");
-        let mut player = Player::new();
+        let mut player = make_test_player();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
@@ -109,7 +120,7 @@ mod tests {
     pub fn greater_than_or_equal() {
         let global_state =
             include_str!("../assets/statemachines/guard_tests/greater_than_equal.json");
-        let mut player = Player::new();
+        let mut player = make_test_player();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
@@ -147,7 +158,7 @@ mod tests {
     #[test]
     pub fn less_than_equal() {
         let global_state = include_str!("../assets/statemachines/guard_tests/less_than_equal.json");
-        let mut player = Player::new();
+        let mut player = make_test_player();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
@@ -191,7 +202,7 @@ mod tests {
     #[test]
     pub fn less_than() {
         let global_state = include_str!("../assets/statemachines/guard_tests/less_than.json");
-        let mut player = Player::new();
+        let mut player = make_test_player();
         assert!(player
             .load_dotlottie_data(
                 include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()

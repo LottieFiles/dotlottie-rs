@@ -64,6 +64,13 @@ fn find_eocd(data: &[u8]) -> Result<Eocd, ZipError> {
             let total_entries = read_u16(data, pos + 10)?;
             let central_dir_offset = read_u32(data, pos + 16)?;
 
+            // Sentinel values mean the real fields live in a ZIP64 EOCD
+            // record we don't parse. Surface a dedicated error so users
+            // don't see a confusing "OutOfBounds" later.
+            if total_entries == 0xFFFF || central_dir_offset == 0xFFFF_FFFF {
+                return Err(ZipError::Zip64NotSupported);
+            }
+
             if central_dir_offset as usize > data.len() {
                 return Err(ZipError::InvalidCentralDir);
             }
@@ -107,6 +114,16 @@ fn parse_central_directory(data: &[u8], eocd: &Eocd) -> Result<Vec<CentralDirEnt
         let file_comment_len = read_u16(data, offset + 32)? as usize;
         let local_header_offset = read_u32(data, offset + 42)?;
 
+        // Per-entry ZIP64 sentinel: the real value is hidden in the extra
+        // field. We don't parse those, so reject loudly here rather than
+        // silently treating 0xFFFFFFFF as a legitimate offset/size.
+        if compressed_size == 0xFFFF_FFFF
+            || uncompressed_size == 0xFFFF_FFFF
+            || local_header_offset == 0xFFFF_FFFF
+        {
+            return Err(ZipError::Zip64NotSupported);
+        }
+
         let name_start = offset
             .checked_add(CENTRAL_DIR_ENTRY_MIN_SIZE)
             .ok_or(ZipError::InvalidCentralDir)?;
@@ -145,7 +162,17 @@ fn parse_central_directory(data: &[u8], eocd: &Eocd) -> Result<Vec<CentralDirEnt
         }
     }
 
-    entries.sort_unstable_by(|a, b| Ord::cmp(name_bytes(data, a), name_bytes(data, b)));
+    // Stable sort so duplicate-name detection below sees consecutive dups in
+    // a deterministic order. Crafted archives sometimes pack two entries
+    // under the same name to confuse the consumer about which payload is
+    // active; reject that outright rather than picking arbitrarily.
+    entries.sort_by(|a, b| Ord::cmp(name_bytes(data, a), name_bytes(data, b)));
+    if entries
+        .windows(2)
+        .any(|w| name_bytes(data, &w[0]) == name_bytes(data, &w[1]))
+    {
+        return Err(ZipError::DuplicateEntry);
+    }
     Ok(entries)
 }
 

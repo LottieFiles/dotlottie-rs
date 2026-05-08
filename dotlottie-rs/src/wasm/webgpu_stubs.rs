@@ -1367,9 +1367,7 @@ fn convert_wgpu_texture_descriptor(descriptor: &WGPUTextureDescriptor) -> GpuTex
     out
 }
 
-fn convert_wgpu_surface_configuration(
-    config: &WGPUSurfaceConfiguration,
-) -> GpuCanvasConfiguration {
+fn convert_wgpu_surface_configuration(config: &WGPUSurfaceConfiguration) -> GpuCanvasConfiguration {
     let device = unsafe { &*config.device };
     let out = GpuCanvasConfiguration::new(device, enum_wgpu_texture_format(config.format));
 
@@ -1377,9 +1375,8 @@ fn convert_wgpu_surface_configuration(
     out.set_alpha_mode(enum_wgpu_composite_alpha_mode(config.alpha_mode));
 
     if !config.view_formats.is_null() && config.view_format_count > 0 {
-        let view_formats = unsafe {
-            std::slice::from_raw_parts(config.view_formats, config.view_format_count)
-        };
+        let view_formats =
+            unsafe { std::slice::from_raw_parts(config.view_formats, config.view_format_count) };
         let formats_array = js_sys::Array::new();
         for &format in view_formats {
             let format_str: JsValue = enum_wgpu_texture_format(format).into();

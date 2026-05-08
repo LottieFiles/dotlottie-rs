@@ -42,7 +42,7 @@ fn main() {
 
     let dotlottie_data = include_bytes!("../assets/animations/dotlottie/v2/multi_themes.lottie");
 
-    if player.load_dotlottie_data(dotlottie_data).is_err() {
+    if player.load_dotlottie_data(dotlottie_data.to_vec()).is_err() {
         eprintln!("Failed to load .lottie file");
         return;
     }

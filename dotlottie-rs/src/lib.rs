@@ -1,8 +1,7 @@
 #[cfg(feature = "audio")]
 mod audio;
 mod event_queue;
-#[cfg(feature = "dotlottie")]
-mod fms;
+pub mod io;
 mod layout;
 mod lottie_renderer;
 mod player;
@@ -36,7 +35,7 @@ pub use wasm::wasm_bindgen_api;
 #[cfg(feature = "audio")]
 pub use audio::*;
 #[cfg(feature = "dotlottie")]
-pub use fms::*;
+pub use io::dotlottie;
 pub use layout::*;
 pub use lottie_renderer::*;
 pub use player::*;

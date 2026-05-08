@@ -20,9 +20,9 @@ mod tests {
             .is_ok());
 
         assert_eq!(
-            player.load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            )),
+            player.load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            ),
             Ok(())
         );
         let mut sm = player
@@ -50,9 +50,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -82,9 +82,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -130,9 +130,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -178,9 +178,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -213,9 +213,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -276,9 +276,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok());
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -317,9 +317,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie").to_vec()
+            )
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -358,9 +358,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v2/pigeon.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v2/pigeon.lottie").to_vec()
+            )
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)
@@ -399,9 +399,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v2/pigeon.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v2/pigeon.lottie").to_vec()
+            )
             .is_ok(),);
         let mut sm = player
             .state_machine_load_data(global_state)

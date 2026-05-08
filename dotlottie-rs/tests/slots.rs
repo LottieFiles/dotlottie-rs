@@ -1,5 +1,4 @@
 use dotlottie_rs::{ColorSpace, Player};
-use std::ffi::CString;
 
 mod test_utils;
 use crate::test_utils::{HEIGHT, WIDTH};
@@ -15,9 +14,8 @@ mod tests {
             .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .unwrap();
 
-        let data = include_str!("../assets/animations/lottie/bouncy_ball.json");
-        let c_data = CString::new(data).unwrap();
-        player.load_animation_data(&c_data).unwrap();
+        let data = include_bytes!("../assets/animations/lottie/bouncy_ball.json").to_vec();
+        player.load_animation_data(data).unwrap();
         player
     }
 

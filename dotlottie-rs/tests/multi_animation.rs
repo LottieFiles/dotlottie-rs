@@ -22,9 +22,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/emojis.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie").to_vec()
+            )
             .is_ok(),);
 
         assert_eq!(player.load_animation(&animation_id), Ok(()));
@@ -43,9 +43,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/emojis.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie").to_vec()
+            )
             .is_ok());
 
         let manifest = player.manifest();

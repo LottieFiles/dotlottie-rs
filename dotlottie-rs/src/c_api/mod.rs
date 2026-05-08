@@ -176,7 +176,7 @@ pub unsafe extern "C" fn dotlottie_load_animation_data(
         if animation_data.is_null() {
             return DotLottieResult::InvalidParameter;
         }
-        let data = CStr::from_ptr(animation_data);
+        let data = CStr::from_ptr(animation_data).to_bytes().to_vec();
         dotlottie_player.load_animation_data(data)
     })
 }
@@ -235,7 +235,7 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
                 return DotLottieResult::InvalidParameter;
             }
             let file_slice = slice::from_raw_parts(file_data as *const u8, file_size);
-            dotlottie_player.load_dotlottie_data(file_slice)
+            dotlottie_player.load_dotlottie_data(file_slice.to_vec())
         })
     }
 }

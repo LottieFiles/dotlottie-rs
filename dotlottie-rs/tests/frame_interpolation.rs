@@ -37,9 +37,9 @@ mod tests {
             .is_ok());
 
         assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/emojis.lottie"
-            ))
+            .load_dotlottie_data(
+                include_bytes!("../assets/animations/dotlottie/v1/emojis.lottie").to_vec()
+            )
             .is_ok());
 
         let mut rendered_frames: Vec<f32> = vec![];

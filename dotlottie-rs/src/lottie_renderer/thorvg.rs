@@ -1,7 +1,7 @@
 use std::{
     cell::RefCell,
     error::Error,
-    ffi::{c_char, CStr, CString},
+    ffi::{c_char, c_void, CStr, CString},
     fmt, ptr,
     result::Result,
 };
@@ -12,8 +12,8 @@ use rustc_hash::FxHashMap;
 use crate::lottie_renderer::fallback_font;
 
 use super::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Point, Renderer,
-    Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, AssetResolver, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Point,
+    Renderer, Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 
 #[expect(non_upper_case_globals)]
@@ -409,15 +409,25 @@ impl LayerIdMap {
     }
 }
 
+/// Heap handle that owns a boxed [`AssetResolver`] and lives long enough for
+/// the FFI side to call back into Rust. Wrapped in an outer [`Box`] so the
+/// raw pointer we hand to ThorVG is thin.
+struct ResolverHandle(Box<dyn AssetResolver>);
+
 pub struct TvgAnimation {
     raw_animation: tvg::Tvg_Animation,
     raw_paint: tvg::Tvg_Paint,
-    data: Option<CString>,
+    /// Owns the JSON bytes ThorVG parses with `copy=false` (no nul terminator
+    /// needed — `tvg_picture_load_data` takes an explicit length).
+    data: Option<Vec<u8>>,
     segment: Option<Segment>,
     markers: Vec<Marker>,
     total_frames: f32,
     duration: f32,
     layer_id_map: LayerIdMap,
+    /// Heap-allocated resolver context. Pointer is registered with ThorVG via
+    /// `tvg_picture_set_asset_resolver` and reclaimed in `Drop`.
+    resolver_handle: Option<*mut ResolverHandle>,
 }
 
 impl Default for TvgAnimation {
@@ -434,6 +444,68 @@ impl Default for TvgAnimation {
             total_frames: 0.0,
             duration: 0.0,
             layer_id_map: LayerIdMap::new(),
+            resolver_handle: None,
+        }
+    }
+}
+
+/// FFI trampoline invoked by ThorVG for each external asset reference. The
+/// `data` pointer was set via `tvg_picture_set_asset_resolver` to a
+/// `Box<ResolverHandle>` we leaked; recover the resolver, look up the bytes,
+/// and feed them to ThorVG via `tvg_picture_load_data` with `copy=true` so
+/// our buffer can be dropped immediately.
+unsafe extern "C" fn asset_resolver_trampoline(
+    paint: tvg::Tvg_Paint,
+    src: *const c_char,
+    data: *mut c_void,
+) -> bool {
+    if data.is_null() || src.is_null() {
+        return false;
+    }
+    // SAFETY: `data` is a raw pointer originally created from
+    // `Box::into_raw(Box::<ResolverHandle>::new(...))`; we only borrow it for
+    // the duration of this call, so the ownership invariant is preserved.
+    let handle = unsafe { &*(data as *const ResolverHandle) };
+    let src_str = match unsafe { CStr::from_ptr(src) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+
+    let Some(bytes) = handle.0.resolve(src_str) else {
+        return false;
+    };
+    if bytes.is_empty() {
+        return false;
+    }
+    let len = match u32::try_from(bytes.len()) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+
+    // Pass `copy=true` so ThorVG owns its own buffer; `bytes` drops at
+    // function exit. `mimetype=""` lets ThorVG infer from extension.
+    let result = unsafe {
+        tvg::tvg_picture_load_data(
+            paint,
+            bytes.as_ptr() as *const c_char,
+            len,
+            c"".as_ptr(),
+            ptr::null(),
+            true,
+        )
+    };
+    matches!(result, tvg::Tvg_Result_TVG_RESULT_SUCCESS)
+}
+
+impl TvgAnimation {
+    /// Drop the previously-registered resolver handle (if any). Caller must
+    /// have already cleared ThorVG's resolver pointer (e.g. by calling
+    /// `tvg_picture_set_asset_resolver(... None, null)`) or be tearing down.
+    fn drop_resolver_handle(&mut self) {
+        if let Some(ptr) = self.resolver_handle.take() {
+            // SAFETY: `ptr` was created by `Box::into_raw`. We are the sole
+            // owner; ThorVG no longer references it.
+            unsafe { drop(Box::from_raw(ptr)) };
         }
     }
 }
@@ -527,15 +599,50 @@ impl TvgAnimation {
 impl Animation for TvgAnimation {
     type Error = TvgError;
 
-    fn load_data(&mut self, data: &CStr, mimetype: &CStr) -> Result<(), TvgError> {
-        let data_owned = data.to_owned();
-        let data_len_u32 =
-            u32::try_from(data.to_bytes().len()).map_err(|_| TvgError::InvalidArgument)?;
+    fn load_data(
+        &mut self,
+        data: Vec<u8>,
+        mimetype: &CStr,
+        resolver: Option<Box<dyn AssetResolver>>,
+    ) -> Result<(), TvgError> {
+        // Drop any resolver from a prior load on this animation. ThorVG
+        // requires the resolver to be set before `tvg_picture_load_data` to
+        // affect the upcoming load.
+        self.release_resolver();
+
+        if let Some(boxed) = resolver {
+            let handle = Box::new(ResolverHandle(boxed));
+            let raw = Box::into_raw(handle);
+            let result = unsafe {
+                tvg::tvg_picture_set_asset_resolver(
+                    self.raw_paint,
+                    Some(asset_resolver_trampoline),
+                    raw as *mut c_void,
+                )
+            };
+            if result == tvg::Tvg_Result_TVG_RESULT_SUCCESS {
+                self.resolver_handle = Some(raw);
+            } else {
+                // Registration refused — reclaim the handle and fall back to
+                // ThorVG's built-in resolution.
+                unsafe { drop(Box::from_raw(raw)) };
+                result.into_result()?;
+            }
+        }
+
+        let data_len_u32 = u32::try_from(data.len()).map_err(|_| TvgError::InvalidArgument)?;
+
+        // ThorVG's Lottie parser uses C-string scanning internally and reads
+        // past the declared length looking for a null sentinel. Append one
+        // before handing off — the byte is cheap and not counted in `len`.
+        // (`Vec::push` will at most realloc once and is amortized O(1).)
+        let mut data = data;
+        data.push(0);
 
         let result = unsafe {
             TvgAnimation::tvg_load_data_dispatch(
                 self.raw_paint,
-                data_owned.as_ptr(),
+                data.as_ptr() as *const c_char,
                 data_len_u32,
                 mimetype.as_ptr(),
             )
@@ -543,8 +650,8 @@ impl Animation for TvgAnimation {
 
         match result {
             Ok(()) => {
-                // Keep the payload alive for ThorVG
-                self.data = Some(data_owned);
+                // Keep the payload alive for ThorVG (copy=false in dispatch).
+                self.data = Some(data);
                 self.total_frames = self.get_total_frame()?;
                 self.duration = self.get_duration()?;
                 self.load_markers();
@@ -552,6 +659,9 @@ impl Animation for TvgAnimation {
                 Ok(())
             }
             Err(e) => {
+                // Loading failed — clear the resolver registration too so we
+                // don't leave a dangling pointer on the Picture.
+                self.release_resolver();
                 self.data = None;
                 self.markers.clear();
                 self.total_frames = 0.0;
@@ -560,6 +670,15 @@ impl Animation for TvgAnimation {
                 Err(e)
             }
         }
+    }
+
+    fn release_resolver(&mut self) {
+        // ThorVG must release its pointer before we drop the Box behind it,
+        // otherwise the next render-time lookup would hit freed memory.
+        unsafe {
+            tvg::tvg_picture_set_asset_resolver(self.raw_paint, None, ptr::null_mut());
+        }
+        self.drop_resolver_handle();
     }
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, TvgError> {
@@ -697,9 +816,12 @@ impl Animation for TvgAnimation {
 
 impl Drop for TvgAnimation {
     fn drop(&mut self) {
+        // `tvg_animation_del` tears down the Picture and unbinds any
+        // registered callbacks; we then reclaim the Rust-side handle.
         unsafe {
             tvg::tvg_animation_del(self.raw_animation);
         };
+        self.drop_resolver_handle();
     }
 }
 
@@ -776,8 +898,8 @@ mod tests {
     fn load_test_animation() -> (TvgRenderer, TvgAnimation) {
         let renderer = TvgRenderer::new(0);
         let mut animation = TvgAnimation::default();
-        let data = CString::new(include_str!("../../assets/animations/lottie/test.json")).unwrap();
-        animation.load_data(&data, c"lottie+json").unwrap();
+        let data = include_bytes!("../../assets/animations/lottie/test.json").to_vec();
+        animation.load_data(data, c"lottie+json", None).unwrap();
         (renderer, animation)
     }
 

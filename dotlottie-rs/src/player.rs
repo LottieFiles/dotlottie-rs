@@ -4,6 +4,8 @@ use std::{fs, mem};
 
 #[cfg(feature = "audio")]
 use crate::audio::AudioManager;
+#[cfg(feature = "dotlottie")]
+use crate::dotlottie::{Manifest, Reader};
 use crate::poll_events::{EventQueue, PlayerEvent};
 use crate::PlayerError;
 use crate::{
@@ -13,8 +15,6 @@ use crate::{
     Marker,
 };
 use crate::{ColorSpace, Renderer, Rgba};
-#[cfg(feature = "dotlottie")]
-use crate::{DotLottieManager, Manifest};
 #[cfg(feature = "state-machines")]
 use crate::{StateMachineEngine, StateMachineEngineError};
 
@@ -62,7 +62,7 @@ pub struct Player {
     elapsed_frames: f32,
     current_loop_count: u32,
     #[cfg(feature = "dotlottie")]
-    dotlottie_manager: Option<DotLottieManager>,
+    dotlottie_reader: Option<Reader>,
     #[cfg(feature = "audio")]
     audio_manager: Option<AudioManager>,
     direction: Direction,
@@ -136,7 +136,7 @@ impl Player {
             #[cfg(feature = "dotlottie")]
             animation_id: None,
             #[cfg(feature = "dotlottie")]
-            dotlottie_manager: None,
+            dotlottie_reader: None,
             #[cfg(feature = "audio")]
             audio_manager: None,
             direction: Direction::Forward,
@@ -293,9 +293,9 @@ impl Player {
 
     #[cfg(feature = "dotlottie")]
     pub fn manifest(&self) -> Option<&Manifest> {
-        self.dotlottie_manager
+        self.dotlottie_reader
             .as_ref()
-            .map(|manager| manager.manifest())
+            .map(|reader| reader.manifest())
     }
 
     pub fn size(&self) -> (u32, u32) {
@@ -306,9 +306,10 @@ impl Player {
     pub fn get_state_machine(&self, state_machine_id: &CStr) -> Option<String> {
         let id_str = state_machine_id.to_str().ok()?;
 
-        self.dotlottie_manager
+        self.dotlottie_reader
             .as_ref()
-            .and_then(|manager| manager.get_state_machine(id_str).ok())
+            .and_then(|manager| manager.state_machine(id_str).ok())
+            .map(|cow| cow.into_owned())
     }
 
     fn next_frame(&mut self) -> f32 {
@@ -854,10 +855,10 @@ impl Player {
         }
     }
 
-    pub fn load_animation_data(&mut self, animation_data: &CStr) -> Result<(), PlayerError> {
+    pub fn load_animation_data(&mut self, animation_data: Vec<u8>) -> Result<(), PlayerError> {
         #[cfg(feature = "dotlottie")]
         {
-            self.dotlottie_manager = None;
+            self.dotlottie_reader = None;
             self.animation_id = None;
         }
         #[cfg(feature = "theming")]
@@ -865,7 +866,8 @@ impl Player {
             self.theme_id = None;
         }
 
-        let result = self.load_animation_common(|renderer| renderer.load_data(animation_data));
+        let result =
+            self.load_animation_common(|renderer| renderer.load_data(animation_data, None));
 
         if result.is_ok() {
             self.event_queue.push(PlayerEvent::Load);
@@ -882,7 +884,7 @@ impl Player {
     pub fn load_animation_path(&mut self, file_path: &CStr) -> Result<(), PlayerError> {
         #[cfg(feature = "dotlottie")]
         {
-            self.dotlottie_manager = None;
+            self.dotlottie_reader = None;
             self.animation_id = None;
         }
         #[cfg(feature = "theming")]
@@ -893,10 +895,8 @@ impl Player {
             let path_str = file_path
                 .to_str()
                 .map_err(|_| PlayerError::InvalidParameter)?;
-            let data = fs::read_to_string(path_str).map_err(|_| PlayerError::InvalidParameter)?;
-            let c_data = CString::new(data).map_err(|_| PlayerError::InvalidParameter)?;
-
-            self.load_animation_data(&c_data)
+            let data = fs::read(path_str).map_err(|_| PlayerError::InvalidParameter)?;
+            self.load_animation_data(data)
         })();
 
         result.inspect_err(|_| {
@@ -905,50 +905,74 @@ impl Player {
     }
 
     #[cfg(feature = "dotlottie")]
-    pub fn load_dotlottie_data(&mut self, file_data: &[u8]) -> Result<(), PlayerError> {
-        #[cfg(feature = "dotlottie")]
-        {
-            self.animation_id = None;
-        }
+    pub fn load_dotlottie_data(&mut self, file_data: Vec<u8>) -> Result<(), PlayerError> {
+        self.animation_id = None;
         #[cfg(feature = "theming")]
         {
             self.theme_id = None;
         }
-        let manager = DotLottieManager::new(file_data).map_err(|_| PlayerError::Unknown)?;
+        let reader = Reader::new(file_data).map_err(|_| PlayerError::Unknown)?;
 
-        let (active_animation, active_animation_id) =
-            if let Some(anim_id) = self.animation_id.as_deref().and_then(|c| c.to_str().ok()) {
-                (manager.get_animation(anim_id), self.animation_id.clone())
-            } else {
-                (
-                    manager.get_active_animation(),
-                    CString::new(manager.active_animation_id()).ok(),
-                )
-            };
+        // Pick which animation to load: a previously-set id (kept across
+        // reloads) or the manifest's initial animation. Decide here so we
+        // know whether to mint a fresh `animation_id` on success.
+        let saved_anim_id = self.animation_id.as_deref().and_then(|c| c.to_str().ok());
 
-        let animation_data = active_animation.map_err(|_| PlayerError::Unknown)?;
+        let (animation_data, new_animation_id): (Vec<u8>, Option<CString>) = match saved_anim_id {
+            Some(anim_id) => {
+                let cow = reader
+                    .animation(anim_id)
+                    .map_err(|_| PlayerError::Unknown)?;
+                (cow.into_owned(), None)
+            }
+            None => {
+                let cow = reader
+                    .initial_animation()
+                    .map_err(|_| PlayerError::Unknown)?;
+                let id = CString::new(reader.initial_animation_id()).ok();
+                (cow.into_owned(), id)
+            }
+        };
 
-        let animation_data_cstr = CString::new(animation_data).map_err(|_| PlayerError::Unknown)?;
+        let resolver = reader.asset_resolver();
 
-        self.dotlottie_manager = Some(manager);
+        // Single-shot archives (one animation, no themes/state-machines)
+        // can release the zip buffer after `load_data` resolves assets:
+        // none of the surviving APIs could ever do anything with it.
+        let is_single_shot = reader.is_single_shot();
+
+        // Audio extraction must precede the move into `load_data` because it
+        // borrows the JSON bytes. The `Value` AST drops at end-of-statement.
+        #[cfg(feature = "audio")]
+        let audio_assets = serde_json::from_slice::<serde_json::Value>(&animation_data)
+            .ok()
+            .map(|parsed| crate::audio::extract_audio(&parsed, &reader));
+
+        self.dotlottie_reader = Some(reader);
 
         #[cfg(feature = "audio")]
         {
-            self.audio_manager = self
-                .dotlottie_manager
-                .as_ref()
-                .and_then(|dm| dm.get_audio_assets())
-                .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
+            self.audio_manager =
+                audio_assets.and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
         }
 
-        let result =
-            self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr));
+        let result = self
+            .load_animation_common(|renderer| renderer.load_data(animation_data, Some(resolver)));
 
         if result.is_ok() {
-            self.animation_id = active_animation_id;
-        }
+            if let Some(new_id) = new_animation_id {
+                self.animation_id = Some(new_id);
+            }
 
-        if result.is_ok() {
+            // Drop the archive once the renderer is done with it. Both the
+            // resolver (held inside the renderer) and `dotlottie_reader`
+            // share an `Arc<Archive>` — both must be released for the zip
+            // bytes to actually free.
+            if is_single_shot {
+                self.renderer.release_resolver();
+                self.dotlottie_reader = None;
+            }
+
             self.event_queue.push(PlayerEvent::Load);
 
             if self.autoplay {
@@ -958,7 +982,7 @@ impl Player {
             self.event_queue.push(PlayerEvent::LoadError);
         }
 
-        Ok(())
+        result
     }
 
     #[cfg(feature = "dotlottie")]
@@ -967,37 +991,44 @@ impl Player {
             .to_str()
             .map_err(|_| PlayerError::InvalidParameter)?;
 
-        if let Some(manager) = &mut self.dotlottie_manager {
+        if let Some(reader) = self.dotlottie_reader.as_ref() {
             #[cfg(feature = "theming")]
             let saved_theme_id = self.theme_id.clone();
 
             let lookup_id = if anim_id_str.is_empty() {
-                manager.active_animation_id()
+                reader.initial_animation_id()
             } else {
-                anim_id_str.to_string()
+                anim_id_str
             };
-            let animation_data = manager.get_animation(&lookup_id);
+            let animation_data = reader.animation(lookup_id);
 
             let result = match animation_data {
                 Ok(animation_data) => {
-                    let animation_data_cstr =
-                        CString::new(animation_data).expect("Failed to create CString");
-                    self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr))
+                    let animation_data: Vec<u8> = animation_data.into_owned();
+                    let resolver = reader.asset_resolver();
+
+                    #[cfg(feature = "audio")]
+                    let audio_assets = serde_json::from_slice::<serde_json::Value>(&animation_data)
+                        .ok()
+                        .map(|parsed| crate::audio::extract_audio(&parsed, reader));
+
+                    let load_result = self.load_animation_common(|renderer| {
+                        renderer.load_data(animation_data, Some(resolver))
+                    });
+
+                    #[cfg(feature = "audio")]
+                    if load_result.is_ok() {
+                        self.audio_manager = audio_assets
+                            .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
+                    }
+
+                    load_result
                 }
                 Err(_error) => Err(PlayerError::Unknown),
             };
 
             if result.is_ok() {
                 self.animation_id = Some(animation_id.to_owned());
-
-                #[cfg(feature = "audio")]
-                {
-                    self.audio_manager = self
-                        .dotlottie_manager
-                        .as_ref()
-                        .and_then(|dm| dm.get_audio_assets())
-                        .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
-                }
 
                 #[cfg(feature = "theming")]
                 if let Some(ref theme_id_cstr) = saved_theme_id {
@@ -1065,7 +1096,7 @@ impl Player {
             return Ok(());
         }
 
-        if self.dotlottie_manager.is_none() {
+        if self.dotlottie_reader.is_none() {
             return Err(PlayerError::InsufficientCondition);
         }
 
@@ -1100,9 +1131,10 @@ impl Player {
         };
 
         let result = self
-            .dotlottie_manager
-            .as_mut()
-            .and_then(|manager| manager.get_theme(theme_id_str).ok())
+            .dotlottie_reader
+            .as_ref()
+            .and_then(|reader| reader.theme(theme_id_str).ok())
+            .and_then(|theme_json| theme_json.parse::<crate::theme::Theme>().ok())
             .map(|theme| {
                 let anim_id_str = self
                     .animation_id

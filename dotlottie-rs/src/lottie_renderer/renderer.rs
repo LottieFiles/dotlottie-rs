@@ -1,4 +1,5 @@
 use core::error;
+use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 
 // A 2D vector for representing a point
@@ -213,6 +214,17 @@ pub enum Drawable<'d, R: Renderer> {
     Animation(&'d R::Animation),
 }
 
+/// Resolves external asset references encountered while a Picture parses its
+/// JSON. Implementations return the raw asset bytes; the renderer is
+/// responsible for handing them to the underlying engine.
+///
+/// Invoked synchronously during [`Animation::load_data`]. The returned
+/// [`Cow`] only needs to live for the duration of a single resolve call —
+/// the engine copies the bytes before the call returns.
+pub trait AssetResolver {
+    fn resolve(&self, src: &str) -> Option<Cow<'_, [u8]>>;
+}
+
 pub trait Shape: Default {
     type Error: error::Error;
 
@@ -234,7 +246,21 @@ pub trait Shape: Default {
 pub trait Animation: Default {
     type Error: error::Error;
 
-    fn load_data(&mut self, data: &CStr, mimetype: &CStr) -> Result<(), Self::Error>;
+    fn load_data(
+        &mut self,
+        data: Vec<u8>,
+        mimetype: &CStr,
+        resolver: Option<Box<dyn AssetResolver>>,
+    ) -> Result<(), Self::Error>;
+
+    /// Release the asset resolver registered with the underlying renderer.
+    ///
+    /// Safe to call after a successful [`Animation::load_data`]: at that
+    /// point ThorVG (or equivalent) has already resolved every external
+    /// asset reference the JSON contains, so the resolver is no longer
+    /// needed for rendering. Releasing it lets the caller drop any state
+    /// the resolver was holding alive (e.g. a backing zip archive).
+    fn release_resolver(&mut self);
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Self::Error>;
 

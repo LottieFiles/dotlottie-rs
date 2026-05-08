@@ -3,6 +3,9 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
+#[cfg(feature = "dotlottie")]
+use crate::dotlottie::{AssetKind, Reader};
+
 #[cfg(all(feature = "audio", not(target_arch = "wasm32")))]
 mod rodio_player;
 #[cfg(all(feature = "audio", not(target_arch = "wasm32")))]
@@ -14,6 +17,19 @@ mod web_audio_player;
 use web_audio_player::WebAudioPlayer;
 
 const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/// Reverse alphabet → 6-bit value, indexed by the input byte. Non-base64
+/// bytes resolve to `0xFF`. Built at compile time so `decode_base64` doesn't
+/// rebuild it on every call.
+const BASE64_LOOKUP: [u8; 256] = {
+    let mut lookup = [0xFFu8; 256];
+    let mut i = 0;
+    while i < BASE64_CHARS.len() {
+        lookup[BASE64_CHARS[i] as usize] = i as u8;
+        i += 1;
+    }
+    lookup
+};
 
 const DATA_AUDIO_PREFIX: &str = "data:audio/";
 
@@ -34,19 +50,13 @@ pub struct AudioLayer {
 }
 
 fn decode_base64(input: &str) -> Option<Vec<u8>> {
-    // Build reverse lookup table.
-    let mut lookup = [0xFFu8; 256];
-    for (i, &c) in BASE64_CHARS.iter().enumerate() {
-        lookup[c as usize] = i as u8;
-    }
-
     // Strip padding characters.
     let input = input.trim_end_matches('=');
     let input_bytes = input.as_bytes();
 
     // Validate all characters are in the base64 alphabet.
     for &b in input_bytes {
-        if lookup[b as usize] == 0xFF {
+        if BASE64_LOOKUP[b as usize] == 0xFF {
             return None;
         }
     }
@@ -56,10 +66,10 @@ fn decode_base64(input: &str) -> Option<Vec<u8>> {
 
     let mut i = 0;
     while i + 3 < input_bytes.len() {
-        let b0 = lookup[input_bytes[i] as usize] as u32;
-        let b1 = lookup[input_bytes[i + 1] as usize] as u32;
-        let b2 = lookup[input_bytes[i + 2] as usize] as u32;
-        let b3 = lookup[input_bytes[i + 3] as usize] as u32;
+        let b0 = BASE64_LOOKUP[input_bytes[i] as usize] as u32;
+        let b1 = BASE64_LOOKUP[input_bytes[i + 1] as usize] as u32;
+        let b2 = BASE64_LOOKUP[input_bytes[i + 2] as usize] as u32;
+        let b3 = BASE64_LOOKUP[input_bytes[i + 3] as usize] as u32;
         let n = (b0 << 18) | (b1 << 12) | (b2 << 6) | b3;
         output.push((n >> 16) as u8);
         output.push((n >> 8) as u8);
@@ -70,14 +80,14 @@ fn decode_base64(input: &str) -> Option<Vec<u8>> {
     // Handle the last 2 or 3 input characters (1 or 2 output bytes).
     let remaining = input_bytes.len() - i;
     if remaining == 2 {
-        let b0 = lookup[input_bytes[i] as usize] as u32;
-        let b1 = lookup[input_bytes[i + 1] as usize] as u32;
+        let b0 = BASE64_LOOKUP[input_bytes[i] as usize] as u32;
+        let b1 = BASE64_LOOKUP[input_bytes[i + 1] as usize] as u32;
         let n = (b0 << 18) | (b1 << 12);
         output.push((n >> 16) as u8);
     } else if remaining == 3 {
-        let b0 = lookup[input_bytes[i] as usize] as u32;
-        let b1 = lookup[input_bytes[i + 1] as usize] as u32;
-        let b2 = lookup[input_bytes[i + 2] as usize] as u32;
+        let b0 = BASE64_LOOKUP[input_bytes[i] as usize] as u32;
+        let b1 = BASE64_LOOKUP[input_bytes[i + 1] as usize] as u32;
+        let b2 = BASE64_LOOKUP[input_bytes[i + 2] as usize] as u32;
         let n = (b0 << 18) | (b1 << 12) | (b2 << 6);
         output.push((n >> 16) as u8);
         output.push((n >> 8) as u8);
@@ -90,11 +100,16 @@ fn decode_base64(input: &str) -> Option<Vec<u8>> {
 // JSON parsing
 // ---------------------------------------------------------------------------
 
-/// Parse audio assets and layers from a Lottie JSON string.
+/// Parse audio assets and layers from a Lottie JSON tree.
+///
+/// MP3 bytes are pulled from the dotLottie archive on demand via `reader`;
+/// any pre-embedded `data:audio/...;base64,...` URLs are still decoded
+/// inline.
 ///
 /// Returns `(assets, layers)` where each layer's `asset_idx` is already
 /// resolved to its position in the returned `assets` Vec.
-pub fn extract_audio(json_data: &Value) -> (Vec<Arc<[u8]>>, Vec<AudioLayer>) {
+#[cfg(feature = "dotlottie")]
+pub fn extract_audio(json_data: &Value, reader: &Reader) -> (Vec<Arc<[u8]>>, Vec<AudioLayer>) {
     // --- Pass 1: collect audio assets and build id → index map ---
     let mut raw_assets: Vec<(String, Arc<[u8]>)> = Vec::new();
 
@@ -110,28 +125,31 @@ pub fn extract_audio(json_data: &Value) -> (Vec<Arc<[u8]>>, Vec<AudioLayer>) {
                 None => continue,
             };
 
-            if !p.starts_with(DATA_AUDIO_PREFIX) {
+            let bytes = if let Some(rest) = p.strip_prefix(DATA_AUDIO_PREFIX) {
+                // Pre-embedded data URL: decode the base64 payload.
+                let Some(semi_pos) = rest.find(';') else {
+                    continue;
+                };
+                let Some(b64_data) = rest[semi_pos + 1..].strip_prefix("base64,") else {
+                    continue;
+                };
+                let Some(decoded) = decode_base64(b64_data) else {
+                    continue;
+                };
+                Arc::<[u8]>::from(decoded)
+            } else if p.to_ascii_lowercase().ends_with(".mp3") {
+                // External reference: pull bytes from the archive. Treat
+                // missing assets and integrity failures alike — there's no
+                // recovery path for an audio layer with no payload.
+                let Some(content) = reader.asset_bytes(AssetKind::Audio, p).ok().flatten() else {
+                    continue;
+                };
+                Arc::<[u8]>::from(content.into_owned())
+            } else {
                 continue;
-            }
-
-            let after_prefix = &p[DATA_AUDIO_PREFIX.len()..];
-            let semi_pos = match after_prefix.find(';') {
-                Some(pos) => pos,
-                None => continue,
             };
 
-            let rest = &after_prefix[semi_pos + 1..];
-            let b64_data = match rest.strip_prefix("base64,") {
-                Some(d) => d,
-                None => continue,
-            };
-
-            let decoded = match decode_base64(b64_data) {
-                Some(d) => d,
-                None => continue,
-            };
-
-            raw_assets.push((id, Arc::from(decoded)));
+            raw_assets.push((id, bytes));
         }
     }
 

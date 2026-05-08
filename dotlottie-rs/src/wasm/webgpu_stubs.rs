@@ -21,6 +21,7 @@ type WGPUBlendFactor = u32;
 type WGPUBlendOperation = u32;
 type WGPUBufferBindingType = u32;
 type WGPUCompareFunction = u32;
+type WGPUCompositeAlphaMode = u32;
 type WGPUCullMode = u32;
 type WGPUFilterMode = u32;
 type WGPUFrontFace = u32;
@@ -28,6 +29,7 @@ type WGPUIndexFormat = u32;
 type WGPULoadOp = u32;
 type WGPUMipmapFilterMode = u32;
 type WGPUOptionalBool = u32;
+type WGPUPresentMode = u32;
 type WGPUPrimitiveTopology = u32;
 type WGPUSamplerBindingType = u32;
 type WGPUSType = u32;
@@ -116,6 +118,16 @@ fn enum_wgpu_compare_function(compare_function: WGPUCompareFunction) -> GpuCompa
         0x07 => GpuCompareFunction::GreaterEqual,
         0x08 => GpuCompareFunction::Always,
         _ => panic!("Invalid compare function: {compare_function}"),
+    }
+}
+
+fn enum_wgpu_composite_alpha_mode(alpha_mode: WGPUCompositeAlphaMode) -> GpuCanvasAlphaMode {
+    match alpha_mode {
+        0x00 => GpuCanvasAlphaMode::Premultiplied, // Auto -> Premultiplied (Lottie uses transparency)
+        0x01 => GpuCanvasAlphaMode::Opaque,
+        0x02 => GpuCanvasAlphaMode::Premultiplied,
+        0x03 => GpuCanvasAlphaMode::Premultiplied, // Unpremultiplied has no JS canvas equivalent
+        _ => panic!("Invalid composite alpha mode: {alpha_mode}"),
     }
 }
 
@@ -674,6 +686,20 @@ struct WGPUStorageTextureBindingLayout {
 struct WGPUStringView {
     data: Option<NonNull<c_char>>,
     length: usize,
+}
+
+#[repr(C)]
+struct WGPUSurfaceConfiguration {
+    next_in_chain: *const WGPUChainedStruct,
+    device: *mut GpuDevice,
+    format: WGPUTextureFormat,
+    usage: WGPUTextureUsage,
+    width: u32,
+    height: u32,
+    view_format_count: usize,
+    view_formats: *const WGPUTextureFormat,
+    alpha_mode: WGPUCompositeAlphaMode,
+    present_mode: WGPUPresentMode,
 }
 
 #[repr(C)]
@@ -1334,6 +1360,27 @@ fn convert_wgpu_texture_descriptor(descriptor: &WGPUTextureDescriptor) -> GpuTex
         let formats_array = js_sys::Array::new();
         for &format in view_formats {
             formats_array.push(&format.into());
+        }
+        out.set_view_formats(&formats_array.into());
+    }
+
+    out
+}
+
+fn convert_wgpu_surface_configuration(config: &WGPUSurfaceConfiguration) -> GpuCanvasConfiguration {
+    let device = unsafe { &*config.device };
+    let out = GpuCanvasConfiguration::new(device, enum_wgpu_texture_format(config.format));
+
+    out.set_usage(config.usage as u32);
+    out.set_alpha_mode(enum_wgpu_composite_alpha_mode(config.alpha_mode));
+
+    if !config.view_formats.is_null() && config.view_format_count > 0 {
+        let view_formats =
+            unsafe { std::slice::from_raw_parts(config.view_formats, config.view_format_count) };
+        let formats_array = js_sys::Array::new();
+        for &format in view_formats {
+            let format_str: JsValue = enum_wgpu_texture_format(format).into();
+            formats_array.push(&format_str);
         }
         out.set_view_formats(&formats_array.into());
     }
@@ -2098,11 +2145,15 @@ unsafe extern "C" fn wgpuShaderModuleRelease(module: *mut GpuShaderModule) {
 #[no_mangle]
 unsafe extern "C" fn wgpuSurfaceConfigure(
     surface: *mut GpuCanvasContext,
-    config: *const GpuCanvasConfiguration,
+    config: *const WGPUSurfaceConfiguration,
 ) {
     let surface = &*surface;
     let config = &*config;
-    let _ = surface.configure(config);
+    let descriptor = convert_wgpu_surface_configuration(config);
+
+    surface
+        .configure(&descriptor)
+        .expect("Failed to configure WebGPU surface");
 }
 
 #[no_mangle]

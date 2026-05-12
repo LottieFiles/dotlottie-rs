@@ -228,3 +228,30 @@ impl GuardTrait for Guard {
         }
     }
 }
+
+/// Evaluate a guard list with AND semantics, short-circuiting on first failure.
+///
+/// `event` is the currently-pending event input name, if any. Used to resolve
+/// `Guard::Event`. Call sites that have no event in scope (e.g. action guard
+/// checks) pass `None`, in which case any `Guard::Event` evaluates to false.
+pub fn evaluate_guards(
+    guards: &[Guard],
+    inputs: &InputManager,
+    event: Option<&DotString>,
+) -> bool {
+    for guard in guards {
+        let satisfied = match guard {
+            Guard::Numeric { .. } => guard.numeric_input_is_satisfied(inputs),
+            Guard::String { .. } => guard.string_input_is_satisfied(inputs),
+            Guard::Boolean { .. } => guard.boolean_input_is_satisfied(inputs),
+            Guard::Event { .. } => match event {
+                Some(event) => guard.event_input_is_satisfied(event.as_str()),
+                None => false,
+            },
+        };
+        if !satisfied {
+            return false;
+        }
+    }
+    true
+}

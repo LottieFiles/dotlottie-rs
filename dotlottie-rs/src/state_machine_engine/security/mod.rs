@@ -2,16 +2,18 @@ use std::collections::HashSet;
 
 use super::{
     inputs::Input,
+    interactions::InteractionTrait,
     state_machine::StringBool,
     states::StateTrait,
     transitions::{
         guard::{self, Guard},
-        Transition, TransitionTrait,
+        TransitionTrait,
     },
     StateMachineEngine,
 };
 
 use crate::state_machine::StringNumberBool;
+use crate::state_machine_engine::actions::Action;
 use crate::state_machine_engine::State::GlobalState;
 
 #[derive(Debug)]
@@ -19,20 +21,24 @@ pub enum StateMachineEngineSecurityError {
     SecurityCheckErrorMultipleGuardlessTransitions,
     SecurityCheckErrorDuplicateStateName,
     SecurityCheckErrorInputCompareToIsWrong,
+    SecurityCheckErrorEventGuardOnAction,
     MultipleGlobalStates,
 }
 
 // Rules checked:
 // - All State names are unique
-// - Checks every state has no more than one transitions without guards
-// - Checks every guard's compareTo is a valid input
-// - Checks guards using events are valid
+// - At most one GlobalState
+// - Each state has at most one guardless transition
+// - Every transition guard's compareTo $input and Event inputName resolve to a declared Input
+// - Every action guard's compareTo $input resolves to a declared Input
+// - Action guards never use Guard::Event (Event guards are valid only on transitions)
 pub fn state_machine_state_check_pipeline(
     state_machine: &StateMachineEngine,
 ) -> Result<(), StateMachineEngineSecurityError> {
     let states = state_machine.state_machine.states();
     let mut name_set: HashSet<String> = HashSet::new();
     let mut has_global = false;
+    let inputs = state_machine.state_machine.inputs();
 
     for state in states {
         let state_name = state.name();
@@ -58,14 +64,8 @@ pub fn state_machine_state_check_pipeline(
             if guards.is_none() {
                 count += 1;
             }
-            // Check for existing inputs and events
-            match check_guards_for_existing_inputs(state_machine, transition)
-                .and_then(|_| check_guards_for_existing_events(state_machine, transition))
-            {
-                Ok(_) => continue,
-                Err(e) => {
-                    return Err(e);
-                }
+            if let Some(guards) = guards {
+                check_guards(guards, inputs, true)?;
             }
         }
 
@@ -75,121 +75,89 @@ pub fn state_machine_state_check_pipeline(
                 StateMachineEngineSecurityError::SecurityCheckErrorMultipleGuardlessTransitions,
             );
         }
+
+        if let Some(entry_actions) = state.entry_actions() {
+            check_action_guards(entry_actions, inputs)?;
+        }
+        if let Some(exit_actions) = state.exit_actions() {
+            check_action_guards(exit_actions, inputs)?;
+        }
     }
 
-    Ok(())
-}
-
-// Loop over every state and all their transitions
-// If a guard is found and of type string
-// Extract the input name and check if it exists in the inputs
-// We can also check for correct type whilst we're at it.
-pub fn check_guards_for_existing_inputs(
-    state_machine: &StateMachineEngine,
-    transition: &Transition,
-) -> Result<(), StateMachineEngineSecurityError> {
-    let guards = transition.guards();
-    let inputs = state_machine.state_machine.inputs();
-
-    if let Some(guards) = guards {
-        for guard in guards {
-            match guard {
-                guard::Guard::Boolean { compare_to, .. } => {
-                    if let StringBool::String(input_name) = compare_to {
-                        let value = input_name.trim_start_matches('$');
-                        let mut found = false;
-
-                        if let Some(inputs) = inputs {
-                            for input in inputs {
-                                if let Input::Boolean { name, .. } = input {
-                                    if name == value {
-                                        found = true
-                                    }
-                                }
-                            }
-                        }
-
-                        if !found {
-                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong);
-                        }
-                    }
-                }
-                guard::Guard::Numeric { compare_to, .. } => {
-                    if let StringNumberBool::String(input_name) = compare_to {
-                        let value = input_name.trim_start_matches('$');
-                        let mut found = false;
-
-                        if let Some(inputs) = inputs {
-                            for input in inputs {
-                                if let Input::Numeric { name, .. } = input {
-                                    if name == value {
-                                        found = true
-                                    }
-                                }
-                            }
-                        }
-
-                        if !found {
-                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong);
-                        }
-                    }
-                }
-                guard::Guard::String { compare_to, .. } => {
-                    if let StringNumberBool::String(input_name) = compare_to {
-                        if input_name.starts_with("$") {
-                            let value = input_name.trim_start_matches('$');
-                            let mut found = false;
-
-                            if let Some(inputs) = inputs {
-                                for input in inputs {
-                                    if let Input::String { name, .. } = input {
-                                        if name == value {
-                                            found = true
-                                        }
-                                    }
-                                }
-                            }
-
-                            if !found {
-                                return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong);
-                            }
-                        }
-                    }
-                }
-                guard::Guard::Event { .. } => {
-                    continue;
-                }
-            }
+    if let Some(interactions) = state_machine.state_machine.interactions() {
+        for interaction in interactions {
+            check_action_guards(interaction.get_actions(), inputs)?;
         }
     }
 
     Ok(())
 }
 
-pub fn check_guards_for_existing_events(
-    state_machine: &StateMachineEngine,
-    transition: &Transition,
+fn check_action_guards(
+    actions: &[Action],
+    inputs: Option<&Vec<Input>>,
 ) -> Result<(), StateMachineEngineSecurityError> {
-    let inputs = state_machine.state_machine.inputs();
+    for action in actions {
+        if let Some(guards) = action.guards() {
+            check_guards(guards, inputs, false)?;
+        }
+    }
+    Ok(())
+}
 
-    let guards = transition.guards();
-
-    if let Some(guards) = guards {
-        for guard in guards {
-            if let Guard::Event { input_name } = guard {
-                let mut found = false;
-
-                if let Some(inputs) = inputs {
-                    for input in inputs {
-                        if let Input::Event { name } = input {
-                            if input_name == name.as_str() {
-                                found = true;
-                            }
+/// Validate a guard list against the declared inputs.
+///
+/// `allow_event` is true for transition guards and false for action guards;
+/// when false, encountering any `Guard::Event` is a hard error.
+pub fn check_guards(
+    guards: &[Guard],
+    inputs: Option<&Vec<Input>>,
+    allow_event: bool,
+) -> Result<(), StateMachineEngineSecurityError> {
+    for guard in guards {
+        match guard {
+            guard::Guard::Boolean { compare_to, .. } => {
+                if let StringBool::String(input_name) = compare_to {
+                    let value = input_name.trim_start_matches('$');
+                    if !input_exists(inputs, value, |i| matches!(i, Input::Boolean { name, .. } if name == value))
+                    {
+                        return Err(
+                            StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong,
+                        );
+                    }
+                }
+            }
+            guard::Guard::Numeric { compare_to, .. } => {
+                if let StringNumberBool::String(input_name) = compare_to {
+                    let value = input_name.trim_start_matches('$');
+                    if !input_exists(inputs, value, |i| matches!(i, Input::Numeric { name, .. } if name == value))
+                    {
+                        return Err(
+                            StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong,
+                        );
+                    }
+                }
+            }
+            guard::Guard::String { compare_to, .. } => {
+                if let StringNumberBool::String(input_name) = compare_to {
+                    if input_name.starts_with('$') {
+                        let value = input_name.trim_start_matches('$');
+                        if !input_exists(inputs, value, |i| matches!(i, Input::String { name, .. } if name == value))
+                        {
+                            return Err(
+                                StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong,
+                            );
                         }
                     }
                 }
-
-                if !found {
+            }
+            guard::Guard::Event { input_name } => {
+                if !allow_event {
+                    return Err(StateMachineEngineSecurityError::SecurityCheckErrorEventGuardOnAction);
+                }
+                let needle = input_name.as_str();
+                if !input_exists(inputs, needle, |i| matches!(i, Input::Event { name } if name == needle))
+                {
                     return Err(
                         StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong,
                     );
@@ -197,6 +165,12 @@ pub fn check_guards_for_existing_events(
             }
         }
     }
-
     Ok(())
+}
+
+fn input_exists<F>(inputs: Option<&Vec<Input>>, _needle: &str, predicate: F) -> bool
+where
+    F: Fn(&Input) -> bool,
+{
+    inputs.is_some_and(|inputs| inputs.iter().any(predicate))
 }

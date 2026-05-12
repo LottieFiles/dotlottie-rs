@@ -1,0 +1,56 @@
+{
+  "initial": "a",
+  "states": [
+    {
+      "name": "a",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "clicked"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": []
+    }
+  ],
+  "interactions": [
+    {
+      "type": "PointerDown",
+      "actions": [
+        {
+          "type": "SetBoolean",
+          "inputName": "armed",
+          "value": true
+        },
+        {
+          "type": "Fire",
+          "inputName": "clicked",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "inputName": "armed",
+              "compareTo": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    { "type": "Boolean", "name": "armed", "value": false },
+    { "type": "Event", "name": "clicked" }
+  ]
+}

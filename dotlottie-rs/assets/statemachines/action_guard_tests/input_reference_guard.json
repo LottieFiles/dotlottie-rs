@@ -1,0 +1,52 @@
+{
+  "initial": "a",
+  "states": [
+    {
+      "name": "a",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "inputName": "go",
+              "compareTo": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
+        {
+          "type": "SetNumeric",
+          "inputName": "ran",
+          "value": 1,
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "lhs",
+              "compareTo": "$rhs"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    { "type": "Boolean", "name": "go", "value": false },
+    { "type": "Numeric", "name": "lhs", "value": 7 },
+    { "type": "Numeric", "name": "rhs", "value": 7 },
+    { "type": "Numeric", "name": "ran", "value": 0 }
+  ]
+}

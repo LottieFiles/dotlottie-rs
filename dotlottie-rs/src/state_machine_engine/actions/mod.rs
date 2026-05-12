@@ -6,6 +6,7 @@ use serde::Deserialize;
 use crate::string::{DotString, DotStringInterner};
 use crate::{state_machine::StringBool, Event};
 
+use super::transitions::guard::{evaluate_guards, Guard};
 use super::{state_machine::StringNumber, StateMachineEngine};
 
 pub mod open_url_policy;
@@ -33,68 +34,124 @@ pub enum Action {
     OpenUrl {
         url: String,
         target: String,
+        guards: Option<Vec<Guard>>,
     },
     Increment {
         input_name: DotString,
         value: Option<StringNumber>,
+        guards: Option<Vec<Guard>>,
     },
     Decrement {
         input_name: DotString,
         value: Option<StringNumber>,
+        guards: Option<Vec<Guard>>,
     },
     Toggle {
         input_name: DotString,
+        guards: Option<Vec<Guard>>,
     },
     SetBoolean {
         input_name: DotString,
         value: StringBool,
+        guards: Option<Vec<Guard>>,
     },
     SetString {
         input_name: DotString,
         value: String,
+        guards: Option<Vec<Guard>>,
     },
     SetNumeric {
         input_name: DotString,
         value: StringNumber,
+        guards: Option<Vec<Guard>>,
     },
     Fire {
         input_name: DotString,
+        guards: Option<Vec<Guard>>,
     },
     Reset {
         input_name: DotString,
+        guards: Option<Vec<Guard>>,
     },
     SetTheme {
         value: String,
+        guards: Option<Vec<Guard>>,
     },
     SetFrame {
         value: StringNumber,
+        guards: Option<Vec<Guard>>,
     },
     SetProgress {
         value: StringNumber,
+        guards: Option<Vec<Guard>>,
     },
     FireCustomEvent {
         value: String,
+        guards: Option<Vec<Guard>>,
     },
 }
 
 impl Action {
+    pub fn guards(&self) -> Option<&Vec<Guard>> {
+        match self {
+            Action::OpenUrl { guards, .. }
+            | Action::Increment { guards, .. }
+            | Action::Decrement { guards, .. }
+            | Action::Toggle { guards, .. }
+            | Action::SetBoolean { guards, .. }
+            | Action::SetString { guards, .. }
+            | Action::SetNumeric { guards, .. }
+            | Action::Fire { guards, .. }
+            | Action::Reset { guards, .. }
+            | Action::SetTheme { guards, .. }
+            | Action::SetFrame { guards, .. }
+            | Action::SetProgress { guards, .. }
+            | Action::FireCustomEvent { guards, .. } => guards.as_ref(),
+        }
+    }
+
+    fn guards_mut(&mut self) -> Option<&mut Vec<Guard>> {
+        match self {
+            Action::OpenUrl { guards, .. }
+            | Action::Increment { guards, .. }
+            | Action::Decrement { guards, .. }
+            | Action::Toggle { guards, .. }
+            | Action::SetBoolean { guards, .. }
+            | Action::SetString { guards, .. }
+            | Action::SetNumeric { guards, .. }
+            | Action::Fire { guards, .. }
+            | Action::Reset { guards, .. }
+            | Action::SetTheme { guards, .. }
+            | Action::SetFrame { guards, .. }
+            | Action::SetProgress { guards, .. }
+            | Action::FireCustomEvent { guards, .. } => guards.as_mut(),
+        }
+    }
+
     pub(crate) fn intern_identifiers(&mut self, interner: &mut DotStringInterner) {
         let input_name = match self {
             Action::Increment { input_name, .. }
             | Action::Decrement { input_name, .. }
-            | Action::Toggle { input_name }
+            | Action::Toggle { input_name, .. }
             | Action::SetBoolean { input_name, .. }
             | Action::SetString { input_name, .. }
             | Action::SetNumeric { input_name, .. }
-            | Action::Fire { input_name }
-            | Action::Reset { input_name } => input_name,
+            | Action::Fire { input_name, .. }
+            | Action::Reset { input_name, .. } => Some(input_name),
             Action::OpenUrl { .. }
             | Action::SetTheme { .. }
             | Action::SetFrame { .. }
             | Action::SetProgress { .. }
-            | Action::FireCustomEvent { .. } => return,
+            | Action::FireCustomEvent { .. } => None,
         };
-        *input_name = interner.intern(input_name.as_str());
+        if let Some(input_name) = input_name {
+            *input_name = interner.intern(input_name.as_str());
+        }
+        if let Some(guards) = self.guards_mut() {
+            for g in guards {
+                g.intern_identifiers(interner);
+            }
+        }
     }
 }
 
@@ -105,8 +162,15 @@ impl ActionTrait for Action {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Result<(), StateMachineActionError> {
+        if let Some(guards) = self.guards() {
+            if !evaluate_guards(guards, &engine.inputs, None) {
+                return Ok(());
+            }
+        }
         match self {
-            Action::Increment { input_name, value } => {
+            Action::Increment {
+                input_name, value, ..
+            } => {
                 let val = engine.get_numeric_input(input_name);
 
                 if let Some(val) = val {
@@ -147,7 +211,9 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::Decrement { input_name, value } => {
+            Action::Decrement {
+                input_name, value, ..
+            } => {
                 let val = engine.get_numeric_input(input_name);
 
                 if let Some(val) = val {
@@ -192,7 +258,7 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::Toggle { input_name } => {
+            Action::Toggle { input_name, .. } => {
                 let val = engine.get_boolean_input(input_name);
 
                 if let Some(val) = val {
@@ -201,7 +267,9 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::SetBoolean { input_name, value } => {
+            Action::SetBoolean {
+                input_name, value, ..
+            } => {
                 let val = engine.get_boolean_input(input_name);
 
                 if val.is_some() {
@@ -232,7 +300,9 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::SetNumeric { input_name, value } => {
+            Action::SetNumeric {
+                input_name, value, ..
+            } => {
                 let val = engine.get_numeric_input(input_name);
 
                 if val.is_some() {
@@ -263,7 +333,9 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::SetString { input_name, value } => {
+            Action::SetString {
+                input_name, value, ..
+            } => {
                 let val = engine.get_string_input(input_name);
 
                 if val.is_some() {
@@ -287,17 +359,17 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::Fire { input_name } => {
+            Action::Fire { input_name, .. } => {
                 let _ = engine.fire(input_name, run_pipeline);
                 Ok(())
             }
-            Action::Reset { input_name } => {
+            Action::Reset { input_name, .. } => {
                 engine.reset_input(input_name, run_pipeline, called_from_action);
 
                 Ok(())
             }
             #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
-            Action::SetTheme { value } => {
+            Action::SetTheme { value, .. } => {
                 #[cfg(feature = "theming")]
                 {
                     let resolved_value = value
@@ -316,7 +388,7 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::OpenUrl { url, target } => {
+            Action::OpenUrl { url, target, .. } => {
                 let whitelist = &engine.open_url_whitelist;
                 let user_interaction_required = &engine.open_url_requires_user_interaction;
 
@@ -357,12 +429,12 @@ impl ActionTrait for Action {
 
                 Ok(())
             }
-            Action::FireCustomEvent { value } => {
+            Action::FireCustomEvent { value, .. } => {
                 engine.observe_custom_event(value);
 
                 Ok(())
             }
-            Action::SetFrame { value } => {
+            Action::SetFrame { value, .. } => {
                 match value {
                     StringNumber::String(value) => {
                         // Get the frame number from the input
@@ -385,7 +457,7 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::SetProgress { value } => {
+            Action::SetProgress { value, .. } => {
                 match value {
                     StringNumber::String(value) => {
                         // Get the frame number from the input

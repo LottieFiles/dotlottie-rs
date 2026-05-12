@@ -1,0 +1,102 @@
+{
+  "initial": "a",
+  "states": [
+    {
+      "name": "a",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "inputName": "proceed",
+              "compareTo": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
+        {
+          "type": "SetNumeric",
+          "inputName": "result_a",
+          "value": 100
+        },
+        {
+          "type": "SetNumeric",
+          "inputName": "result_b",
+          "value": 100,
+          "guards": [
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "inputName": "gate",
+              "compareTo": true
+            }
+          ]
+        },
+        {
+          "type": "SetNumeric",
+          "inputName": "result_c",
+          "value": 100
+        },
+        {
+          "type": "Increment",
+          "inputName": "live_counter"
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "done",
+          "value": true,
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "live_counter",
+              "compareTo": 1
+            }
+          ]
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "skipped",
+          "value": true,
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "live_counter",
+              "compareTo": 1
+            },
+            {
+              "type": "Boolean",
+              "conditionType": "Equal",
+              "inputName": "gate",
+              "compareTo": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    { "type": "Boolean", "name": "proceed", "value": false },
+    { "type": "Boolean", "name": "gate", "value": false },
+    { "type": "Numeric", "name": "result_a", "value": 0 },
+    { "type": "Numeric", "name": "result_b", "value": 0 },
+    { "type": "Numeric", "name": "result_c", "value": 0 },
+    { "type": "Numeric", "name": "live_counter", "value": 0 },
+    { "type": "Boolean", "name": "done", "value": false },
+    { "type": "Boolean", "name": "skipped", "value": false }
+  ]
+}

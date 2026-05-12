@@ -19,7 +19,7 @@ use inputs::{Input, InputManager, InputValue};
 use interactions::InteractionTrait;
 use state_machine::StateMachine;
 use states::StateTrait;
-use transitions::guard::GuardTrait;
+use transitions::guard::evaluate_guards;
 use transitions::{Transition, TransitionTrait};
 
 use crate::actions::whitelist::Whitelist;
@@ -801,49 +801,8 @@ impl<'a> StateMachineEngine<'a> {
                 || (!transition.transitions_contain_event() && event.is_none())
             {
                 if let Some(guards) = transition.guards() {
-                    let mut all_guards_satisfied = true;
-
-                    for guard in guards {
-                        match guard {
-                            transitions::guard::Guard::Numeric { .. } => {
-                                if !guard.numeric_input_is_satisfied(&self.inputs) {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
-                            }
-                            transitions::guard::Guard::String { .. } => {
-                                if !guard.string_input_is_satisfied(&self.inputs) {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
-                            }
-                            transitions::guard::Guard::Boolean { .. } => {
-                                if !guard.boolean_input_is_satisfied(&self.inputs) {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
-                            }
-                            transitions::guard::Guard::Event { .. } => {
-                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
-                                if event.is_none() {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
-
-                                if let Some(event) = event {
-                                    if !guard.event_input_is_satisfied(event.as_str()) {
-                                        all_guards_satisfied = false;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    /* If all guard are satsified, take the transition as they are in order of priority inside the vec */
-                    if all_guards_satisfied {
+                    if evaluate_guards(guards, &self.inputs, event) {
                         let target_state = transition.target_state();
-
                         return Some((target_state.to_string(), transition.clone()));
                     }
                 }

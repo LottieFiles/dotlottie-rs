@@ -1,0 +1,31 @@
+{
+  "initial": "a",
+  "states": [
+    {
+      "name": "a",
+      "type": "PlaybackState",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
+        {
+          "type": "SetBoolean",
+          "inputName": "flag",
+          "value": true,
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "something",
+              "compareTo": "$does_not_exist"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    { "type": "Boolean", "name": "flag", "value": false },
+    { "type": "Numeric", "name": "something", "value": 0 }
+  ]
+}

@@ -299,6 +299,23 @@ unsafe extern "C" fn strncmp(s1: *const i8, s2: *const i8, n: usize) -> i32 {
 }
 
 #[no_mangle]
+unsafe extern "C" fn strncasecmp(s1: *const i8, s2: *const i8, n: usize) -> i32 {
+    let mut i = 0;
+    while i < n {
+        let c1 = unsafe { *s1.add(i) as u8 }.to_ascii_lowercase();
+        let c2 = unsafe { *s2.add(i) as u8 }.to_ascii_lowercase();
+        if c1 != c2 {
+            return c1 as i32 - c2 as i32;
+        }
+        if c1 == 0 {
+            return 0;
+        }
+        i += 1;
+    }
+    0
+}
+
+#[no_mangle]
 unsafe extern "C" fn isspace(c: i32) -> i32 {
     matches!(c as u8, b' ' | b'\t' | b'\n' | b'\x0b' | b'\x0c' | b'\r') as i32
 }

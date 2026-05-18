@@ -7,7 +7,7 @@ MIN_MACCATALYST_VERSION ?= 13.1
 MIN_WATCHOS_VERSION ?= 7.0
 
 # Base features shared by all Apple platforms
-APPLE_BASE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+APPLE_BASE_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-otf,tvg-lottie-expressions,tvg-threads
 # Default features without audio
 APPLE_DEFAULT_FEATURES_NO_AUDIO = tvg,tvg-cpu,c_api,dotlottie,state-machines,theming
 

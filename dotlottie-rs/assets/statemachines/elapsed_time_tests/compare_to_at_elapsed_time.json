@@ -1,0 +1,33 @@
+{
+  "initial": "waiting",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "waiting",
+      "animation": "",
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "after",
+          "guards": [
+            {
+              "type": "Numeric",
+              "inputName": "threshold",
+              "conditionType": "LessThan",
+              "compareTo": "@elapsedTime"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "after",
+      "animation": "",
+      "transitions": []
+    }
+  ],
+  "inputs": [
+    { "type": "Numeric", "name": "threshold", "value": 0.5 }
+  ]
+}

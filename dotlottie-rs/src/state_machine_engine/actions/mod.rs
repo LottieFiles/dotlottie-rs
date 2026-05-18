@@ -6,7 +6,15 @@ use serde::Deserialize;
 use crate::string::{DotString, DotStringInterner};
 use crate::{state_machine::StringBool, Event};
 
-use super::{state_machine::StringNumber, StateMachineEngine};
+use super::{state_machine::StringNumber, StateMachineEngine, ELAPSED_TIME_KEY, ELAPSED_TIME_REF};
+
+fn resolve_numeric_ref(engine: &StateMachineEngine, value: &str) -> Option<f32> {
+    if value == ELAPSED_TIME_REF {
+        engine.get_numeric_input(ELAPSED_TIME_KEY)
+    } else {
+        engine.get_numeric_input(value.trim_start_matches('$'))
+    }
+}
 
 pub mod open_url_policy;
 pub mod whitelist;
@@ -113,8 +121,7 @@ impl ActionTrait for Action {
                     if let Some(value) = value {
                         match value {
                             StringNumber::String(value) => {
-                                let trimmed_value = value.trim_start_matches('$');
-                                let opt_input_value = engine.get_numeric_input(trimmed_value);
+                                let opt_input_value = resolve_numeric_ref(engine, value);
                                 if let Some(input_value) = opt_input_value {
                                     engine.set_numeric_input(
                                         input_name,
@@ -154,8 +161,7 @@ impl ActionTrait for Action {
                     if let Some(value) = value {
                         match value {
                             StringNumber::String(value) => {
-                                let trimmed_value = value.trim_start_matches('$');
-                                let opt_input_value = engine.get_numeric_input(trimmed_value);
+                                let opt_input_value = resolve_numeric_ref(engine, value);
                                 if let Some(input_value) = opt_input_value {
                                     engine.set_numeric_input(
                                         input_name,
@@ -238,8 +244,7 @@ impl ActionTrait for Action {
                 if val.is_some() {
                     match value {
                         StringNumber::String(string_value) => {
-                            let trimmed_value = string_value.trim_start_matches('$');
-                            let opt_input_value = engine.get_numeric_input(trimmed_value);
+                            let opt_input_value = resolve_numeric_ref(engine, string_value);
 
                             // In case of failure, don't change the input_name's value
                             if let Some(input_value) = opt_input_value {
@@ -365,10 +370,7 @@ impl ActionTrait for Action {
             Action::SetFrame { value } => {
                 match value {
                     StringNumber::String(value) => {
-                        // Get the frame number from the input
-                        // Remove the "$" prefix from the value
-                        let value = value.trim_start_matches('$');
-                        let frame = engine.get_numeric_input(value);
+                        let frame = resolve_numeric_ref(engine, value);
                         if let Some(frame) = frame {
                             let clamped_frame =
                                 frame.clamp(0.0, engine.player.total_frames() - 1.0);
@@ -388,10 +390,7 @@ impl ActionTrait for Action {
             Action::SetProgress { value } => {
                 match value {
                     StringNumber::String(value) => {
-                        // Get the frame number from the input
-                        // Remove the "$" prefix from the value
-                        let value = value.trim_start_matches('$');
-                        let percentage = engine.get_numeric_input(value);
+                        let percentage = resolve_numeric_ref(engine, value);
                         if let Some(percentage) = percentage {
                             let clamped_value = percentage.clamp(0.0, 100.0);
                             let new_perc = clamped_value / 100.0;

@@ -10,7 +10,7 @@ use super::{
         guard::{self, Guard},
         Transition, TransitionTrait,
     },
-    StateMachineEngine, ELAPSED_TIME_KEY,
+    StateMachineEngine, ELAPSED_TIME_KEY, ELAPSED_TIME_REF,
 };
 
 use crate::state_machine::StringNumberBool;
@@ -130,10 +130,9 @@ fn check_actions_for_reserved_writes(
             | Action::SetBoolean { input_name, .. }
             | Action::SetString { input_name, .. }
             | Action::SetNumeric { input_name, .. }
-            | Action::Fire { input_name } => Some(input_name),
-            // Reset is the only allowed write to elapsedTime.
-            Action::Reset { .. }
-            | Action::OpenUrl { .. }
+            | Action::Fire { input_name }
+            | Action::Reset { input_name } => Some(input_name),
+            Action::OpenUrl { .. }
             | Action::SetTheme { .. }
             | Action::SetFrame { .. }
             | Action::SetProgress { .. }
@@ -184,11 +183,10 @@ pub fn check_guards_for_existing_inputs(
                 }
                 guard::Guard::Numeric { compare_to, .. } => {
                     if let StringNumberBool::String(input_name) = compare_to {
-                        let value = input_name.trim_start_matches('$');
-                        // The built-in elapsedTime is always available.
-                        if value == ELAPSED_TIME_KEY {
+                        if input_name == ELAPSED_TIME_REF {
                             continue;
                         }
+                        let value = input_name.trim_start_matches('$');
                         let mut found = false;
 
                         if let Some(inputs) = inputs {

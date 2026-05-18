@@ -115,21 +115,6 @@ mod tests {
     }
 
     #[test]
-    fn allows_reset_action_targeting_elapsed_time() {
-        // reset_action.json uses Action::Reset { elapsedTime } in entry actions.
-        let json = include_str!("../assets/statemachines/elapsed_time_tests/reset_action.json");
-        let mut player = Player::new();
-        assert!(player
-            .load_dotlottie_data(include_bytes!(
-                "../assets/animations/dotlottie/v1/star_rating.lottie"
-            ))
-            .is_ok());
-
-        let sm = player.state_machine_load_data(json);
-        assert!(sm.is_ok());
-    }
-
-    #[test]
     fn allows_guard_referencing_elapsed_time() {
         // timeout_transition.json uses elapsedTime as a guard input_name.
         let json =
@@ -146,10 +131,10 @@ mod tests {
     }
 
     #[test]
-    fn allows_guard_using_dollar_elapsed_time_compare_to() {
-        // compare_to_elapsed.json uses "$elapsedTime" in compareTo.
-        let json =
-            include_str!("../assets/statemachines/elapsed_time_tests/compare_to_elapsed.json");
+    fn allows_guard_using_at_elapsed_time_compare_to() {
+        let json = include_str!(
+            "../assets/statemachines/elapsed_time_tests/compare_to_at_elapsed_time.json"
+        );
         let mut player = Player::new();
         assert!(player
             .load_dotlottie_data(include_bytes!(

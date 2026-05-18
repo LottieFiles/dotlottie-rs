@@ -6,7 +6,7 @@ use rustc_hash::FxHashSet;
 use crate::string::{DotString, DotStringInterner};
 
 pub const ELAPSED_TIME_KEY: &str = "elapsedTime";
-const DOLLAR_ELAPSED_TIME: &str = "$elapsedTime";
+pub const ELAPSED_TIME_REF: &str = "@elapsedTime";
 
 pub mod actions;
 pub mod errors;
@@ -287,15 +287,7 @@ impl<'a> StateMachineEngine<'a> {
             return;
         }
 
-        // elapsedTime is silent: reset zeroes the value but emits no change event.
         if key == ELAPSED_TIME_KEY {
-            let _ = self.inputs.reset(key);
-            if called_from_action {
-                self.action_mutated_inputs = true;
-            }
-            if run_pipeline {
-                let _ = self.run_current_state_pipeline();
-            }
             return;
         }
 
@@ -1541,12 +1533,11 @@ fn guards_reference_elapsed_time(transitions: &[Transition]) -> bool {
                         return true;
                     }
                     if let StringNumberBool::String(s) = compare_to {
-                        if s == DOLLAR_ELAPSED_TIME {
+                        if s == ELAPSED_TIME_REF {
                             return true;
                         }
                     }
                 }
-                // Other guard types can't reference a numeric input meaningfully.
                 Guard::String { .. } | Guard::Boolean { .. } | Guard::Event { .. } => {}
             }
         }

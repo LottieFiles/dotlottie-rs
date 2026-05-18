@@ -1,9 +1,7 @@
 #![cfg(feature = "state-machines")]
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Player, StateMachineEvent,
-    };
+    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, ColorSpace, Player};
 
     const STAR_RATING_LOTTIE: &[u8] =
         include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie");
@@ -112,7 +110,7 @@ mod tests {
     }
 
     #[test]
-    fn compare_to_dollar_elapsed_time_works() {
+    fn at_elapsed_time_resolves_in_action_value() {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
@@ -120,8 +118,52 @@ mod tests {
             .is_ok());
         assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
 
-        let json =
-            include_str!("../assets/statemachines/elapsed_time_tests/compare_to_elapsed.json");
+        let json = r#"{
+          "initial": "s",
+          "states": [
+            { "type": "PlaybackState", "name": "s", "animation": "", "transitions": [],
+              "entryActions": [
+                { "type": "Increment", "inputName": "stamp", "value": "@elapsedTime" }
+              ]
+            }
+          ],
+          "inputs": [{ "type": "Numeric", "name": "stamp", "value": 10 }]
+        }"#;
+        let mut sm = player.state_machine_load_data(json).expect("load");
+
+        let _ = sm.tick(750.0);
+        sm.start(&OpenUrlPolicy::default()).unwrap();
+
+        let stamp = sm.get_numeric_input("stamp").unwrap();
+        assert!(
+            (stamp - 10.0).abs() < 1e-4,
+            "Increment by @elapsedTime at start (elapsedTime=0): expected ~10.0, got {stamp}"
+        );
+
+        let _ = sm.tick(500.0);
+        sm.set_numeric_input("stamp", 10.0, false, false);
+        sm.fire("evt", true).ok();
+        sm.override_current_state("s", false).unwrap();
+
+        let stamp = sm.get_numeric_input("stamp").unwrap();
+        assert!(
+            (stamp - 10.5).abs() < 1e-3,
+            "Increment by @elapsedTime at elapsedTime=0.5: expected ~10.5, got {stamp}"
+        );
+    }
+
+    #[test]
+    fn compare_to_at_elapsed_time_works() {
+        let mut player = Player::new();
+        let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .is_ok());
+        assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
+
+        let json = include_str!(
+            "../assets/statemachines/elapsed_time_tests/compare_to_at_elapsed_time.json"
+        );
         let mut sm = player
             .state_machine_load_data(json)
             .expect("state machine to load successfully");
@@ -129,11 +171,9 @@ mod tests {
         sm.start(&OpenUrlPolicy::default()).unwrap();
         assert_eq!(sm.get_current_state_name(), "waiting");
 
-        // Below threshold (threshold=0.5, elapsed=0.3): no transition.
         let _ = sm.tick(300.0);
         assert_eq!(sm.get_current_state_name(), "waiting");
 
-        // Above threshold: threshold (0.5) < elapsedTime → fire.
         let _ = sm.tick(400.0);
         assert_eq!(sm.get_current_state_name(), "after");
     }
@@ -200,73 +240,5 @@ mod tests {
             }
         }
         assert!(found, "elapsedTime should be listed in get_inputs()");
-    }
-
-    #[test]
-    fn no_numeric_input_change_events_for_elapsed_time() {
-        let mut player = Player::new();
-        let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
-        assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
-            .is_ok());
-        assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
-
-        let json = include_str!("../assets/statemachines/elapsed_time_tests/reset_action.json");
-        let mut sm = player
-            .state_machine_load_data(json)
-            .expect("state machine to load successfully");
-
-        sm.start(&OpenUrlPolicy::default()).unwrap();
-
-        // Tick to accumulate, then trigger Reset via the "go" event.
-        for _ in 0..30 {
-            let _ = sm.tick(50.0);
-        }
-        sm.fire("go", true).unwrap();
-
-        // Drain events: no NumericInputChange should mention elapsedTime.
-        while let Some(evt) = sm.poll_event() {
-            if let StateMachineEvent::NumericInputChange { name, .. } = evt {
-                assert_ne!(
-                    name.as_str(),
-                    "elapsedTime",
-                    "elapsedTime must never emit NumericInputChange"
-                );
-            }
-        }
-    }
-
-    // ---------- Integration ----------
-
-    #[test]
-    fn ping_pong_via_reset() {
-        let mut player = Player::new();
-        let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
-        assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
-            .is_ok());
-        assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
-
-        let json = include_str!("../assets/statemachines/elapsed_time_tests/ping_pong.json");
-        let mut sm = player
-            .state_machine_load_data(json)
-            .expect("state machine to load successfully");
-
-        sm.start(&OpenUrlPolicy::default()).unwrap();
-        assert_eq!(sm.get_current_state_name(), "a");
-
-        // Each tick of 600ms should cross the 0.5s threshold and trigger one
-        // transition. Reset-on-entry zeroes elapsedTime, ready for next cycle.
-        let _ = sm.tick(600.0);
-        assert_eq!(sm.get_current_state_name(), "b");
-
-        let _ = sm.tick(600.0);
-        assert_eq!(sm.get_current_state_name(), "a");
-
-        let _ = sm.tick(600.0);
-        assert_eq!(sm.get_current_state_name(), "b");
-
-        let _ = sm.tick(600.0);
-        assert_eq!(sm.get_current_state_name(), "a");
     }
 }

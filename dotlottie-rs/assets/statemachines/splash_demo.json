@@ -1,20 +1,20 @@
 {
-  "initial": "waiting",
+  "initial": "splash",
   "states": [
     {
       "type": "PlaybackState",
-      "name": "waiting",
+      "name": "splash",
       "animation": "",
       "transitions": [
         {
           "type": "Transition",
-          "toState": "after",
+          "toState": "main",
           "guards": [
             {
               "type": "Numeric",
-              "inputName": "threshold",
-              "conditionType": "LessThan",
-              "compareTo": "$elapsedTime"
+              "inputName": "elapsedTime",
+              "conditionType": "GreaterThan",
+              "compareTo": 2.0
             }
           ]
         }
@@ -22,12 +22,9 @@
     },
     {
       "type": "PlaybackState",
-      "name": "after",
+      "name": "main",
       "animation": "",
       "transitions": []
     }
-  ],
-  "inputs": [
-    { "type": "Numeric", "name": "threshold", "value": 0.5 }
   ]
 }

@@ -1,0 +1,66 @@
+{
+  "initial": "idle",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "idle",
+      "animation": "",
+      "segment": "1",
+      "exitActions": [
+        { "type": "Reset", "inputName": "pointerDown" }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "longPress",
+          "guards": [
+            { "type": "Boolean", "inputName": "pointerDown", "conditionType": "Equal",       "compareTo": true },
+            { "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThan", "compareTo": "$initialPressDelay" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "longPress",
+      "animation": "",
+      "segment": "4",
+      "exitActions": [
+        { "type": "Reset", "inputName": "pointerDown" }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "idle",
+          "guards": [
+            { "type": "Boolean", "inputName": "pointerDown", "conditionType": "Equal",       "compareTo": true },
+            { "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThan", "compareTo": "$nextPressDelay" }
+          ]
+        }
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "type": "PointerDown",
+      "actions": [
+        { "type": "Reset", "inputName": "initialPressDelay" },
+        { "type": "Increment",  "inputName": "initialPressDelay", "value": "@elapsedTime" },
+        { "type": "Reset", "inputName": "nextPressDelay" },
+        { "type": "Increment",  "inputName": "nextPressDelay", "value": "@elapsedTime" },
+        { "type": "SetBoolean", "inputName": "pointerDown",       "value": true }
+      ]
+    },
+    {
+      "type": "PointerUp",
+      "actions": [
+        { "type": "SetBoolean", "inputName": "pointerDown", "value": false }
+      ]
+    }
+  ],
+  "inputs": [
+    { "type": "Boolean", "name": "pointerDown",       "value": false },
+    { "type": "Numeric", "name": "initialPressDelay", "value": 3 },
+    { "type": "Numeric", "name": "nextPressDelay",    "value": 4 }
+  ]
+}

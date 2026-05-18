@@ -3,6 +3,7 @@ use serde::Deserialize;
 use crate::{
     inputs::InputManager,
     state_machine::{StringBool, StringNumberBool},
+    state_machine_engine::{ELAPSED_TIME_KEY, ELAPSED_TIME_REF},
     string::{DotString, DotStringInterner},
 };
 
@@ -168,34 +169,33 @@ impl GuardTrait for Guard {
                 if let Some(input_value) = input.get_numeric(input_name) {
                     match compare_to {
                         StringNumberBool::String(compare_to) => {
-                            if compare_to.starts_with("$") {
-                                // Remove the "$" prefix from the value
-                                let value = compare_to.trim_start_matches('$');
-                                let opt_numeric_value = input.get_numeric(value);
-                                if let Some(numeric_value) = opt_numeric_value {
-                                    match condition_type {
-                                        TransitionGuardConditionType::GreaterThan => {
-                                            input_value > numeric_value
-                                        }
-                                        TransitionGuardConditionType::GreaterThanOrEqual => {
-                                            input_value >= numeric_value
-                                        }
-                                        TransitionGuardConditionType::LessThan => {
-                                            input_value < numeric_value
-                                        }
-                                        TransitionGuardConditionType::LessThanOrEqual => {
-                                            input_value <= numeric_value
-                                        }
-                                        TransitionGuardConditionType::Equal => {
-                                            input_value == numeric_value
-                                        }
-                                        TransitionGuardConditionType::NotEqual => {
-                                            input_value != numeric_value
-                                        }
+                            let resolved = if compare_to == ELAPSED_TIME_REF {
+                                input.get_numeric(ELAPSED_TIME_KEY)
+                            } else if compare_to.starts_with('$') {
+                                input.get_numeric(compare_to.trim_start_matches('$'))
+                            } else {
+                                None
+                            };
+                            if let Some(numeric_value) = resolved {
+                                match condition_type {
+                                    TransitionGuardConditionType::GreaterThan => {
+                                        input_value > numeric_value
                                     }
-                                } else {
-                                    // Failed to get value from inputs
-                                    false
+                                    TransitionGuardConditionType::GreaterThanOrEqual => {
+                                        input_value >= numeric_value
+                                    }
+                                    TransitionGuardConditionType::LessThan => {
+                                        input_value < numeric_value
+                                    }
+                                    TransitionGuardConditionType::LessThanOrEqual => {
+                                        input_value <= numeric_value
+                                    }
+                                    TransitionGuardConditionType::Equal => {
+                                        input_value == numeric_value
+                                    }
+                                    TransitionGuardConditionType::NotEqual => {
+                                        input_value != numeric_value
+                                    }
                                 }
                             } else {
                                 false

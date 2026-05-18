@@ -175,7 +175,6 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<f32> {
-        // The built-in elapsedTime is read-only except via Reset.
         if key == ELAPSED_TIME_KEY {
             return None;
         }
@@ -213,7 +212,6 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<String> {
-        // The built-in elapsedTime is reserved.
         if key == ELAPSED_TIME_KEY {
             return None;
         }
@@ -251,7 +249,6 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<bool> {
-        // The built-in elapsedTime is reserved.
         if key == ELAPSED_TIME_KEY {
             return None;
         }

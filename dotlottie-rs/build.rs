@@ -427,9 +427,17 @@ mod thorvg {
             src.push("deps/thorvg/src/loaders/webp/webp");
         }
 
+        if cfg!(any(feature = "tvg-ttf", feature = "tvg-otf")) {
+            writeln!(thorvg_config_h, "#define THORVG_SFNT_LOADER_SUPPORT")?;
+            src.push("deps/thorvg/src/loaders/sfnt");
+        }
+
         if cfg!(feature = "tvg-ttf") {
             writeln!(thorvg_config_h, "#define THORVG_TTF_LOADER_SUPPORT")?;
-            src.push("deps/thorvg/src/loaders/ttf");
+        }
+
+        if cfg!(feature = "tvg-otf") {
+            writeln!(thorvg_config_h, "#define THORVG_OTF_LOADER_SUPPORT")?;
         }
 
         if cfg!(feature = "tvg-lottie-expressions") {
@@ -449,6 +457,7 @@ mod thorvg {
             src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/parser/js");
             src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/parser/regexp");
             src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/vm");
+            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-port/common");
         }
 
         // SIMD — skip entirely for wasm32-unknown-unknown (no SIMD support there yet)
@@ -641,6 +650,10 @@ namespace tvg
         {
             cc_build.flag("-pthread");
             println!("cargo:rustc-link-lib=pthread");
+        }
+
+        if cfg!(feature = "tvg-lottie-expressions") && cfg!(feature = "tvg-threads") {
+            cc_build.define("JERRY_EXTERNAL_CONTEXT", "1");
         }
 
         if cfg!(all(feature = "tracking_allocator", feature = "tvg")) {

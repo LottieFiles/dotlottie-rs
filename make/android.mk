@@ -19,7 +19,7 @@ API_LEVEL ?= 21
 MIN_NDK_VERSION = 28
 
 # Default Rust features for Android builds
-ANDROID_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+ANDROID_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-otf,tvg-lottie-expressions,tvg-threads
 
 ifdef FEATURES
 	ANDROID_FEATURES = $(FEATURES)

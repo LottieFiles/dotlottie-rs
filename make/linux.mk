@@ -1,5 +1,5 @@
 # Default Rust features for Linux builds
-LINUX_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-lottie-expressions,tvg-threads
+LINUX_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-otf,tvg-lottie-expressions,tvg-threads
 LINUX_DEFAULT_FEATURES = tvg,tvg-cpu,c_api,dotlottie,state-machines,theming
 
 ifdef FEATURES

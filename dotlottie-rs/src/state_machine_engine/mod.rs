@@ -1460,7 +1460,7 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     fn elapsed_time_increment(&mut self, dt: f32) {
-        let inc = (dt / 1000.0).max(0.0);
+        let inc = (dt * 0.001).max(0.0);
         if inc == 0.0 {
             return;
         }

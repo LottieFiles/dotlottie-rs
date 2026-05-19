@@ -1,20 +1,20 @@
 {
-  "initial": "splash",
+  "initial": "a",
   "states": [
     {
       "type": "PlaybackState",
-      "name": "splash",
+      "name": "a",
       "animation": "",
       "transitions": [
         {
           "type": "Transition",
-          "toState": "main",
+          "toState": "b",
           "guards": [
             {
               "type": "Numeric",
-              "inputName": "@elapsedTime",
+              "inputName": "score",
               "conditionType": "GreaterThan",
-              "compareTo": 2.0
+              "compareTo": "@something"
             }
           ]
         }
@@ -22,9 +22,12 @@
     },
     {
       "type": "PlaybackState",
-      "name": "main",
+      "name": "b",
       "animation": "",
       "transitions": []
     }
+  ],
+  "inputs": [
+    { "type": "Numeric", "name": "score", "value": 0 }
   ]
 }

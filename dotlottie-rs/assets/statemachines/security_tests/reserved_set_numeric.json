@@ -7,7 +7,7 @@
       "animation": "",
       "transitions": [],
       "entryActions": [
-        { "type": "SetNumeric", "inputName": "elapsedTime", "value": 5 }
+        { "type": "SetNumeric", "inputName": "@elapsedTime", "value": 5 }
       ]
     }
   ]

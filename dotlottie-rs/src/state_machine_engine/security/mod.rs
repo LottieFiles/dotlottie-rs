@@ -4,13 +4,13 @@ use super::{
     actions::Action,
     inputs::Input,
     interactions::InteractionTrait,
-    state_machine::StringBool,
+    state_machine::{StringBool, StringNumber},
     states::StateTrait,
     transitions::{
         guard::{self, Guard},
         Transition, TransitionTrait,
     },
-    StateMachineEngine, ELAPSED_TIME_KEY, ELAPSED_TIME_REF,
+    StateMachineEngine, ELAPSED_TIME, GLOBAL_INPUT_PREFIX,
 };
 
 use crate::state_machine::StringNumberBool;
@@ -22,8 +22,20 @@ pub enum StateMachineEngineSecurityError {
     SecurityCheckErrorDuplicateStateName,
     SecurityCheckErrorInputCompareToIsWrong,
     MultipleGlobalStates,
-    ReservedInputName,
-    ReservedInputWriteFromAction,
+    DeclaredWithGlobalInputPrefix,
+    GlobalInputWriteFromAction,
+    UnknownGlobalInputReference,
+}
+
+fn is_known_global_input(name: &str) -> bool {
+    name == ELAPSED_TIME
+}
+
+fn check_global_input_ref(name: &str) -> Result<(), StateMachineEngineSecurityError> {
+    if name.starts_with(GLOBAL_INPUT_PREFIX) && !is_known_global_input(name) {
+        return Err(StateMachineEngineSecurityError::UnknownGlobalInputReference);
+    }
+    Ok(())
 }
 
 // Rules checked:
@@ -69,7 +81,8 @@ pub fn state_machine_state_check_pipeline(
                 count += 1;
             }
             // Check for existing inputs and events
-            match check_guards_for_existing_inputs(state_machine, transition)
+            match check_guards_for_global_refs(transition)
+                .and_then(|_| check_guards_for_existing_inputs(state_machine, transition))
                 .and_then(|_| check_guards_for_existing_events(state_machine, transition))
             {
                 Ok(_) => continue,
@@ -109,8 +122,8 @@ fn check_reserved_input_declaration(
             | Input::Boolean { name, .. }
             | Input::Event { name } => name,
         };
-        if name == ELAPSED_TIME_KEY {
-            return Err(StateMachineEngineSecurityError::ReservedInputName);
+        if name.starts_with(GLOBAL_INPUT_PREFIX) {
+            return Err(StateMachineEngineSecurityError::DeclaredWithGlobalInputPrefix);
         }
     }
     Ok(())
@@ -139,9 +152,96 @@ fn check_actions_for_reserved_writes(
             | Action::FireCustomEvent { .. } => None,
         };
         if let Some(name) = target {
-            if name == ELAPSED_TIME_KEY {
-                return Err(StateMachineEngineSecurityError::ReservedInputWriteFromAction);
+            if name.starts_with(GLOBAL_INPUT_PREFIX) {
+                return Err(StateMachineEngineSecurityError::GlobalInputWriteFromAction);
             }
+        }
+
+        // Validate any @-prefixed value reference is a known built-in.
+        let value_ref: Option<&str> = match action {
+            Action::Increment {
+                value: Some(StringNumber::String(s)),
+                ..
+            }
+            | Action::Decrement {
+                value: Some(StringNumber::String(s)),
+                ..
+            }
+            | Action::SetNumeric {
+                value: StringNumber::String(s),
+                ..
+            }
+            | Action::SetFrame {
+                value: StringNumber::String(s),
+            }
+            | Action::SetProgress {
+                value: StringNumber::String(s),
+            } => Some(s.as_str()),
+            Action::SetBoolean {
+                value: StringBool::String(s),
+                ..
+            } => Some(s.as_str()),
+            _ => None,
+        };
+        if let Some(s) = value_ref {
+            check_global_input_ref(s)?;
+        }
+    }
+    Ok(())
+}
+
+// Validates that every @-prefixed reference inside a guard's input_name or
+// compare_to points at a known built-in global input. Rejects typos like
+// "@foo" or future-built-in references like "@frame" before they reach runtime.
+fn check_guards_for_global_refs(
+    transition: &Transition,
+) -> Result<(), StateMachineEngineSecurityError> {
+    let Some(guards) = transition.guards() else {
+        return Ok(());
+    };
+    for guard in guards {
+        let (input_name, compare_to_str): (&str, Option<&str>) = match guard {
+            Guard::Numeric {
+                input_name,
+                compare_to,
+                ..
+            } => {
+                let cs = if let StringNumberBool::String(s) = compare_to {
+                    Some(s.as_str())
+                } else {
+                    None
+                };
+                (input_name.as_str(), cs)
+            }
+            Guard::Boolean {
+                input_name,
+                compare_to,
+                ..
+            } => {
+                let cs = if let StringBool::String(s) = compare_to {
+                    Some(s.as_str())
+                } else {
+                    None
+                };
+                (input_name.as_str(), cs)
+            }
+            Guard::String {
+                input_name,
+                compare_to,
+                ..
+            } => {
+                let cs = if let StringNumberBool::String(s) = compare_to {
+                    Some(s.as_str())
+                } else {
+                    None
+                };
+                (input_name.as_str(), cs)
+            }
+            Guard::Event { input_name } => (input_name.as_str(), None),
+        };
+        check_global_input_ref(input_name)?;
+        if let Some(s) = compare_to_str {
+            check_global_input_ref(s)?;
         }
     }
     Ok(())
@@ -183,7 +283,7 @@ pub fn check_guards_for_existing_inputs(
                 }
                 guard::Guard::Numeric { compare_to, .. } => {
                     if let StringNumberBool::String(input_name) = compare_to {
-                        if input_name == ELAPSED_TIME_REF {
+                        if input_name.starts_with(GLOBAL_INPUT_PREFIX) {
                             continue;
                         }
                         let value = input_name.trim_start_matches('$');

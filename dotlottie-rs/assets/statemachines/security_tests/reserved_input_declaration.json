@@ -9,6 +9,6 @@
     }
   ],
   "inputs": [
-    { "type": "Numeric", "name": "elapsedTime", "value": 0 }
+    { "type": "Numeric", "name": "@elapsedTime", "value": 0 }
   ]
 }

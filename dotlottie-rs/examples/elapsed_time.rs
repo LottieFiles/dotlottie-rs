@@ -1,13 +1,13 @@
 #![allow(clippy::print_stdout)]
 
-//! Demonstrates the built-in `elapsedTime` numeric input.
+//! Demonstrates the built-in `@elapsedTime` numeric input.
 //!
-//! Default SM is a two-state splash → main: a single `elapsedTime > 2.0`
+//! Default SM is a two-state splash → main: a single `@elapsedTime > 2.0`
 //! guard transitions away from the splash state ~2 seconds after start.
-//! `elapsedTime` is read-only — there is no Reset action and no way for the
+//! `@elapsedTime` is read-only — there is no Reset action and no way for the
 //! author or host to mutate it.
 //!
-//! Edit `STATE_MACHINE_PATH` to point at any other elapsedTime SM.
+//! Edit `STATE_MACHINE_PATH` to point at any other @elapsedTime SM.
 //!
 //! ESC to quit.
 
@@ -56,7 +56,7 @@ fn load_animation(player: &mut Player, path: &str) {
 
 fn main() {
     let mut window = Window::new(
-        "elapsedTime demo - ESC to exit",
+        "@elapsedTime demo - ESC to exit",
         WIDTH,
         HEIGHT,
         WindowOptions::default(),
@@ -90,12 +90,12 @@ fn main() {
         .start(&OpenUrlPolicy::default())
         .expect("failed to start state machine");
 
-    println!("elapsedTime demo");
+    println!("@elapsedTime demo");
     println!("----------------");
     println!(
-        "initial state: {} | elapsedTime = {:?}",
+        "initial state: {} | @elapsedTime = {:?}",
         engine.get_current_state_name(),
-        engine.get_numeric_input("elapsedTime"),
+        engine.get_numeric_input("@elapsedTime"),
     );
 
     let start = Instant::now();
@@ -110,7 +110,7 @@ fn main() {
         let dt = clock.dt();
         let _ = engine.tick(dt);
 
-        // Forward mouse input as pointer events so SMs that mix elapsedTime
+        // Forward mouse input as pointer events so SMs that mix @elapsedTime
         // with pointer interactions react. Time-only SMs ignore these.
         let mouse_pressed = window.get_mouse_down(MouseButton::Left);
         if let Some((nmx, nmy)) = window.get_mouse_pos(minifb::MouseMode::Discard) {
@@ -194,9 +194,9 @@ fn main() {
         }
 
         if last_print.elapsed() >= std::time::Duration::from_millis(500) {
-            let et = engine.get_numeric_input("elapsedTime").unwrap_or(0.0);
+            let et = engine.get_numeric_input("@elapsedTime").unwrap_or(0.0);
             println!(
-                "  elapsedTime = {:.3}s | state = {}",
+                "  @elapsedTime = {:.3}s | state = {}",
                 et,
                 engine.get_current_state_name(),
             );

@@ -5,8 +5,8 @@ use rustc_hash::FxHashSet;
 
 use crate::string::{DotString, DotStringInterner};
 
-pub const ELAPSED_TIME_KEY: &str = "elapsedTime";
-pub const ELAPSED_TIME_REF: &str = "@elapsedTime";
+pub const GLOBAL_INPUT_PREFIX: char = '@';
+pub const ELAPSED_TIME: &str = "@elapsedTime";
 
 pub mod actions;
 pub mod errors;
@@ -135,6 +135,7 @@ pub struct StateMachineEngine<'a> {
     tween_transition_target_state: Option<State>,
     tween_target_frame: Option<f32>,
 
+    pub(crate) elapsed_time: f32,
     elapsed_time_states: FxHashSet<DotString>,
     elapsed_time_in_global: bool,
 }
@@ -175,7 +176,7 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<f32> {
-        if key == ELAPSED_TIME_KEY {
+        if key.starts_with(GLOBAL_INPUT_PREFIX) {
             return None;
         }
 
@@ -202,6 +203,9 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     pub fn get_numeric_input(&self, key: &str) -> Option<f32> {
+        if key == ELAPSED_TIME {
+            return Some(self.elapsed_time);
+        }
         self.inputs.get_numeric(key)
     }
 
@@ -212,7 +216,7 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<String> {
-        if key == ELAPSED_TIME_KEY {
+        if key.starts_with(GLOBAL_INPUT_PREFIX) {
             return None;
         }
 
@@ -249,7 +253,7 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<bool> {
-        if key == ELAPSED_TIME_KEY {
+        if key.starts_with(GLOBAL_INPUT_PREFIX) {
             return None;
         }
 
@@ -284,7 +288,7 @@ impl<'a> StateMachineEngine<'a> {
             return;
         }
 
-        if key == ELAPSED_TIME_KEY {
+        if key.starts_with(GLOBAL_INPUT_PREFIX) {
             return;
         }
 
@@ -368,6 +372,7 @@ impl<'a> StateMachineEngine<'a> {
             action_mutated_inputs: false,
             tween_transition_target_state: None,
             tween_target_frame: None,
+            elapsed_time: 0.0,
             elapsed_time_states: FxHashSet::default(),
             elapsed_time_in_global: false,
         };
@@ -382,10 +387,6 @@ impl<'a> StateMachineEngine<'a> {
 
             return Err(StateMachineEngineError::ParsingError(message));
         }
-
-        new_state_machine
-            .inputs
-            .set_initial_numeric(ELAPSED_TIME_KEY, 0.0);
 
         match parsed_state_machine {
             Ok(parsed_state_machine) => {
@@ -486,9 +487,7 @@ impl<'a> StateMachineEngine<'a> {
             self.open_url_whitelist = whitelist;
         }
 
-        if let Some((current, _)) = self.inputs.numeric.get_mut(ELAPSED_TIME_KEY) {
-            *current = 0.0;
-        }
+        self.elapsed_time = 0.0;
 
         let initial = &self.state_machine.initial.clone();
 
@@ -847,7 +846,9 @@ impl<'a> StateMachineEngine<'a> {
                     for guard in guards {
                         match guard {
                             transitions::guard::Guard::Numeric { .. } => {
-                                if !guard.numeric_input_is_satisfied(&self.inputs) {
+                                if !guard
+                                    .numeric_input_is_satisfied(&self.inputs, self.elapsed_time)
+                                {
                                     all_guards_satisfied = false;
                                     break;
                                 }
@@ -1460,17 +1461,13 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     fn elapsed_time_increment(&mut self, dt: f32) {
-        let inc = (dt * 0.001).max(0.0);
-        if inc == 0.0 {
-            return;
-        }
-        if let Some((current, _)) = self.inputs.numeric.get_mut(ELAPSED_TIME_KEY) {
-            *current += inc;
-        }
+        self.elapsed_time += (dt * 0.001).max(0.0);
     }
 
     pub fn get_inputs(&self) -> Vec<String> {
-        let mut result = Vec::with_capacity(self.inputs.len() * 2);
+        let mut result = Vec::with_capacity((self.inputs.len() + 1) * 2);
+        result.push(ELAPSED_TIME.to_string());
+        result.push("Numeric".to_string());
         for name in self.inputs.numeric.keys() {
             result.push(name.as_str().to_owned());
             result.push("Numeric".to_string());
@@ -1526,11 +1523,11 @@ fn guards_reference_elapsed_time(transitions: &[Transition]) -> bool {
                     compare_to,
                     ..
                 } => {
-                    if input_name == ELAPSED_TIME_KEY {
+                    if input_name == ELAPSED_TIME {
                         return true;
                     }
                     if let StringNumberBool::String(s) = compare_to {
-                        if s == ELAPSED_TIME_REF {
+                        if s == ELAPSED_TIME {
                             return true;
                         }
                     }

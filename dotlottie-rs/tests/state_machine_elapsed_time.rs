@@ -24,12 +24,12 @@ mod tests {
 
         sm.start(&OpenUrlPolicy::default()).unwrap();
 
-        assert_eq!(sm.get_numeric_input("elapsedTime"), Some(0.0));
+        assert_eq!(sm.get_numeric_input("@elapsedTime"), Some(0.0));
 
         let _ = sm.tick(500.0);
         let _ = sm.tick(500.0);
 
-        let elapsed = sm.get_numeric_input("elapsedTime").unwrap();
+        let elapsed = sm.get_numeric_input("@elapsedTime").unwrap();
         assert!(
             (elapsed - 1.0).abs() < 1e-4,
             "expected ~1.0s, got {elapsed}"
@@ -54,7 +54,7 @@ mod tests {
         let _ = sm.tick(1000.0);
         let _ = sm.tick(1000.0);
 
-        assert_eq!(sm.get_numeric_input("elapsedTime"), Some(0.0));
+        assert_eq!(sm.get_numeric_input("@elapsedTime"), Some(0.0));
     }
 
     #[test]
@@ -73,11 +73,11 @@ mod tests {
 
         sm.start(&OpenUrlPolicy::default()).unwrap();
         let _ = sm.tick(750.0);
-        assert!(sm.get_numeric_input("elapsedTime").unwrap() > 0.7);
+        assert!(sm.get_numeric_input("@elapsedTime").unwrap() > 0.7);
 
         sm.stop();
         sm.start(&OpenUrlPolicy::default()).unwrap();
-        assert_eq!(sm.get_numeric_input("elapsedTime"), Some(0.0));
+        assert_eq!(sm.get_numeric_input("@elapsedTime"), Some(0.0));
     }
 
     // ---------- Guards ----------
@@ -235,7 +235,7 @@ mod tests {
         let mut found = false;
         let mut iter = inputs.iter();
         while let (Some(name), Some(type_)) = (iter.next(), iter.next()) {
-            if name == "elapsedTime" && type_ == "Numeric" {
+            if name == "@elapsedTime" && type_ == "Numeric" {
                 found = true;
             }
         }

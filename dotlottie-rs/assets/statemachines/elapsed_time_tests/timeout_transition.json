@@ -12,7 +12,7 @@
           "guards": [
             {
               "type": "Numeric",
-              "inputName": "elapsedTime",
+              "inputName": "@elapsedTime",
               "conditionType": "GreaterThan",
               "compareTo": 1.0
             }

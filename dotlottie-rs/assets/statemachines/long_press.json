@@ -15,7 +15,7 @@
           "toState": "longPress",
           "guards": [
             { "type": "Boolean", "inputName": "pointerDown", "conditionType": "Equal",       "compareTo": true },
-            { "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThan", "compareTo": "$initialPressDelay" }
+            { "type": "Numeric", "inputName": "@elapsedTime", "conditionType": "GreaterThan", "compareTo": "$initialPressDelay" }
           ]
         }
       ]
@@ -34,7 +34,7 @@
           "toState": "idle",
           "guards": [
             { "type": "Boolean", "inputName": "pointerDown", "conditionType": "Equal",       "compareTo": true },
-            { "type": "Numeric", "inputName": "elapsedTime", "conditionType": "GreaterThan", "compareTo": "$nextPressDelay" }
+            { "type": "Numeric", "inputName": "@elapsedTime", "conditionType": "GreaterThan", "compareTo": "$nextPressDelay" }
           ]
         }
       ]

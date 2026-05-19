@@ -12,8 +12,11 @@
     {
       "type": "PointerDown",
       "actions": [
-        { "type": "Increment", "inputName": "@elapsedTime" }
+        { "type": "Increment", "inputName": "score", "value": "@createdAt" }
       ]
     }
+  ],
+  "inputs": [
+    { "type": "Numeric", "name": "score", "value": 0 }
   ]
 }

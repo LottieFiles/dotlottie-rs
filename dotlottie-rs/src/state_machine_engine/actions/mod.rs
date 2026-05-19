@@ -6,13 +6,15 @@ use serde::Deserialize;
 use crate::string::{DotString, DotStringInterner};
 use crate::{state_machine::StringBool, Event};
 
-use super::{state_machine::StringNumber, StateMachineEngine, ELAPSED_TIME_KEY, ELAPSED_TIME_REF};
+use super::{state_machine::StringNumber, StateMachineEngine, GLOBAL_INPUT_PREFIX};
 
 fn resolve_numeric_ref(engine: &StateMachineEngine, value: &str) -> Option<f32> {
-    if value == ELAPSED_TIME_REF {
-        engine.get_numeric_input(ELAPSED_TIME_KEY)
-    } else {
+    if value.starts_with(GLOBAL_INPUT_PREFIX) {
+        engine.get_numeric_input(value)
+    } else if value.starts_with('$') {
         engine.get_numeric_input(value.trim_start_matches('$'))
+    } else {
+        None
     }
 }
 

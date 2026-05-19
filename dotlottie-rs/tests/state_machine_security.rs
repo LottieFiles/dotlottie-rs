@@ -72,7 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_user_declared_elapsed_time_input() {
+    fn rejects_user_declared_at_prefixed_input() {
         let json =
             include_str!("../assets/statemachines/security_tests/reserved_input_declaration.json");
         let mut player = Player::new();
@@ -87,7 +87,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_set_numeric_targeting_elapsed_time() {
+    fn rejects_set_numeric_targeting_at_prefixed_input() {
         let json = include_str!("../assets/statemachines/security_tests/reserved_set_numeric.json");
         let mut player = Player::new();
         assert!(player
@@ -101,7 +101,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_increment_targeting_elapsed_time() {
+    fn rejects_increment_targeting_at_prefixed_input() {
         let json = include_str!("../assets/statemachines/security_tests/reserved_increment.json");
         let mut player = Player::new();
         assert!(player
@@ -144,6 +144,54 @@ mod tests {
 
         let sm = player.state_machine_load_data(json);
         assert!(sm.is_ok());
+    }
+
+    #[test]
+    fn rejects_unknown_global_in_guard_input_name() {
+        let json = include_str!(
+            "../assets/statemachines/security_tests/unknown_global_in_guard_input_name.json"
+        );
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player.state_machine_load_data(json);
+        assert!(sm.is_err());
+    }
+
+    #[test]
+    fn rejects_unknown_global_in_guard_compare_to() {
+        let json = include_str!(
+            "../assets/statemachines/security_tests/unknown_global_in_guard_compare_to.json"
+        );
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player.state_machine_load_data(json);
+        assert!(sm.is_err());
+    }
+
+    #[test]
+    fn rejects_unknown_global_in_action_value() {
+        let json = include_str!(
+            "../assets/statemachines/security_tests/unknown_global_in_action_value.json"
+        );
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player.state_machine_load_data(json);
+        assert!(sm.is_err());
     }
 
     #[test]

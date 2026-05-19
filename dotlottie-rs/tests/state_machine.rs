@@ -561,8 +561,8 @@ mod tests {
             "Numeric",
             "b_exited",
             "String",
-            // Built-in: every state machine exposes the elapsedTime input.
-            "elapsedTime",
+            // Built-in: every state machine exposes the @elapsedTime input.
+            "@elapsedTime",
             "Numeric",
         ];
 

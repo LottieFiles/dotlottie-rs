@@ -5,8 +5,8 @@ use rustc_hash::FxHashSet;
 
 use crate::string::{DotString, DotStringInterner};
 
-pub const GLOBAL_INPUT_PREFIX: char = '@';
-pub const ELAPSED_TIME: &str = "@elapsedTime";
+pub(crate) const GLOBAL_INPUT_PREFIX: char = '@';
+pub(crate) const ELAPSED_TIME: &str = "@elapsedTime";
 
 pub mod actions;
 pub mod errors;
@@ -135,7 +135,7 @@ pub struct StateMachineEngine<'a> {
     tween_transition_target_state: Option<State>,
     tween_target_frame: Option<f32>,
 
-    pub(crate) elapsed_time: f32,
+    elapsed_time: f32,
     elapsed_time_states: FxHashSet<DotString>,
     elapsed_time_in_global: bool,
 }

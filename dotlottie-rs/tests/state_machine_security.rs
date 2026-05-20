@@ -74,7 +74,7 @@ mod tests {
     #[test]
     fn silently_drops_user_declared_at_prefixed_input() {
         let json =
-            include_str!("../assets/statemachines/security_tests/reserved_input_declaration.json");
+            include_str!("../assets/statemachines/security_tests/at_prefixed_user_input.json");
         let mut player = Player::new();
         assert!(player
             .load_dotlottie_data(include_bytes!(

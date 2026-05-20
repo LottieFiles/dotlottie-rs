@@ -1,7 +1,12 @@
 use core::result::Result::Ok;
 use std::ffi::{CStr, CString};
 
+use rustc_hash::FxHashSet;
+
 use crate::string::{DotString, DotStringInterner};
+
+pub(crate) const GLOBAL_INPUT_PREFIX: char = '@';
+pub(crate) const ELAPSED_TIME: &str = "@elapsedTime";
 
 pub mod actions;
 pub mod errors;
@@ -19,8 +24,10 @@ use inputs::{Input, InputManager, InputValue};
 use interactions::InteractionTrait;
 use state_machine::StateMachine;
 use states::StateTrait;
-use transitions::guard::GuardTrait;
+use transitions::guard::{Guard, GuardTrait};
 use transitions::{Transition, TransitionTrait};
+
+use crate::state_machine::StringNumberBool;
 
 use crate::actions::whitelist::Whitelist;
 use crate::event_queue::EventQueue;
@@ -127,6 +134,10 @@ pub struct StateMachineEngine<'a> {
     // The state to target once blending has finished
     tween_transition_target_state: Option<State>,
     tween_target_frame: Option<f32>,
+
+    elapsed_time: f32,
+    elapsed_time_states: FxHashSet<DotString>,
+    elapsed_time_in_global: bool,
 }
 
 impl<'a> StateMachineEngine<'a> {
@@ -165,6 +176,10 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<f32> {
+        if key.starts_with(GLOBAL_INPUT_PREFIX) {
+            return None;
+        }
+
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
             return None;
@@ -188,6 +203,9 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     pub fn get_numeric_input(&self, key: &str) -> Option<f32> {
+        if key == ELAPSED_TIME {
+            return Some(self.elapsed_time);
+        }
         self.inputs.get_numeric(key)
     }
 
@@ -198,6 +216,10 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<String> {
+        if key.starts_with(GLOBAL_INPUT_PREFIX) {
+            return None;
+        }
+
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
             return None;
@@ -231,6 +253,10 @@ impl<'a> StateMachineEngine<'a> {
         run_pipeline: bool,
         called_from_action: bool,
     ) -> Option<bool> {
+        if key.starts_with(GLOBAL_INPUT_PREFIX) {
+            return None;
+        }
+
         // Modifying triggers whilst tweening isn't allowed
         if self.status == StateMachineEngineStatus::Tweening {
             return None;
@@ -259,6 +285,10 @@ impl<'a> StateMachineEngine<'a> {
 
     pub fn reset_input(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
         if self.status != StateMachineEngineStatus::Running {
+            return;
+        }
+
+        if key.starts_with(GLOBAL_INPUT_PREFIX) {
             return;
         }
 
@@ -342,6 +372,9 @@ impl<'a> StateMachineEngine<'a> {
             action_mutated_inputs: false,
             tween_transition_target_state: None,
             tween_target_frame: None,
+            elapsed_time: 0.0,
+            elapsed_time_states: FxHashSet::default(),
+            elapsed_time_in_global: false,
         };
 
         if parsed_state_machine.is_err() {
@@ -393,6 +426,11 @@ impl<'a> StateMachineEngine<'a> {
                 new_state_machine
                     .state_machine
                     .intern_identifiers(&mut new_state_machine.str_interner);
+
+                let (states, in_global) =
+                    compute_elapsed_time_states(&new_state_machine.state_machine);
+                new_state_machine.elapsed_time_states = states;
+                new_state_machine.elapsed_time_in_global = in_global;
 
                 new_state_machine.init_listened_layers();
 
@@ -448,6 +486,8 @@ impl<'a> StateMachineEngine<'a> {
 
             self.open_url_whitelist = whitelist;
         }
+
+        self.elapsed_time = 0.0;
 
         let initial = &self.state_machine.initial.clone();
 
@@ -806,7 +846,9 @@ impl<'a> StateMachineEngine<'a> {
                     for guard in guards {
                         match guard {
                             transitions::guard::Guard::Numeric { .. } => {
-                                if !guard.numeric_input_is_satisfied(&self.inputs) {
+                                if !guard
+                                    .numeric_input_is_satisfied(&self.inputs, self.elapsed_time)
+                                {
                                     all_guards_satisfied = false;
                                     break;
                                 }
@@ -1396,11 +1438,36 @@ impl<'a> StateMachineEngine<'a> {
             self.resume_from_tweening();
         }
 
+        if self.status != StateMachineEngineStatus::Stopped {
+            self.elapsed_time_increment(dt);
+
+            // Re-evaluate the pipeline if either the GlobalState routes by
+            // elapsedTime (every tick has to check it) or the current
+            // PlaybackState has its own elapsedTime guard.
+            if self.status == StateMachineEngineStatus::Running {
+                let needs_eval = self.elapsed_time_in_global
+                    || self
+                        .current_state
+                        .as_ref()
+                        .map(|s| self.elapsed_time_states.contains(s.name()))
+                        .unwrap_or(false);
+                if needs_eval {
+                    let _ = self.run_current_state_pipeline();
+                }
+            }
+        }
+
         ticked
     }
 
+    fn elapsed_time_increment(&mut self, dt: f32) {
+        self.elapsed_time += (dt * 0.001).max(0.0);
+    }
+
     pub fn get_inputs(&self) -> Vec<String> {
-        let mut result = Vec::with_capacity(self.inputs.len() * 2);
+        let mut result = Vec::with_capacity((self.inputs.len() + 1) * 2);
+        result.push(ELAPSED_TIME.to_string());
+        result.push("Numeric".to_string());
         for name in self.inputs.numeric.keys() {
             result.push(name.as_str().to_owned());
             result.push("Numeric".to_string());
@@ -1419,4 +1486,55 @@ impl<'a> StateMachineEngine<'a> {
         }
         result
     }
+}
+
+/// Returns:
+///   - the set of PlaybackState names whose transitions reference `elapsedTime`
+///   - whether the GlobalState's transitions reference `elapsedTime`
+///
+/// The GlobalState routes regardless of which PlaybackState is current, so the
+/// per-tick gate must fire on every tick when it has elapsedTime guards —
+/// independent of `current_state`.
+fn compute_elapsed_time_states(state_machine: &StateMachine) -> (FxHashSet<DotString>, bool) {
+    let mut set = FxHashSet::default();
+    let mut in_global = false;
+    for state in &state_machine.states {
+        if guards_reference_elapsed_time(state.transitions()) {
+            match state {
+                State::GlobalState { .. } => in_global = true,
+                State::PlaybackState { .. } => {
+                    set.insert(state.name().clone());
+                }
+            }
+        }
+    }
+    (set, in_global)
+}
+
+fn guards_reference_elapsed_time(transitions: &[Transition]) -> bool {
+    for transition in transitions {
+        let Some(guards) = transition.guards() else {
+            continue;
+        };
+        for guard in guards {
+            match guard {
+                Guard::Numeric {
+                    input_name,
+                    compare_to,
+                    ..
+                } => {
+                    if input_name == ELAPSED_TIME {
+                        return true;
+                    }
+                    if let StringNumberBool::String(s) = compare_to {
+                        if s == ELAPSED_TIME {
+                            return true;
+                        }
+                    }
+                }
+                Guard::String { .. } | Guard::Boolean { .. } | Guard::Event { .. } => {}
+            }
+        }
+    }
+    false
 }

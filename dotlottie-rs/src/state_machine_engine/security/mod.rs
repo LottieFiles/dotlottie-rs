@@ -116,6 +116,10 @@ pub fn check_guards_for_existing_inputs(
                 }
                 guard::Guard::Numeric { compare_to, .. } => {
                     if let StringNumberBool::String(input_name) = compare_to {
+                        // @-prefixed refs point at built-ins (e.g. @elapsedTime)
+                        if input_name.starts_with('@') {
+                            continue;
+                        }
                         let value = input_name.trim_start_matches('$');
                         let mut found = false;
 

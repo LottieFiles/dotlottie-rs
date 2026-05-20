@@ -72,6 +72,59 @@ mod tests {
     }
 
     #[test]
+    fn silently_drops_user_declared_at_prefixed_input() {
+        let json =
+            include_str!("../assets/statemachines/security_tests/at_prefixed_user_input.json");
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player
+            .state_machine_load_data(json)
+            .expect("load should succeed");
+        let inputs = sm.get_inputs();
+        assert!(
+            !inputs.iter().any(|name| name == "@bogus"),
+            "expected @bogus to be filtered out of inputs, got: {inputs:?}",
+        );
+    }
+
+    #[test]
+    fn allows_guard_referencing_elapsed_time() {
+        // timeout_transition.json uses elapsedTime as a guard input_name.
+        let json =
+            include_str!("../assets/statemachines/elapsed_time_tests/timeout_transition.json");
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player.state_machine_load_data(json);
+        assert!(sm.is_ok());
+    }
+
+    #[test]
+    fn allows_guard_using_at_elapsed_time_compare_to() {
+        let json = include_str!(
+            "../assets/statemachines/elapsed_time_tests/compare_to_at_elapsed_time.json"
+        );
+        let mut player = Player::new();
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/star_rating.lottie"
+            ))
+            .is_ok());
+
+        let sm = player.state_machine_load_data(json);
+        assert!(sm.is_ok());
+    }
+
+    #[test]
     fn check_infinite_loop() {
         let global_state =
             include_str!("../assets/statemachines/security_tests/infinite_loop.json");

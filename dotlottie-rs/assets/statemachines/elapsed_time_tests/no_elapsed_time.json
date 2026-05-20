@@ -1,0 +1,20 @@
+{
+  "initial": "idle",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "idle",
+      "animation": "",
+      "transitions": [],
+      "entryActions": [
+        {
+          "type": "Increment",
+          "inputName": "counter"
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    { "type": "Numeric", "name": "counter", "value": 0 }
+  ]
+}

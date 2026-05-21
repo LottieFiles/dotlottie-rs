@@ -3,6 +3,7 @@ use serde::Deserialize;
 use crate::{
     inputs::InputManager,
     state_machine::{StringBool, StringNumberBool},
+    state_machine_engine::{ELAPSED_TIME, GLOBAL_INPUT_PREFIX},
     string::{DotString, DotStringInterner},
 };
 
@@ -19,7 +20,7 @@ pub enum TransitionGuardConditionType {
 pub trait GuardTrait {
     fn string_input_is_satisfied(&self, inputs: &InputManager) -> bool;
     fn boolean_input_is_satisfied(&self, inputs: &InputManager) -> bool;
-    fn numeric_input_is_satisfied(&self, inputs: &InputManager) -> bool;
+    fn numeric_input_is_satisfied(&self, inputs: &InputManager, elapsed_time: f32) -> bool;
     fn event_input_is_satisfied(&self, event: &str) -> bool;
 }
 
@@ -158,44 +159,50 @@ impl GuardTrait for Guard {
         }
     }
 
-    fn numeric_input_is_satisfied(&self, input: &InputManager) -> bool {
+    fn numeric_input_is_satisfied(&self, input: &InputManager, elapsed_time: f32) -> bool {
+        let lookup = |key: &str| -> Option<f32> {
+            if key == ELAPSED_TIME {
+                Some(elapsed_time)
+            } else {
+                input.get_numeric(key)
+            }
+        };
         match self {
             Guard::Numeric {
                 input_name,
                 condition_type,
                 compare_to,
             } => {
-                if let Some(input_value) = input.get_numeric(input_name) {
+                if let Some(input_value) = lookup(input_name) {
                     match compare_to {
                         StringNumberBool::String(compare_to) => {
-                            if compare_to.starts_with("$") {
-                                // Remove the "$" prefix from the value
-                                let value = compare_to.trim_start_matches('$');
-                                let opt_numeric_value = input.get_numeric(value);
-                                if let Some(numeric_value) = opt_numeric_value {
-                                    match condition_type {
-                                        TransitionGuardConditionType::GreaterThan => {
-                                            input_value > numeric_value
-                                        }
-                                        TransitionGuardConditionType::GreaterThanOrEqual => {
-                                            input_value >= numeric_value
-                                        }
-                                        TransitionGuardConditionType::LessThan => {
-                                            input_value < numeric_value
-                                        }
-                                        TransitionGuardConditionType::LessThanOrEqual => {
-                                            input_value <= numeric_value
-                                        }
-                                        TransitionGuardConditionType::Equal => {
-                                            input_value == numeric_value
-                                        }
-                                        TransitionGuardConditionType::NotEqual => {
-                                            input_value != numeric_value
-                                        }
+                            let resolved = if compare_to.starts_with(GLOBAL_INPUT_PREFIX) {
+                                lookup(compare_to)
+                            } else if compare_to.starts_with('$') {
+                                input.get_numeric(compare_to.trim_start_matches('$'))
+                            } else {
+                                None
+                            };
+                            if let Some(numeric_value) = resolved {
+                                match condition_type {
+                                    TransitionGuardConditionType::GreaterThan => {
+                                        input_value > numeric_value
                                     }
-                                } else {
-                                    // Failed to get value from inputs
-                                    false
+                                    TransitionGuardConditionType::GreaterThanOrEqual => {
+                                        input_value >= numeric_value
+                                    }
+                                    TransitionGuardConditionType::LessThan => {
+                                        input_value < numeric_value
+                                    }
+                                    TransitionGuardConditionType::LessThanOrEqual => {
+                                        input_value <= numeric_value
+                                    }
+                                    TransitionGuardConditionType::Equal => {
+                                        input_value == numeric_value
+                                    }
+                                    TransitionGuardConditionType::NotEqual => {
+                                        input_value != numeric_value
+                                    }
                                 }
                             } else {
                                 false

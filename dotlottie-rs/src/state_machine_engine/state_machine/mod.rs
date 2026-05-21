@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 use crate::errors::StateMachineError;
 use crate::string::{DotString, DotStringInterner};
@@ -7,7 +7,28 @@ use super::{
     inputs::Input,
     interactions::Interaction,
     states::{State, StateTrait},
+    GLOBAL_INPUT_PREFIX,
 };
+
+// Drop @-prefixed user declarations at deserialization. The @ namespace is reserved for built-ins
+fn deserialize_user_inputs<'de, D>(deserializer: D) -> Result<Option<Vec<Input>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let inputs: Option<Vec<Input>> = Option::deserialize(deserializer)?;
+    Ok(inputs.map(|mut v| {
+        v.retain(|input| {
+            let name = match input {
+                Input::Numeric { name, .. }
+                | Input::String { name, .. }
+                | Input::Boolean { name, .. }
+                | Input::Event { name } => name,
+            };
+            !name.starts_with(GLOBAL_INPUT_PREFIX)
+        });
+        v
+    }))
+}
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(untagged)]
@@ -42,6 +63,7 @@ pub struct StateMachine {
     pub initial: DotString,
     pub states: Vec<State>,
     pub interactions: Option<Vec<Interaction>>,
+    #[serde(default, deserialize_with = "deserialize_user_inputs")]
     pub inputs: Option<Vec<Input>>,
 }
 

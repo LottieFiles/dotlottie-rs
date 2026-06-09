@@ -110,6 +110,7 @@ mod wgpu_native {
         let cache = cache_dir().join(artifact);
 
         let dylib_required = links_dynamically(target);
+        // Priority 2: cached download
         let cache_complete = cache.join("include/webgpu/webgpu.h").exists()
             && cache.join("lib/libwgpu_native.a").exists()
             && (!dylib_required || cache.join("lib/libwgpu_native.dylib").exists());

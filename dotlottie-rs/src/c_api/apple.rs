@@ -1,7 +1,5 @@
 #![cfg(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios")))]
 
-//! Apple-specific ThorVG wgpu fixups.
-
 use std::ffi::c_void;
 
 /// Intercepts ThorVG's wgpuSurfaceConfigure calls (redirected via the
@@ -15,7 +13,6 @@ unsafe extern "C" fn _tvg_wgpu_surface_configure_fixup(
     surface: ffi::WGPUSurface,
     config: *const ffi::WGPUSurfaceConfiguration,
 ) {
-    // `mut` is only used on iOS, where the present mode is patched below.
     #[cfg_attr(not(target_os = "ios"), allow(unused_mut))]
     let mut cfg = *config;
     #[cfg(target_os = "ios")]
@@ -25,7 +22,6 @@ unsafe extern "C" fn _tvg_wgpu_surface_configure_fixup(
     ffi::wgpuSurfaceConfigure(surface, &cfg);
 }
 
-// WebGPU FFI bindings auto-generated from webgpu.h by bindgen
 #[allow(
     non_camel_case_types,
     non_snake_case,

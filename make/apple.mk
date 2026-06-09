@@ -19,6 +19,10 @@ APPLE_DEFAULT_FEATURES = $(APPLE_DEFAULT_FEATURES_NO_AUDIO)
 # Active feature set — defaults to base (software-only)
 APPLE_FEATURES ?= $(APPLE_BASE_FEATURES)
 
+# WebGPU variant: adds tvg-wg (Metal/WebGPU path) alongside tvg-cpu, so both the
+# software and WebGPU renderers are available at runtime.
+APPLE_WEBGPU_DEFAULT_FEATURES = tvg,tvg-cpu,tvg-wg,c_api,dotlottie,state-machines,theming
+
 ifdef FEATURES
 	APPLE_FEATURES = $(FEATURES)
 endif
@@ -170,6 +174,47 @@ TVOS_SIMULATOR_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/tvos-simulator
 WATCHOS_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/watchos
 WATCHOS_SIMULATOR_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/watchos-simulator
 
+# --- WebGPU shared library (wgpu-native) packaging (apple-webgpu only) ---
+# WGPU_NATIVE_VERSION MUST match WGPU_NATIVE_VERSION in dotlottie-rs/build.rs.
+WGPU_NATIVE_VERSION ?= v25.0.2.1
+CARGO_HOME_DIR := $(if $(CARGO_HOME),$(CARGO_HOME),$(HOME)/.cargo)
+WGPU_CACHE_DIR := $(CARGO_HOME_DIR)/wgpu-native-cache/$(WGPU_NATIVE_VERSION)
+WGPU_DYLIB := libwgpu_native.dylib
+WGPU_INSTALL_NAME := @rpath/$(WGPU_DYLIB)
+WGPU_NATIVE_MODULE ?= WgpuNative
+WGPU_NATIVE_XCFRAMEWORK := $(WGPU_NATIVE_MODULE).xcframework
+WGPU_STAGE_DIR := $(APPLE_BUILD_DIR)/wgpu
+# Cache artifact per slice — mirrors artifact_name() in dotlottie-rs/build.rs.
+WGPU_ARTIFACT_macos_arm64 := wgpu-macos-aarch64-release
+WGPU_ARTIFACT_macos_x86_64 := wgpu-macos-x86_64-release
+WGPU_ARTIFACT_ios_arm64 := wgpu-ios-aarch64-release
+WGPU_ARTIFACT_ios_sim_arm64 := wgpu-ios-aarch64-simulator-release
+WGPU_ARTIFACT_ios_x86_64 := wgpu-ios-x86_64-simulator-release
+
+# Copy a cached wgpu dylib to $(2) and normalise its install_name to @rpath
+# (the upstream iOS dylib ships with a CI build path as its id).
+# $(1)=cache artifact name  $(2)=destination dylib path
+define stage_wgpu_dylib
+	@mkdir -p $(dir $(2))
+	@cp "$(WGPU_CACHE_DIR)/$(1)/lib/$(WGPU_DYLIB)" "$(2)"
+	@$(INSTALL_NAME_TOOL) -id $(WGPU_INSTALL_NAME) "$(2)"
+endef
+
+# Repoint a DotLottiePlayer binary's wgpu-native dependency to @rpath and add the
+# rpaths needed to resolve libwgpu_native.dylib from the app's Frameworks/ dir.
+# No-op for software builds (binary has no wgpu-native dependency).
+# $(1)=path to the DotLottiePlayer mach-o binary
+define fixup_wgpu_rpath
+	@wgpu_ref=$$(otool -L "$(1)" | awk '/libwgpu_native\.dylib/{print $$1; exit}'); \
+	if [ -n "$$wgpu_ref" ]; then \
+		[ "$$wgpu_ref" = "$(WGPU_INSTALL_NAME)" ] || $(INSTALL_NAME_TOOL) -change "$$wgpu_ref" $(WGPU_INSTALL_NAME) "$(1)"; \
+		for rp in @executable_path/Frameworks @loader_path/.. @loader_path/Frameworks @loader_path/../../..; do \
+			$(INSTALL_NAME_TOOL) -add_rpath "$$rp" "$(1)" 2>/dev/null || true; \
+		done; \
+		echo "  ✓ wgpu-native rpath fixup applied to $(notdir $(1))"; \
+	fi
+endef
+
 # Apple-specific phony targets
 .PHONY: apple apple-macos apple-ios apple-maccatalyst apple-visionos apple-tvos apple-watchos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-maccatalyst-arm64 apple-maccatalyst-x86_64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 apple-watchos-arm64 apple-watchos-arm64_32 apple-watchos-armv7k apple-watchos-sim-arm64 apple-setup apple-clean apple-code-sign
 
@@ -178,8 +223,12 @@ WATCHOS_SIMULATOR_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/watchos-simulator
 # C header is generated automatically by cbindgen during cargo build
 # No explicit generation target needed - the header is created at $(C_HEADER_DIR)/$(C_HEADER_FILE)
 
-# Build for all Apple platforms
-apple: $(addprefix apple-,macos ios maccatalyst visionos tvos watchos) apple-package
+# Build for all Apple platforms. WebGPU (tvg-wg) is enabled by default, but the
+# per-platform overrides above keep Mac Catalyst, visionOS,
+# tvOS, and watchOS software-only — so tvg-wg only lands on the macOS and iOS
+# slices, which link wgpu dynamically via the bundled WgpuNative.xcframework.
+apple: APPLE_DEFAULT_FEATURES = $(APPLE_WEBGPU_DEFAULT_FEATURES)
+apple: $(addprefix apple-,macos ios maccatalyst visionos tvos watchos) apple-wgpu-package
 
 # Build for all macOS architectures
 apple-macos: $(addprefix apple-macos-,arm64 x86_64) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)
@@ -551,6 +600,7 @@ $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-macos-arm64 apple-ma
 	@echo '}' >> $(MACOS_FRAMEWORK_DIR)/$(MODULE_MAP)
 	@cp $(MACOS_FRAMEWORK_DIR)/$(MODULE_MAP) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_MODULES)/
 	@$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
+	$(call fixup_wgpu_rpath,$(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE))
 	@echo "✓ macOS framework created"
 
 $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-ios-arm64
@@ -569,6 +619,7 @@ $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-ios-arm64
 	@echo '}' >> $(IOS_FRAMEWORK_DIR)/$(MODULE_MAP)
 	cp $(IOS_FRAMEWORK_DIR)/$(MODULE_MAP) $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_MODULES)/
 	$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
+	$(call fixup_wgpu_rpath,$(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE))
 	@echo "iOS framework created: $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)"
 
 $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-ios-x86_64 apple-ios-sim-arm64
@@ -589,6 +640,7 @@ $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-ios-x86_64 a
 	@echo '}' >> $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(MODULE_MAP)
 	cp $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(MODULE_MAP) $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(FRAMEWORK_MODULES)/
 	$(INSTALL_NAME_TOOL) -id @rpath/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE) $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE)
+	$(call fixup_wgpu_rpath,$(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)/$(DOTLOTTIE_PLAYER_MODULE))
 	@echo "iOS Simulator framework created: $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)"
 
 $(MACCATALYST_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-maccatalyst-arm64 apple-maccatalyst-x86_64
@@ -785,6 +837,34 @@ apple-package: apple-frameworks
 	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(APPLE_RELEASE_DIR)/version.txt
 	
 	@echo "✓ Apple release package created: $(APPLE_RELEASE_DIR)/"
+
+# Package the shared wgpu-native library as WgpuNative.xcframework alongside
+# DotLottiePlayer (apple-webgpu only). Depends on apple-package because that
+# target wipes and repopulates APPLE_RELEASE_DIR; this must run afterwards.
+# Pulls the prebuilt dylibs from the wgpu-native cache populated during the
+# macOS/iOS cargo builds (Mac Catalyst links wgpu statically — no slice here).
+.PHONY: apple-wgpu-package
+apple-wgpu-package: apple-package
+	@echo "→ Packaging $(WGPU_NATIVE_XCFRAMEWORK)..."
+	@rm -rf $(WGPU_STAGE_DIR)
+	@mkdir -p $(WGPU_STAGE_DIR)/macos $(WGPU_STAGE_DIR)/ios $(WGPU_STAGE_DIR)/ios-sim $(WGPU_STAGE_DIR)/include/webgpu
+	$(call stage_wgpu_dylib,$(WGPU_ARTIFACT_macos_arm64),$(WGPU_STAGE_DIR)/macos-arm64.dylib)
+	$(call stage_wgpu_dylib,$(WGPU_ARTIFACT_macos_x86_64),$(WGPU_STAGE_DIR)/macos-x86_64.dylib)
+	@$(LIPO) -create $(WGPU_STAGE_DIR)/macos-arm64.dylib $(WGPU_STAGE_DIR)/macos-x86_64.dylib -o $(WGPU_STAGE_DIR)/macos/$(WGPU_DYLIB)
+	$(call stage_wgpu_dylib,$(WGPU_ARTIFACT_ios_arm64),$(WGPU_STAGE_DIR)/ios/$(WGPU_DYLIB))
+	$(call stage_wgpu_dylib,$(WGPU_ARTIFACT_ios_sim_arm64),$(WGPU_STAGE_DIR)/ios-sim-arm64.dylib)
+	$(call stage_wgpu_dylib,$(WGPU_ARTIFACT_ios_x86_64),$(WGPU_STAGE_DIR)/ios-sim-x86_64.dylib)
+	@$(LIPO) -create $(WGPU_STAGE_DIR)/ios-sim-arm64.dylib $(WGPU_STAGE_DIR)/ios-sim-x86_64.dylib -o $(WGPU_STAGE_DIR)/ios-sim/$(WGPU_DYLIB)
+	@cp $(WGPU_CACHE_DIR)/$(WGPU_ARTIFACT_macos_arm64)/include/webgpu/*.h $(WGPU_STAGE_DIR)/include/webgpu/
+	@printf 'module %s {\n  header "webgpu/wgpu.h"\n  export *\n}\n' "$(WGPU_NATIVE_MODULE)" > $(WGPU_STAGE_DIR)/include/module.modulemap
+	@rm -rf $(APPLE_RELEASE_DIR)/$(WGPU_NATIVE_XCFRAMEWORK)
+	@$(XCODEBUILD) -create-xcframework \
+		-library $(WGPU_STAGE_DIR)/macos/$(WGPU_DYLIB) -headers $(WGPU_STAGE_DIR)/include \
+		-library $(WGPU_STAGE_DIR)/ios/$(WGPU_DYLIB) -headers $(WGPU_STAGE_DIR)/include \
+		-library $(WGPU_STAGE_DIR)/ios-sim/$(WGPU_DYLIB) -headers $(WGPU_STAGE_DIR)/include \
+		-output $(APPLE_RELEASE_DIR)/$(WGPU_NATIVE_XCFRAMEWORK) >/dev/null
+	$(call perform_codesigning,$(APPLE_RELEASE_DIR)/$(WGPU_NATIVE_XCFRAMEWORK))
+	@echo "✓ $(WGPU_NATIVE_XCFRAMEWORK) created at $(APPLE_RELEASE_DIR)/"
 
 # Check if Xcode or Command Line Tools are available
 apple-check-xcode:

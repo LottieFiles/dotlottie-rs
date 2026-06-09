@@ -176,7 +176,7 @@ WATCHOS_SIMULATOR_FRAMEWORK_DIR := $(FRAMEWORK_BUILD_DIR)/watchos-simulator
 
 # --- WebGPU shared library (wgpu-native) packaging (apple-webgpu only) ---
 # WGPU_NATIVE_VERSION MUST match WGPU_NATIVE_VERSION in dotlottie-rs/build.rs.
-WGPU_NATIVE_VERSION ?= v25.0.2.1
+WGPU_NATIVE_VERSION ?= v27.0.4.0
 CARGO_HOME_DIR := $(if $(CARGO_HOME),$(CARGO_HOME),$(HOME)/.cargo)
 WGPU_CACHE_DIR := $(CARGO_HOME_DIR)/wgpu-native-cache/$(WGPU_NATIVE_VERSION)
 WGPU_DYLIB := libwgpu_native.dylib

@@ -1,0 +1,33 @@
+{
+  "initial": "global",
+  "states": [
+    {
+      "type": "GlobalState",
+      "name": "global",
+      "animation": "",
+      "transitions": [
+        { "type": "Transition", "toState": "mul_lit", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 1 }] },
+        { "type": "Transition", "toState": "mul_ref", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 2 }] },
+        { "type": "Transition", "toState": "mul_bad", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 3 }] }
+      ]
+    },
+    {
+      "type": "PlaybackState", "name": "mul_lit", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Multiply", "inputName": "x", "value": 3 }]
+    },
+    {
+      "type": "PlaybackState", "name": "mul_ref", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Multiply", "inputName": "x", "value": "$factor" }]
+    },
+    {
+      "type": "PlaybackState", "name": "mul_bad", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Multiply", "inputName": "x", "value": "$nope" }]
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    { "type": "Numeric", "name": "x", "value": 0 },
+    { "type": "Numeric", "name": "factor", "value": 5 },
+    { "type": "Numeric", "name": "trigger", "value": 0 }
+  ]
+}

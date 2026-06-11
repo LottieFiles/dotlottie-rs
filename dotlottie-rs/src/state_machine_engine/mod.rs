@@ -13,6 +13,7 @@ pub mod errors;
 pub mod events;
 pub mod inputs;
 pub mod interactions;
+mod rng;
 pub mod security;
 pub mod state_machine;
 pub mod states;
@@ -138,6 +139,10 @@ pub struct StateMachineEngine<'a> {
     elapsed_time: f32,
     elapsed_time_states: FxHashSet<DotString>,
     elapsed_time_in_global: bool,
+
+    // Seedable PRNG backing the SetRandom action. Re-seeded on every start().
+    rng: rng::Pcg32,
+    rng_seed: u64,
 }
 
 impl<'a> StateMachineEngine<'a> {
@@ -207,6 +212,20 @@ impl<'a> StateMachineEngine<'a> {
             return Some(self.elapsed_time);
         }
         self.inputs.get_numeric(key)
+    }
+
+    /// Seed the PRNG backing the `SetRandom` action. The host passes fresh
+    /// entropy per instance for desync, or a fixed value for reproducible runs.
+    /// Re-seeds immediately so calls before or after `start()` both take effect;
+    /// `start()` also re-seeds from this value.
+    pub fn set_seed(&mut self, seed: u64) {
+        self.rng_seed = seed;
+        self.rng = rng::Pcg32::new(seed);
+    }
+
+    /// Draw the next uniform random `f32` in `[0, 1)`. Advances the PRNG.
+    pub(crate) fn next_random(&mut self) -> f32 {
+        self.rng.next_f32()
     }
 
     pub fn set_string_input(
@@ -375,6 +394,8 @@ impl<'a> StateMachineEngine<'a> {
             elapsed_time: 0.0,
             elapsed_time_states: FxHashSet::default(),
             elapsed_time_in_global: false,
+            rng: rng::Pcg32::new(rng::DEFAULT_RNG_SEED),
+            rng_seed: rng::DEFAULT_RNG_SEED,
         };
 
         if parsed_state_machine.is_err() {
@@ -488,6 +509,7 @@ impl<'a> StateMachineEngine<'a> {
         }
 
         self.elapsed_time = 0.0;
+        self.rng = rng::Pcg32::new(self.rng_seed);
 
         let initial = &self.state_machine.initial.clone();
 

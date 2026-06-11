@@ -18,6 +18,24 @@ fn resolve_numeric_ref(engine: &StateMachineEngine, value: &str) -> Option<f32> 
     }
 }
 
+/// Resolve a single optional `Clamp` bound.
+///
+/// - `None` (omitted/`null`) -> `Ok(None)`: unbounded on that side.
+/// - a literal -> `Ok(Some(value))`.
+/// - a reference that resolves -> `Ok(Some(value))`.
+/// - a reference that does *not* resolve -> `Err(())`: the caller treats the
+///   whole action as a no-op (distinct from an intentionally-omitted bound).
+fn resolve_clamp_bound(
+    engine: &StateMachineEngine,
+    bound: &Option<StringNumber>,
+) -> Result<Option<f32>, ()> {
+    match bound {
+        None => Ok(None),
+        Some(StringNumber::F32(v)) => Ok(Some(*v)),
+        Some(StringNumber::String(s)) => resolve_numeric_ref(engine, s).map(Some).ok_or(()),
+    }
+}
+
 pub mod open_url_policy;
 pub mod whitelist;
 
@@ -67,6 +85,23 @@ pub enum Action {
         input_name: DotString,
         value: StringNumber,
     },
+    SetRandom {
+        input_name: DotString,
+    },
+    Multiply {
+        input_name: DotString,
+        value: StringNumber,
+    },
+    Floor {
+        input_name: DotString,
+    },
+    Clamp {
+        input_name: DotString,
+        #[serde(default)]
+        min: Option<StringNumber>,
+        #[serde(default)]
+        max: Option<StringNumber>,
+    },
     Fire {
         input_name: DotString,
     },
@@ -96,6 +131,10 @@ impl Action {
             | Action::SetBoolean { input_name, .. }
             | Action::SetString { input_name, .. }
             | Action::SetNumeric { input_name, .. }
+            | Action::SetRandom { input_name }
+            | Action::Multiply { input_name, .. }
+            | Action::Floor { input_name }
+            | Action::Clamp { input_name, .. }
             | Action::Fire { input_name }
             | Action::Reset { input_name } => input_name,
             Action::OpenUrl { .. }
@@ -266,6 +305,99 @@ impl ActionTrait for Action {
                                 called_from_action,
                             );
                         }
+                    }
+                }
+                Ok(())
+            }
+            Action::SetRandom { input_name } => {
+                // Only draw (advancing the PRNG) when the target input exists,
+                // matching the undeclared -> no-op rule.
+                if engine.get_numeric_input(input_name).is_some() {
+                    let value = engine.next_random();
+                    engine.set_numeric_input(input_name, value, run_pipeline, called_from_action);
+                }
+                Ok(())
+            }
+            Action::Multiply { input_name, value } => {
+                if let Some(val) = engine.get_numeric_input(input_name) {
+                    let operand = match value {
+                        StringNumber::String(string_value) => {
+                            resolve_numeric_ref(engine, string_value)
+                        }
+                        StringNumber::F32(numeric_value) => Some(*numeric_value),
+                    };
+                    // Unresolvable reference: leave the input unchanged.
+                    if let Some(operand) = operand {
+                        let result = val * operand;
+                        if result != val {
+                            engine.set_numeric_input(
+                                input_name,
+                                result,
+                                run_pipeline,
+                                called_from_action,
+                            );
+                        }
+                    }
+                }
+                Ok(())
+            }
+            Action::Floor { input_name } => {
+                if let Some(val) = engine.get_numeric_input(input_name) {
+                    let result = val.floor();
+                    if result != val {
+                        engine.set_numeric_input(
+                            input_name,
+                            result,
+                            run_pipeline,
+                            called_from_action,
+                        );
+                    }
+                }
+                Ok(())
+            }
+            Action::Clamp {
+                input_name,
+                min,
+                max,
+            } => {
+                if let Some(val) = engine.get_numeric_input(input_name) {
+                    // A present-but-unresolvable bound makes the whole action a
+                    // no-op; an omitted bound is unbounded on that side.
+                    let (lo, hi) = match (
+                        resolve_clamp_bound(engine, min),
+                        resolve_clamp_bound(engine, max),
+                    ) {
+                        (Ok(lo), Ok(hi)) => (lo, hi),
+                        _ => return Ok(()),
+                    };
+
+                    // Both bounds absent -> nothing to clamp.
+                    if lo.is_none() && hi.is_none() {
+                        return Ok(());
+                    }
+
+                    // Inverted bounds are invalid; don't silently swap.
+                    if let (Some(lo), Some(hi)) = (lo, hi) {
+                        if lo > hi {
+                            return Ok(());
+                        }
+                    }
+
+                    let mut result = val;
+                    if let Some(lo) = lo {
+                        result = result.max(lo);
+                    }
+                    if let Some(hi) = hi {
+                        result = result.min(hi);
+                    }
+
+                    if result != val {
+                        engine.set_numeric_input(
+                            input_name,
+                            result,
+                            run_pipeline,
+                            called_from_action,
+                        );
                     }
                 }
                 Ok(())

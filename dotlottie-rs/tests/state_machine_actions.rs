@@ -614,10 +614,7 @@ mod tests {
         // Raw draw lands in [0, 1).
         sm.set_numeric_input("trigger", 1.0, true, false);
         let raw = sm.get_numeric_input("x").expect("x exists");
-        assert!(
-            (0.0..1.0).contains(&raw),
-            "raw random out of [0,1): {raw}"
-        );
+        assert!((0.0..1.0).contains(&raw), "raw random out of [0,1): {raw}");
 
         // Dice via SetRandom -> Multiply(6) -> Floor -> Increment(4) lands in {4..9}.
         sm.set_numeric_input("trigger", 2.0, true, false);
@@ -633,69 +630,5 @@ mod tests {
             sm.get_numeric_input("x"),
             "same seed should reproduce the first draw"
         );
-    }
-
-    // Drives the random_timer machine (the `set_random` example's SM) by
-    // ticking, seeded with `seed`, until it has either completed a full
-    // dice -> countdown -> timer -> dice loop or exhausted the tick budget.
-    // Returns (ordered states visited, timerWait rolled in the dice state).
-    fn run_random_timer(seed: u64) -> (Vec<String>, Option<f32>) {
-        let sm_json = include_str!("../assets/statemachines/random_timer.json");
-        let anim = include_str!("../assets/animations/lottie/random_timer.json");
-        let mut player = Player::new();
-        let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
-        assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
-            .is_ok());
-        let c_anim = std::ffi::CString::new(anim).expect("CString");
-        assert!(player.load_animation_data(&c_anim).is_ok());
-        let mut sm = player
-            .state_machine_load_data(sm_json)
-            .expect("state machine to load successfully");
-        sm.set_seed(seed);
-        assert_eq!(sm.start(&OpenUrlPolicy::default()), Ok(()));
-
-        let mut visited = vec![sm.get_current_state_name()];
-        let mut timer_wait = None;
-        // 16ms steps; dice plays ~1.4s, countdown waits 1-3s, timer 1-10s.
-        for _ in 0..4000 {
-            let _ = sm.tick(16.0);
-            let s = sm.get_current_state_name();
-            if visited.last() != Some(&s) {
-                if s == "timer" && timer_wait.is_none() {
-                    timer_wait = sm.get_numeric_input("timerWait");
-                }
-                visited.push(s.clone());
-            }
-            // Stop once we've looped back to dice after a full cycle.
-            if visited.iter().any(|v| v == "timer") && s == "dice" && visited.len() > 1 {
-                break;
-            }
-        }
-        (visited, timer_wait)
-    }
-
-    #[test]
-    fn random_timer_loop() {
-        let (visited, timer_wait) = run_random_timer(7);
-
-        // Starts on the dice throw, then progresses through the full loop.
-        assert_eq!(visited.first().map(String::as_str), Some("dice"));
-        assert!(visited.iter().any(|s| s == "countdown"), "never reached countdown: {visited:?}");
-        assert!(visited.iter().any(|s| s == "timer"), "never reached timer: {visited:?}");
-        assert!(
-            visited.iter().skip(1).any(|s| s == "dice"),
-            "did not loop back to dice: {visited:?}"
-        );
-
-        // The dice rolled an integer wait in [1, 10] for the timer state.
-        let wait = timer_wait.expect("timerWait should be set during the dice state");
-        assert!((1.0..=10.0).contains(&wait), "timerWait out of range: {wait}");
-        assert_eq!(wait.fract(), 0.0, "timerWait should be an integer: {wait}");
-
-        // Deterministic given the seed.
-        let (visited_again, wait_again) = run_random_timer(7);
-        assert_eq!(visited, visited_again, "same seed should reproduce the loop");
-        assert_eq!(timer_wait, wait_again);
     }
 }

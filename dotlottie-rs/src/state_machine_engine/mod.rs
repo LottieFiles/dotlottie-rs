@@ -140,7 +140,6 @@ pub struct StateMachineEngine<'a> {
     elapsed_time_states: FxHashSet<DotString>,
     elapsed_time_in_global: bool,
 
-    // Seedable PRNG backing the SetRandom action. Re-seeded on every start().
     rng: rng::Pcg32,
     rng_seed: u64,
 }
@@ -214,16 +213,11 @@ impl<'a> StateMachineEngine<'a> {
         self.inputs.get_numeric(key)
     }
 
-    /// Seed the PRNG backing the `SetRandom` action. The host passes fresh
-    /// entropy per instance for desync, or a fixed value for reproducible runs.
-    /// Re-seeds immediately so calls before or after `start()` both take effect;
-    /// `start()` also re-seeds from this value.
     pub fn set_seed(&mut self, seed: u64) {
         self.rng_seed = seed;
         self.rng = rng::Pcg32::new(seed);
     }
 
-    /// Draw the next uniform random `f32` in `[0, 1)`. Advances the PRNG.
     pub(crate) fn next_random(&mut self) -> f32 {
         self.rng.next_f32()
     }

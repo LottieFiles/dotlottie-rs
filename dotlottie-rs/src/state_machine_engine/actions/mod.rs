@@ -18,13 +18,6 @@ fn resolve_numeric_ref(engine: &StateMachineEngine, value: &str) -> Option<f32> 
     }
 }
 
-/// Resolve a single optional `Clamp` bound.
-///
-/// - `None` (omitted/`null`) -> `Ok(None)`: unbounded on that side.
-/// - a literal -> `Ok(Some(value))`.
-/// - a reference that resolves -> `Ok(Some(value))`.
-/// - a reference that does *not* resolve -> `Err(())`: the caller treats the
-///   whole action as a no-op (distinct from an intentionally-omitted bound).
 fn resolve_clamp_bound(
     engine: &StateMachineEngine,
     bound: &Option<StringNumber>,
@@ -310,8 +303,6 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::SetRandom { input_name } => {
-                // Only draw (advancing the PRNG) when the target input exists,
-                // matching the undeclared -> no-op rule.
                 if engine.get_numeric_input(input_name).is_some() {
                     let value = engine.next_random();
                     engine.set_numeric_input(input_name, value, run_pipeline, called_from_action);
@@ -326,7 +317,6 @@ impl ActionTrait for Action {
                         }
                         StringNumber::F32(numeric_value) => Some(*numeric_value),
                     };
-                    // Unresolvable reference: leave the input unchanged.
                     if let Some(operand) = operand {
                         let result = val * operand;
                         if result != val {

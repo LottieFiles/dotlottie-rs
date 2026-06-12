@@ -1080,9 +1080,6 @@ impl DotLottiePlayerWasm {
         }
     }
 
-    /// Seed the state machine's PRNG (used by the SetRandom action). Pass fresh
-    /// entropy per instance for desynchronized randomness, or a fixed value for
-    /// reproducible runs. Re-applied on every start().
     #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_set_seed(&mut self, seed: u64) -> bool {
         #[cfg(not(feature = "state-machines"))]

@@ -386,6 +386,30 @@ impl DotLottiePlayerWasm {
         }
     }
 
+    /// Load an AES-encrypted .lottie archive from raw bytes using `password`.
+    ///
+    /// `setup_target` must have been called first. Returns `false` if the
+    /// runtime was built without the `encryption` feature or the password is
+    /// wrong.
+    #[cfg_attr(
+        not(all(feature = "dotlottie", feature = "encryption")),
+        allow(unused_variables)
+    )]
+    pub fn load_dotlottie_data_with_password(&mut self, data: &[u8], password: &str) -> bool {
+        #[cfg(not(all(feature = "dotlottie", feature = "encryption")))]
+        {
+            false
+        }
+        #[cfg(all(feature = "dotlottie", feature = "encryption"))]
+        {
+            #[cfg(feature = "webgl")]
+            self.activate_gl();
+            self.player
+                .load_dotlottie_data_with_password(data, password)
+                .is_ok()
+        }
+    }
+
     /// Load an animation from an already-loaded .lottie archive by its ID.
     ///
     /// `setup_target` must have been called first.

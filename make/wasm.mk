@@ -1,5 +1,5 @@
 WASM_TARGET  := wasm32-unknown-unknown
-WASM_FEATURES_COMMON := tvg,tvg-cpu,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-otf,tvg-lottie-expressions,dotlottie,theming,state-machines,wasm-bindgen-api
+WASM_FEATURES_COMMON := tvg,tvg-cpu,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-otf,tvg-lottie-expressions,dotlottie,theming,state-machines,wasm-bindgen-api,encryption
 WASM_MANIFEST := dotlottie-rs/Cargo.toml
 WASM_ARTIFACT := dotlottie-rs/target/$(WASM_TARGET)/release/dotlottie_rs.wasm
 
@@ -23,9 +23,12 @@ wasm-setup:
 		--version "$$(grep -A1 'name = "wasm-bindgen"' $(WASM_LOCKFILE) | grep version | head -1 | sed 's/.*"\(.*\)"/\1/')" \
 		--locked
 
+# The `encryption` feature pulls getrandom 0.3, which on wasm32 requires the
+# `getrandom_backend="wasm_js"` cfg or the build fails with a hard compile_error.
+# Appended automatically whenever `encryption` is in the resolved feature set.
 define wasm_build
 	@mkdir -p $(3)
-	CC=$(WASM_CC) CXX=$(WASM_CXX) RUSTFLAGS="$(2)" \
+	CC=$(WASM_CC) CXX=$(WASM_CXX) RUSTFLAGS="$(2)$(if $(findstring encryption,$(WASM_FEATURES_COMMON) $(1)), --cfg getrandom_backend=\"wasm_js\")" \
 		cargo rustc \
 			--manifest-path $(WASM_MANIFEST) \
 			--crate-type cdylib \

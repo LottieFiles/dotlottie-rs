@@ -9,4 +9,8 @@ pub enum DotLottieError {
     AnimationsNotFound,
     ManifestNotFound,
     InvalidUtf8Error,
+    /// Archive is encrypted but no usable password was supplied.
+    EncryptedArchive,
+    /// A password was supplied but it did not decrypt the archive.
+    InvalidPassword,
 }

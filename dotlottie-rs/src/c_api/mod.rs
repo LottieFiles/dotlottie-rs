@@ -240,6 +240,38 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     }
 }
 
+/// Load an AES-encrypted .lottie archive using the given password.
+///
+/// Returns `FeatureNotEnabled` if the runtime was built without the
+/// `encryption` feature, `InvalidPassword` if the password is wrong, and
+/// `EncryptedArchive` if the archive is encrypted but no password works.
+#[cfg_attr(not(feature = "encryption"), allow(unused_variables))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_load_dotlottie_data_with_password(
+    ptr: *mut Player,
+    file_data: *const c_char,
+    file_size: usize,
+    password: *const c_char,
+) -> DotLottieResult {
+    #[cfg(not(feature = "encryption"))]
+    {
+        DotLottieResult::FeatureNotEnabled
+    }
+    #[cfg(feature = "encryption")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+            if file_data.is_null() || file_size == 0 || password.is_null() {
+                return DotLottieResult::InvalidParameter;
+            }
+            let file_slice = slice::from_raw_parts(file_data as *const u8, file_size);
+            let Ok(password) = CStr::from_ptr(password).to_str() else {
+                return DotLottieResult::InvalidParameter;
+            };
+            dotlottie_player.load_dotlottie_data_with_password(file_slice, password)
+        })
+    }
+}
+
 /// Get the manifest as a JSON string.
 ///
 /// # Parameters

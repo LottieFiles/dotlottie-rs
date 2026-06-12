@@ -7,6 +7,8 @@ pub enum PlayerError {
     ManifestNotAvailable,
     AnimationNotLoaded,
     InsufficientCondition,
+    EncryptedArchive,
+    InvalidPassword,
 }
 
 impl From<LottieRendererError> for PlayerError {

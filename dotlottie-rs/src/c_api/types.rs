@@ -29,6 +29,8 @@ pub enum DotLottieResult {
     AnimationNotLoaded = 4,
     InsufficientCondition = 5,
     FeatureNotEnabled = 6,
+    EncryptedArchive = 7,
+    InvalidPassword = 8,
 }
 
 impl From<PlayerError> for DotLottieResult {
@@ -39,6 +41,8 @@ impl From<PlayerError> for DotLottieResult {
             PlayerError::ManifestNotAvailable => DotLottieResult::ManifestNotAvailable,
             PlayerError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
             PlayerError::InsufficientCondition => DotLottieResult::InsufficientCondition,
+            PlayerError::EncryptedArchive => DotLottieResult::EncryptedArchive,
+            PlayerError::InvalidPassword => DotLottieResult::InvalidPassword,
         }
     }
 }

@@ -14,7 +14,7 @@ use crate::{
 };
 use crate::{ColorSpace, Renderer, Rgba};
 #[cfg(feature = "dotlottie")]
-use crate::{DotLottieManager, Manifest};
+use crate::{DotLottieError, DotLottieManager, Manifest};
 #[cfg(feature = "state-machines")]
 use crate::{StateMachineEngine, StateMachineEngineError};
 
@@ -906,15 +906,40 @@ impl Player {
 
     #[cfg(feature = "dotlottie")]
     pub fn load_dotlottie_data(&mut self, file_data: &[u8]) -> Result<(), PlayerError> {
-        #[cfg(feature = "dotlottie")]
-        {
-            self.animation_id = None;
+        self.load_dotlottie_data_inner(file_data, None)
+    }
+
+    #[cfg(feature = "dotlottie")]
+    pub fn load_dotlottie_data_with_password(
+        &mut self,
+        file_data: &[u8],
+        password: &str,
+    ) -> Result<(), PlayerError> {
+        self.load_dotlottie_data_inner(file_data, Some(password))
+    }
+
+    #[cfg(feature = "dotlottie")]
+    fn map_dotlottie_load_error(err: DotLottieError) -> PlayerError {
+        match err {
+            DotLottieError::EncryptedArchive => PlayerError::EncryptedArchive,
+            DotLottieError::InvalidPassword => PlayerError::InvalidPassword,
+            _ => PlayerError::Unknown,
         }
+    }
+
+    #[cfg(feature = "dotlottie")]
+    fn load_dotlottie_data_inner(
+        &mut self,
+        file_data: &[u8],
+        password: Option<&str>,
+    ) -> Result<(), PlayerError> {
+        self.animation_id = None;
         #[cfg(feature = "theming")]
         {
             self.theme_id = None;
         }
-        let manager = DotLottieManager::new(file_data).map_err(|_| PlayerError::Unknown)?;
+        let manager = DotLottieManager::with_password(file_data, password)
+            .map_err(Self::map_dotlottie_load_error)?;
 
         let (active_animation, active_animation_id) =
             if let Some(anim_id) = self.animation_id.as_deref().and_then(|c| c.to_str().ok()) {

@@ -34,6 +34,7 @@ tracking_allocator = []
 dotlottie = ["dep:zip"]
 state-machines = ["dotlottie"]
 theming = ["dotlottie"]
+encryption = ["dotlottie", "zip/aes-crypto", "dep:zeroize"]
 wasm-bindgen-api = ["dep:console_error_panic_hook"] # OOP JS wrapper via wasm-bindgen
 webgl = ["wasm-bindgen-api", "web-sys/WebGl2RenderingContext", "web-sys/WebGlBuffer", "web-sys/WebGlFramebuffer", "web-sys/WebGlProgram", "web-sys/WebGlRenderbuffer", "web-sys/WebGlShader", "web-sys/WebGlTexture", "web-sys/WebGlUniformLocation", "web-sys/WebGlVertexArrayObject"]
 webgpu = ["wasm-bindgen-api", "web-sys/GpuAdapter", "web-sys/GpuAddressMode", "web-sys/GpuBindGroup", "web-sys/GpuBindGroupDescriptor", "web-sys/GpuBindGroupEntry", "web-sys/GpuBindGroupLayout", "web-sys/GpuBindGroupLayoutDescriptor", "web-sys/GpuBindGroupLayoutEntry", "web-sys/GpuBlendComponent", "web-sys/GpuBlendFactor", "web-sys/GpuBlendOperation", "web-sys/GpuBlendState", "web-sys/GpuBuffer", "web-sys/GpuBufferBinding", "web-sys/GpuBufferBindingLayout", "web-sys/GpuBufferBindingType", "web-sys/GpuBufferDescriptor", "web-sys/GpuCanvasAlphaMode", "web-sys/GpuCanvasContext", "web-sys/GpuCanvasConfiguration", "web-sys/GpuColorDict", "web-sys/GpuColorTargetState", "web-sys/GpuCommandBuffer", "web-sys/GpuCommandBufferDescriptor", "web-sys/GpuCommandEncoder", "web-sys/GpuCommandEncoderDescriptor", "web-sys/GpuCompareFunction", "web-sys/GpuComputePassDescriptor", "web-sys/GpuComputePassEncoder", "web-sys/GpuComputePassTimestampWrites", "web-sys/GpuComputePipeline", "web-sys/GpuComputePipelineDescriptor", "web-sys/GpuCullMode", "web-sys/GpuDepthStencilState", "web-sys/GpuDevice", "web-sys/GpuExtent3dDict", "web-sys/GpuFilterMode", "web-sys/GpuFragmentState", "web-sys/GpuFrontFace", "web-sys/GpuIndexFormat", "web-sys/GpuLoadOp", "web-sys/GpuMipmapFilterMode", "web-sys/GpuMultisampleState", "web-sys/GpuPrimitiveState", "web-sys/GpuPrimitiveTopology", "web-sys/GpuPipelineLayout", "web-sys/GpuPipelineLayoutDescriptor", "web-sys/GpuProgrammableStage", "web-sys/GpuQuerySet", "web-sys/GpuQueue", "web-sys/GpuRenderPassColorAttachment", "web-sys/GpuRenderPassDepthStencilAttachment", "web-sys/GpuRenderPassDescriptor", "web-sys/GpuRenderPassEncoder", "web-sys/GpuRenderPassTimestampWrites", "web-sys/GpuRenderPipeline", "web-sys/GpuRenderPipelineDescriptor", "web-sys/GpuSampler", "web-sys/GpuSamplerBindingLayout", "web-sys/GpuSamplerBindingType", "web-sys/GpuSamplerDescriptor", "web-sys/GpuShaderModule", "web-sys/GpuShaderModuleDescriptor", "web-sys/GpuStencilFaceState", "web-sys/GpuStencilOperation", "web-sys/GpuStorageTextureAccess", "web-sys/GpuStorageTextureBindingLayout", "web-sys/GpuStoreOp", "web-sys/GpuTexelCopyBufferLayout", "web-sys/GpuTexelCopyTextureInfo", "web-sys/GpuTexture", "web-sys/GpuTextureAspect", "web-sys/GpuTextureBindingLayout", "web-sys/GpuTextureDescriptor", "web-sys/GpuTextureDimension", "web-sys/GpuTextureFormat", "web-sys/GpuTextureSampleType", "web-sys/GpuTextureView", "web-sys/GpuTextureViewDescriptor", "web-sys/GpuTextureViewDimension", "web-sys/GpuVertexAttribute", "web-sys/GpuVertexBufferLayout", "web-sys/GpuVertexFormat", "web-sys/GpuVertexState", "web-sys/GpuVertexStepMode"]
@@ -45,6 +46,7 @@ serde_json = { version = "1.0", default-features = false, features = ["preserve_
 serde = { version = "1.0", features = ["derive"] }
 rustc-hash = "2.1.1"
 zip = { version = "2.4.2", default-features = false, features = ["deflate"], optional = true }
+zeroize = { version = "1", optional = true }
 bitflags = { version = "2.6", optional = true }
 
 [target.'cfg(target_os = "android")'.dependencies]
@@ -71,6 +73,9 @@ zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 criterion = "0.5.1"
+# Lets integration tests build AES fixtures; `zip` is otherwise not visible to
+# the `tests/` crate. aes-crypto matches the runtime `encryption` feature.
+zip = { version = "2.4.2", default-features = false, features = ["deflate", "aes-crypto"] }
 # To test running without default deps: use "dotlottie-rs = { path = ".", default-features = false, features = [] }"
 # Using feature flag "dev" will also include the default features.
 # This is a workaround to enable this feature only on dev.

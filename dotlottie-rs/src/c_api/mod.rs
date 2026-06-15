@@ -16,7 +16,9 @@ use types::*;
 pub mod types;
 
 #[cfg(all(feature = "tvg-wg", any(target_os = "macos", target_os = "ios")))]
-pub mod apple;
+mod apple {
+    include!(concat!(env!("OUT_DIR"), "/apple.rs"));
+}
 
 /// Wrapper for a raw GL display pointer (e.g. EGLDisplay, HDC). Pass null for platforms
 /// that do not require a display handle (e.g., macOS CGL).

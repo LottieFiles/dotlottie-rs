@@ -8,12 +8,13 @@ use crate::string::{DotString, DotStringInterner};
 pub(crate) const GLOBAL_INPUT_PREFIX: char = '@';
 pub(crate) const ELAPSED_TIME: &str = "@elapsedTime";
 
+const DEFAULT_RNG_SEED: u64 = 0x853c_49e6_748f_ea9b;
+
 pub mod actions;
 pub mod errors;
 pub mod events;
 pub mod inputs;
 pub mod interactions;
-mod rng;
 pub mod security;
 pub mod state_machine;
 pub mod states;
@@ -140,7 +141,7 @@ pub struct StateMachineEngine<'a> {
     elapsed_time_states: FxHashSet<DotString>,
     elapsed_time_in_global: bool,
 
-    rng: rng::Pcg32,
+    rng: oorandom::Rand32,
     rng_seed: u64,
 }
 
@@ -215,11 +216,11 @@ impl<'a> StateMachineEngine<'a> {
 
     pub fn set_seed(&mut self, seed: u64) {
         self.rng_seed = seed;
-        self.rng = rng::Pcg32::new(seed);
+        self.rng = oorandom::Rand32::new(seed);
     }
 
     pub(crate) fn next_random(&mut self) -> f32 {
-        self.rng.next_f32()
+        self.rng.rand_float()
     }
 
     pub fn set_string_input(
@@ -388,8 +389,8 @@ impl<'a> StateMachineEngine<'a> {
             elapsed_time: 0.0,
             elapsed_time_states: FxHashSet::default(),
             elapsed_time_in_global: false,
-            rng: rng::Pcg32::new(rng::DEFAULT_RNG_SEED),
-            rng_seed: rng::DEFAULT_RNG_SEED,
+            rng: oorandom::Rand32::new(DEFAULT_RNG_SEED),
+            rng_seed: DEFAULT_RNG_SEED,
         };
 
         if parsed_state_machine.is_err() {
@@ -503,7 +504,7 @@ impl<'a> StateMachineEngine<'a> {
         }
 
         self.elapsed_time = 0.0;
-        self.rng = rng::Pcg32::new(self.rng_seed);
+        self.rng = oorandom::Rand32::new(self.rng_seed);
 
         let initial = &self.state_machine.initial.clone();
 

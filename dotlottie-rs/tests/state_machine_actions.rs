@@ -630,5 +630,40 @@ mod tests {
             sm.get_numeric_input("x"),
             "same seed should reproduce the first draw"
         );
+
+        // Float range: SetRandom(min:10, max:20) lands in [10, 20).
+        sm.set_numeric_input("trigger", 5.0, true, false);
+        let f = sm.get_numeric_input("frange").expect("frange exists");
+        assert!((10.0..20.0).contains(&f), "float range out of [10,20): {f}");
+    }
+
+    // Integer-range SetRandom(min:1, max:6, integer:true) over many seeds: every
+    // draw is an integer in the *inclusive* {1..6}, and across seeds it reaches
+    // both ends (proving `max` is included — the +1 in the formula).
+    #[test]
+    fn set_random_integer_range() {
+        let json = include_str!("../assets/statemachines/action_tests/set_random.json");
+        let mut seen_min = false;
+        let mut seen_max = false;
+        for seed in 0..300u64 {
+            let mut player = Player::new();
+            let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
+            let mut sm = load_action_sm(&mut player, &mut buffer, json);
+            sm.set_seed(seed);
+            sm.set_numeric_input("trigger", 4.0, true, false);
+            let v = sm.get_numeric_input("irange").expect("irange exists");
+            assert!(
+                (1.0..=6.0).contains(&v),
+                "integer range out of {{1..6}}: {v}"
+            );
+            assert_eq!(v.fract(), 0.0, "integer-mode draw not an integer: {v}");
+            seen_min |= v == 1.0;
+            seen_max |= v == 6.0;
+        }
+        assert!(seen_min, "integer range never produced the min (1)");
+        assert!(
+            seen_max,
+            "integer range never produced the inclusive max (6)"
+        );
     }
 }

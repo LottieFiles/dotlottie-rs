@@ -8,7 +8,9 @@
       "transitions": [
         { "type": "Transition", "toState": "roll_raw", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 1 }] },
         { "type": "Transition", "toState": "roll_dice", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 2 }] },
-        { "type": "Transition", "toState": "roll_raw2", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 3 }] }
+        { "type": "Transition", "toState": "roll_raw2", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 3 }] },
+        { "type": "Transition", "toState": "roll_int", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 4 }] },
+        { "type": "Transition", "toState": "roll_float", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 5 }] }
       ]
     },
     {
@@ -27,6 +29,14 @@
     {
       "type": "PlaybackState", "name": "roll_raw2", "animation": "", "autoplay": true, "transitions": [],
       "entryActions": [{ "type": "SetRandom", "inputName": "x2" }]
+    },
+    {
+      "type": "PlaybackState", "name": "roll_int", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "SetRandom", "inputName": "irange", "min": 1, "max": 6, "integer": true }]
+    },
+    {
+      "type": "PlaybackState", "name": "roll_float", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "SetRandom", "inputName": "frange", "min": 10, "max": 20 }]
     }
   ],
   "interactions": [],
@@ -34,6 +44,8 @@
     { "type": "Numeric", "name": "x", "value": 0 },
     { "type": "Numeric", "name": "x2", "value": 0 },
     { "type": "Numeric", "name": "dice", "value": 0 },
+    { "type": "Numeric", "name": "irange", "value": 0 },
+    { "type": "Numeric", "name": "frange", "value": 0 },
     { "type": "Numeric", "name": "trigger", "value": 0 }
   ]
 }

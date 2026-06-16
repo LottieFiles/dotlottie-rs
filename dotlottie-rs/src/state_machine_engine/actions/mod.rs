@@ -29,6 +29,18 @@ fn resolve_clamp_bound(
     }
 }
 
+fn resolve_random_bound(
+    engine: &StateMachineEngine,
+    bound: &Option<StringNumber>,
+    default: f32,
+) -> Result<f32, ()> {
+    match bound {
+        None => Ok(default),
+        Some(StringNumber::F32(v)) => Ok(*v),
+        Some(StringNumber::String(s)) => resolve_numeric_ref(engine, s).ok_or(()),
+    }
+}
+
 pub mod open_url_policy;
 pub mod whitelist;
 
@@ -80,6 +92,12 @@ pub enum Action {
     },
     SetRandom {
         input_name: DotString,
+        #[serde(default)]
+        min: Option<StringNumber>,
+        #[serde(default)]
+        max: Option<StringNumber>,
+        #[serde(default)]
+        integer: Option<bool>,
     },
     Multiply {
         input_name: DotString,
@@ -124,7 +142,7 @@ impl Action {
             | Action::SetBoolean { input_name, .. }
             | Action::SetString { input_name, .. }
             | Action::SetNumeric { input_name, .. }
-            | Action::SetRandom { input_name }
+            | Action::SetRandom { input_name, .. }
             | Action::Multiply { input_name, .. }
             | Action::Floor { input_name }
             | Action::Clamp { input_name, .. }
@@ -302,9 +320,31 @@ impl ActionTrait for Action {
                 }
                 Ok(())
             }
-            Action::SetRandom { input_name } => {
+            Action::SetRandom {
+                input_name,
+                min,
+                max,
+                integer,
+            } => {
                 if engine.get_numeric_input(input_name).is_some() {
-                    let value = engine.next_random();
+                    let lo = match resolve_random_bound(engine, min, 0.0) {
+                        Ok(v) => v,
+                        Err(()) => return Ok(()),
+                    };
+                    let hi = match resolve_random_bound(engine, max, 1.0) {
+                        Ok(v) => v,
+                        Err(()) => return Ok(()),
+                    };
+                    if lo > hi {
+                        return Ok(());
+                    }
+
+                    let r = engine.next_random();
+                    let value = if matches!(integer, Some(true)) {
+                        lo + (r * (hi - lo + 1.0)).floor()
+                    } else {
+                        lo + r * (hi - lo)
+                    };
                     engine.set_numeric_input(input_name, value, run_pipeline, called_from_action);
                 }
                 Ok(())

@@ -808,7 +808,7 @@ apple-package: apple-frameworks
 	fi
 	
 	
-	@for framework_dir in $$(find $(APPLE_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK) -path "*macos*" -name "DotLottiePlayer.framework"); do \
+	@for framework_dir in $$(find $(APPLE_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK) \( -path "*macos*" -o -path "*maccatalyst*" \) -name "DotLottiePlayer.framework"); do \
 		echo "Processing framework: $$framework_dir"; \
 		(cd "$$framework_dir" && \
 			mkdir A && \

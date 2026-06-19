@@ -1,0 +1,27 @@
+{
+  "initial": "global",
+  "states": [
+    {
+      "type": "GlobalState",
+      "name": "global",
+      "animation": "",
+      "transitions": [
+        { "type": "Transition", "toState": "floor_pos", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 1 }] },
+        { "type": "Transition", "toState": "floor_neg", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 2 }] }
+      ]
+    },
+    {
+      "type": "PlaybackState", "name": "floor_pos", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Floor", "inputName": "x" }]
+    },
+    {
+      "type": "PlaybackState", "name": "floor_neg", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Floor", "inputName": "x" }]
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    { "type": "Numeric", "name": "x", "value": 0 },
+    { "type": "Numeric", "name": "trigger", "value": 0 }
+  ]
+}

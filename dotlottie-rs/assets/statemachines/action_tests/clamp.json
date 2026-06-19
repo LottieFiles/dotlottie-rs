@@ -1,0 +1,59 @@
+{
+  "initial": "global",
+  "states": [
+    {
+      "type": "GlobalState",
+      "name": "global",
+      "animation": "",
+      "transitions": [
+        { "type": "Transition", "toState": "clamp_high", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 1 }] },
+        { "type": "Transition", "toState": "clamp_low", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 2 }] },
+        { "type": "Transition", "toState": "clamp_in", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 3 }] },
+        { "type": "Transition", "toState": "clamp_min_only", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 4 }] },
+        { "type": "Transition", "toState": "clamp_max_only", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 5 }] },
+        { "type": "Transition", "toState": "clamp_ref", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 6 }] },
+        { "type": "Transition", "toState": "clamp_inverted", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 7 }] },
+        { "type": "Transition", "toState": "clamp_none", "guards": [{ "type": "Numeric", "conditionType": "Equal", "inputName": "trigger", "compareTo": 8 }] }
+      ]
+    },
+    {
+      "type": "PlaybackState", "name": "clamp_high", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Clamp", "inputName": "x", "min": 0, "max": 100 }]
+    },
+    {
+      "type": "PlaybackState", "name": "clamp_low", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Clamp", "inputName": "x", "min": 0, "max": 100 }]
+    },
+    {
+      "type": "PlaybackState", "name": "clamp_in", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Clamp", "inputName": "x", "min": 0, "max": 100 }]
+    },
+    {
+      "type": "PlaybackState", "name": "clamp_min_only", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Clamp", "inputName": "x", "min": 0 }]
+    },
+    {
+      "type": "PlaybackState", "name": "clamp_max_only", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Clamp", "inputName": "x", "max": 100 }]
+    },
+    {
+      "type": "PlaybackState", "name": "clamp_ref", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Clamp", "inputName": "x", "min": "$lo", "max": "$hi" }]
+    },
+    {
+      "type": "PlaybackState", "name": "clamp_inverted", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Clamp", "inputName": "x", "min": 100, "max": 0 }]
+    },
+    {
+      "type": "PlaybackState", "name": "clamp_none", "animation": "", "autoplay": true, "transitions": [],
+      "entryActions": [{ "type": "Clamp", "inputName": "x" }]
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    { "type": "Numeric", "name": "x", "value": 0 },
+    { "type": "Numeric", "name": "lo", "value": 10 },
+    { "type": "Numeric", "name": "hi", "value": 20 },
+    { "type": "Numeric", "name": "trigger", "value": 0 }
+  ]
+}

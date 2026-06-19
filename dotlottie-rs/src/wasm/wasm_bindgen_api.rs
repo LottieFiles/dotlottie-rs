@@ -1081,6 +1081,22 @@ impl DotLottiePlayerWasm {
     }
 
     #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
+    pub fn sm_set_seed(&mut self, seed: u64) -> bool {
+        #[cfg(not(feature = "state-machines"))]
+        {
+            return false;
+        }
+        #[cfg(feature = "state-machines")]
+        {
+            let Some(ref mut sm) = self.state_machine else {
+                return false;
+            };
+            sm.set_seed(seed);
+            true
+        }
+    }
+
+    #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
     pub fn sm_get_numeric_input(&self, key: &str) -> Option<f32> {
         #[cfg(not(feature = "state-machines"))]
         {

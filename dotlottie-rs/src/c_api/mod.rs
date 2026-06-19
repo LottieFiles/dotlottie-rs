@@ -2084,6 +2084,30 @@ pub unsafe extern "C" fn dotlottie_state_machine_set_numeric_input(
     }
 }
 
+/// Seed the state machine's PRNG (used by the SetRandom action).
+///
+/// Pass fresh entropy per instance for desynchronized randomness, or a fixed
+/// value for reproducible runs. Takes effect immediately and is re-applied on
+/// every `start()`.
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_set_seed(
+    sm: *mut DotLottieStateMachine,
+    seed: u64,
+) -> DotLottieResult {
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            state_machine.set_seed(seed);
+            DotLottieResult::Success
+        })
+    }
+}
+
 /// Set a string input
 #[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
 #[no_mangle]

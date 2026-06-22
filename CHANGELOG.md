@@ -1,3 +1,39 @@
+## 0.1.58 (2026-06-22)
+
+### Features
+
+#### add watchOS support (#542)
+
+#### upgrade to thorvg v1.0.4 (#555)
+
+#### added fmt and clippy checks on git pre-hooks (#568)
+
+#### upgrade thorvg to v1.0.5 (#574)
+
+#### 🎸 [state machine] added elapsed_time reserved input (#571)
+
+#### update ThorVG to v1.0.6 (#578)
+
+#### state machine SetRandom, Clamp, Multiple, Floor actions  (#577)
+
+#### webgpu for macos + ios (#576)
+
+### Fixes
+
+#### emit cargo:root= so dependents can locate ThorVG artifacts (#538)
+
+#### use stable Rust toolchain for WASM release build (#540)
+
+#### default crate-type to rlib for portability (#539)
+
+#### respect externally-set CXXSTDLIB env var (#541)
+
+#### add rerun-if-changed directives for ThorVG sources (#543)
+
+#### exclude wasm stubs from generated C header (#550)
+
+#### bridge wgpuSurfaceConfigure to native C ABI (#572)
+
 ## 0.1.57 (2026-04-10)
 
 ### Features

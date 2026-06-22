@@ -605,16 +605,24 @@ namespace tvg
 
             cc_build.include(&wgpu_include_path);
 
-            // - tvg_wgpu_surface_fixup.h: ThorVG hardcodes
-            //   WGPUPresentMode_Immediate, but iOS Metal surfaces only support
-            //   Fifo and wgpu-native hard-errors on an unsupported present mode.
-            //   The shim rewrites it to Fifo on iOS.
+            // Force-include a generated header that redirects ThorVG's
+            // wgpuSurfaceConfigure calls through our shim
+            // (_tvg_wgpu_surface_configure_fixup in src/c_api/apple.rs). ThorVG
+            // hardcodes WGPUPresentMode_Immediate, but iOS Metal surfaces only
+            // support Fifo and wgpu-native hard-errors on an unsupported present
+            // mode; the shim rewrites it to Fifo on iOS before forwarding.
             if target_triple.contains("apple") || target_triple.contains("ios") {
-                let src_c_api =
-                    PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("src/c_api");
+                let fixup_header = out_dir.join("tvg_wgpu_surface_fixup.h");
+                fs::write(
+                    &fixup_header,
+                    "#pragma once\n\
+                     #if defined(__APPLE__) && !defined(__EMSCRIPTEN__)\n\
+                     #  define wgpuSurfaceConfigure _tvg_wgpu_surface_configure_fixup\n\
+                     #endif\n",
+                )?;
                 cc_build
                     .flag("-include")
-                    .flag(src_c_api.join("tvg_wgpu_surface_fixup.h").to_str().unwrap());
+                    .flag(fixup_header.to_str().unwrap());
             }
 
             let abs_lib_path = wgpu_lib_path
@@ -654,47 +662,6 @@ namespace tvg
                 .write_to_file(
                     PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs"),
                 )?;
-
-            // Generate the Apple wgpu surface-configure shim beside
-            // wgpu_bindings.rs. It's pulled into the crate via an `include!`
-            // in src/c_api/mod.rs. The `target_os` cfgs below are evaluated
-            // when the crate compiles (against the target), not here.
-            if target_triple.contains("apple") {
-                fs::write(
-                    out_dir.join("apple.rs"),
-                    r##"/// Intercepts ThorVG's wgpuSurfaceConfigure calls (redirected via the
-/// tvg_wgpu_surface_fixup.h force-include in build.rs).
-///
-/// ThorVG hardcodes WGPUPresentMode_Immediate for all Apple targets, but iOS
-/// Metal surfaces only support Fifo.  This shim corrects the present mode on
-/// iOS before forwarding to the real wgpu-native implementation.
-#[no_mangle]
-unsafe extern "C" fn _tvg_wgpu_surface_configure_fixup(
-    surface: ffi::WGPUSurface,
-    config: *const ffi::WGPUSurfaceConfiguration,
-) {
-    #[cfg_attr(not(target_os = "ios"), allow(unused_mut))]
-    let mut cfg = *config;
-    #[cfg(target_os = "ios")]
-    {
-        cfg.presentMode = ffi::WGPUPresentMode_WGPUPresentMode_Fifo;
-    }
-    ffi::wgpuSurfaceConfigure(surface, &cfg);
-}
-
-#[allow(
-    non_camel_case_types,
-    non_snake_case,
-    non_upper_case_globals,
-    dead_code,
-    improper_ctypes
-)]
-mod ffi {
-    include!(concat!(env!("OUT_DIR"), "/wgpu_bindings.rs"));
-}
-"##,
-                )?;
-            }
         }
 
         if cfg!(feature = "tvg-gl") {

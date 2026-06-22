@@ -597,6 +597,10 @@ namespace tvg
             }
         }
 
+        if is_wasm_unknown {
+            cc_build.flag("-fno-exceptions").flag("-fno-rtti");
+        }
+
         // wgpu-native — not used for wasm32-unknown-unknown
         if cfg!(feature = "tvg-wg") && !is_wasm_unknown {
             let (wgpu_include_path, wgpu_lib_path) =

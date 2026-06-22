@@ -3,7 +3,17 @@ mod wgpu_native {
     use std::fs;
     use std::io;
     use std::path::PathBuf;
-    const WGPU_NATIVE_VERSION: &str = "v25.0.2.1";
+    const WGPU_NATIVE_VERSION: &str = "v27.0.4.0";
+
+    /// wgpu-native is linked *dynamically* only on the Apple platforms where we ship
+    /// a shared `WgpuNative` framework: macOS and iOS (device + simulator); every
+    /// non-Apple platform links statically. Mac Catalyst is excluded — it builds
+    /// software-only (no `tvg-wg`), so it never links wgpu at all; the `macabi`
+    /// guard keeps it out of the dynamic path defensively.
+    pub fn links_dynamically(target: &str) -> bool {
+        (target.contains("apple-darwin") || target.contains("apple-ios"))
+            && !target.contains("macabi")
+    }
 
     fn artifact_name(target: &str) -> Option<&'static str> {
         match target {
@@ -14,9 +24,6 @@ mod wgpu_native {
             "aarch64-apple-ios" => Some("wgpu-ios-aarch64-release"),
             "aarch64-apple-ios-sim" => Some("wgpu-ios-aarch64-simulator-release"),
             "x86_64-apple-ios" => Some("wgpu-ios-x86_64-simulator-release"),
-            // Mac Catalyst (runs on macOS hardware)
-            "aarch64-apple-ios-macabi" => Some("wgpu-macos-aarch64-release"),
-            "x86_64-apple-ios-macabi" => Some("wgpu-macos-x86_64-release"),
             // Linux
             "aarch64-unknown-linux-gnu" => Some("wgpu-linux-aarch64-release"),
             "x86_64-unknown-linux-gnu" => Some("wgpu-linux-x86_64-release"),
@@ -102,10 +109,12 @@ mod wgpu_native {
 
         let cache = cache_dir().join(artifact);
 
+        let dylib_required = links_dynamically(target);
         // Priority 2: cached download
-        if cache.join("include/webgpu/webgpu.h").exists()
+        let cache_complete = cache.join("include/webgpu/webgpu.h").exists()
             && cache.join("lib/libwgpu_native.a").exists()
-        {
+            && (!dylib_required || cache.join("lib/libwgpu_native.dylib").exists());
+        if cache_complete {
             return Ok((cache.join("include"), cache.join("lib")));
         }
 
@@ -596,12 +605,36 @@ namespace tvg
 
             cc_build.include(&wgpu_include_path);
 
+            // Force-include a generated header that redirects ThorVG's
+            // wgpuSurfaceConfigure calls through our shim
+            // (_tvg_wgpu_surface_configure_fixup in src/c_api/apple.rs). ThorVG
+            // hardcodes WGPUPresentMode_Immediate, but iOS Metal surfaces only
+            // support Fifo and wgpu-native hard-errors on an unsupported present
+            // mode; the shim rewrites it to Fifo on iOS before forwarding.
+            if target_triple.contains("apple") || target_triple.contains("ios") {
+                let fixup_header = out_dir.join("tvg_wgpu_surface_fixup.h");
+                fs::write(
+                    &fixup_header,
+                    "#pragma once\n\
+                     #if defined(__APPLE__) && !defined(__EMSCRIPTEN__)\n\
+                     #  define wgpuSurfaceConfigure _tvg_wgpu_surface_configure_fixup\n\
+                     #endif\n",
+                )?;
+                cc_build
+                    .flag("-include")
+                    .flag(fixup_header.to_str().unwrap());
+            }
+
             let abs_lib_path = wgpu_lib_path
                 .canonicalize()
                 .expect("Failed to canonicalize wgpu lib path");
 
             println!("cargo:rustc-link-search=native={}", abs_lib_path.display());
-            println!("cargo:rustc-link-lib=static=wgpu_native");
+            if crate::wgpu_native::links_dynamically(&target_triple) {
+                println!("cargo:rustc-link-lib=dylib=wgpu_native");
+            } else {
+                println!("cargo:rustc-link-lib=static=wgpu_native");
+            }
 
             if target_triple.contains("apple") || target_triple.contains("ios") {
                 println!("cargo:rustc-link-lib=framework=Metal");
@@ -617,7 +650,7 @@ namespace tvg
             }
 
             bindgen::Builder::default()
-                .header(wgpu_include_path.join("webgpu/webgpu.h").to_str().unwrap())
+                .header(wgpu_include_path.join("webgpu/wgpu.h").to_str().unwrap())
                 .allowlist_type("WGPU.*")
                 .allowlist_function("wgpu.*")
                 .allowlist_var("WGPU_.*")

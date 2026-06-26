@@ -1,58 +1,65 @@
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
+use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
+use std::collections::HashMap;
 use std::io::Cursor;
 use std::sync::Arc;
+use std::time::Duration;
 
-/// Native audio backend powered by rodio (cpal → CoreAudio on Apple, WASAPI on
-/// Windows, ALSA/PulseAudio on Linux, OpenSL ES / AAudio on Android).
+/// Native audio backend powered by rodio
 pub struct RodioPlayer {
     /// Kept alive so the audio output chain stays open.
     _stream: OutputStream,
     stream_handle: OutputStreamHandle,
-    /// One slot per layer. None = not playing, Some(sink) = active sink.
-    sinks: Vec<Option<Sink>>,
+    sinks: HashMap<usize, Sink>,
 }
 
 impl RodioPlayer {
-    pub fn new(layer_count: usize) -> Result<Self, String> {
+    pub fn new() -> Result<Self, String> {
         let (_stream, stream_handle) = OutputStream::try_default().map_err(|e| e.to_string())?;
         Ok(Self {
             _stream,
             stream_handle,
-            sinks: (0..layer_count).map(|_| None).collect(),
+            sinks: HashMap::new(),
         })
     }
 
-    /// Start playing the given audio data in the sink owned by `layer_idx`.
-    pub fn play(&mut self, layer_idx: usize, data: Arc<[u8]>) {
-        self.sinks[layer_idx].take();
+    pub fn start(&mut self, id: usize, data: Arc<[u8]>, volume: f32, offset: f32) {
         let cursor = Cursor::new(data);
         if let Ok(source) = Decoder::new(cursor) {
             if let Ok(sink) = Sink::try_new(&self.stream_handle) {
-                sink.append(source);
-                self.sinks[layer_idx] = Some(sink);
+                sink.set_volume(volume);
+                if offset > 0.0 {
+                    sink.append(source.skip_duration(Duration::from_secs_f32(offset)));
+                } else {
+                    sink.append(source);
+                }
+                self.sinks.insert(id, sink);
             }
         }
     }
 
-    pub fn pause(&mut self, layer_idx: usize) {
-        if let Some(sink) = self.sinks[layer_idx].as_ref() {
+    pub fn stop(&mut self, id: usize) {
+        self.sinks.remove(&id);
+    }
+
+    pub fn stop_all(&mut self) {
+        self.sinks.clear();
+    }
+
+    pub fn pause_all(&mut self) {
+        for sink in self.sinks.values() {
             sink.pause();
         }
     }
 
-    pub fn resume(&mut self, layer_idx: usize) {
-        if let Some(sink) = self.sinks[layer_idx].as_ref() {
+    pub fn resume_all(&mut self) {
+        for sink in self.sinks.values() {
             sink.play();
         }
     }
 
-    pub fn stop(&mut self, layer_idx: usize) {
-        self.sinks[layer_idx].take();
-    }
-
-    /// Adjust the volume of a currently-playing sink without stopping it.
-    pub fn set_volume(&mut self, layer_idx: usize, volume: f32) {
-        if let Some(sink) = self.sinks[layer_idx].as_ref() {
+    /// Adjust the volume of a currently-playing voice without stopping it.
+    pub fn set_volume(&mut self, id: usize, volume: f32) {
+        if let Some(sink) = self.sinks.get(&id) {
             sink.set_volume(volume);
         }
     }

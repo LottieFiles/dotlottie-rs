@@ -418,12 +418,46 @@ pub struct TvgAnimation {
     total_frames: f32,
     duration: f32,
     layer_id_map: LayerIdMap,
+    #[cfg(feature = "audio")]
+    audio_bridge: std::sync::Arc<crate::audio::AudioBridge>,
+}
+
+#[cfg(feature = "audio")]
+unsafe extern "C" fn audio_resolver(
+    info: *const tvg::Tvg_Audio_Info,
+    data: *mut std::ffi::c_void,
+) {
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        if info.is_null() || data.is_null() {
+            return;
+        }
+        let info = &*info;
+        let bridge = &*(data as *const crate::audio::AudioBridge);
+
+        let payload = if info.active && info.embedded && !info.src.is_null() && info.size > 0 {
+            let bytes = std::slice::from_raw_parts(info.src as *const u8, info.size as usize);
+            Some(std::sync::Arc::<[u8]>::from(bytes))
+        } else {
+            None
+        };
+
+        bridge.push(crate::audio::AudioEvent {
+            id: info.src as usize,
+            active: info.active,
+            volume: (info.volume / 100.0).clamp(0.0, 1.0),
+            offset: info.offset,
+            data: payload,
+        });
+    }));
 }
 
 impl Default for TvgAnimation {
     fn default() -> Self {
         let raw_animation = unsafe { tvg::tvg_animation_new() };
         let raw_paint = unsafe { tvg::tvg_animation_get_picture(raw_animation) };
+
+        #[cfg(feature = "audio")]
+        let audio_bridge = std::sync::Arc::new(crate::audio::AudioBridge::default());
 
         Self {
             raw_animation,
@@ -434,6 +468,8 @@ impl Default for TvgAnimation {
             total_frames: 0.0,
             duration: 0.0,
             layer_id_map: LayerIdMap::new(),
+            #[cfg(feature = "audio")]
+            audio_bridge,
         }
     }
 }
@@ -549,6 +585,14 @@ impl Animation for TvgAnimation {
                 self.duration = self.get_duration()?;
                 self.load_markers();
                 self.layer_id_map.clear();
+                #[cfg(feature = "audio")]
+                unsafe {
+                    tvg::tvg_lottie_animation_set_audio_resolver(
+                        self.raw_animation,
+                        Some(audio_resolver),
+                        std::sync::Arc::as_ptr(&self.audio_bridge) as *mut std::ffi::c_void,
+                    );
+                }
                 Ok(())
             }
             Err(e) => {
@@ -693,11 +737,18 @@ impl Animation for TvgAnimation {
             }),
         }
     }
+
+    #[cfg(feature = "audio")]
+    fn audio_bridge(&self) -> Option<std::sync::Arc<crate::audio::AudioBridge>> {
+        Some(std::sync::Arc::clone(&self.audio_bridge))
+    }
 }
 
 impl Drop for TvgAnimation {
     fn drop(&mut self) {
         unsafe {
+            #[cfg(feature = "audio")]
+            tvg::tvg_lottie_animation_set_audio_resolver(self.raw_animation, None, ptr::null_mut());
             tvg::tvg_animation_del(self.raw_animation);
         };
     }

@@ -1,89 +1,151 @@
-use js_sys::Array;
+use js_sys::Uint8Array;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::Arc;
-use web_sys::{Blob, BlobPropertyBag, HtmlAudioElement, Url};
+use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::{spawn_local, JsFuture};
+use web_sys::{AudioBuffer, AudioBufferSourceNode, AudioContext, GainNode};
 
-/// Web audio backend powered by the browser's native `HtmlAudioElement`.
-///
-/// Each audio layer gets its own `<audio>` element. Raw MP3 bytes are wrapped
-/// in a `Blob` and exposed via an object URL so the browser can decode and play
-/// them without bundling any audio decoder in the wasm binary.
+/// A currently-playing voice
+struct Voice {
+    source: AudioBufferSourceNode,
+    gain: GainNode,
+}
+
+struct Inner {
+    ctx: AudioContext,
+    buffers: HashMap<usize, AudioBuffer>,
+    voices: HashMap<usize, Voice>,
+    seq: HashMap<usize, u64>,
+}
+
+impl Inner {
+    fn bump(&mut self, id: usize) -> u64 {
+        let g = self.seq.entry(id).or_insert(0);
+        *g += 1;
+        *g
+    }
+
+    fn stop_source(&mut self, id: usize) {
+        if let Some(voice) = self.voices.remove(&id) {
+            let _ = web_sys::AudioScheduledSourceNode::stop(&voice.source);
+            let _ = voice.source.disconnect();
+            let _ = voice.gain.disconnect();
+        }
+    }
+
+    fn play_now(&mut self, id: usize, volume: f32, offset: f32) {
+        let Some(buffer) = self.buffers.get(&id).cloned() else {
+            return;
+        };
+        let Ok(source) = self.ctx.create_buffer_source() else {
+            return;
+        };
+        let Ok(gain) = self.ctx.create_gain() else {
+            return;
+        };
+
+        source.set_buffer(Some(&buffer));
+        source.set_loop(true);
+        gain.gain().set_value(volume);
+
+        let _ = source.connect_with_audio_node(&gain);
+        let destination = self.ctx.destination();
+        let _ = gain.connect_with_audio_node(&destination);
+        let duration = buffer.duration();
+        let start_offset = if duration > 0.0 {
+            (offset as f64).rem_euclid(duration)
+        } else {
+            0.0
+        };
+        let _ = source.start_with_when_and_grain_offset(0.0, start_offset);
+
+        self.voices.insert(id, Voice { source, gain });
+    }
+}
+
 pub struct WebAudioPlayer {
-    elements: Vec<Option<HtmlAudioElement>>,
-    /// Object URLs created via `URL.createObjectURL`; kept so we can revoke
-    /// them when a layer stops to avoid leaking browser-side resources.
-    object_urls: Vec<Option<String>>,
+    inner: Rc<RefCell<Inner>>,
 }
 
 impl WebAudioPlayer {
-    pub fn new(layer_count: usize) -> Result<Self, String> {
+    pub fn new() -> Result<Self, String> {
+        let ctx = AudioContext::new().map_err(|_| "failed to create AudioContext".to_string())?;
         Ok(Self {
-            elements: (0..layer_count).map(|_| None).collect(),
-            object_urls: (0..layer_count).map(|_| None).collect(),
+            inner: Rc::new(RefCell::new(Inner {
+                ctx,
+                buffers: HashMap::new(),
+                voices: HashMap::new(),
+                seq: HashMap::new(),
+            })),
         })
     }
 
-    /// Start playing the given audio data in the slot owned by `layer_idx`.
-    pub fn play(&mut self, layer_idx: usize, data: Arc<[u8]>) {
-        // Wrap the raw bytes in a Blob with the appropriate MIME type so the
-        // browser knows how to decode the audio.
-        let uint8_array = js_sys::Uint8Array::from(data.as_ref());
-        let array = Array::new();
-        array.push(&uint8_array);
-
-        let props = BlobPropertyBag::new();
-        props.set_type("audio/mpeg");
-
-        let blob = match Blob::new_with_u8_array_sequence_and_options(&array, &props) {
-            Ok(b) => b,
-            Err(_) => return,
-        };
-
-        let url = match Url::create_object_url_with_blob(&blob) {
-            Ok(u) => u,
-            Err(_) => return,
-        };
-
-        let element = match HtmlAudioElement::new_with_src(&url) {
-            Ok(e) => e,
-            Err(_) => {
-                let _ = Url::revoke_object_url(&url);
+    /// Start (or restart) `id`'s playback at `volume`, `offset` seconds into the clip.
+    pub fn start(&mut self, id: usize, data: Arc<[u8]>, volume: f32, offset: f32) {
+        let (generation, started_at, promise) = {
+            let mut inner = self.inner.borrow_mut();
+            let generation = inner.bump(id);
+            inner.stop_source(id);
+            let _ = inner.ctx.resume();
+            if inner.buffers.contains_key(&id) {
+                inner.play_now(id, volume, offset);
                 return;
             }
+            let started_at = inner.ctx.current_time();
+            let array_buffer = Uint8Array::from(data.as_ref()).buffer();
+            let promise = match inner.ctx.decode_audio_data(&array_buffer) {
+                Ok(p) => p,
+                Err(_) => return,
+            };
+            (generation, started_at, promise)
         };
 
-        // `.play()` returns a Promise; we fire-and-forget since playback is
-        // driven by frame updates rather than a completion callback.
-        let _ = element.play();
-
-        self.object_urls[layer_idx] = Some(url);
-        self.elements[layer_idx] = Some(element);
+        let inner_rc = self.inner.clone();
+        spawn_local(async move {
+            let Ok(decoded) = JsFuture::from(promise).await else {
+                return;
+            };
+            let Ok(buffer) = decoded.dyn_into::<AudioBuffer>() else {
+                return;
+            };
+            let mut inner = inner_rc.borrow_mut();
+            inner.buffers.insert(id, buffer);
+            if inner.seq.get(&id).copied() == Some(generation) {
+                let elapsed = (inner.ctx.current_time() - started_at).max(0.0) as f32;
+                inner.play_now(id, volume, offset + elapsed);
+            }
+        });
     }
 
-    pub fn pause(&mut self, layer_idx: usize) {
-        if let Some(elem) = self.elements[layer_idx].as_ref() {
-            let _ = elem.pause();
+    pub fn stop(&mut self, id: usize) {
+        let mut inner = self.inner.borrow_mut();
+        inner.bump(id);
+        inner.stop_source(id);
+    }
+
+    pub fn stop_all(&mut self) {
+        let mut inner = self.inner.borrow_mut();
+        let ids: Vec<usize> = inner.voices.keys().copied().collect();
+        for id in ids {
+            inner.bump(id);
+            inner.stop_source(id);
         }
     }
 
-    pub fn resume(&mut self, layer_idx: usize) {
-        if let Some(elem) = self.elements[layer_idx].as_ref() {
-            let _ = elem.play();
-        }
+    pub fn pause_all(&mut self) {
+        let _ = self.inner.borrow().ctx.suspend();
     }
 
-    pub fn stop(&mut self, layer_idx: usize) {
-        if let Some(elem) = self.elements[layer_idx].take() {
-            let _ = elem.pause();
-        }
-        if let Some(url) = self.object_urls[layer_idx].take() {
-            let _ = Url::revoke_object_url(&url);
-        }
+    pub fn resume_all(&mut self) {
+        let _ = self.inner.borrow().ctx.resume();
     }
 
-    /// Adjust the volume of a currently-playing element without stopping it.
-    pub fn set_volume(&mut self, layer_idx: usize, volume: f32) {
-        if let Some(elem) = self.elements[layer_idx].as_ref() {
-            elem.set_volume(volume as f64);
+    pub fn set_volume(&mut self, id: usize, volume: f32) {
+        let inner = self.inner.borrow();
+        if let Some(voice) = inner.voices.get(&id) {
+            voice.gain.gain().set_value(volume);
         }
     }
 }

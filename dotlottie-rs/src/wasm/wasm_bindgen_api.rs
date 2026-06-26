@@ -486,6 +486,10 @@ impl DotLottiePlayerWasm {
         self.player.set_frame(no).is_ok()
     }
 
+    pub fn seek(&mut self, no: f32) -> bool {
+        self.player.seek(no).is_ok()
+    }
+
     // ── Duration / loop queries ───────────────────────────────────────────────
 
     pub fn duration(&self) -> f32 {

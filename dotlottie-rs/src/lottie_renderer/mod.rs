@@ -195,6 +195,9 @@ pub trait LottieRenderer {
     fn set_segment(&mut self, segment: Option<Segment>) -> Result<(), LottieRendererError>;
 
     fn segment(&self) -> Result<Segment, LottieRendererError>;
+
+    #[cfg(feature = "audio")]
+    fn audio_bridge(&self) -> Option<std::sync::Arc<crate::audio::AudioBridge>>;
 }
 
 impl dyn LottieRenderer {
@@ -898,6 +901,11 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn segment(&self) -> Result<Segment, LottieRendererError> {
         self.get_animation()?.segment().map_err(into_lottie::<R>)
+    }
+
+    #[cfg(feature = "audio")]
+    fn audio_bridge(&self) -> Option<std::sync::Arc<crate::audio::AudioBridge>> {
+        self.animation.as_ref().and_then(|a| a.audio_bridge())
     }
 }
 

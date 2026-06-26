@@ -4,15 +4,11 @@ mod manifest;
 pub use errors::*;
 pub use manifest::*;
 
-#[cfg(feature = "audio")]
-use crate::audio::{extract_audio, AudioLayer};
 #[cfg(feature = "theming")]
 use crate::theme::Theme;
 use serde_json::Value;
 use std::cell::RefCell;
 use std::io::{self, Read};
-#[cfg(feature = "audio")]
-use std::sync::Arc;
 use zip::ZipArchive;
 
 const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -30,8 +26,6 @@ pub struct DotLottieManager {
     manifest: Manifest,
     version: u8,
     archive: RefCell<ZipArchive<io::Cursor<Vec<u8>>>>,
-    #[cfg(feature = "audio")]
-    audio_data: RefCell<Option<(Vec<Arc<[u8]>>, Vec<AudioLayer>)>>,
 }
 
 impl DotLottieManager {
@@ -65,8 +59,6 @@ impl DotLottieManager {
             manifest,
             version,
             archive: RefCell::new(archive),
-            #[cfg(feature = "audio")]
-            audio_data: RefCell::new(None),
         })
     }
 
@@ -117,11 +109,6 @@ impl DotLottieManager {
             {
                 Self::embed_fonts(&mut archive, font_list);
             }
-        }
-
-        #[cfg(feature = "audio")]
-        {
-            *self.audio_data.borrow_mut() = Some(extract_audio(&lottie_animation));
         }
 
         serde_json::to_string(&lottie_animation).map_err(|_| DotLottieError::ReadContentError)
@@ -348,11 +335,6 @@ impl DotLottieManager {
             .map_err(|_| DotLottieError::ReadContentError)?;
 
         Ok(buf)
-    }
-
-    #[cfg(feature = "audio")]
-    pub fn get_audio_assets(&self) -> Option<(Vec<Arc<[u8]>>, Vec<AudioLayer>)> {
-        self.audio_data.borrow().clone()
     }
 }
 

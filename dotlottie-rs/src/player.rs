@@ -230,8 +230,13 @@ impl Player {
         self.playback_state = PlaybackState::Playing;
 
         #[cfg(feature = "audio")]
-        if let Some(am) = &mut self.audio_manager {
-            am.play();
+        {
+            let fps = self.fps();
+            let frame = self.current_frame();
+            if let Some(am) = &mut self.audio_manager {
+                am.resume();
+                am.reposition(frame, fps);
+            }
         }
 
         self.event_queue.push(PlayerEvent::Play);
@@ -486,13 +491,6 @@ impl Player {
         self.renderer.set_frame(no)?;
         self.event_queue.push(PlayerEvent::Frame { frame_no: no });
 
-        #[cfg(feature = "audio")]
-        if self.is_playing() {
-            if let Some(am) = &mut self.audio_manager {
-                am.update(no);
-            }
-        }
-
         Ok(())
     }
 
@@ -506,6 +504,33 @@ impl Player {
             Direction::Reverse => self.end_frame() - no,
         };
         Ok(())
+    }
+
+    pub fn seek(&mut self, no: f32) -> Result<(), PlayerError> {
+        self.set_frame(no)?;
+        self.render()?;
+
+        #[cfg(feature = "audio")]
+        {
+            let fps = self.fps();
+            if let Some(am) = &mut self.audio_manager {
+                am.reposition(no, fps);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Frames-per-second (0 if unavailable).
+    #[cfg(feature = "audio")]
+    #[inline]
+    fn fps(&self) -> f32 {
+        let duration_secs = self.duration() / 1000.0;
+        if duration_secs > 0.0 {
+            self.total_frames() / duration_secs
+        } else {
+            0.0
+        }
     }
 
     pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), PlayerError> {
@@ -532,6 +557,16 @@ impl Player {
 
         self.event_queue.push(PlayerEvent::Render { frame_no });
 
+        // Always sync so the voice set tracks the engine even when paused; `playing` gates sound.
+        #[cfg(feature = "audio")]
+        {
+            let playing = self.is_playing();
+            let frame = self.current_frame();
+            if let Some(am) = &mut self.audio_manager {
+                am.sync(playing, frame);
+            }
+        }
+
         // Completion logic only applies during active playback — not when the
         // caller renders manually (e.g. scrubbing while paused/stopped).
         if self.is_playing() && self.is_complete() {
@@ -545,10 +580,14 @@ impl Player {
                     let _ = self.stop();
                 }
 
-                // Reset audio state so that audio layers re-trigger on the next loop.
+                // Re-seek audio active across the loop boundary (the engine won't re-emit it).
                 #[cfg(feature = "audio")]
-                if let Some(am) = &mut self.audio_manager {
-                    am.stop();
+                if !count_complete {
+                    let fps = self.fps();
+                    let frame = self.start_frame();
+                    if let Some(am) = &mut self.audio_manager {
+                        am.reposition(frame, fps);
+                    }
                 }
 
                 self.emit_on_loop();
@@ -831,6 +870,15 @@ impl Player {
 
         self.is_loaded = loaded;
 
+        #[cfg(feature = "audio")]
+        {
+            self.audio_manager = if loaded {
+                self.renderer.audio_bridge().map(AudioManager::new)
+            } else {
+                None
+            };
+        }
+
         let start_frame = self.start_frame();
         let end_frame = self.end_frame();
 
@@ -932,15 +980,6 @@ impl Player {
 
         self.dotlottie_manager = Some(manager);
 
-        #[cfg(feature = "audio")]
-        {
-            self.audio_manager = self
-                .dotlottie_manager
-                .as_ref()
-                .and_then(|dm| dm.get_audio_assets())
-                .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
-        }
-
         let result =
             self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr));
 
@@ -989,15 +1028,6 @@ impl Player {
 
             if result.is_ok() {
                 self.animation_id = Some(animation_id.to_owned());
-
-                #[cfg(feature = "audio")]
-                {
-                    self.audio_manager = self
-                        .dotlottie_manager
-                        .as_ref()
-                        .and_then(|dm| dm.get_audio_assets())
-                        .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
-                }
 
                 #[cfg(feature = "theming")]
                 if let Some(ref theme_id_cstr) = saved_theme_id {

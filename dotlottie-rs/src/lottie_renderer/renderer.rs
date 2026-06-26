@@ -270,6 +270,11 @@ pub trait Animation: Default {
     fn set_segment(&mut self, segment: Option<Segment>);
 
     fn segment(&self) -> Result<Segment, Self::Error>;
+
+    #[cfg(feature = "audio")]
+    fn audio_bridge(&self) -> Option<std::sync::Arc<crate::audio::AudioBridge>> {
+        None
+    }
 }
 
 pub trait Renderer: Sized + 'static {

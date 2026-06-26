@@ -3,7 +3,7 @@ use std::ffi::{CStr, CString};
 use std::{fs, mem};
 
 #[cfg(feature = "audio")]
-use crate::audio::AudioManager;
+use crate::audio::{extract_audio, AudioManager};
 use crate::poll_events::{EventQueue, PlayerEvent};
 use crate::PlayerError;
 use crate::{
@@ -868,6 +868,16 @@ impl Player {
         let result = self.load_animation_common(|renderer| renderer.load_data(animation_data));
 
         if result.is_ok() {
+            #[cfg(feature = "audio")]
+            {
+                self.audio_manager = animation_data
+                    .to_str()
+                    .ok()
+                    .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+                    .map(|json| extract_audio(&json))
+                    .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
+            }
+
             self.event_queue.push(PlayerEvent::Load);
             if self.autoplay {
                 let _ = self.play();

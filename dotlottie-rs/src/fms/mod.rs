@@ -4,10 +4,10 @@ mod manifest;
 pub use errors::*;
 pub use manifest::*;
 
-#[cfg(feature = "audio")]
-use crate::audio::{extract_audio, AudioLayer};
 #[cfg(feature = "theming")]
 use crate::theme::Theme;
+#[cfg(feature = "audio")]
+use rustc_hash::FxHashMap;
 use serde_json::Value;
 use std::cell::RefCell;
 use std::io::{self, Read};
@@ -30,8 +30,9 @@ pub struct DotLottieManager {
     manifest: Manifest,
     version: u8,
     archive: RefCell<ZipArchive<io::Cursor<Vec<u8>>>>,
+    /// Audio bytes keyed by packaged path (e.g. `u/clip.mp3`).
     #[cfg(feature = "audio")]
-    audio_data: RefCell<Option<(Vec<Arc<[u8]>>, Vec<AudioLayer>)>>,
+    audio_sources: RefCell<FxHashMap<String, Arc<[u8]>>>,
 }
 
 impl DotLottieManager {
@@ -66,7 +67,7 @@ impl DotLottieManager {
             version,
             archive: RefCell::new(archive),
             #[cfg(feature = "audio")]
-            audio_data: RefCell::new(None),
+            audio_sources: RefCell::new(FxHashMap::default()),
         })
     }
 
@@ -99,13 +100,18 @@ impl DotLottieManager {
         let mut lottie_animation: Value =
             serde_json::from_str(animation_data).map_err(|_| DotLottieError::ReadContentError)?;
 
+        #[cfg(feature = "audio")]
+        let mut audio_sources: FxHashMap<String, Arc<[u8]>> = FxHashMap::default();
+
         if let Some(assets) = lottie_animation
             .get_mut("assets")
             .and_then(|v| v.as_array_mut())
         {
             Self::embed_images(&mut archive, assets, self.version);
             #[cfg(feature = "audio")]
-            Self::embed_audio(&mut archive, assets, self.version);
+            {
+                audio_sources = Self::collect_audio(&mut archive, assets, self.version);
+            }
         }
 
         if self.version == 2 {
@@ -121,7 +127,7 @@ impl DotLottieManager {
 
         #[cfg(feature = "audio")]
         {
-            *self.audio_data.borrow_mut() = Some(extract_audio(&lottie_animation));
+            *self.audio_sources.borrow_mut() = audio_sources;
         }
 
         serde_json::to_string(&lottie_animation).map_err(|_| DotLottieError::ReadContentError)
@@ -171,51 +177,51 @@ impl DotLottieManager {
         }
     }
 
+    /// Read audio assets from the archive as raw bytes, keyed by packaged path
+    /// (e.g. `u/clip.mp3`). Audio is not re-embedded in the JSON since ThorVG
+    /// never renders it.
     #[cfg(feature = "audio")]
-    fn embed_audio<R: Read + io::Seek>(
+    fn collect_audio<R: Read + io::Seek>(
         archive: &mut ZipArchive<R>,
-        assets: &mut Vec<Value>,
+        assets: &[Value],
         version: u8,
-    ) {
+    ) -> FxHashMap<String, Arc<[u8]>> {
         let audio_prefix = if version == 2 { "u/" } else { "audio/" };
-        const SUPPORTED_AUDIO_EXTENSION: &'static str = "mp3";
+        const SUPPORTED_AUDIO_EXTENSION: &str = "mp3";
 
-        for asset in assets.iter_mut() {
-            let Some(asset_obj) = asset.as_object_mut() else {
+        let mut out: FxHashMap<String, Arc<[u8]>> = FxHashMap::default();
+        let mut asset_path = String::with_capacity(128);
+
+        for asset in assets {
+            let Some(asset_obj) = asset.as_object() else {
                 continue;
             };
-            let Some(p_str) = asset_obj
-                .get("p")
-                .and_then(|v| v.as_str())
-                .map(str::to_string)
-            else {
+            let Some(p_str) = asset_obj.get("p").and_then(|v| v.as_str()) else {
                 continue;
             };
 
+            // Embedded data URL: ThorVG delivers the bytes via the resolver.
             if p_str.starts_with(DATA_AUDIO_PREFIX) {
-                asset_obj.insert("e".to_string(), Value::Number(1.into()));
                 continue;
             }
 
-            let p_lower = p_str.to_lowercase();
-            if !p_lower.ends_with(SUPPORTED_AUDIO_EXTENSION) {
+            if !p_str.to_lowercase().ends_with(SUPPORTED_AUDIO_EXTENSION) {
                 continue;
             }
 
-            let asset_path = String::from(format!("{}{}", audio_prefix, p_str));
+            asset_path.clear();
+            asset_path.push_str(audio_prefix);
+            asset_path.push_str(p_str);
+
             if let Ok(mut result) = archive.by_name(&asset_path) {
                 let mut content = Vec::with_capacity(result.size() as usize);
                 if result.read_to_end(&mut content).is_ok() {
-                    let data_url = format!(
-                        "{DATA_AUDIO_PREFIX}{SUPPORTED_AUDIO_EXTENSION}{BASE64_PREFIX}{}",
-                        Self::encode_base64(&content)
-                    );
-                    asset_obj.insert("u".to_string(), Value::String(String::new()));
-                    asset_obj.insert("p".to_string(), Value::String(data_url));
-                    asset_obj.insert("e".to_string(), Value::Number(1.into()));
+                    out.insert(asset_path.clone(), Arc::from(content));
                 }
             }
         }
+
+        out
     }
 
     fn embed_fonts<R: Read + io::Seek>(archive: &mut ZipArchive<R>, font_list: &mut [Value]) {
@@ -351,8 +357,8 @@ impl DotLottieManager {
     }
 
     #[cfg(feature = "audio")]
-    pub fn get_audio_assets(&self) -> Option<(Vec<Arc<[u8]>>, Vec<AudioLayer>)> {
-        self.audio_data.borrow().clone()
+    pub fn get_audio_sources(&self) -> FxHashMap<String, Arc<[u8]>> {
+        self.audio_sources.borrow().clone()
     }
 }
 
@@ -393,5 +399,41 @@ mod tests {
         let empty_input = b"";
         let empty_result = DotLottieManager::encode_base64(empty_input);
         assert_eq!(empty_result, "");
+    }
+
+    // happy_birthday_audio.lottie ships 3 mp3s (223190, 95712, 9613 bytes).
+    #[cfg(feature = "audio")]
+    const AUDIO_LOTTIE: &[u8] =
+        include_bytes!("../../assets/animations/dotlottie/v2/happy_birthday_audio.lottie");
+
+    #[test]
+    #[cfg(feature = "audio")]
+    fn test_audio_assets_extracted_from_dotlottie() {
+        let manager = DotLottieManager::new(AUDIO_LOTTIE).expect("create manager");
+        let _json = manager.get_active_animation().expect("get animation");
+
+        let sources = manager.get_audio_sources();
+
+        assert_eq!(sources.len(), 3, "three decoded audio assets");
+        let mut sizes: Vec<usize> = sources.values().map(|a| a.len()).collect();
+        sizes.sort_unstable();
+        assert_eq!(sizes, vec![9613, 95712, 223190], "audio bytes match zip");
+
+        assert!(
+            sources.keys().all(|k| k.starts_with("u/")),
+            "sources keyed by packaged path"
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "audio")]
+    fn test_dotlottie_json_excludes_audio_payload() {
+        let manager = DotLottieManager::new(AUDIO_LOTTIE).expect("create manager");
+        let json = manager.get_active_animation().expect("get animation");
+
+        assert!(
+            !json.contains("data:audio/"),
+            "rendered JSON should not embed base64 audio"
+        );
     }
 }

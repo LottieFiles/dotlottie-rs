@@ -1,8 +1,9 @@
 //! Audio feature demonstration.
 //!
 //! Loads a Lottie animation (JSON or .lottie) that contains audio layers and
-//! plays it. Audio events are printed to stdout as they fire so you can verify
-//! the correct frame boundaries. Audio is played via rodio on native targets.
+//! plays it. Playback lifecycle events (load/play/pause/stop/loop/complete) are
+//! printed to stdout. Audio is played via rodio on native targets; ThorVG's
+//! audio resolver drives start/stop in sync with the timeline.
 //!
 //! Usage:
 //!   cargo run --example audio_player --features audio,dev -- path/to/animation.json
@@ -76,7 +77,6 @@ fn main() {
     player.set_autoplay(false);
     player.set_loop(true);
     player.set_mode(dotlottie_rs::Mode::Forward);
-    // let _ = player.set_background(Some(0x000000));
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
@@ -123,6 +123,8 @@ fn main() {
     let mut m_was_down = false;
     let mut plus_was_down = false;
     let mut minus_was_down = false;
+    // Volume to restore when unmuting; updated each time we mute.
+    let mut pre_mute_volume = player.audio_volume();
     let mut clock = common::Clock::new();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
@@ -146,12 +148,19 @@ fn main() {
 
         if m_was_down && !m_down {
             if player.audio_volume() == 0.0 {
-                player.set_audio_volume(1.0);
+                // Restore the pre-mute volume (fall back to full).
+                let restore = if pre_mute_volume > 0.0 {
+                    pre_mute_volume
+                } else {
+                    1.0
+                };
+                player.set_audio_volume(restore);
                 println!(
                     "  ** Unmuted  (volume={:.0}%)",
                     player.audio_volume() * 100.0
                 );
             } else {
+                pre_mute_volume = player.audio_volume();
                 player.set_audio_volume(0.0);
                 println!("  ** Muted");
             }
@@ -200,7 +209,6 @@ fn main() {
 
         // Print audio (and notable playback) events as they arrive.
         while let Some(event) = player.poll_event() {
-            let _ = player.current_frame();
             match event {
                 PlayerEvent::Load => println!("  -- Load  (is_loaded={})", player.is_loaded()),
                 PlayerEvent::LoadError => {

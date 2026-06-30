@@ -15,6 +15,8 @@ use super::{
     Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Point, Renderer,
     Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
+#[cfg(feature = "audio")]
+use super::{AudioEvent, AudioResolver, AudioSource};
 
 #[expect(non_upper_case_globals)]
 #[allow(non_snake_case)]
@@ -418,6 +420,50 @@ pub struct TvgAnimation {
     total_frames: f32,
     duration: f32,
     layer_id_map: LayerIdMap,
+    // Boxed for a stable address to pass as the callback's user data.
+    #[cfg(feature = "audio")]
+    audio_resolver: Option<Box<AudioResolver>>,
+}
+
+/// Bridges ThorVG's C audio callback to the Rust resolver stored in `data`.
+#[cfg(feature = "audio")]
+unsafe extern "C" fn audio_resolver_trampoline(
+    info: *const tvg::Tvg_Audio_Info,
+    data: *mut std::ffi::c_void,
+) {
+    if info.is_null() || data.is_null() {
+        return;
+    }
+    let resolver = unsafe { &mut *(data as *mut AudioResolver) };
+    let info = unsafe { &*info };
+
+    let source = if info.embedded {
+        let bytes = if info.src.is_null() || info.size == 0 {
+            &[][..]
+        } else {
+            unsafe { std::slice::from_raw_parts(info.src as *const u8, info.size as usize) }
+        };
+        let mime = if info.mimeType.is_null() {
+            None
+        } else {
+            unsafe { CStr::from_ptr(info.mimeType) }.to_str().ok()
+        };
+        AudioSource::Embedded { bytes, mime }
+    } else if info.src.is_null() {
+        return;
+    } else {
+        match unsafe { CStr::from_ptr(info.src) }.to_str() {
+            Ok(s) => AudioSource::External(s),
+            Err(_) => return,
+        }
+    };
+
+    resolver(AudioEvent {
+        source,
+        offset: info.offset,
+        volume: info.volume,
+        active: info.active,
+    });
 }
 
 impl Default for TvgAnimation {
@@ -434,6 +480,8 @@ impl Default for TvgAnimation {
             total_frames: 0.0,
             duration: 0.0,
             layer_id_map: LayerIdMap::new(),
+            #[cfg(feature = "audio")]
+            audio_resolver: None,
         }
     }
 }
@@ -558,6 +606,36 @@ impl Animation for TvgAnimation {
                 self.duration = 0.0;
                 self.layer_id_map.clear();
                 Err(e)
+            }
+        }
+    }
+
+    #[cfg(feature = "audio")]
+    fn set_audio_resolver(&mut self, resolver: Option<AudioResolver>) -> Result<(), TvgError> {
+        match resolver {
+            Some(cb) => {
+                let mut boxed: Box<AudioResolver> = Box::new(cb);
+                let data = (&mut *boxed) as *mut AudioResolver as *mut std::ffi::c_void;
+                let result = unsafe {
+                    tvg::tvg_lottie_animation_set_audio_resolver(
+                        self.raw_animation,
+                        Some(audio_resolver_trampoline),
+                        data,
+                    )
+                };
+                self.audio_resolver = Some(boxed);
+                result.into_result()
+            }
+            None => {
+                let result = unsafe {
+                    tvg::tvg_lottie_animation_set_audio_resolver(
+                        self.raw_animation,
+                        None,
+                        std::ptr::null_mut(),
+                    )
+                };
+                self.audio_resolver = None;
+                result.into_result()
             }
         }
     }
@@ -749,6 +827,87 @@ mod tests {
     use super::*;
     use std::sync::{Arc, Barrier};
     use std::thread;
+
+    #[cfg(all(feature = "dotlottie", feature = "audio"))]
+    #[test]
+    fn audio_resolver_fires_for_external_audio() {
+        use std::ffi::c_void;
+        use std::sync::Mutex;
+
+        static EVENTS: Mutex<Vec<(bool, bool, String)>> = Mutex::new(Vec::new());
+
+        unsafe extern "C" fn cb(info: *const tvg::Tvg_Audio_Info, _data: *mut c_void) {
+            if info.is_null() {
+                return;
+            }
+            let i = unsafe { &*info };
+            let src = if i.src.is_null() {
+                String::new()
+            } else {
+                unsafe { CStr::from_ptr(i.src) }
+                    .to_string_lossy()
+                    .into_owned()
+            };
+            EVENTS.lock().unwrap().push((i.active, i.embedded, src));
+        }
+
+        let data =
+            include_bytes!("../../assets/animations/dotlottie/v2/happy_birthday_audio.lottie");
+        let mgr = crate::DotLottieManager::new(data).unwrap();
+        let json = mgr.get_active_animation().unwrap();
+        let cjson = CString::new(json).unwrap();
+
+        let mut renderer = TvgRenderer::new(0);
+        renderer.create_sw_canvas().unwrap();
+        let canvas = renderer.raw_canvas.unwrap();
+        let mut buf = vec![0u32; 128 * 128];
+        unsafe {
+            tvg::tvg_swcanvas_set_target(
+                canvas,
+                buf.as_mut_ptr(),
+                128,
+                128,
+                128,
+                tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
+            );
+        }
+
+        let mut anim = TvgAnimation::default();
+        anim.load_data(&cjson, c"lottie+json").unwrap();
+        let total = anim.total_frames;
+
+        unsafe {
+            tvg::tvg_lottie_animation_set_audio_resolver(
+                anim.raw_animation,
+                Some(cb),
+                std::ptr::null_mut(),
+            );
+            tvg::tvg_canvas_add(canvas, anim.raw_paint);
+        }
+
+        let mut f = 0.0;
+        while f < total {
+            unsafe {
+                tvg::tvg_animation_set_frame(anim.raw_animation, f);
+                tvg::tvg_canvas_update(canvas);
+                tvg::tvg_canvas_draw(canvas, true);
+                tvg::tvg_canvas_sync(canvas);
+            }
+            f += 2.0;
+        }
+
+        let events = EVENTS.lock().unwrap();
+        assert!(
+            events.iter().any(|(active, _, _)| *active),
+            "expected at least one active audio event"
+        );
+        assert!(
+            events
+                .iter()
+                .any(|(_, embedded, src)| !*embedded && src.ends_with(".mp3")),
+            "expected an external .mp3 audio src, got {events:?}"
+        );
+    }
 
     #[test]
     fn test_tvg_renderer_no_deadlock() {

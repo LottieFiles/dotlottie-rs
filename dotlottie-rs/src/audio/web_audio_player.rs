@@ -1,31 +1,42 @@
 use js_sys::Array;
+use rustc_hash::FxHashMap;
 use std::sync::Arc;
 use web_sys::{Blob, BlobPropertyBag, HtmlAudioElement, Url};
 
-/// Web audio backend powered by the browser's native `HtmlAudioElement`.
-///
-/// Each audio layer gets its own `<audio>` element. Raw MP3 bytes are wrapped
-/// in a `Blob` and exposed via an object URL so the browser can decode and play
-/// them without bundling any audio decoder in the wasm binary.
+/// One playing audio source, keyed by audio source in `WebAudioPlayer`.
+struct AudioEntry {
+    element: HtmlAudioElement,
+    /// Object URL, revoked on stop.
+    url: String,
+    /// Per-layer volume in [0.0, 1.0], for re-applying the global multiplier.
+    layer_volume: f32,
+}
+
+/// Web audio backend powered by the browser's native `HtmlAudioElement`. MP3
+/// bytes play via a `Blob` object URL, so no decoder ships in the wasm binary.
 pub struct WebAudioPlayer {
-    elements: Vec<Option<HtmlAudioElement>>,
-    /// Object URLs created via `URL.createObjectURL`; kept so we can revoke
-    /// them when a layer stops to avoid leaking browser-side resources.
-    object_urls: Vec<Option<String>>,
+    elements: FxHashMap<String, AudioEntry>,
+    /// Global multiplier in [0.0, 1.0], applied on top of per-layer volume.
+    global_volume: f32,
+}
+
+impl Default for WebAudioPlayer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl WebAudioPlayer {
-    pub fn new(layer_count: usize) -> Result<Self, String> {
-        Ok(Self {
-            elements: (0..layer_count).map(|_| None).collect(),
-            object_urls: (0..layer_count).map(|_| None).collect(),
-        })
+    pub fn new() -> Self {
+        Self {
+            elements: FxHashMap::default(),
+            global_volume: 1.0,
+        }
     }
 
-    /// Start playing the given audio data in the slot owned by `layer_idx`.
-    pub fn play(&mut self, layer_idx: usize, data: Arc<[u8]>) {
-        // Wrap the raw bytes in a Blob with the appropriate MIME type so the
-        // browser knows how to decode the audio.
+    pub fn play(&mut self, key: &str, data: Arc<[u8]>, offset_secs: f32, layer_volume: f32) {
+        self.stop(key);
+
         let uint8_array = js_sys::Uint8Array::from(data.as_ref());
         let array = Array::new();
         array.push(&uint8_array);
@@ -51,39 +62,67 @@ impl WebAudioPlayer {
             }
         };
 
-        // `.play()` returns a Promise; we fire-and-forget since playback is
-        // driven by frame updates rather than a completion callback.
+        element.set_volume((layer_volume * self.global_volume) as f64);
+        if offset_secs > 0.0 {
+            element.set_current_time(offset_secs as f64);
+        }
+
+        // `.play()` returns a Promise; fire-and-forget.
         let _ = element.play();
 
-        self.object_urls[layer_idx] = Some(url);
-        self.elements[layer_idx] = Some(element);
+        self.elements.insert(
+            key.to_string(),
+            AudioEntry {
+                element,
+                url,
+                layer_volume,
+            },
+        );
     }
 
-    pub fn pause(&mut self, layer_idx: usize) {
-        if let Some(elem) = self.elements[layer_idx].as_ref() {
-            let _ = elem.pause();
-        }
-    }
-
-    pub fn resume(&mut self, layer_idx: usize) {
-        if let Some(elem) = self.elements[layer_idx].as_ref() {
-            let _ = elem.play();
-        }
-    }
-
-    pub fn stop(&mut self, layer_idx: usize) {
-        if let Some(elem) = self.elements[layer_idx].take() {
-            let _ = elem.pause();
-        }
-        if let Some(url) = self.object_urls[layer_idx].take() {
-            let _ = Url::revoke_object_url(&url);
+    pub fn stop(&mut self, key: &str) {
+        if let Some(entry) = self.elements.remove(key) {
+            let _ = entry.element.pause();
+            let _ = Url::revoke_object_url(&entry.url);
         }
     }
 
-    /// Adjust the volume of a currently-playing element without stopping it.
-    pub fn set_volume(&mut self, layer_idx: usize, volume: f32) {
-        if let Some(elem) = self.elements[layer_idx].as_ref() {
-            elem.set_volume(volume as f64);
+    /// Whether an element for `key` exists and has not finished playing.
+    pub fn is_active(&self, key: &str) -> bool {
+        self.elements
+            .get(key)
+            .is_some_and(|entry| !entry.element.ended())
+    }
+
+    pub fn pause_all(&mut self) {
+        for entry in self.elements.values() {
+            let _ = entry.element.pause();
         }
+    }
+
+    pub fn resume_all(&mut self) {
+        for entry in self.elements.values() {
+            let _ = entry.element.play();
+        }
+    }
+
+    pub fn stop_all(&mut self) {
+        for (_, entry) in self.elements.drain() {
+            let _ = entry.element.pause();
+            let _ = Url::revoke_object_url(&entry.url);
+        }
+    }
+
+    pub fn set_global_volume(&mut self, volume: f32) {
+        self.global_volume = volume;
+        for entry in self.elements.values() {
+            entry
+                .element
+                .set_volume((entry.layer_volume * self.global_volume) as f64);
+        }
+    }
+
+    pub fn global_volume(&self) -> f32 {
+        self.global_volume
     }
 }

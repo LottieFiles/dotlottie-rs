@@ -3,7 +3,7 @@ use std::ffi::{CStr, CString};
 use std::{fs, mem};
 
 #[cfg(feature = "audio")]
-use crate::audio::{extract_audio, AudioManager};
+use crate::audio::AudioManager;
 use crate::poll_events::{EventQueue, PlayerEvent};
 use crate::PlayerError;
 use crate::{
@@ -17,6 +17,14 @@ use crate::{ColorSpace, Renderer, Rgba};
 use crate::{DotLottieManager, Manifest};
 #[cfg(feature = "state-machines")]
 use crate::{StateMachineEngine, StateMachineEngineError};
+#[cfg(feature = "audio")]
+use rustc_hash::FxHashMap;
+#[cfg(feature = "audio")]
+use std::cell::RefCell;
+#[cfg(feature = "audio")]
+use std::rc::Rc;
+#[cfg(feature = "audio")]
+use std::sync::Arc;
 
 pub enum PlaybackState {
     Playing,
@@ -64,7 +72,7 @@ pub struct Player {
     #[cfg(feature = "dotlottie")]
     dotlottie_manager: Option<DotLottieManager>,
     #[cfg(feature = "audio")]
-    audio_manager: Option<AudioManager>,
+    audio: Option<Rc<RefCell<AudioManager>>>,
     direction: Direction,
     active_marker: Option<CString>,
     event_queue: EventQueue<PlayerEvent, 16>,
@@ -138,7 +146,7 @@ impl Player {
             #[cfg(feature = "dotlottie")]
             dotlottie_manager: None,
             #[cfg(feature = "audio")]
-            audio_manager: None,
+            audio: None,
             direction: Direction::Forward,
             active_marker: None,
             #[cfg(feature = "state-machines")]
@@ -156,14 +164,42 @@ impl Player {
     /// Applied on top of per-layer volume; takes effect immediately.
     #[cfg(feature = "audio")]
     pub fn set_audio_volume(&mut self, volume: f32) {
-        if let Some(am) = &mut self.audio_manager {
-            am.set_volume(volume);
+        if let Some(am) = &self.audio {
+            am.borrow_mut().set_volume(volume);
         }
     }
 
     #[cfg(feature = "audio")]
     pub fn audio_volume(&self) -> f32 {
-        self.audio_manager.as_ref().map_or(1.0, |am| am.volume())
+        self.audio.as_ref().map_or(1.0, |am| am.borrow().volume())
+    }
+
+    /// Create the audio manager and attach the renderer's audio resolver.
+    /// `sources` is empty for raw-JSON animations whose audio is embedded.
+    #[cfg(feature = "audio")]
+    fn setup_audio(&mut self, sources: FxHashMap<String, Arc<[u8]>>) {
+        self.audio = Some(Rc::new(RefCell::new(AudioManager::new(sources))));
+        self.attach_audio_resolver();
+    }
+
+    #[cfg(feature = "audio")]
+    fn attach_audio_resolver(&mut self) {
+        let Some(am) = self.audio.as_ref().map(Rc::clone) else {
+            return;
+        };
+        let resolver: crate::lottie_renderer::AudioResolver = Box::new(move |event| {
+            if let Ok(mut manager) = am.try_borrow_mut() {
+                manager.on_audio(event);
+            }
+        });
+        let _ = self.renderer.set_audio_resolver(Some(resolver));
+    }
+
+    #[cfg(all(test, feature = "audio"))]
+    pub(crate) fn audio_active_count(&self) -> usize {
+        self.audio
+            .as_ref()
+            .map_or(0, |am| am.borrow().active_layer_count())
     }
 
     pub fn pop_completion_event(&mut self) -> CompletionEvent {
@@ -230,8 +266,8 @@ impl Player {
         self.playback_state = PlaybackState::Playing;
 
         #[cfg(feature = "audio")]
-        if let Some(am) = &mut self.audio_manager {
-            am.play();
+        if let Some(am) = &self.audio {
+            am.borrow_mut().set_playing(true);
         }
 
         self.event_queue.push(PlayerEvent::Play);
@@ -249,8 +285,8 @@ impl Player {
         self.playback_state = PlaybackState::Paused;
 
         #[cfg(feature = "audio")]
-        if let Some(am) = &mut self.audio_manager {
-            am.pause();
+        if let Some(am) = &self.audio {
+            am.borrow_mut().set_playing(false);
         }
 
         self.event_queue.push(PlayerEvent::Pause);
@@ -282,8 +318,8 @@ impl Player {
         self.elapsed_frames = 0.0;
 
         #[cfg(feature = "audio")]
-        if let Some(am) = &mut self.audio_manager {
-            am.stop();
+        if let Some(am) = &self.audio {
+            am.borrow_mut().stop();
         }
 
         self.event_queue.push(PlayerEvent::Stop);
@@ -486,13 +522,6 @@ impl Player {
         self.renderer.set_frame(no)?;
         self.event_queue.push(PlayerEvent::Frame { frame_no: no });
 
-        #[cfg(feature = "audio")]
-        if self.is_playing() {
-            if let Some(am) = &mut self.audio_manager {
-                am.update(no);
-            }
-        }
-
         Ok(())
     }
 
@@ -545,10 +574,13 @@ impl Player {
                     let _ = self.stop();
                 }
 
-                // Reset audio state so that audio layers re-trigger on the next loop.
+                // Replay audio on loop; the resolver won't re-announce layers
+                // that stay in range across the wrap.
                 #[cfg(feature = "audio")]
-                if let Some(am) = &mut self.audio_manager {
-                    am.stop();
+                if !count_complete {
+                    if let Some(am) = &self.audio {
+                        am.borrow_mut().restart();
+                    }
                 }
 
                 self.emit_on_loop();
@@ -868,15 +900,9 @@ impl Player {
         let result = self.load_animation_common(|renderer| renderer.load_data(animation_data));
 
         if result.is_ok() {
+            // Embedded audio is delivered via the resolver, so no source map.
             #[cfg(feature = "audio")]
-            {
-                self.audio_manager = animation_data
-                    .to_str()
-                    .ok()
-                    .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
-                    .map(|json| extract_audio(&json))
-                    .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
-            }
+            self.setup_audio(FxHashMap::default());
 
             self.event_queue.push(PlayerEvent::Load);
             if self.autoplay {
@@ -942,23 +968,22 @@ impl Player {
 
         self.dotlottie_manager = Some(manager);
 
-        #[cfg(feature = "audio")]
-        {
-            self.audio_manager = self
-                .dotlottie_manager
-                .as_ref()
-                .and_then(|dm| dm.get_audio_assets())
-                .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
-        }
-
         let result =
             self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr));
 
         if result.is_ok() {
             self.animation_id = active_animation_id;
-        }
 
-        if result.is_ok() {
+            #[cfg(feature = "audio")]
+            {
+                let sources = self
+                    .dotlottie_manager
+                    .as_ref()
+                    .map(|dm| dm.get_audio_sources())
+                    .unwrap_or_default();
+                self.setup_audio(sources);
+            }
+
             self.event_queue.push(PlayerEvent::Load);
 
             if self.autoplay {
@@ -1002,11 +1027,12 @@ impl Player {
 
                 #[cfg(feature = "audio")]
                 {
-                    self.audio_manager = self
+                    let sources = self
                         .dotlottie_manager
                         .as_ref()
-                        .and_then(|dm| dm.get_audio_assets())
-                        .and_then(|(assets, layers)| AudioManager::with_assets(assets, layers));
+                        .map(|dm| dm.get_audio_sources())
+                        .unwrap_or_default();
+                    self.setup_audio(sources);
                 }
 
                 #[cfg(feature = "theming")]
@@ -1478,5 +1504,109 @@ impl Player {
         state_machine: &str,
     ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
         StateMachineEngine::new(state_machine, self, None)
+    }
+}
+
+#[cfg(test)]
+#[cfg(all(feature = "tvg", feature = "dotlottie", feature = "audio"))]
+mod audio_render_tests {
+    use crate::{ColorSpace, Player};
+
+    /// A dotLottie with audio loads, renders, and drives the audio manager.
+    #[test]
+    fn renders_dotlottie_with_audio_and_resolves_layers() {
+        let mut player = Player::new();
+        let mut buffer = vec![0u32; 512 * 512];
+        player
+            .set_sw_target(&mut buffer, 512, 512, ColorSpace::ABGR8888)
+            .unwrap();
+
+        let data = include_bytes!("../assets/animations/dotlottie/v2/happy_birthday_audio.lottie");
+        assert!(
+            player.load_dotlottie_data(data).is_ok(),
+            "audio dotLottie loads"
+        );
+        assert!(player.total_frames() > 0.0, "animation has frames");
+
+        player.set_loop(true);
+        player.set_autoplay(true);
+
+        let mut rendered_any = false;
+        for _ in 0..20 {
+            if player.tick(1000.0 / 60.0).unwrap_or(false) {
+                rendered_any = true;
+            }
+        }
+        assert!(rendered_any, "at least one frame rendered");
+        assert!(
+            player.audio_active_count() > 0,
+            "audio resolver should mark layers active during playback"
+        );
+    }
+
+    fn loaded_audio_player(buffer: &mut [u32]) -> Player {
+        let mut player = Player::new();
+        player
+            .set_sw_target(buffer, 512, 512, ColorSpace::ABGR8888)
+            .unwrap();
+        let data = include_bytes!("../assets/animations/dotlottie/v2/happy_birthday_audio.lottie");
+        assert!(player.load_dotlottie_data(data).is_ok());
+        player.set_loop(true);
+        player
+    }
+
+    fn tick_some(player: &mut Player) {
+        for _ in 0..20 {
+            let _ = player.tick(1000.0 / 60.0);
+        }
+    }
+
+    /// The example's X→P flow: after stop, audio must restart on the next play.
+    #[test]
+    fn audio_restarts_after_stop_then_play() {
+        let mut buffer = vec![0u32; 512 * 512];
+        let mut player = loaded_audio_player(&mut buffer);
+
+        player.play().unwrap();
+        tick_some(&mut player);
+        assert!(
+            player.audio_active_count() > 0,
+            "audio active on first play"
+        );
+
+        player.stop().unwrap();
+
+        player.play().unwrap();
+        tick_some(&mut player);
+        assert!(
+            player.audio_active_count() > 0,
+            "audio must re-activate after stop -> play"
+        );
+    }
+
+    /// The example's S→P flow: pause keeps the active set so resume continues.
+    #[test]
+    fn audio_survives_pause_resume() {
+        let mut buffer = vec![0u32; 512 * 512];
+        let mut player = loaded_audio_player(&mut buffer);
+
+        player.play().unwrap();
+        tick_some(&mut player);
+        let active = player.audio_active_count();
+        assert!(active > 0, "audio active while playing");
+
+        player.pause().unwrap();
+        assert_eq!(
+            player.audio_active_count(),
+            active,
+            "pause retains the active set"
+        );
+
+        player.play().unwrap();
+        tick_some(&mut player);
+        assert!(
+            player.audio_active_count() > 0,
+            "audio still active after resume"
+        );
     }
 }

@@ -15,6 +15,8 @@ pub use renderer::{
     Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Renderer, Rgba,
     Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
+#[cfg(feature = "audio")]
+pub use renderer::{AudioEvent, AudioResolver, AudioSource};
 pub use slots::{
     slots_from_json_string, Bezier, BezierValue, ColorSlot, ColorValue, GradientSlot, GradientStop,
     ImageSlot, LottieKeyframe, LottieProperty, PositionSlot, ScalarSlot, ScalarValue, SlotType,
@@ -90,6 +92,13 @@ pub trait LottieRenderer {
     ) -> Result<(), LottieRendererError>;
 
     fn load_data(&mut self, data: &CStr) -> Result<(), LottieRendererError>;
+
+    /// Register a callback for audio layer playback changes, or `None` to clear.
+    #[cfg(feature = "audio")]
+    fn set_audio_resolver(
+        &mut self,
+        resolver: Option<AudioResolver>,
+    ) -> Result<(), LottieRendererError>;
 
     fn picture_width(&self) -> f32;
 
@@ -555,6 +564,17 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.store_default_slots(default_slots);
 
         Ok(())
+    }
+
+    #[cfg(feature = "audio")]
+    fn set_audio_resolver(
+        &mut self,
+        resolver: Option<AudioResolver>,
+    ) -> Result<(), LottieRendererError> {
+        match self.animation.as_mut() {
+            Some(a) => a.set_audio_resolver(resolver).map_err(into_lottie::<R>),
+            None => Ok(()),
+        }
     }
 
     fn picture_width(&self) -> f32 {

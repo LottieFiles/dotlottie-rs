@@ -231,10 +231,39 @@ pub trait Shape: Default {
     fn reset(&mut self) -> Result<(), Self::Error>;
 }
 
+/// Source of audio data for a Lottie audio layer.
+#[cfg(feature = "audio")]
+pub enum AudioSource<'a> {
+    Embedded {
+        bytes: &'a [u8],
+        mime: Option<&'a str>,
+    },
+    External(&'a str),
+}
+
+/// A playback-state change for a Lottie audio layer, fired when it enters or
+/// leaves its active range.
+#[cfg(feature = "audio")]
+pub struct AudioEvent<'a> {
+    pub source: AudioSource<'a>,
+    /// Seek position in seconds; valid when `active`.
+    pub offset: f32,
+    /// Volume on a 0–100 scale; valid when `active`.
+    pub volume: f32,
+    pub active: bool,
+}
+
+#[cfg(feature = "audio")]
+pub type AudioResolver = Box<dyn for<'a> FnMut(AudioEvent<'a>)>;
+
 pub trait Animation: Default {
     type Error: error::Error;
 
     fn load_data(&mut self, data: &CStr, mimetype: &CStr) -> Result<(), Self::Error>;
+
+    /// Register a callback for audio layer playback changes, or `None` to disable.
+    #[cfg(feature = "audio")]
+    fn set_audio_resolver(&mut self, resolver: Option<AudioResolver>) -> Result<(), Self::Error>;
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Self::Error>;
 

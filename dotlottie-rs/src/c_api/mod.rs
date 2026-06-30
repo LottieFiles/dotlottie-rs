@@ -1161,45 +1161,23 @@ pub unsafe extern "C" fn dotlottie_set_position_slot(
     })
 }
 
-/// Set an image slot from a file path
+/// Set an image slot from a source string (a `data:` URI, an `http(s)://` URL,
+/// or a file in the package `i/` folder referenced by name).
 #[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_image_slot_path(
+pub unsafe extern "C" fn dotlottie_set_image_slot_src(
     ptr: *mut Player,
     slot_id: *const c_char,
-    path: *const c_char,
+    src: *const c_char,
 ) -> DotLottieResult {
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if slot_id.is_null() || path.is_null() {
+        if slot_id.is_null() || src.is_null() {
             return DotLottieResult::InvalidParameter;
         }
         let id = CStr::from_ptr(slot_id);
-        let path_cstr = CStr::from_ptr(path);
-        match (id.to_str(), path_cstr.to_str()) {
-            (Ok(id_str), Ok(path_str)) => {
-                let slot = ImageSlot::from_path(path_str.to_string());
-                dotlottie_player.set_image_slot(id_str, slot)
-            }
-            _ => Err(PlayerError::InvalidParameter),
-        }
-    })
-}
-
-/// Set an image slot from a data URL (base64 encoded)
-#[no_mangle]
-pub unsafe extern "C" fn dotlottie_set_image_slot_data_url(
-    ptr: *mut Player,
-    slot_id: *const c_char,
-    data_url: *const c_char,
-) -> DotLottieResult {
-    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        if slot_id.is_null() || data_url.is_null() {
-            return DotLottieResult::InvalidParameter;
-        }
-        let id = CStr::from_ptr(slot_id);
-        let url = CStr::from_ptr(data_url);
-        match (id.to_str(), url.to_str()) {
-            (Ok(id_str), Ok(url_str)) => {
-                let slot = ImageSlot::from_data_url(url_str.to_string());
+        let src_cstr = CStr::from_ptr(src);
+        match (id.to_str(), src_cstr.to_str()) {
+            (Ok(id_str), Ok(src_str)) => {
+                let slot = ImageSlot::from_src(src_str.to_string());
                 dotlottie_player.set_image_slot(id_str, slot)
             }
             _ => Err(PlayerError::InvalidParameter),

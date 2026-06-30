@@ -177,14 +177,11 @@ pub struct ImageRule {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImageValue {
+    pub src: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub height: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub data_url: Option<String>,
 }
 
 /// Text theme rule - holds text animation/static values
@@ -491,19 +488,7 @@ impl From<&GradientRule> for GradientSlot {
 impl From<&ImageRule> for ImageSlot {
     fn from(rule: &ImageRule) -> Self {
         let value = &rule.value;
-        let mut slot = if let Some(data_url) = &value.data_url {
-            ImageSlot::from_data_url(data_url.clone())
-        } else if let Some(path) = &value.path {
-            ImageSlot::from_path(path.clone())
-        } else {
-            ImageSlot {
-                width: None,
-                height: None,
-                directory: None,
-                path: None,
-                embed: None,
-            }
-        };
+        let mut slot = ImageSlot::from_src(value.src.clone());
 
         if let (Some(w), Some(h)) = (value.width, value.height) {
             slot = slot.with_dimensions(w, h);
@@ -688,5 +673,56 @@ fn parse_caps(caps: &str) -> Option<TextCaps> {
         "AllCaps" => Some(TextCaps::AllCaps),
         "SmallCaps" => Some(TextCaps::SmallCaps),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn slot_from_rule(json: &str) -> ImageSlot {
+        let rule: ImageRule = serde_json::from_str(json).expect("valid image rule");
+        ImageSlot::from(&rule)
+    }
+
+    #[test]
+    fn image_src_data_url_is_embedded() {
+        let slot =
+            slot_from_rule(r#"{ "id": "logo", "value": { "src": "data:image/png;base64,AAAA" } }"#);
+        assert_eq!(slot.embed, Some(1));
+        assert_eq!(slot.path.as_deref(), Some("data:image/png;base64,AAAA"));
+        assert_eq!(slot.directory, None);
+    }
+
+    #[test]
+    fn image_src_http_url_is_linked_and_intact() {
+        let slot =
+            slot_from_rule(r#"{ "id": "logo", "value": { "src": "https://cdn.x/a/logo.png" } }"#);
+        assert_eq!(slot.embed, Some(0));
+        assert_eq!(slot.path.as_deref(), Some("https://cdn.x/a/logo.png"));
+        assert_eq!(slot.directory, None);
+    }
+
+    #[test]
+    fn image_src_bare_name_resolves_to_package_file() {
+        let slot = slot_from_rule(r#"{ "id": "logo", "value": { "src": "logo_dark.png" } }"#);
+        assert_eq!(slot.embed, Some(0));
+        assert_eq!(slot.path.as_deref(), Some("logo_dark.png"));
+        assert_eq!(slot.directory, None);
+    }
+
+    #[test]
+    fn image_dimensions_are_applied() {
+        let slot = slot_from_rule(
+            r#"{ "id": "logo", "value": { "src": "logo.png", "width": 200, "height": 100 } }"#,
+        );
+        assert_eq!(slot.width, Some(200));
+        assert_eq!(slot.height, Some(100));
+    }
+
+    #[test]
+    fn image_rule_requires_src() {
+        let err = serde_json::from_str::<ImageRule>(r#"{ "id": "logo", "value": {} }"#);
+        assert!(err.is_err(), "image rule with no src must be rejected");
     }
 }

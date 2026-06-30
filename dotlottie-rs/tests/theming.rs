@@ -293,10 +293,6 @@ mod tests {
         assert!(player.is_playing());
     }
 
-    /// Regression: `reset_theme()` must restore slots to their initial
-    /// (default) values, NOT clear them. After resetting the theme the
-    /// animation's own slots should still be present, and any overridden
-    /// values should be back to the loaded defaults.
     #[test]
     fn test_reset_theme_restores_slots_to_defaults() {
         use dotlottie_rs::ColorSlot;
@@ -307,8 +303,6 @@ mod tests {
             .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
-        // bouncy_ball.json defines slots (ball_color, ball_opacity, ...) whose
-        // initial values are captured at load time.
         let data = CString::new(include_str!("../assets/animations/lottie/bouncy_ball.json"))
             .expect("Failed to create CString");
         assert_eq!(player.load_animation_data(&data), Ok(()));
@@ -321,7 +315,6 @@ mod tests {
         );
         let default_color = player.get_slot_str("ball_color");
 
-        // Override a slot, then reset the theme.
         player
             .set_color_slot("ball_color", ColorSlot::new([1.0, 0.0, 0.0]))
             .unwrap();
@@ -333,7 +326,6 @@ mod tests {
 
         assert_eq!(player.reset_theme(), Ok(()));
 
-        // Slots must NOT be cleared — they remain, restored to initial values.
         let mut ids_after_reset = player.get_slot_ids();
         ids_after_reset.sort();
         assert_eq!(

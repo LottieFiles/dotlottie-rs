@@ -292,4 +292,50 @@ mod tests {
 
         assert!(player.is_playing());
     }
+
+    #[test]
+    fn test_reset_theme_restores_slots_to_defaults() {
+        use dotlottie_rs::ColorSlot;
+
+        let mut player = Player::new();
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .is_ok());
+
+        let data = CString::new(include_str!("../assets/animations/lottie/bouncy_ball.json"))
+            .expect("Failed to create CString");
+        assert_eq!(player.load_animation_data(&data), Ok(()));
+
+        let mut original_ids = player.get_slot_ids();
+        original_ids.sort();
+        assert!(
+            !original_ids.is_empty(),
+            "animation should expose its own slots after load"
+        );
+        let default_color = player.get_slot_str("ball_color");
+
+        player
+            .set_color_slot("ball_color", ColorSlot::new([1.0, 0.0, 0.0]))
+            .unwrap();
+        assert_ne!(
+            player.get_slot_str("ball_color"),
+            default_color,
+            "override should change the slot value"
+        );
+
+        assert_eq!(player.reset_theme(), Ok(()));
+
+        let mut ids_after_reset = player.get_slot_ids();
+        ids_after_reset.sort();
+        assert_eq!(
+            ids_after_reset, original_ids,
+            "reset_theme must keep the animation's slots, not clear them"
+        );
+        assert_eq!(
+            player.get_slot_str("ball_color"),
+            default_color,
+            "reset_theme must restore the slot to its initial value"
+        );
+    }
 }

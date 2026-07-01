@@ -1095,9 +1095,7 @@ impl Player {
 
         if theme_id.is_empty() {
             self.theme_id = None;
-            self.renderer
-                .clear_slots()
-                .map_err(|_| PlayerError::Unknown)?;
+            self.renderer.reset_slots();
             return Ok(());
         }
 
@@ -1161,7 +1159,7 @@ impl Player {
     #[cfg(feature = "theming")]
     pub fn reset_theme(&mut self) -> Result<(), PlayerError> {
         self.theme_id = None;
-        self.renderer.clear_slots()?;
+        self.renderer.reset_slots();
         Ok(())
     }
 

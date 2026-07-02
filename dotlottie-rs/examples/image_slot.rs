@@ -88,7 +88,8 @@ fn main() {
         let dt = clock.dt();
         let now = std::time::Instant::now();
 
-        if window.is_key_down(Key::Space) && now.duration_since(last_space_press).as_millis() > 250
+        if window.is_key_pressed(Key::Space, minifb::KeyRepeat::No)
+            && now.duration_since(last_space_press).as_millis() > 250
         {
             index = (index + 1) % states.len();
             let (label, src) = states[index];

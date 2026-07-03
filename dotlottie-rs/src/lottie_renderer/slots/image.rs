@@ -15,6 +15,18 @@ pub struct ImageSlot {
 }
 
 impl ImageSlot {
+    /// Resolve a theme `src` into an image slot by its prefix
+    /// (`data:` → embedded, `http(s)://` → remote, otherwise a package `i/` file).
+    pub fn from_src(src: String) -> Self {
+        if src.starts_with("data:") {
+            Self::from_data_url(src)
+        } else if src.starts_with("http://") || src.starts_with("https://") {
+            Self::from_url(src)
+        } else {
+            Self::from_path(src)
+        }
+    }
+
     pub fn from_path(path: String) -> Self {
         let filename = path.split('/').next_back().unwrap_or(&path).to_string();
         let dir = path.rsplit_once('/').map(|x| x.0.to_string());
@@ -35,6 +47,16 @@ impl ImageSlot {
             directory: None,
             path: Some(data_url),
             embed: Some(1),
+        }
+    }
+
+    pub fn from_url(url: String) -> Self {
+        Self {
+            width: None,
+            height: None,
+            directory: None,
+            path: Some(url),
+            embed: Some(0),
         }
     }
 

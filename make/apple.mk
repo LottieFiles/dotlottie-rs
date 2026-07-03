@@ -182,12 +182,8 @@ WGPU_CACHE_DIR := $(CARGO_HOME_DIR)/wgpu-native-cache/$(WGPU_NATIVE_VERSION)
 WGPU_DYLIB := libwgpu_native.dylib
 WGPU_NATIVE_MODULE ?= WgpuNative
 WGPU_NATIVE_FRAMEWORK := $(WGPU_NATIVE_MODULE).framework
-# The dylib is shipped wrapped in WgpuNative.framework: App Store validation
-# rejects raw .dylib files in an app's Frameworks/ directory (ITMS-90429), and
-# CocoaPods refuses to vendor them at all.
 WGPU_INSTALL_NAME := @rpath/$(WGPU_NATIVE_FRAMEWORK)/$(WGPU_NATIVE_MODULE)
 WGPU_NATIVE_XCFRAMEWORK := $(WGPU_NATIVE_MODULE).xcframework
-# CFBundle versions must be at most three dot-separated numbers ("v27.0.4.0" -> "27.0.4").
 WGPU_FRAMEWORK_VERSION = $(shell echo $(WGPU_NATIVE_VERSION) | sed 's/^v//' | cut -d. -f1-3)
 WGPU_STAGE_DIR := $(APPLE_BUILD_DIR)/wgpu
 # Cache artifact per slice — mirrors artifact_name() in dotlottie-rs/build.rs.
@@ -197,9 +193,6 @@ WGPU_ARTIFACT_ios_arm64 := wgpu-ios-aarch64-release
 WGPU_ARTIFACT_ios_sim_arm64 := wgpu-ios-aarch64-simulator-release
 WGPU_ARTIFACT_ios_x86_64 := wgpu-ios-x86_64-simulator-release
 
-# Copy a cached wgpu dylib to $(2) and normalise its install_name to the
-# framework install name (the upstream iOS dylib ships with a CI build path
-# as its id).
 # $(1)=cache artifact name  $(2)=destination dylib path
 define stage_wgpu_dylib
 	@mkdir -p $(dir $(2))
@@ -207,9 +200,6 @@ define stage_wgpu_dylib
 	@$(INSTALL_NAME_TOOL) -id $(WGPU_INSTALL_NAME) "$(2)"
 endef
 
-# Wrap a staged wgpu dylib into a flat (iOS-style) WgpuNative.framework.
-# $(1)=staged dylib  $(2)=framework parent dir  $(3)=CFBundleSupportedPlatforms entry
-# $(4)=minimum-OS-version plist key  $(5)=minimum OS version
 define make_wgpu_framework
 	@rm -rf $(2)/$(WGPU_NATIVE_FRAMEWORK)
 	@mkdir -p $(2)/$(WGPU_NATIVE_FRAMEWORK)/$(FRAMEWORK_HEADERS)/webgpu $(2)/$(WGPU_NATIVE_FRAMEWORK)/$(FRAMEWORK_MODULES)

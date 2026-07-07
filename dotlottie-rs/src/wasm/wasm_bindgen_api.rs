@@ -664,6 +664,14 @@ impl DotLottiePlayerWasm {
             .is_ok()
     }
 
+    /// Set an image slot from a source string (a `data:` URI, an `http(s)://`
+    /// URL, or a file in the package `i/` folder referenced by name).
+    pub fn set_image_slot(&mut self, id: &str, src: &str) -> bool {
+        self.player
+            .set_image_slot(id, crate::ImageSlot::from_src(src.to_string()))
+            .is_ok()
+    }
+
     pub fn clear_slots(&mut self) -> bool {
         self.player.clear_slots().is_ok()
     }

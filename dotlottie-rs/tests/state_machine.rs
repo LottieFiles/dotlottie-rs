@@ -7,7 +7,7 @@ mod tests {
 
     use dotlottie_rs::{
         actions::open_url_policy::OpenUrlPolicy, ColorSpace, Event, Player,
-        StateMachineEngineStatus,
+        StateMachineEngineStatus, Status,
     };
     use std::io::Read;
 
@@ -35,7 +35,7 @@ mod tests {
 
         assert_eq!(player.load_dotlottie_data(&markers_buffer), Ok(()));
 
-        assert!(player.is_playing());
+        assert_eq!(player.status(), Status::Playing);
 
         let sm_id = CString::new("Exploding Pigeon").unwrap();
         let mut sm = player
@@ -363,7 +363,7 @@ mod tests {
         sm.player
             .tween(5.0, 2000.0, [0.0, 0.0, 1.0, 1.0])
             .expect("initial tween should succeed");
-        assert!(sm.player.is_tweening());
+        assert_eq!(sm.player.status(), Status::Tweening);
 
         // Trigger a tweened transition (rating=2 → star_2).
         // tween will fail because the player is already tweening,
@@ -416,8 +416,9 @@ mod tests {
             StateMachineEngineStatus::Tweening,
             "state machine should be in Tweening status when tweened transition targets a state without a segment"
         );
-        assert!(
-            sm.player.is_tweening(),
+        assert_eq!(
+            sm.player.status(),
+            Status::Tweening,
             "player should be tweening after a tweened transition to a state without a segment"
         );
 
@@ -425,6 +426,65 @@ mod tests {
             sm.get_current_state_name(),
             "segment_state",
             "current state should still be the source state while tweening"
+        );
+    }
+
+    #[test]
+    fn stop_during_tweened_transition_aborts_transition() {
+        let sm_json = include_str!("../assets/statemachines/tween_no_segment.json");
+        let mut player = Player::new();
+
+        let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
+        assert!(player
+            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .is_ok());
+
+        assert!(player
+            .load_dotlottie_data(include_bytes!(
+                "../assets/animations/dotlottie/v1/smiley-slider.lottie"
+            ))
+            .is_ok());
+
+        let mut sm = player
+            .state_machine_load_data(sm_json)
+            .expect("state machine to load successfully");
+
+        sm.start(&OpenUrlPolicy::default())
+            .expect("state machine should start");
+
+        assert_eq!(sm.get_current_state_name(), "segment_state");
+
+        sm.set_numeric_input("trigger", 1.0, true, false)
+            .expect("input should be set");
+
+        assert_eq!(sm.status, StateMachineEngineStatus::Tweening);
+        assert_eq!(sm.player.status(), Status::Tweening);
+
+        sm.player.stop().expect("stop during tween should succeed");
+        assert_eq!(sm.player.status(), Status::Stopped);
+        let frame_after_stop = sm.player.current_frame();
+
+        let _ = sm.tick(16.0);
+
+        assert_eq!(
+            sm.status,
+            StateMachineEngineStatus::Running,
+            "engine should leave Tweening after the tween is cancelled"
+        );
+        assert_eq!(
+            sm.get_current_state_name(),
+            "segment_state",
+            "cancelled tweened transition must not enter the target state"
+        );
+        assert_eq!(
+            sm.player.status(),
+            Status::Stopped,
+            "stop must stick: no autoplay restart from the aborted transition"
+        );
+        assert_eq!(
+            sm.player.current_frame(),
+            frame_after_stop,
+            "frame must not teleport to the tween target"
         );
     }
 
@@ -461,7 +521,11 @@ mod tests {
             StateMachineEngineStatus::Tweening,
             "state machine should be in Tweening status for a reverse mode state with segment"
         );
-        assert!(sm.player.is_tweening(), "player should be tweening");
+        assert_eq!(
+            sm.player.status(),
+            Status::Tweening,
+            "player should be tweening"
+        );
 
         assert_eq!(sm.get_current_state_name(), "forward_state");
 
@@ -513,7 +577,11 @@ mod tests {
             StateMachineEngineStatus::Tweening,
             "state machine should be in Tweening status for a reverse mode state without segment"
         );
-        assert!(sm.player.is_tweening(), "player should be tweening");
+        assert_eq!(
+            sm.player.status(),
+            Status::Tweening,
+            "player should be tweening"
+        );
 
         assert_eq!(sm.get_current_state_name(), "forward_state");
 

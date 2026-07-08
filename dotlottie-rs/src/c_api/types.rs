@@ -13,14 +13,6 @@ use crate::PlayerError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
-pub enum PlaybackStatus {
-    Playing = 0,
-    Paused = 1,
-    Stopped = 2,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
 pub enum DotLottieResult {
     Success = 0,
     Error = 1,

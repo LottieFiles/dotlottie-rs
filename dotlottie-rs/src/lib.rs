@@ -6,6 +6,7 @@ mod fms;
 mod layout;
 mod lottie_renderer;
 mod player;
+mod player_state;
 mod poll_events;
 mod result;
 #[cfg(feature = "state-machines")]

@@ -173,6 +173,9 @@ pub trait LottieRenderer {
 
     fn store_default_slots(&mut self, slots: BTreeMap<String, SlotType>);
 
+    /// The slot's value as declared by the animation, before any override.
+    fn default_slot(&self, slot_id: &str) -> Option<SlotType>;
+
     fn reset_slot(&mut self, slot_id: &str) -> Result<(), LottieRendererError>;
 
     fn reset_slots(&mut self) -> bool;
@@ -822,6 +825,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     fn store_default_slots(&mut self, slots: BTreeMap<String, SlotType>) {
         self.default_slots = slots.clone();
         self.slot_values = slots;
+    }
+
+    fn default_slot(&self, slot_id: &str) -> Option<SlotType> {
+        self.default_slots.get(slot_id).cloned()
     }
 
     fn reset_slot(&mut self, slot_id: &str) -> Result<(), LottieRendererError> {

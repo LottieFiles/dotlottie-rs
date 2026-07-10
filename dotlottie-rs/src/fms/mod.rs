@@ -285,6 +285,30 @@ impl DotLottieManager {
         self.active_animation_id.to_string()
     }
 
+    /// Read a packaged image by file name and return it as a `data:` URI. Any
+    /// leading directory is ignored.
+    pub fn get_image_data_url(&self, file_name: &str) -> Option<String> {
+        let name = file_name.rsplit('/').next().unwrap_or(file_name);
+
+        if name.is_empty() {
+            return None;
+        }
+
+        let prefix = if self.version == 2 { "i/" } else { "images/" };
+        let mut archive = self.archive.borrow_mut();
+        let mut entry = archive.by_name(&format!("{prefix}{name}")).ok()?;
+
+        let mut content = Vec::with_capacity(entry.size() as usize);
+        entry.read_to_end(&mut content).ok()?;
+
+        let ext = name.rfind('.').map(|i| &name[i + 1..]).unwrap_or(DEFAULT_EXT);
+
+        Some(format!(
+            "{DATA_IMAGE_PREFIX}{ext}{BASE64_PREFIX}{}",
+            Self::encode_base64(&content)
+        ))
+    }
+
     #[inline]
     #[cfg(feature = "theming")]
     pub fn get_theme(&self, theme_id: &str) -> Result<Theme, DotLottieError> {

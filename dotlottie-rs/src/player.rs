@@ -1478,18 +1478,48 @@ impl Player {
     }
 
     pub fn tween(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> Result<(), PlayerError> {
+        if self.is_tweening() {
+            return Err(PlayerError::InsufficientCondition);
+        }
+        self.tween_to(to, duration, easing)
+    }
+
+    pub fn tween_to(
+        &mut self,
+        to: f32,
+        duration: f32,
+        easing: [f32; 4],
+    ) -> Result<(), PlayerError> {
         let resume = match self.state {
             State::Idle => return Err(PlayerError::AnimationNotLoaded),
-            State::Tweening { .. } => return Err(PlayerError::InsufficientCondition),
+            State::Tweening { resume, .. } => resume,
             State::Stopped => Resume::Stopped,
             State::Paused => Resume::Paused,
             State::Playing => Resume::Playing,
         };
-        let from = self.current_frame();
-        let tween = TweenState::new(from, to, duration, easing)?;
+
+        let tween = TweenState::new(to, duration, easing)?;
+        self.renderer.tween_to(to)?;
+        // Renderer keeps the replaced tween's progress and skips updates landing on it.
+        self.renderer.tween_go(0.0)?;
+
         self.tween_outcome = None;
         self.state = State::Tweening { tween, resume };
         Ok(())
+    }
+
+    pub(crate) fn cancel_tween(&mut self) {
+        if !self.is_tweening() {
+            return;
+        }
+        self.end_tween(TweenOutcome::Cancelled);
+        // Renderer drops its dynamic tween on a frame change, skipping the same-frame check.
+        let _ = self.apply_frame(self.current_frame());
+    }
+
+    #[inline]
+    pub fn is_tweening(&self) -> bool {
+        matches!(self.state, State::Tweening { .. })
     }
 
     pub(crate) fn sync_tween_frame(&mut self, frame: f32) {
@@ -1501,15 +1531,15 @@ impl Player {
     }
 
     pub fn tween_advance(&mut self, dt: f32) -> Result<TweenStatus, PlayerError> {
-        let (status, progress, from, to) = match &mut self.state {
+        let (status, progress, to) = match &mut self.state {
             State::Tweening { tween, .. } => {
                 let (status, progress) = tween.update(dt);
-                (status, progress, tween.from, tween.to)
+                (status, progress, tween.to)
             }
             _ => return Err(PlayerError::InsufficientCondition),
         };
 
-        if let Err(e) = self.renderer.tween(from, to, progress) {
+        if let Err(e) = self.renderer.tween_go(progress) {
             self.end_tween(TweenOutcome::Cancelled);
             return Err(e.into());
         }

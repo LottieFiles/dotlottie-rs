@@ -1237,13 +1237,8 @@ impl Player {
         Ok(())
     }
 
-    /// Bring an image slot into the only shape ThorVG handles correctly: bytes
-    /// inlined as a `data:` URI, with non-zero `w`/`h`.
-    ///
-    /// Package-relative names must be resolved here because ThorVG's wasm build
-    /// has no file I/O and we register no asset resolver. Dimensions must be
-    /// present because ThorVG parses a non-embedded, zero-sized asset as *audio*
-    /// and then casts it to an image, corrupting memory.
+    /// Inline package images as `data:` URIs and ensure non-zero `w`/`h`, the
+    /// only shape ThorVG parses as an image rather than as audio.
     fn normalize_image_slot(
         &self,
         slot_id: &str,

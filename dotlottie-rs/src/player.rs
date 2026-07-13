@@ -1195,7 +1195,10 @@ impl Player {
             match slot_type {
                 SlotType::Color(slot) => self.renderer.set_color_slot(&slot_id, slot)?,
                 SlotType::Gradient(slot) => self.renderer.set_gradient_slot(&slot_id, slot)?,
-                SlotType::Image(slot) => self.renderer.set_image_slot(&slot_id, slot)?,
+                SlotType::Image(slot) => {
+                    let slot = self.normalize_image_slot(&slot_id, slot)?;
+                    self.renderer.set_image_slot(&slot_id, slot)?
+                }
                 SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot)?,
                 SlotType::Scalar(slot) => self.renderer.set_scalar_slot(&slot_id, slot)?,
                 SlotType::Vector(slot) => self.renderer.set_vector_slot(&slot_id, slot)?,
@@ -1229,8 +1232,71 @@ impl Player {
         slot_id: &str,
         slot: crate::lottie_renderer::ImageSlot,
     ) -> Result<(), PlayerError> {
+        let slot = self.normalize_image_slot(slot_id, slot)?;
         self.renderer.set_image_slot(slot_id, slot)?;
         Ok(())
+    }
+
+    /// Inline package images as `data:` URIs and ensure non-zero `w`/`h`, the
+    /// only shape ThorVG parses as an image rather than as audio.
+    fn normalize_image_slot(
+        &self,
+        slot_id: &str,
+        mut slot: crate::lottie_renderer::ImageSlot,
+    ) -> Result<crate::lottie_renderer::ImageSlot, PlayerError> {
+        if !slot.is_embedded() && !slot.is_remote() {
+            let file_name = slot
+                .file_name()
+                .map(str::to_owned)
+                .ok_or(PlayerError::InvalidParameter)?;
+
+            let data_url = self
+                .resolve_package_image(&file_name)
+                .ok_or(PlayerError::InvalidParameter)?;
+
+            slot.inline(data_url);
+        }
+
+        if !slot.has_dimensions() {
+            if let Some(crate::lottie_renderer::SlotType::Image(default)) =
+                self.renderer.default_slot(slot_id)
+            {
+                if let (Some(width), Some(height)) = (default.width, default.height) {
+                    slot = slot.with_dimensions(width, height);
+                }
+            }
+        }
+
+        if !slot.has_dimensions() {
+            return Err(PlayerError::InvalidParameter);
+        }
+
+        Ok(slot)
+    }
+
+    fn normalize_image_slots(
+        &self,
+        slots: &mut std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
+    ) -> Result<(), PlayerError> {
+        for (slot_id, slot_type) in slots.iter_mut() {
+            if let crate::lottie_renderer::SlotType::Image(slot) = slot_type {
+                *slot = self.normalize_image_slot(slot_id, slot.clone())?;
+            }
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "dotlottie")]
+    fn resolve_package_image(&self, file_name: &str) -> Option<String> {
+        self.dotlottie_manager
+            .as_ref()?
+            .get_image_data_url(file_name)
+    }
+
+    #[cfg(not(feature = "dotlottie"))]
+    fn resolve_package_image(&self, _file_name: &str) -> Option<String> {
+        None
     }
 
     pub fn set_text_slot(
@@ -1281,8 +1347,9 @@ impl Player {
 
     pub fn set_slots(
         &mut self,
-        slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
+        mut slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
     ) -> Result<(), PlayerError> {
+        self.normalize_image_slots(&mut slots)?;
         self.renderer.set_slots(slots)?;
         Ok(())
     }
@@ -1304,7 +1371,10 @@ impl Player {
                         SlotType::Gradient(slot) => {
                             self.renderer.set_gradient_slot(&slot_id, slot)?
                         }
-                        SlotType::Image(slot) => self.renderer.set_image_slot(&slot_id, slot)?,
+                        SlotType::Image(slot) => {
+                            let slot = self.normalize_image_slot(&slot_id, slot)?;
+                            self.renderer.set_image_slot(&slot_id, slot)?
+                        }
                         SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot)?,
                         SlotType::Scalar(slot) => self.renderer.set_scalar_slot(&slot_id, slot)?,
                         SlotType::Vector(slot) => self.renderer.set_vector_slot(&slot_id, slot)?,
@@ -1336,6 +1406,18 @@ impl Player {
     }
 
     pub fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), PlayerError> {
+        if self.renderer.get_slot_type(slot_id) == "image" {
+            let parsed = crate::lottie_renderer::slots::parse_slot_from_json("image", json)
+                .ok_or(PlayerError::InvalidParameter)?;
+
+            if let crate::lottie_renderer::SlotType::Image(slot) = parsed {
+                let slot = self.normalize_image_slot(slot_id, slot)?;
+                self.renderer.set_image_slot(slot_id, slot)?;
+
+                return Ok(());
+            }
+        }
+
         self.renderer.set_slot_str(slot_id, json)?;
         Ok(())
     }

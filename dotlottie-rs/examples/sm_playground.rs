@@ -516,7 +516,7 @@ impl eframe::App for Playground {
                 ui.painter().rect_stroke(
                     rect,
                     0.0,
-                    egui::Stroke::new(1.0, egui::Color32::GRAY),
+                    egui::Stroke::new(1.0_f32, egui::Color32::GRAY),
                     egui::StrokeKind::Outside,
                 );
 

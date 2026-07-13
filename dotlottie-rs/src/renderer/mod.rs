@@ -167,6 +167,10 @@ pub trait LottieRenderer {
 
     fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), Error>;
 
+    fn tween_to(&mut self, to: f32) -> Result<(), Error>;
+
+    fn tween_go(&mut self, progress: f32) -> Result<(), Error>;
+
     fn sync_current_frame(&mut self, frame: f32);
 
     fn get_transform(&self) -> Result<[f32; 9], Error>;
@@ -798,6 +802,20 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), Error> {
         self.get_animation_mut()?
             .tween(from, to, progress)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
+    }
+
+    fn tween_to(&mut self, to: f32) -> Result<(), Error> {
+        self.get_animation_mut()?
+            .tween_to(to)
+            .map_err(into_lottie::<R>)
+    }
+
+    fn tween_go(&mut self, progress: f32) -> Result<(), Error> {
+        self.get_animation_mut()?
+            .tween_go(progress)
             .map_err(into_lottie::<R>)?;
         self.updated = true;
         Ok(())

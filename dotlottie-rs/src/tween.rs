@@ -9,7 +9,6 @@ pub enum TweenStatus {
 }
 
 pub(crate) struct TweenState {
-    pub from: f32,
     pub to: f32,
     elapsed: f32,
     duration: f32,
@@ -17,7 +16,7 @@ pub(crate) struct TweenState {
 }
 
 impl TweenState {
-    pub fn new(from: f32, to: f32, duration: f32, easing: [f32; 4]) -> Result<Self, PlayerError> {
+    pub fn new(to: f32, duration: f32, easing: [f32; 4]) -> Result<Self, PlayerError> {
         if duration <= 0.0 {
             return Err(PlayerError::InvalidParameter);
         }
@@ -32,7 +31,6 @@ impl TweenState {
         }
 
         Ok(Self {
-            from,
             to,
             elapsed: 0.0,
             duration,

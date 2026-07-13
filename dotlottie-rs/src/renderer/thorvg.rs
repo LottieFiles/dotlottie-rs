@@ -733,6 +733,14 @@ impl Animation for TvgAnimation {
         Ok(())
     }
 
+    fn tween_to(&mut self, to: f32) -> Result<(), TvgError> {
+        unsafe { tvg::tvg_lottie_animation_tween_to(self.raw_animation, to).into_result() }
+    }
+
+    fn tween_go(&mut self, progress: f32) -> Result<(), TvgError> {
+        unsafe { tvg::tvg_lottie_animation_tween_go(self.raw_animation, progress).into_result() }
+    }
+
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), TvgError> {
         let tvg_matrix = tvg::Tvg_Matrix {
             e11: matrix[0],

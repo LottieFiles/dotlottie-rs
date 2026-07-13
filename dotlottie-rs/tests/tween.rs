@@ -87,6 +87,65 @@ mod tests {
     }
 
     #[test]
+    fn tween_to_starts_a_tween_when_idle() {
+        let (mut player, _buf) = setup_player();
+
+        let result = player.tween_to(20.0, 1.0, [0.0, 0.0, 1.0, 1.0]);
+        assert!(
+            result.is_ok(),
+            "tween_to should start a tween, got {result:?}"
+        );
+        assert!(player.is_tweening());
+
+        let result = player.tween_advance(10.0);
+        assert_eq!(result, Ok(TweenStatus::Completed));
+        assert!(!player.is_tweening());
+    }
+
+    #[test]
+    fn tween_to_retargets_active_tween() {
+        let (mut player, _buf) = setup_player();
+
+        player
+            .tween(20.0, 2000.0, [0.0, 0.0, 1.0, 1.0])
+            .expect("tween should start");
+        let _ = player.tick(500.0);
+        assert!(player.is_tweening());
+
+        let result = player.tween_to(5.0, 1000.0, [0.0, 0.0, 1.0, 1.0]);
+        assert!(
+            result.is_ok(),
+            "tween_to should retarget an active tween, got {result:?}"
+        );
+        assert!(player.is_tweening());
+
+        let _ = player.tick(800.0);
+        assert!(
+            player.is_tweening(),
+            "800ms into a 1000ms retarget: still tweening"
+        );
+        let _ = player.tick(300.0);
+        assert!(
+            !player.is_tweening(),
+            "1100ms into a 1000ms retarget: completed"
+        );
+    }
+
+    #[test]
+    fn tween_still_errors_when_already_tweening() {
+        let (mut player, _buf) = setup_player();
+
+        player
+            .tween(20.0, 2000.0, [0.0, 0.0, 1.0, 1.0])
+            .expect("tween should start");
+        let result = player.tween(5.0, 1000.0, [0.0, 0.0, 1.0, 1.0]);
+        assert!(
+            result.is_err(),
+            "legacy tween() must keep erroring when already tweening"
+        );
+    }
+
+    #[test]
     fn tick_continues_normally_after_tween_completion() {
         let (mut player, _buf) = setup_player();
 

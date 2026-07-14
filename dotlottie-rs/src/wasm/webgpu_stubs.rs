@@ -682,6 +682,18 @@ struct WGPUStringView {
 }
 
 #[repr(C)]
+struct WGPUSurfaceCapabilities {
+    next_in_chain: *mut c_void,
+    usages: WGPUTextureUsage,
+    format_count: usize,
+    formats: *const WGPUTextureFormat,
+    present_mode_count: usize,
+    present_modes: *const WGPUPresentMode,
+    alpha_mode_count: usize,
+    alpha_modes: *const WGPUCompositeAlphaMode,
+}
+
+#[repr(C)]
 struct WGPUSurfaceConfiguration {
     next_in_chain: *const WGPUChainedStruct,
     device: *mut GpuDevice,
@@ -1983,6 +1995,37 @@ unsafe extern "C" fn wgpuShaderModuleRelease(module: *mut GpuShaderModule) {
 }
 
 // Methods of Surface
+
+// A canvas context only ever accepts these; `Unpremultiplied` has no JS equivalent,
+// so ThorVG must not be told it is available.
+static SURFACE_FORMATS: [WGPUTextureFormat; 2] = [0x17, 0x12]; // Bgra8unorm, Rgba8unorm
+static SURFACE_PRESENT_MODES: [WGPUPresentMode; 1] = [0x01]; // Fifo
+static SURFACE_ALPHA_MODES: [WGPUCompositeAlphaMode; 2] = [0x01, 0x02]; // Opaque, Premultiplied
+
+#[no_mangle]
+unsafe extern "C" fn wgpuSurfaceGetCapabilities(
+    _surface: *mut GpuCanvasContext,
+    _adapter: *mut GpuAdapter,
+    capabilities: *mut WGPUSurfaceCapabilities,
+) -> u32 {
+    let capabilities = &mut *capabilities;
+
+    capabilities.next_in_chain = std::ptr::null_mut();
+    capabilities.usages = 0x10; // RenderAttachment
+    capabilities.format_count = SURFACE_FORMATS.len();
+    capabilities.formats = SURFACE_FORMATS.as_ptr();
+    capabilities.present_mode_count = SURFACE_PRESENT_MODES.len();
+    capabilities.present_modes = SURFACE_PRESENT_MODES.as_ptr();
+    capabilities.alpha_mode_count = SURFACE_ALPHA_MODES.len();
+    capabilities.alpha_modes = SURFACE_ALPHA_MODES.as_ptr();
+
+    0x01 // WGPUStatus_Success
+}
+
+#[no_mangle]
+unsafe extern "C" fn wgpuSurfaceCapabilitiesFreeMembers(_capabilities: WGPUSurfaceCapabilities) {
+    // The reported lists are 'static, so there is nothing to free.
+}
 
 #[no_mangle]
 unsafe extern "C" fn wgpuSurfaceConfigure(

@@ -755,6 +755,11 @@ pub unsafe extern "C" fn glBindBufferRange(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn glDrawArrays(mode: GLenum, first: GLint, count: GLsizei) {
+    get_context().draw_arrays(mode, first, count);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn glDrawElements(
     mode: GLenum,
     count: GLsizei,

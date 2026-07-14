@@ -33,6 +33,7 @@ use crate::state_machine::StringNumberBool;
 
 use crate::actions::whitelist::Whitelist;
 use crate::event_queue::EventQueue;
+use crate::player_state::TweenOutcome;
 use crate::state_machine_engine::events::{StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
@@ -708,6 +709,15 @@ impl<'a> StateMachineEngine<'a> {
                 self.current_state = Some(state);
             }
         }
+    }
+
+    fn abort_tweening(&mut self) {
+        if self.status != StateMachineEngineStatus::Tweening {
+            return;
+        }
+        self.status = StateMachineEngineStatus::Running;
+        self.tween_transition_target_state = None;
+        self.tween_target_frame = None;
     }
 
     // Set the current state to the target state
@@ -1448,11 +1458,17 @@ impl<'a> StateMachineEngine<'a> {
 
         self.check_completion();
 
-        let needs_resume =
-            self.status == StateMachineEngineStatus::Tweening && !self.player.is_tweening();
-
-        if needs_resume {
-            self.resume_from_tweening();
+        if self.status == StateMachineEngineStatus::Tweening
+            && self.player.status() != crate::Status::Tweening
+        {
+            match self.player.take_tween_outcome() {
+                Some(TweenOutcome::Completed) => self.resume_from_tweening(),
+                Some(TweenOutcome::Cancelled) => self.abort_tweening(),
+                None => {
+                    debug_assert!(false, "tween ended without recording an outcome");
+                    self.abort_tweening();
+                }
+            }
         }
 
         if self.status != StateMachineEngineStatus::Stopped {

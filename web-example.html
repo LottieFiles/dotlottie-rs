@@ -360,6 +360,7 @@
       let ctx2d = null; // only set in SW mode
 
       let player         = null;
+      let Status = null;
       let raf            = null;
       let activeRenderer = 'sw';
       let scrubbing      = false;  
@@ -472,7 +473,7 @@
 
         // Re-loop when animation completes during playback
         if (
-          player.is_playing() &&
+          player.status() === Status.Playing &&
           player.is_complete() &&
           document.getElementById("chk-loop").checked
         ) {
@@ -504,6 +505,7 @@
             const mod = await import('./release/wasm/dotlottie_rs.js');
             await mod.default({ module_or_path: "./release/wasm/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
+            Status = mod.Status;
             // Grab the 2D context after the canvas is fresh.
             ctx2d = canvas.getContext('2d');
 
@@ -513,6 +515,7 @@
             const mod = await import('./release/wasm-webgl/dotlottie_rs.js');
             await mod.default({ module_or_path: "./release/wasm-webgl/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
+            Status = mod.Status;
             // Pass the WebGL2 context into the WASM layer before loading.
             newPlayer.set_webgl_context(gl);
           } else if (rendererType === "webgpu") {
@@ -534,6 +537,7 @@
             const mod = await import('./release/wasm-webgpu/dotlottie_rs.js');
             await mod.default({ module_or_path: "./release/wasm-webgpu/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
+            Status = mod.Status;
             newPlayer.set_webgpu_device(gpuDevice);
             newPlayer.set_webgpu_surface(gpuCtx);
           }
@@ -611,7 +615,7 @@
       scrubRange.addEventListener("pointerdown", () => {
         if (!player) return;
         scrubbing = true;
-        wasPlaying = player.is_playing();
+        wasPlaying = player.status() === Status.Playing;
         if (wasPlaying) player.pause();
       });
 

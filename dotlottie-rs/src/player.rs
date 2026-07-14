@@ -4,6 +4,7 @@ use std::{fs, mem};
 
 #[cfg(feature = "audio")]
 use crate::audio::AudioManager;
+use crate::player_state::{Resume, State, TweenOutcome};
 use crate::poll_events::{EventQueue, PlayerEvent};
 use crate::PlayerError;
 use crate::{
@@ -26,10 +27,14 @@ use std::rc::Rc;
 #[cfg(feature = "audio")]
 use std::sync::Arc;
 
-pub enum PlaybackState {
-    Playing,
-    Paused,
-    Stopped,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub enum Status {
+    Idle = 0,
+    Playing = 1,
+    Paused = 2,
+    Stopped = 3,
+    Tweening = 4,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
@@ -65,8 +70,8 @@ pub enum CompletionEvent {
 
 pub struct Player {
     pub(crate) renderer: Box<dyn LottieRenderer>,
-    playback_state: PlaybackState,
-    is_loaded: bool,
+    state: State,
+    tween_outcome: Option<TweenOutcome>,
     elapsed_frames: f32,
     current_loop_count: u32,
     #[cfg(feature = "dotlottie")]
@@ -77,7 +82,7 @@ pub struct Player {
     active_marker: Option<CString>,
     event_queue: EventQueue<PlayerEvent, 16>,
     completion_event: CompletionEvent,
-    // Playback config properties
+    // Config properties
     mode: Mode,
     loop_animation: bool,
     loop_count: u32,
@@ -85,7 +90,6 @@ pub struct Player {
     use_frame_interpolation: bool,
     autoplay: bool,
     layout: Layout,
-    tween_state: Option<TweenState>,
     #[cfg(feature = "theming")]
     theme_id: Option<CString>,
     #[cfg(feature = "dotlottie")]
@@ -127,8 +131,8 @@ impl Player {
     pub fn with_renderer<R: Renderer>(renderer: R) -> Self {
         Player {
             renderer: <dyn LottieRenderer>::new(renderer),
-            playback_state: PlaybackState::Stopped,
-            is_loaded: false,
+            state: State::Idle,
+            tween_outcome: None,
             elapsed_frames: 0.0,
             current_loop_count: 0,
             mode: Mode::Forward,
@@ -138,7 +142,6 @@ impl Player {
             use_frame_interpolation: true,
             autoplay: false,
             layout: Layout::default(),
-            tween_state: None,
             #[cfg(feature = "theming")]
             theme_id: None,
             #[cfg(feature = "dotlottie")]
@@ -216,34 +219,50 @@ impl Player {
         self.renderer.segment().map_or(0.0, |seg| seg.end)
     }
 
-    pub fn is_loaded(&self) -> bool {
-        self.is_loaded
+    #[inline]
+    pub fn status(&self) -> Status {
+        match self.state {
+            State::Idle => Status::Idle,
+            State::Stopped => Status::Stopped,
+            State::Paused => Status::Paused,
+            State::Playing => Status::Playing,
+            State::Tweening { .. } => Status::Tweening,
+        }
     }
 
-    #[inline]
-    pub fn is_playing(&self) -> bool {
-        matches!(self.playback_state, PlaybackState::Playing)
+    fn end_tween(&mut self, outcome: TweenOutcome) {
+        if let State::Tweening { resume, .. } = self.state {
+            self.state = resume.into();
+            self.tween_outcome = Some(outcome);
+        }
     }
 
-    #[inline]
-    pub fn is_paused(&self) -> bool {
-        matches!(self.playback_state, PlaybackState::Paused)
-    }
-
-    #[inline]
-    pub fn is_stopped(&self) -> bool {
-        matches!(self.playback_state, PlaybackState::Stopped)
+    pub(crate) fn take_tween_outcome(&mut self) -> Option<TweenOutcome> {
+        self.tween_outcome.take()
     }
 
     pub fn play(&mut self) -> Result<(), PlayerError> {
-        if !self.is_loaded {
-            return Err(PlayerError::AnimationNotLoaded);
-        }
-        if self.is_playing() {
-            return Err(PlayerError::InsufficientCondition);
+        match &mut self.state {
+            State::Idle => return Err(PlayerError::AnimationNotLoaded),
+            State::Playing => return Err(PlayerError::InsufficientCondition),
+            State::Tweening { resume, .. } => {
+                if *resume == Resume::Playing {
+                    return Err(PlayerError::InsufficientCondition);
+                }
+                *resume = Resume::Playing;
+
+                #[cfg(feature = "audio")]
+                if let Some(am) = &self.audio {
+                    am.borrow_mut().set_playing(true);
+                }
+
+                self.event_queue.push(PlayerEvent::Play);
+                return Ok(());
+            }
+            State::Stopped | State::Paused => {}
         }
 
-        if self.is_complete() && self.is_stopped() {
+        if self.is_complete() && matches!(self.state, State::Stopped) {
             self.elapsed_frames = 0.0;
             match self.mode {
                 Mode::Forward | Mode::Bounce => {
@@ -263,7 +282,7 @@ impl Player {
             };
         }
 
-        self.playback_state = PlaybackState::Playing;
+        self.state = State::Playing;
 
         #[cfg(feature = "audio")]
         if let Some(am) = &self.audio {
@@ -276,13 +295,23 @@ impl Player {
     }
 
     pub fn pause(&mut self) -> Result<(), PlayerError> {
-        if !self.is_loaded {
-            return Err(PlayerError::AnimationNotLoaded);
+        match &mut self.state {
+            State::Idle => return Err(PlayerError::AnimationNotLoaded),
+            State::Playing => {}
+            State::Tweening { resume, .. } if *resume == Resume::Playing => {
+                *resume = Resume::Paused;
+
+                #[cfg(feature = "audio")]
+                if let Some(am) = &self.audio {
+                    am.borrow_mut().set_playing(false);
+                }
+
+                self.event_queue.push(PlayerEvent::Pause);
+                return Ok(());
+            }
+            _ => return Err(PlayerError::InsufficientCondition),
         }
-        if !self.is_playing() {
-            return Err(PlayerError::InsufficientCondition);
-        }
-        self.playback_state = PlaybackState::Paused;
+        self.state = State::Paused;
 
         #[cfg(feature = "audio")]
         if let Some(am) = &self.audio {
@@ -294,14 +323,14 @@ impl Player {
     }
 
     pub fn stop(&mut self) -> Result<(), PlayerError> {
-        if !self.is_loaded {
-            return Err(PlayerError::AnimationNotLoaded);
-        }
-        if self.is_stopped() {
-            return Err(PlayerError::InsufficientCondition);
+        match self.state {
+            State::Idle => return Err(PlayerError::AnimationNotLoaded),
+            State::Stopped => return Err(PlayerError::InsufficientCondition),
+            State::Tweening { .. } => self.end_tween(TweenOutcome::Cancelled),
+            State::Playing | State::Paused => {}
         }
 
-        self.playback_state = PlaybackState::Stopped;
+        self.state = State::Stopped;
 
         let start_frame = self.start_frame();
         let end_frame = self.end_frame();
@@ -348,7 +377,7 @@ impl Player {
     }
 
     fn next_frame(&mut self) -> f32 {
-        if !self.is_loaded || !self.is_playing() {
+        if !matches!(self.state, State::Playing) {
             return self.current_frame();
         }
 
@@ -491,7 +520,7 @@ impl Player {
 
     #[inline]
     fn advance_frames(&mut self, dt: f32) {
-        if self.is_playing() {
+        if matches!(self.state, State::Playing) {
             let duration = self.duration();
             if duration > 0.0 {
                 let fps = self.total_frames() / duration;
@@ -563,7 +592,7 @@ impl Player {
 
         // Completion logic only applies during active playback — not when the
         // caller renders manually (e.g. scrubbing while paused/stopped).
-        if self.is_playing() && self.is_complete() {
+        if matches!(self.state, State::Playing) && self.is_complete() {
             if self.loop_animation {
                 let count_complete =
                     self.loop_count > 0 && self.current_loop_count() >= self.loop_count;
@@ -590,7 +619,7 @@ impl Player {
                     self.reset_current_loop_count();
                 }
             } else {
-                self.playback_state = PlaybackState::Stopped;
+                self.state = State::Stopped;
                 self.emit_on_complete();
             }
         }
@@ -851,17 +880,18 @@ impl Player {
     where
         F: FnOnce(&mut dyn LottieRenderer) -> Result<(), LottieRendererError>,
     {
-        self.playback_state = PlaybackState::Stopped;
+        self.end_tween(TweenOutcome::Cancelled);
+        self.state = State::Idle;
         self.elapsed_frames = 0.0;
         self.current_loop_count = 0;
 
         let loaded = loader(&mut *self.renderer).is_ok();
 
-        if self.renderer.set_layout(&self.layout).is_err() {
+        if self.renderer.set_layout(&self.layout).is_err() || !loaded {
             return Err(PlayerError::Unknown);
         }
 
-        self.is_loaded = loaded;
+        self.state = State::Stopped;
 
         let start_frame = self.start_frame();
         let end_frame = self.end_frame();
@@ -879,11 +909,7 @@ impl Player {
 
         let _ = self.renderer.render();
 
-        if loaded {
-            Ok(())
-        } else {
-            Err(PlayerError::Unknown)
-        }
+        Ok(())
     }
 
     pub fn load_animation_data(&mut self, animation_data: &CStr) -> Result<(), PlayerError> {
@@ -1056,7 +1082,7 @@ impl Player {
     }
 
     pub fn is_complete(&self) -> bool {
-        if !self.is_loaded() {
+        if matches!(self.state, State::Idle | State::Tweening { .. }) {
             return false;
         }
 
@@ -1452,17 +1478,18 @@ impl Player {
     }
 
     pub fn tween(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> Result<(), PlayerError> {
-        if self.is_tweening() {
-            return Err(PlayerError::InsufficientCondition);
-        }
+        let resume = match self.state {
+            State::Idle => return Err(PlayerError::AnimationNotLoaded),
+            State::Tweening { .. } => return Err(PlayerError::InsufficientCondition),
+            State::Stopped => Resume::Stopped,
+            State::Paused => Resume::Paused,
+            State::Playing => Resume::Playing,
+        };
         let from = self.current_frame();
-        self.tween_state = Some(TweenState::new(from, to, duration, easing)?);
+        let tween = TweenState::new(from, to, duration, easing)?;
+        self.tween_outcome = None;
+        self.state = State::Tweening { tween, resume };
         Ok(())
-    }
-
-    #[inline]
-    pub fn is_tweening(&self) -> bool {
-        self.tween_state.is_some()
     }
 
     pub(crate) fn sync_tween_frame(&mut self, frame: f32) {
@@ -1474,23 +1501,25 @@ impl Player {
     }
 
     pub fn tween_advance(&mut self, dt: f32) -> Result<TweenStatus, PlayerError> {
-        let tween = self
-            .tween_state
-            .as_mut()
-            .ok_or(PlayerError::InsufficientCondition)?;
+        let (status, progress, from, to) = match &mut self.state {
+            State::Tweening { tween, .. } => {
+                let (status, progress) = tween.update(dt);
+                (status, progress, tween.from, tween.to)
+            }
+            _ => return Err(PlayerError::InsufficientCondition),
+        };
 
-        let (status, progress) = tween.update(dt);
-        let from = tween.from;
-        let to = tween.to;
-
-        self.renderer.tween(from, to, progress)?;
+        if let Err(e) = self.renderer.tween(from, to, progress) {
+            self.end_tween(TweenOutcome::Cancelled);
+            return Err(e.into());
+        }
 
         if status == TweenStatus::Completed {
             self.elapsed_frames = match self.direction {
                 Direction::Forward => to - self.start_frame(),
                 Direction::Reverse => self.end_frame() - to,
             };
-            self.tween_state = None;
+            self.end_tween(TweenOutcome::Completed);
         }
 
         Ok(status)
@@ -1536,16 +1565,13 @@ impl Player {
     pub fn tick(&mut self, dt: f32) -> Result<bool, PlayerError> {
         let dt = dt.max(0.0);
 
-        if self.is_tweening() {
+        if matches!(self.state, State::Tweening { .. }) {
             match self.tween_advance(dt) {
                 Ok(_) => {
                     self.render()?;
                     Ok(true)
                 }
-                Err(e) => {
-                    self.tween_state = None;
-                    Err(e)
-                }
+                Err(e) => Err(e),
             }
         } else {
             self.advance_frames(dt);

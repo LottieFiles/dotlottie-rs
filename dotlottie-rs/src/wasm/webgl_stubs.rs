@@ -41,28 +41,6 @@ pub fn context_ptr() -> *mut std::ffi::c_void {
     CONTEXT_PTR.load(Ordering::Relaxed) as *mut std::ffi::c_void
 }
 
-/// Sets the WebGL2 rendering context for the GL stubs (single-context legacy API).
-pub fn set_webgl_context(context: WebGl2RenderingContext) {
-    let ptr = CONTEXT_PTR.load(Ordering::Relaxed);
-
-    if !ptr.is_null() {
-        unsafe {
-            if *ptr != context {
-                let old_context = Box::from_raw(ptr);
-                drop(old_context);
-            } else {
-                return;
-            }
-        }
-    }
-
-    // Store the context in a Box to prevent moves
-    let context_box = Box::new(context);
-    // Convert Box to raw pointer and store expose_provenanceess in atomic
-    let ptr = Box::into_raw(context_box);
-    CONTEXT_PTR.store(ptr, Ordering::Relaxed);
-}
-
 /// Store a WebGL context in a heap-allocated Box, returning the raw pointer.
 /// Does NOT set it as the current context — call `make_current` for that.
 /// The caller is responsible for calling `drop_stored_context` when done.
@@ -847,11 +825,6 @@ pub unsafe extern "C" fn glBlitFramebuffer(
 #[no_mangle]
 pub unsafe extern "C" fn glBlendFunc(sfactor: GLenum, dfactor: GLenum) {
     get_context().blend_func(sfactor, dfactor);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn glBlendEquation(mode: GLenum) {
-    get_context().blend_equation(mode);
 }
 
 #[no_mangle]

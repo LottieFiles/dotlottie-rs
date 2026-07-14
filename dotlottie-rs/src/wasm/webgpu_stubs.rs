@@ -588,13 +588,6 @@ struct WGPUOrigin3D {
 }
 
 #[repr(C)]
-struct WGPUPassTimestampWrites {
-    query_set: *mut GpuQuerySet,
-    beginning_of_pass_write_index: u32,
-    end_of_pass_write_index: u32,
-}
-
-#[repr(C)]
 struct WGPUPipelineLayoutDescriptor {
     next_in_chain: *const WGPUChainedStruct,
     label: WGPUStringView,
@@ -769,13 +762,6 @@ struct WGPUBindGroupLayoutEntry {
 struct WGPUBlendState {
     color: WGPUBlendComponent,
     alpha: WGPUBlendComponent,
-}
-
-#[repr(C)]
-struct WGPUComputePassDescriptor {
-    next_in_chain: *const WGPUChainedStruct,
-    label: WGPUStringView,
-    timestamp_writes: Option<NonNull<WGPUPassTimestampWrites>>,
 }
 
 #[repr(C)]
@@ -1028,15 +1014,6 @@ fn convert_wgpu_origin_3d(origin: &WGPUOrigin3D) -> js_sys::Array {
     arr
 }
 
-fn convert_wgpu_pass_timestamp_writes(
-    writes: &WGPUPassTimestampWrites,
-) -> GpuComputePassTimestampWrites {
-    let out = GpuComputePassTimestampWrites::new(unsafe { &*writes.query_set });
-    out.set_beginning_of_pass_write_index(writes.beginning_of_pass_write_index);
-    out.set_end_of_pass_write_index(writes.end_of_pass_write_index);
-    out
-}
-
 fn convert_wgpu_pipeline_layout_descriptor(
     descriptor: &WGPUPipelineLayoutDescriptor,
 ) -> GpuPipelineLayoutDescriptor {
@@ -1269,20 +1246,6 @@ fn convert_wgpu_blend_state(state: &WGPUBlendState) -> GpuBlendState {
         &convert_wgpu_blend_component(&state.color),
         &convert_wgpu_blend_component(&state.alpha),
     )
-}
-
-fn convert_wgpu_compute_pass_descriptor(
-    descriptor: &WGPUComputePassDescriptor,
-) -> GpuComputePassDescriptor {
-    let out = GpuComputePassDescriptor::new();
-    set_descriptor_label(&out, &descriptor.label);
-    if let Some(timestamp_writes) = descriptor.timestamp_writes {
-        let timestamp_writes =
-            convert_wgpu_pass_timestamp_writes(unsafe { &*timestamp_writes.as_ptr() });
-        out.set_timestamp_writes(&timestamp_writes);
-    }
-
-    out
 }
 
 fn convert_wgpu_depth_stencil_state(state: &WGPUDepthStencilState) -> GpuDepthStencilState {
@@ -1570,30 +1533,6 @@ fn convert_wgpu_render_pipeline_descriptor(
 
 // -------------------- WebGPU API --------------------
 
-#[no_mangle]
-unsafe extern "C" fn wgpuCreateInstance(_descriptor: *const c_void) -> *mut c_void {
-    // This function is now just a stub since the actual instance creation is handled in webgpu_init_async
-    // This prevents errors when the C++ code tries to call this function
-    std::ptr::null_mut()
-}
-
-// Methods of Adapter
-
-#[no_mangle]
-unsafe extern "C" fn wgpuAdapterRequestDevice(
-    _adapter: *mut c_void,
-    _descriptor: *const c_void,
-) -> *mut c_void {
-    // This function is now just a stub since the actual device request is handled in webgpu_init_async
-    // This prevents errors when the C++ code tries to call this function
-    std::ptr::null_mut()
-}
-
-#[no_mangle]
-unsafe extern "C" fn wgpuAdapterRelease(adapter: *mut GpuAdapter) {
-    drop(Box::from_raw(adapter));
-}
-
 // Methods of BindGroup
 
 #[no_mangle]
@@ -1635,17 +1574,6 @@ unsafe extern "C" fn wgpuCommandBufferRelease(buffer: *mut GpuCommandBuffer) {
 }
 
 // Methods of CommandEncoder
-
-#[no_mangle]
-unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
-    encoder: *mut GpuCommandEncoder,
-    descriptor: *const WGPUComputePassDescriptor,
-) -> *mut GpuComputePassEncoder {
-    let encoder = &*encoder;
-    let descriptor = convert_wgpu_compute_pass_descriptor(&*descriptor);
-    let pass = encoder.begin_compute_pass_with_descriptor(&descriptor);
-    Box::into_raw(Box::new(pass))
-}
 
 #[no_mangle]
 unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
@@ -1696,66 +1624,6 @@ unsafe extern "C" fn wgpuCommandEncoderFinish(
 #[no_mangle]
 unsafe extern "C" fn wgpuCommandEncoderRelease(encoder: *mut GpuCommandEncoder) {
     drop(Box::from_raw(encoder));
-}
-
-// Methods of ComputePassEncoder
-
-#[no_mangle]
-unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroups(
-    pass: *mut GpuComputePassEncoder,
-    workgroup_count_x: u32,
-    workgroup_count_y: u32,
-    workgroup_count_z: u32,
-) {
-    let pass = &*pass;
-    pass.dispatch_workgroups_with_workgroup_count_y_and_workgroup_count_z(
-        workgroup_count_x,
-        workgroup_count_y,
-        workgroup_count_z,
-    );
-}
-
-#[no_mangle]
-unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: *mut GpuComputePassEncoder) {
-    let pass = &*pass;
-    pass.end();
-}
-
-#[no_mangle]
-unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
-    pass: *mut GpuComputePassEncoder,
-    index: u32,
-    bind_group: Option<NonNull<GpuBindGroup>>,
-    dynamic_offset_count: usize,
-    dynamic_offsets: *const u32,
-) {
-    let pass = &*pass;
-    let bind_group = bind_group.map(|b| b.as_ref());
-    if dynamic_offset_count > 0 {
-        let offsets = unsafe { std::slice::from_raw_parts(dynamic_offsets, dynamic_offset_count) };
-        let js_offsets = js_sys::Array::new();
-        for &offset in offsets {
-            js_offsets.push(&JsValue::from(offset));
-        }
-        pass.set_bind_group_with_u32_sequence(index, bind_group, &js_offsets.into());
-    } else {
-        pass.set_bind_group(index, bind_group);
-    }
-}
-
-#[no_mangle]
-unsafe extern "C" fn wgpuComputePassEncoderSetPipeline(
-    pass: *mut GpuComputePassEncoder,
-    pipeline: *mut GpuComputePipeline,
-) {
-    let pass = &*pass;
-    let pipeline = &*pipeline;
-    pass.set_pipeline(pipeline);
-}
-
-#[no_mangle]
-unsafe extern "C" fn wgpuComputePassEncoderRelease(pass: *mut GpuComputePassEncoder) {
-    drop(Box::from_raw(pass));
 }
 
 // Methods of ComputePipeline
@@ -1991,23 +1859,6 @@ unsafe extern "C" fn wgpuQueueRelease(queue: *mut GpuQueue) {
 }
 
 // Methods of RenderPassEncoder
-
-#[no_mangle]
-unsafe extern "C" fn wgpuRenderPassEncoderDraw(
-    pass: *mut GpuRenderPassEncoder,
-    vertex_count: u32,
-    instance_count: u32,
-    first_vertex: u32,
-    first_instance: u32,
-) {
-    let pass = &*pass;
-    pass.draw_with_instance_count_and_first_vertex_and_first_instance(
-        vertex_count,
-        instance_count,
-        first_vertex,
-        first_instance,
-    );
-}
 
 #[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(

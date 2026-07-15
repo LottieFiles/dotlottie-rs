@@ -6,18 +6,17 @@ use std::{fs, mem};
 use crate::audio::AudioManager;
 use crate::player_state::{Resume, State, TweenOutcome};
 use crate::poll_events::{EventQueue, PlayerEvent};
-use crate::PlayerError;
+#[cfg(feature = "state-machines")]
+use crate::state_machine::{Error as StateMachineEngineError, StateMachineEngine};
 use crate::{
     layout::Layout,
-    lottie_renderer::{LottieRenderer, LottieRendererError},
+    renderer::{Error as LottieRendererError, LottieRenderer},
     tween::{TweenState, TweenStatus},
     Marker,
 };
 use crate::{ColorSpace, Renderer, Rgba};
 #[cfg(feature = "dotlottie")]
 use crate::{DotLottieManager, Manifest};
-#[cfg(feature = "state-machines")]
-use crate::{StateMachineEngine, StateMachineEngineError};
 #[cfg(feature = "audio")]
 use rustc_hash::FxHashMap;
 #[cfg(feature = "audio")]
@@ -26,6 +25,33 @@ use std::cell::RefCell;
 use std::rc::Rc;
 #[cfg(feature = "audio")]
 use std::sync::Arc;
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
+pub enum Error {
+    #[error("unknown error")]
+    Unknown,
+    #[error("invalid parameter")]
+    InvalidParameter,
+    #[error("no animation loaded")]
+    AnimationNotLoaded,
+    #[error("insufficient condition")]
+    InsufficientCondition,
+}
+
+impl From<LottieRendererError> for Error {
+    fn from(err: LottieRendererError) -> Self {
+        match err {
+            LottieRendererError::InvalidArgument | LottieRendererError::InvalidColor => {
+                Error::InvalidParameter
+            }
+            LottieRendererError::AnimationNotLoaded => Error::AnimationNotLoaded,
+            _ => Error::Unknown,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
@@ -117,15 +143,15 @@ impl Player {
     }
 
     #[cfg(feature = "tvg")]
-    pub fn load_font(name: &str, data: &[u8]) -> Result<(), PlayerError> {
-        use crate::lottie_renderer::Renderer;
-        crate::TvgRenderer::load_font(name, data).map_err(|_| PlayerError::Unknown)
+    pub fn load_font(name: &str, data: &[u8]) -> Result<()> {
+        use crate::renderer::Renderer;
+        crate::TvgRenderer::load_font(name, data).map_err(|_| Error::Unknown)
     }
 
     #[cfg(feature = "tvg")]
-    pub fn unload_font(name: &str) -> Result<(), PlayerError> {
-        use crate::lottie_renderer::Renderer;
-        crate::TvgRenderer::unload_font(name).map_err(|_| PlayerError::Unknown)
+    pub fn unload_font(name: &str) -> Result<()> {
+        use crate::renderer::Renderer;
+        crate::TvgRenderer::unload_font(name).map_err(|_| Error::Unknown)
     }
 
     pub fn with_renderer<R: Renderer>(renderer: R) -> Self {
@@ -190,7 +216,7 @@ impl Player {
         let Some(am) = self.audio.as_ref().map(Rc::clone) else {
             return;
         };
-        let resolver: crate::lottie_renderer::AudioResolver = Box::new(move |event| {
+        let resolver: crate::renderer::AudioResolver = Box::new(move |event| {
             if let Ok(mut manager) = am.try_borrow_mut() {
                 manager.on_audio(event);
             }
@@ -241,13 +267,13 @@ impl Player {
         self.tween_outcome.take()
     }
 
-    pub fn play(&mut self) -> Result<(), PlayerError> {
+    pub fn play(&mut self) -> Result<()> {
         match &mut self.state {
-            State::Idle => return Err(PlayerError::AnimationNotLoaded),
-            State::Playing => return Err(PlayerError::InsufficientCondition),
+            State::Idle => return Err(Error::AnimationNotLoaded),
+            State::Playing => return Err(Error::InsufficientCondition),
             State::Tweening { resume, .. } => {
                 if *resume == Resume::Playing {
-                    return Err(PlayerError::InsufficientCondition);
+                    return Err(Error::InsufficientCondition);
                 }
                 *resume = Resume::Playing;
 
@@ -294,9 +320,9 @@ impl Player {
         Ok(())
     }
 
-    pub fn pause(&mut self) -> Result<(), PlayerError> {
+    pub fn pause(&mut self) -> Result<()> {
         match &mut self.state {
-            State::Idle => return Err(PlayerError::AnimationNotLoaded),
+            State::Idle => return Err(Error::AnimationNotLoaded),
             State::Playing => {}
             State::Tweening { resume, .. } if *resume == Resume::Playing => {
                 *resume = Resume::Paused;
@@ -309,7 +335,7 @@ impl Player {
                 self.event_queue.push(PlayerEvent::Pause);
                 return Ok(());
             }
-            _ => return Err(PlayerError::InsufficientCondition),
+            _ => return Err(Error::InsufficientCondition),
         }
         self.state = State::Paused;
 
@@ -322,10 +348,10 @@ impl Player {
         Ok(())
     }
 
-    pub fn stop(&mut self) -> Result<(), PlayerError> {
+    pub fn stop(&mut self) -> Result<()> {
         match self.state {
-            State::Idle => return Err(PlayerError::AnimationNotLoaded),
-            State::Stopped => return Err(PlayerError::InsufficientCondition),
+            State::Idle => return Err(Error::AnimationNotLoaded),
+            State::Stopped => return Err(Error::InsufficientCondition),
             State::Tweening { .. } => self.end_tween(TweenOutcome::Cancelled),
             State::Playing | State::Paused => {}
         }
@@ -543,9 +569,9 @@ impl Player {
     ///
     /// Internal: set the renderer frame, push events, sync audio.
     /// Does NOT update `elapsed_frames`.
-    fn apply_frame(&mut self, no: f32) -> Result<(), PlayerError> {
+    fn apply_frame(&mut self, no: f32) -> Result<()> {
         if no < self.start_frame() || no > self.end_frame() {
-            return Err(PlayerError::InvalidParameter);
+            return Err(Error::InvalidParameter);
         }
 
         self.renderer.set_frame(no)?;
@@ -557,7 +583,7 @@ impl Player {
     /// Set the frame number and sync playback position.
     ///
     /// Playback will continue from this frame on the next `tick()`.
-    pub fn set_frame(&mut self, no: f32) -> Result<(), PlayerError> {
+    pub fn set_frame(&mut self, no: f32) -> Result<()> {
         self.apply_frame(no)?;
         self.elapsed_frames = match self.direction {
             Direction::Forward => no - self.start_frame(),
@@ -566,7 +592,7 @@ impl Player {
         Ok(())
     }
 
-    pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), PlayerError> {
+    pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<()> {
         self.renderer.set_viewport(x, y, w, h)?;
         Ok(())
     }
@@ -583,7 +609,7 @@ impl Player {
         });
     }
 
-    pub fn render(&mut self) -> Result<(), PlayerError> {
+    pub fn render(&mut self) -> Result<()> {
         self.renderer.render()?;
 
         let frame_no = self.current_frame();
@@ -687,7 +713,7 @@ impl Player {
         self.active_marker.as_deref()
     }
 
-    pub fn set_layout(&mut self, layout: Layout) -> Result<(), PlayerError> {
+    pub fn set_layout(&mut self, layout: Layout) -> Result<()> {
         self.renderer.set_layout(&layout)?;
 
         self.layout = layout;
@@ -727,10 +753,10 @@ impl Player {
         }
     }
 
-    pub fn set_background(&mut self, color: Rgba) -> Result<(), PlayerError> {
+    pub fn set_background(&mut self, color: Rgba) -> Result<()> {
         self.renderer
             .set_background(color)
-            .map_err(|_| PlayerError::Unknown)
+            .map_err(|_| Error::Unknown)
     }
 
     pub fn background(&self) -> Rgba {
@@ -790,16 +816,16 @@ impl Player {
         self.use_frame_interpolation
     }
 
-    pub fn set_segment(&mut self, segment: Option<crate::Segment>) -> Result<(), PlayerError> {
+    pub fn set_segment(&mut self, segment: Option<crate::Segment>) -> Result<()> {
         self.renderer
             .set_segment(segment)
-            .map_err(|_| PlayerError::InvalidParameter)?;
+            .map_err(|_| Error::InvalidParameter)?;
         self.active_marker = None;
         Ok(())
     }
 
-    pub fn segment(&self) -> Result<crate::Segment, PlayerError> {
-        self.renderer.segment().map_err(|_| PlayerError::Unknown)
+    pub fn segment(&self) -> Result<crate::Segment> {
+        self.renderer.segment().map_err(|_| Error::Unknown)
     }
 
     /// Set software rendering target using a safe Rust slice.
@@ -815,10 +841,10 @@ impl Player {
         width: u32,
         height: u32,
         color_space: ColorSpace,
-    ) -> Result<(), PlayerError> {
+    ) -> Result<()> {
         let required_size = (width * height) as usize;
         if buffer.len() < required_size {
-            return Err(PlayerError::InvalidParameter);
+            return Err(Error::InvalidParameter);
         }
 
         let stride = width;
@@ -837,9 +863,9 @@ impl Player {
     /// All handles must remain valid while the player is using them and the GL context must be
     /// current on the calling thread when rendering.
     pub fn set_gl_target<
-        D: crate::lottie_renderer::GlDisplay,
-        S: crate::lottie_renderer::GlSurface,
-        C: crate::lottie_renderer::GlContext,
+        D: crate::renderer::GlDisplay,
+        S: crate::renderer::GlSurface,
+        C: crate::renderer::GlContext,
     >(
         &mut self,
         display: &D,
@@ -848,7 +874,7 @@ impl Player {
         id: i32,
         width: u32,
         height: u32,
-    ) -> Result<(), PlayerError> {
+    ) -> Result<()> {
         self.renderer
             .set_gl_target(display, surface, context, id, width, height)?;
         Ok(())
@@ -859,9 +885,9 @@ impl Player {
     /// All WebGPU objects must remain valid while the player is using them.
     #[allow(clippy::too_many_arguments)]
     pub fn set_wg_target<
-        D: crate::lottie_renderer::WgpuDevice,
-        I: crate::lottie_renderer::WgpuInstance,
-        T: crate::lottie_renderer::WgpuTarget,
+        D: crate::renderer::WgpuDevice,
+        I: crate::renderer::WgpuInstance,
+        T: crate::renderer::WgpuTarget,
     >(
         &mut self,
         device: &D,
@@ -869,16 +895,16 @@ impl Player {
         target: &T,
         width: u32,
         height: u32,
-        target_type: crate::lottie_renderer::WgpuTargetType,
-    ) -> Result<(), PlayerError> {
+        target_type: crate::renderer::WgpuTargetType,
+    ) -> Result<()> {
         self.renderer
             .set_wg_target(device, instance, target, width, height, target_type)?;
         Ok(())
     }
 
-    fn load_animation_common<F>(&mut self, loader: F) -> Result<(), PlayerError>
+    fn load_animation_common<F>(&mut self, loader: F) -> Result<()>
     where
-        F: FnOnce(&mut dyn LottieRenderer) -> Result<(), LottieRendererError>,
+        F: FnOnce(&mut dyn LottieRenderer) -> std::result::Result<(), LottieRendererError>,
     {
         self.end_tween(TweenOutcome::Cancelled);
         self.state = State::Idle;
@@ -888,7 +914,7 @@ impl Player {
         let loaded = loader(&mut *self.renderer).is_ok();
 
         if self.renderer.set_layout(&self.layout).is_err() || !loaded {
-            return Err(PlayerError::Unknown);
+            return Err(Error::Unknown);
         }
 
         self.state = State::Stopped;
@@ -912,7 +938,7 @@ impl Player {
         Ok(())
     }
 
-    pub fn load_animation_data(&mut self, animation_data: &CStr) -> Result<(), PlayerError> {
+    pub fn load_animation_data(&mut self, animation_data: &CStr) -> Result<()> {
         #[cfg(feature = "dotlottie")]
         {
             self.dotlottie_manager = None;
@@ -941,7 +967,7 @@ impl Player {
         result
     }
 
-    pub fn load_animation_path(&mut self, file_path: &CStr) -> Result<(), PlayerError> {
+    pub fn load_animation_path(&mut self, file_path: &CStr) -> Result<()> {
         #[cfg(feature = "dotlottie")]
         {
             self.dotlottie_manager = None;
@@ -952,11 +978,9 @@ impl Player {
             self.theme_id = None;
         }
         let result = (|| {
-            let path_str = file_path
-                .to_str()
-                .map_err(|_| PlayerError::InvalidParameter)?;
-            let data = fs::read_to_string(path_str).map_err(|_| PlayerError::InvalidParameter)?;
-            let c_data = CString::new(data).map_err(|_| PlayerError::InvalidParameter)?;
+            let path_str = file_path.to_str().map_err(|_| Error::InvalidParameter)?;
+            let data = fs::read_to_string(path_str).map_err(|_| Error::InvalidParameter)?;
+            let c_data = CString::new(data).map_err(|_| Error::InvalidParameter)?;
 
             self.load_animation_data(&c_data)
         })();
@@ -967,7 +991,7 @@ impl Player {
     }
 
     #[cfg(feature = "dotlottie")]
-    pub fn load_dotlottie_data(&mut self, file_data: &[u8]) -> Result<(), PlayerError> {
+    pub fn load_dotlottie_data(&mut self, file_data: &[u8]) -> Result<()> {
         #[cfg(feature = "dotlottie")]
         {
             self.animation_id = None;
@@ -976,7 +1000,7 @@ impl Player {
         {
             self.theme_id = None;
         }
-        let manager = DotLottieManager::new(file_data).map_err(|_| PlayerError::Unknown)?;
+        let manager = DotLottieManager::new(file_data).map_err(|_| Error::Unknown)?;
 
         let (active_animation, active_animation_id) =
             if let Some(anim_id) = self.animation_id.as_deref().and_then(|c| c.to_str().ok()) {
@@ -988,9 +1012,9 @@ impl Player {
                 )
             };
 
-        let animation_data = active_animation.map_err(|_| PlayerError::Unknown)?;
+        let animation_data = active_animation.map_err(|_| Error::Unknown)?;
 
-        let animation_data_cstr = CString::new(animation_data).map_err(|_| PlayerError::Unknown)?;
+        let animation_data_cstr = CString::new(animation_data).map_err(|_| Error::Unknown)?;
 
         self.dotlottie_manager = Some(manager);
 
@@ -1023,10 +1047,8 @@ impl Player {
     }
 
     #[cfg(feature = "dotlottie")]
-    pub fn load_animation(&mut self, animation_id: &CStr) -> Result<(), PlayerError> {
-        let anim_id_str = animation_id
-            .to_str()
-            .map_err(|_| PlayerError::InvalidParameter)?;
+    pub fn load_animation(&mut self, animation_id: &CStr) -> Result<()> {
+        let anim_id_str = animation_id.to_str().map_err(|_| Error::InvalidParameter)?;
 
         if let Some(manager) = &mut self.dotlottie_manager {
             #[cfg(feature = "theming")]
@@ -1045,7 +1067,7 @@ impl Player {
                         CString::new(animation_data).expect("Failed to create CString");
                     self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr))
                 }
-                Err(_error) => Err(PlayerError::Unknown),
+                Err(_error) => Err(Error::Unknown),
             };
 
             if result.is_ok() {
@@ -1077,7 +1099,7 @@ impl Player {
 
             result
         } else {
-            Err(PlayerError::Unknown)
+            Err(Error::Unknown)
         }
     }
 
@@ -1114,7 +1136,7 @@ impl Player {
     }
 
     #[cfg(feature = "theming")]
-    pub fn set_theme(&mut self, theme_id: &CStr) -> Result<(), PlayerError> {
+    pub fn set_theme(&mut self, theme_id: &CStr) -> Result<()> {
         if self.theme_id.as_deref() == Some(theme_id) {
             return Ok(());
         }
@@ -1126,7 +1148,7 @@ impl Player {
         }
 
         if self.dotlottie_manager.is_none() {
-            return Err(PlayerError::InsufficientCondition);
+            return Err(Error::InsufficientCondition);
         }
 
         let theme_exists = self
@@ -1139,7 +1161,7 @@ impl Player {
             });
 
         if !theme_exists {
-            return Err(PlayerError::InvalidParameter);
+            return Err(Error::InvalidParameter);
         }
 
         let can_set_theme = self.manifest().is_some_and(|manifest| {
@@ -1152,11 +1174,11 @@ impl Player {
         });
 
         if !can_set_theme {
-            return Err(PlayerError::InsufficientCondition);
+            return Err(Error::InsufficientCondition);
         }
 
         let Ok(theme_id_str) = theme_id.to_str() else {
-            return Err(PlayerError::InvalidParameter);
+            return Err(Error::InvalidParameter);
         };
 
         let result = self
@@ -1173,7 +1195,7 @@ impl Player {
                 let slots = theme.to_slot_types(anim_id_str);
                 self.apply_slot_types(slots)
             })
-            .unwrap_or(Err(PlayerError::Unknown));
+            .unwrap_or(Err(Error::Unknown));
 
         if result.is_ok() {
             self.theme_id = Some(theme_id.to_owned());
@@ -1183,21 +1205,19 @@ impl Player {
     }
 
     #[cfg(feature = "theming")]
-    pub fn reset_theme(&mut self) -> Result<(), PlayerError> {
+    pub fn reset_theme(&mut self) -> Result<()> {
         self.theme_id = None;
         self.renderer.reset_slots();
         Ok(())
     }
 
     #[cfg(feature = "theming")]
-    pub fn set_theme_data(&mut self, theme_data: &CStr) -> Result<(), PlayerError> {
-        let theme_data_str = theme_data
-            .to_str()
-            .map_err(|_| PlayerError::InvalidParameter)?;
+    pub fn set_theme_data(&mut self, theme_data: &CStr) -> Result<()> {
+        let theme_data_str = theme_data.to_str().map_err(|_| Error::InvalidParameter)?;
 
         let theme = theme_data_str
             .parse::<crate::theme::Theme>()
-            .map_err(|_| PlayerError::InvalidParameter)?;
+            .map_err(|_| Error::InvalidParameter)?;
 
         let anim_id_str = self
             .animation_id
@@ -1213,9 +1233,9 @@ impl Player {
     #[cfg(feature = "theming")]
     fn apply_slot_types(
         &mut self,
-        slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
-    ) -> Result<(), PlayerError> {
-        use crate::lottie_renderer::SlotType;
+        slots: std::collections::BTreeMap<String, crate::renderer::SlotType>,
+    ) -> Result<()> {
+        use crate::renderer::SlotType;
 
         for (slot_id, slot_type) in slots {
             match slot_type {
@@ -1238,8 +1258,8 @@ impl Player {
     pub fn set_color_slot(
         &mut self,
         slot_id: &str,
-        slot: crate::lottie_renderer::ColorSlot,
-    ) -> Result<(), PlayerError> {
+        slot: crate::renderer::ColorSlot,
+    ) -> Result<()> {
         self.renderer.set_color_slot(slot_id, slot)?;
         Ok(())
     }
@@ -1247,8 +1267,8 @@ impl Player {
     pub fn set_gradient_slot(
         &mut self,
         slot_id: &str,
-        slot: crate::lottie_renderer::GradientSlot,
-    ) -> Result<(), PlayerError> {
+        slot: crate::renderer::GradientSlot,
+    ) -> Result<()> {
         self.renderer.set_gradient_slot(slot_id, slot)?;
         Ok(())
     }
@@ -1256,8 +1276,8 @@ impl Player {
     pub fn set_image_slot(
         &mut self,
         slot_id: &str,
-        slot: crate::lottie_renderer::ImageSlot,
-    ) -> Result<(), PlayerError> {
+        slot: crate::renderer::ImageSlot,
+    ) -> Result<()> {
         let slot = self.normalize_image_slot(slot_id, slot)?;
         self.renderer.set_image_slot(slot_id, slot)?;
         Ok(())
@@ -1268,23 +1288,23 @@ impl Player {
     fn normalize_image_slot(
         &self,
         slot_id: &str,
-        mut slot: crate::lottie_renderer::ImageSlot,
-    ) -> Result<crate::lottie_renderer::ImageSlot, PlayerError> {
+        mut slot: crate::renderer::ImageSlot,
+    ) -> Result<crate::renderer::ImageSlot> {
         if !slot.is_embedded() && !slot.is_remote() {
             let file_name = slot
                 .file_name()
                 .map(str::to_owned)
-                .ok_or(PlayerError::InvalidParameter)?;
+                .ok_or(Error::InvalidParameter)?;
 
             let data_url = self
                 .resolve_package_image(&file_name)
-                .ok_or(PlayerError::InvalidParameter)?;
+                .ok_or(Error::InvalidParameter)?;
 
             slot.inline(data_url);
         }
 
         if !slot.has_dimensions() {
-            if let Some(crate::lottie_renderer::SlotType::Image(default)) =
+            if let Some(crate::renderer::SlotType::Image(default)) =
                 self.renderer.default_slot(slot_id)
             {
                 if let (Some(width), Some(height)) = (default.width, default.height) {
@@ -1294,7 +1314,7 @@ impl Player {
         }
 
         if !slot.has_dimensions() {
-            return Err(PlayerError::InvalidParameter);
+            return Err(Error::InvalidParameter);
         }
 
         Ok(slot)
@@ -1302,10 +1322,10 @@ impl Player {
 
     fn normalize_image_slots(
         &self,
-        slots: &mut std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
-    ) -> Result<(), PlayerError> {
+        slots: &mut std::collections::BTreeMap<String, crate::renderer::SlotType>,
+    ) -> Result<()> {
         for (slot_id, slot_type) in slots.iter_mut() {
-            if let crate::lottie_renderer::SlotType::Image(slot) = slot_type {
+            if let crate::renderer::SlotType::Image(slot) = slot_type {
                 *slot = self.normalize_image_slot(slot_id, slot.clone())?;
             }
         }
@@ -1325,11 +1345,7 @@ impl Player {
         None
     }
 
-    pub fn set_text_slot(
-        &mut self,
-        slot_id: &str,
-        slot: crate::lottie_renderer::TextSlot,
-    ) -> Result<(), PlayerError> {
+    pub fn set_text_slot(&mut self, slot_id: &str, slot: crate::renderer::TextSlot) -> Result<()> {
         self.renderer.set_text_slot(slot_id, slot)?;
         Ok(())
     }
@@ -1337,8 +1353,8 @@ impl Player {
     pub fn set_scalar_slot(
         &mut self,
         slot_id: &str,
-        slot: crate::lottie_renderer::ScalarSlot,
-    ) -> Result<(), PlayerError> {
+        slot: crate::renderer::ScalarSlot,
+    ) -> Result<()> {
         self.renderer.set_scalar_slot(slot_id, slot)?;
         Ok(())
     }
@@ -1346,8 +1362,8 @@ impl Player {
     pub fn set_vector_slot(
         &mut self,
         slot_id: &str,
-        slot: crate::lottie_renderer::VectorSlot,
-    ) -> Result<(), PlayerError> {
+        slot: crate::renderer::VectorSlot,
+    ) -> Result<()> {
         self.renderer.set_vector_slot(slot_id, slot)?;
         Ok(())
     }
@@ -1355,33 +1371,33 @@ impl Player {
     pub fn set_position_slot(
         &mut self,
         slot_id: &str,
-        slot: crate::lottie_renderer::PositionSlot,
-    ) -> Result<(), PlayerError> {
+        slot: crate::renderer::PositionSlot,
+    ) -> Result<()> {
         self.renderer.set_position_slot(slot_id, slot)?;
         Ok(())
     }
 
-    pub fn clear_slots(&mut self) -> Result<(), PlayerError> {
+    pub fn clear_slots(&mut self) -> Result<()> {
         self.renderer.clear_slots()?;
         Ok(())
     }
 
-    pub fn clear_slot(&mut self, slot_id: &str) -> Result<(), PlayerError> {
+    pub fn clear_slot(&mut self, slot_id: &str) -> Result<()> {
         self.renderer.clear_slot(slot_id)?;
         Ok(())
     }
 
     pub fn set_slots(
         &mut self,
-        mut slots: std::collections::BTreeMap<String, crate::lottie_renderer::SlotType>,
-    ) -> Result<(), PlayerError> {
+        mut slots: std::collections::BTreeMap<String, crate::renderer::SlotType>,
+    ) -> Result<()> {
         self.normalize_image_slots(&mut slots)?;
         self.renderer.set_slots(slots)?;
         Ok(())
     }
 
-    pub fn set_slots_str(&mut self, slots_json: &str) -> Result<(), PlayerError> {
-        use crate::lottie_renderer::slots::slots_from_json_string;
+    pub fn set_slots_str(&mut self, slots_json: &str) -> Result<()> {
+        use crate::renderer::slots::slots_from_json_string;
 
         if slots_json.is_empty() {
             return self.clear_slots();
@@ -1390,7 +1406,7 @@ impl Player {
         match slots_from_json_string(slots_json) {
             Ok(slots) => {
                 for (slot_id, slot_type) in slots {
-                    use crate::lottie_renderer::SlotType;
+                    use crate::renderer::SlotType;
 
                     match slot_type {
                         SlotType::Color(slot) => self.renderer.set_color_slot(&slot_id, slot)?,
@@ -1411,7 +1427,7 @@ impl Player {
                 }
                 Ok(())
             }
-            Err(_) => Err(PlayerError::InvalidParameter),
+            Err(_) => Err(Error::InvalidParameter),
         }
     }
 
@@ -1431,12 +1447,12 @@ impl Player {
         self.renderer.get_slots_str()
     }
 
-    pub fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), PlayerError> {
+    pub fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<()> {
         if self.renderer.get_slot_type(slot_id) == "image" {
-            let parsed = crate::lottie_renderer::slots::parse_slot_from_json("image", json)
-                .ok_or(PlayerError::InvalidParameter)?;
+            let parsed = crate::renderer::slots::parse_slot_from_json("image", json)
+                .ok_or(Error::InvalidParameter)?;
 
-            if let crate::lottie_renderer::SlotType::Image(slot) = parsed {
+            if let crate::renderer::SlotType::Image(slot) = parsed {
                 let slot = self.normalize_image_slot(slot_id, slot)?;
                 self.renderer.set_image_slot(slot_id, slot)?;
 
@@ -1448,7 +1464,7 @@ impl Player {
         Ok(())
     }
 
-    pub fn reset_slot(&mut self, slot_id: &str) -> Result<(), PlayerError> {
+    pub fn reset_slot(&mut self, slot_id: &str) -> Result<()> {
         self.renderer.reset_slot(slot_id)?;
         Ok(())
     }
@@ -1457,7 +1473,7 @@ impl Player {
         self.renderer.reset_slots()
     }
 
-    pub fn set_quality(&mut self, quality: u8) -> Result<(), PlayerError> {
+    pub fn set_quality(&mut self, quality: u8) -> Result<()> {
         self.renderer.set_quality(quality)?;
         Ok(())
     }
@@ -1477,10 +1493,10 @@ impl Player {
         self.state_machine_id.as_deref()
     }
 
-    pub fn tween(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> Result<(), PlayerError> {
+    pub fn tween(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> Result<()> {
         let resume = match self.state {
-            State::Idle => return Err(PlayerError::AnimationNotLoaded),
-            State::Tweening { .. } => return Err(PlayerError::InsufficientCondition),
+            State::Idle => return Err(Error::AnimationNotLoaded),
+            State::Tweening { .. } => return Err(Error::InsufficientCondition),
             State::Stopped => Resume::Stopped,
             State::Paused => Resume::Paused,
             State::Playing => Resume::Playing,
@@ -1500,13 +1516,13 @@ impl Player {
         };
     }
 
-    pub fn tween_advance(&mut self, dt: f32) -> Result<TweenStatus, PlayerError> {
+    pub fn tween_advance(&mut self, dt: f32) -> Result<TweenStatus> {
         let (status, progress, from, to) = match &mut self.state {
             State::Tweening { tween, .. } => {
                 let (status, progress) = tween.update(dt);
                 (status, progress, tween.from, tween.to)
             }
-            _ => return Err(PlayerError::InsufficientCondition),
+            _ => return Err(Error::InsufficientCondition),
         };
 
         if let Err(e) = self.renderer.tween(from, to, progress) {
@@ -1532,9 +1548,9 @@ impl Player {
             .to_vec()
     }
 
-    pub fn set_transform(&mut self, transform: Vec<f32>) -> Result<(), PlayerError> {
+    pub fn set_transform(&mut self, transform: Vec<f32>) -> Result<()> {
         if transform.len() != 9 {
-            return Err(PlayerError::InvalidParameter);
+            return Err(Error::InvalidParameter);
         }
         let transform_array: [f32; 9] = [
             transform[0],
@@ -1562,7 +1578,7 @@ impl Player {
     ///
     /// Returns `Ok(true)` when a new frame was rendered, `Ok(false)` when the
     /// frame was unchanged and rendering was skipped.
-    pub fn tick(&mut self, dt: f32) -> Result<bool, PlayerError> {
+    pub fn tick(&mut self, dt: f32) -> Result<bool> {
         let dt = dt.max(0.0);
 
         if matches!(self.state, State::Tweening { .. }) {
@@ -1593,7 +1609,7 @@ impl Player {
     pub fn state_machine_load<'a>(
         &'a mut self,
         state_machine_id: &CStr,
-    ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
+    ) -> std::result::Result<StateMachineEngine<'a>, StateMachineEngineError> {
         let machine = match self.get_state_machine(state_machine_id) {
             Some(m) => m, // String is owned, no borrow issue
             None => return Err(StateMachineEngineError::CreationError),
@@ -1608,7 +1624,7 @@ impl Player {
     pub fn state_machine_load_data<'a>(
         &'a mut self,
         state_machine: &str,
-    ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
+    ) -> std::result::Result<StateMachineEngine<'a>, StateMachineEngineError> {
         StateMachineEngine::new(state_machine, self, None)
     }
 }

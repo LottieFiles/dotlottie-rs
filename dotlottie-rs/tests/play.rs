@@ -3,7 +3,7 @@ mod test_utils;
 use std::ffi::CString;
 
 use crate::test_utils::{HEIGHT, WIDTH};
-use dotlottie_rs::{ColorSpace, Player, PlayerError, Status};
+use dotlottie_rs::{player::Error as PlayerError, ColorSpace, Player, Status};
 
 #[cfg(test)]
 mod tests {

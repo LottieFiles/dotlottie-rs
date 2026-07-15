@@ -1,7 +1,7 @@
 #![allow(clippy::print_stdout)]
 
-use dotlottie_rs::actions::open_url_policy::OpenUrlPolicy;
-use dotlottie_rs::events::Event;
+use dotlottie_rs::state_machine::OpenUrlPolicy;
+use dotlottie_rs::Event;
 use dotlottie_rs::{ColorSpace, Player, Rgba, StateMachineEngine, StateMachineEvent};
 use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::ffi::CString;

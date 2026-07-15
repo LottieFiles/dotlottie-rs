@@ -1,9 +1,9 @@
 use serde::Deserialize;
 
 use crate::{
-    inputs::InputManager,
-    state_machine::{StringBool, StringNumberBool},
-    state_machine_engine::{ELAPSED_TIME, GLOBAL_INPUT_PREFIX},
+    state_machine::definition::{StringBool, StringNumberBool},
+    state_machine::inputs::InputManager,
+    state_machine::{ELAPSED_TIME, GLOBAL_INPUT_PREFIX},
     string::{DotString, DotStringInterner},
 };
 

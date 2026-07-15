@@ -1,4 +1,4 @@
-use crate::lottie_renderer::slots::{
+use crate::renderer::slots::{
     Bezier, ColorSlot, ColorValue, GradientSlot, GradientStop, ImageSlot, LottieKeyframe,
     LottieProperty, PositionSlot, ScalarSlot, ScalarValue, SlotType, TextCaps, TextDocument,
     TextJustify, TextKeyframe, TextSlot, VectorSlot,
@@ -362,7 +362,7 @@ pub fn transform_theme_to_lottie_slots(theme_json: &str, active_animation_id: &s
     match theme_json.parse::<Theme>() {
         Ok(theme) => {
             let slots = theme.to_slot_types(active_animation_id);
-            crate::lottie_renderer::slots::slots_to_json_string(&slots).unwrap_or_default()
+            crate::renderer::slots::slots_to_json_string(&slots).unwrap_or_default()
         }
         Err(_) => String::new(),
     }

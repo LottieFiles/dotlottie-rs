@@ -11,36 +11,37 @@ pub(crate) const ELAPSED_TIME: &str = "@elapsedTime";
 const DEFAULT_RNG_SEED: u64 = 0x853c_49e6_748f_ea9b;
 
 pub mod actions;
+pub mod definition;
 pub mod events;
 pub mod inputs;
 pub mod interactions;
 pub mod security;
-pub mod state_machine;
 pub mod states;
 pub mod transitions;
 
-use actions::open_url_policy::OpenUrlPolicy;
+pub use actions::open_url_policy::OpenUrlPolicy;
 use actions::{Action, ActionTrait};
+use definition::StateMachine;
 use inputs::{Input, InputManager, InputValue};
 use interactions::InteractionTrait;
-use state_machine::StateMachine;
 use states::StateTrait;
 use transitions::guard::{Guard, GuardTrait};
 use transitions::{Transition, TransitionTrait};
 
-use crate::state_machine::StringNumberBool;
+use definition::StringNumberBool;
 
-use crate::actions::whitelist::Whitelist;
 use crate::event_queue::EventQueue;
 use crate::player_state::TweenOutcome;
-use crate::state_machine_engine::events::{StateMachineEvent, StateMachineInternalEvent};
-use crate::state_machine_engine::interactions::Interaction;
+use crate::renderer::Point;
+use crate::state_machine::events::{StateMachineEvent, StateMachineInternalEvent};
+use crate::state_machine::interactions::Interaction;
 use crate::{
-    event_type_name, state_machine_state_check_pipeline, CompletionEvent, EventName, Layout, Mode,
-    Player, Point, PointerEvent, Rgba, Segment,
+    event_type_name, CompletionEvent, EventName, Layout, Mode, Player, PointerEvent, Rgba, Segment,
 };
+use actions::whitelist::Whitelist;
+use security::state_machine_state_check_pipeline;
 
-use self::state_machine::state_machine_parse;
+use self::definition::state_machine_parse;
 use self::{events::Event, states::State};
 
 #[derive(PartialEq, Debug)]
@@ -52,7 +53,7 @@ pub enum StateMachineEngineStatus {
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-pub enum StateMachineEngineError {
+pub enum Error {
     #[error("{0}")]
     ParsingError(String),
     #[error("failed to create state machine")]
@@ -163,7 +164,7 @@ impl<'a> StateMachineEngine<'a> {
         state_machine_definition: &str,
         player: &'a mut Player,
         max_cycle_count: Option<usize>,
-    ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
+    ) -> Result<StateMachineEngine<'a>, Error> {
         Self::from_definition(state_machine_definition, player, max_cycle_count)
     }
 
@@ -343,7 +344,7 @@ impl<'a> StateMachineEngine<'a> {
         }
     }
 
-    pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), StateMachineEngineError> {
+    pub fn fire(&mut self, event: &str, run_pipeline: bool) -> Result<(), Error> {
         if self.inputs.get_event(event).is_some() {
             self.observe_on_input_fired(event);
             self.curr_event = Some(self.str_interner.intern(event));
@@ -356,7 +357,7 @@ impl<'a> StateMachineEngine<'a> {
             return Ok(());
         }
 
-        Err(StateMachineEngineError::FireEventError)
+        Err(Error::FireEventError)
     }
 
     // Parses the JSON of the state machine definition and creates the states and transitions
@@ -365,7 +366,7 @@ impl<'a> StateMachineEngine<'a> {
         sm_definition: &str,
         player: &'a mut Player,
         max_cycle_count: Option<usize>,
-    ) -> Result<StateMachineEngine<'a>, StateMachineEngineError> {
+    ) -> Result<StateMachineEngine<'a>, Error> {
         let parsed_state_machine = state_machine_parse(sm_definition);
         let mut new_state_machine = StateMachineEngine {
             cached_mode: player.mode(),
@@ -477,13 +478,11 @@ impl<'a> StateMachineEngine<'a> {
         Ok(new_state_machine)
     }
 
-    fn security_check_pipeline(
-        state_machine: &StateMachineEngine,
-    ) -> Result<(), StateMachineEngineError> {
+    fn security_check_pipeline(state_machine: &StateMachineEngine) -> Result<(), Error> {
         state_machine_state_check_pipeline(state_machine)
     }
 
-    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> Result<(), crate::PlayerError> {
+    pub fn start(&mut self, open_url: &OpenUrlPolicy) -> Result<(), crate::player::Error> {
         // Reset to first frame
         let _ = self.player.stop();
         self.player.set_mode(Mode::Forward);
@@ -494,7 +493,7 @@ impl<'a> StateMachineEngine<'a> {
 
         // Start can still be called even if load failed. If load failed initial and states will be empty.
         if self.state_machine.initial.is_empty() || self.state_machine.states.is_empty() {
-            return Err(crate::PlayerError::Unknown);
+            return Err(crate::player::Error::Unknown);
         }
 
         self.open_url_requires_user_interaction = open_url.require_user_interaction;
@@ -523,7 +522,7 @@ impl<'a> StateMachineEngine<'a> {
 
                 self.observe_on_error(message.as_str());
 
-                return Err(crate::PlayerError::Unknown);
+                return Err(crate::player::Error::Unknown);
             }
         }
 
@@ -559,7 +558,7 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     /// For external use only.
-    /// `mut self` here drops state_machine_engine which releases the borrow of `dotlottie_player`
+    /// `mut self` here drops state_machine which releases the borrow of `dotlottie_player`
     pub fn release(mut self) {
         if self.status != StateMachineEngineStatus::Stopped {
             self.stop();
@@ -596,34 +595,34 @@ impl<'a> StateMachineEngine<'a> {
 
         for interaction in self.interactions(None) {
             match interaction {
-                crate::interactions::Interaction::PointerUp { .. } => {
+                interactions::Interaction::PointerUp { .. } => {
                     interaction_types.push("PointerUp".to_string())
                 }
-                crate::interactions::Interaction::PointerDown { .. } => {
+                interactions::Interaction::PointerDown { .. } => {
                     interaction_types.push("PointerDown".to_string())
                 }
-                crate::interactions::Interaction::PointerEnter { .. } => {
+                interactions::Interaction::PointerEnter { .. } => {
                     // In case framework self detects pointer entering layers, push pointerExit
                     interaction_types.push("PointerEnter".to_string());
                     // We push PointerMove too so that we can do hit detection instead of the framework
                     interaction_types.push("PointerMove".to_string());
                 }
-                crate::interactions::Interaction::PointerMove { .. } => {
+                interactions::Interaction::PointerMove { .. } => {
                     interaction_types.push("PointerMove".to_string())
                 }
-                crate::interactions::Interaction::PointerExit { .. } => {
+                interactions::Interaction::PointerExit { .. } => {
                     // In case framework self detects pointer exiting layers, push pointerExit
                     interaction_types.push("PointerExit".to_string());
                     // We push PointerMove too so that we can do hit detection instead of the framework
                     interaction_types.push("PointerMove".to_string());
                 }
-                crate::interactions::Interaction::OnComplete { .. } => {
+                interactions::Interaction::OnComplete { .. } => {
                     interaction_types.push("OnComplete".to_string())
                 }
-                crate::interactions::Interaction::OnLoopComplete { .. } => {
+                interactions::Interaction::OnLoopComplete { .. } => {
                     interaction_types.push("OnLoopComplete".to_string())
                 }
-                crate::interactions::Interaction::Click { .. } => {
+                interactions::Interaction::Click { .. } => {
                     interaction_types.push("Click".to_string());
                 }
             }
@@ -734,7 +733,7 @@ impl<'a> StateMachineEngine<'a> {
         state_name: &str,
         causing_transition: Option<&Transition>,
         called_from_global: bool,
-    ) -> Result<(), StateMachineEngineError> {
+    ) -> Result<(), Error> {
         let new_state = self.get_state(state_name);
         // We have a new state
         if let Some(new_state) = new_state {
@@ -846,11 +845,11 @@ impl<'a> StateMachineEngine<'a> {
                 // new_state becomes the current state
                 self.current_state = Some(state);
             } else {
-                return Err(StateMachineEngineError::SetStateError);
+                return Err(Error::SetStateError);
             }
             return Ok(());
         }
-        Err(StateMachineEngineError::CreationError)
+        Err(Error::CreationError)
     }
 
     // Returns: The target state and the causing transition
@@ -958,7 +957,7 @@ impl<'a> StateMachineEngine<'a> {
         false
     }
 
-    pub fn run_current_state_pipeline(&mut self) -> Result<(), StateMachineEngineError> {
+    pub fn run_current_state_pipeline(&mut self) -> Result<(), Error> {
         // Reset cycle count for each pipeline run
         self.current_cycle_count = 0;
 
@@ -972,7 +971,7 @@ impl<'a> StateMachineEngine<'a> {
         if self.status != StateMachineEngineStatus::Running
             || (self.current_state.is_none() && self.global_state.is_none())
         {
-            return Err(StateMachineEngineError::NotRunningError);
+            return Err(Error::NotRunningError);
         }
 
         let mut tick = true;
@@ -991,7 +990,7 @@ impl<'a> StateMachineEngine<'a> {
                 if self.current_cycle_count >= self.max_cycle_count {
                     self.stop();
                     self.observe_on_error("InfiniteLoop");
-                    return Err(StateMachineEngineError::InfiniteLoopError);
+                    return Err(Error::InfiniteLoopError);
                 }
 
                 // Clear the history to allow for detecting new cycles
@@ -1316,16 +1315,16 @@ impl<'a> StateMachineEngine<'a> {
         &mut self,
         state_name: &str,
         do_tick: bool,
-    ) -> Result<(), crate::PlayerError> {
+    ) -> Result<(), crate::player::Error> {
         if self.set_current_state(state_name, None, false).is_err() {
-            return Err(crate::PlayerError::Unknown);
+            return Err(crate::player::Error::Unknown);
         }
 
         if do_tick {
             return if self.run_current_state_pipeline().is_ok() {
                 Ok(())
             } else {
-                Err(crate::PlayerError::Unknown)
+                Err(crate::player::Error::Unknown)
             };
         }
 
@@ -1459,7 +1458,7 @@ impl<'a> StateMachineEngine<'a> {
         }
     }
 
-    pub fn tick(&mut self, dt: f32) -> Result<bool, crate::PlayerError> {
+    pub fn tick(&mut self, dt: f32) -> Result<bool, crate::player::Error> {
         let ticked = self.player.tick(dt);
 
         self.check_completion();

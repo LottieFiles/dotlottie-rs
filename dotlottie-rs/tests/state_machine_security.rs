@@ -1,7 +1,7 @@
 #![cfg(feature = "state-machines")]
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, Player, StateMachineEngineStatus};
+    use dotlottie_rs::{state_machine::OpenUrlPolicy, Player, StateMachineEngineStatus};
 
     #[test]
     fn check_guards_for_existing_inputs() {

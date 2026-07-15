@@ -1,4 +1,4 @@
-use crate::PlayerError;
+use crate::player::Error as PlayerError;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TweenStatus {

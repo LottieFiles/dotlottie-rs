@@ -112,7 +112,6 @@ impl StateMachine {
     }
 }
 
-pub fn state_machine_parse(json: &str) -> Result<StateMachine, super::StateMachineEngineError> {
-    serde_json::from_str(json)
-        .map_err(|err| super::StateMachineEngineError::ParsingError(err.to_string()))
+pub fn state_machine_parse(json: &str) -> Result<StateMachine, super::Error> {
+    serde_json::from_str(json).map_err(|err| super::Error::ParsingError(err.to_string()))
 }

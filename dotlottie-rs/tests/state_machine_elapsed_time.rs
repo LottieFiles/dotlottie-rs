@@ -1,7 +1,7 @@
 #![cfg(feature = "state-machines")]
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{actions::open_url_policy::OpenUrlPolicy, ColorSpace, Player};
+    use dotlottie_rs::{state_machine::OpenUrlPolicy, ColorSpace, Player};
 
     const STAR_RATING_LOTTIE: &[u8] =
         include_bytes!("../assets/animations/dotlottie/v1/star_rating.lottie");

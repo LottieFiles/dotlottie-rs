@@ -1303,7 +1303,7 @@ impl DotLottiePlayerWasm {
             let Some(ref mut sm) = self.state_machine else {
                 return false;
             };
-            use crate::actions::open_url_policy::OpenUrlPolicy;
+            use crate::state_machine::actions::open_url_policy::OpenUrlPolicy;
             let policy = OpenUrlPolicy::new(
                 whitelist.iter().filter_map(|v| v.as_string()).collect(),
                 require_user_interaction,

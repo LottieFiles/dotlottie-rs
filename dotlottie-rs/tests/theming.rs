@@ -1,4 +1,4 @@
-use dotlottie_rs::{ColorSpace, Player, PlayerError, Status};
+use dotlottie_rs::{player::Error as PlayerError, ColorSpace, Player, Status};
 use std::ffi::CString;
 
 mod test_utils;

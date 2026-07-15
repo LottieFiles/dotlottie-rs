@@ -1,9 +1,7 @@
 #![cfg(feature = "state-machines")]
 #[cfg(test)]
 mod tests {
-    use dotlottie_rs::{
-        actions::open_url_policy::OpenUrlPolicy, ColorSpace, Player, StateMachineEvent,
-    };
+    use dotlottie_rs::{state_machine::OpenUrlPolicy, ColorSpace, Player, StateMachineEvent};
 
     #[test]
     fn increment() {

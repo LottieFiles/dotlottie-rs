@@ -8,7 +8,7 @@ use std::{
 use rustc_hash::FxHashMap;
 
 #[cfg(feature = "tvg-ttf")]
-use crate::lottie_renderer::fallback_font;
+use crate::renderer::fallback_font;
 
 use super::{
     Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Point, Renderer,

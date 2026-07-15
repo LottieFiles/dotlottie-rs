@@ -1,6 +1,6 @@
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-pub enum DotLottieError {
+pub enum Error {
     #[error("failed to open archive")]
     ArchiveOpenError,
     #[error("file not found in archive")]

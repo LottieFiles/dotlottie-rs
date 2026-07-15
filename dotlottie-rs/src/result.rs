@@ -4,7 +4,6 @@ use crate::LottieRendererError;
 pub enum PlayerError {
     Unknown,
     InvalidParameter,
-    ManifestNotAvailable,
     AnimationNotLoaded,
     InsufficientCondition,
 }

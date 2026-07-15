@@ -11,7 +11,6 @@ pub(crate) const ELAPSED_TIME: &str = "@elapsedTime";
 const DEFAULT_RNG_SEED: u64 = 0x853c_49e6_748f_ea9b;
 
 pub mod actions;
-pub mod errors;
 pub mod events;
 pub mod inputs;
 pub mod interactions;
@@ -38,7 +37,7 @@ use crate::state_machine_engine::events::{StateMachineEvent, StateMachineInterna
 use crate::state_machine_engine::interactions::Interaction;
 use crate::{
     event_type_name, state_machine_state_check_pipeline, CompletionEvent, EventName, Layout, Mode,
-    Player, Point, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
+    Player, Point, PointerEvent, Rgba, Segment,
 };
 
 use self::state_machine::state_machine_parse;
@@ -59,8 +58,10 @@ pub enum StateMachineEngineError {
     InfiniteLoopError,
     NotRunningError,
     SetStateError,
-    SecurityCheckErrorMultipleGuardlessTransitions,
-    SecurityCheckErrorDuplicateStateName,
+    MultipleGuardlessTransitions,
+    DuplicateStateName,
+    InvalidCompareToInput,
+    MultipleGlobalStates,
 }
 
 struct PointerData {
@@ -394,86 +395,80 @@ impl<'a> StateMachineEngine<'a> {
             rng_seed: DEFAULT_RNG_SEED,
         };
 
-        if parsed_state_machine.is_err() {
-            let message = match parsed_state_machine.err() {
-                Some(e) => format!("Parsing error: {e:?}"),
-                None => "Parsing error: Unknown error".to_string(),
-            };
+        let parsed_state_machine = match parsed_state_machine {
+            Ok(parsed) => parsed,
+            Err(e) => {
+                let message = format!("Parsing error: {e:?}");
 
-            new_state_machine.observe_on_error(message.as_str());
+                new_state_machine.observe_on_error(message.as_str());
 
-            return Err(StateMachineEngineError::ParsingError(message));
-        }
-
-        match parsed_state_machine {
-            Ok(parsed_state_machine) => {
-                /* Build all input variables into hashmaps for easier use */
-                if let Some(inputs) = &parsed_state_machine.inputs {
-                    for input in inputs {
-                        match input {
-                            Input::Numeric { name, value } => {
-                                new_state_machine.inputs.set_initial_numeric(name, *value);
-                            }
-                            Input::String { name, value } => {
-                                new_state_machine.inputs.set_initial_string(name, value);
-                            }
-                            Input::Boolean { name, value } => {
-                                new_state_machine.inputs.set_initial_boolean(name, *value);
-                            }
-                            Input::Event { name } => {
-                                new_state_machine.inputs.set_initial_event(name);
-                            }
-                        }
-                    }
-                }
-
-                /*
-                   Set the reference to the global state so that we can easily
-                   Access it when evaluating transitions
-                */
-                for state in &parsed_state_machine.states {
-                    if let State::GlobalState { .. } = state {
-                        new_state_machine.global_state = Some(state.clone());
-                    }
-                }
-
-                new_state_machine.state_machine = parsed_state_machine;
-
-                // Canonicalize all identifiers so runtime comparisons hit ptr_eq.
-                new_state_machine
-                    .state_machine
-                    .intern_identifiers(&mut new_state_machine.str_interner);
-
-                let (states, in_global) =
-                    compute_elapsed_time_states(&new_state_machine.state_machine);
-                new_state_machine.elapsed_time_states = states;
-                new_state_machine.elapsed_time_in_global = in_global;
-
-                new_state_machine.init_listened_layers();
-
-                // Run the security check pipeline
-                let check_report = Self::security_check_pipeline(&new_state_machine);
-
-                match check_report {
-                    Ok(_) => {}
-                    Err(error) => {
-                        let message = format!("Load: {error:?}");
-
-                        new_state_machine.observe_on_error(message.as_str());
-
-                        return Err(StateMachineEngineError::CreationError);
-                    }
-                }
-
-                Ok(new_state_machine)
+                return Err(e);
             }
-            Err(_error) => Err(StateMachineEngineError::CreationError),
+        };
+
+        /* Build all input variables into hashmaps for easier use */
+        if let Some(inputs) = &parsed_state_machine.inputs {
+            for input in inputs {
+                match input {
+                    Input::Numeric { name, value } => {
+                        new_state_machine.inputs.set_initial_numeric(name, *value);
+                    }
+                    Input::String { name, value } => {
+                        new_state_machine.inputs.set_initial_string(name, value);
+                    }
+                    Input::Boolean { name, value } => {
+                        new_state_machine.inputs.set_initial_boolean(name, *value);
+                    }
+                    Input::Event { name } => {
+                        new_state_machine.inputs.set_initial_event(name);
+                    }
+                }
+            }
         }
+
+        /*
+           Set the reference to the global state so that we can easily
+           Access it when evaluating transitions
+        */
+        for state in &parsed_state_machine.states {
+            if let State::GlobalState { .. } = state {
+                new_state_machine.global_state = Some(state.clone());
+            }
+        }
+
+        new_state_machine.state_machine = parsed_state_machine;
+
+        // Canonicalize all identifiers so runtime comparisons hit ptr_eq.
+        new_state_machine
+            .state_machine
+            .intern_identifiers(&mut new_state_machine.str_interner);
+
+        let (states, in_global) = compute_elapsed_time_states(&new_state_machine.state_machine);
+        new_state_machine.elapsed_time_states = states;
+        new_state_machine.elapsed_time_in_global = in_global;
+
+        new_state_machine.init_listened_layers();
+
+        // Run the security check pipeline
+        let check_report = Self::security_check_pipeline(&new_state_machine);
+
+        match check_report {
+            Ok(_) => {}
+            Err(error) => {
+                let message = format!("Load: {error:?}");
+
+                new_state_machine.observe_on_error(message.as_str());
+
+                return Err(error);
+            }
+        }
+
+        Ok(new_state_machine)
     }
 
     fn security_check_pipeline(
         state_machine: &StateMachineEngine,
-    ) -> Result<(), StateMachineEngineSecurityError> {
+    ) -> Result<(), StateMachineEngineError> {
         state_machine_state_check_pipeline(state_machine)
     }
 

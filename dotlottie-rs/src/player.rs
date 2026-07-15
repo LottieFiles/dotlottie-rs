@@ -687,7 +687,7 @@ impl Player {
         self.active_marker.as_deref()
     }
 
-    pub fn set_layout(&mut self, layout: Layout) -> Result<(), LottieRendererError> {
+    pub fn set_layout(&mut self, layout: Layout) -> Result<(), PlayerError> {
         self.renderer.set_layout(&layout)?;
 
         self.layout = layout;

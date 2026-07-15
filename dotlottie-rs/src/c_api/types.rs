@@ -28,7 +28,6 @@ impl From<PlayerError> for DotLottieResult {
         match err {
             PlayerError::Unknown => DotLottieResult::Error,
             PlayerError::InvalidParameter => DotLottieResult::InvalidParameter,
-            PlayerError::ManifestNotAvailable => DotLottieResult::ManifestNotAvailable,
             PlayerError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
             PlayerError::InsufficientCondition => DotLottieResult::InsufficientCondition,
         }

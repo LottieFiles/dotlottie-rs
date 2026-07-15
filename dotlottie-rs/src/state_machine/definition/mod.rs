@@ -1,6 +1,5 @@
 use serde::{Deserialize, Deserializer};
 
-use crate::errors::StateMachineError;
 use crate::string::{DotString, DotStringInterner};
 
 use super::{
@@ -113,11 +112,6 @@ impl StateMachine {
     }
 }
 
-pub fn state_machine_parse(json: &str) -> Result<StateMachine, StateMachineError> {
-    let result: Result<StateMachine, _> = serde_json::from_str(json);
-
-    match result {
-        Ok(k) => Ok(k),
-        Err(err) => Err(StateMachineError::ParsingError(err.to_string())),
-    }
+pub fn state_machine_parse(json: &str) -> Result<StateMachine, super::Error> {
+    serde_json::from_str(json).map_err(|err| super::Error::ParsingError(err.to_string()))
 }

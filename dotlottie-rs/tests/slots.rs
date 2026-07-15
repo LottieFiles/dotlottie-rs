@@ -249,11 +249,11 @@ mod tests {
         assert!(recovered.contains_key("ball_scale"));
         // Verify types match
         assert_eq!(
-            dotlottie_rs::slots::slot_type_name(recovered.get("ball_color").unwrap()),
+            dotlottie_rs::renderer::slots::slot_type_name(recovered.get("ball_color").unwrap()),
             "color"
         );
         assert_eq!(
-            dotlottie_rs::slots::slot_type_name(recovered.get("ball_opacity").unwrap()),
+            dotlottie_rs::renderer::slots::slot_type_name(recovered.get("ball_opacity").unwrap()),
             "scalar"
         );
     }
@@ -263,36 +263,42 @@ mod tests {
         use dotlottie_rs::*;
 
         assert_eq!(
-            slots::slot_type_name(&SlotType::Color(ColorSlot::new([1.0, 0.0, 0.0]))),
+            renderer::slots::slot_type_name(&SlotType::Color(ColorSlot::new([1.0, 0.0, 0.0]))),
             "color"
         );
         assert_eq!(
-            slots::slot_type_name(&SlotType::Scalar(ScalarSlot::new(1.0))),
+            renderer::slots::slot_type_name(&SlotType::Scalar(ScalarSlot::new(1.0))),
             "scalar"
         );
         assert_eq!(
-            slots::slot_type_name(&SlotType::Vector(VectorSlot::static_value([1.0, 2.0]))),
+            renderer::slots::slot_type_name(&SlotType::Vector(VectorSlot::static_value([
+                1.0, 2.0
+            ]))),
             "vector"
         );
         assert_eq!(
-            slots::slot_type_name(&SlotType::Position(PositionSlot::static_value([1.0, 2.0]))),
+            renderer::slots::slot_type_name(&SlotType::Position(PositionSlot::static_value([
+                1.0, 2.0
+            ]))),
             "position"
         );
         assert_eq!(
-            slots::slot_type_name(&SlotType::Text(TextSlot::new("hello"))),
+            renderer::slots::slot_type_name(&SlotType::Text(TextSlot::new("hello"))),
             "text"
         );
         assert_eq!(
-            slots::slot_type_name(&SlotType::Image(ImageSlot::from_path(
+            renderer::slots::slot_type_name(&SlotType::Image(ImageSlot::from_path(
                 "img.png".to_string()
             ))),
             "image"
         );
         assert_eq!(
-            slots::slot_type_name(&SlotType::Gradient(GradientSlot::new(vec![GradientStop {
-                offset: 0.0,
-                color: [1.0, 0.0, 0.0, 1.0]
-            },]))),
+            renderer::slots::slot_type_name(&SlotType::Gradient(GradientSlot::new(vec![
+                GradientStop {
+                    offset: 0.0,
+                    color: [1.0, 0.0, 0.0, 1.0]
+                },
+            ]))),
             "gradient"
         );
     }

@@ -1,7 +1,7 @@
 use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
-use crate::lottie_renderer::{AudioEvent, AudioSource};
+use crate::renderer::{AudioEvent, AudioSource};
 
 #[cfg(all(feature = "audio", not(target_arch = "wasm32")))]
 mod rodio_player;

@@ -1,35 +1,25 @@
 use std::collections::HashSet;
 
 use super::{
+    definition::StringBool,
     inputs::Input,
-    state_machine::StringBool,
     states::StateTrait,
     transitions::{
         guard::{self, Guard},
         Transition, TransitionTrait,
     },
-    StateMachineEngine,
+    Error, StateMachineEngine,
 };
 
-use crate::state_machine::StringNumberBool;
-use crate::state_machine_engine::State::GlobalState;
-
-#[derive(Debug)]
-pub enum StateMachineEngineSecurityError {
-    SecurityCheckErrorMultipleGuardlessTransitions,
-    SecurityCheckErrorDuplicateStateName,
-    SecurityCheckErrorInputCompareToIsWrong,
-    MultipleGlobalStates,
-}
+use super::definition::StringNumberBool;
+use crate::state_machine::State::GlobalState;
 
 // Rules checked:
 // - All State names are unique
 // - Checks every state has no more than one transitions without guards
 // - Checks every guard's compareTo is a valid input
 // - Checks guards using events are valid
-pub fn state_machine_state_check_pipeline(
-    state_machine: &StateMachineEngine,
-) -> Result<(), StateMachineEngineSecurityError> {
+pub fn state_machine_state_check_pipeline(state_machine: &StateMachineEngine) -> Result<(), Error> {
     let states = state_machine.state_machine.states();
     let mut name_set: HashSet<String> = HashSet::new();
     let mut has_global = false;
@@ -39,14 +29,14 @@ pub fn state_machine_state_check_pipeline(
 
         if let GlobalState { .. } = state {
             if has_global {
-                return Err(StateMachineEngineSecurityError::MultipleGlobalStates);
+                return Err(Error::MultipleGlobalStates);
             }
             has_global = true;
         }
 
         // Check if the state names are unique
         if !name_set.insert(state_name.to_string()) {
-            return Err(StateMachineEngineSecurityError::SecurityCheckErrorDuplicateStateName);
+            return Err(Error::DuplicateStateName);
         }
 
         let transitions = state.transitions();
@@ -71,9 +61,7 @@ pub fn state_machine_state_check_pipeline(
 
         // Checks for multiple guardless transitions
         if count > 1 {
-            return Err(
-                StateMachineEngineSecurityError::SecurityCheckErrorMultipleGuardlessTransitions,
-            );
+            return Err(Error::MultipleGuardlessTransitions);
         }
     }
 
@@ -87,7 +75,7 @@ pub fn state_machine_state_check_pipeline(
 pub fn check_guards_for_existing_inputs(
     state_machine: &StateMachineEngine,
     transition: &Transition,
-) -> Result<(), StateMachineEngineSecurityError> {
+) -> Result<(), Error> {
     let guards = transition.guards();
     let inputs = state_machine.state_machine.inputs();
 
@@ -110,7 +98,7 @@ pub fn check_guards_for_existing_inputs(
                         }
 
                         if !found {
-                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong);
+                            return Err(Error::InvalidCompareToInput);
                         }
                     }
                 }
@@ -134,7 +122,7 @@ pub fn check_guards_for_existing_inputs(
                         }
 
                         if !found {
-                            return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong);
+                            return Err(Error::InvalidCompareToInput);
                         }
                     }
                 }
@@ -155,7 +143,7 @@ pub fn check_guards_for_existing_inputs(
                             }
 
                             if !found {
-                                return Err(StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong);
+                                return Err(Error::InvalidCompareToInput);
                             }
                         }
                     }
@@ -173,7 +161,7 @@ pub fn check_guards_for_existing_inputs(
 pub fn check_guards_for_existing_events(
     state_machine: &StateMachineEngine,
     transition: &Transition,
-) -> Result<(), StateMachineEngineSecurityError> {
+) -> Result<(), Error> {
     let inputs = state_machine.state_machine.inputs();
 
     let guards = transition.guards();
@@ -194,9 +182,7 @@ pub fn check_guards_for_existing_events(
                 }
 
                 if !found {
-                    return Err(
-                        StateMachineEngineSecurityError::SecurityCheckErrorInputCompareToIsWrong,
-                    );
+                    return Err(Error::InvalidCompareToInput);
                 }
             }
         }

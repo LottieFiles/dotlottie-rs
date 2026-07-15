@@ -36,22 +36,21 @@ pub struct DotLottieManager {
 }
 
 impl DotLottieManager {
-    pub fn new(dotlottie: &[u8]) -> Result<Self, DotLottieError> {
+    pub fn new(dotlottie: &[u8]) -> Result<Self, Error> {
         let mut archive = ZipArchive::new(io::Cursor::new(dotlottie.to_vec()))
-            .map_err(|_| DotLottieError::ArchiveOpenError)?;
+            .map_err(|_| Error::ArchiveOpenError)?;
 
         let manifest = Self::read_zip_file(&mut archive, "manifest.json")?;
-        let manifest_str =
-            std::str::from_utf8(&manifest).map_err(|_| DotLottieError::ReadContentError)?;
+        let manifest_str = std::str::from_utf8(&manifest).map_err(|_| Error::ReadContentError)?;
         let manifest: Manifest =
-            serde_json::from_str(manifest_str).map_err(|_| DotLottieError::ReadContentError)?;
+            serde_json::from_str(manifest_str).map_err(|_| Error::ReadContentError)?;
 
         let id = manifest
             .initial
             .as_ref()
             .and_then(|initial| initial.animation.as_ref())
             .or_else(|| manifest.animations.first().map(|a| &a.id))
-            .ok_or(DotLottieError::AnimationsNotFound)?
+            .ok_or(Error::AnimationsNotFound)?
             .clone()
             .into_boxed_str();
 
@@ -72,11 +71,11 @@ impl DotLottieManager {
     }
 
     #[inline]
-    pub fn get_active_animation(&self) -> Result<String, DotLottieError> {
+    pub fn get_active_animation(&self) -> Result<String, Error> {
         self.get_animation(&self.active_animation_id)
     }
 
-    pub fn get_animation(&self, animation_id: &str) -> Result<String, DotLottieError> {
+    pub fn get_animation(&self, animation_id: &str) -> Result<String, Error> {
         let mut archive = self.archive.borrow_mut();
 
         let (json_path, lot_path) = if self.version == 2 {
@@ -95,10 +94,10 @@ impl DotLottieManager {
             .or_else(|_| Self::read_zip_file(&mut archive, &lot_path))?;
 
         let animation_data =
-            std::str::from_utf8(&file_data).map_err(|_| DotLottieError::ReadContentError)?;
+            std::str::from_utf8(&file_data).map_err(|_| Error::ReadContentError)?;
 
         let mut lottie_animation: Value =
-            serde_json::from_str(animation_data).map_err(|_| DotLottieError::ReadContentError)?;
+            serde_json::from_str(animation_data).map_err(|_| Error::ReadContentError)?;
 
         #[cfg(feature = "audio")]
         let mut audio_sources: FxHashMap<String, Arc<[u8]>> = FxHashMap::default();
@@ -130,7 +129,7 @@ impl DotLottieManager {
             *self.audio_sources.borrow_mut() = audio_sources;
         }
 
-        serde_json::to_string(&lottie_animation).map_err(|_| DotLottieError::ReadContentError)
+        serde_json::to_string(&lottie_animation).map_err(|_| Error::ReadContentError)
     }
 
     fn embed_images<R: Read + io::Seek>(
@@ -268,11 +267,11 @@ impl DotLottieManager {
 
     #[inline]
     #[cfg(feature = "state-machines")]
-    pub fn get_state_machine(&self, state_machine_id: &str) -> Result<String, DotLottieError> {
+    pub fn get_state_machine(&self, state_machine_id: &str) -> Result<String, Error> {
         let mut archive = self.archive.borrow_mut();
         let path = format!("s/{state_machine_id}.json");
         let content = Self::read_zip_file(&mut archive, &path)?;
-        String::from_utf8(content).map_err(|_| DotLottieError::InvalidUtf8Error)
+        String::from_utf8(content).map_err(|_| Error::InvalidUtf8Error)
     }
 
     #[inline]
@@ -313,15 +312,14 @@ impl DotLottieManager {
 
     #[inline]
     #[cfg(feature = "theming")]
-    pub fn get_theme(&self, theme_id: &str) -> Result<Theme, DotLottieError> {
+    pub fn get_theme(&self, theme_id: &str) -> Result<Theme, Error> {
         let mut archive = self.archive.borrow_mut();
         let path = format!("t/{theme_id}.json");
         let content = Self::read_zip_file(&mut archive, &path)?;
-        let theme_str =
-            std::str::from_utf8(&content).map_err(|_| DotLottieError::InvalidUtf8Error)?;
+        let theme_str = std::str::from_utf8(&content).map_err(|_| Error::InvalidUtf8Error)?;
         theme_str
             .parse::<Theme>()
-            .map_err(|_| DotLottieError::ReadContentError)
+            .map_err(|_| Error::ReadContentError)
     }
 
     #[inline]
@@ -370,14 +368,12 @@ impl DotLottieManager {
     fn read_zip_file<R: Read + io::Seek>(
         archive: &mut ZipArchive<R>,
         path: &str,
-    ) -> Result<Vec<u8>, DotLottieError> {
-        let mut file = archive
-            .by_name(path)
-            .map_err(|_| DotLottieError::FileFindError)?;
+    ) -> Result<Vec<u8>, Error> {
+        let mut file = archive.by_name(path).map_err(|_| Error::FileFindError)?;
 
         let mut buf = Vec::with_capacity(file.size() as usize);
         file.read_to_end(&mut buf)
-            .map_err(|_| DotLottieError::ReadContentError)?;
+            .map_err(|_| Error::ReadContentError)?;
 
         Ok(buf)
     }

@@ -3,11 +3,12 @@
 use std::ffi::{c_char, CStr};
 use std::slice;
 
-use crate::lottie_renderer::{
+use crate::player::Error as PlayerError;
+use crate::renderer::{
     ColorSlot, ColorValue, GlContext, GlDisplay, GlSurface, ImageSlot, PositionSlot, ScalarSlot,
     ScalarValue, TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
 };
-use crate::{Layout, Mode, Player, PlayerError, Rgba, Segment, Status};
+use crate::{Layout, Mode, Player, Rgba, Segment, Status};
 
 use crate::ColorSpace;
 
@@ -1719,7 +1720,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_start(
     }
     #[cfg(feature = "state-machines")]
     {
-        use crate::actions::open_url_policy::OpenUrlPolicy;
+        use crate::state_machine::actions::open_url_policy::OpenUrlPolicy;
         exec_state_machine_op!(sm, |state_machine| {
             let whitelist_vec = if whitelist.is_null() {
                 vec![]
@@ -1849,7 +1850,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_click(
     }
     #[cfg(feature = "state-machines")]
     {
-        use crate::state_machine_engine::events::Event;
+        use crate::state_machine::events::Event;
         exec_state_machine_op!(sm, |state_machine| {
             let event = Event::Click { x, y };
             state_machine.post_event(&event);
@@ -1871,7 +1872,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_down(
     }
     #[cfg(feature = "state-machines")]
     {
-        use crate::state_machine_engine::events::Event;
+        use crate::state_machine::events::Event;
         exec_state_machine_op!(sm, |state_machine| {
             let event = Event::PointerDown { x, y };
             state_machine.post_event(&event);
@@ -1893,7 +1894,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_up(
     }
     #[cfg(feature = "state-machines")]
     {
-        use crate::state_machine_engine::events::Event;
+        use crate::state_machine::events::Event;
         exec_state_machine_op!(sm, |state_machine| {
             let event = Event::PointerUp { x, y };
             state_machine.post_event(&event);
@@ -1915,7 +1916,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_move(
     }
     #[cfg(feature = "state-machines")]
     {
-        use crate::state_machine_engine::events::Event;
+        use crate::state_machine::events::Event;
         exec_state_machine_op!(sm, |state_machine| {
             let event = Event::PointerMove { x, y };
             state_machine.post_event(&event);
@@ -1937,7 +1938,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_enter(
     }
     #[cfg(feature = "state-machines")]
     {
-        use crate::state_machine_engine::events::Event;
+        use crate::state_machine::events::Event;
         exec_state_machine_op!(sm, |state_machine| {
             let event = Event::PointerEnter { x, y };
             state_machine.post_event(&event);
@@ -1959,7 +1960,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_post_pointer_exit(
     }
     #[cfg(feature = "state-machines")]
     {
-        use crate::state_machine_engine::events::Event;
+        use crate::state_machine::events::Event;
         exec_state_machine_op!(sm, |state_machine| {
             let event = Event::PointerExit { x, y };
             state_machine.post_event(&event);

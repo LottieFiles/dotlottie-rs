@@ -1,7 +1,7 @@
 use crate::Layout;
 use std::ffi::CStr;
 
-mod renderer;
+mod backend;
 pub mod slots;
 
 #[cfg(feature = "tvg")]
@@ -10,13 +10,13 @@ mod fallback_font;
 #[cfg(feature = "tvg")]
 mod thorvg;
 
-pub(crate) use renderer::Point;
-pub use renderer::{
+pub(crate) use backend::Point;
+pub use backend::{
     Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Renderer, Rgba,
     Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "audio")]
-pub use renderer::{AudioEvent, AudioResolver, AudioSource};
+pub use backend::{AudioEvent, AudioResolver, AudioSource};
 pub use slots::{
     slots_from_json_string, Bezier, BezierValue, ColorSlot, ColorValue, GradientSlot, GradientStop,
     ImageSlot, LottieKeyframe, LottieProperty, PositionSlot, ScalarSlot, ScalarValue, SlotType,
@@ -26,30 +26,29 @@ pub use slots::{
 pub use thorvg::{TvgAnimation, TvgError, TvgRenderer, TvgShape};
 
 use std::collections::BTreeMap;
-use std::{error::Error, fmt};
 
-#[derive(Debug)]
-pub enum LottieRendererError {
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum Error {
+    #[error("renderer error")]
     RendererError,
+    #[error("invalid color")]
     InvalidColor,
+    #[error("invalid argument")]
     InvalidArgument,
+    #[error("no animation loaded")]
     AnimationNotLoaded,
+    #[error("background shape not initialized")]
     BackgroundShapeNotInitialized,
+    #[error("slot not found")]
     SlotNotFound,
+    #[error("invalid slot value")]
     InvalidSlotValue,
 }
 
-impl fmt::Display for LottieRendererError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-impl Error for LottieRendererError {}
-
 #[inline]
-fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {
-    LottieRendererError::RendererError
+fn into_lottie<R: Renderer>(_err: R::Error) -> Error {
+    Error::RendererError
 }
 
 pub trait LottieRenderer {
@@ -65,7 +64,7 @@ pub trait LottieRenderer {
         width: u32,
         height: u32,
         color_space: ColorSpace,
-    ) -> Result<(), LottieRendererError>;
+    ) -> Result<(), Error>;
 
     /// `display` and `surface` may carry null pointers on platforms that do not require them
     /// (e.g., macOS CGL only needs `context`). On EGL-based platforms (Android, Linux) all
@@ -78,7 +77,7 @@ pub trait LottieRenderer {
         id: i32,
         width: u32,
         height: u32,
-    ) -> Result<(), LottieRendererError>;
+    ) -> Result<(), Error>;
 
     #[allow(clippy::too_many_arguments)]
     fn set_wg_target(
@@ -89,16 +88,13 @@ pub trait LottieRenderer {
         width: u32,
         height: u32,
         target_type: WgpuTargetType,
-    ) -> Result<(), LottieRendererError>;
+    ) -> Result<(), Error>;
 
-    fn load_data(&mut self, data: &CStr) -> Result<(), LottieRendererError>;
+    fn load_data(&mut self, data: &CStr) -> Result<(), Error>;
 
     /// Register a callback for audio layer playback changes, or `None` to clear.
     #[cfg(feature = "audio")]
-    fn set_audio_resolver(
-        &mut self,
-        resolver: Option<AudioResolver>,
-    ) -> Result<(), LottieRendererError>;
+    fn set_audio_resolver(&mut self, resolver: Option<AudioResolver>) -> Result<(), Error>;
 
     fn picture_width(&self) -> f32;
 
@@ -108,58 +104,40 @@ pub trait LottieRenderer {
 
     fn height(&self) -> u32;
 
-    fn total_frames(&self) -> Result<f32, LottieRendererError>;
+    fn total_frames(&self) -> Result<f32, Error>;
 
-    fn duration(&self) -> Result<f32, LottieRendererError>;
+    fn duration(&self) -> Result<f32, Error>;
 
     fn current_frame(&self) -> f32;
-    fn render(&mut self) -> Result<(), LottieRendererError>;
+    fn render(&mut self) -> Result<(), Error>;
 
-    fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), LottieRendererError>;
+    fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), Error>;
 
-    fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError>;
+    fn set_frame(&mut self, no: f32) -> Result<(), Error>;
 
     fn background(&self) -> Rgba;
 
-    fn set_background(&mut self, color: Rgba) -> Result<(), LottieRendererError>;
+    fn set_background(&mut self, color: Rgba) -> Result<(), Error>;
 
-    fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot) -> Result<(), Error>;
 
-    fn set_gradient_slot(
-        &mut self,
-        slot_id: &str,
-        slot: GradientSlot,
-    ) -> Result<(), LottieRendererError>;
+    fn set_gradient_slot(&mut self, slot_id: &str, slot: GradientSlot) -> Result<(), Error>;
 
-    fn set_image_slot(&mut self, slot_id: &str, slot: ImageSlot)
-        -> Result<(), LottieRendererError>;
+    fn set_image_slot(&mut self, slot_id: &str, slot: ImageSlot) -> Result<(), Error>;
 
-    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot) -> Result<(), LottieRendererError>;
+    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot) -> Result<(), Error>;
 
-    fn set_scalar_slot(
-        &mut self,
-        slot_id: &str,
-        slot: ScalarSlot,
-    ) -> Result<(), LottieRendererError>;
+    fn set_scalar_slot(&mut self, slot_id: &str, slot: ScalarSlot) -> Result<(), Error>;
 
-    fn set_vector_slot(
-        &mut self,
-        slot_id: &str,
-        slot: VectorSlot,
-    ) -> Result<(), LottieRendererError>;
+    fn set_vector_slot(&mut self, slot_id: &str, slot: VectorSlot) -> Result<(), Error>;
 
-    fn set_position_slot(
-        &mut self,
-        slot_id: &str,
-        slot: PositionSlot,
-    ) -> Result<(), LottieRendererError>;
+    fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot) -> Result<(), Error>;
 
-    fn clear_slots(&mut self) -> Result<(), LottieRendererError>;
+    fn clear_slots(&mut self) -> Result<(), Error>;
 
-    fn clear_slot(&mut self, slot_id: &str) -> Result<(), LottieRendererError>;
+    fn clear_slot(&mut self, slot_id: &str) -> Result<(), Error>;
 
-    fn set_slots(&mut self, slots: BTreeMap<String, SlotType>) -> Result<(), LottieRendererError>;
+    fn set_slots(&mut self, slots: BTreeMap<String, SlotType>) -> Result<(), Error>;
 
     fn get_slot_ids(&self) -> Vec<String>;
 
@@ -169,43 +147,43 @@ pub trait LottieRenderer {
 
     fn get_slots_str(&self) -> String;
 
-    fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), LottieRendererError>;
+    fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), Error>;
 
     fn store_default_slots(&mut self, slots: BTreeMap<String, SlotType>);
 
     fn default_slot(&self, slot_id: &str) -> Option<SlotType>;
 
-    fn reset_slot(&mut self, slot_id: &str) -> Result<(), LottieRendererError>;
+    fn reset_slot(&mut self, slot_id: &str) -> Result<(), Error>;
 
     fn reset_slots(&mut self) -> bool;
 
-    fn set_quality(&mut self, quality: u8) -> Result<(), LottieRendererError>;
+    fn set_quality(&mut self, quality: u8) -> Result<(), Error>;
 
-    fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError>;
+    fn set_layout(&mut self, layout: &Layout) -> Result<(), Error>;
 
-    fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, LottieRendererError>;
+    fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Error>;
 
     fn updated(&self) -> bool;
 
-    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), LottieRendererError>;
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), Error>;
 
     fn sync_current_frame(&mut self, frame: f32);
 
-    fn get_transform(&self) -> Result<[f32; 9], LottieRendererError>;
+    fn get_transform(&self) -> Result<[f32; 9], Error>;
 
-    fn set_transform(&mut self, transform: &[f32; 9]) -> Result<(), LottieRendererError>;
+    fn set_transform(&mut self, transform: &[f32; 9]) -> Result<(), Error>;
 
-    fn load_font(&mut self, name: &str, data: &[u8]) -> Result<(), LottieRendererError>;
+    fn load_font(&mut self, name: &str, data: &[u8]) -> Result<(), Error>;
 
-    fn unload_font(&mut self, name: &str) -> Result<(), LottieRendererError>;
+    fn unload_font(&mut self, name: &str) -> Result<(), Error>;
 
     // ── Markers & Segments ───────────────────────────────────────────────
 
     fn markers(&self) -> &[Marker];
 
-    fn set_segment(&mut self, segment: Option<Segment>) -> Result<(), LottieRendererError>;
+    fn set_segment(&mut self, segment: Option<Segment>) -> Result<(), Error>;
 
-    fn segment(&self) -> Result<Segment, LottieRendererError>;
+    fn segment(&self) -> Result<Segment, Error>;
 }
 
 impl dyn LottieRenderer {
@@ -258,7 +236,7 @@ struct LottieRendererImpl<R: Renderer> {
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
-    fn clear(&mut self) -> Result<(), LottieRendererError> {
+    fn clear(&mut self) -> Result<(), Error> {
         if self.animation.is_some() || self.background_shape.is_some() {
             self.renderer.clear().map_err(into_lottie::<R>)?;
             self.animation = None;
@@ -276,7 +254,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
 
     /// Updates the animation layout after the canvas dimensions have changed.
     /// Called by `set_*_target` when width/height differ from the previous values.
-    fn resize(&mut self) -> Result<(), LottieRendererError> {
+    fn resize(&mut self) -> Result<(), Error> {
         if self.animation.is_some() {
             let _ = self.renderer.sync();
             self.apply_user_transform()?;
@@ -297,7 +275,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn load_animation(&mut self, data: &CStr) -> Result<R::Animation, LottieRendererError> {
+    fn load_animation(&mut self, data: &CStr) -> Result<R::Animation, Error> {
         let mut animation = R::Animation::default();
 
         let mimetype = c"lottie+json";
@@ -315,10 +293,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
     }
 
     #[inline]
-    fn apply_layout_transform(
-        &mut self,
-        animation: &mut R::Animation,
-    ) -> Result<(), LottieRendererError> {
+    fn apply_layout_transform(&mut self, animation: &mut R::Animation) -> Result<(), Error> {
         // Set animation to its original size
         animation
             .set_size(self.picture_width, self.picture_height)
@@ -342,7 +317,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn create_background_shape(&self) -> Result<R::Shape, LottieRendererError> {
+    fn create_background_shape(&self) -> Result<R::Shape, Error> {
         let mut background_shape = R::Shape::default();
 
         background_shape
@@ -360,7 +335,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
         &mut self,
         background_shape: Option<&R::Shape>,
         animation: &R::Animation,
-    ) -> Result<(), LottieRendererError> {
+    ) -> Result<(), Error> {
         if let Some(bg) = background_shape {
             self.renderer
                 .push(Drawable::Shape(bg))
@@ -375,37 +350,30 @@ impl<R: Renderer> LottieRendererImpl<R> {
     }
 
     #[inline]
-    fn get_animation(&self) -> Result<&R::Animation, LottieRendererError> {
-        self.animation
-            .as_ref()
-            .ok_or(LottieRendererError::AnimationNotLoaded)
+    fn get_animation(&self) -> Result<&R::Animation, Error> {
+        self.animation.as_ref().ok_or(Error::AnimationNotLoaded)
     }
 
     #[inline]
-    fn get_animation_mut(&mut self) -> Result<&mut R::Animation, LottieRendererError> {
-        self.animation
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)
+    fn get_animation_mut(&mut self) -> Result<&mut R::Animation, Error> {
+        self.animation.as_mut().ok_or(Error::AnimationNotLoaded)
     }
 
     #[inline]
-    fn get_background_shape_mut(&mut self) -> Result<&mut R::Shape, LottieRendererError> {
+    fn get_background_shape_mut(&mut self) -> Result<&mut R::Shape, Error> {
         self.background_shape
             .as_mut()
-            .ok_or(LottieRendererError::BackgroundShapeNotInitialized)
+            .ok_or(Error::BackgroundShapeNotInitialized)
     }
 
     /// Flush all pending slot changes to ThorVG as a single batch.
     /// Called once per render() — reduces 3N FFI calls to 3 constant.
-    fn flush_slots(&mut self) -> Result<(), LottieRendererError> {
+    fn flush_slots(&mut self) -> Result<(), Error> {
         if !self.slots_dirty {
             return Ok(());
         }
 
-        let animation = self
-            .animation
-            .as_mut()
-            .ok_or(LottieRendererError::AnimationNotLoaded)?;
+        let animation = self.animation.as_mut().ok_or(Error::AnimationNotLoaded)?;
 
         // 1. Delete previous batch code if it exists (1 FFI call)
         if let Some(old_code) = self.batch_slot_code.take() {
@@ -422,14 +390,14 @@ impl<R: Renderer> LottieRendererImpl<R> {
 
         // 3. Serialize all slots into the reusable buffer
         slots::slots_to_json_writer(&self.slot_values, &mut self.slot_json_buffer)
-            .map_err(|_| LottieRendererError::InvalidArgument)?;
+            .map_err(|_| Error::InvalidArgument)?;
 
         // 4. Append null terminator for CStr
         self.slot_json_buffer.push(0);
 
         // 5. Create CStr from buffer — zero allocation
         let cstr = CStr::from_bytes_with_nul(&self.slot_json_buffer)
-            .map_err(|_| LottieRendererError::InvalidArgument)?;
+            .map_err(|_| Error::InvalidArgument)?;
 
         // 6. Generate new batch slot code (1 FFI call)
         let new_code = animation.gen_slot(cstr).map_err(into_lottie::<R>)?;
@@ -444,7 +412,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn apply_user_transform(&mut self) -> Result<(), LottieRendererError> {
+    fn apply_user_transform(&mut self) -> Result<(), Error> {
         if self.animation.is_none() {
             return Ok(());
         }
@@ -468,11 +436,11 @@ impl<R: Renderer> LottieRendererImpl<R> {
 }
 
 impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
-    fn load_font(&mut self, font_name: &str, font_data: &[u8]) -> Result<(), LottieRendererError> {
+    fn load_font(&mut self, font_name: &str, font_data: &[u8]) -> Result<(), Error> {
         R::load_font(font_name, font_data).map_err(into_lottie::<R>)
     }
 
-    fn unload_font(&mut self, name: &str) -> Result<(), LottieRendererError> {
+    fn unload_font(&mut self, name: &str) -> Result<(), Error> {
         R::unload_font(name).map_err(into_lottie::<R>)
     }
 
@@ -483,7 +451,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         width: u32,
         height: u32,
         color_space: ColorSpace,
-    ) -> Result<(), LottieRendererError> {
+    ) -> Result<(), Error> {
         self.renderer
             .set_sw_target(buffer_ptr, stride, width, height, color_space)
             .map_err(into_lottie::<R>)?;
@@ -504,7 +472,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         id: i32,
         width: u32,
         height: u32,
-    ) -> Result<(), LottieRendererError> {
+    ) -> Result<(), Error> {
         self.renderer
             .set_gl_target(display, surface, context, id, width, height)
             .map_err(into_lottie::<R>)?;
@@ -525,7 +493,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         width: u32,
         height: u32,
         target_type: WgpuTargetType,
-    ) -> Result<(), LottieRendererError> {
+    ) -> Result<(), Error> {
         self.renderer
             .set_wg_target(device, instance, target, width, height, target_type)
             .map_err(into_lottie::<R>)?;
@@ -538,7 +506,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn load_data(&mut self, data: &CStr) -> Result<(), LottieRendererError> {
+    fn load_data(&mut self, data: &CStr) -> Result<(), Error> {
         self.clear()?;
 
         // Extract default slot values BEFORE passing to ThorVG, because
@@ -569,10 +537,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     #[cfg(feature = "audio")]
-    fn set_audio_resolver(
-        &mut self,
-        resolver: Option<AudioResolver>,
-    ) -> Result<(), LottieRendererError> {
+    fn set_audio_resolver(&mut self, resolver: Option<AudioResolver>) -> Result<(), Error> {
         match self.animation.as_mut() {
             Some(a) => a.set_audio_resolver(resolver).map_err(into_lottie::<R>),
             None => Ok(()),
@@ -599,13 +564,13 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.background
     }
 
-    fn total_frames(&self) -> Result<f32, LottieRendererError> {
+    fn total_frames(&self) -> Result<f32, Error> {
         self.get_animation()?
             .get_total_frame()
             .map_err(into_lottie::<R>)
     }
 
-    fn duration(&self) -> Result<f32, LottieRendererError> {
+    fn duration(&self) -> Result<f32, Error> {
         self.get_animation()?
             .get_duration()
             .map_err(into_lottie::<R>)
@@ -615,7 +580,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.current_frame
     }
 
-    fn render(&mut self) -> Result<(), LottieRendererError> {
+    fn render(&mut self) -> Result<(), Error> {
         self.flush_slots()?;
 
         if self.updated {
@@ -632,17 +597,17 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             return Ok(());
         }
 
-        Err(LottieRendererError::RendererError)
+        Err(Error::RendererError)
     }
 
     #[inline]
-    fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), LottieRendererError> {
+    fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) -> Result<(), Error> {
         self.renderer
             .set_viewport(x, y, w, h)
             .map_err(into_lottie::<R>)
     }
 
-    fn set_frame(&mut self, no: f32) -> Result<(), LottieRendererError> {
+    fn set_frame(&mut self, no: f32) -> Result<(), Error> {
         self.get_animation_mut()?
             .set_frame(no)
             .map_err(into_lottie::<R>)?;
@@ -654,7 +619,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn set_background(&mut self, color: Rgba) -> Result<(), LottieRendererError> {
+    fn set_background(&mut self, color: Rgba) -> Result<(), Error> {
         self.background = color;
 
         if let Some(bg) = self.background_shape.as_mut() {
@@ -664,10 +629,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             // Background shape was skipped at load (was transparent). Now need it.
             // Insert before the animation to maintain correct z-order.
             let background_shape = self.create_background_shape()?;
-            let animation = self
-                .animation
-                .as_ref()
-                .ok_or(LottieRendererError::AnimationNotLoaded)?;
+            let animation = self.animation.as_ref().ok_or(Error::AnimationNotLoaded)?;
             self.renderer
                 .insert(
                     Drawable::Shape(&background_shape),
@@ -681,80 +643,56 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn set_color_slot(
-        &mut self,
-        slot_id: &str,
-        slot: ColorSlot,
-    ) -> Result<(), LottieRendererError> {
+    fn set_color_slot(&mut self, slot_id: &str, slot: ColorSlot) -> Result<(), Error> {
         self.slot_values
             .insert(slot_id.to_string(), SlotType::Color(slot));
         self.slots_dirty = true;
         Ok(())
     }
 
-    fn set_gradient_slot(
-        &mut self,
-        slot_id: &str,
-        slot: GradientSlot,
-    ) -> Result<(), LottieRendererError> {
+    fn set_gradient_slot(&mut self, slot_id: &str, slot: GradientSlot) -> Result<(), Error> {
         self.slot_values
             .insert(slot_id.to_string(), SlotType::Gradient(slot));
         self.slots_dirty = true;
         Ok(())
     }
 
-    fn set_image_slot(
-        &mut self,
-        slot_id: &str,
-        slot: ImageSlot,
-    ) -> Result<(), LottieRendererError> {
+    fn set_image_slot(&mut self, slot_id: &str, slot: ImageSlot) -> Result<(), Error> {
         self.slot_values
             .insert(slot_id.to_string(), SlotType::Image(slot));
         self.slots_dirty = true;
         Ok(())
     }
 
-    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot) -> Result<(), LottieRendererError> {
+    fn set_text_slot(&mut self, slot_id: &str, slot: TextSlot) -> Result<(), Error> {
         self.slot_values
             .insert(slot_id.to_string(), SlotType::Text(slot));
         self.slots_dirty = true;
         Ok(())
     }
 
-    fn set_scalar_slot(
-        &mut self,
-        slot_id: &str,
-        slot: ScalarSlot,
-    ) -> Result<(), LottieRendererError> {
+    fn set_scalar_slot(&mut self, slot_id: &str, slot: ScalarSlot) -> Result<(), Error> {
         self.slot_values
             .insert(slot_id.to_string(), SlotType::Scalar(slot));
         self.slots_dirty = true;
         Ok(())
     }
 
-    fn set_vector_slot(
-        &mut self,
-        slot_id: &str,
-        slot: VectorSlot,
-    ) -> Result<(), LottieRendererError> {
+    fn set_vector_slot(&mut self, slot_id: &str, slot: VectorSlot) -> Result<(), Error> {
         self.slot_values
             .insert(slot_id.to_string(), SlotType::Vector(slot));
         self.slots_dirty = true;
         Ok(())
     }
 
-    fn set_position_slot(
-        &mut self,
-        slot_id: &str,
-        slot: PositionSlot,
-    ) -> Result<(), LottieRendererError> {
+    fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot) -> Result<(), Error> {
         self.slot_values
             .insert(slot_id.to_string(), SlotType::Position(slot));
         self.slots_dirty = true;
         Ok(())
     }
 
-    fn clear_slots(&mut self) -> Result<(), LottieRendererError> {
+    fn clear_slots(&mut self) -> Result<(), Error> {
         // Delete batch code if it exists
         if let Some(old_code) = self.batch_slot_code.take() {
             let _ = self.get_animation_mut()?.del_slot(old_code);
@@ -771,13 +709,13 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn clear_slot(&mut self, slot_id: &str) -> Result<(), LottieRendererError> {
+    fn clear_slot(&mut self, slot_id: &str) -> Result<(), Error> {
         self.slot_values.remove(slot_id);
         self.slots_dirty = true;
         Ok(())
     }
 
-    fn set_slots(&mut self, slots: BTreeMap<String, SlotType>) -> Result<(), LottieRendererError> {
+    fn set_slots(&mut self, slots: BTreeMap<String, SlotType>) -> Result<(), Error> {
         self.slot_values = slots;
         self.slots_dirty = true;
         Ok(())
@@ -805,10 +743,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         slots::slots_to_json_string(&self.slot_values).unwrap_or_default()
     }
 
-    fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), LottieRendererError> {
+    fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), Error> {
         let slot_type = self.get_slot_type(slot_id);
         if slot_type.is_empty() {
-            return Err(LottieRendererError::SlotNotFound);
+            return Err(Error::SlotNotFound);
         }
 
         match slots::parse_slot_from_json(&slot_type, json) {
@@ -817,7 +755,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
                 self.slots_dirty = true;
                 Ok(())
             }
-            None => Err(LottieRendererError::InvalidSlotValue),
+            None => Err(Error::InvalidSlotValue),
         }
     }
 
@@ -830,14 +768,14 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.default_slots.get(slot_id).cloned()
     }
 
-    fn reset_slot(&mut self, slot_id: &str) -> Result<(), LottieRendererError> {
+    fn reset_slot(&mut self, slot_id: &str) -> Result<(), Error> {
         match self.default_slots.get(slot_id).cloned() {
             Some(default_value) => {
                 self.slot_values.insert(slot_id.to_string(), default_value);
                 self.slots_dirty = true;
                 Ok(())
             }
-            None => Err(LottieRendererError::SlotNotFound),
+            None => Err(Error::SlotNotFound),
         }
     }
 
@@ -847,7 +785,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         true
     }
 
-    fn set_quality(&mut self, quality: u8) -> Result<(), LottieRendererError> {
+    fn set_quality(&mut self, quality: u8) -> Result<(), Error> {
         self.get_animation_mut()?
             .set_quality(quality)
             .map_err(into_lottie::<R>)
@@ -857,7 +795,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.updated
     }
 
-    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), LottieRendererError> {
+    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), Error> {
         self.get_animation_mut()?
             .tween(from, to, progress)
             .map_err(into_lottie::<R>)?;
@@ -869,7 +807,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.current_frame = frame;
     }
 
-    fn set_layout(&mut self, layout: &Layout) -> Result<(), LottieRendererError> {
+    fn set_layout(&mut self, layout: &Layout) -> Result<(), Error> {
         if self.layout == *layout {
             return Ok(());
         }
@@ -883,17 +821,17 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, LottieRendererError> {
+    fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Error> {
         self.get_animation()?
             .hit_test(point, layer_name)
             .map_err(into_lottie::<R>)
     }
 
-    fn get_transform(&self) -> Result<[f32; 9], LottieRendererError> {
+    fn get_transform(&self) -> Result<[f32; 9], Error> {
         Ok(self.user_transform)
     }
 
-    fn set_transform(&mut self, transform: &[f32; 9]) -> Result<(), LottieRendererError> {
+    fn set_transform(&mut self, transform: &[f32; 9]) -> Result<(), Error> {
         self.user_transform = *transform;
 
         if self.animation.is_some() {
@@ -910,10 +848,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.animation.as_ref().map_or(EMPTY, |a| a.markers())
     }
 
-    fn set_segment(&mut self, segment: Option<Segment>) -> Result<(), LottieRendererError> {
+    fn set_segment(&mut self, segment: Option<Segment>) -> Result<(), Error> {
         if let Some(Segment { start, end }) = segment {
             if start >= end {
-                return Err(LottieRendererError::InvalidArgument);
+                return Err(Error::InvalidArgument);
             }
         }
         if let Some(a) = self.animation.as_mut() {
@@ -922,7 +860,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn segment(&self) -> Result<Segment, LottieRendererError> {
+    fn segment(&self) -> Result<Segment, Error> {
         self.get_animation()?.segment().map_err(into_lottie::<R>)
     }
 }

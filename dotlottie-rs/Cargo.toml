@@ -2,6 +2,7 @@
 name = "dotlottie-rs"
 version = "0.1.58"
 edition = "2021"
+rust-version = "1.85"
 description = "A high-performance Lottie and dotLottie player built with Rust"
 license = "MIT"
 repository = "https://github.com/LottieFiles/dotlottie-rs"
@@ -44,6 +45,7 @@ audio = ["dotlottie", "dep:rodio", "dep:ndk-context", "web-sys/HtmlAudioElement"
 serde_json = { version = "1.0", default-features = false, features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
 rustc-hash = "2.1.1"
+thiserror = "2"
 oorandom = "11"
 zip = { version = "2.4.2", default-features = false, features = ["deflate"], optional = true }
 bitflags = { version = "2.6", optional = true }

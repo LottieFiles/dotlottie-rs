@@ -3,10 +3,11 @@ use std::ffi::CString;
 
 use serde::Deserialize;
 
+use super::definition::StringBool;
 use crate::string::{DotString, DotStringInterner};
-use crate::{state_machine::StringBool, Event};
+use crate::Event;
 
-use super::{state_machine::StringNumber, StateMachineEngine, GLOBAL_INPUT_PREFIX};
+use super::{definition::StringNumber, StateMachineEngine, GLOBAL_INPUT_PREFIX};
 
 fn resolve_numeric_ref(engine: &StateMachineEngine, value: &str) -> Option<f32> {
     if value.starts_with(GLOBAL_INPUT_PREFIX) {
@@ -44,9 +45,11 @@ fn resolve_random_bound(
 pub mod open_url_policy;
 pub mod whitelist;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum StateMachineActionError {
+    #[error("action execution failed")]
     ExecuteError,
+    #[error("action parsing failed")]
     ParsingError,
 }
 

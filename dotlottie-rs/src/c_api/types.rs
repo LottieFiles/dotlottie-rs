@@ -4,12 +4,12 @@ use bitflags::bitflags;
 use std::ffi::c_char;
 
 #[cfg(feature = "state-machines")]
-use crate::state_machine_engine::events::Event;
+use crate::state_machine::events::Event;
 #[cfg(feature = "state-machines")]
 use core::str::FromStr;
 
-use crate::lottie_renderer::LottieRendererError;
-use crate::PlayerError;
+use crate::player::Error as PlayerError;
+use crate::renderer::Error as LottieRendererError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
@@ -28,7 +28,6 @@ impl From<PlayerError> for DotLottieResult {
         match err {
             PlayerError::Unknown => DotLottieResult::Error,
             PlayerError::InvalidParameter => DotLottieResult::InvalidParameter,
-            PlayerError::ManifestNotAvailable => DotLottieResult::ManifestNotAvailable,
             PlayerError::AnimationNotLoaded => DotLottieResult::AnimationNotLoaded,
             PlayerError::InsufficientCondition => DotLottieResult::InsufficientCondition,
         }
@@ -117,10 +116,10 @@ pub enum DotLottieWgpuTargetType {
 }
 
 impl DotLottieWgpuTargetType {
-    pub fn to_wgpu_target_type(&self) -> crate::lottie_renderer::WgpuTargetType {
+    pub fn to_wgpu_target_type(&self) -> crate::renderer::WgpuTargetType {
         match self {
-            DotLottieWgpuTargetType::Surface => crate::lottie_renderer::WgpuTargetType::Surface,
-            DotLottieWgpuTargetType::Texture => crate::lottie_renderer::WgpuTargetType::Texture,
+            DotLottieWgpuTargetType::Surface => crate::renderer::WgpuTargetType::Surface,
+            DotLottieWgpuTargetType::Texture => crate::renderer::WgpuTargetType::Texture,
         }
     }
 }

@@ -2,6 +2,7 @@
 name = "dotlottie-rs"
 version = "0.1.58"
 edition = "2021"
+rust-version = "1.85"
 description = "A high-performance Lottie and dotLottie player built with Rust"
 license = "MIT"
 repository = "https://github.com/LottieFiles/dotlottie-rs"

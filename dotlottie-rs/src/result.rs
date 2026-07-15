@@ -1,10 +1,15 @@
 use crate::LottieRendererError;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum PlayerError {
+    #[error("unknown error")]
     Unknown,
+    #[error("invalid parameter")]
     InvalidParameter,
+    #[error("no animation loaded")]
     AnimationNotLoaded,
+    #[error("insufficient condition")]
     InsufficientCondition,
 }
 

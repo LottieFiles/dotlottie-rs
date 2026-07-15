@@ -1,8 +1,7 @@
 use std::{
     cell::RefCell,
-    error::Error,
     ffi::{c_char, CStr, CString},
-    fmt, ptr,
+    ptr,
     result::Result,
 };
 
@@ -26,23 +25,21 @@ mod tvg {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum TvgError {
+    #[error("invalid argument")]
     InvalidArgument,
+    #[error("insufficient condition")]
     InsufficientCondition,
+    #[error("allocation failed")]
     FailedAllocation,
+    #[error("memory corruption")]
     MemoryCorruption,
+    #[error("not supported")]
     NotSupported,
+    #[error("unknown error")]
     Unknown,
 }
-
-impl fmt::Display for TvgError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-impl Error for TvgError {}
 
 pub trait IntoResult {
     fn into_result(self) -> Result<(), TvgError>;

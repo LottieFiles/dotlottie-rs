@@ -26,26 +26,25 @@ pub use slots::{
 pub use thorvg::{TvgAnimation, TvgError, TvgRenderer, TvgShape};
 
 use std::collections::BTreeMap;
-use std::{error::Error, fmt};
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum LottieRendererError {
+    #[error("renderer error")]
     RendererError,
+    #[error("invalid color")]
     InvalidColor,
+    #[error("invalid argument")]
     InvalidArgument,
+    #[error("no animation loaded")]
     AnimationNotLoaded,
+    #[error("background shape not initialized")]
     BackgroundShapeNotInitialized,
+    #[error("slot not found")]
     SlotNotFound,
+    #[error("invalid slot value")]
     InvalidSlotValue,
 }
-
-impl fmt::Display for LottieRendererError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-impl Error for LottieRendererError {}
 
 #[inline]
 fn into_lottie<R: Renderer>(_err: R::Error) -> LottieRendererError {

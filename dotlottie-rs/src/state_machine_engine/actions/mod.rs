@@ -44,9 +44,11 @@ fn resolve_random_bound(
 pub mod open_url_policy;
 pub mod whitelist;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum StateMachineActionError {
+    #[error("action execution failed")]
     ExecuteError,
+    #[error("action parsing failed")]
     ParsingError,
 }
 

@@ -50,17 +50,28 @@ pub enum StateMachineEngineStatus {
     Stopped,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum StateMachineEngineError {
+    #[error("{0}")]
     ParsingError(String),
+    #[error("failed to create state machine")]
     CreationError,
+    #[error("failed to fire event")]
     FireEventError,
+    #[error("infinite loop detected")]
     InfiniteLoopError,
+    #[error("state machine is not running")]
     NotRunningError,
+    #[error("failed to set state")]
     SetStateError,
+    #[error("state has multiple guardless transitions")]
     MultipleGuardlessTransitions,
+    #[error("duplicate state name")]
     DuplicateStateName,
+    #[error("guard compares against an unknown input")]
     InvalidCompareToInput,
+    #[error("multiple global states")]
     MultipleGlobalStates,
 }
 
@@ -398,7 +409,7 @@ impl<'a> StateMachineEngine<'a> {
         let parsed_state_machine = match parsed_state_machine {
             Ok(parsed) => parsed,
             Err(e) => {
-                let message = format!("Parsing error: {e:?}");
+                let message = format!("Parsing error: {e}");
 
                 new_state_machine.observe_on_error(message.as_str());
 
@@ -455,7 +466,7 @@ impl<'a> StateMachineEngine<'a> {
         match check_report {
             Ok(_) => {}
             Err(error) => {
-                let message = format!("Load: {error:?}");
+                let message = format!("Load: {error}");
 
                 new_state_machine.observe_on_error(message.as_str());
 

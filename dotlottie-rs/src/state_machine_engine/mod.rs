@@ -17,6 +17,7 @@ pub mod inputs;
 pub mod interactions;
 pub mod security;
 pub mod state_machine;
+pub mod state_slots;
 pub mod states;
 pub mod transitions;
 
@@ -41,7 +42,10 @@ use crate::{
 };
 
 use self::state_machine::state_machine_parse;
+use self::state_slots::{SlotLerp, StateSlot};
 use self::{events::Event, states::State};
+
+use crate::lottie_renderer::SlotType;
 
 #[derive(PartialEq, Debug)]
 pub enum StateMachineEngineStatus {
@@ -137,6 +141,16 @@ pub struct StateMachineEngine<'a> {
     tween_transition_target_state: Option<State>,
     tween_target_frame: Option<f32>,
 
+    // ── State-declared slots (prototype) ─────────────────────────────
+    // Pre-overlay values to restore when the declaring state releases a slot.
+    slot_overlay_bases: std::collections::BTreeMap<String, SlotType>,
+    // The current state's declared slots (live-bound while current).
+    active_state_slots: Vec<StateSlot>,
+    // In-flight per-slot interpolations during a Tweened transition.
+    slot_lerps: Vec<SlotLerp>,
+    // Non-interpolable releases to restore when the tween completes.
+    slot_snap_releases: Vec<(String, SlotType)>,
+
     elapsed_time: f32,
     elapsed_time_states: FxHashSet<DotString>,
     elapsed_time_in_global: bool,
@@ -194,6 +208,8 @@ impl<'a> StateMachineEngine<'a> {
 
         if let Some(old_value) = ret {
             self.observe_numeric_input_value_change(key, old_value, value);
+            // Live-bound state slots referencing this input re-apply.
+            self.reapply_bound_state_slots(key);
         }
 
         if called_from_action {
@@ -310,6 +326,8 @@ impl<'a> StateMachineEngine<'a> {
             match (old, new) {
                 (InputValue::Numeric(old), InputValue::Numeric(new)) => {
                     self.observe_numeric_input_value_change(key, old, new);
+                    // Live-bound state slots referencing this input re-apply.
+                    self.reapply_bound_state_slots(key);
                 }
                 (InputValue::String(old), InputValue::String(new)) => {
                     self.observe_string_input_value_change(key, &old, &new);
@@ -386,6 +404,10 @@ impl<'a> StateMachineEngine<'a> {
             action_mutated_inputs: false,
             tween_transition_target_state: None,
             tween_target_frame: None,
+            slot_overlay_bases: std::collections::BTreeMap::new(),
+            active_state_slots: Vec::new(),
+            slot_lerps: Vec::new(),
+            slot_snap_releases: Vec::new(),
             elapsed_time: 0.0,
             elapsed_time_states: FxHashSet::default(),
             elapsed_time_in_global: false,
@@ -682,6 +704,10 @@ impl<'a> StateMachineEngine<'a> {
 
         self.status = StateMachineEngineStatus::Running;
 
+        // Snap in-flight slot interpolations to their exact targets and
+        // restore non-interpolable releases.
+        self.finalize_state_slot_tween();
+
         if let Some(target_state) = &self.tween_transition_target_state {
             // Assign the new state to the current_state
             self.current_state = Some(target_state.clone());
@@ -708,6 +734,208 @@ impl<'a> StateMachineEngine<'a> {
                 self.current_state = Some(state);
             }
         }
+    }
+
+    // ── State-declared slots (prototype) ─────────────────────────────
+
+    /// Apply one declared slot entry at the given resolved components,
+    /// saving the pre-overlay base value the first time the overlay covers
+    /// the slot. Unknown slot IDs and type mismatches are silent no-ops.
+    fn apply_state_slot_entry(&mut self, entry: &StateSlot, comps: &[f32]) {
+        let slot_id = entry.slot_id.as_str();
+
+        let Some(current) = self.player.slot_value(slot_id) else {
+            return;
+        };
+        if !state_slots::type_compatible(entry.slot_type, &current) {
+            return;
+        }
+
+        if !self.slot_overlay_bases.contains_key(slot_id) {
+            self.slot_overlay_bases.insert(slot_id.to_string(), current);
+        }
+
+        if let Some(slot) = state_slots::build_slot(entry.slot_type, comps) {
+            let _ = self.player.set_slot_value(slot_id, slot);
+        }
+    }
+
+    /// Instantly apply a state's declared slots and make them the active
+    /// overlay (live-bound while the state is current).
+    fn apply_state_slots(&mut self, slots: &[StateSlot]) {
+        for entry in slots {
+            if let Some(comps) = entry.resolve(self) {
+                self.apply_state_slot_entry(entry, &comps);
+            }
+        }
+        self.active_state_slots = slots.to_vec();
+    }
+
+    /// Release overlay slots the incoming state does not redeclare,
+    /// restoring their saved base values (theme value or authored default).
+    /// Redeclared slots keep their original saved base.
+    fn release_state_slots(&mut self, next: Option<&State>) {
+        if self.active_state_slots.is_empty() {
+            return;
+        }
+
+        let outgoing = std::mem::take(&mut self.active_state_slots);
+        for entry in &outgoing {
+            let redeclared = next
+                .and_then(|s| s.state_slots())
+                .is_some_and(|slots| slots.iter().any(|n| n.slot_id == entry.slot_id));
+            if redeclared {
+                continue;
+            }
+
+            if let Some(base) = self.slot_overlay_bases.remove(entry.slot_id.as_str()) {
+                let _ = self.player.set_slot_value(entry.slot_id.as_str(), base);
+            }
+        }
+    }
+
+    /// Drop all overlay bookkeeping without restoring anything — used when
+    /// the animation changes: the outgoing animation's slot state does not
+    /// survive the load, and the renderer reseeds slots from the new
+    /// animation's authored defaults.
+    fn reset_state_slot_bookkeeping(&mut self) {
+        self.slot_overlay_bases.clear();
+        self.active_state_slots.clear();
+        self.slot_lerps.clear();
+        self.slot_snap_releases.clear();
+    }
+
+    /// Set up per-slot interpolations for a `Tweened` transition into
+    /// `target` (same-animation only). References sample at tween start;
+    /// the target's declarations become the active overlay immediately
+    /// (input writes are rejected while tweening, so bindings cannot fire
+    /// mid-tween).
+    fn prepare_state_slot_tween(&mut self, target: &State) {
+        self.slot_lerps.clear();
+        self.slot_snap_releases.clear();
+
+        let target_slots: Vec<StateSlot> = target.state_slots().cloned().unwrap_or_default();
+
+        // Releases: outgoing overlay entries the target doesn't redeclare
+        // tween back to their base values (snap at completion when either
+        // endpoint isn't a static interpolable value).
+        let outgoing = std::mem::take(&mut self.active_state_slots);
+        for entry in &outgoing {
+            if target_slots.iter().any(|n| n.slot_id == entry.slot_id) {
+                continue;
+            }
+            let slot_id = entry.slot_id.as_str();
+            let Some(base) = self.slot_overlay_bases.remove(slot_id) else {
+                continue;
+            };
+
+            let from = self
+                .player
+                .slot_value(slot_id)
+                .as_ref()
+                .and_then(state_slots::static_components);
+            let to = state_slots::static_components(&base);
+
+            match (from, to) {
+                (Some(from), Some(to)) if from.len() == to.len() => {
+                    self.slot_lerps.push(SlotLerp {
+                        slot_id: slot_id.to_string(),
+                        slot_type: entry.slot_type,
+                        from,
+                        to,
+                    });
+                }
+                _ => self.slot_snap_releases.push((slot_id.to_string(), base)),
+            }
+        }
+
+        // Targets: declared slots tween from their current values. Entries
+        // whose current value isn't a static interpolable (e.g. a keyframed
+        // authored value) apply instantly at tween start.
+        for entry in &target_slots {
+            let Some(to) = entry.resolve(self) else {
+                continue;
+            };
+            let slot_id = entry.slot_id.as_str();
+            let Some(current) = self.player.slot_value(slot_id) else {
+                continue;
+            };
+            if !state_slots::type_compatible(entry.slot_type, &current) {
+                continue;
+            }
+
+            if !self.slot_overlay_bases.contains_key(slot_id) {
+                self.slot_overlay_bases
+                    .insert(slot_id.to_string(), current.clone());
+            }
+
+            match state_slots::static_components(&current) {
+                Some(from) if from.len() == to.len() => {
+                    self.slot_lerps.push(SlotLerp {
+                        slot_id: slot_id.to_string(),
+                        slot_type: entry.slot_type,
+                        from,
+                        to,
+                    });
+                }
+                _ => {
+                    if let Some(slot) = state_slots::build_slot(entry.slot_type, &to) {
+                        let _ = self.player.set_slot_value(slot_id, slot);
+                    }
+                }
+            }
+        }
+
+        self.active_state_slots = target_slots;
+    }
+
+    /// Advance in-flight slot interpolations to the given eased progress.
+    fn apply_slot_lerps(&mut self, progress: f32) {
+        if self.slot_lerps.is_empty() {
+            return;
+        }
+
+        let lerps = std::mem::take(&mut self.slot_lerps);
+        for lerp in &lerps {
+            let comps = state_slots::lerp_components(&lerp.from, &lerp.to, progress);
+            if let Some(slot) = state_slots::build_slot(lerp.slot_type, &comps) {
+                let _ = self.player.set_slot_value(&lerp.slot_id, slot);
+            }
+        }
+        self.slot_lerps = lerps;
+    }
+
+    /// Complete slot interpolation: snap lerps to their exact targets and
+    /// restore non-interpolable releases.
+    fn finalize_state_slot_tween(&mut self) {
+        let lerps = std::mem::take(&mut self.slot_lerps);
+        for lerp in &lerps {
+            if let Some(slot) = state_slots::build_slot(lerp.slot_type, &lerp.to) {
+                let _ = self.player.set_slot_value(&lerp.slot_id, slot);
+            }
+        }
+
+        let snaps = std::mem::take(&mut self.slot_snap_releases);
+        for (slot_id, base) in snaps {
+            let _ = self.player.set_slot_value(&slot_id, base);
+        }
+    }
+
+    /// Re-apply live-bound declarations that reference `input_name`.
+    fn reapply_bound_state_slots(&mut self, input_name: &str) {
+        if self.status != StateMachineEngineStatus::Running || self.active_state_slots.is_empty() {
+            return;
+        }
+
+        let entries = std::mem::take(&mut self.active_state_slots);
+        for entry in &entries {
+            if entry.referenced_inputs().any(|name| name == input_name) {
+                if let Some(comps) = entry.resolve(self) {
+                    self.apply_state_slot_entry(entry, &comps);
+                }
+            }
+        }
+        self.active_state_slots = entries;
     }
 
     // Set the current state to the target state
@@ -798,6 +1026,7 @@ impl<'a> StateMachineEngine<'a> {
                                     );
 
                                     if tween_result.is_ok() {
+                                        self.prepare_state_slot_tween(&new_state);
                                         self.tween_transition_target_state =
                                             Some(new_state.clone());
                                         self.tween_target_frame = Some(target_frame);
@@ -814,6 +1043,25 @@ impl<'a> StateMachineEngine<'a> {
                 }
             }
 
+            // Release or drop the previous state's slot overlay before the
+            // new state applies. On an animation change the outgoing slot
+            // state doesn't survive the load, so bookkeeping is dropped
+            // without restore writes.
+            let animation_changing = {
+                let target_animation = new_state.animation();
+                !target_animation.is_empty()
+                    && self
+                        .player
+                        .animation_id()
+                        .map(|id| id.to_bytes() != target_animation.as_bytes())
+                        .unwrap_or(true)
+            };
+            if animation_changing {
+                self.reset_state_slot_bookkeeping();
+            } else {
+                self.release_state_slots(Some(&new_state));
+            }
+
             // Assign the new state to the current_state
             self.current_state = Some(new_state);
 
@@ -826,6 +1074,13 @@ impl<'a> StateMachineEngine<'a> {
             if let Some(state) = state {
                 // Enter the state
                 let _ = state.enter(self);
+
+                // Apply the state's declared slots (after enter, so a
+                // changed animation is already loaded and reseeded).
+                let declared: Vec<StateSlot> =
+                    state.state_slots().cloned().unwrap_or_default();
+                self.apply_state_slots(&declared);
+
                 // Don't forget to put things back
                 // new_state becomes the current state
                 self.current_state = Some(state);
@@ -1447,6 +1702,15 @@ impl<'a> StateMachineEngine<'a> {
         let ticked = self.player.tick(dt);
 
         self.check_completion();
+
+        // Advance slot interpolations with the tween's eased progress. When
+        // the tween just completed, progress is gone — resume_from_tweening
+        // below snaps the exact final values.
+        if self.status == StateMachineEngineStatus::Tweening {
+            if let Some(progress) = self.player.tween_progress() {
+                self.apply_slot_lerps(progress);
+            }
+        }
 
         let needs_resume =
             self.status == StateMachineEngineStatus::Tweening && !self.player.is_tweening();

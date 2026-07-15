@@ -1269,6 +1269,31 @@ impl Player {
         Ok(())
     }
 
+    /// Current tracked value of a slot (authored default until overwritten).
+    pub fn slot_value(&self, slot_id: &str) -> Option<crate::lottie_renderer::SlotType> {
+        self.renderer.slot_value(slot_id)
+    }
+
+    /// Set a single slot from an already-typed value.
+    pub fn set_slot_value(
+        &mut self,
+        slot_id: &str,
+        slot: crate::lottie_renderer::SlotType,
+    ) -> Result<(), PlayerError> {
+        use crate::lottie_renderer::SlotType;
+
+        match slot {
+            SlotType::Color(s) => self.renderer.set_color_slot(slot_id, s)?,
+            SlotType::Gradient(s) => self.renderer.set_gradient_slot(slot_id, s)?,
+            SlotType::Image(s) => self.renderer.set_image_slot(slot_id, s)?,
+            SlotType::Text(s) => self.renderer.set_text_slot(slot_id, s)?,
+            SlotType::Scalar(s) => self.renderer.set_scalar_slot(slot_id, s)?,
+            SlotType::Vector(s) => self.renderer.set_vector_slot(slot_id, s)?,
+            SlotType::Position(s) => self.renderer.set_position_slot(slot_id, s)?,
+        };
+        Ok(())
+    }
+
     pub fn clear_slots(&mut self) -> Result<(), PlayerError> {
         self.renderer.clear_slots()?;
         Ok(())
@@ -1381,6 +1406,12 @@ impl Player {
     #[inline]
     pub fn is_tweening(&self) -> bool {
         self.tween_state.is_some()
+    }
+
+    /// Eased progress of the in-flight tween, if any. `None` when not tweening.
+    #[inline]
+    pub fn tween_progress(&self) -> Option<f32> {
+        self.tween_state.as_ref().map(|t| t.progress())
     }
 
     pub(crate) fn sync_tween_frame(&mut self, frame: f32) {

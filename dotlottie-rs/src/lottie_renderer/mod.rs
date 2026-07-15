@@ -163,6 +163,9 @@ pub trait LottieRenderer {
 
     fn get_slot_ids(&self) -> Vec<String>;
 
+    /// Current tracked value of a slot (authored default until overwritten).
+    fn slot_value(&self, slot_id: &str) -> Option<SlotType>;
+
     fn get_slot_type(&self, slot_id: &str) -> String;
 
     fn get_slot_str(&self, slot_id: &str) -> String;
@@ -783,6 +786,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn get_slot_ids(&self) -> Vec<String> {
         self.slot_values.keys().cloned().collect()
+    }
+
+    fn slot_value(&self, slot_id: &str) -> Option<SlotType> {
+        self.slot_values.get(slot_id).cloned()
     }
 
     fn get_slot_type(&self, slot_id: &str) -> String {

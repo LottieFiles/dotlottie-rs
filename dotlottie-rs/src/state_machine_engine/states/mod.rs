@@ -9,6 +9,7 @@ use crate::Rgba;
 use super::{actions::StateMachineActionError, transitions::Transition, StateMachineEngine};
 
 use super::actions::{Action, ActionTrait};
+use super::state_slots::StateSlot;
 
 pub trait StateTrait {
     fn enter(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError>;
@@ -39,6 +40,7 @@ pub enum State {
         background_color: Option<u32>,
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
+        slots: Option<Vec<StateSlot>>,
     },
     GlobalState {
         name: DotString,
@@ -57,6 +59,7 @@ impl State {
                 animation,
                 entry_actions,
                 exit_actions,
+                slots,
                 ..
             } => {
                 *name = interner.intern(name.as_str());
@@ -72,6 +75,11 @@ impl State {
                 if let Some(actions) = exit_actions {
                     for a in actions {
                         a.intern_identifiers(interner);
+                    }
+                }
+                if let Some(slots) = slots {
+                    for s in slots {
+                        s.intern_identifiers(interner);
                     }
                 }
             }
@@ -96,6 +104,16 @@ impl State {
                     }
                 }
             }
+        }
+    }
+}
+
+impl State {
+    /// Slots declared as part of this state's configuration (PlaybackState only).
+    pub fn state_slots(&self) -> Option<&Vec<StateSlot>> {
+        match self {
+            State::PlaybackState { slots, .. } => slots.as_ref(),
+            State::GlobalState { .. } => None,
         }
     }
 }

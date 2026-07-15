@@ -40,6 +40,17 @@ impl TweenState {
         })
     }
 
+    /// Eased progress at the current elapsed time, without advancing.
+    pub fn progress(&self) -> f32 {
+        let t = self.elapsed / self.duration;
+        if t >= 1.0 {
+            1.0
+        } else {
+            let [x1, y1, x2, y2] = self.easing;
+            bezier::cubic_bezier(t, x1, y1, x2, y2)
+        }
+    }
+
     /// Advance the tween by `dt` milliseconds and compute eased progress.
     /// Returns `(status, progress)` where progress is in [0.0, 1.0]
     /// (or beyond if the easing curve overshoots).

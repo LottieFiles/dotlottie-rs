@@ -166,6 +166,10 @@ pub trait LottieRenderer {
     /// Current tracked value of a slot (authored default until overwritten).
     fn slot_value(&self, slot_id: &str) -> Option<SlotType>;
 
+    /// Authored static position of a named top-level layer, extracted from
+    /// the animation JSON at load time.
+    fn layer_position(&self, layer_name: &str) -> Option<[f32; 2]>;
+
     fn get_slot_type(&self, slot_id: &str) -> String;
 
     fn get_slot_str(&self, slot_id: &str) -> String;
@@ -229,6 +233,7 @@ impl dyn LottieRenderer {
             slot_json_buffer: Vec::with_capacity(512),
             slot_values: BTreeMap::new(),
             default_slots: BTreeMap::new(),
+            layer_positions: BTreeMap::new(),
         })
     }
 }
@@ -256,6 +261,8 @@ struct LottieRendererImpl<R: Renderer> {
     /// Maps slot_id -> SlotType for value retrieval (get operations)
     slot_values: BTreeMap<String, SlotType>,
     default_slots: BTreeMap<String, SlotType>,
+    /// Authored static positions of named top-level layers (for snap targets)
+    layer_positions: BTreeMap<String, [f32; 2]>,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -272,6 +279,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
         self.slot_json_buffer.clear();
         self.slot_values.clear();
         self.default_slots.clear();
+        self.layer_positions.clear();
         Ok(())
     }
 
@@ -549,6 +557,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .to_str()
             .map(slots::extract_slots_from_animation)
             .unwrap_or_default();
+        let layer_positions = data
+            .to_str()
+            .map(slots::extract_layer_positions)
+            .unwrap_or_default();
 
         let animation = self.load_animation(data)?;
 
@@ -565,6 +577,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.updated = true;
 
         self.store_default_slots(default_slots);
+        self.layer_positions = layer_positions;
 
         Ok(())
     }
@@ -790,6 +803,10 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
 
     fn slot_value(&self, slot_id: &str) -> Option<SlotType> {
         self.slot_values.get(slot_id).cloned()
+    }
+
+    fn layer_position(&self, layer_name: &str) -> Option<[f32; 2]> {
+        self.layer_positions.get(layer_name).copied()
     }
 
     fn get_slot_type(&self, slot_id: &str) -> String {

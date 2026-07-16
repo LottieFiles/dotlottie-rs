@@ -11,6 +11,31 @@ pub trait InteractionTrait {
     fn type_name(&self) -> &'static str;
 }
 
+/// Snap/return tween configuration for DragAndDrop (duration in seconds,
+/// cubic-bézier easing — same convention as Tweened transitions).
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DragTween {
+    pub duration: f32,
+    pub easing: [f32; 4],
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DropZone {
+    pub layer_name: DotString,
+    /// Snap target override; when omitted, the zone layer's authored
+    /// position is used (extracted from the animation).
+    #[serde(default)]
+    pub snap: Option<[f32; 2]>,
+    /// When true, the object can no longer be grabbed after docking here.
+    #[serde(default)]
+    pub lock: Option<bool>,
+    /// Actions executed when the object docks in this zone.
+    #[serde(default)]
+    pub actions: Option<Vec<Action>>,
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
@@ -46,7 +71,22 @@ pub enum Interaction {
         state_name: DotString,
         actions: Vec<Action>,
     },
+    /// Stateful drag & drop gesture: `layer_name` is the draggable layer
+    /// (engine hit-tests pickup), `slot_id` the Position slot written while
+    /// held. Releasing over a drop zone snaps to it and runs its actions;
+    /// releasing elsewhere returns to the pre-drag rest position.
+    DragAndDrop {
+        layer_name: DotString,
+        slot_id: DotString,
+        /// Preserve the pointer-to-object offset from grab (default true).
+        grab_offset: Option<bool>,
+        /// Snap/return glide; omitted = instant.
+        tween: Option<DragTween>,
+        drop_zones: Vec<DropZone>,
+    },
 }
+
+static EMPTY_ACTIONS: Vec<Action> = Vec::new();
 
 impl InteractionTrait for Interaction {
     fn get_layer_name(&self) -> Option<&DotString> {
@@ -59,6 +99,7 @@ impl InteractionTrait for Interaction {
             Interaction::OnComplete { .. } => None,
             Interaction::OnLoopComplete { .. } => None,
             Interaction::Click { layer_name, .. } => layer_name.as_ref(),
+            Interaction::DragAndDrop { layer_name, .. } => Some(layer_name),
         }
     }
 
@@ -72,6 +113,9 @@ impl InteractionTrait for Interaction {
             Interaction::OnComplete { actions, .. } => actions,
             Interaction::OnLoopComplete { actions, .. } => actions,
             Interaction::Click { actions, .. } => actions,
+            // DragAndDrop actions live per drop zone and are executed by the
+            // gesture runtime, never by the generic interaction path.
+            Interaction::DragAndDrop { .. } => &EMPTY_ACTIONS,
         }
     }
 
@@ -85,6 +129,7 @@ impl InteractionTrait for Interaction {
             Interaction::Click { .. } => None,
             Interaction::OnComplete { state_name, .. } => Some(state_name.as_str().to_owned()),
             Interaction::OnLoopComplete { state_name, .. } => Some(state_name.as_str().to_owned()),
+            Interaction::DragAndDrop { .. } => None,
         }
     }
 
@@ -98,6 +143,9 @@ impl InteractionTrait for Interaction {
             Interaction::OnComplete { .. } => "OnComplete",
             Interaction::OnLoopComplete { .. } => "OnLoopComplete",
             Interaction::Click { .. } => "Click",
+            // Never matches a pointer event type name, so the generic
+            // explicit-event path ignores DragAndDrop entirely.
+            Interaction::DragAndDrop { .. } => "DragAndDrop",
         }
     }
 }
@@ -150,6 +198,23 @@ impl Interaction {
                 *state_name = interner.intern(state_name.as_str());
                 for a in actions {
                     a.intern_identifiers(interner);
+                }
+            }
+            Interaction::DragAndDrop {
+                layer_name,
+                slot_id,
+                drop_zones,
+                ..
+            } => {
+                *layer_name = interner.intern(layer_name.as_str());
+                *slot_id = interner.intern(slot_id.as_str());
+                for zone in drop_zones {
+                    zone.layer_name = interner.intern(zone.layer_name.as_str());
+                    if let Some(actions) = &mut zone.actions {
+                        for a in actions {
+                            a.intern_identifiers(interner);
+                        }
+                    }
                 }
             }
         }

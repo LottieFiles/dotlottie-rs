@@ -1274,6 +1274,11 @@ impl Player {
         self.renderer.slot_value(slot_id)
     }
 
+    /// Authored static position of a named top-level layer.
+    pub fn layer_position(&self, layer_name: &str) -> Option<[f32; 2]> {
+        self.renderer.layer_position(layer_name)
+    }
+
     /// Set a single slot from an already-typed value.
     pub fn set_slot_value(
         &mut self,

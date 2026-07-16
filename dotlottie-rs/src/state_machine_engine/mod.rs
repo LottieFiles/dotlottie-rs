@@ -11,6 +11,7 @@ pub(crate) const ELAPSED_TIME: &str = "@elapsedTime";
 const DEFAULT_RNG_SEED: u64 = 0x853c_49e6_748f_ea9b;
 
 pub mod actions;
+pub mod drag_and_drop;
 pub mod errors;
 pub mod events;
 pub mod inputs;
@@ -41,11 +42,12 @@ use crate::{
     Player, Point, PointerEvent, Rgba, Segment, StateMachineEngineSecurityError,
 };
 
+use self::drag_and_drop::{DndPhase, DndRuntime};
 use self::state_machine::state_machine_parse;
 use self::state_slots::{SlotLerp, StateSlot};
 use self::{events::Event, states::State};
 
-use crate::lottie_renderer::SlotType;
+use crate::lottie_renderer::{PositionSlot, SlotType};
 
 #[derive(PartialEq, Debug)]
 pub enum StateMachineEngineStatus {
@@ -150,6 +152,9 @@ pub struct StateMachineEngine<'a> {
     slot_lerps: Vec<SlotLerp>,
     // Non-interpolable releases to restore when the tween completes.
     slot_snap_releases: Vec<(String, SlotType)>,
+
+    // DragAndDrop gesture runtimes (one per DragAndDrop interaction).
+    dnd_runtimes: Vec<DndRuntime>,
 
     elapsed_time: f32,
     elapsed_time_states: FxHashSet<DotString>,
@@ -408,6 +413,7 @@ impl<'a> StateMachineEngine<'a> {
             active_state_slots: Vec::new(),
             slot_lerps: Vec::new(),
             slot_snap_releases: Vec::new(),
+            dnd_runtimes: Vec::new(),
             elapsed_time: 0.0,
             elapsed_time_states: FxHashSet::default(),
             elapsed_time_in_global: false,
@@ -528,6 +534,15 @@ impl<'a> StateMachineEngine<'a> {
         self.elapsed_time = 0.0;
         self.rng = oorandom::Rand32::new(self.rng_seed);
 
+        // Build DragAndDrop gesture runtimes from their interactions.
+        self.dnd_runtimes = self
+            .state_machine
+            .interactions
+            .iter()
+            .flatten()
+            .filter_map(DndRuntime::from_interaction)
+            .collect();
+
         let initial = &self.state_machine.initial.clone();
 
         let err = self.set_current_state(initial, None, false);
@@ -640,6 +655,11 @@ impl<'a> StateMachineEngine<'a> {
                 }
                 crate::interactions::Interaction::Click { .. } => {
                     interaction_types.push("Click".to_string());
+                }
+                crate::interactions::Interaction::DragAndDrop { .. } => {
+                    interaction_types.push("PointerDown".to_string());
+                    interaction_types.push("PointerMove".to_string());
+                    interaction_types.push("PointerUp".to_string());
                 }
             }
         }
@@ -936,6 +956,194 @@ impl<'a> StateMachineEngine<'a> {
             }
         }
         self.active_state_slots = entries;
+    }
+
+    // ── DragAndDrop interaction runtime (prototype) ───────────────────
+
+    /// Current position components of a slot, if it holds a static 2D value.
+    fn dnd_slot_position(&self, slot_id: &str) -> Option<[f32; 2]> {
+        let slot = self.player.slot_value(slot_id)?;
+        let comps = state_slots::static_components(&slot)?;
+        (comps.len() == 2).then(|| [comps[0], comps[1]])
+    }
+
+    fn dnd_write_slot(&mut self, slot_id: &str, pos: [f32; 2]) {
+        let _ = self
+            .player
+            .set_position_slot(slot_id, PositionSlot::static_value(pos));
+    }
+
+    /// Route pointer events into the DragAndDrop gesture runtimes.
+    fn manage_drag_and_drop(&mut self, event: &Event, x: f32, y: f32) {
+        if self.dnd_runtimes.is_empty() {
+            return;
+        }
+
+        let mut runtimes = std::mem::take(&mut self.dnd_runtimes);
+
+        match event {
+            Event::PointerDown { .. } => {
+                for rt in &mut runtimes {
+                    self.dnd_try_grab(rt, x, y);
+                }
+            }
+            Event::PointerMove { .. } => {
+                for rt in &mut runtimes {
+                    if let DndPhase::Held { offset } = rt.phase {
+                        let slot_id = rt.slot_id.clone();
+                        self.dnd_write_slot(&slot_id, [x + offset[0], y + offset[1]]);
+                    }
+                }
+            }
+            Event::PointerUp { .. } => {
+                for rt in &mut runtimes {
+                    if matches!(rt.phase, DndPhase::Held { .. }) {
+                        self.dnd_resolve_drop(rt, x, y);
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        self.dnd_runtimes = runtimes;
+    }
+
+    fn dnd_try_grab(&mut self, rt: &mut DndRuntime, x: f32, y: f32) {
+        if rt.locked || matches!(rt.phase, DndPhase::Held { .. }) {
+            return;
+        }
+
+        let hit = self
+            .player
+            .renderer
+            .hit_test(Point { x, y }, &rt.layer_name)
+            .unwrap_or(false);
+        if !hit {
+            return;
+        }
+
+        let Some(current) = self.dnd_slot_position(&rt.slot_id) else {
+            return;
+        };
+
+        // First grab captures the rest position (where a miss returns to).
+        if rt.rest.is_none() {
+            rt.rest = Some(current);
+        }
+
+        // Grabbing mid-snap cancels the tween; the object continues from
+        // wherever the glide left it.
+        let offset = if rt.use_grab_offset {
+            [current[0] - x, current[1] - y]
+        } else {
+            [0.0, 0.0]
+        };
+        rt.phase = DndPhase::Held { offset };
+
+        if !rt.use_grab_offset {
+            let slot_id = rt.slot_id.clone();
+            self.dnd_write_slot(&slot_id, [x, y]);
+        }
+    }
+
+    fn dnd_resolve_drop(&mut self, rt: &mut DndRuntime, x: f32, y: f32) {
+        let zone_hit = rt.zones.iter().position(|zone| {
+            self.player
+                .renderer
+                .hit_test(Point { x, y }, &zone.layer_name)
+                .unwrap_or(false)
+        });
+
+        let (target, zone_index) = match zone_hit {
+            Some(zi) => {
+                // Snap target: explicit override, else the zone layer's
+                // authored position from the animation itself.
+                let target = rt.zones[zi]
+                    .snap
+                    .or_else(|| self.player.layer_position(&rt.zones[zi].layer_name));
+                match target {
+                    Some(t) => (t, Some(zi)),
+                    // Zone hit but no derivable snap target: treat as miss.
+                    None => (rt.rest.unwrap_or([x, y]), None),
+                }
+            }
+            None => (rt.rest.unwrap_or([x, y]), None),
+        };
+
+        let from = self.dnd_slot_position(&rt.slot_id).unwrap_or(target);
+
+        match rt.tween {
+            Some((duration, easing)) if duration > 0.0 => {
+                rt.phase = DndPhase::Snapping {
+                    from,
+                    to: target,
+                    elapsed: 0.0,
+                    duration,
+                    easing,
+                    zone_index,
+                };
+            }
+            _ => self.dnd_finalize(rt, target, zone_index),
+        }
+    }
+
+    /// Land the object: write the exact target, update rest, run the drop
+    /// zone's actions (if docking), and apply its lock.
+    fn dnd_finalize(&mut self, rt: &mut DndRuntime, target: [f32; 2], zone_index: Option<usize>) {
+        let slot_id = rt.slot_id.clone();
+        self.dnd_write_slot(&slot_id, target);
+        rt.rest = Some(target);
+        rt.phase = DndPhase::Idle;
+
+        if let Some(zi) = zone_index {
+            rt.locked = rt.locked || rt.zones[zi].lock;
+            let actions = rt.zones[zi].actions.clone();
+            for action in actions {
+                let _ = action.execute(self, true, false);
+            }
+        }
+    }
+
+    /// Advance in-flight snap tweens (non-blocking; runs every tick).
+    fn advance_drag_and_drop(&mut self, dt: f32) {
+        if self.dnd_runtimes.is_empty() {
+            return;
+        }
+
+        let mut runtimes = std::mem::take(&mut self.dnd_runtimes);
+        for rt in &mut runtimes {
+            let DndPhase::Snapping {
+                from,
+                to,
+                elapsed,
+                duration,
+                easing,
+                zone_index,
+            } = rt.phase
+            else {
+                continue;
+            };
+
+            let elapsed = elapsed + dt;
+            if elapsed >= duration {
+                self.dnd_finalize(rt, to, zone_index);
+            } else {
+                let progress =
+                    crate::tween::TweenState::eased_progress(elapsed / duration, easing);
+                let pos = drag_and_drop::lerp2(from, to, progress);
+                let slot_id = rt.slot_id.clone();
+                self.dnd_write_slot(&slot_id, pos);
+                rt.phase = DndPhase::Snapping {
+                    from,
+                    to,
+                    elapsed,
+                    duration,
+                    easing,
+                    zone_index,
+                };
+            }
+        }
+        self.dnd_runtimes = runtimes;
     }
 
     // Set the current state to the target state
@@ -1485,6 +1693,9 @@ impl<'a> StateMachineEngine<'a> {
         self.pointer_management.pointer_x = x;
         self.pointer_management.pointer_y = y;
 
+        // DragAndDrop gesture runtimes see every pointer event first.
+        self.manage_drag_and_drop(event, x, y);
+
         // This will handle PointerDown, PointerUp, PointerEnter, PointerExit, Click
         if event.type_name() != "PointerMove" {
             self.manage_explicit_events(event, x, y);
@@ -1699,6 +1910,13 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     pub fn tick(&mut self, dt: f32) -> Result<bool, crate::PlayerError> {
+        // Advance DragAndDrop snap tweens BEFORE the player renders, so this
+        // tick's slot writes are flushed in this tick's render (hit-testing
+        // depends on the rendered scene being current).
+        if self.status != StateMachineEngineStatus::Stopped {
+            self.advance_drag_and_drop(dt);
+        }
+
         let ticked = self.player.tick(dt);
 
         self.check_completion();

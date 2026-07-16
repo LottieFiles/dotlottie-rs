@@ -221,6 +221,39 @@ pub fn slots_from_json_string(
     Ok(result)
 }
 
+/// Extract the static authored position of every named top-level layer
+/// (`layers[].nm` -> `layers[].ks.p.k` when it is a plain `[x, y]`).
+/// Used by the DragAndDrop interaction to derive drop-zone snap targets
+/// from the animation itself instead of hardcoded coordinates.
+pub fn extract_layer_positions(animation_json: &str) -> BTreeMap<String, [f32; 2]> {
+    let mut result = BTreeMap::new();
+
+    let Ok(json) = serde_json::from_str::<serde_json::Value>(animation_json) else {
+        return result;
+    };
+    let Some(layers) = json.get("layers").and_then(|l| l.as_array()) else {
+        return result;
+    };
+
+    for layer in layers {
+        let Some(name) = layer.get("nm").and_then(|n| n.as_str()) else {
+            continue;
+        };
+        let Some(k) = layer
+            .pointer("/ks/p/k")
+            .and_then(|k| k.as_array())
+            .filter(|arr| arr.len() >= 2)
+        else {
+            continue;
+        };
+        if let (Some(x), Some(y)) = (k[0].as_f64(), k[1].as_f64()) {
+            result.insert(name.to_string(), [x as f32, y as f32]);
+        }
+    }
+
+    result
+}
+
 pub fn extract_slots_from_animation(animation_json: &str) -> BTreeMap<String, SlotType> {
     let parsed: Result<serde_json::Value, _> = serde_json::from_str(animation_json);
 

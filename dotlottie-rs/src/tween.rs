@@ -40,6 +40,20 @@ impl TweenState {
         })
     }
 
+    /// Eased progress for a linear `t` in [0,1] under a cubic-bézier easing.
+    /// Standalone helper for property tweens that run outside `TweenState`
+    /// (e.g. the DragAndDrop interaction's snap tween).
+    pub(crate) fn eased_progress(t: f32, easing: [f32; 4]) -> f32 {
+        if t <= 0.0 {
+            return 0.0;
+        }
+        if t >= 1.0 {
+            return 1.0;
+        }
+        let [x1, y1, x2, y2] = easing;
+        bezier::cubic_bezier(t, x1, y1, x2, y2)
+    }
+
     /// Eased progress at the current elapsed time, without advancing.
     pub fn progress(&self) -> f32 {
         let t = self.elapsed / self.duration;

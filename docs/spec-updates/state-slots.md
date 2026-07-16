@@ -3,6 +3,8 @@
 Status: **draft — prototyped in dotlottie-rs, 2026-07-13** (decisions from
 grilling session, 2026-07-09; see "Prototype results" below)
 
+> Condensed proposal: [RFC 0001 — State-Declared Slots](../rfcs/0001-state-declared-slots.md)
+
 A standalone spec direction, independent of the slot-actions proposal
 ([slot-actions.md](./slot-actions.md)). Here, slot values are **part of a
 state's configuration** — declared alongside `loop`, `segment`, `autoplay` —

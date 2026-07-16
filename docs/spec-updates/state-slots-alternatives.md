@@ -77,6 +77,16 @@ with host-driven `set_theme`. Worth revisiting as a *companion* to inline
 state slots (coarse look via theme ref + fine dynamic values via slots), not
 as a replacement.
 
+> **Update 2026-07-15**: prototyped in dotlottie-rs and validated headlessly
+> (`tests/dnd_interaction_check.rs`, `examples/star_drop_dnd.rs`). The
+> single-star state machine shrank from 3 states / 3 interactions / 7 inputs
+> to 1 state / 1 interaction / 1 input, with zero coordinates in the JSON
+> (snap targets derived from drop-zone layers at load). Snap tween is
+> non-blocking (engine stays Running), grab offset works natively, and
+> `lock` + per-zone actions bridge cleanly into SM logic. One engine finding:
+> gesture tween writes must advance *before* the player renders each tick,
+> or hit-testing sees a one-frame-stale scene.
+
 ## B7 — Dedicated `DragAndDrop` interaction (explored, undecided)
 
 Prototype experience: pure-SM drag & drop of 4 objects is expressible

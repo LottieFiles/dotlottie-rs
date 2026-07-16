@@ -138,6 +138,12 @@ VISIONOS_SIMULATOR_SDK = $(XCODE_PATH)/Platforms/XRSimulator.platform/Developer/
 WATCHOS_SDK = $(XCODE_PATH)/Platforms/WatchOS.platform/Developer/SDKs/WatchOS.sdk
 WATCHOS_SIMULATOR_SDK = $(XCODE_PATH)/Platforms/WatchSimulator.platform/Developer/SDKs/WatchSimulator.sdk
 
+# Installed SDK versions, used as the `sdk` field when re-stamping the wgpu
+# dylibs' Mach-O build-version load command (see restamp_build_version).
+IOS_SDK_VERSION := $(shell xcrun --sdk iphoneos --show-sdk-version 2>/dev/null)
+IOS_SIM_SDK_VERSION := $(shell xcrun --sdk iphonesimulator --show-sdk-version 2>/dev/null)
+MACOS_SDK_VERSION := $(shell xcrun --sdk macosx --show-sdk-version 2>/dev/null)
+
 # Apple targets
 APPLE_TARGETS = aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim aarch64-apple-ios-macabi x86_64-apple-ios-macabi aarch64-apple-visionos aarch64-apple-visionos-sim aarch64-apple-tvos aarch64-apple-tvos-sim aarch64-apple-watchos arm64_32-apple-watchos armv7k-apple-watchos aarch64-apple-watchos-sim
 
@@ -200,10 +206,28 @@ define stage_wgpu_dylib
 	@$(INSTALL_NAME_TOOL) -id $(WGPU_INSTALL_NAME) "$(2)"
 endef
 
+# Rewrite a Mach-O's version load command as a modern LC_BUILD_VERSION.
+# The upstream wgpu-native iOS dylibs ship LC_VERSION_MIN_IPHONEOS 10.0 (cargo's
+# historical default deployment target), which sits below Apple's Swift
+# ABI-stability threshold (12.2) and gets embedding apps rejected on App Store
+# upload with ITMS-90426 ("Invalid Swift Support"). Apple reads the binary's
+# load commands, not the framework Info.plist, so wrapping alone doesn't clear
+# it. -replace drops any existing LC_VERSION_MIN_*/LC_BUILD_VERSION and writes a
+# single LC_BUILD_VERSION. vtool operates across all slices of a fat binary.
+# $(1)=mach-o  $(2)=vtool platform (ios | 7 | macos)  $(3)=minos  $(4)=sdk
+define restamp_build_version
+	@xcrun vtool -set-build-version $(2) $(3) $(4) -replace -output "$(1).stamped" "$(1)"
+	@mv "$(1).stamped" "$(1)"
+endef
+
+# $(1)=source dylib  $(2)=stage dir  $(3)=CFBundleSupportedPlatforms value
+# $(4)=min-version plist key  $(5)=min OS version
+# $(6)=vtool platform (ios | 7 | macos)  $(7)=SDK version
 define make_wgpu_framework
 	@rm -rf $(2)/$(WGPU_NATIVE_FRAMEWORK)
 	@mkdir -p $(2)/$(WGPU_NATIVE_FRAMEWORK)/$(FRAMEWORK_HEADERS)/webgpu $(2)/$(WGPU_NATIVE_FRAMEWORK)/$(FRAMEWORK_MODULES)
 	@cp "$(1)" $(2)/$(WGPU_NATIVE_FRAMEWORK)/$(WGPU_NATIVE_MODULE)
+	$(call restamp_build_version,$(2)/$(WGPU_NATIVE_FRAMEWORK)/$(WGPU_NATIVE_MODULE),$(6),$(5),$(7))
 	@cp $(WGPU_CACHE_DIR)/$(WGPU_ARTIFACT_macos_arm64)/include/webgpu/*.h $(2)/$(WGPU_NATIVE_FRAMEWORK)/$(FRAMEWORK_HEADERS)/webgpu/
 	@printf 'framework module %s {\n  header "webgpu/wgpu.h"\n  export *\n}\n' "$(WGPU_NATIVE_MODULE)" > $(2)/$(WGPU_NATIVE_FRAMEWORK)/$(FRAMEWORK_MODULES)/$(MODULE_MAP)
 	@$(PLISTBUDDY_EXEC) \
@@ -253,7 +277,7 @@ define fixup_wgpu_rpath
 endef
 
 # Apple-specific phony targets
-.PHONY: apple apple-macos apple-ios apple-maccatalyst apple-visionos apple-tvos apple-watchos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-maccatalyst-arm64 apple-maccatalyst-x86_64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 apple-watchos-arm64 apple-watchos-arm64_32 apple-watchos-armv7k apple-watchos-sim-arm64 apple-setup apple-clean apple-code-sign
+.PHONY: apple apple-macos apple-ios apple-maccatalyst apple-visionos apple-tvos apple-watchos apple-macos-arm64 apple-macos-x86_64 apple-ios-arm64 apple-ios-x86_64 apple-ios-sim-arm64 apple-maccatalyst-arm64 apple-maccatalyst-x86_64 apple-visionos-arm64 apple-visionos-sim-arm64 apple-tvos-arm64 apple-tvos-sim-arm64 apple-watchos-arm64 apple-watchos-arm64_32 apple-watchos-armv7k apple-watchos-sim-arm64 apple-setup apple-clean
 
 
 
@@ -814,11 +838,6 @@ $(WATCHOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK): apple-watchos-
 apple-frameworks: $(MACOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(IOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(IOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(VISIONOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(VISIONOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(TVOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(TVOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(WATCHOS_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(WATCHOS_SIMULATOR_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK) $(MACCATALYST_FRAMEWORK_DIR)/$(DOTLOTTIE_PLAYER_FRAMEWORK)
 	@echo "✓ All Apple frameworks created"
 
-# Code signing target
-apple-code-sign:
-	@echo "→ Code signing XCFramework..."
-	$(call perform_codesigning,$(APPLE_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK))
-
 # Package Apple release
 apple-package: apple-frameworks
 	@echo "→ Creating Apple release package..."
@@ -895,9 +914,9 @@ apple-wgpu-package: apple-package
 	$(call stage_wgpu_dylib,$(WGPU_ARTIFACT_ios_sim_arm64),$(WGPU_STAGE_DIR)/ios-sim-arm64.dylib)
 	$(call stage_wgpu_dylib,$(WGPU_ARTIFACT_ios_x86_64),$(WGPU_STAGE_DIR)/ios-sim-x86_64.dylib)
 	@$(LIPO) -create $(WGPU_STAGE_DIR)/ios-sim-arm64.dylib $(WGPU_STAGE_DIR)/ios-sim-x86_64.dylib -o $(WGPU_STAGE_DIR)/ios-sim.dylib
-	$(call make_wgpu_framework,$(WGPU_STAGE_DIR)/ios.dylib,$(WGPU_STAGE_DIR)/ios,iPhoneOS,MinimumOSVersion,$(MIN_IOS_VERSION))
-	$(call make_wgpu_framework,$(WGPU_STAGE_DIR)/ios-sim.dylib,$(WGPU_STAGE_DIR)/ios-sim,iPhoneSimulator,MinimumOSVersion,$(MIN_IOS_VERSION))
-	$(call make_wgpu_framework,$(WGPU_STAGE_DIR)/macos.dylib,$(WGPU_STAGE_DIR)/macos,MacOSX,LSMinimumSystemVersion,$(MIN_MACOS_VERSION))
+	$(call make_wgpu_framework,$(WGPU_STAGE_DIR)/ios.dylib,$(WGPU_STAGE_DIR)/ios,iPhoneOS,MinimumOSVersion,$(MIN_IOS_VERSION),ios,$(IOS_SDK_VERSION))
+	$(call make_wgpu_framework,$(WGPU_STAGE_DIR)/ios-sim.dylib,$(WGPU_STAGE_DIR)/ios-sim,iPhoneSimulator,MinimumOSVersion,$(MIN_IOS_VERSION),7,$(IOS_SIM_SDK_VERSION))
+	$(call make_wgpu_framework,$(WGPU_STAGE_DIR)/macos.dylib,$(WGPU_STAGE_DIR)/macos,MacOSX,LSMinimumSystemVersion,$(MIN_MACOS_VERSION),macos,$(MACOS_SDK_VERSION))
 	$(call deepify_wgpu_framework,$(WGPU_STAGE_DIR)/macos/$(WGPU_NATIVE_FRAMEWORK))
 	@rm -rf $(APPLE_RELEASE_DIR)/$(WGPU_NATIVE_XCFRAMEWORK)
 	@$(XCODEBUILD) -create-xcframework \

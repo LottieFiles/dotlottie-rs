@@ -1,4 +1,4 @@
-use std::ffi::{c_char, c_void, CStr};
+use std::ffi::{c_char, CStr};
 use std::ptr::NonNull;
 use wasm_bindgen::prelude::JsValue;
 use web_sys::*;
@@ -588,13 +588,6 @@ struct WGPUOrigin3D {
 }
 
 #[repr(C)]
-struct WGPUPassTimestampWrites {
-    query_set: *mut GpuQuerySet,
-    beginning_of_pass_write_index: u32,
-    end_of_pass_write_index: u32,
-}
-
-#[repr(C)]
 struct WGPUPipelineLayoutDescriptor {
     next_in_chain: *const WGPUChainedStruct,
     label: WGPUStringView,
@@ -769,13 +762,6 @@ struct WGPUBindGroupLayoutEntry {
 struct WGPUBlendState {
     color: WGPUBlendComponent,
     alpha: WGPUBlendComponent,
-}
-
-#[repr(C)]
-struct WGPUComputePassDescriptor {
-    next_in_chain: *const WGPUChainedStruct,
-    label: WGPUStringView,
-    timestamp_writes: Option<NonNull<WGPUPassTimestampWrites>>,
 }
 
 #[repr(C)]
@@ -1028,15 +1014,6 @@ fn convert_wgpu_origin_3d(origin: &WGPUOrigin3D) -> js_sys::Array {
     arr
 }
 
-fn convert_wgpu_pass_timestamp_writes(
-    writes: &WGPUPassTimestampWrites,
-) -> GpuComputePassTimestampWrites {
-    let out = GpuComputePassTimestampWrites::new(unsafe { &*writes.query_set });
-    out.set_beginning_of_pass_write_index(writes.beginning_of_pass_write_index);
-    out.set_end_of_pass_write_index(writes.end_of_pass_write_index);
-    out
-}
-
 fn convert_wgpu_pipeline_layout_descriptor(
     descriptor: &WGPUPipelineLayoutDescriptor,
 ) -> GpuPipelineLayoutDescriptor {
@@ -1165,16 +1142,19 @@ fn convert_wgpu_storage_texture_binding_layout(
     out
 }
 
+/// webgpu.h sentinel: the string is null-terminated rather than length-delimited.
+const WGPU_STRLEN: usize = usize::MAX;
+
 fn convert_wgpu_string_view(string_view: &WGPUStringView) -> Option<String> {
-    if string_view.length == 0 {
-        return None;
+    let data = string_view.data?;
+    match string_view.length {
+        0 => None,
+        WGPU_STRLEN => Some(unsafe { CStr::from_ptr(data.as_ptr()).to_str().unwrap().into() }),
+        length => {
+            let bytes = unsafe { std::slice::from_raw_parts(data.as_ptr().cast::<u8>(), length) };
+            Some(std::str::from_utf8(bytes).unwrap().into())
+        }
     }
-
-    let string = string_view
-        .data
-        .map(|data| unsafe { CStr::from_ptr(data.as_ptr()).to_str().unwrap().into() });
-
-    return string;
 }
 
 fn convert_wgpu_texture_binding_layout(
@@ -1269,20 +1249,6 @@ fn convert_wgpu_blend_state(state: &WGPUBlendState) -> GpuBlendState {
         &convert_wgpu_blend_component(&state.color),
         &convert_wgpu_blend_component(&state.alpha),
     )
-}
-
-fn convert_wgpu_compute_pass_descriptor(
-    descriptor: &WGPUComputePassDescriptor,
-) -> GpuComputePassDescriptor {
-    let out = GpuComputePassDescriptor::new();
-    set_descriptor_label(&out, &descriptor.label);
-    if let Some(timestamp_writes) = descriptor.timestamp_writes {
-        let timestamp_writes =
-            convert_wgpu_pass_timestamp_writes(unsafe { &*timestamp_writes.as_ptr() });
-        out.set_timestamp_writes(&timestamp_writes);
-    }
-
-    out
 }
 
 fn convert_wgpu_depth_stencil_state(state: &WGPUDepthStencilState) -> GpuDepthStencilState {
@@ -1570,30 +1536,6 @@ fn convert_wgpu_render_pipeline_descriptor(
 
 // -------------------- WebGPU API --------------------
 
-#[no_mangle]
-unsafe extern "C" fn wgpuCreateInstance(_descriptor: *const c_void) -> *mut c_void {
-    // This function is now just a stub since the actual instance creation is handled in webgpu_init_async
-    // This prevents errors when the C++ code tries to call this function
-    std::ptr::null_mut()
-}
-
-// Methods of Adapter
-
-#[no_mangle]
-unsafe extern "C" fn wgpuAdapterRequestDevice(
-    _adapter: *mut c_void,
-    _descriptor: *const c_void,
-) -> *mut c_void {
-    // This function is now just a stub since the actual device request is handled in webgpu_init_async
-    // This prevents errors when the C++ code tries to call this function
-    std::ptr::null_mut()
-}
-
-#[no_mangle]
-unsafe extern "C" fn wgpuAdapterRelease(adapter: *mut GpuAdapter) {
-    drop(Box::from_raw(adapter));
-}
-
 // Methods of BindGroup
 
 #[no_mangle]
@@ -1635,17 +1577,6 @@ unsafe extern "C" fn wgpuCommandBufferRelease(buffer: *mut GpuCommandBuffer) {
 }
 
 // Methods of CommandEncoder
-
-#[no_mangle]
-unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
-    encoder: *mut GpuCommandEncoder,
-    descriptor: *const WGPUComputePassDescriptor,
-) -> *mut GpuComputePassEncoder {
-    let encoder = &*encoder;
-    let descriptor = convert_wgpu_compute_pass_descriptor(&*descriptor);
-    let pass = encoder.begin_compute_pass_with_descriptor(&descriptor);
-    Box::into_raw(Box::new(pass))
-}
 
 #[no_mangle]
 unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
@@ -1696,66 +1627,6 @@ unsafe extern "C" fn wgpuCommandEncoderFinish(
 #[no_mangle]
 unsafe extern "C" fn wgpuCommandEncoderRelease(encoder: *mut GpuCommandEncoder) {
     drop(Box::from_raw(encoder));
-}
-
-// Methods of ComputePassEncoder
-
-#[no_mangle]
-unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroups(
-    pass: *mut GpuComputePassEncoder,
-    workgroup_count_x: u32,
-    workgroup_count_y: u32,
-    workgroup_count_z: u32,
-) {
-    let pass = &*pass;
-    pass.dispatch_workgroups_with_workgroup_count_y_and_workgroup_count_z(
-        workgroup_count_x,
-        workgroup_count_y,
-        workgroup_count_z,
-    );
-}
-
-#[no_mangle]
-unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: *mut GpuComputePassEncoder) {
-    let pass = &*pass;
-    pass.end();
-}
-
-#[no_mangle]
-unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
-    pass: *mut GpuComputePassEncoder,
-    index: u32,
-    bind_group: Option<NonNull<GpuBindGroup>>,
-    dynamic_offset_count: usize,
-    dynamic_offsets: *const u32,
-) {
-    let pass = &*pass;
-    let bind_group = bind_group.map(|b| b.as_ref());
-    if dynamic_offset_count > 0 {
-        let offsets = unsafe { std::slice::from_raw_parts(dynamic_offsets, dynamic_offset_count) };
-        let js_offsets = js_sys::Array::new();
-        for &offset in offsets {
-            js_offsets.push(&JsValue::from(offset));
-        }
-        pass.set_bind_group_with_u32_sequence(index, bind_group, &js_offsets.into());
-    } else {
-        pass.set_bind_group(index, bind_group);
-    }
-}
-
-#[no_mangle]
-unsafe extern "C" fn wgpuComputePassEncoderSetPipeline(
-    pass: *mut GpuComputePassEncoder,
-    pipeline: *mut GpuComputePipeline,
-) {
-    let pass = &*pass;
-    let pipeline = &*pipeline;
-    pass.set_pipeline(pipeline);
-}
-
-#[no_mangle]
-unsafe extern "C" fn wgpuComputePassEncoderRelease(pass: *mut GpuComputePassEncoder) {
-    drop(Box::from_raw(pass));
 }
 
 // Methods of ComputePipeline
@@ -1938,24 +1809,12 @@ unsafe extern "C" fn wgpuQueueWriteBuffer(
     let queue = &*queue;
     let buffer = &*buffer;
 
-    if size == 0 {
-        let uint8_array = js_sys::Uint8Array::new_with_length(0);
-        let _ = queue.write_buffer_with_f64_and_buffer_source(
-            buffer,
-            buffer_offset as f64,
-            &uint8_array,
-        );
-        return;
-    }
-
-    // Create a copy of the data to ensure it stays valid
-    let mut data_copy = Vec::with_capacity(size);
-    data_copy.extend_from_slice(unsafe { std::slice::from_raw_parts(data, size) });
-
-    // Create a typed array from the copied data
-    let uint8_array = js_sys::Uint8Array::from(data_copy.as_slice());
-
-    // Use the direct WebGPU API call
+    // Uint8Array::from copies out of wasm memory, so no growth hazard here
+    let uint8_array = if size == 0 {
+        js_sys::Uint8Array::new_with_length(0)
+    } else {
+        js_sys::Uint8Array::from(unsafe { std::slice::from_raw_parts(data, size) })
+    };
     let _ =
         queue.write_buffer_with_f64_and_buffer_source(buffer, buffer_offset as f64, &uint8_array);
 }
@@ -1991,23 +1850,6 @@ unsafe extern "C" fn wgpuQueueRelease(queue: *mut GpuQueue) {
 }
 
 // Methods of RenderPassEncoder
-
-#[no_mangle]
-unsafe extern "C" fn wgpuRenderPassEncoderDraw(
-    pass: *mut GpuRenderPassEncoder,
-    vertex_count: u32,
-    instance_count: u32,
-    first_vertex: u32,
-    first_instance: u32,
-) {
-    let pass = &*pass;
-    pass.draw_with_instance_count_and_first_vertex_and_first_instance(
-        vertex_count,
-        instance_count,
-        first_vertex,
-        first_instance,
-    );
-}
 
 #[no_mangle]
 unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(
@@ -2167,11 +2009,11 @@ unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
     match surface.get_current_texture() {
         Ok(texture) => {
             surface_texture.texture = Box::into_raw(Box::new(texture));
-            surface_texture.status = 0; // WGPU_SURFACE_TEXTURE_STATUS_SUCCESS
+            surface_texture.status = 0x01; // WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal
         }
         Err(_) => {
             surface_texture.texture = std::ptr::null_mut();
-            surface_texture.status = 3; // WGPU_SURFACE_TEXTURE_STATUS_ERROR
+            surface_texture.status = 0x08; // WGPUSurfaceGetCurrentTextureStatus_Error
         }
     }
 }

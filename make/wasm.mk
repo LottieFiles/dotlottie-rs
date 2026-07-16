@@ -37,6 +37,11 @@ define wasm_build
 		--out-dir $(3) \
 		--target web \
 		--typescript
+	@if command -v node >/dev/null 2>&1; then \
+		node scripts/check_wasm_imports.js $(3)/dotlottie_rs_bg.wasm; \
+	else \
+		echo "warning: node not found, skipping undefined-symbol check for $(3)"; \
+	fi
 	@if command -v wasm-opt >/dev/null 2>&1; then \
 		wasm-opt $(3)/dotlottie_rs_bg.wasm -o $(3)/dotlottie_rs_bg.wasm -O3; \
 	fi

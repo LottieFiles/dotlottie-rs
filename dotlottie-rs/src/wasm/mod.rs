@@ -11,8 +11,9 @@
 /// Minimal libc/C++ runtime stubs for `wasm32-unknown-unknown`.
 ///
 /// Unlike `wasm32-unknown-emscripten` or `wasm32-wasi`, the `unknown-unknown`
-/// target has no system C runtime. ThorVG's C++ sources reference libc symbols
-/// (`malloc`, `strcmp`, `snprintf`, …) that must be provided by us.
+/// target has no system C runtime. Most libc symbols ThorVG references come
+/// from the `tinyrlibc` crate (`malloc`, `strcmp`, …) and `nostd-printf`
+/// (`snprintf`); this module provides the rest (C++ ABI, math, …).
 mod stubs;
 
 /// cbindgen:ignore

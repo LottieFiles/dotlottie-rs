@@ -1,4 +1,4 @@
-use std::ffi::{c_char, c_void, CStr};
+use std::ffi::{c_char, CStr};
 use std::ptr::NonNull;
 use wasm_bindgen::prelude::JsValue;
 use web_sys::*;
@@ -1142,16 +1142,19 @@ fn convert_wgpu_storage_texture_binding_layout(
     out
 }
 
+/// webgpu.h sentinel: the string is null-terminated rather than length-delimited.
+const WGPU_STRLEN: usize = usize::MAX;
+
 fn convert_wgpu_string_view(string_view: &WGPUStringView) -> Option<String> {
-    if string_view.length == 0 {
-        return None;
+    let data = string_view.data?;
+    match string_view.length {
+        0 => None,
+        WGPU_STRLEN => Some(unsafe { CStr::from_ptr(data.as_ptr()).to_str().unwrap().into() }),
+        length => {
+            let bytes = unsafe { std::slice::from_raw_parts(data.as_ptr().cast::<u8>(), length) };
+            Some(std::str::from_utf8(bytes).unwrap().into())
+        }
     }
-
-    let string = string_view
-        .data
-        .map(|data| unsafe { CStr::from_ptr(data.as_ptr()).to_str().unwrap().into() });
-
-    return string;
 }
 
 fn convert_wgpu_texture_binding_layout(
@@ -1806,24 +1809,12 @@ unsafe extern "C" fn wgpuQueueWriteBuffer(
     let queue = &*queue;
     let buffer = &*buffer;
 
-    if size == 0 {
-        let uint8_array = js_sys::Uint8Array::new_with_length(0);
-        let _ = queue.write_buffer_with_f64_and_buffer_source(
-            buffer,
-            buffer_offset as f64,
-            &uint8_array,
-        );
-        return;
-    }
-
-    // Create a copy of the data to ensure it stays valid
-    let mut data_copy = Vec::with_capacity(size);
-    data_copy.extend_from_slice(unsafe { std::slice::from_raw_parts(data, size) });
-
-    // Create a typed array from the copied data
-    let uint8_array = js_sys::Uint8Array::from(data_copy.as_slice());
-
-    // Use the direct WebGPU API call
+    // Uint8Array::from copies out of wasm memory, so no growth hazard here
+    let uint8_array = if size == 0 {
+        js_sys::Uint8Array::new_with_length(0)
+    } else {
+        js_sys::Uint8Array::from(unsafe { std::slice::from_raw_parts(data, size) })
+    };
     let _ =
         queue.write_buffer_with_f64_and_buffer_source(buffer, buffer_offset as f64, &uint8_array);
 }
@@ -2018,11 +2009,11 @@ unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
     match surface.get_current_texture() {
         Ok(texture) => {
             surface_texture.texture = Box::into_raw(Box::new(texture));
-            surface_texture.status = 0; // WGPU_SURFACE_TEXTURE_STATUS_SUCCESS
+            surface_texture.status = 0x01; // WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal
         }
         Err(_) => {
             surface_texture.texture = std::ptr::null_mut();
-            surface_texture.status = 3; // WGPU_SURFACE_TEXTURE_STATUS_ERROR
+            surface_texture.status = 0x08; // WGPUSurfaceGetCurrentTextureStatus_Error
         }
     }
 }

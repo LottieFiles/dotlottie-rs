@@ -1,5 +1,5 @@
-# dotlottie-ffi Makefile
-# Main build orchestrator for dotlottie-ffi across multiple platforms
+# dotlottie-rs Makefile
+# Main build orchestrator for dotlottie-rs across multiple platforms
 
 # Variables that can be overridden
 BINDINGS_DIR ?= dotlottie-rs/build
@@ -18,13 +18,13 @@ include make/windows.mk
 
 # Main help menu
 help:
-	@echo "dotlottie-ffi Build System"
+	@echo "dotlottie-rs Build System"
 	@echo "=========================="
 	@echo ""
 	@echo "Platform Build Targets:"
 	@echo "======================="
 	@echo "  make android                                      - Build all Android targets"
-	@echo "  make apple                                        - Build all Apple targets" 
+	@echo "  make apple                                        - Build all Apple targets"
 	@echo "  make wasm                                         - Build WASM module"
 	@echo "  make linux                                        - Build all Linux targets"
 	@echo "  make windows                                      - Build all Windows targets"
@@ -102,7 +102,7 @@ list-platforms:
 	@echo "Supported Platforms:"
 	@echo "==================="
 	@echo "  android     - Android (ARM64, x86_64, x86, ARMv7)"
-	@echo "  apple       - Apple (macOS, iOS, visionOS, tvOS, watchOS, macCatalyst)"
+	@echo "  apple       - Apple (macOS, iOS, tvOS, visionOS, watchOS, macCatalyst)"
 	@echo "  wasm        - WebAssembly (wasm-bindgen)"
 	@echo "  linux       - Linux (x86_64, ARM64)"
 	@echo "  windows     - Windows (x86_64, ARM64)"
@@ -135,13 +135,11 @@ fmt:
 # Native build variables
 NATIVE = native
 RELEASE = release
-RUNTIME_FFI = dotlottie-ffi
 DOTLOTTIE_ROOT = dotlottie-rs
 RELEASE_FILE_NAME = dotlottie_player
 RUNTIME_HEADER = $(RELEASE_FILE_NAME).h
 BUILD_DIR = $(DOTLOTTIE_ROOT)/build
 DOTLOTTIE_PLAYER = dotlottie-player
-NATIVE_FEATURES = ffi,tvg,tvg-cpu,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions,dotlottie,state-machines,theming
 
 DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR = $(RELEASE)/$(NATIVE)/$(DOTLOTTIE_PLAYER)
 DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR = $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)/include
@@ -184,7 +182,7 @@ native-webgpu:
 	@echo "✓ Native build with WebGPU complete. Artifacts available in $(NATIVE_RELEASE_DIR)/"
 	@echo "   Library: $(NATIVE_LIB_DIR)/"
 	@echo "   Header:  $(NATIVE_INCLUDE_DIR)/$(RUNTIME_HEADER)"
-	
+
 # Build native libraries using dotlottie-rs c_api
 native:
 	@echo "Building native libraries with dotlottie-rs c_api..."

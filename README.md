@@ -32,7 +32,7 @@ flowchart TD
 
 dotLottie is an open-source file format that aggregates one or more Lottie files and their associated resources into a single file. They are ZIP archives compressed with the Deflate compression method and carry the file extension of ".lottie".
 
-[Learn more about dotLottie](https://dotlottie.io/).
+[Learn more about dotLottie](https://lottiefiles.com/dotlottie).
 
 ## Features
 
@@ -57,9 +57,42 @@ dotlottie-rs is the runtime core used by all official dotLottie framework player
 
 ## Repository contents
 
+- [Installation](#installation)
 - [Crates](#crates)
 - [Development](#development)
 - [License](#license)
+
+## Installation
+
+> [!NOTE]
+> The crate is not currently published to crates.io — the version there is a stale alpha. Use the git dependency below.
+
+Add `dotlottie-rs` to your project as a git dependency:
+
+```toml
+[dependencies]
+dotlottie-rs = { git = "https://github.com/LottieFiles/dotlottie-rs" }
+```
+
+To pin to a specific release, use a tag:
+
+```toml
+[dependencies]
+dotlottie-rs = { git = "https://github.com/LottieFiles/dotlottie-rs", tag = "v0.1.58" }
+```
+
+Requires Rust 1.85+. The ThorVG renderer is vendored as a git submodule and compiled from source by the build script — Cargo fetches it automatically, but you will need a C++ toolchain (clang, plus libclang for bindgen) available. Enable the renderer and any optional capabilities via features, for example:
+
+```toml
+[dependencies]
+dotlottie-rs = { git = "https://github.com/LottieFiles/dotlottie-rs", features = [
+    "tvg",       # ThorVG renderer
+    "tvg-cpu",   # software rendering backend
+    "tvg-png",   # PNG image support
+    "tvg-jpg",   # JPEG image support
+    "tvg-ttf",   # TrueType font support
+] }
+```
 
 ## Crates
 
@@ -70,7 +103,7 @@ dotlottie-rs is the runtime core used by all official dotLottie framework player
 
 ### Cross-Platform Release Builds
 
-The following instructions cover building release artifacts for Android, Apple, WASM, Linux, and native platforms using the Makefile-based build system. For Rust development, just use `cargo` as usual — no special setup is needed.
+The following instructions cover building release artifacts for Android, Apple, WASM, Linux, Windows, and native platforms using the Makefile-based build system. For Rust development, just use `cargo` as usual — no special setup is needed.
 
 You will need GNU `make` installed. Note that Apple platform targets (iOS, macOS, tvOS, visionOS) require a Mac with Xcode. To ensure that your machine has all the necessary tools installed, run the following from the root of the repo:
 
@@ -81,7 +114,9 @@ make setup
 This will configure all platforms. You can also setup individual platforms using:
 - `make android-setup` - Setup Android environment (requires Android NDK)
 - `make apple-setup` - Setup Apple environment (requires Xcode)
-- `make wasm-setup` - Setup WASM environment (installs wasm-pack and wasm32-unknown-unknown target)
+- `make wasm-setup` - Setup WASM environment (installs the wasm32-unknown-unknown target and wasm-bindgen-cli)
+- `make linux-setup` - Setup Linux environment
+- `make windows-setup` - Setup Windows environment (requires MSVC Build Tools)
 
 ### Performing builds
 
@@ -132,8 +167,8 @@ make windows-setup
 make windows-x86_64
 ```
 
-Examples for using the native interface can be found in the `examples` directory, which also contains a
-[README](./examples/README.md) with information on getting started.
+An example of using the native interface can be found at
+[dotlottie-rs/examples/c_api/demo-player.c](./dotlottie-rs/examples/c_api/demo-player.c).
 
 ### Other useful targets
 

@@ -6,7 +6,7 @@ This documentation provides implementation details to help understand and extend
 
 The build process works as follows:
 
-1. **Platform Setup**: Initialize and configure build tools for each target platform (NDK for Android, Xcode for Apple, wasm-pack for WASM)
+1. **Platform Setup**: Initialize and configure build tools for each target platform (NDK for Android, Xcode for Apple, wasm-bindgen-cli for WASM)
 2. **C API Header Generation via cbindgen**: Generate the C header from the `c_api` feature in `dotlottie-rs`
 3. **Rust Library Build**: Build the `dotlottie-rs` library for each target architecture using platform-specific toolchains
 4. **Platform-Specific Packaging**: Create platform-appropriate release artifacts (AAR for Android, XCFramework for Apple, JS/WASM modules for Web)
@@ -19,7 +19,7 @@ The build system is organized into modular makefiles, each handling a specific p
 - **Main Makefile**: Orchestrates all builds and provides help/setup targets
 - **make/android.mk**: Handles Android builds across multiple architectures (ARM64, x86_64, x86, ARMv7)
 - **make/apple.mk**: Manages Apple platform builds (macOS, iOS, tvOS, visionOS, watchOS, macCatalyst)
-- **make/wasm.mk**: Controls WebAssembly builds using wasm-pack and wasm-bindgen
+- **make/wasm.mk**: Controls WebAssembly builds using cargo and wasm-bindgen-cli
 - **make/linux.mk**: Handles Linux x86_64 and ARM64 builds
 - **make/windows.mk**: Handles Windows x86_64 and ARM64 builds (MSVC toolchain)
 
@@ -66,12 +66,12 @@ Key targets:
 
 #### WASM Build System (`make/wasm.mk`)
 
-The WASM build system creates WebAssembly modules for web deployment targeting `wasm32-unknown-unknown` via wasm-pack:
+The WASM build system creates WebAssembly modules for web deployment targeting `wasm32-unknown-unknown`, building with `cargo rustc` and generating bindings with wasm-bindgen-cli (plus an optional `wasm-opt -O3` pass if available):
 
 - **wasm-bindgen**: Uses the `wasm-bindgen-api` feature for idiomatic JS/TS bindings with software, WebGL, or WebGPU renderers
-- **TypeScript Support**: Generates TypeScript definition files automatically via wasm-pack
+- **TypeScript Support**: Generates TypeScript definition files automatically via wasm-bindgen-cli (`--typescript`)
 - **Lean output**: No Emscripten runtime overhead — only the wasm binary and a small wasm-bindgen glue file
-- **Standard toolchain**: Builds with stable Rust, no nightly or EMSDK required
+- **Standard toolchain**: Builds with stable Rust, no nightly or EMSDK required; a clang toolchain is needed to compile ThorVG's C++ to wasm (Homebrew LLVM's clang is preferred if installed)
 
 Key targets:
 
@@ -79,7 +79,7 @@ Key targets:
 - `wasm-webgl`: Builds WebGL2 WASM module → `release/wasm-webgl/`
 - `wasm-webgpu`: Builds WebGPU WASM module → `release/wasm-webgpu/`
 - `wasm-all`: Builds all three variants
-- `wasm-setup`: Installs `wasm32-unknown-unknown` Rust target and wasm-pack
+- `wasm-setup`: Installs the `wasm32-unknown-unknown` Rust target and wasm-bindgen-cli (version-pinned to Cargo.lock)
 - `wasm-clean`: Cleans WASM-specific build artifacts
 
 #### Native Build System
@@ -125,7 +125,7 @@ The build system includes several configurable features:
 
 #### Feature Flags
 
-All platforms support configurable Rust features through the `FEATURES` variable:
+The Android, Linux, and Windows builds accept a `FEATURES` variable to override their extra feature set; the Apple, WASM, and native builds use fixed feature lists in their makefiles. Notable features:
 
 - `c_api`: C API header generation via cbindgen (for Android, iOS, and native builds)
 - `wasm-bindgen-api`: wasm-bindgen bindings for direct JS/TS integration (WebGL/WebGPU WASM builds)
@@ -135,13 +135,11 @@ All platforms support configurable Rust features through the `FEATURES` variable
 - `tvg-png`: PNG image format support
 - `tvg-jpg`: JPEG image format support
 - `tvg-ttf`: TrueType font support
+- `tvg-otf`: OpenType font support
+- `tvg-threads`: Multi-threaded rendering
 - `tvg-lottie-expressions`: Lottie expression evaluation support
 
-Default features include:
-
-- `tvg`: ThorVG renderer backend
-- `tvg-cpu`: Software rendering backend
-- `c_api`: C API (cbindgen) for native/Android/Apple builds
+The crate's default features are `dotlottie`, `state-machines`, and `theming`. Renderer backends (`tvg`, `tvg-cpu`, `tvg-gl`, `tvg-wg`) and the binding layer (`c_api` or `wasm-bindgen-api`) are added explicitly per platform by the makefiles.
 
 #### Environment Variables
 
@@ -149,7 +147,7 @@ Platform-specific environment variables can be overridden:
 
 **Android:**
 
-- `ANDROID_NDK_HOME`: Path to Android NDK (default: `/opt/homebrew/share/android-ndk`)
+- `ANDROID_NDK_HOME`: Path to Android NDK (default: `/opt/homebrew/share/android-ndk` on macOS, `/opt/android-ndk` on Linux)
 - `API_LEVEL`: Android API level (default: `21`)
 
 **Apple:**
@@ -159,7 +157,7 @@ Platform-specific environment variables can be overridden:
 
 **WASM:**
 
-- No additional environment variables required — wasm-pack handles the toolchain
+- No additional environment variables required — a clang/clang++ on PATH is used to compile ThorVG (Homebrew LLVM preferred if present)
 
 #### Version Management
 
@@ -192,7 +190,7 @@ The build system provides a comprehensive set of targets accessible via `make he
 
 - **Android**: `android-aarch64`, `android-x86_64`, `android-x86`, `android-armv7`
 - **Apple**: `apple-macos-arm64`, `apple-ios-arm64`, `apple-tvos-sim-arm64`, etc.
-- **Linux**: `linux-x86_64`, `linux-aarch64`
+- **Linux**: `linux-x86_64`, `linux-arm64`
 - **Windows**: `windows-x86_64`, `windows-arm64`
 
 #### Development Targets
@@ -207,8 +205,9 @@ The build system automatically manages platform-specific dependencies:
 
 #### WASM Dependencies
 
-- **wasm-pack**: Installed automatically by `make wasm-setup`; orchestrates wasm-bindgen and wasm-opt
+- **wasm-bindgen-cli**: Installed automatically by `make wasm-setup`, version-pinned to the `wasm-bindgen` crate in Cargo.lock
 - **wasm32-unknown-unknown target**: Installed automatically by `make wasm-setup` via rustup
+- **wasm-opt** (optional): Used for an `-O3` optimization pass if found on PATH
 
 #### Android Dependencies
 

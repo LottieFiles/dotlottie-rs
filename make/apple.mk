@@ -71,10 +71,6 @@ INSTALL_NAME_TOOL := install_name_tool
 XCODEBUILD := xcodebuild
 CODESIGN := codesign
 
-# Code signing variables
-# Set CODESIGN_IDENTITY to enable code signing (e.g., "Developer ID Application: Your Name")
-# Set KEYCHAIN_PASSWORD if using a custom keychain (used in CI environments)
-
 # Get version information
 CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-rs/Cargo.toml | grep -o '[0-9][0-9.]*')
 
@@ -87,20 +83,6 @@ framework module $(MODULE_NAME) {
   export *
   module * { export * }
 }
-endef
-
-# Code signing function
-define perform_codesigning
-	@if [ -n "$(CODESIGN_IDENTITY)" ]; then \
-		echo "→ Unlocking keychain for signing..."; \
-		security unlock-keychain -p "$(KEYCHAIN_PASSWORD)" build.keychain; \
-		echo "→ Signing XCFramework with identity: $(CODESIGN_IDENTITY)"; \
-		$(CODESIGN) --sign "$(CODESIGN_IDENTITY)" --timestamp --options runtime $(1); \
-		$(CODESIGN) --verify --verbose $(1); \
-		echo "✓ Code signing completed"; \
-	else \
-		echo "→ Skipping code signing (no identity provided)"; \
-	fi
 endef
 
 # Helper function to create framework structure and Info.plist
@@ -266,9 +248,13 @@ endef
 # No-op for software builds (binary has no wgpu-native dependency).
 # $(1)=path to the DotLottiePlayer mach-o binary
 define fixup_wgpu_rpath
-	@wgpu_ref=$$(otool -L "$(1)" | awk '/libwgpu_native\.dylib/{print $$1; exit}'); \
-	if [ -n "$$wgpu_ref" ]; then \
-		[ "$$wgpu_ref" = "$(WGPU_INSTALL_NAME)" ] || $(INSTALL_NAME_TOOL) -change "$$wgpu_ref" $(WGPU_INSTALL_NAME) "$(1)"; \
+	@wgpu_refs=$$(for arch in $$($(LIPO) -archs "$(1)"); do \
+		otool -arch $$arch -L "$(1)"; \
+	done | awk '/libwgpu_native\.dylib/{print $$1}' | sort -u); \
+	if [ -n "$$wgpu_refs" ]; then \
+		for ref in $$wgpu_refs; do \
+			$(INSTALL_NAME_TOOL) -change "$$ref" $(WGPU_INSTALL_NAME) "$(1)"; \
+		done; \
 		for rp in @executable_path/Frameworks @loader_path/.. @loader_path/Frameworks @loader_path/../../..; do \
 			$(INSTALL_NAME_TOOL) -add_rpath "$$rp" "$(1)" 2>/dev/null || true; \
 		done; \
@@ -885,10 +871,7 @@ apple-package: apple-frameworks
 			ln -s Versions/Current/Resources Resources \
 		) || exit 1; \
 	done
-	
-	# Code sign the XCFramework
-	$(call perform_codesigning,$(APPLE_RELEASE_DIR)/$(DOTLOTTIE_PLAYER_XCFRAMEWORK))
-	
+		
 	# Create version file and final tarball
 	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(APPLE_RELEASE_DIR)/version.txt
 	
@@ -924,7 +907,6 @@ apple-wgpu-package: apple-package
 		-framework $(WGPU_STAGE_DIR)/ios/$(WGPU_NATIVE_FRAMEWORK) \
 		-framework $(WGPU_STAGE_DIR)/ios-sim/$(WGPU_NATIVE_FRAMEWORK) \
 		-output $(APPLE_RELEASE_DIR)/$(WGPU_NATIVE_XCFRAMEWORK) >/dev/null
-	$(call perform_codesigning,$(APPLE_RELEASE_DIR)/$(WGPU_NATIVE_XCFRAMEWORK))
 	@echo "✓ $(WGPU_NATIVE_XCFRAMEWORK) created at $(APPLE_RELEASE_DIR)/"
 
 # Check if Xcode or Command Line Tools are available

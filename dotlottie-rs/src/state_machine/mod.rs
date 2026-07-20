@@ -150,6 +150,7 @@ pub struct StateMachineEngine<'a> {
     // The state to target once blending has finished
     tween_transition_target_state: Option<State>,
     tween_target_frame: Option<f32>,
+    tween_source_exited: bool,
 
     elapsed_time: f32,
     elapsed_time_states: FxHashSet<DotString>,
@@ -297,7 +298,7 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     pub fn reset_input(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
-        if self.status != StateMachineEngineStatus::Running {
+        if self.status == StateMachineEngineStatus::Stopped {
             return;
         }
 
@@ -385,6 +386,7 @@ impl<'a> StateMachineEngine<'a> {
             action_mutated_inputs: false,
             tween_transition_target_state: None,
             tween_target_frame: None,
+            tween_source_exited: false,
             elapsed_time: 0.0,
             elapsed_time_states: FxHashSet::default(),
             elapsed_time_in_global: false,
@@ -721,7 +723,9 @@ impl<'a> StateMachineEngine<'a> {
     ) -> Result<(), Error> {
         let interrupting_tween = self.status == StateMachineEngineStatus::Tweening;
 
-        if interrupting_tween {
+        // Redirecting to the state already being tweened to is a no-op, but a forced
+        // override must still take effect.
+        if interrupting_tween && causing_transition.is_some() {
             if let Some(target) = &self.tween_transition_target_state {
                 if target.name() == state_name {
                     return Ok(());
@@ -729,14 +733,15 @@ impl<'a> StateMachineEngine<'a> {
             }
         }
 
+        let source_already_exited = interrupting_tween && self.tween_source_exited;
+
         let new_state = self.get_state(state_name);
         // We have a new state
         if let Some(new_state) = new_state {
             // Emit transtion occured event
             self.observe_on_transition(&self.get_current_state_name(), new_state.name());
             // Perform exit actions on the current state if there is one.
-            // An interrupted tween already exited its source state.
-            if self.current_state.is_some() && !interrupting_tween {
+            if self.current_state.is_some() && !source_already_exited {
                 let state = self.current_state.take();
                 // Now use the extracted information
                 if let Some(state) = state {
@@ -748,7 +753,7 @@ impl<'a> StateMachineEngine<'a> {
                     self.current_state = Some(state);
                 }
             }
-            if !interrupting_tween {
+            if !source_already_exited {
                 // Emit transtion occured event
                 self.observe_on_state_exit(&self.get_current_state_name());
             }
@@ -804,7 +809,7 @@ impl<'a> StateMachineEngine<'a> {
                                 };
 
                                 if let Some(target_frame) = target_frame {
-                                    let tween_result = self.player.tween_to(
+                                    let tween_result = self.player.tween(
                                         target_frame,
                                         causing_transition.duration(),
                                         causing_transition.easing(),
@@ -814,6 +819,8 @@ impl<'a> StateMachineEngine<'a> {
                                         self.tween_transition_target_state =
                                             Some(new_state.clone());
                                         self.tween_target_frame = Some(target_frame);
+                                        self.tween_source_exited =
+                                            source_already_exited || !called_from_global;
                                         self.status = StateMachineEngineStatus::Tweening;
                                         return Ok(());
                                     }
@@ -830,9 +837,7 @@ impl<'a> StateMachineEngine<'a> {
             // An instant (or cross-animation) transition interrupts any live tween.
             if interrupting_tween {
                 self.player.cancel_tween();
-                self.tween_transition_target_state = None;
-                self.tween_target_frame = None;
-                self.status = StateMachineEngineStatus::Running;
+                self.abort_tweening();
             }
 
             // Assign the new state to the current_state
@@ -977,8 +982,7 @@ impl<'a> StateMachineEngine<'a> {
 
         // If the state machine is not running, or there is no current state, return an error
         // Otherwise this will block the pipeline in a loop
-        if (self.status != StateMachineEngineStatus::Running
-            && self.status != StateMachineEngineStatus::Tweening)
+        if self.status == StateMachineEngineStatus::Stopped
             || (self.current_state.is_none() && self.global_state.is_none())
         {
             return Err(Error::NotRunningError);
@@ -1086,7 +1090,11 @@ impl<'a> StateMachineEngine<'a> {
             }
         }
 
-        self.curr_event = None;
+        // While tweening the pipeline only sees the source state, so an unconsumed event
+        // stays pending for the run that follows the tween.
+        if self.status != StateMachineEngineStatus::Tweening {
+            self.curr_event = None;
+        }
 
         Ok(())
     }

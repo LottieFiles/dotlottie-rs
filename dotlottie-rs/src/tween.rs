@@ -9,6 +9,9 @@ pub enum TweenStatus {
 }
 
 pub(crate) struct TweenState {
+    /// Frame the tween started from. ThorVG owns the rendered pose; this only exists so
+    /// the player can report an interpolated `current_frame` while tweening.
+    pub from: f32,
     pub to: f32,
     elapsed: f32,
     duration: f32,
@@ -16,7 +19,7 @@ pub(crate) struct TweenState {
 }
 
 impl TweenState {
-    pub fn new(to: f32, duration: f32, easing: [f32; 4]) -> Result<Self, PlayerError> {
+    pub fn new(from: f32, to: f32, duration: f32, easing: [f32; 4]) -> Result<Self, PlayerError> {
         if duration <= 0.0 {
             return Err(PlayerError::InvalidParameter);
         }
@@ -31,6 +34,7 @@ impl TweenState {
         }
 
         Ok(Self {
+            from,
             to,
             elapsed: 0.0,
             duration,

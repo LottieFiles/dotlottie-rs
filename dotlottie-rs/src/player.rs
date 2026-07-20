@@ -1493,14 +1493,8 @@ impl Player {
         self.state_machine_id.as_deref()
     }
 
+    /// Starts a tween, retargeting one already in flight from its current pose.
     pub fn tween(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> Result<()> {
-        if self.is_tweening() {
-            return Err(Error::InsufficientCondition);
-        }
-        self.tween_to(to, duration, easing)
-    }
-
-    pub fn tween_to(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> Result<()> {
         let resume = match self.state {
             State::Idle => return Err(Error::AnimationNotLoaded),
             State::Tweening { resume, .. } => resume,
@@ -1509,9 +1503,9 @@ impl Player {
             State::Playing => Resume::Playing,
         };
 
-        let tween = TweenState::new(to, duration, easing)?;
+        let tween = TweenState::new(self.current_frame(), to, duration, easing)?;
         self.renderer.tween_to(to)?;
-        // Renderer keeps the replaced tween's progress and skips updates landing on it.
+        // Retargeting keeps the replaced tween's progress, which would skip this update.
         self.renderer.tween_go(0.0)?;
 
         self.tween_outcome = None;
@@ -1519,13 +1513,16 @@ impl Player {
         Ok(())
     }
 
+    /// Cancels an in-flight tween, returning to the frame it started from. The blended
+    /// pose ThorVG is showing does not correspond to any frame, so it cannot be held.
     pub(crate) fn cancel_tween(&mut self) {
-        if !self.is_tweening() {
-            return;
-        }
+        let from = match self.state {
+            State::Tweening { ref tween, .. } => tween.from,
+            _ => return,
+        };
         self.end_tween(TweenOutcome::Cancelled);
-        // Renderer drops its dynamic tween on a frame change, skipping the same-frame check.
-        let _ = self.apply_frame(self.current_frame());
+        self.renderer.sync_current_frame(from);
+        let _ = self.apply_frame(from);
     }
 
     #[inline]
@@ -1556,6 +1553,8 @@ impl Player {
         }
 
         if status == TweenStatus::Completed {
+            // A finished tween sits exactly on its target frame.
+            self.renderer.sync_current_frame(to);
             self.elapsed_frames = match self.direction {
                 Direction::Forward => to - self.start_frame(),
                 Direction::Reverse => self.end_frame() - to,

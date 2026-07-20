@@ -726,13 +726,6 @@ impl Animation for TvgAnimation {
         unsafe { tvg::tvg_lottie_animation_set_quality(self.raw_animation, quality).into_result() }
     }
 
-    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), TvgError> {
-        unsafe {
-            tvg::tvg_lottie_animation_tween(self.raw_animation, from, to, progress);
-        }
-        Ok(())
-    }
-
     fn tween_to(&mut self, to: f32) -> Result<(), TvgError> {
         unsafe { tvg::tvg_lottie_animation_tween_to(self.raw_animation, to).into_result() }
     }

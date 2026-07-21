@@ -31,6 +31,12 @@ pub struct DropZone {
     /// When true, the object can no longer be grabbed after docking here.
     #[serde(default)]
     pub lock: Option<bool>,
+    /// When true, docking binds the slot to the zone layer's position via a
+    /// Lottie expression, so the object follows a MOVING zone. Requires an
+    /// expressions-capable player (the written static value is the
+    /// fallback). Tracking docks are always locked.
+    #[serde(default)]
+    pub track: Option<bool>,
     /// Actions executed when the object docks in this zone.
     #[serde(default)]
     pub actions: Option<Vec<Action>>,
@@ -78,6 +84,11 @@ pub enum Interaction {
     DragAndDrop {
         layer_name: DotString,
         slot_id: DotString,
+        /// Scope the gesture to a state (like OnComplete): grabbing only
+        /// works while this state is current, and leaving it mid-drag
+        /// cancels the gesture back to the rest position. Omitted = active
+        /// in every state.
+        state_name: Option<DotString>,
         /// Preserve the pointer-to-object offset from grab (default true).
         grab_offset: Option<bool>,
         /// Snap/return glide; omitted = instant.
@@ -129,7 +140,9 @@ impl InteractionTrait for Interaction {
             Interaction::Click { .. } => None,
             Interaction::OnComplete { state_name, .. } => Some(state_name.as_str().to_owned()),
             Interaction::OnLoopComplete { state_name, .. } => Some(state_name.as_str().to_owned()),
-            Interaction::DragAndDrop { .. } => None,
+            Interaction::DragAndDrop { state_name, .. } => {
+                state_name.as_ref().map(|s| s.as_str().to_owned())
+            }
         }
     }
 
@@ -203,11 +216,15 @@ impl Interaction {
             Interaction::DragAndDrop {
                 layer_name,
                 slot_id,
+                state_name,
                 drop_zones,
                 ..
             } => {
                 *layer_name = interner.intern(layer_name.as_str());
                 *slot_id = interner.intern(slot_id.as_str());
+                if let Some(state) = state_name {
+                    *state = interner.intern(state.as_str());
+                }
                 for zone in drop_zones {
                     zone.layer_name = interner.intern(zone.layer_name.as_str());
                     if let Some(actions) = &mut zone.actions {

@@ -226,11 +226,15 @@ pub fn slots_from_json_string(
 /// Used by the DragAndDrop interaction to derive drop-zone snap targets
 /// from the animation itself instead of hardcoded coordinates.
 pub fn extract_layer_positions(animation_json: &str) -> BTreeMap<String, [f32; 2]> {
+    match serde_json::from_str::<serde_json::Value>(animation_json) {
+        Ok(json) => layer_positions_from_value(&json),
+        Err(_) => BTreeMap::new(),
+    }
+}
+
+fn layer_positions_from_value(json: &serde_json::Value) -> BTreeMap<String, [f32; 2]> {
     let mut result = BTreeMap::new();
 
-    let Ok(json) = serde_json::from_str::<serde_json::Value>(animation_json) else {
-        return result;
-    };
     let Some(layers) = json.get("layers").and_then(|l| l.as_array()) else {
         return result;
     };
@@ -254,34 +258,46 @@ pub fn extract_layer_positions(animation_json: &str) -> BTreeMap<String, [f32; 2
     result
 }
 
+/// One-pass extraction of everything the renderer wants from the animation
+/// JSON at load time: authored slot defaults + named-layer positions.
+/// Parses the JSON once, unlike calling the standalone extractors.
+pub(crate) fn extract_authored_from_animation(
+    animation_json: &str,
+) -> (BTreeMap<String, SlotType>, BTreeMap<String, [f32; 2]>) {
+    let Ok(json) = serde_json::from_str::<serde_json::Value>(animation_json) else {
+        return (BTreeMap::new(), BTreeMap::new());
+    };
+    (slots_from_value(&json), layer_positions_from_value(&json))
+}
+
 pub fn extract_slots_from_animation(animation_json: &str) -> BTreeMap<String, SlotType> {
-    let parsed: Result<serde_json::Value, _> = serde_json::from_str(animation_json);
-
-    match parsed {
-        Ok(json) => {
-            // Prefer the top-level "slots" object if present (newer Lottie spec).
-            // Work directly with the Value to avoid a serialize→deserialize round-trip.
-            if let Some(serde_json::Value::Object(slots_map)) = json.get("slots") {
-                let mut result = BTreeMap::new();
-                for (id, value) in slots_map {
-                    if let Some(p) = value.get("p") {
-                        if let Some(slot_type) = parse_slot_type(p) {
-                            result.insert(id.clone(), slot_type);
-                        }
-                    }
-                }
-                if !result.is_empty() {
-                    return result;
-                }
-            }
-
-            // Fall back to walking the tree for "sid"-tagged properties
-            let mut result = BTreeMap::new();
-            collect_sid_slots(&json, &mut result);
-            result
-        }
+    match serde_json::from_str::<serde_json::Value>(animation_json) {
+        Ok(json) => slots_from_value(&json),
         Err(_) => BTreeMap::new(),
     }
+}
+
+fn slots_from_value(json: &serde_json::Value) -> BTreeMap<String, SlotType> {
+    // Prefer the top-level "slots" object if present (newer Lottie spec).
+    // Work directly with the Value to avoid a serialize→deserialize round-trip.
+    if let Some(serde_json::Value::Object(slots_map)) = json.get("slots") {
+        let mut result = BTreeMap::new();
+        for (id, value) in slots_map {
+            if let Some(p) = value.get("p") {
+                if let Some(slot_type) = parse_slot_type(p) {
+                    result.insert(id.clone(), slot_type);
+                }
+            }
+        }
+        if !result.is_empty() {
+            return result;
+        }
+    }
+
+    // Fall back to walking the tree for "sid"-tagged properties
+    let mut result = BTreeMap::new();
+    collect_sid_slots(json, &mut result);
+    result
 }
 
 /// Walk the JSON tree and collect properties that have a "sid" (slot ID) tag.

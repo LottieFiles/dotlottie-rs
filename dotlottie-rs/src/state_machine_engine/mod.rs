@@ -973,6 +973,42 @@ impl<'a> StateMachineEngine<'a> {
             .set_position_slot(slot_id, PositionSlot::static_value(pos));
     }
 
+    /// Whether a state-bound gesture is currently allowed to operate.
+    /// Unbound gestures (no stateName) are active in every state.
+    fn dnd_state_active(&self, rt: &DndRuntime) -> bool {
+        match &rt.state_name {
+            Some(state_name) => self
+                .current_state
+                .as_ref()
+                .is_some_and(|s| s.name().as_str() == state_name),
+            None => true,
+        }
+    }
+
+    /// Cancel an in-flight drag back to its rest position (no zone actions,
+    /// no lock) — used when the gesture's owning state is exited mid-drag.
+    fn dnd_cancel_to_rest(&mut self, rt: &mut DndRuntime) {
+        let Some(rest) = rt.rest else {
+            rt.phase = DndPhase::Idle;
+            return;
+        };
+        let from = self.dnd_slot_position(&rt.slot_id).unwrap_or(rest);
+
+        match rt.tween {
+            Some((duration, easing)) if duration > 0.0 => {
+                rt.phase = DndPhase::Snapping {
+                    from,
+                    to: rest,
+                    elapsed: 0.0,
+                    duration,
+                    easing,
+                    zone_index: None,
+                };
+            }
+            _ => self.dnd_finalize(rt, rest, None),
+        }
+    }
+
     /// Route pointer events into the DragAndDrop gesture runtimes.
     fn manage_drag_and_drop(&mut self, event: &Event, x: f32, y: f32) {
         if self.dnd_runtimes.is_empty() {
@@ -990,6 +1026,10 @@ impl<'a> StateMachineEngine<'a> {
             Event::PointerMove { .. } => {
                 for rt in &mut runtimes {
                     if let DndPhase::Held { offset } = rt.phase {
+                        if !self.dnd_state_active(rt) {
+                            self.dnd_cancel_to_rest(rt);
+                            continue;
+                        }
                         let slot_id = rt.slot_id.clone();
                         self.dnd_write_slot(&slot_id, [x + offset[0], y + offset[1]]);
                     }
@@ -998,7 +1038,13 @@ impl<'a> StateMachineEngine<'a> {
             Event::PointerUp { .. } => {
                 for rt in &mut runtimes {
                     if matches!(rt.phase, DndPhase::Held { .. }) {
-                        self.dnd_resolve_drop(rt, x, y);
+                        // Releasing after the owning state exited is a
+                        // cancel, not a drop: no zones, no actions.
+                        if !self.dnd_state_active(rt) {
+                            self.dnd_cancel_to_rest(rt);
+                        } else {
+                            self.dnd_resolve_drop(rt, x, y);
+                        }
                     }
                 }
             }
@@ -1010,6 +1056,9 @@ impl<'a> StateMachineEngine<'a> {
 
     fn dnd_try_grab(&mut self, rt: &mut DndRuntime, x: f32, y: f32) {
         if rt.locked || matches!(rt.phase, DndPhase::Held { .. }) {
+            return;
+        }
+        if !self.dnd_state_active(rt) {
             return;
         }
 
@@ -1053,6 +1102,39 @@ impl<'a> StateMachineEngine<'a> {
                 .hit_test(Point { x, y }, &zone.layer_name)
                 .unwrap_or(false)
         });
+
+        // Tracking zones bind the slot to the zone layer via a Lottie
+        // expression evaluated renderer-side each frame — the object follows
+        // the zone even while it animates, and no coordinates are needed
+        // engine-side. The release point becomes the static fallback for
+        // players without expression support. Tracking docks are locked:
+        // once expression-driven, the engine no longer knows the object's
+        // visual position, so re-grabbing can't behave correctly.
+        if let Some(zi) = zone_hit {
+            if rt.zones[zi].track {
+                let slot_id = rt.slot_id.clone();
+                // ThorVG follows the bodymovin convention: the expression's
+                // result is read from the `$bm_rt` global, not the eval value.
+                let expression = format!(
+                    "var $bm_rt = thisComp.layer('{}').transform.position;",
+                    rt.zones[zi].layer_name
+                );
+                let _ = self.player.set_position_slot(
+                    &slot_id,
+                    PositionSlot::static_value([x, y]).with_expression(expression),
+                );
+
+                rt.rest = Some([x, y]);
+                rt.phase = DndPhase::Idle;
+                rt.locked = true;
+
+                let actions = rt.zones[zi].actions.clone();
+                for action in actions {
+                    let _ = action.execute(self, true, false);
+                }
+                return;
+            }
+        }
 
         let (target, zone_index) = match zone_hit {
             Some(zi) => {
@@ -1112,6 +1194,14 @@ impl<'a> StateMachineEngine<'a> {
 
         let mut runtimes = std::mem::take(&mut self.dnd_runtimes);
         for rt in &mut runtimes {
+            // Lazy state-scope enforcement: a transition away from the
+            // owning state (from any cause — guards, tweens, actions)
+            // cancels an in-flight drag within a tick.
+            if matches!(rt.phase, DndPhase::Held { .. }) && !self.dnd_state_active(rt) {
+                self.dnd_cancel_to_rest(rt);
+                continue;
+            }
+
             let DndPhase::Snapping {
                 from,
                 to,

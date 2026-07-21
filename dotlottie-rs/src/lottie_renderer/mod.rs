@@ -553,13 +553,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         // Extract default slot values BEFORE passing to ThorVG, because
         // ThorVG's load_data with copy=false may parse the JSON in-place
         // and mutate the buffer (nulling out string terminators).
-        let default_slots = data
+        let (default_slots, layer_positions) = data
             .to_str()
-            .map(slots::extract_slots_from_animation)
-            .unwrap_or_default();
-        let layer_positions = data
-            .to_str()
-            .map(slots::extract_layer_positions)
+            .map(slots::extract_authored_from_animation)
             .unwrap_or_default();
 
         let animation = self.load_animation(data)?;

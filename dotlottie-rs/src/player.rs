@@ -1279,6 +1279,13 @@ impl Player {
         self.renderer.layer_position(layer_name)
     }
 
+    /// Hit-test a point against a named layer in the rendered scene.
+    pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> bool {
+        self.renderer
+            .hit_test(crate::Point { x, y }, layer_name)
+            .unwrap_or(false)
+    }
+
     /// Set a single slot from an already-typed value.
     pub fn set_slot_value(
         &mut self,

@@ -14,6 +14,7 @@ pub(crate) struct DndZone {
     pub layer_name: String,
     pub snap: Option<[f32; 2]>,
     pub lock: bool,
+    pub track: bool,
     pub actions: Vec<Action>,
 }
 
@@ -38,6 +39,9 @@ pub(crate) enum DndPhase {
 pub(crate) struct DndRuntime {
     pub layer_name: String,
     pub slot_id: String,
+    /// When set, the gesture only operates while this state is current;
+    /// leaving the state mid-drag cancels back to the rest position.
+    pub state_name: Option<String>,
     pub use_grab_offset: bool,
     /// (duration ms, easing); None = snap instantly.
     pub tween: Option<(f32, [f32; 4])>,
@@ -54,6 +58,7 @@ impl DndRuntime {
         let Interaction::DragAndDrop {
             layer_name,
             slot_id,
+            state_name,
             grab_offset,
             tween,
             drop_zones,
@@ -65,6 +70,7 @@ impl DndRuntime {
         Some(DndRuntime {
             layer_name: layer_name.as_str().to_owned(),
             slot_id: slot_id.as_str().to_owned(),
+            state_name: state_name.as_ref().map(|s| s.as_str().to_owned()),
             use_grab_offset: grab_offset.unwrap_or(true),
             // Seconds -> milliseconds, same convention as Tweened transitions.
             tween: tween.as_ref().map(|t| (t.duration * 1000.0, t.easing)),
@@ -74,6 +80,7 @@ impl DndRuntime {
                     layer_name: z.layer_name.as_str().to_owned(),
                     snap: z.snap,
                     lock: z.lock.unwrap_or(false),
+                    track: z.track.unwrap_or(false),
                     actions: z.actions.clone().unwrap_or_default(),
                 })
                 .collect(),

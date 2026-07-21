@@ -10,7 +10,10 @@
 
 <h1 align="center">dotLottie Rust</h1>
 
-**dotlottie-rs** is the cross-platform [dotLottie](https://dotlottie.io/) runtime written in Rust. It is the engine powering all official dotLottie players — delivering the full dotLottie feature set (theming, state machines, multi-animation, and more) with guaranteed visual consistency across every platform.
+> [!TIP]
+> Looking for animations to use with this player? Browse **[100,000+ free Lottie animations](https://lottiefiles.com/free-animations?utm_source=npm&utm_medium=readme)** and grab any of them as `.lottie` or `.json`, or create your own with [Lottie Creator](https://lottiefiles.com/lottie-creator?utm_source=npm&utm_medium=readme).
+
+**dotlottie-rs** is the cross-platform [dotLottie](https://lottiefiles.com/dotlottie) runtime written in Rust. It is the engine powering all official dotLottie players — delivering the full dotLottie feature set (theming, state machines, multi-animation, and more) with guaranteed visual consistency across every platform.
 
 It exposes a C API (via cbindgen) for native platforms and wasm-bindgen bindings for WebAssembly, serving as the core of the dotLottie players for [Web](https://github.com/LottieFiles/dotlottie-web), [Android](https://github.com/LottieFiles/dotlottie-android), [iOS](https://github.com/LottieFiles/dotlottie-ios), [Flutter](https://github.com/LottieFiles/dotlottie-flutter), and [React Native](https://github.com/LottieFiles/dotlottie-react-native).
 

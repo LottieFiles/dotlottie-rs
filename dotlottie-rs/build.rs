@@ -306,7 +306,6 @@ mod thorvg {
                 }\n\
                 #endif\n",
             )?;
-
         }
 
         // WebGPU headers are keyed by rev so a WEBGPU_HEADERS_REV bump refreshes a cached OUT_DIR

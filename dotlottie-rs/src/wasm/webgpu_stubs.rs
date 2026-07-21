@@ -33,6 +33,7 @@ type WGPUPresentMode = u32;
 type WGPUPrimitiveTopology = u32;
 type WGPUSamplerBindingType = u32;
 type WGPUSType = u32;
+type WGPUStatus = u32;
 type WGPUStencilOperation = u32;
 type WGPUStorageTextureAccess = u32;
 type WGPUStoreOp = u32;
@@ -307,97 +308,98 @@ define_texture_format_conversions! {
     0x02 => R8snorm,
     0x03 => R8uint,
     0x04 => R8sint,
-    0x05 => R16uint,
-    0x06 => R16sint,
-    0x07 => R16float,
-    0x08 => Rg8unorm,
-    0x09 => Rg8snorm,
-    0x0A => Rg8uint,
-    0x0B => Rg8sint,
-    0x0C => R32float,
-    0x0D => R32uint,
-    0x0E => R32sint,
-    0x0F => Rg16uint,
-    0x10 => Rg16sint,
-    0x11 => Rg16float,
-    0x12 => Rgba8unorm,
-    0x13 => Rgba8unormSrgb,
-    0x14 => Rgba8snorm,
-    0x15 => Rgba8uint,
-    0x16 => Rgba8sint,
-    0x17 => Bgra8unorm,
-    0x18 => Bgra8unormSrgb,
-    0x19 => Rgb10a2uint,
-    0x1A => Rgb10a2unorm,
-    0x1B => Rg11b10ufloat,
-    0x1C => Rgb9e5ufloat,
-    0x1D => Rg32float,
-    0x1E => Rg32uint,
-    0x1F => Rg32sint,
-    0x20 => Rgba16uint,
-    0x21 => Rgba16sint,
-    0x22 => Rgba16float,
-    0x23 => Rgba32float,
-    0x24 => Rgba32uint,
-    0x25 => Rgba32sint,
-    0x26 => Stencil8,
-    0x27 => Depth16unorm,
-    0x28 => Depth24plus,
-    0x29 => Depth24plusStencil8,
-    0x2A => Depth32float,
-    0x2B => Depth32floatStencil8,
-    0x2C => Bc1RgbaUnorm,
-    0x2D => Bc1RgbaUnormSrgb,
-    0x2E => Bc2RgbaUnorm,
-    0x2F => Bc2RgbaUnormSrgb,
-    0x30 => Bc3RgbaUnorm,
-    0x31 => Bc3RgbaUnormSrgb,
-    0x32 => Bc4RUnorm,
-    0x33 => Bc4RSnorm,
-    0x34 => Bc5RgUnorm,
-    0x35 => Bc5RgSnorm,
-    0x36 => Bc6hRgbUfloat,
-    0x37 => Bc6hRgbFloat,
-    0x38 => Bc7RgbaUnorm,
-    0x39 => Bc7RgbaUnormSrgb,
-    0x3A => Etc2Rgb8unorm,
-    0x3B => Etc2Rgb8unormSrgb,
-    0x3C => Etc2Rgb8a1unorm,
-    0x3D => Etc2Rgb8a1unormSrgb,
-    0x3E => Etc2Rgba8unorm,
-    0x3F => Etc2Rgba8unormSrgb,
-    0x40 => EacR11unorm,
-    0x41 => EacR11snorm,
-    0x42 => EacRg11unorm,
-    0x43 => EacRg11snorm,
-    0x44 => Astc4x4Unorm,
-    0x45 => Astc4x4UnormSrgb,
-    0x46 => Astc5x4Unorm,
-    0x47 => Astc5x4UnormSrgb,
-    0x48 => Astc5x5Unorm,
-    0x49 => Astc5x5UnormSrgb,
-    0x4A => Astc6x5Unorm,
-    0x4B => Astc6x5UnormSrgb,
-    0x4C => Astc6x6Unorm,
-    0x4D => Astc6x6UnormSrgb,
-    0x4E => Astc8x5Unorm,
-    0x4F => Astc8x5UnormSrgb,
-    0x50 => Astc8x6Unorm,
-    0x51 => Astc8x6UnormSrgb,
-    0x52 => Astc8x8Unorm,
-    0x53 => Astc8x8UnormSrgb,
-    0x54 => Astc10x5Unorm,
-    0x55 => Astc10x5UnormSrgb,
-    0x56 => Astc10x6Unorm,
-    0x57 => Astc10x6UnormSrgb,
-    0x58 => Astc10x8Unorm,
-    0x59 => Astc10x8UnormSrgb,
-    0x5A => Astc10x10Unorm,
-    0x5B => Astc10x10UnormSrgb,
-    0x5C => Astc12x10Unorm,
-    0x5D => Astc12x10UnormSrgb,
-    0x5E => Astc12x12Unorm,
-    0x5F => Astc12x12UnormSrgb,
+    // gaps are wgpu-native-only formats with no browser equivalent
+    0x07 => R16uint,
+    0x08 => R16sint,
+    0x09 => R16float,
+    0x0A => Rg8unorm,
+    0x0B => Rg8snorm,
+    0x0C => Rg8uint,
+    0x0D => Rg8sint,
+    0x0E => R32float,
+    0x0F => R32uint,
+    0x10 => R32sint,
+    0x13 => Rg16uint,
+    0x14 => Rg16sint,
+    0x15 => Rg16float,
+    0x16 => Rgba8unorm,
+    0x17 => Rgba8unormSrgb,
+    0x18 => Rgba8snorm,
+    0x19 => Rgba8uint,
+    0x1A => Rgba8sint,
+    0x1B => Bgra8unorm,
+    0x1C => Bgra8unormSrgb,
+    0x1D => Rgb10a2uint,
+    0x1E => Rgb10a2unorm,
+    0x1F => Rg11b10ufloat,
+    0x20 => Rgb9e5ufloat,
+    0x21 => Rg32float,
+    0x22 => Rg32uint,
+    0x23 => Rg32sint,
+    0x26 => Rgba16uint,
+    0x27 => Rgba16sint,
+    0x28 => Rgba16float,
+    0x29 => Rgba32float,
+    0x2A => Rgba32uint,
+    0x2B => Rgba32sint,
+    0x2C => Stencil8,
+    0x2D => Depth16unorm,
+    0x2E => Depth24plus,
+    0x2F => Depth24plusStencil8,
+    0x30 => Depth32float,
+    0x31 => Depth32floatStencil8,
+    0x32 => Bc1RgbaUnorm,
+    0x33 => Bc1RgbaUnormSrgb,
+    0x34 => Bc2RgbaUnorm,
+    0x35 => Bc2RgbaUnormSrgb,
+    0x36 => Bc3RgbaUnorm,
+    0x37 => Bc3RgbaUnormSrgb,
+    0x38 => Bc4RUnorm,
+    0x39 => Bc4RSnorm,
+    0x3A => Bc5RgUnorm,
+    0x3B => Bc5RgSnorm,
+    0x3C => Bc6hRgbUfloat,
+    0x3D => Bc6hRgbFloat,
+    0x3E => Bc7RgbaUnorm,
+    0x3F => Bc7RgbaUnormSrgb,
+    0x40 => Etc2Rgb8unorm,
+    0x41 => Etc2Rgb8unormSrgb,
+    0x42 => Etc2Rgb8a1unorm,
+    0x43 => Etc2Rgb8a1unormSrgb,
+    0x44 => Etc2Rgba8unorm,
+    0x45 => Etc2Rgba8unormSrgb,
+    0x46 => EacR11unorm,
+    0x47 => EacR11snorm,
+    0x48 => EacRg11unorm,
+    0x49 => EacRg11snorm,
+    0x4A => Astc4x4Unorm,
+    0x4B => Astc4x4UnormSrgb,
+    0x4C => Astc5x4Unorm,
+    0x4D => Astc5x4UnormSrgb,
+    0x4E => Astc5x5Unorm,
+    0x4F => Astc5x5UnormSrgb,
+    0x50 => Astc6x5Unorm,
+    0x51 => Astc6x5UnormSrgb,
+    0x52 => Astc6x6Unorm,
+    0x53 => Astc6x6UnormSrgb,
+    0x54 => Astc8x5Unorm,
+    0x55 => Astc8x5UnormSrgb,
+    0x56 => Astc8x6Unorm,
+    0x57 => Astc8x6UnormSrgb,
+    0x58 => Astc8x8Unorm,
+    0x59 => Astc8x8UnormSrgb,
+    0x5A => Astc10x5Unorm,
+    0x5B => Astc10x5UnormSrgb,
+    0x5C => Astc10x6Unorm,
+    0x5D => Astc10x6UnormSrgb,
+    0x5E => Astc10x8Unorm,
+    0x5F => Astc10x8UnormSrgb,
+    0x60 => Astc10x10Unorm,
+    0x61 => Astc10x10UnormSrgb,
+    0x62 => Astc12x10Unorm,
+    0x63 => Astc12x10UnormSrgb,
+    0x64 => Astc12x12Unorm,
+    0x65 => Astc12x12UnormSrgb,
 }
 
 fn enum_wgpu_texture_sample_type(sample_type: WGPUTextureSampleType) -> GpuTextureSampleType {
@@ -478,10 +480,9 @@ fn enum_wgpu_vertex_format(format: WGPUVertexFormat) -> GpuVertexFormat {
 
 fn enum_wgpu_vertex_step_mode(step_mode: WGPUVertexStepMode) -> GpuVertexStepMode {
     match step_mode {
-        0x00 => GpuVertexStepMode::__Invalid, // VertexBufferNotUsed
-        0x01 => GpuVertexStepMode::__Invalid, // Undefined
-        0x02 => GpuVertexStepMode::Vertex,
-        0x03 => GpuVertexStepMode::Instance,
+        0x00 => GpuVertexStepMode::__Invalid, // Undefined
+        0x01 => GpuVertexStepMode::Vertex,
+        0x02 => GpuVertexStepMode::Instance,
         _ => panic!("Invalid vertex step mode: {step_mode}"),
     }
 }
@@ -593,6 +594,7 @@ struct WGPUPipelineLayoutDescriptor {
     label: WGPUStringView,
     bind_group_layout_count: usize,
     bind_group_layouts: *const *mut GpuBindGroupLayout,
+    immediate_size: u32,
 }
 
 #[repr(C)]
@@ -607,6 +609,7 @@ struct WGPUPrimitiveState {
 
 #[repr(C)]
 struct WGPURenderPassDepthStencilAttachment {
+    next_in_chain: *const WGPUChainedStruct,
     view: *mut GpuTextureView,
     depth_load_op: WGPULoadOp,
     depth_store_op: WGPUStoreOp,
@@ -619,7 +622,8 @@ struct WGPURenderPassDepthStencilAttachment {
 }
 
 #[repr(C)]
-struct WGPURenderPassTimestampWrites {
+struct WGPUPassTimestampWrites {
+    next_in_chain: *const WGPUChainedStruct,
     query_set: *mut GpuQuerySet,
     beginning_of_pass_write_index: u32,
     end_of_pass_write_index: u32,
@@ -682,6 +686,18 @@ struct WGPUStringView {
 }
 
 #[repr(C)]
+struct WGPUSurfaceCapabilities {
+    next_in_chain: *const WGPUChainedStruct,
+    usages: WGPUTextureUsage,
+    format_count: usize,
+    formats: *const WGPUTextureFormat,
+    present_mode_count: usize,
+    present_modes: *const WGPUPresentMode,
+    alpha_mode_count: usize,
+    alpha_modes: *const WGPUCompositeAlphaMode,
+}
+
+#[repr(C)]
 struct WGPUSurfaceConfiguration {
     next_in_chain: *const WGPUChainedStruct,
     device: *mut GpuDevice,
@@ -733,6 +749,7 @@ struct WGPUTextureViewDescriptor {
 
 #[repr(C)]
 struct WGPUVertexAttribute {
+    next_in_chain: *const WGPUChainedStruct,
     format: WGPUVertexFormat,
     offset: u64,
     shader_location: u32,
@@ -752,6 +769,7 @@ struct WGPUBindGroupLayoutEntry {
     next_in_chain: *const WGPUChainedStruct,
     binding: u32,
     visibility: WGPUShaderStage,
+    binding_array_size: u32,
     buffer: WGPUBufferBindingLayout,
     sampler: WGPUSamplerBindingLayout,
     texture: WGPUTextureBindingLayout,
@@ -814,6 +832,7 @@ struct WGPUTextureDescriptor {
 
 #[repr(C)]
 struct WGPUVertexBufferLayout {
+    next_in_chain: *const WGPUChainedStruct,
     step_mode: WGPUVertexStepMode,
     array_stride: u64,
     attribute_count: usize,
@@ -852,7 +871,7 @@ struct WGPURenderPassDescriptor {
     color_attachments: *const WGPURenderPassColorAttachment,
     depth_stencil_attachment: Option<NonNull<WGPURenderPassDepthStencilAttachment>>,
     occlusion_query_set: Option<NonNull<GpuQuerySet>>,
-    timestamp_writes: Option<NonNull<WGPURenderPassTimestampWrites>>,
+    timestamp_writes: Option<NonNull<WGPUPassTimestampWrites>>,
 }
 
 #[repr(C)]
@@ -1065,7 +1084,7 @@ fn convert_wgpu_render_pass_depth_stencil_attachment(
 }
 
 fn convert_wgpu_render_pass_timestamp_writes(
-    writes: &WGPURenderPassTimestampWrites,
+    writes: &WGPUPassTimestampWrites,
 ) -> GpuRenderPassTimestampWrites {
     let out = GpuRenderPassTimestampWrites::new(unsafe { &*writes.query_set });
     out.set_beginning_of_pass_write_index(writes.beginning_of_pass_write_index);
@@ -1998,6 +2017,31 @@ unsafe extern "C" fn wgpuSurfaceConfigure(
         .expect("Failed to configure WebGPU surface");
 }
 
+static SURFACE_FORMATS: [WGPUTextureFormat; 2] = [0x1B, 0x16]; // BGRA8Unorm, RGBA8Unorm
+static SURFACE_PRESENT_MODES: [WGPUPresentMode; 1] = [0x01]; // Fifo
+static SURFACE_ALPHA_MODES: [WGPUCompositeAlphaMode; 2] = [0x02, 0x01]; // Premultiplied, Opaque
+
+#[no_mangle]
+unsafe extern "C" fn wgpuSurfaceGetCapabilities(
+    _surface: *mut GpuCanvasContext,
+    _adapter: *mut GpuAdapter,
+    capabilities: *mut WGPUSurfaceCapabilities,
+) -> WGPUStatus {
+    let capabilities = &mut *capabilities;
+    capabilities.next_in_chain = std::ptr::null();
+    capabilities.usages = 0x10; // WGPUTextureUsage_RenderAttachment
+    capabilities.format_count = SURFACE_FORMATS.len();
+    capabilities.formats = SURFACE_FORMATS.as_ptr();
+    capabilities.present_mode_count = SURFACE_PRESENT_MODES.len();
+    capabilities.present_modes = SURFACE_PRESENT_MODES.as_ptr();
+    capabilities.alpha_mode_count = SURFACE_ALPHA_MODES.len();
+    capabilities.alpha_modes = SURFACE_ALPHA_MODES.as_ptr();
+    0x01 // WGPUStatus_Success
+}
+
+#[no_mangle]
+unsafe extern "C" fn wgpuSurfaceCapabilitiesFreeMembers(_capabilities: WGPUSurfaceCapabilities) {}
+
 #[no_mangle]
 unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
     surface: *mut GpuCanvasContext,
@@ -2013,7 +2057,7 @@ unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
         }
         Err(_) => {
             surface_texture.texture = std::ptr::null_mut();
-            surface_texture.status = 0x08; // WGPUSurfaceGetCurrentTextureStatus_Error
+            surface_texture.status = 0x06; // WGPUSurfaceGetCurrentTextureStatus_Error
         }
     }
 }

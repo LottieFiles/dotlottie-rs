@@ -1493,19 +1493,41 @@ impl Player {
         self.state_machine_id.as_deref()
     }
 
+    /// Starts a tween, retargeting one already in flight from its current pose.
     pub fn tween(&mut self, to: f32, duration: f32, easing: [f32; 4]) -> Result<()> {
         let resume = match self.state {
             State::Idle => return Err(Error::AnimationNotLoaded),
-            State::Tweening { .. } => return Err(Error::InsufficientCondition),
+            State::Tweening { resume, .. } => resume,
             State::Stopped => Resume::Stopped,
             State::Paused => Resume::Paused,
             State::Playing => Resume::Playing,
         };
-        let from = self.current_frame();
-        let tween = TweenState::new(from, to, duration, easing)?;
+
+        let tween = TweenState::new(self.current_frame(), to, duration, easing)?;
+        self.renderer.tween_to(to)?;
+        // Retargeting keeps the replaced tween's progress, which would skip this update.
+        self.renderer.tween_go(0.0)?;
+
         self.tween_outcome = None;
         self.state = State::Tweening { tween, resume };
         Ok(())
+    }
+
+    /// Cancels an in-flight tween, returning to the frame it started from. The blended
+    /// pose ThorVG is showing does not correspond to any frame, so it cannot be held.
+    pub(crate) fn cancel_tween(&mut self) {
+        let from = match self.state {
+            State::Tweening { ref tween, .. } => tween.from,
+            _ => return,
+        };
+        self.end_tween(TweenOutcome::Cancelled);
+        self.renderer.sync_current_frame(from);
+        let _ = self.apply_frame(from);
+    }
+
+    #[inline]
+    pub fn is_tweening(&self) -> bool {
+        matches!(self.state, State::Tweening { .. })
     }
 
     pub(crate) fn sync_tween_frame(&mut self, frame: f32) {
@@ -1517,20 +1539,22 @@ impl Player {
     }
 
     pub fn tween_advance(&mut self, dt: f32) -> Result<TweenStatus> {
-        let (status, progress, from, to) = match &mut self.state {
+        let (status, progress, to) = match &mut self.state {
             State::Tweening { tween, .. } => {
                 let (status, progress) = tween.update(dt);
-                (status, progress, tween.from, tween.to)
+                (status, progress, tween.to)
             }
             _ => return Err(Error::InsufficientCondition),
         };
 
-        if let Err(e) = self.renderer.tween(from, to, progress) {
+        if let Err(e) = self.renderer.tween_go(progress) {
             self.end_tween(TweenOutcome::Cancelled);
             return Err(e.into());
         }
 
         if status == TweenStatus::Completed {
+            // A finished tween sits exactly on its target frame.
+            self.renderer.sync_current_frame(to);
             self.elapsed_frames = match self.direction {
                 Direction::Forward => to - self.start_frame(),
                 Direction::Reverse => self.end_frame() - to,

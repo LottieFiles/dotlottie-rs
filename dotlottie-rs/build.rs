@@ -3,7 +3,7 @@ mod wgpu_native {
     use std::fs;
     use std::io;
     use std::path::PathBuf;
-    const WGPU_NATIVE_VERSION: &str = "v27.0.4.0";
+    const WGPU_NATIVE_VERSION: &str = "v29.0.1.1";
 
     /// wgpu-native is linked *dynamically* only on the Apple platforms where we ship
     /// a shared `WgpuNative` framework: macOS and iOS (device + simulator); every
@@ -143,7 +143,8 @@ mod thorvg {
     use std::path::{Path, PathBuf};
 
     const EMSCRIPTEN_VERSION: &str = "3.1.70";
-    const WEBGPU_HEADERS_REV: &str = "bac5208";
+    // ffi/webgpu-headers submodule rev of the pinned wgpu-native release
+    const WEBGPU_HEADERS_REV: &str = "673658b";
 
     /// Returns the C++ standard library that needs to be linked for the current platform.
     ///
@@ -305,9 +306,12 @@ mod thorvg {
                 }\n\
                 #endif\n",
             )?;
+        }
 
-            // Download WebGPU headers
-            let webgpu_header_dir = emscripten_dir.join("system/include/webgpu");
+        // WebGPU headers are keyed by rev so a WEBGPU_HEADERS_REV bump refreshes a cached OUT_DIR
+        let webgpu_header_dir = emscripten_dir.join("system/include/webgpu");
+        let rev_marker = webgpu_header_dir.join(".rev");
+        if fs::read_to_string(&rev_marker).ok().as_deref() != Some(WEBGPU_HEADERS_REV) {
             fs::create_dir_all(&webgpu_header_dir)?;
             let webgpu_url = format!(
                 "https://raw.githubusercontent.com/webgpu-native/webgpu-headers/{WEBGPU_HEADERS_REV}/webgpu.h"
@@ -316,6 +320,7 @@ mod thorvg {
                 .send()
                 .map_err(|e| io::Error::other(format!("Failed to download webgpu.h: {e}")))?;
             fs::write(webgpu_header_dir.join("webgpu.h"), wgpu_resp.as_bytes())?;
+            fs::write(&rev_marker, WEBGPU_HEADERS_REV)?;
         }
 
         Ok(emscripten_dir)
@@ -373,7 +378,7 @@ mod thorvg {
             .write(true)
             .open(out_dir.join("config.h"))?;
 
-        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.0.1\"")?;
+        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.1.0\"")?;
         writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
         writeln!(thorvg_config_h, "#define TVG_STATIC")?;
         writeln!(thorvg_config_h, "#define WIN32_LEAN_AND_MEAN")?;

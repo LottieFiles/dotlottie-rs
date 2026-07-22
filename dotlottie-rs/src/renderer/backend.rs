@@ -288,7 +288,9 @@ pub trait Animation: Default {
 
     fn set_quality(&mut self, quality: u8) -> Result<(), Self::Error>;
 
-    fn tween(&mut self, from: f32, to: f32, progress: f32) -> Result<(), Self::Error>;
+    fn tween_to(&mut self, to: f32) -> Result<(), Self::Error>;
+
+    fn tween_go(&mut self, progress: f32) -> Result<(), Self::Error>;
 
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), Self::Error>;
 

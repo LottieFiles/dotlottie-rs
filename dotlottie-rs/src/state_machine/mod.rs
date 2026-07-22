@@ -150,6 +150,7 @@ pub struct StateMachineEngine<'a> {
     // The state to target once blending has finished
     tween_transition_target_state: Option<State>,
     tween_target_frame: Option<f32>,
+    tween_source_exited: bool,
 
     elapsed_time: f32,
     elapsed_time_states: FxHashSet<DotString>,
@@ -199,11 +200,6 @@ impl<'a> StateMachineEngine<'a> {
             return None;
         }
 
-        // Modifying triggers whilst tweening isn't allowed
-        if self.status == StateMachineEngineStatus::Tweening {
-            return None;
-        }
-
         let ret = self.inputs.set_numeric(key, value);
 
         if let Some(old_value) = ret {
@@ -248,11 +244,6 @@ impl<'a> StateMachineEngine<'a> {
             return None;
         }
 
-        // Modifying triggers whilst tweening isn't allowed
-        if self.status == StateMachineEngineStatus::Tweening {
-            return None;
-        }
-
         let ret = self.inputs.set_string(key, value.to_string());
 
         if let Some(ref old_value) = ret {
@@ -285,11 +276,6 @@ impl<'a> StateMachineEngine<'a> {
             return None;
         }
 
-        // Modifying triggers whilst tweening isn't allowed
-        if self.status == StateMachineEngineStatus::Tweening {
-            return None;
-        }
-
         let ret = self.inputs.set_boolean(key, value);
 
         if let Some(old_value) = ret {
@@ -312,7 +298,7 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     pub fn reset_input(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
-        if self.status != StateMachineEngineStatus::Running {
+        if self.status == StateMachineEngineStatus::Stopped {
             return;
         }
 
@@ -400,6 +386,7 @@ impl<'a> StateMachineEngine<'a> {
             action_mutated_inputs: false,
             tween_transition_target_state: None,
             tween_target_frame: None,
+            tween_source_exited: false,
             elapsed_time: 0.0,
             elapsed_time_states: FxHashSet::default(),
             elapsed_time_in_global: false,
@@ -734,13 +721,27 @@ impl<'a> StateMachineEngine<'a> {
         causing_transition: Option<&Transition>,
         called_from_global: bool,
     ) -> Result<(), Error> {
+        let interrupting_tween = self.status == StateMachineEngineStatus::Tweening;
+
+        // Redirecting to the state already being tweened to is a no-op, but a forced
+        // override must still take effect.
+        if interrupting_tween && causing_transition.is_some() {
+            if let Some(target) = &self.tween_transition_target_state {
+                if target.name() == state_name {
+                    return Ok(());
+                }
+            }
+        }
+
+        let source_already_exited = interrupting_tween && self.tween_source_exited;
+
         let new_state = self.get_state(state_name);
         // We have a new state
         if let Some(new_state) = new_state {
             // Emit transtion occured event
             self.observe_on_transition(&self.get_current_state_name(), new_state.name());
             // Perform exit actions on the current state if there is one.
-            if self.current_state.is_some() {
+            if self.current_state.is_some() && !source_already_exited {
                 let state = self.current_state.take();
                 // Now use the extracted information
                 if let Some(state) = state {
@@ -752,8 +753,10 @@ impl<'a> StateMachineEngine<'a> {
                     self.current_state = Some(state);
                 }
             }
-            // Emit transtion occured event
-            self.observe_on_state_exit(&self.get_current_state_name());
+            if !source_already_exited {
+                // Emit transtion occured event
+                self.observe_on_state_exit(&self.get_current_state_name());
+            }
 
             // Since the blended transition will take time
             // We have to save the target state and do the final transition when tweening has completed
@@ -816,6 +819,8 @@ impl<'a> StateMachineEngine<'a> {
                                         self.tween_transition_target_state =
                                             Some(new_state.clone());
                                         self.tween_target_frame = Some(target_frame);
+                                        self.tween_source_exited =
+                                            source_already_exited || !called_from_global;
                                         self.status = StateMachineEngineStatus::Tweening;
                                         return Ok(());
                                     }
@@ -827,6 +832,12 @@ impl<'a> StateMachineEngine<'a> {
                         }
                     }
                 }
+            }
+
+            // An instant (or cross-animation) transition interrupts any live tween.
+            if interrupting_tween {
+                self.player.cancel_tween();
+                self.abort_tweening();
             }
 
             // Assign the new state to the current_state
@@ -936,8 +947,16 @@ impl<'a> StateMachineEngine<'a> {
             {
                 self.curr_event = None;
 
-                // Prevent re-entering the current state again
-                if target_state == self.get_current_state_name() {
+                // Prevent re-entering the current state again. While tweening, the state
+                // we are settling into is the tween's target, not the source we are leaving.
+                let settled_state = match (&self.status, &self.tween_transition_target_state) {
+                    (StateMachineEngineStatus::Tweening, Some(target)) => {
+                        target.name().as_str().to_owned()
+                    }
+                    _ => self.get_current_state_name(),
+                };
+
+                if target_state == settled_state {
                     return false;
                 }
 
@@ -961,14 +980,9 @@ impl<'a> StateMachineEngine<'a> {
         // Reset cycle count for each pipeline run
         self.current_cycle_count = 0;
 
-        // If the state machine is tweening, don't run the pipeline
-        if self.status == StateMachineEngineStatus::Tweening {
-            return Ok(());
-        }
-
         // If the state machine is not running, or there is no current state, return an error
         // Otherwise this will block the pipeline in a loop
-        if self.status != StateMachineEngineStatus::Running
+        if self.status == StateMachineEngineStatus::Stopped
             || (self.current_state.is_none() && self.global_state.is_none())
         {
             return Err(Error::NotRunningError);
@@ -1076,7 +1090,11 @@ impl<'a> StateMachineEngine<'a> {
             }
         }
 
-        self.curr_event = None;
+        // While tweening the pipeline only sees the source state, so an unconsumed event
+        // stays pending for the run that follows the tween.
+        if self.status != StateMachineEngineStatus::Tweening {
+            self.curr_event = None;
+        }
 
         Ok(())
     }
@@ -1467,7 +1485,12 @@ impl<'a> StateMachineEngine<'a> {
             && self.player.status() != crate::Status::Tweening
         {
             match self.player.take_tween_outcome() {
-                Some(TweenOutcome::Completed) => self.resume_from_tweening(),
+                Some(TweenOutcome::Completed) => {
+                    self.resume_from_tweening();
+
+                    // Guards satisfied mid-tween were evaluated against the source state.
+                    let _ = self.run_current_state_pipeline();
+                }
                 Some(TweenOutcome::Cancelled) => self.abort_tweening(),
                 None => {
                     debug_assert!(false, "tween ended without recording an outcome");
@@ -1482,7 +1505,9 @@ impl<'a> StateMachineEngine<'a> {
             // Re-evaluate the pipeline if either the GlobalState routes by
             // elapsedTime (every tick has to check it) or the current
             // PlaybackState has its own elapsedTime guard.
-            if self.status == StateMachineEngineStatus::Running {
+            if self.status == StateMachineEngineStatus::Running
+                || self.status == StateMachineEngineStatus::Tweening
+            {
                 let needs_eval = self.elapsed_time_in_global
                     || self
                         .current_state

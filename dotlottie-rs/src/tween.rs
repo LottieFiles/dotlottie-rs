@@ -9,6 +9,8 @@ pub enum TweenStatus {
 }
 
 pub(crate) struct TweenState {
+    /// Frame the tween started from. ThorVG owns the rendered pose; this only exists so
+    /// the player can report an interpolated `current_frame` while tweening.
     pub from: f32,
     pub to: f32,
     elapsed: f32,

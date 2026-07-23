@@ -114,7 +114,8 @@ fn set_theme_benchmark(c: &mut Criterion) {
 
     c.bench_function("set_theme", |b| {
         b.iter(|| {
-            let _ = player.set_theme(c"test_theme");
+            player.set_theme(c"Water").unwrap();
+            player.set_theme(c"earth").unwrap();
         });
     });
 }

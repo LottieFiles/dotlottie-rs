@@ -4,11 +4,11 @@ mod manifest;
 pub use errors::*;
 pub use manifest::*;
 
+use crate::json::Value;
 #[cfg(feature = "theming")]
 use crate::theme::Theme;
 #[cfg(feature = "audio")]
 use rustc_hash::FxHashMap;
-use serde_json::Value;
 use std::cell::RefCell;
 use std::io::{self, Read};
 #[cfg(feature = "audio")]
@@ -42,8 +42,7 @@ impl DotLottieManager {
 
         let manifest = Self::read_zip_file(&mut archive, "manifest.json")?;
         let manifest_str = std::str::from_utf8(&manifest).map_err(|_| Error::ReadContentError)?;
-        let manifest: Manifest =
-            serde_json::from_str(manifest_str).map_err(|_| Error::ReadContentError)?;
+        let manifest = Manifest::from_json(manifest_str).ok_or(Error::ReadContentError)?;
 
         let id = manifest
             .initial
@@ -96,16 +95,13 @@ impl DotLottieManager {
         let animation_data =
             std::str::from_utf8(&file_data).map_err(|_| Error::ReadContentError)?;
 
-        let mut lottie_animation: Value =
-            serde_json::from_str(animation_data).map_err(|_| Error::ReadContentError)?;
+        let mut lottie_animation =
+            Value::parse(animation_data).map_err(|_| Error::ReadContentError)?;
 
         #[cfg(feature = "audio")]
         let mut audio_sources: FxHashMap<String, Arc<[u8]>> = FxHashMap::default();
 
-        if let Some(assets) = lottie_animation
-            .get_mut("assets")
-            .and_then(|v| v.as_array_mut())
-        {
+        if let Some(Value::Array(assets)) = lottie_animation.get_mut("assets") {
             Self::embed_images(&mut archive, assets, self.version);
             #[cfg(feature = "audio")]
             {
@@ -114,11 +110,9 @@ impl DotLottieManager {
         }
 
         if self.version == 2 {
-            if let Some(font_list) = lottie_animation
+            if let Some(Value::Array(font_list)) = lottie_animation
                 .get_mut("fonts")
-                .and_then(|v| v.as_object_mut())
                 .and_then(|fonts| fonts.get_mut("list"))
-                .and_then(|v| v.as_array_mut())
             {
                 Self::embed_fonts(&mut archive, font_list);
             }
@@ -129,7 +123,7 @@ impl DotLottieManager {
             *self.audio_sources.borrow_mut() = audio_sources;
         }
 
-        serde_json::to_string(&lottie_animation).map_err(|_| Error::ReadContentError)
+        Ok(lottie_animation.to_json())
     }
 
     fn embed_images<R: Read + io::Seek>(
@@ -141,15 +135,12 @@ impl DotLottieManager {
         let mut asset_path = String::with_capacity(128);
 
         for asset in assets.iter_mut() {
-            let Some(asset_obj) = asset.as_object_mut() else {
-                continue;
-            };
-            let Some(p_str) = asset_obj.get("p").and_then(|v| v.as_str()) else {
+            let Some(p_str) = asset.str_field("p").map(str::to_owned) else {
                 continue;
             };
 
             if p_str.starts_with(DATA_IMAGE_PREFIX) {
-                asset_obj.insert("e".to_string(), Value::Number(1.into()));
+                asset.set("e", Value::Number(1.0));
                 continue;
             }
 
@@ -168,9 +159,9 @@ impl DotLottieManager {
                         "{DATA_IMAGE_PREFIX}{image_ext}{BASE64_PREFIX}{}",
                         Self::encode_base64(&content)
                     );
-                    asset_obj.insert("u".to_string(), Value::String(String::new()));
-                    asset_obj.insert("p".to_string(), Value::String(data_url));
-                    asset_obj.insert("e".to_string(), Value::Number(1.into()));
+                    asset.set("u", Value::String("".into()));
+                    asset.set("p", Value::String(data_url.into()));
+                    asset.set("e", Value::Number(1.0));
                 }
             }
         }
@@ -192,10 +183,7 @@ impl DotLottieManager {
         let mut asset_path = String::with_capacity(128);
 
         for asset in assets {
-            let Some(asset_obj) = asset.as_object() else {
-                continue;
-            };
-            let Some(p_str) = asset_obj.get("p").and_then(|v| v.as_str()) else {
+            let Some(p_str) = asset.str_field("p") else {
                 continue;
             };
 
@@ -227,19 +215,10 @@ impl DotLottieManager {
         let mut font_path = String::with_capacity(128);
 
         for font in font_list.iter_mut() {
-            let Some(font_obj) = font.as_object_mut() else {
-                continue;
-            };
-            // Clone to release the immutable borrow before mutating font_obj below.
-            let Some(f_path_str) = font_obj
-                .get("fPath")
-                .and_then(|v| v.as_str())
-                .map(str::to_string)
-            else {
+            let Some(f_path_str) = font.str_field("fPath").map(str::to_string) else {
                 continue;
             };
 
-            // Only process package-internal fonts with the /f/ prefix.
             let Some(path_without_prefix) = f_path_str.strip_prefix("/f/") else {
                 continue;
             };
@@ -259,7 +238,7 @@ impl DotLottieManager {
                         "{DATA_FONT_PREFIX}{font_ext}{BASE64_PREFIX}{}",
                         Self::encode_base64(&content)
                     );
-                    font_obj.insert("fPath".to_string(), Value::String(data_url));
+                    font.set("fPath", Value::String(data_url.into()));
                 }
             }
         }
@@ -395,7 +374,7 @@ mod tests {
         let file_path = format!(
             "{}{}",
             env!("CARGO_MANIFEST_DIR"),
-            "/src/fms/tests/resources/emoji-collection.lottie"
+            "/assets/animations/dotlottie/v1/emojis.lottie"
         );
 
         if let Ok(mut file) = File::open(&file_path) {
@@ -457,5 +436,32 @@ mod tests {
             !json.contains("data:audio/"),
             "rendered JSON should not embed base64 audio"
         );
+    }
+
+    #[test]
+    fn animation_json_preserves_key_order_and_embeds() {
+        let file_path = format!(
+            "{}{}",
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/animations/dotlottie/v1/emojis.lottie"
+        );
+        let Ok(buffer) = std::fs::read(&file_path) else {
+            return;
+        };
+        let manager = DotLottieManager::new(&buffer).expect("create manager");
+        let json = manager.get_active_animation().expect("get animation");
+
+        let v = crate::json::Value::parse(&json).expect("output is valid JSON");
+        // Lottie documents start with header keys; order must survive the round-trip.
+        let keys: Vec<&str> = v
+            .as_object()
+            .unwrap()
+            .iter()
+            .map(|(k, _)| k.as_ref())
+            .collect();
+        let v_pos = keys.iter().position(|k| *k == "v");
+        let layers_pos = keys.iter().position(|k| *k == "layers");
+        assert!(v_pos.is_some() && layers_pos.is_some());
+        assert!(v_pos < layers_pos, "header keys must stay before layers");
     }
 }

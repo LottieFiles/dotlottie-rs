@@ -273,10 +273,7 @@ pub unsafe extern "C" fn dotlottie_get_manifest(
         exec_dotlottie_player_op!(ptr, |dotlottie_player| {
             match dotlottie_player.manifest() {
                 Some(manifest) => {
-                    let json_str = match serde_json::to_string(manifest) {
-                        Ok(s) => s,
-                        Err(_) => return DotLottieResult::Error,
-                    };
+                    let json_str = manifest.to_json();
                     let json_bytes = json_str.as_bytes();
                     let size = json_bytes.len() + 1; // +1 for null terminator
 

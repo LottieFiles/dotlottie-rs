@@ -1,23 +1,35 @@
+use crate::json::{array_of, f32_array, f32_vec, opt, Value};
+use crate::renderer::slots::bezier_from_json;
 use crate::renderer::slots::{
     Bezier, ColorSlot, ColorValue, GradientSlot, GradientStop, ImageSlot, LottieKeyframe,
     LottieProperty, PositionSlot, ScalarSlot, ScalarValue, SlotType, TextCaps, TextDocument,
     TextJustify, TextKeyframe, TextSlot, VectorSlot,
 };
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct Theme {
     pub(crate) rules: Vec<ThemeRule>,
 }
 
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum Error {
+    #[error("invalid theme")]
+    InvalidTheme,
+}
+
 impl FromStr for Theme {
-    type Err = serde_json::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        serde_json::from_str(s)
+        let root = Value::parse(s).map_err(|_| Error::InvalidTheme)?;
+        let rules = root
+            .get("rules")
+            .and_then(|r| array_of(r, theme_rule_from_json))
+            .ok_or(Error::InvalidTheme)?;
+        Ok(Theme { rules })
     }
 }
 
@@ -73,234 +85,157 @@ impl Theme {
 
 /// Color theme rule - holds color animation/static values
 /// Supports both RGB (3 elements) and RGBA (4 elements) color values
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct ColorRule {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub animations: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub keyframes: Option<Vec<ColorKeyframe>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub expression: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct ColorKeyframe {
     pub frame: u32,
     pub value: Vec<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub in_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub out_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value_in_tangent: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value_out_tangent: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hold: Option<bool>,
 }
 
 /// Scalar theme rule - holds scalar animation/static values
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct ScalarRule {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub animations: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub keyframes: Option<Vec<ScalarKeyframe>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub expression: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct ScalarKeyframe {
     pub frame: u32,
     pub value: f32,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub in_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub out_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value_in_tangent: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value_out_tangent: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hold: Option<bool>,
 }
 
 /// Gradient theme rule - holds gradient animation/static values
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct GradientRule {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub animations: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<Vec<GradientStop>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub keyframes: Option<Vec<GradientKeyframe>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub expression: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct GradientKeyframe {
     pub frame: u32,
     pub value: Vec<GradientStop>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub in_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub out_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hold: Option<bool>,
 }
 
 /// Image theme rule - holds image asset information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct ImageRule {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub animations: Option<Vec<String>>,
     pub value: ImageValue,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct ImageValue {
     pub src: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub height: Option<u32>,
 }
 
 /// Text theme rule - holds text animation/static values
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct TextRule {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub animations: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<TextValue>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub keyframes: Option<Vec<TextRuleKeyframe>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub expression: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct TextValue {
     pub text: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub font_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub font_size: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub fill_color: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub stroke_color: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub stroke_width: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub stroke_over_fill: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub line_height: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub tracking: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub justify: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub text_caps: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub baseline_shift: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub wrap_size: Option<[f32; 2]>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub wrap_position: Option<[f32; 2]>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct TextRuleKeyframe {
     pub frame: u32,
     pub value: TextValue,
 }
 
 /// Vector theme rule - holds 2D vector animation/static values (e.g., scale, size)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct VectorRule {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub animations: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub keyframes: Option<Vec<VectorKeyframe>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub expression: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct VectorKeyframe {
     pub frame: u32,
     pub value: Vec<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub in_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub out_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hold: Option<bool>,
 }
 
 /// Position theme rule - holds 2D position animation/static values with spatial tangents
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct PositionRule {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub animations: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub keyframes: Option<Vec<PositionKeyframe>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub expression: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct PositionKeyframe {
     pub frame: u32,
     pub value: Vec<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub in_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub out_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value_in_tangent: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value_out_tangent: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hold: Option<bool>,
 }
 
 /// Theme rule enum wrapping all rule types
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[derive(Debug, Clone)]
 pub enum ThemeRule {
     Color(ColorRule),
     Scalar(ScalarRule),
@@ -358,11 +293,241 @@ impl ThemeRule {
     }
 }
 
+fn theme_rule_from_json(v: &Value) -> Option<ThemeRule> {
+    Some(match v.str_field("type")? {
+        "Color" => ThemeRule::Color(color_rule_from_json(v)?),
+        "Scalar" => ThemeRule::Scalar(scalar_rule_from_json(v)?),
+        "Gradient" => ThemeRule::Gradient(gradient_rule_from_json(v)?),
+        "Image" => ThemeRule::Image(image_rule_from_json(v)?),
+        "Text" => ThemeRule::Text(text_rule_from_json(v)?),
+        "Vector" => ThemeRule::Vector(vector_rule_from_json(v)?),
+        "Position" => ThemeRule::Position(position_rule_from_json(v)?),
+        _ => return None,
+    })
+}
+
+fn string_list(v: &Value) -> Option<Vec<String>> {
+    array_of(v, |s| s.as_str().map(str::to_owned))
+}
+
+fn opt_animations(v: &Value) -> Option<Option<Vec<String>>> {
+    opt(v.get("animations"), string_list)
+}
+
+fn opt_expression(v: &Value) -> Option<Option<String>> {
+    v.opt_str_field("expression")
+}
+
+fn opt_keyframes<T>(v: &Value, parse: impl Fn(&Value) -> Option<T>) -> Option<Option<Vec<T>>> {
+    opt(v.get("keyframes"), |k| array_of(k, &parse))
+}
+
+/// The field block shared by every theme keyframe shape.
+struct KeyframeFields<T> {
+    frame: u32,
+    value: T,
+    in_tangent: Option<Bezier>,
+    out_tangent: Option<Bezier>,
+    hold: Option<bool>,
+}
+
+fn keyframe_fields<'a, T>(
+    v: &Value<'a>,
+    parse_value: impl Fn(&Value<'a>) -> Option<T>,
+) -> Option<KeyframeFields<T>> {
+    Some(KeyframeFields {
+        frame: v.u32_field("frame")?,
+        value: parse_value(v.get("value")?)?,
+        in_tangent: opt(v.get("inTangent"), bezier_from_json)?,
+        out_tangent: opt(v.get("outTangent"), bezier_from_json)?,
+        hold: opt(v.get("hold"), Value::as_bool)?,
+    })
+}
+
+type ValueTangents = (Option<Vec<f32>>, Option<Vec<f32>>);
+
+fn value_tangents(v: &Value) -> Option<ValueTangents> {
+    Some((
+        opt(v.get("valueInTangent"), f32_vec)?,
+        opt(v.get("valueOutTangent"), f32_vec)?,
+    ))
+}
+
+fn rule_id(v: &Value) -> Option<String> {
+    v.str_field("id").map(str::to_owned)
+}
+
+fn color_rule_from_json(v: &Value) -> Option<ColorRule> {
+    Some(ColorRule {
+        id: rule_id(v)?,
+        animations: opt_animations(v)?,
+        value: opt(v.get("value"), f32_vec)?,
+        keyframes: opt_keyframes(v, color_keyframe_from_json)?,
+        expression: opt_expression(v)?,
+    })
+}
+
+fn color_keyframe_from_json(v: &Value) -> Option<ColorKeyframe> {
+    let kf = keyframe_fields(v, f32_vec)?;
+    let (value_in_tangent, value_out_tangent) = value_tangents(v)?;
+    Some(ColorKeyframe {
+        frame: kf.frame,
+        value: kf.value,
+        in_tangent: kf.in_tangent,
+        out_tangent: kf.out_tangent,
+        value_in_tangent,
+        value_out_tangent,
+        hold: kf.hold,
+    })
+}
+
+fn scalar_rule_from_json(v: &Value) -> Option<ScalarRule> {
+    Some(ScalarRule {
+        id: rule_id(v)?,
+        animations: opt_animations(v)?,
+        value: opt(v.get("value"), Value::as_f32)?,
+        keyframes: opt_keyframes(v, scalar_keyframe_from_json)?,
+        expression: opt_expression(v)?,
+    })
+}
+
+fn scalar_keyframe_from_json(v: &Value) -> Option<ScalarKeyframe> {
+    let kf = keyframe_fields(v, Value::as_f32)?;
+    let (value_in_tangent, value_out_tangent) = value_tangents(v)?;
+    Some(ScalarKeyframe {
+        frame: kf.frame,
+        value: kf.value,
+        in_tangent: kf.in_tangent,
+        out_tangent: kf.out_tangent,
+        value_in_tangent,
+        value_out_tangent,
+        hold: kf.hold,
+    })
+}
+
+fn gradient_stop_from_json(v: &Value) -> Option<GradientStop> {
+    Some(GradientStop {
+        offset: v.f32_field("offset")?,
+        color: f32_array::<4>(v.get("color")?)?,
+    })
+}
+
+fn gradient_stops(v: &Value) -> Option<Vec<GradientStop>> {
+    array_of(v, gradient_stop_from_json)
+}
+
+fn gradient_rule_from_json(v: &Value) -> Option<GradientRule> {
+    Some(GradientRule {
+        id: rule_id(v)?,
+        animations: opt_animations(v)?,
+        value: opt(v.get("value"), gradient_stops)?,
+        keyframes: opt_keyframes(v, |kf| {
+            let kf = keyframe_fields(kf, gradient_stops)?;
+            Some(GradientKeyframe {
+                frame: kf.frame,
+                value: kf.value,
+                in_tangent: kf.in_tangent,
+                out_tangent: kf.out_tangent,
+                hold: kf.hold,
+            })
+        })?,
+        expression: opt_expression(v)?,
+    })
+}
+
+fn image_rule_from_json(v: &Value) -> Option<ImageRule> {
+    let value = v.get("value")?;
+    Some(ImageRule {
+        id: rule_id(v)?,
+        animations: opt_animations(v)?,
+        value: ImageValue {
+            src: value.str_field("src")?.to_owned(),
+            width: opt(value.get("width"), Value::as_u32)?,
+            height: opt(value.get("height"), Value::as_u32)?,
+        },
+    })
+}
+
+fn text_value_from_json(v: &Value) -> Option<TextValue> {
+    Some(TextValue {
+        text: v.str_field("text")?.to_owned(),
+        font_name: v.opt_str_field("fontName")?,
+        font_size: opt(v.get("fontSize"), Value::as_f32)?,
+        fill_color: opt(v.get("fillColor"), f32_vec)?,
+        stroke_color: opt(v.get("strokeColor"), f32_vec)?,
+        stroke_width: opt(v.get("strokeWidth"), Value::as_f32)?,
+        stroke_over_fill: opt(v.get("strokeOverFill"), Value::as_bool)?,
+        line_height: opt(v.get("lineHeight"), Value::as_f32)?,
+        tracking: opt(v.get("tracking"), Value::as_f32)?,
+        justify: v.opt_str_field("justify")?,
+        text_caps: v.opt_str_field("textCaps")?,
+        baseline_shift: opt(v.get("baselineShift"), Value::as_f32)?,
+        wrap_size: opt(v.get("wrapSize"), f32_array::<2>)?,
+        wrap_position: opt(v.get("wrapPosition"), f32_array::<2>)?,
+    })
+}
+
+fn text_rule_from_json(v: &Value) -> Option<TextRule> {
+    Some(TextRule {
+        id: rule_id(v)?,
+        animations: opt_animations(v)?,
+        value: opt(v.get("value"), text_value_from_json)?,
+        keyframes: opt_keyframes(v, |kf| {
+            Some(TextRuleKeyframe {
+                frame: kf.u32_field("frame")?,
+                value: text_value_from_json(kf.get("value")?)?,
+            })
+        })?,
+        expression: opt_expression(v)?,
+    })
+}
+
+fn vector_rule_from_json(v: &Value) -> Option<VectorRule> {
+    Some(VectorRule {
+        id: rule_id(v)?,
+        animations: opt_animations(v)?,
+        value: opt(v.get("value"), f32_vec)?,
+        keyframes: opt_keyframes(v, |kf| {
+            let kf = keyframe_fields(kf, f32_vec)?;
+            Some(VectorKeyframe {
+                frame: kf.frame,
+                value: kf.value,
+                in_tangent: kf.in_tangent,
+                out_tangent: kf.out_tangent,
+                hold: kf.hold,
+            })
+        })?,
+        expression: opt_expression(v)?,
+    })
+}
+
+fn position_rule_from_json(v: &Value) -> Option<PositionRule> {
+    Some(PositionRule {
+        id: rule_id(v)?,
+        animations: opt_animations(v)?,
+        value: opt(v.get("value"), f32_vec)?,
+        keyframes: opt_keyframes(v, |kf| {
+            let (value_in_tangent, value_out_tangent) = value_tangents(kf)?;
+            let kf = keyframe_fields(kf, f32_vec)?;
+            Some(PositionKeyframe {
+                frame: kf.frame,
+                value: kf.value,
+                in_tangent: kf.in_tangent,
+                out_tangent: kf.out_tangent,
+                value_in_tangent,
+                value_out_tangent,
+                hold: kf.hold,
+            })
+        })?,
+        expression: opt_expression(v)?,
+    })
+}
+
 pub fn transform_theme_to_lottie_slots(theme_json: &str, active_animation_id: &str) -> String {
     match theme_json.parse::<Theme>() {
         Ok(theme) => {
             let slots = theme.to_slot_types(active_animation_id);
-            crate::renderer::slots::slots_to_json_string(&slots).unwrap_or_default()
+            crate::renderer::slots::slots_to_json_string(&slots)
         }
         Err(_) => String::new(),
     }
@@ -679,16 +844,21 @@ fn parse_caps(caps: &str) -> Option<TextCaps> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::json::Value;
 
     fn slot_from_rule(json: &str) -> ImageSlot {
-        let rule: ImageRule = serde_json::from_str(json).expect("valid image rule");
+        let v = Value::parse(json).unwrap();
+        let ThemeRule::Image(rule) = theme_rule_from_json(&v).expect("valid image rule") else {
+            panic!("expected image rule");
+        };
         ImageSlot::from(&rule)
     }
 
     #[test]
     fn image_src_data_url_is_embedded() {
-        let slot =
-            slot_from_rule(r#"{ "id": "logo", "value": { "src": "data:image/png;base64,AAAA" } }"#);
+        let slot = slot_from_rule(
+            r#"{ "type": "Image", "id": "logo", "value": { "src": "data:image/png;base64,AAAA" } }"#,
+        );
         assert_eq!(slot.embed, Some(1));
         assert_eq!(slot.path.as_deref(), Some("data:image/png;base64,AAAA"));
         assert_eq!(slot.directory, None);
@@ -696,8 +866,9 @@ mod tests {
 
     #[test]
     fn image_src_http_url_is_linked_and_intact() {
-        let slot =
-            slot_from_rule(r#"{ "id": "logo", "value": { "src": "https://cdn.x/a/logo.png" } }"#);
+        let slot = slot_from_rule(
+            r#"{ "type": "Image", "id": "logo", "value": { "src": "https://cdn.x/a/logo.png" } }"#,
+        );
         assert_eq!(slot.embed, Some(0));
         assert_eq!(slot.path.as_deref(), Some("https://cdn.x/a/logo.png"));
         assert_eq!(slot.directory, None);
@@ -705,7 +876,9 @@ mod tests {
 
     #[test]
     fn image_src_bare_name_resolves_to_package_file() {
-        let slot = slot_from_rule(r#"{ "id": "logo", "value": { "src": "logo_dark.png" } }"#);
+        let slot = slot_from_rule(
+            r#"{ "type": "Image", "id": "logo", "value": { "src": "logo_dark.png" } }"#,
+        );
         assert_eq!(slot.embed, Some(0));
         assert_eq!(slot.path.as_deref(), Some("logo_dark.png"));
         assert_eq!(slot.directory, None);
@@ -714,7 +887,7 @@ mod tests {
     #[test]
     fn image_dimensions_are_applied() {
         let slot = slot_from_rule(
-            r#"{ "id": "logo", "value": { "src": "logo.png", "width": 200, "height": 100 } }"#,
+            r#"{ "type": "Image", "id": "logo", "value": { "src": "logo.png", "width": 200, "height": 100 } }"#,
         );
         assert_eq!(slot.width, Some(200));
         assert_eq!(slot.height, Some(100));
@@ -722,7 +895,56 @@ mod tests {
 
     #[test]
     fn image_rule_requires_src() {
-        let err = serde_json::from_str::<ImageRule>(r#"{ "id": "logo", "value": {} }"#);
-        assert!(err.is_err(), "image rule with no src must be rejected");
+        let v = Value::parse(r#"{ "type": "Image", "id": "logo", "value": {} }"#).unwrap();
+        assert!(
+            theme_rule_from_json(&v).is_none(),
+            "no src must be rejected"
+        );
+    }
+
+    #[test]
+    fn full_theme_parses_all_rule_types() {
+        let theme: Theme = r#"{"rules":[
+            {"type":"Color","id":"c","value":[1,0,0],"animations":["a1"]},
+            {"type":"Color","id":"ck","keyframes":[{"frame":0,"value":[1,0,0,1],"inTangent":{"x":0.5,"y":0.5},"hold":true}]},
+            {"type":"Scalar","id":"s","value":40.5,"expression":"x"},
+            {"type":"Gradient","id":"g","value":[{"offset":0,"color":[1,0,0,1]},{"offset":1,"color":[0,0,1,0.5]}]},
+            {"type":"Image","id":"i","value":{"src":"x.png","width":10,"height":20}},
+            {"type":"Text","id":"t","value":{"text":"hi","fontSize":12,"justify":"Center","wrapSize":[100,50]}},
+            {"type":"Vector","id":"v","value":[3,4]},
+            {"type":"Position","id":"p","keyframes":[{"frame":0,"value":[1,2],"valueInTangent":[0.1,0.2]}]}
+        ]}"#
+            .parse()
+            .expect("theme parses");
+        assert_eq!(theme.rules.len(), 8);
+        assert!(theme.get_rule("c").is_some());
+        // Rule targeting: "c" only applies to a1.
+        assert_eq!(theme.to_slot_types("a1").len(), 8);
+        assert_eq!(theme.to_slot_types("other").len(), 7);
+    }
+
+    #[test]
+    fn unknown_rule_type_rejects_whole_theme() {
+        assert!(r#"{"rules":[{"type":"Nope","id":"x"}]}"#.parse::<Theme>().is_err());
+    }
+
+    #[test]
+    fn missing_rules_key_rejects() {
+        assert!("{}".parse::<Theme>().is_err());
+        assert!("not json".parse::<Theme>().is_err());
+    }
+
+    #[test]
+    fn gradient_stop_requires_four_color_components() {
+        for bad in [
+            r#"[{"offset":0,"color":[1,0,0]}]"#,
+            r#"[{"offset":0,"color":[1,0,0,1,0]}]"#,
+        ] {
+            let json = format!(r#"{{"rules":[{{"type":"Gradient","id":"g","value":{bad}}}]}}"#);
+            assert!(
+                json.parse::<Theme>().is_err(),
+                "should reject color len != 4"
+            );
+        }
     }
 }

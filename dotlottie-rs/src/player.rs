@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use std::ffi::{CStr, CString};
 use std::{fs, mem};
 
@@ -63,13 +62,26 @@ pub enum Status {
     Tweening = 4,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(C)]
 pub enum Mode {
     Forward,
     Reverse,
     Bounce,
     ReverseBounce,
+}
+
+#[cfg(feature = "state-machines")]
+impl Mode {
+    pub(crate) fn from_json_str(s: &str) -> Option<Mode> {
+        Some(match s {
+            "Forward" => Mode::Forward,
+            "Reverse" => Mode::Reverse,
+            "Bounce" => Mode::Bounce,
+            "ReverseBounce" => Mode::ReverseBounce,
+            _ => return None,
+        })
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]

@@ -1,8 +1,8 @@
 use std::ffi::CString;
 
-use serde::Deserialize;
-
+use crate::json::{array_of, opt, Value};
 use crate::player::Mode;
+use crate::state_machine::definition::dot_string;
 use crate::string::{DotString, DotStringInterner};
 use crate::Rgba;
 
@@ -21,9 +21,7 @@ pub trait StateTrait {
     fn get_type(&self) -> String;
 }
 
-#[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all_fields = "camelCase")]
-#[serde(tag = "type")]
+#[derive(Debug, Clone)]
 pub enum State {
     PlaybackState {
         name: DotString,
@@ -46,6 +44,44 @@ pub enum State {
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
     },
+}
+
+pub(crate) fn state_from_json(v: &Value) -> Option<State> {
+    let transitions = |v: &Value| -> Option<Vec<Transition>> {
+        array_of(
+            v.get("transitions")?,
+            crate::state_machine::transitions::transition_from_json,
+        )
+    };
+    let actions = |field: Option<&Value>| -> Option<Option<Vec<Action>>> {
+        opt(field, |a| {
+            array_of(a, crate::state_machine::actions::action_from_json)
+        })
+    };
+    Some(match v.str_field("type")? {
+        "PlaybackState" => State::PlaybackState {
+            name: dot_string(v.get("name")?)?,
+            transitions: transitions(v)?,
+            animation: dot_string(v.get("animation")?)?,
+            r#loop: opt(v.get("loop"), Value::as_bool)?,
+            loop_count: opt(v.get("loopCount"), Value::as_u32)?,
+            r#final: opt(v.get("final"), Value::as_bool)?,
+            autoplay: opt(v.get("autoplay"), Value::as_bool)?,
+            mode: opt(v.get("mode"), |m| Mode::from_json_str(m.as_str()?))?,
+            speed: opt(v.get("speed"), Value::as_f32)?,
+            segment: v.opt_str_field("segment")?,
+            background_color: opt(v.get("backgroundColor"), Value::as_u32)?,
+            entry_actions: actions(v.get("entryActions"))?,
+            exit_actions: actions(v.get("exitActions"))?,
+        },
+        "GlobalState" => State::GlobalState {
+            name: dot_string(v.get("name")?)?,
+            transitions: transitions(v)?,
+            entry_actions: actions(v.get("entryActions"))?,
+            exit_actions: actions(v.get("exitActions"))?,
+        },
+        _ => return None,
+    })
 }
 
 impl State {

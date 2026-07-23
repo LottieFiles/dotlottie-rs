@@ -1,17 +1,34 @@
 use {rustc_hash::FxHashMap, rustc_hash::FxHashSet};
 
-use serde::Deserialize;
-
+use crate::json::Value;
 use crate::string::DotString;
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all_fields = "camelCase")]
-#[serde(tag = "type")]
+#[derive(Debug, Clone)]
 pub enum Input {
     Numeric { name: String, value: f32 },
     String { name: String, value: String },
     Boolean { name: String, value: bool },
     Event { name: String },
+}
+
+pub(crate) fn input_from_json(v: &Value) -> Option<Input> {
+    let name = || v.str_field("name").map(str::to_owned);
+    Some(match v.str_field("type")? {
+        "Numeric" => Input::Numeric {
+            name: name()?,
+            value: v.f32_field("value")?,
+        },
+        "String" => Input::String {
+            name: name()?,
+            value: v.str_field("value")?.to_owned(),
+        },
+        "Boolean" => Input::Boolean {
+            name: name()?,
+            value: v.get("value")?.as_bool()?,
+        },
+        "Event" => Input::Event { name: name()? },
+        _ => return None,
+    })
 }
 
 #[derive(Clone, Debug)]

@@ -391,8 +391,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
         }
 
         // 3. Serialize all slots into the reusable buffer
-        slots::slots_to_json_writer(&self.slot_values, &mut self.slot_json_buffer)
-            .map_err(|_| Error::InvalidArgument)?;
+        slots::slots_to_json_writer(&self.slot_values, &mut self.slot_json_buffer);
 
         // 4. Append null terminator for CStr
         self.slot_json_buffer.push(0);
@@ -737,12 +736,12 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     fn get_slot_str(&self, slot_id: &str) -> String {
         self.slot_values
             .get(slot_id)
-            .and_then(|s| slots::slot_to_json_string(s).ok())
+            .map(slots::slot_to_json_string)
             .unwrap_or_default()
     }
 
     fn get_slots_str(&self) -> String {
-        slots::slots_to_json_string(&self.slot_values).unwrap_or_default()
+        slots::slots_to_json_string(&self.slot_values)
     }
 
     fn set_slot_str(&mut self, slot_id: &str, json: &str) -> Result<(), Error> {

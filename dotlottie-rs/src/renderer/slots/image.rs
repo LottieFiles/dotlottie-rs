@@ -1,16 +1,12 @@
-use serde::{Deserialize, Serialize};
+use crate::json::{opt, write_str, ObjWriter, Value};
+use std::fmt::Write as _;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct ImageSlot {
-    #[serde(skip_serializing_if = "Option::is_none", rename = "w")]
     pub width: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "h")]
     pub height: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "u")]
     pub directory: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "p")]
     pub path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "e")]
     pub embed: Option<u8>,
 }
 
@@ -93,6 +89,39 @@ impl ImageSlot {
         self.path = Some(data_url);
         self.embed = Some(1);
     }
+}
+
+pub(crate) fn image_slot_from_json(v: &Value) -> Option<ImageSlot> {
+    if !v.is_object() {
+        return None;
+    }
+    Some(ImageSlot {
+        width: opt(v.get("w"), Value::as_u32)?,
+        height: opt(v.get("h"), Value::as_u32)?,
+        directory: v.opt_str_field("u")?,
+        path: v.opt_str_field("p")?,
+        embed: opt(v.get("e"), Value::as_u8)?,
+    })
+}
+
+pub(crate) fn write_image_slot(img: &ImageSlot, out: &mut String) {
+    let mut o = ObjWriter::new(out);
+    if let Some(w) = img.width {
+        let _ = write!(o.field("w"), "{w}");
+    }
+    if let Some(h) = img.height {
+        let _ = write!(o.field("h"), "{h}");
+    }
+    if let Some(u) = &img.directory {
+        write_str(u, o.field("u"));
+    }
+    if let Some(p) = &img.path {
+        write_str(p, o.field("p"));
+    }
+    if let Some(e) = img.embed {
+        let _ = write!(o.field("e"), "{e}");
+    }
+    o.finish();
 }
 
 #[cfg(test)]

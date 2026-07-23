@@ -1,48 +1,18 @@
-use super::{Bezier, LottieKeyframe};
-use serde::{Deserialize, Serialize};
+use super::{LottieKeyframe, LottieProperty};
+use crate::json::{write_str, ObjWriter, Value};
+use crate::renderer::slots::{property_from_json, write_property};
+use std::fmt::Write as _;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct GradientStop {
     pub offset: f32,
     pub color: [f32; 4],
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GradientProperty {
-    #[serde(rename = "a")]
-    pub animated: u8,
-    #[serde(rename = "k")]
-    pub value: GradientValue,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum GradientValue {
-    Static(Vec<f32>),
-    Animated(Vec<GradientKeyframe>),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GradientKeyframe {
-    #[serde(rename = "t")]
-    pub frame: u32,
-    #[serde(rename = "s")]
-    pub start_value: Vec<f32>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "i")]
-    pub in_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "o")]
-    pub out_tangent: Option<Bezier>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "h")]
-    pub hold: Option<u8>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct GradientSlot {
-    #[serde(rename = "k")]
-    pub data: GradientProperty,
-    #[serde(rename = "p")]
+    pub data: LottieProperty<Vec<f32>>,
     pub num_stops: usize,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "x")]
     pub expression: Option<String>,
 }
 
@@ -52,10 +22,7 @@ impl GradientSlot {
         let gradient_data = Self::stops_to_lottie_data(&stops);
 
         Self {
-            data: GradientProperty {
-                animated: 0,
-                value: GradientValue::Static(gradient_data),
-            },
+            data: LottieProperty::static_value(gradient_data),
             num_stops,
             expression: None,
         }
@@ -67,22 +34,21 @@ impl GradientSlot {
             .map(|kf| kf.start_value.len())
             .unwrap_or(0);
 
-        let lottie_keyframes: Vec<GradientKeyframe> = keyframes
+        let lottie_keyframes = keyframes
             .into_iter()
-            .map(|kf| GradientKeyframe {
+            .map(|kf| LottieKeyframe {
                 frame: kf.frame,
                 start_value: Self::stops_to_lottie_data(&kf.start_value),
                 in_tangent: kf.in_tangent,
                 out_tangent: kf.out_tangent,
+                value_in_tangent: kf.value_in_tangent,
+                value_out_tangent: kf.value_out_tangent,
                 hold: kf.hold,
             })
             .collect();
 
         Self {
-            data: GradientProperty {
-                animated: 1,
-                value: GradientValue::Animated(lottie_keyframes),
-            },
+            data: LottieProperty::animated(lottie_keyframes),
             num_stops,
             expression: None,
         }
@@ -118,4 +84,22 @@ impl GradientSlot {
         gradient_data.extend(transparency_data);
         gradient_data
     }
+}
+
+pub(crate) fn gradient_slot_from_json(v: &Value) -> Option<GradientSlot> {
+    Some(GradientSlot {
+        data: property_from_json(v.get("k")?)?,
+        num_stops: v.u32_field("p")? as usize,
+        expression: v.opt_str_field("x")?,
+    })
+}
+
+pub(crate) fn write_gradient_slot(g: &GradientSlot, out: &mut String) {
+    let mut o = ObjWriter::new(out);
+    write_property(&g.data, o.field("k"));
+    let _ = write!(o.field("p"), "{}", g.num_stops);
+    if let Some(x) = &g.expression {
+        write_str(x, o.field("x"));
+    }
+    o.finish();
 }

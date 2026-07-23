@@ -335,19 +335,6 @@ impl From<&CStr> for DotString {
     }
 }
 
-impl<'de> serde::Deserialize<'de> for DotString {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
-        DotString::try_new(&s).map_err(serde::de::Error::custom)
-    }
-}
-
-impl serde::Serialize for DotString {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(self.as_str())
-    }
-}
-
 /// Small per-component dedup cache. Repeated interns of the same string
 /// return clones of the same `DotString` — refcount bumps, no allocation.
 #[derive(Default)]
@@ -532,14 +519,5 @@ mod tests {
         let c = std::ffi::CString::new("moved").unwrap();
         let s = DotString::from(c);
         assert_eq!(&*s, "moved");
-    }
-
-    #[test]
-    fn serde_roundtrip() {
-        let s = DotString::new("serialized");
-        let json = serde_json::to_string(&s).unwrap();
-        assert_eq!(json, "\"serialized\"");
-        let back: DotString = serde_json::from_str(&json).unwrap();
-        assert_eq!(back, "serialized");
     }
 }

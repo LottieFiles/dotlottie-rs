@@ -1,9 +1,9 @@
 #[cfg(feature = "theming")]
 use std::ffi::CString;
 
-use serde::Deserialize;
-
 use super::definition::StringBool;
+use crate::json::{opt, Value};
+use crate::state_machine::definition::{dot_string, string_bool, string_number};
 use crate::string::{DotString, DotStringInterner};
 use crate::Event;
 
@@ -62,9 +62,7 @@ pub trait ActionTrait {
     ) -> Result<(), StateMachineActionError>;
 }
 
-#[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all_fields = "camelCase")]
-#[serde(tag = "type")]
+#[derive(Debug, Clone)]
 pub enum Action {
     OpenUrl {
         url: String,
@@ -95,11 +93,8 @@ pub enum Action {
     },
     SetRandom {
         input_name: DotString,
-        #[serde(default)]
         min: Option<StringNumber>,
-        #[serde(default)]
         max: Option<StringNumber>,
-        #[serde(default)]
         integer: Option<bool>,
     },
     Multiply {
@@ -111,9 +106,7 @@ pub enum Action {
     },
     Clamp {
         input_name: DotString,
-        #[serde(default)]
         min: Option<StringNumber>,
-        #[serde(default)]
         max: Option<StringNumber>,
     },
     Fire {
@@ -134,6 +127,77 @@ pub enum Action {
     FireCustomEvent {
         value: String,
     },
+}
+
+pub(crate) fn action_from_json(v: &Value) -> Option<Action> {
+    let input_name = || -> Option<DotString> { dot_string(v.get("inputName")?) };
+    let req_string = |key: &str| -> Option<String> { v.str_field(key).map(str::to_owned) };
+    Some(match v.str_field("type")? {
+        "OpenUrl" => Action::OpenUrl {
+            url: req_string("url")?,
+            target: req_string("target")?,
+        },
+        "Increment" => Action::Increment {
+            input_name: input_name()?,
+            value: opt(v.get("value"), string_number)?,
+        },
+        "Decrement" => Action::Decrement {
+            input_name: input_name()?,
+            value: opt(v.get("value"), string_number)?,
+        },
+        "Toggle" => Action::Toggle {
+            input_name: input_name()?,
+        },
+        "SetBoolean" => Action::SetBoolean {
+            input_name: input_name()?,
+            value: string_bool(v.get("value")?)?,
+        },
+        "SetString" => Action::SetString {
+            input_name: input_name()?,
+            value: req_string("value")?,
+        },
+        "SetNumeric" => Action::SetNumeric {
+            input_name: input_name()?,
+            value: string_number(v.get("value")?)?,
+        },
+        "SetRandom" => Action::SetRandom {
+            input_name: input_name()?,
+            min: opt(v.get("min"), string_number)?,
+            max: opt(v.get("max"), string_number)?,
+            integer: opt(v.get("integer"), Value::as_bool)?,
+        },
+        "Multiply" => Action::Multiply {
+            input_name: input_name()?,
+            value: string_number(v.get("value")?)?,
+        },
+        "Floor" => Action::Floor {
+            input_name: input_name()?,
+        },
+        "Clamp" => Action::Clamp {
+            input_name: input_name()?,
+            min: opt(v.get("min"), string_number)?,
+            max: opt(v.get("max"), string_number)?,
+        },
+        "Fire" => Action::Fire {
+            input_name: input_name()?,
+        },
+        "Reset" => Action::Reset {
+            input_name: input_name()?,
+        },
+        "SetTheme" => Action::SetTheme {
+            value: req_string("value")?,
+        },
+        "SetFrame" => Action::SetFrame {
+            value: string_number(v.get("value")?)?,
+        },
+        "SetProgress" => Action::SetProgress {
+            value: string_number(v.get("value")?)?,
+        },
+        "FireCustomEvent" => Action::FireCustomEvent {
+            value: req_string("value")?,
+        },
+        _ => return None,
+    })
 }
 
 impl Action {

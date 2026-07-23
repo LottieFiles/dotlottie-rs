@@ -42,8 +42,6 @@ audio = ["dotlottie", "dep:rodio", "dep:ndk-context", "web-sys/HtmlAudioElement"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-serde_json = { version = "1.0", default-features = false, features = ["preserve_order"] }
-serde = { version = "1.0", features = ["derive"] }
 rustc-hash = "2.1.1"
 thiserror = "2"
 oorandom = "11"
@@ -109,11 +107,11 @@ objc2-app-kit = { version = "0.2", features = ["NSWindow", "NSView", "NSOpenGL"]
 objc2-quartz-core = { version = "0.2", features = ["CAMetalLayer", "CALayer"] }
 
 [profile.release]
+opt-level = 2
 lto = "fat"
-opt-level = 3
-debug=true
 codegen-units = 1
 panic = "abort"
+strip = "symbols"
 
 [[example]]
 name = "opengl"

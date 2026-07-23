@@ -1,13 +1,14 @@
-use serde::Deserialize;
-
+use crate::json::Value;
 use crate::{
-    state_machine::definition::{StringBool, StringNumberBool},
+    state_machine::definition::{
+        dot_string, string_bool, string_number_bool, StringBool, StringNumberBool,
+    },
     state_machine::inputs::InputManager,
     state_machine::{ELAPSED_TIME, GLOBAL_INPUT_PREFIX},
     string::{DotString, DotStringInterner},
 };
 
-#[derive(Deserialize, PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum TransitionGuardConditionType {
     GreaterThan,
     GreaterThanOrEqual,
@@ -17,6 +18,18 @@ pub enum TransitionGuardConditionType {
     NotEqual,
 }
 
+fn condition_type_from_json(v: &Value) -> Option<TransitionGuardConditionType> {
+    Some(match v.str_field("conditionType")? {
+        "GreaterThan" => TransitionGuardConditionType::GreaterThan,
+        "GreaterThanOrEqual" => TransitionGuardConditionType::GreaterThanOrEqual,
+        "LessThan" => TransitionGuardConditionType::LessThan,
+        "LessThanOrEqual" => TransitionGuardConditionType::LessThanOrEqual,
+        "Equal" => TransitionGuardConditionType::Equal,
+        "NotEqual" => TransitionGuardConditionType::NotEqual,
+        _ => return None,
+    })
+}
+
 pub trait GuardTrait {
     fn string_input_is_satisfied(&self, inputs: &InputManager) -> bool;
     fn boolean_input_is_satisfied(&self, inputs: &InputManager) -> bool;
@@ -24,9 +37,7 @@ pub trait GuardTrait {
     fn event_input_is_satisfied(&self, event: &str) -> bool;
 }
 
-#[derive(Deserialize, Debug, PartialEq, Clone)]
-#[serde(rename_all_fields = "camelCase")]
-#[serde(tag = "type")]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Guard {
     Numeric {
         input_name: DotString,
@@ -46,6 +57,29 @@ pub enum Guard {
     Event {
         input_name: DotString,
     },
+}
+
+pub(crate) fn guard_from_json(v: &Value) -> Option<Guard> {
+    let input_name = dot_string(v.get("inputName")?)?;
+    Some(match v.str_field("type")? {
+        "Numeric" => Guard::Numeric {
+            input_name,
+            condition_type: condition_type_from_json(v)?,
+            compare_to: string_number_bool(v.get("compareTo")?)?,
+        },
+        "String" => Guard::String {
+            input_name,
+            condition_type: condition_type_from_json(v)?,
+            compare_to: string_number_bool(v.get("compareTo")?)?,
+        },
+        "Boolean" => Guard::Boolean {
+            input_name,
+            condition_type: condition_type_from_json(v)?,
+            compare_to: string_bool(v.get("compareTo")?)?,
+        },
+        "Event" => Guard::Event { input_name },
+        _ => return None,
+    })
 }
 
 impl Guard {

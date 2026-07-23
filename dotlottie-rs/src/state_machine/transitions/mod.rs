@@ -1,7 +1,8 @@
 pub mod guard;
 use guard::Guard;
-use serde::Deserialize;
 
+use crate::json::{array_of, f32_array, opt, Value};
+use crate::state_machine::definition::dot_string;
 use crate::string::{DotString, DotStringInterner};
 
 pub trait TransitionTrait {
@@ -12,9 +13,7 @@ pub trait TransitionTrait {
     fn transitions_contain_event(&self) -> bool;
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all_fields = "camelCase")]
-#[serde(tag = "type")]
+#[derive(Debug, Clone)]
 pub enum Transition {
     Transition {
         to_state: DotString,
@@ -26,6 +25,21 @@ pub enum Transition {
         duration: f32,
         easing: [f32; 4],
     },
+}
+
+pub(crate) fn transition_from_json(v: &Value) -> Option<Transition> {
+    let to_state = dot_string(v.get("toState")?)?;
+    let guards = opt(v.get("guards"), |g| array_of(g, guard::guard_from_json))?;
+    Some(match v.str_field("type")? {
+        "Transition" => Transition::Transition { to_state, guards },
+        "Tweened" => Transition::Tweened {
+            to_state,
+            guards,
+            duration: v.f32_field("duration")?,
+            easing: f32_array(v.get("easing")?)?,
+        },
+        _ => return None,
+    })
 }
 
 impl Transition {

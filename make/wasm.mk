@@ -13,6 +13,8 @@ else
 endif
 
 WASM_LOCKFILE := dotlottie-rs/Cargo.lock
+WASM_RUSTFLAGS := -C target-feature=+bulk-memory
+WASM_OPT_FLAGS := --enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext --enable-mutable-globals
 
 .PHONY: wasm-setup wasm wasm-webgl wasm-webgpu wasm-all wasm-clean
 
@@ -25,7 +27,7 @@ wasm-setup:
 
 define wasm_build
 	@mkdir -p $(3)
-	CC=$(WASM_CC) CXX=$(WASM_CXX) RUSTFLAGS="$(2)" \
+	CC=$(WASM_CC) CXX=$(WASM_CXX) RUSTFLAGS="$(WASM_RUSTFLAGS) $(2)" \
 		cargo rustc \
 			--manifest-path $(WASM_MANIFEST) \
 			--crate-type cdylib \
@@ -43,7 +45,7 @@ define wasm_build
 		echo "warning: node not found, skipping undefined-symbol check for $(3)"; \
 	fi
 	@if command -v wasm-opt >/dev/null 2>&1; then \
-		wasm-opt $(3)/dotlottie_rs_bg.wasm -o $(3)/dotlottie_rs_bg.wasm -O3; \
+		wasm-opt $(3)/dotlottie_rs_bg.wasm -o $(3)/dotlottie_rs_bg.wasm -O3 $(WASM_OPT_FLAGS); \
 	fi
 endef
 

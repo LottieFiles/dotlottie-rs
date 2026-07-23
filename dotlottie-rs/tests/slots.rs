@@ -171,12 +171,8 @@ mod tests {
             .unwrap();
         let json = player.get_slot_str("ball_position");
         assert!(
-            json.contains("50.0"),
-            "vector slot JSON should contain x value, got: {json}"
-        );
-        assert!(
-            json.contains("75.0"),
-            "vector slot JSON should contain y value, got: {json}"
+            json.contains("\"k\":[50,75]"),
+            "vector slot JSON should contain the set value, got: {json}"
         );
     }
 

@@ -3,6 +3,7 @@ mod audio;
 #[cfg(feature = "dotlottie")]
 pub mod dotlottie;
 mod event_queue;
+pub(crate) mod json;
 mod layout;
 pub mod player;
 mod player_state;

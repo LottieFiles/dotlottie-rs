@@ -1,5 +1,5 @@
-use serde::Deserialize;
-
+use crate::json::{array_of, opt, Value};
+use crate::state_machine::definition::dot_string;
 use crate::string::{DotString, DotStringInterner};
 
 use super::actions::Action;
@@ -11,9 +11,7 @@ pub trait InteractionTrait {
     fn type_name(&self) -> &'static str;
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all_fields = "camelCase")]
-#[serde(tag = "type")]
+#[derive(Debug)]
 pub enum Interaction {
     PointerUp {
         layer_name: Option<DotString>,
@@ -46,6 +44,50 @@ pub enum Interaction {
         state_name: DotString,
         actions: Vec<Action>,
     },
+}
+
+pub(crate) fn interaction_from_json(v: &Value) -> Option<Interaction> {
+    let actions = || -> Option<Vec<Action>> {
+        array_of(
+            v.get("actions")?,
+            crate::state_machine::actions::action_from_json,
+        )
+    };
+    let layer_name = || opt(v.get("layerName"), dot_string);
+    Some(match v.str_field("type")? {
+        "PointerUp" => Interaction::PointerUp {
+            layer_name: layer_name()?,
+            actions: actions()?,
+        },
+        "PointerDown" => Interaction::PointerDown {
+            layer_name: layer_name()?,
+            actions: actions()?,
+        },
+        "PointerEnter" => Interaction::PointerEnter {
+            layer_name: layer_name()?,
+            actions: actions()?,
+        },
+        "PointerMove" => Interaction::PointerMove {
+            actions: actions()?,
+        },
+        "PointerExit" => Interaction::PointerExit {
+            layer_name: layer_name()?,
+            actions: actions()?,
+        },
+        "Click" => Interaction::Click {
+            layer_name: layer_name()?,
+            actions: actions()?,
+        },
+        "OnComplete" => Interaction::OnComplete {
+            state_name: dot_string(v.get("stateName")?)?,
+            actions: actions()?,
+        },
+        "OnLoopComplete" => Interaction::OnLoopComplete {
+            state_name: dot_string(v.get("stateName")?)?,
+            actions: actions()?,
+        },
+        _ => return None,
+    })
 }
 
 impl InteractionTrait for Interaction {

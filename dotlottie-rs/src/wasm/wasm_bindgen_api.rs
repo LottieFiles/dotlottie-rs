@@ -951,7 +951,7 @@ impl DotLottiePlayerWasm {
         #[cfg(feature = "dotlottie")]
         {
             match self.player.manifest() {
-                Some(m) => serde_json::to_string(m).unwrap_or_default(),
+                Some(m) => m.to_json(),
                 None => String::new(),
             }
         }

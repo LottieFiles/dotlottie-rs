@@ -1,6 +1,10 @@
-use serde::{Deserialize, Serialize};
+use crate::json::{
+    array_of, f32_array, f32_vec, opt, write_f32, write_seq, write_str, ObjWriter, Value,
+};
+use crate::renderer::slots::write_f32_slice;
+use std::fmt::Write as _;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum TextJustify {
     Left,
     Right,
@@ -40,7 +44,7 @@ impl TextJustify {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum TextCaps {
     Regular,
     AllCaps,
@@ -68,35 +72,21 @@ impl TextCaps {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct TextDocument {
-    #[serde(rename = "t")]
     pub text: String,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "f")]
     pub font_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "s")]
     pub font_size: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "fc")]
     pub fill_color: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "sc")]
     pub stroke_color: Option<Vec<f32>>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "sw")]
     pub stroke_width: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "of")]
     pub stroke_over_fill: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "lh")]
     pub line_height: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "tr")]
     pub tracking: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "j")]
     pub justify: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "ca")]
     pub text_caps: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "ls")]
     pub baseline_shift: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "sz")]
     pub wrap_size: Option<[f32; 2]>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "ps")]
     pub wrap_position: Option<[f32; 2]>,
 }
 
@@ -186,19 +176,15 @@ impl TextDocument {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct TextKeyframe {
-    #[serde(rename = "t")]
     pub frame: u32,
-    #[serde(rename = "s")]
     pub text_document: TextDocument,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct TextSlot {
-    #[serde(rename = "k")]
     pub keyframes: Vec<TextKeyframe>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "x")]
     pub expression: Option<String>,
 }
 
@@ -234,4 +220,94 @@ impl TextSlot {
         self.expression = Some(expr);
         self
     }
+}
+
+pub(crate) fn text_document_from_json(v: &Value) -> Option<TextDocument> {
+    Some(TextDocument {
+        text: v.str_field("t")?.to_owned(),
+        font_name: v.opt_str_field("f")?,
+        font_size: opt(v.get("s"), Value::as_f32)?,
+        fill_color: opt(v.get("fc"), f32_vec)?,
+        stroke_color: opt(v.get("sc"), f32_vec)?,
+        stroke_width: opt(v.get("sw"), Value::as_f32)?,
+        stroke_over_fill: opt(v.get("of"), Value::as_bool)?,
+        line_height: opt(v.get("lh"), Value::as_f32)?,
+        tracking: opt(v.get("tr"), Value::as_f32)?,
+        justify: opt(v.get("j"), Value::as_u8)?,
+        text_caps: opt(v.get("ca"), Value::as_u8)?,
+        baseline_shift: opt(v.get("ls"), Value::as_f32)?,
+        wrap_size: opt(v.get("sz"), f32_array::<2>)?,
+        wrap_position: opt(v.get("ps"), f32_array::<2>)?,
+    })
+}
+
+fn write_text_document(d: &TextDocument, out: &mut String) {
+    let mut o = ObjWriter::new(out);
+    write_str(&d.text, o.field("t"));
+    if let Some(f) = &d.font_name {
+        write_str(f, o.field("f"));
+    }
+    if let Some(s) = d.font_size {
+        write_f32(s, o.field("s"));
+    }
+    if let Some(fc) = &d.fill_color {
+        write_f32_slice(fc, o.field("fc"));
+    }
+    if let Some(sc) = &d.stroke_color {
+        write_f32_slice(sc, o.field("sc"));
+    }
+    if let Some(sw) = d.stroke_width {
+        write_f32(sw, o.field("sw"));
+    }
+    if let Some(of) = d.stroke_over_fill {
+        o.field("of").push_str(if of { "true" } else { "false" });
+    }
+    if let Some(lh) = d.line_height {
+        write_f32(lh, o.field("lh"));
+    }
+    if let Some(tr) = d.tracking {
+        write_f32(tr, o.field("tr"));
+    }
+    if let Some(j) = d.justify {
+        let _ = write!(o.field("j"), "{j}");
+    }
+    if let Some(ca) = d.text_caps {
+        let _ = write!(o.field("ca"), "{ca}");
+    }
+    if let Some(ls) = d.baseline_shift {
+        write_f32(ls, o.field("ls"));
+    }
+    if let Some(sz) = d.wrap_size {
+        write_f32_slice(&sz, o.field("sz"));
+    }
+    if let Some(ps) = d.wrap_position {
+        write_f32_slice(&ps, o.field("ps"));
+    }
+    o.finish();
+}
+
+pub(crate) fn text_slot_from_json(v: &Value) -> Option<TextSlot> {
+    Some(TextSlot {
+        keyframes: array_of(v.get("k")?, |kf| {
+            Some(TextKeyframe {
+                frame: kf.u32_field("t")?,
+                text_document: text_document_from_json(kf.get("s")?)?,
+            })
+        })?,
+        expression: v.opt_str_field("x")?,
+    })
+}
+
+pub(crate) fn write_text_slot(t: &TextSlot, out: &mut String) {
+    let mut o = ObjWriter::new(out);
+    write_seq(o.field("k"), &t.keyframes, |kf, out| {
+        let mut kfo = ObjWriter::new(out);
+        let _ = write!(kfo.field("t"), "{}", kf.frame);
+        write_text_document(&kf.text_document, kfo.field("s"));
+        kfo.finish();
+    });
+    if let Some(x) = &t.expression {
+        write_str(x, o.field("x"));
+    }
+    o.finish();
 }

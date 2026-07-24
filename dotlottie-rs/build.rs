@@ -199,7 +199,7 @@ mod thorvg {
         files
     }
 
-    /// Track ThorVG changes                                                
+    /// Track ThorVG changes
     fn emit_rerun_directives(dirs: &[&str], extensions: &[&str]) {
         for dir in dirs {
             println!("cargo:rerun-if-changed={dir}");
@@ -556,6 +556,11 @@ namespace tvg
 
         // --- cc::Build setup ---
         let mut cc_build = cc::Build::new();
+
+        // Compile out assert() in optimized builds (matches meson -Db_ndebug=true).
+        if env::var("OPT_LEVEL").as_deref() != Ok("0") {
+            cc_build.define("NDEBUG", None);
+        }
         // Only override compiler when CXX is explicitly set or for non-MSVC targets.
         // For MSVC targets, let cc crate auto-detect cl.exe.
         if let Some(ref comp) = compiler {

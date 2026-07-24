@@ -32,7 +32,7 @@ tvg-otf = []
 tvg-threads = []
 tvg-simd = []
 tracking_allocator = []
-dotlottie = ["dep:zip"]
+dotlottie = ["dep:miniz_oxide"]
 state-machines = ["dotlottie"]
 theming = ["dotlottie"]
 wasm-bindgen-api = ["dep:console_error_panic_hook"] # OOP JS wrapper via wasm-bindgen
@@ -45,7 +45,7 @@ audio = ["dotlottie", "dep:rodio", "dep:ndk-context", "web-sys/HtmlAudioElement"
 rustc-hash = "2.1.1"
 thiserror = "2"
 oorandom = "11"
-zip = { version = "2.4.2", default-features = false, features = ["deflate"], optional = true }
+miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"], optional = true }
 bitflags = { version = "2.6", optional = true }
 
 [target.'cfg(target_os = "android")'.dependencies]

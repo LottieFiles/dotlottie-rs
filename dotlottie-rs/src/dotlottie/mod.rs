@@ -1,19 +1,22 @@
+mod archive;
 mod errors;
 mod manifest;
 
 pub use errors::*;
 pub use manifest::*;
 
+use archive::{Archive, ArchiveError};
+
 use crate::json::Value;
 #[cfg(feature = "theming")]
 use crate::theme::Theme;
 #[cfg(feature = "audio")]
 use rustc_hash::FxHashMap;
+use std::borrow::Cow;
+#[cfg(feature = "audio")]
 use std::cell::RefCell;
-use std::io::{self, Read};
 #[cfg(feature = "audio")]
 use std::sync::Arc;
-use zip::ZipArchive;
 
 const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -29,7 +32,7 @@ pub struct DotLottieManager {
     active_animation_id: Box<str>,
     manifest: Manifest,
     version: u8,
-    archive: RefCell<ZipArchive<io::Cursor<Vec<u8>>>>,
+    archive: Archive,
     /// Audio bytes keyed by packaged path (e.g. `u/clip.mp3`).
     #[cfg(feature = "audio")]
     audio_sources: RefCell<FxHashMap<String, Arc<[u8]>>>,
@@ -37,10 +40,9 @@ pub struct DotLottieManager {
 
 impl DotLottieManager {
     pub fn new(dotlottie: &[u8]) -> Result<Self, Error> {
-        let mut archive = ZipArchive::new(io::Cursor::new(dotlottie.to_vec()))
-            .map_err(|_| Error::ArchiveOpenError)?;
+        let archive = Archive::new(dotlottie.to_vec()).map_err(|_| Error::ArchiveOpenError)?;
 
-        let manifest = Self::read_zip_file(&mut archive, "manifest.json")?;
+        let manifest = Self::read_file(&archive, "manifest.json")?;
         let manifest_str = std::str::from_utf8(&manifest).map_err(|_| Error::ReadContentError)?;
         let manifest = Manifest::from_json(manifest_str).ok_or(Error::ReadContentError)?;
 
@@ -63,7 +65,7 @@ impl DotLottieManager {
             active_animation_id: id,
             manifest,
             version,
-            archive: RefCell::new(archive),
+            archive,
             #[cfg(feature = "audio")]
             audio_sources: RefCell::new(FxHashMap::default()),
         })
@@ -75,8 +77,6 @@ impl DotLottieManager {
     }
 
     pub fn get_animation(&self, animation_id: &str) -> Result<String, Error> {
-        let mut archive = self.archive.borrow_mut();
-
         let (json_path, lot_path) = if self.version == 2 {
             (
                 format!("a/{animation_id}.json"),
@@ -89,8 +89,8 @@ impl DotLottieManager {
             )
         };
 
-        let file_data = Self::read_zip_file(&mut archive, &json_path)
-            .or_else(|_| Self::read_zip_file(&mut archive, &lot_path))?;
+        let file_data = Self::read_file(&self.archive, &json_path)
+            .or_else(|_| Self::read_file(&self.archive, &lot_path))?;
 
         let animation_data =
             std::str::from_utf8(&file_data).map_err(|_| Error::ReadContentError)?;
@@ -102,10 +102,10 @@ impl DotLottieManager {
         let mut audio_sources: FxHashMap<String, Arc<[u8]>> = FxHashMap::default();
 
         if let Some(Value::Array(assets)) = lottie_animation.get_mut("assets") {
-            Self::embed_images(&mut archive, assets, self.version);
+            Self::embed_images(&self.archive, assets, self.version);
             #[cfg(feature = "audio")]
             {
-                audio_sources = Self::collect_audio(&mut archive, assets, self.version);
+                audio_sources = Self::collect_audio(&self.archive, assets, self.version);
             }
         }
 
@@ -114,7 +114,7 @@ impl DotLottieManager {
                 .get_mut("fonts")
                 .and_then(|fonts| fonts.get_mut("list"))
             {
-                Self::embed_fonts(&mut archive, font_list);
+                Self::embed_fonts(&self.archive, font_list);
             }
         }
 
@@ -126,11 +126,7 @@ impl DotLottieManager {
         Ok(lottie_animation.to_json())
     }
 
-    fn embed_images<R: Read + io::Seek>(
-        archive: &mut ZipArchive<R>,
-        assets: &mut [Value],
-        version: u8,
-    ) {
+    fn embed_images(archive: &Archive, assets: &mut [Value], version: u8) {
         let image_prefix = if version == 2 { "i/" } else { "images/" };
         let mut asset_path = String::with_capacity(128);
 
@@ -148,21 +144,18 @@ impl DotLottieManager {
             asset_path.push_str(image_prefix);
             asset_path.push_str(p_str.trim_matches('"'));
 
-            if let Ok(mut result) = archive.by_name(&asset_path) {
-                let mut content = Vec::with_capacity(result.size() as usize);
-                if result.read_to_end(&mut content).is_ok() {
-                    let image_ext = p_str
-                        .rfind('.')
-                        .map(|i| &p_str[i + 1..])
-                        .unwrap_or(DEFAULT_EXT);
-                    let data_url = format!(
-                        "{DATA_IMAGE_PREFIX}{image_ext}{BASE64_PREFIX}{}",
-                        Self::encode_base64(&content)
-                    );
-                    asset.set("u", Value::String("".into()));
-                    asset.set("p", Value::String(data_url.into()));
-                    asset.set("e", Value::Number(1.0));
-                }
+            if let Ok(content) = archive.by_name(&asset_path) {
+                let image_ext = p_str
+                    .rfind('.')
+                    .map(|i| &p_str[i + 1..])
+                    .unwrap_or(DEFAULT_EXT);
+                let data_url = format!(
+                    "{DATA_IMAGE_PREFIX}{image_ext}{BASE64_PREFIX}{}",
+                    Self::encode_base64(&content)
+                );
+                asset.set("u", Value::String("".into()));
+                asset.set("p", Value::String(data_url.into()));
+                asset.set("e", Value::Number(1.0));
             }
         }
     }
@@ -171,8 +164,8 @@ impl DotLottieManager {
     /// (e.g. `u/clip.mp3`). Audio is not re-embedded in the JSON since ThorVG
     /// never renders it.
     #[cfg(feature = "audio")]
-    fn collect_audio<R: Read + io::Seek>(
-        archive: &mut ZipArchive<R>,
+    fn collect_audio(
+        archive: &Archive,
         assets: &[Value],
         version: u8,
     ) -> FxHashMap<String, Arc<[u8]>> {
@@ -200,18 +193,15 @@ impl DotLottieManager {
             asset_path.push_str(audio_prefix);
             asset_path.push_str(p_str);
 
-            if let Ok(mut result) = archive.by_name(&asset_path) {
-                let mut content = Vec::with_capacity(result.size() as usize);
-                if result.read_to_end(&mut content).is_ok() {
-                    out.insert(asset_path.clone(), Arc::from(content));
-                }
+            if let Ok(content) = archive.by_name(&asset_path) {
+                out.insert(asset_path.clone(), Arc::from(content.into_owned()));
             }
         }
 
         out
     }
 
-    fn embed_fonts<R: Read + io::Seek>(archive: &mut ZipArchive<R>, font_list: &mut [Value]) {
+    fn embed_fonts(archive: &Archive, font_list: &mut [Value]) {
         let mut font_path = String::with_capacity(128);
 
         for font in font_list.iter_mut() {
@@ -227,19 +217,16 @@ impl DotLottieManager {
             font_path.push_str("f/");
             font_path.push_str(path_without_prefix);
 
-            if let Ok(mut result) = archive.by_name(&font_path) {
-                let mut content = Vec::with_capacity(result.size() as usize);
-                if result.read_to_end(&mut content).is_ok() {
-                    let font_ext = path_without_prefix
-                        .rfind('.')
-                        .map(|i| &path_without_prefix[i + 1..])
-                        .unwrap_or(DEFAULT_FONT_EXT);
-                    let data_url = format!(
-                        "{DATA_FONT_PREFIX}{font_ext}{BASE64_PREFIX}{}",
-                        Self::encode_base64(&content)
-                    );
-                    font.set("fPath", Value::String(data_url.into()));
-                }
+            if let Ok(content) = archive.by_name(&font_path) {
+                let font_ext = path_without_prefix
+                    .rfind('.')
+                    .map(|i| &path_without_prefix[i + 1..])
+                    .unwrap_or(DEFAULT_FONT_EXT);
+                let data_url = format!(
+                    "{DATA_FONT_PREFIX}{font_ext}{BASE64_PREFIX}{}",
+                    Self::encode_base64(&content)
+                );
+                font.set("fPath", Value::String(data_url.into()));
             }
         }
     }
@@ -247,10 +234,9 @@ impl DotLottieManager {
     #[inline]
     #[cfg(feature = "state-machines")]
     pub fn get_state_machine(&self, state_machine_id: &str) -> Result<String, Error> {
-        let mut archive = self.archive.borrow_mut();
         let path = format!("s/{state_machine_id}.json");
-        let content = Self::read_zip_file(&mut archive, &path)?;
-        String::from_utf8(content).map_err(|_| Error::InvalidUtf8Error)
+        let content = Self::read_file(&self.archive, &path)?;
+        String::from_utf8(content.into_owned()).map_err(|_| Error::InvalidUtf8Error)
     }
 
     #[inline]
@@ -272,11 +258,7 @@ impl DotLottieManager {
         }
 
         let prefix = if self.version == 2 { "i/" } else { "images/" };
-        let mut archive = self.archive.borrow_mut();
-        let mut entry = archive.by_name(&format!("{prefix}{name}")).ok()?;
-
-        let mut content = Vec::with_capacity(entry.size() as usize);
-        entry.read_to_end(&mut content).ok()?;
+        let content = self.archive.by_name(&format!("{prefix}{name}")).ok()?;
 
         let ext = name
             .rfind('.')
@@ -292,9 +274,8 @@ impl DotLottieManager {
     #[inline]
     #[cfg(feature = "theming")]
     pub fn get_theme(&self, theme_id: &str) -> Result<Theme, Error> {
-        let mut archive = self.archive.borrow_mut();
         let path = format!("t/{theme_id}.json");
-        let content = Self::read_zip_file(&mut archive, &path)?;
+        let content = Self::read_file(&self.archive, &path)?;
         let theme_str = std::str::from_utf8(&content).map_err(|_| Error::InvalidUtf8Error)?;
         theme_str
             .parse::<Theme>()
@@ -344,17 +325,11 @@ impl DotLottieManager {
     }
 
     #[inline]
-    fn read_zip_file<R: Read + io::Seek>(
-        archive: &mut ZipArchive<R>,
-        path: &str,
-    ) -> Result<Vec<u8>, Error> {
-        let mut file = archive.by_name(path).map_err(|_| Error::FileFindError)?;
-
-        let mut buf = Vec::with_capacity(file.size() as usize);
-        file.read_to_end(&mut buf)
-            .map_err(|_| Error::ReadContentError)?;
-
-        Ok(buf)
+    fn read_file<'a>(archive: &'a Archive, path: &str) -> Result<Cow<'a, [u8]>, Error> {
+        archive.by_name(path).map_err(|e| match e {
+            ArchiveError::NotFound => Error::FileFindError,
+            _ => Error::ReadContentError,
+        })
     }
 
     #[cfg(feature = "audio")]
@@ -377,18 +352,22 @@ mod tests {
             "/assets/animations/dotlottie/v1/emojis.lottie"
         );
 
-        if let Ok(mut file) = File::open(&file_path) {
-            let mut buffer = Vec::new();
-            if file.read_to_end(&mut buffer).is_ok() {
-                let manager = DotLottieManager::new(&buffer);
-                assert!(manager.is_ok());
+        let mut buffer = Vec::new();
+        File::open(&file_path)
+            .expect("fixture must exist")
+            .read_to_end(&mut buffer)
+            .expect("fixture must be readable");
 
-                if let Ok(mgr) = manager {
-                    assert!(!mgr.active_animation_id().is_empty());
-                    assert!(!mgr.manifest().animations.is_empty());
-                }
-            }
-        }
+        let manager = DotLottieManager::new(&buffer).expect("manager creation");
+        assert!(!manager.active_animation_id().is_empty());
+        assert!(!manager.manifest().animations.is_empty());
+    }
+
+    #[test]
+    #[cfg(not(feature = "audio"))]
+    fn manager_is_sync() {
+        fn assert_sync<T: Sync>() {}
+        assert_sync::<DotLottieManager>();
     }
 
     #[test]

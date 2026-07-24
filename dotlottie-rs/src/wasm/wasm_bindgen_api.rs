@@ -107,6 +107,7 @@ impl crate::WgpuTarget for WgpuSurfacePtr {
 // ─── Exported enums ───────────────────────────────────────────────────────────
 
 /// Pixel format of the software render target; `S` variants are straight alpha.
+#[cfg(not(any(feature = "webgl", feature = "webgpu")))]
 #[wasm_bindgen]
 #[derive(Clone, Copy, PartialEq)]
 pub enum ColorSpace {
@@ -116,6 +117,7 @@ pub enum ColorSpace {
     ARGB8888S = 3,
 }
 
+#[cfg(not(any(feature = "webgl", feature = "webgpu")))]
 impl From<ColorSpace> for CoreColorSpace {
     fn from(cs: ColorSpace) -> Self {
         match cs {

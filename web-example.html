@@ -361,6 +361,7 @@
 
       let player         = null;
       let Status = null;
+      let ColorSpace = null; // sw-only enum exported by the wasm module
       let raf            = null;
       let activeRenderer = 'sw';
       let scrubbing      = false;  
@@ -506,6 +507,7 @@
             await mod.default({ module_or_path: "./release/wasm/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
             Status = mod.Status;
+            ColorSpace = mod.ColorSpace;
             // Grab the 2D context after the canvas is fresh.
             ctx2d = canvas.getContext('2d');
 
@@ -542,7 +544,10 @@
             newPlayer.set_webgpu_surface(gpuCtx);
           }
 
-          const setupOk = rendererType === 'sw'    ? newPlayer.setup_sw_target(W, H)
+          // ABGR8888S = straight alpha, the layout putImageData expects.
+          // Use ColorSpace.ABGR8888 (premultiplied) when blitting via a
+          // GPU texture instead — it skips the per-frame unpremultiply pass.
+          const setupOk = rendererType === 'sw'    ? newPlayer.setup_sw_target(W, H, ColorSpace.ABGR8888S)
                         : rendererType === 'webgl' ? newPlayer.setup_gl_target(W, H)
                         :                            newPlayer.setup_wg_target(W, H);
           if (!setupOk) {
@@ -657,7 +662,7 @@
           canvas.style.width  = cssW + 'px';
           canvas.style.height = cssH + 'px';
 
-          if (activeRenderer === 'sw')         player.setup_sw_target(pixW, pixH);
+          if (activeRenderer === 'sw')         player.setup_sw_target(pixW, pixH, ColorSpace.ABGR8888S);
           else if (activeRenderer === 'webgl') player.setup_gl_target(pixW, pixH);
           else                                 player.setup_wg_target(pixW, pixH);
 

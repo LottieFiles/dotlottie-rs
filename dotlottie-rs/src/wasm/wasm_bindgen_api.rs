@@ -6,7 +6,7 @@ use js_sys::{Array, Float32Array, Object};
 use wasm_bindgen::prelude::*;
 
 #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
-use crate::ColorSpace;
+use crate::ColorSpace as CoreColorSpace;
 use crate::{Fit, Layout, Mode as PlayerMode, Player, Rgba, Segment};
 
 // ─── Renderer mode ───────────────────────────────────────────────────────────
@@ -105,6 +105,29 @@ impl crate::WgpuTarget for WgpuSurfacePtr {
 }
 
 // ─── Exported enums ───────────────────────────────────────────────────────────
+
+/// Pixel format of the software render target; `S` variants are straight alpha.
+#[cfg(not(any(feature = "webgl", feature = "webgpu")))]
+#[wasm_bindgen]
+#[derive(Clone, Copy, PartialEq)]
+pub enum ColorSpace {
+    ABGR8888 = 0,
+    ABGR8888S = 1,
+    ARGB8888 = 2,
+    ARGB8888S = 3,
+}
+
+#[cfg(not(any(feature = "webgl", feature = "webgpu")))]
+impl From<ColorSpace> for CoreColorSpace {
+    fn from(cs: ColorSpace) -> Self {
+        match cs {
+            ColorSpace::ABGR8888 => CoreColorSpace::ABGR8888,
+            ColorSpace::ABGR8888S => CoreColorSpace::ABGR8888S,
+            ColorSpace::ARGB8888 => CoreColorSpace::ARGB8888,
+            ColorSpace::ARGB8888S => CoreColorSpace::ARGB8888S,
+        }
+    }
+}
 
 /// Playback direction / bounce mode.
 #[wasm_bindgen]
@@ -365,16 +388,24 @@ impl DotLottiePlayerWasm {
     }
 
     /// Set up (or resize) the software rendering target.
+    ///
+    /// `color_space` defaults to `ColorSpace::ABGR8888S`.
     #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
-    pub fn setup_sw_target(&mut self, width: u32, height: u32) -> bool {
+    pub fn setup_sw_target(
+        &mut self,
+        width: u32,
+        height: u32,
+        color_space: Option<ColorSpace>,
+    ) -> bool {
         self.width = width;
         self.height = height;
         let required = (width * height) as usize;
         if self.sw_buffer.len() != required {
             self.sw_buffer.resize(required, 0);
         }
+        let cs = color_space.unwrap_or(ColorSpace::ABGR8888S);
         self.player
-            .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888S)
+            .set_sw_target(&mut self.sw_buffer, width, height, cs.into())
             .is_ok()
     }
 

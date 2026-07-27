@@ -12,8 +12,8 @@ mod thorvg;
 
 pub(crate) use backend::Point;
 pub use backend::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Renderer, Rgba,
-    Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, AssetResolver, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker,
+    Renderer, Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "audio")]
 pub use backend::{AudioEvent, AudioResolver, AudioSource};
@@ -49,6 +49,29 @@ pub enum Error {
 #[inline]
 fn into_lottie<R: Renderer>(_err: R::Error) -> Error {
     Error::RendererError
+}
+
+/// (fName, fPath) pairs from fonts.list; embedded data: fonts are excluded.
+fn extract_fonts_from_animation(animation_json: &str) -> Vec<(String, String)> {
+    let Ok(json) = crate::json::Value::parse(animation_json) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    if let Some(crate::json::Value::Array(list)) =
+        json.get("fonts").and_then(|fonts| fonts.get("list"))
+    {
+        for font in list {
+            let (Some(name), Some(path)) = (font.str_field("fName"), font.str_field("fPath"))
+            else {
+                continue;
+            };
+            if path.starts_with("data:") {
+                continue;
+            }
+            out.push((name.to_owned(), path.to_owned()));
+        }
+    }
+    out
 }
 
 pub trait LottieRenderer {
@@ -90,7 +113,11 @@ pub trait LottieRenderer {
         target_type: WgpuTargetType,
     ) -> Result<(), Error>;
 
-    fn load_data(&mut self, data: &CStr) -> Result<(), Error>;
+    fn load_data(
+        &mut self,
+        data: &CStr,
+        asset_resolver: Option<AssetResolver>,
+    ) -> Result<(), Error>;
 
     /// Register a callback for audio layer playback changes, or `None` to clear.
     #[cfg(feature = "audio")]
@@ -277,8 +304,18 @@ impl<R: Renderer> LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn load_animation(&mut self, data: &CStr) -> Result<R::Animation, Error> {
+    fn load_animation(
+        &mut self,
+        data: &CStr,
+        resolver_install: Option<(AssetResolver, Vec<(String, String)>)>,
+    ) -> Result<R::Animation, Error> {
         let mut animation = R::Animation::default();
+
+        if let Some((resolver, fonts)) = resolver_install {
+            animation
+                .install_asset_resolver(resolver, fonts)
+                .map_err(into_lottie::<R>)?;
+        }
 
         let mimetype = c"lottie+json";
         animation
@@ -507,18 +544,30 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
-    fn load_data(&mut self, data: &CStr) -> Result<(), Error> {
+    fn load_data(
+        &mut self,
+        data: &CStr,
+        asset_resolver: Option<AssetResolver>,
+    ) -> Result<(), Error> {
         self.clear()?;
 
         // Extract default slot values BEFORE passing to ThorVG, because
         // ThorVG's load_data with copy=false may parse the JSON in-place
         // and mutate the buffer (nulling out string terminators).
-        let default_slots = data
-            .to_str()
+        let json_str = data.to_str().ok();
+        let default_slots = json_str
             .map(slots::extract_slots_from_animation)
             .unwrap_or_default();
+        let resolver_install = asset_resolver.map(|resolver| {
+            (
+                resolver,
+                json_str
+                    .map(extract_fonts_from_animation)
+                    .unwrap_or_default(),
+            )
+        });
 
-        let animation = self.load_animation(data)?;
+        let animation = self.load_animation(data, resolver_install)?;
 
         let background_shape = if !self.background.is_transparent() {
             Some(self.create_background_shape()?)

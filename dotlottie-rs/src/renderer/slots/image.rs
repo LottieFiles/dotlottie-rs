@@ -83,12 +83,6 @@ impl ImageSlot {
     pub fn has_dimensions(&self) -> bool {
         matches!((self.width, self.height), (Some(w), Some(h)) if w > 0 && h > 0)
     }
-
-    pub fn inline(&mut self, data_url: String) {
-        self.directory = None;
-        self.path = Some(data_url);
-        self.embed = Some(1);
-    }
 }
 
 pub(crate) fn image_slot_from_json(v: &Value) -> Option<ImageSlot> {
@@ -155,19 +149,6 @@ mod tests {
 
             assert_eq!(slot.file_name(), Some("logo.png"), "src = {src}");
         }
-    }
-
-    #[test]
-    fn inline_replaces_a_package_reference_with_embedded_bytes() {
-        let mut slot = ImageSlot::from_src("/i/logo.png".to_string());
-        assert_eq!(slot.file_name(), Some("logo.png"));
-
-        slot.inline("data:image/png;base64,AAAA".to_string());
-
-        assert!(slot.is_embedded());
-        assert_eq!(slot.directory, None);
-        assert_eq!(slot.file_name(), None);
-        assert_eq!(slot.path.as_deref(), Some("data:image/png;base64,AAAA"));
     }
 
     #[test]

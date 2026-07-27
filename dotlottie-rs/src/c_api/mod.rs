@@ -244,6 +244,41 @@ pub unsafe extern "C" fn dotlottie_load_dotlottie_data(
     }
 }
 
+/// Set a resolver for assets outside the dotLottie container (remote URLs,
+/// external paths). Called synchronously when ThorVG first needs the asset;
+/// takes effect on the next load. Pass a NULL `resolver` to clear. Pass a
+/// `finalizer` to free the resolver's buffer after it has been copied, or NULL
+/// if the buffer is static.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_asset_resolver(
+    ptr: *mut Player,
+    resolver: DotLottieAssetResolver,
+    finalizer: DotLottieAssetResolverFinalizer,
+    user_data: *mut std::ffi::c_void,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        let Some(resolver) = resolver else {
+            dotlottie_player.clear_asset_resolver();
+            return DotLottieResult::Success;
+        };
+        dotlottie_player.set_asset_resolver(move |src: &str| {
+            let csrc = std::ffi::CString::new(src).ok()?;
+            let mut data: *const u8 = std::ptr::null();
+            let mut size: usize = 0;
+            let ok = unsafe { resolver(csrc.as_ptr(), &mut data, &mut size, user_data) };
+            if !ok || data.is_null() || size == 0 {
+                return None;
+            }
+            let bytes = unsafe { slice::from_raw_parts(data, size) }.to_vec();
+            if let Some(finalizer) = finalizer {
+                unsafe { finalizer(data, size, user_data) };
+            }
+            Some(bytes)
+        });
+        DotLottieResult::Success
+    })
+}
+
 /// Get the manifest as a JSON string.
 ///
 /// # Parameters
@@ -2681,4 +2716,79 @@ pub unsafe extern "C" fn dotlottie_init_android(
     ctx: *mut std::ffi::c_void,
 ) {
     ndk_context::initialize_android_context(vm, ctx);
+}
+
+#[cfg(test)]
+#[cfg(feature = "tvg")]
+mod asset_resolver_tests {
+    use super::*;
+    use std::ffi::{c_void, CString};
+
+    static RED_PNG: &[u8] = include_bytes!("../../assets/images/red.png");
+    const EXTERNAL_ASSETS_JSON: &str =
+        include_str!("../../assets/animations/lottie/external_assets.json");
+
+    unsafe extern "C" fn resolver(
+        _src: *const c_char,
+        out_data: *mut *const u8,
+        out_size: *mut usize,
+        user_data: *mut c_void,
+    ) -> bool {
+        *(user_data as *mut u32) += 1;
+        *out_data = RED_PNG.as_ptr();
+        *out_size = RED_PNG.len();
+        true
+    }
+
+    unsafe extern "C" fn finalizer(_data: *const u8, _size: usize, user_data: *mut c_void) {
+        *(user_data as *mut u32) += 100;
+    }
+
+    #[test]
+    fn c_asset_resolver_serves_bytes_and_finalizes() {
+        unsafe {
+            let player = dotlottie_new_player(0);
+            let mut buffer = vec![0u32; 128 * 128];
+            assert_eq!(
+                dotlottie_set_sw_target(
+                    player,
+                    buffer.as_mut_ptr(),
+                    128,
+                    128,
+                    ColorSpace::ABGR8888
+                ),
+                DotLottieResult::Success
+            );
+
+            let mut calls: u32 = 0;
+            assert_eq!(
+                dotlottie_set_asset_resolver(
+                    player,
+                    Some(resolver),
+                    Some(finalizer),
+                    &mut calls as *mut u32 as *mut c_void,
+                ),
+                DotLottieResult::Success
+            );
+
+            let data = CString::new(EXTERNAL_ASSETS_JSON).unwrap();
+            assert_eq!(
+                dotlottie_load_animation_data(player, data.as_ptr()),
+                DotLottieResult::Success
+            );
+            let _ = dotlottie_set_frame(player, 0.0);
+            let _ = dotlottie_render(player);
+
+            // both image assets served, each followed by one finalizer call
+            assert_eq!(calls, 2 + 2 * 100);
+            assert!(buffer.iter().any(|&px| px != 0));
+
+            // NULL resolver clears
+            assert_eq!(
+                dotlottie_set_asset_resolver(player, None, None, std::ptr::null_mut()),
+                DotLottieResult::Success
+            );
+            assert_eq!(dotlottie_destroy(player), DotLottieResult::Success);
+        }
+    }
 }

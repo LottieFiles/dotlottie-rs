@@ -108,6 +108,22 @@ impl FromStr for InteractionType {
     }
 }
 
+/// Loads bytes for an asset `src` the player cannot resolve itself.
+/// Return `true` with `*out_data`/`*out_size` set to supply the asset,
+/// `false` to skip it. The buffer is copied before the finalizer runs.
+pub type DotLottieAssetResolver = Option<
+    unsafe extern "C" fn(
+        src: *const c_char,
+        out_data: *mut *const u8,
+        out_size: *mut usize,
+        user_data: *mut std::ffi::c_void,
+    ) -> bool,
+>;
+
+/// Called after the resolver's buffer has been copied, so the caller can free it.
+pub type DotLottieAssetResolverFinalizer =
+    Option<unsafe extern "C" fn(data: *const u8, size: usize, user_data: *mut std::ffi::c_void)>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 pub enum DotLottieWgpuTargetType {

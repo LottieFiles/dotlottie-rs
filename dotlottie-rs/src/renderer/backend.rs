@@ -256,10 +256,22 @@ pub struct AudioEvent<'a> {
 #[cfg(feature = "audio")]
 pub type AudioResolver = Box<dyn for<'a> FnMut(AudioEvent<'a>)>;
 
+/// Resolves an asset `src` (container path, URL, data: URI, or `name:<font>`)
+/// to raw bytes, or `None` to skip the asset.
+pub type AssetResolver = Box<dyn FnMut(&str) -> Option<Vec<u8>>>;
+
 pub trait Animation: Default {
     type Error: error::Error;
 
     fn load_data(&mut self, data: &CStr, mimetype: &CStr) -> Result<(), Self::Error>;
+
+    /// Install the asset resolver. Must be called before `load_data`;
+    /// `fonts` maps `fName` to `fPath` for font-src resolution.
+    fn install_asset_resolver(
+        &mut self,
+        resolver: AssetResolver,
+        fonts: Vec<(String, String)>,
+    ) -> Result<(), Self::Error>;
 
     /// Register a callback for audio layer playback changes, or `None` to disable.
     #[cfg(feature = "audio")]

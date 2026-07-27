@@ -261,6 +261,10 @@
             <input type="checkbox" id="chk-loop" checked />
             Loop
           </label>
+          <label>
+            <input type="checkbox" id="chk-external-assets" />
+            External assets demo
+          </label>
         </div>
 
         <div class="speed-row">
@@ -288,6 +292,17 @@
     <script type="module">
       const ANIMATION_URL =
         "./dotlottie-rs/assets/animations/lottie/toggle.json";
+
+      const EXTERNAL_ASSETS_URL =
+        "./dotlottie-rs/assets/animations/lottie/external_assets.json";
+      const RED_PNG_URL = "./dotlottie-rs/assets/images/red.png";
+      const BLUE_PNG_URL = "./dotlottie-rs/assets/images/blue.png";
+
+      function fetchBytes(url) {
+        return fetch(url)
+          .then((r) => r.arrayBuffer())
+          .then((buf) => new Uint8Array(buf));
+      }
 
       const canvasWrap = document.getElementById("canvas-wrap");
       const scrubRange = document.getElementById("rng-scrub");
@@ -549,7 +564,23 @@
             throw new Error('setup target returned false — check the console');
           }
 
-          const animData = await fetch(ANIMATION_URL).then(r => r.text());
+          // The resolver is synchronous and must be set before load, so the
+          // demo bytes are fetched up front.
+          const [redPng, bluePng] = await Promise.all([
+            fetchBytes(RED_PNG_URL),
+            fetchBytes(BLUE_PNG_URL),
+          ]);
+          newPlayer.set_asset_resolver((src) => {
+            logEvent("asset resolver asked for: " + src, "muted");
+            if (src === "https://example.com/red.png") return redPng;
+            if (src.endsWith("textures/blue.png")) return bluePng;
+            return null;
+          });
+
+          const externalDemo = document.getElementById("chk-external-assets").checked;
+          const animData = await fetch(
+            externalDemo ? EXTERNAL_ASSETS_URL : ANIMATION_URL
+          ).then(r => r.text());
           if (!newPlayer.load_animation(animData, W, H)) {
             throw new Error('load_animation() returned false — check the console');
           }
@@ -602,6 +633,9 @@
 
       document.getElementById("chk-loop").onchange = (e) =>
         player && player.set_loop(e.target.checked);
+
+      document.getElementById("chk-external-assets").onchange = () =>
+        init(activeRenderer || "sw");
 
       const speedRange = document.getElementById("rng-speed");
       const speedLabel = document.getElementById("lbl-speed");

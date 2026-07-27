@@ -49,24 +49,6 @@ impl<'a> Value<'a> {
         }
     }
 
-    pub fn get_mut(&mut self, key: &str) -> Option<&mut Value<'a>> {
-        match self {
-            Value::Object(pairs) => pairs.iter_mut().find(|(k, _)| k == key).map(|(_, v)| v),
-            _ => None,
-        }
-    }
-
-    /// Insert or replace a key in an object.
-    pub fn set(&mut self, key: &str, value: Value<'a>) {
-        if let Value::Object(pairs) = self {
-            if let Some(slot) = pairs.iter_mut().find(|(k, _)| k == key) {
-                slot.1 = value;
-            } else {
-                pairs.push((Cow::Owned(key.to_owned()), value));
-            }
-        }
-    }
-
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Value::String(s) => Some(s),
@@ -147,58 +129,6 @@ impl<'a> Value<'a> {
     /// `opt` + owned-string: absent/null → `Some(None)`, non-string → `None`.
     pub fn opt_str_field(&self, key: &str) -> Option<Option<String>> {
         opt(self.get(key), |v| v.as_str().map(str::to_owned))
-    }
-
-    /// Serialize back to JSON text.
-    pub fn to_json(&self) -> String {
-        let mut out = String::with_capacity(64);
-        self.write(&mut out);
-        out
-    }
-
-    pub fn write(&self, out: &mut String) {
-        match self {
-            Value::Null => out.push_str("null"),
-            Value::Bool(true) => out.push_str("true"),
-            Value::Bool(false) => out.push_str("false"),
-            Value::Number(n) => write_number(*n, out),
-            Value::String(s) => write_str(s, out),
-            Value::Array(items) => {
-                out.push('[');
-                for (i, item) in items.iter().enumerate() {
-                    if i > 0 {
-                        out.push(',');
-                    }
-                    item.write(out);
-                }
-                out.push(']');
-            }
-            Value::Object(pairs) => {
-                out.push('{');
-                for (i, (k, v)) in pairs.iter().enumerate() {
-                    if i > 0 {
-                        out.push(',');
-                    }
-                    write_str(k, out);
-                    out.push(':');
-                    v.write(out);
-                }
-                out.push('}');
-            }
-        }
-    }
-}
-
-#[cfg_attr(not(feature = "dotlottie"), allow(dead_code))]
-fn write_number(n: f64, out: &mut String) {
-    if n.is_finite() {
-        // Rust's Display for f64 prints the shortest round-trip form, which is
-        // both compact and valid JSON (integers print without ".0").
-        use core::fmt::Write;
-        let _ = write!(out, "{n}");
-    } else {
-        // serde_json serializes non-finite floats as null.
-        out.push_str("null");
     }
 }
 
@@ -616,14 +546,6 @@ mod tests {
     }
 
     #[test]
-    fn roundtrips() {
-        let src = r#"{"a":[1,2.5,{"b":false}],"s":"q\"uote","n":null}"#;
-        let v = Value::parse(src).unwrap();
-        let out = v.to_json();
-        assert_eq!(Value::parse(&out).unwrap(), v);
-    }
-
-    #[test]
     fn rejects_garbage() {
         assert!(Value::parse("{").is_err());
         assert!(Value::parse("[1,]").is_err());
@@ -638,13 +560,10 @@ mod tests {
         let v = Value::parse(r#"{"a":1,"b":true,"a":2}"#).unwrap();
         assert_eq!(v.get("a").unwrap().as_f64(), Some(2.0));
         assert_eq!(v.as_object().unwrap().len(), 2);
-        assert_eq!(v.to_json(), r#"{"a":2,"b":true}"#);
     }
 
     #[test]
     fn non_finite_writes_null() {
-        assert_eq!(Value::Number(f64::NAN).to_json(), "null");
-        assert_eq!(Value::Number(f64::INFINITY).to_json(), "null");
         let mut out = String::new();
         write_f32(f32::NEG_INFINITY, &mut out);
         assert_eq!(out, "null");
@@ -656,15 +575,6 @@ mod tests {
         assert!(Value::parse(&ok).is_ok());
         let too_deep = "[".repeat(128) + "1" + &"]".repeat(128);
         assert!(Value::parse(&too_deep).is_err());
-    }
-
-    #[test]
-    fn set_replaces_and_inserts() {
-        let mut v = Value::parse(r#"{"a":1}"#).unwrap();
-        v.set("a", Value::Number(2.0));
-        v.set("b", Value::Bool(true));
-        assert_eq!(v.get("a").unwrap().as_f64(), Some(2.0));
-        assert_eq!(v.get("b").unwrap().as_bool(), Some(true));
     }
 
     #[test]

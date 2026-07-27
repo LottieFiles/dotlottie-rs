@@ -23,12 +23,14 @@ struct ActiveLayer {
     volume: f32,
 }
 
+/// Resolves an external audio `src` (normalized packaged path or URL) to bytes.
+pub type AudioSourceLookup = Box<dyn Fn(&str) -> Option<Arc<[u8]>>>;
+
 /// Frame-synchronised audio playback driven by the renderer's audio resolver.
 /// Uses rodio on native targets and `HtmlAudioElement` on wasm.
 pub struct AudioManager {
-    /// External audio bytes keyed by packaged path (e.g. `u/clip.mp3`); empty
-    /// when audio is embedded in the JSON (bytes then arrive in the event).
-    sources: FxHashMap<String, Arc<[u8]>>,
+    /// Resolves external audio srcs; embedded audio bytes arrive in the event.
+    lookup: AudioSourceLookup,
     active: FxHashMap<String, ActiveLayer>,
     playing: bool,
     #[cfg(not(target_arch = "wasm32"))]
@@ -38,11 +40,10 @@ pub struct AudioManager {
 }
 
 impl AudioManager {
-    /// `sources` maps packaged audio paths to bytes (empty for embedded audio).
     /// The audio device opens lazily on first playback.
-    pub fn new(sources: FxHashMap<String, Arc<[u8]>>) -> Self {
+    pub fn new(lookup: AudioSourceLookup) -> Self {
         AudioManager {
-            sources,
+            lookup,
             active: FxHashMap::default(),
             playing: false,
             #[cfg(not(target_arch = "wasm32"))]
@@ -67,7 +68,7 @@ impl AudioManager {
         }
 
         let data = match event.source {
-            AudioSource::External(_) => match self.resolve_source(&key) {
+            AudioSource::External(_) => match (self.lookup)(&key) {
                 Some(data) => data,
                 None => return,
             },
@@ -84,18 +85,6 @@ impl AudioManager {
                 .play(&key, layer.data.clone(), layer.offset, layer.volume);
         }
         self.active.insert(key, layer);
-    }
-
-    /// Look up external audio bytes by normalized `src`, falling back to file name.
-    fn resolve_source(&self, normalized: &str) -> Option<Arc<[u8]>> {
-        if let Some(bytes) = self.sources.get(normalized) {
-            return Some(bytes.clone());
-        }
-        let base = file_name(normalized);
-        self.sources
-            .iter()
-            .find(|(k, _)| file_name(k) == base)
-            .map(|(_, bytes)| bytes.clone())
     }
 
     /// Reflect the player's playback state, resuming/pausing sinks and starting
@@ -155,8 +144,4 @@ impl AudioManager {
 /// renderer prefixes onto packaged paths (e.g. `//u/clip.mp3` → `u/clip.mp3`).
 fn normalize_src(src: &str) -> String {
     src.trim_start_matches('/').to_string()
-}
-
-fn file_name(path: &str) -> &str {
-    path.rsplit('/').next().unwrap_or(path)
 }

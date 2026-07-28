@@ -166,7 +166,28 @@ an optional `duration` on layer actions, after which `ClearLayerProps` fires imp
 3. Layer-name diagnostics (unknown name, duplicate name, matte source) — log once.
 4. Document the mask/clip/matte transform limitation; decide whether to upstream a fix.
 
-## 7. Recommendations, in priority order
+## 7. Unwrapped capi surface — levers for richer interactions
+
+Every `tvg_paint_*` function is already linked (bindgen has no allowlist); these are
+unwrapped but one vertical slice away. Mapped to the interaction use cases they unlock:
+
+| capi | Unlocks | Notes |
+|---|---|---|
+| `tvg_paint_intersects` / `intersects_region` | **Precise hit testing** against actual filled geometry (SW checks the RLE coverage), not the OBB box our `hit_test` uses — irregular-shape clicks, drag-over-target detection, collision between a dragged layer and drop zones | Requires prepared render data (post-update); same flush-ordering rules as everything per-layer. Combined with runtime-hidden layers (`set_layer_visible(false)` hides at draw phase, render data still prepared) this should give **invisible but hit-testable drop zones** — to validate |
+| `tvg_paint_get_aabb` | Canvas-space rects for drag constraints, snapping, layout-aware tooltips/popovers anchored to layers | We already wrap `get_obb` internally for `hit_test`; AABB is the cheap axis-aligned variant |
+| `tvg_paint_duplicate` | Drag ghosts/proxies, particle-style clones of a layer | Duplicated paint would need explicit scene insertion + lifecycle ownership |
+| `tvg_paint_set_mask_method` / `set_clip` | Runtime reveal/spotlight masks: mask one layer by another (or by a runtime shape) without authoring it | Same sibling-transform caveat as authored masks; clipper shapes live outside the Lottie tree |
+| `tvg_paint_get_parent` / `get_type` / `get_id` | Tree introspection — enumerate/validate layer targets, diagnostics for unknown names | Pairs with the layer-name diagnostics blocker (§6) |
+| `tvg_paint_ref/unref/get_ref/rel` | Lifecycle plumbing (already used for the wrapper scene) | Internal-only; not API surface |
+| `tvg_paint_translate/scale/rotate` | Convenience transforms | Redundant — they overwrite rather than compose; our matrix path is strictly more capable |
+
+Drag-and-drop sketch with this surface: designer authors draggable layer + (hidden)
+drop-zone layers; runtime = `hit_test`/`intersects` to grab, `set_layer_transform` to
+follow the pointer, `intersects_region(zone, dragged-AABB)` to detect hover-over-zone,
+reference-layer morph (§6) to snap into the slot. Every piece except `intersects`/`aabb`
+exists on the branch today.
+
+## 8. Recommendations, in priority order
 
 1. Land the examples + report as the POC deliverable; gather feedback on which use cases
    matter (per-layer blur and layer transforms carried every compelling demo).

@@ -127,6 +127,7 @@ blur, ~2.4 ms per shadow at 512² SW; fine for one hero canvas, wrong for a grid
 | 11 | spotlight-mask | Feathered radial alpha mask follows the cursor; inverse = cutout | `set_spot_mask`, `clear_mask` |
 | 12 | path-clip-reveal | Designer-authored heart `d` string clips the scene; slider lerps its points into a circle (same cubic layout) | `parseSvgPath`, `set_clip_path` |
 | 13 | ink-annotation | Smoothed Catmull-Rom ink strokes drawn above the running art; soft blob parked behind it (`below`) | `add_overlay`, `set_overlay_path`/`stroke`/`fill`, `remove_overlay` |
+| 14 | look-at-hero | Spline-homepage choreography: multi-depth blobs follow the cursor at depth-scaled rates and turn to face it (damped look-at), byte-exact return on leave | `get_layer_transform`, `set_layer_transform` |
 
 Assets are purpose-built (`examples/web/assets/`): semantic layer names, ambient loops,
 composition == canvas size so coordinates read 1:1. All pages browser-verified; no console

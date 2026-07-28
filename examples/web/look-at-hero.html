@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Look-at hero · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 14</div>
+  <h1>Look-at hero — Spline-style pointer choreography</h1>
+  <p class="lede">
+    The Spline homepage trick, on a flat Lottie: floating blobs at different
+    depths <em>follow</em> the cursor at depth-scaled rates (parallax), while
+    each one <em>turns to face it</em> with a damped spring — and everything
+    drifts back home when the pointer leaves. Three behaviors, one API:
+    a per-layer matrix composed over the authored idle float.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <button id="mode" class="primary">look at + follow</button>
+      <span class="hint">move the cursor over the scene, then leave it</span>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>How it works</h2>
+    <p>
+      Per frame, per blob: <code>get_layer_transform</code> reads the animated
+      base matrix — its translation is the blob's current center (the idle
+      float keeps moving it), its rotation the authored rest tilt. The look-at
+      angle is <code>atan2(pointer − center)</code> minus that rest tilt,
+      springed along the shortest arc; the follow offset is the damped pointer
+      delta times a per-depth rate. Both compose as
+      <code>T(follow) · around(center, R(θ)·S(s))</code> onto the running
+      animation — authored motion and pointer motion stack, nothing is
+      overwritten.
+    </p>
+    <p>
+      Each blob carries an off-center highlight, so facing reads instantly.
+      Nearer blobs get higher follow rates, full look-at strength and a
+      proximity scale-up; far ones barely react — that rate spread is the
+      entire depth illusion.
+    </p>
+    <h2>APIs used</h2>
+    <pre>const base = player.get_layer_transform(name);  // animated center + rest tilt
+const aim = Math.atan2(my - cy, mx - cx) - rest;
+// damped springs on angle (shortest arc), follow offset, scale
+player.set_layer_transform(name,
+  mul(T(sx * rate, sy * rate), around(cx, cy, mul(R(deg), S(s, s)))));</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>LookAtLayer { layer, strength, damping } · FollowLayer { layer,
+      rate, damping }</strong> — Spline ships these as first-class events; here
+      they're ~15 lines each over <code>$pointer.x/y</code>. The SM needs
+      continuous input binding, nothing more — the renderer surface is done.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, T, R, S, mul, around, spring, setLayerT, trackPointer } from "./fx-common.js";
+
+const entry = await initPlayer(document.getElementById("cv"), "assets/hero.json");
+const { player, canvas } = entry;
+
+const BLOBS = {
+  "blob-blue":   { rate: 0.16,  look: 1.0 },
+  "blob-green":  { rate: 0.13,  look: 1.0 },
+  "blob-pink":   { rate: 0.10,  look: 0.85 },
+  "blob-orange": { rate: 0.075, look: 0.7 },
+  "blob-violet": { rate: 0.05,  look: 0.55 },
+  "blob-indigo": { rate: 0.045, look: 0.5 },
+};
+for (const b of Object.values(BLOBS)) Object.assign(b, { a: 0, va: 0, sc: 1, vsc: 0 });
+
+const MODES = [
+  { label: "look at + follow", look: true, follow: true },
+  { label: "look at only", look: true, follow: false },
+  { label: "follow only", look: false, follow: true },
+];
+let modeIdx = 0;
+const modeBtn = document.getElementById("mode");
+modeBtn.addEventListener("click", () => {
+  modeIdx = (modeIdx + 1) % MODES.length;
+  modeBtn.textContent = MODES[modeIdx].label;
+});
+
+let mx = 256, my = 256, active = false;
+let sx = 0, svx = 0, sy = 0, svy = 0;
+trackPointer(canvas, 512, (x, y) => { mx = x; my = y; active = true; }, () => { active = false; });
+
+const wrap = (a) => a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
+
+entry.update = (dt) => {
+  const mode = MODES[modeIdx];
+  const followOn = active && mode.follow;
+  [sx, svx] = spring(sx, svx, followOn ? mx - 256 : 0, dt, 110, 14);
+  [sy, svy] = spring(sy, svy, followOn ? my - 256 : 0, dt, 110, 14);
+
+  for (const [name, b] of Object.entries(BLOBS)) {
+    const base = player.get_layer_transform(name);
+    if (!base) continue;
+    const cx = base[2], cy = base[5];
+    const rest = Math.atan2(base[3], base[0]);
+    const ox = sx * b.rate, oy = sy * b.rate;
+
+    let targetA = 0;
+    if (active && mode.look) {
+      const aim = Math.atan2(my - (cy + oy), mx - (cx + ox));
+      targetA = wrap(aim - rest) * b.look;
+    }
+    [b.a, b.va] = spring(b.a, b.va, b.a + wrap(targetA - b.a), dt, 90, 12);
+
+    const d = Math.hypot(mx - cx, my - cy);
+    const targetS = active && mode.look ? 1 + 0.07 * Math.exp(-d / 150) : 1;
+    [b.sc, b.vsc] = spring(b.sc, b.vsc, targetS, dt, 120, 14);
+
+    const M = mul(T(ox, oy), around(cx, cy, mul(R((b.a * 180) / Math.PI), S(b.sc, b.sc))));
+    setLayerT(player, name, M);
+  }
+};
+</script>
+</body>
+</html>

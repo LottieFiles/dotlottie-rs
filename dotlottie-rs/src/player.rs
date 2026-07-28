@@ -1603,6 +1603,110 @@ impl Player {
         Ok(())
     }
 
+    // ── Paint-level ops (POC) ─────────────────────────────────────────────
+
+    pub fn set_opacity(&mut self, opacity: u8) -> Result<()> {
+        Ok(self.renderer.set_opacity(opacity)?)
+    }
+
+    pub fn set_blend_mode(&mut self, mode: u8) -> Result<()> {
+        Ok(self.renderer.set_blend_mode(mode)?)
+    }
+
+    pub fn clear_effects(&mut self) -> Result<()> {
+        Ok(self.renderer.clear_effects()?)
+    }
+
+    pub fn add_gaussian_blur(
+        &mut self,
+        sigma: f32,
+        direction: u8,
+        border: u8,
+        quality: u8,
+    ) -> Result<()> {
+        Ok(self
+            .renderer
+            .add_gaussian_blur(sigma, direction, border, quality)?)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_drop_shadow(
+        &mut self,
+        r: u8,
+        g: u8,
+        b: u8,
+        a: u8,
+        angle: f32,
+        distance: f32,
+        sigma: f32,
+        quality: u8,
+    ) -> Result<()> {
+        Ok(self
+            .renderer
+            .add_drop_shadow([r, g, b, a], angle, distance, sigma, quality)?)
+    }
+
+    pub fn add_fill_effect(&mut self, r: u8, g: u8, b: u8, a: u8) -> Result<()> {
+        Ok(self.renderer.add_fill_effect([r, g, b, a])?)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_tint(
+        &mut self,
+        black_r: u8,
+        black_g: u8,
+        black_b: u8,
+        white_r: u8,
+        white_g: u8,
+        white_b: u8,
+        intensity: f32,
+    ) -> Result<()> {
+        Ok(self
+            .renderer
+            .add_tint([black_r, black_g, black_b], [white_r, white_g, white_b], intensity)?)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_tritone(
+        &mut self,
+        shadow_r: u8,
+        shadow_g: u8,
+        shadow_b: u8,
+        midtone_r: u8,
+        midtone_g: u8,
+        midtone_b: u8,
+        highlight_r: u8,
+        highlight_g: u8,
+        highlight_b: u8,
+        blend: u8,
+    ) -> Result<()> {
+        Ok(self.renderer.add_tritone(
+            [shadow_r, shadow_g, shadow_b],
+            [midtone_r, midtone_g, midtone_b],
+            [highlight_r, highlight_g, highlight_b],
+            blend,
+        )?)
+    }
+
+    pub fn set_layer_transform(&mut self, layer_name: &str, transform: Vec<f32>) -> Result<()> {
+        if transform.len() != 9 {
+            return Err(Error::InvalidParameter);
+        }
+        let mut transform_array = [0.0f32; 9];
+        transform_array.copy_from_slice(&transform);
+        Ok(self
+            .renderer
+            .set_layer_transform(layer_name, &transform_array)?)
+    }
+
+    pub fn set_layer_opacity(&mut self, layer_name: &str, opacity: u8) -> Result<()> {
+        Ok(self.renderer.set_layer_opacity(layer_name, opacity)?)
+    }
+
+    pub fn clear_layer_props(&mut self, layer_name: &str) -> Result<()> {
+        Ok(self.renderer.clear_layer_props(layer_name)?)
+    }
+
     /// Poll for the next event from the event queue
     ///
     /// Returns Some(event) if an event is available, None if the queue is empty.

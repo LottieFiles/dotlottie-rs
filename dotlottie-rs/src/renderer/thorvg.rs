@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    ffi::{c_char, CStr, CString},
+    ffi::{c_char, c_int, CStr, CString},
     ptr,
     result::Result,
 };
@@ -309,7 +309,7 @@ impl Renderer for TvgRenderer {
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), TvgError> {
         if let Some(raw_canvas) = self.raw_canvas {
             let raw_paint = match drawable {
-                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Animation(animation) => animation.raw_scene,
                 Drawable::Shape(shape) => shape.raw_shape,
             };
 
@@ -322,11 +322,11 @@ impl Renderer for TvgRenderer {
     fn insert(&mut self, drawable: Drawable<Self>, at: Drawable<Self>) -> Result<(), TvgError> {
         if let Some(raw_canvas) = self.raw_canvas {
             let target = match drawable {
-                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Animation(animation) => animation.raw_scene,
                 Drawable::Shape(shape) => shape.raw_shape,
             };
             let at_paint = match at {
-                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Animation(animation) => animation.raw_scene,
                 Drawable::Shape(shape) => shape.raw_shape,
             };
 
@@ -408,9 +408,20 @@ impl LayerIdMap {
     }
 }
 
+/// Pristine animated values of a layer paint, read before user props are
+/// composed on top. Invalidated whenever ThorVG rebuilds the layer scenes.
+struct LayerBase {
+    matrix: tvg::Tvg_Matrix,
+    opacity: u8,
+}
+
 pub struct TvgAnimation {
     raw_animation: tvg::Tvg_Animation,
     raw_paint: tvg::Tvg_Paint,
+    // Wrapper scene holding the picture; effects/opacity/blend target this.
+    // TvgAnimation owns one ref so the pointer survives canvas clear.
+    raw_scene: tvg::Tvg_Paint,
+    layer_base: FxHashMap<String, LayerBase>,
     data: Option<CString>,
     segment: Option<Segment>,
     markers: Vec<Marker>,
@@ -467,10 +478,18 @@ impl Default for TvgAnimation {
     fn default() -> Self {
         let raw_animation = unsafe { tvg::tvg_animation_new() };
         let raw_paint = unsafe { tvg::tvg_animation_get_picture(raw_animation) };
+        let raw_scene = unsafe {
+            let scene = tvg::tvg_scene_new();
+            tvg::tvg_scene_add(scene, raw_paint);
+            tvg::tvg_paint_ref(scene);
+            scene
+        };
 
         Self {
             raw_animation,
             raw_paint,
+            raw_scene,
+            layer_base: FxHashMap::default(),
             data: None,
             segment: None,
             markers: Vec::new(),
@@ -702,7 +721,10 @@ impl Animation for TvgAnimation {
                 return Err(TvgError::InvalidArgument);
             }
         }
-        unsafe { tvg::tvg_animation_set_frame(self.raw_animation, frame_no).into_result() }
+        unsafe { tvg::tvg_animation_set_frame(self.raw_animation, frame_no).into_result() }?;
+        // Frame changes rebuild the layer scenes; cached base values are stale.
+        self.layer_base.clear();
+        Ok(())
     }
 
     fn gen_slot(&mut self, slot_json: &CStr) -> Result<u32, TvgError> {
@@ -727,11 +749,15 @@ impl Animation for TvgAnimation {
     }
 
     fn tween_to(&mut self, to: f32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_lottie_animation_tween_to(self.raw_animation, to).into_result() }
+        unsafe { tvg::tvg_lottie_animation_tween_to(self.raw_animation, to).into_result() }?;
+        self.layer_base.clear();
+        Ok(())
     }
 
     fn tween_go(&mut self, progress: f32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_lottie_animation_tween_go(self.raw_animation, progress).into_result() }
+        unsafe { tvg::tvg_lottie_animation_tween_go(self.raw_animation, progress).into_result() }?;
+        self.layer_base.clear();
+        Ok(())
     }
 
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), TvgError> {
@@ -748,6 +774,205 @@ impl Animation for TvgAnimation {
         };
 
         unsafe { tvg::tvg_paint_set_transform(self.raw_paint, &tvg_matrix).into_result() }
+    }
+
+    // ── Paint-level ops (POC) ────────────────────────────────────────────
+
+    fn set_opacity(&mut self, opacity: u8) -> Result<(), TvgError> {
+        unsafe { tvg::tvg_paint_set_opacity(self.raw_scene, opacity).into_result() }
+    }
+
+    fn set_blend_method(&mut self, method: u8) -> Result<(), TvgError> {
+        unsafe {
+            tvg::tvg_paint_set_blend_method(self.raw_scene, method as tvg::Tvg_Blend_Method)
+                .into_result()
+        }
+    }
+
+    fn clear_effects(&mut self) -> Result<(), TvgError> {
+        unsafe { tvg::tvg_scene_clear_effects(self.raw_scene).into_result() }
+    }
+
+    fn add_gaussian_blur(
+        &mut self,
+        sigma: f32,
+        direction: u8,
+        border: u8,
+        quality: u8,
+    ) -> Result<(), TvgError> {
+        unsafe {
+            tvg::tvg_scene_add_effect_gaussian_blur(
+                self.raw_scene,
+                sigma as f64,
+                direction as c_int,
+                border as c_int,
+                quality as c_int,
+            )
+            .into_result()
+        }
+    }
+
+    fn add_drop_shadow(
+        &mut self,
+        color: [u8; 4],
+        angle: f32,
+        distance: f32,
+        sigma: f32,
+        quality: u8,
+    ) -> Result<(), TvgError> {
+        unsafe {
+            tvg::tvg_scene_add_effect_drop_shadow(
+                self.raw_scene,
+                color[0] as c_int,
+                color[1] as c_int,
+                color[2] as c_int,
+                color[3] as c_int,
+                angle as f64,
+                distance as f64,
+                sigma as f64,
+                quality as c_int,
+            )
+            .into_result()
+        }
+    }
+
+    fn add_fill_effect(&mut self, color: [u8; 4]) -> Result<(), TvgError> {
+        unsafe {
+            tvg::tvg_scene_add_effect_fill(
+                self.raw_scene,
+                color[0] as c_int,
+                color[1] as c_int,
+                color[2] as c_int,
+                color[3] as c_int,
+            )
+            .into_result()
+        }
+    }
+
+    fn add_tint(&mut self, black: [u8; 3], white: [u8; 3], intensity: f32) -> Result<(), TvgError> {
+        unsafe {
+            tvg::tvg_scene_add_effect_tint(
+                self.raw_scene,
+                black[0] as c_int,
+                black[1] as c_int,
+                black[2] as c_int,
+                white[0] as c_int,
+                white[1] as c_int,
+                white[2] as c_int,
+                intensity as f64,
+            )
+            .into_result()
+        }
+    }
+
+    fn add_tritone(
+        &mut self,
+        shadow: [u8; 3],
+        midtone: [u8; 3],
+        highlight: [u8; 3],
+        blend: u8,
+    ) -> Result<(), TvgError> {
+        unsafe {
+            tvg::tvg_scene_add_effect_tritone(
+                self.raw_scene,
+                shadow[0] as c_int,
+                shadow[1] as c_int,
+                shadow[2] as c_int,
+                midtone[0] as c_int,
+                midtone[1] as c_int,
+                midtone[2] as c_int,
+                highlight[0] as c_int,
+                highlight[1] as c_int,
+                highlight[2] as c_int,
+                blend as c_int,
+            )
+            .into_result()
+        }
+    }
+
+    fn apply_layer_prop(
+        &mut self,
+        layer_name: &str,
+        transform: Option<&[f32; 9]>,
+        opacity: Option<u8>,
+    ) -> Result<(), TvgError> {
+        let layer_id = self.layer_id_map.get_or_insert(layer_name)?;
+        let layer_paint = unsafe { tvg::tvg_picture_get_paint(self.raw_paint, layer_id) };
+        if layer_paint.is_null() {
+            // Layer outside its in/out range or animated to opacity 0.
+            self.layer_base.remove(layer_name);
+            return Ok(());
+        }
+
+        // Read the pristine animated values once per rebuilt scene; user props
+        // always compose against this base so re-applies stay idempotent.
+        let base = match self.layer_base.get(layer_name) {
+            Some(base) => base,
+            None => {
+                let mut matrix = tvg::Tvg_Matrix {
+                    e11: 1.0,
+                    e12: 0.0,
+                    e13: 0.0,
+                    e21: 0.0,
+                    e22: 1.0,
+                    e23: 0.0,
+                    e31: 0.0,
+                    e32: 0.0,
+                    e33: 1.0,
+                };
+                let mut base_opacity: u8 = 255;
+                unsafe {
+                    tvg::tvg_paint_get_transform(layer_paint, &mut matrix).into_result()?;
+                    tvg::tvg_paint_get_opacity(layer_paint, &mut base_opacity).into_result()?;
+                }
+                self.layer_base.entry(layer_name.to_owned()).or_insert(LayerBase {
+                    matrix,
+                    opacity: base_opacity,
+                })
+            }
+        };
+
+        if let Some(user) = transform {
+            let m = &base.matrix;
+            let composed = tvg::Tvg_Matrix {
+                e11: user[0] * m.e11 + user[1] * m.e21 + user[2] * m.e31,
+                e12: user[0] * m.e12 + user[1] * m.e22 + user[2] * m.e32,
+                e13: user[0] * m.e13 + user[1] * m.e23 + user[2] * m.e33,
+                e21: user[3] * m.e11 + user[4] * m.e21 + user[5] * m.e31,
+                e22: user[3] * m.e12 + user[4] * m.e22 + user[5] * m.e32,
+                e23: user[3] * m.e13 + user[4] * m.e23 + user[5] * m.e33,
+                e31: user[6] * m.e11 + user[7] * m.e21 + user[8] * m.e31,
+                e32: user[6] * m.e12 + user[7] * m.e22 + user[8] * m.e32,
+                e33: user[6] * m.e13 + user[7] * m.e23 + user[8] * m.e33,
+            };
+            unsafe { tvg::tvg_paint_set_transform(layer_paint, &composed).into_result()? };
+        }
+
+        if let Some(user_opacity) = opacity {
+            let composed = ((base.opacity as u16 * user_opacity as u16) / 255) as u8;
+            unsafe { tvg::tvg_paint_set_opacity(layer_paint, composed).into_result()? };
+        }
+
+        // Re-set the picture's own transform to mark it dirty: the update
+        // traversal short-circuits at a clean picture (PictureImpl::skip) and
+        // would never re-prepare the mutated layer subtree.
+        unsafe {
+            let mut picture_matrix = tvg::Tvg_Matrix {
+                e11: 1.0,
+                e12: 0.0,
+                e13: 0.0,
+                e21: 0.0,
+                e22: 1.0,
+                e23: 0.0,
+                e31: 0.0,
+                e32: 0.0,
+                e33: 1.0,
+            };
+            tvg::tvg_paint_get_transform(self.raw_paint, &mut picture_matrix).into_result()?;
+            tvg::tvg_paint_set_transform(self.raw_paint, &picture_matrix).into_result()?;
+        }
+
+        Ok(())
     }
 
     // ── Markers & Segments ───────────────────────────────────────────────
@@ -774,6 +999,7 @@ impl Animation for TvgAnimation {
 impl Drop for TvgAnimation {
     fn drop(&mut self) {
         unsafe {
+            tvg::tvg_paint_unref(self.raw_scene, true);
             tvg::tvg_animation_del(self.raw_animation);
         };
     }

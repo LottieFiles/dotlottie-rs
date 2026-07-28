@@ -175,6 +175,50 @@ pub trait LottieRenderer {
 
     fn set_transform(&mut self, transform: &[f32; 9]) -> Result<(), Error>;
 
+    // ── Paint-level ops (POC) ────────────────────────────────────────────
+
+    fn set_opacity(&mut self, opacity: u8) -> Result<(), Error>;
+
+    fn set_blend_mode(&mut self, mode: u8) -> Result<(), Error>;
+
+    fn clear_effects(&mut self) -> Result<(), Error>;
+
+    fn add_gaussian_blur(
+        &mut self,
+        sigma: f32,
+        direction: u8,
+        border: u8,
+        quality: u8,
+    ) -> Result<(), Error>;
+
+    fn add_drop_shadow(
+        &mut self,
+        color: [u8; 4],
+        angle: f32,
+        distance: f32,
+        sigma: f32,
+        quality: u8,
+    ) -> Result<(), Error>;
+
+    fn add_fill_effect(&mut self, color: [u8; 4]) -> Result<(), Error>;
+
+    fn add_tint(&mut self, black: [u8; 3], white: [u8; 3], intensity: f32) -> Result<(), Error>;
+
+    fn add_tritone(
+        &mut self,
+        shadow: [u8; 3],
+        midtone: [u8; 3],
+        highlight: [u8; 3],
+        blend: u8,
+    ) -> Result<(), Error>;
+
+    fn set_layer_transform(&mut self, layer_name: &str, transform: &[f32; 9])
+        -> Result<(), Error>;
+
+    fn set_layer_opacity(&mut self, layer_name: &str, opacity: u8) -> Result<(), Error>;
+
+    fn clear_layer_props(&mut self, layer_name: &str) -> Result<(), Error>;
+
     fn load_font(&mut self, name: &str, data: &[u8]) -> Result<(), Error>;
 
     fn unload_font(&mut self, name: &str) -> Result<(), Error>;
@@ -208,8 +252,19 @@ impl dyn LottieRenderer {
             slot_json_buffer: Vec::with_capacity(512),
             slot_values: BTreeMap::new(),
             default_slots: BTreeMap::new(),
+            layer_props: BTreeMap::new(),
         })
     }
+}
+
+const IDENTITY_TRANSFORM: [f32; 9] = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+
+/// User-requested overrides for a named layer, composed onto the animated
+/// values on every frame (ThorVG rebuilds layer paints per frame).
+#[derive(Default, Clone, Copy)]
+struct LayerProps {
+    transform: Option<[f32; 9]>,
+    opacity: Option<u8>,
 }
 
 #[derive(Default)]
@@ -235,6 +290,7 @@ struct LottieRendererImpl<R: Renderer> {
     /// Maps slot_id -> SlotType for value retrieval (get operations)
     slot_values: BTreeMap<String, SlotType>,
     default_slots: BTreeMap<String, SlotType>,
+    layer_props: BTreeMap<String, LayerProps>,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -251,6 +307,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
         self.slot_json_buffer.clear();
         self.slot_values.clear();
         self.default_slots.clear();
+        self.layer_props.clear();
         Ok(())
     }
 
@@ -409,6 +466,24 @@ impl<R: Renderer> LottieRendererImpl<R> {
         self.batch_slot_code = Some(new_code);
         self.slots_dirty = false;
         self.updated = true;
+
+        Ok(())
+    }
+
+    /// Re-compose user layer props onto the freshly rebuilt layer paints.
+    /// Must run every render after slots flush and before canvas update.
+    fn flush_layer_props(&mut self) -> Result<(), Error> {
+        if self.layer_props.is_empty() {
+            return Ok(());
+        }
+
+        let animation = self.animation.as_mut().ok_or(Error::AnimationNotLoaded)?;
+
+        for (name, props) in &self.layer_props {
+            animation
+                .apply_layer_prop(name, props.transform.as_ref(), props.opacity)
+                .map_err(into_lottie::<R>)?;
+        }
 
         Ok(())
     }
@@ -585,6 +660,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.flush_slots()?;
 
         if self.updated {
+            self.flush_layer_props()?;
+
             // Sync before update to ensure previous frame's rendering is complete
             // This is crucial for async renderers like WebGL
             self.renderer.sync().map_err(into_lottie::<R>)?;
@@ -845,6 +922,135 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             self.apply_user_transform()?;
         }
 
+        Ok(())
+    }
+
+    // ── Paint-level ops (POC) ────────────────────────────────────────────
+
+    fn set_opacity(&mut self, opacity: u8) -> Result<(), Error> {
+        self.get_animation_mut()?
+            .set_opacity(opacity)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
+    }
+
+    fn set_blend_mode(&mut self, mode: u8) -> Result<(), Error> {
+        self.get_animation_mut()?
+            .set_blend_method(mode)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
+    }
+
+    fn clear_effects(&mut self) -> Result<(), Error> {
+        self.get_animation_mut()?
+            .clear_effects()
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
+    }
+
+    fn add_gaussian_blur(
+        &mut self,
+        sigma: f32,
+        direction: u8,
+        border: u8,
+        quality: u8,
+    ) -> Result<(), Error> {
+        self.get_animation_mut()?
+            .add_gaussian_blur(sigma, direction, border, quality)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
+    }
+
+    fn add_drop_shadow(
+        &mut self,
+        color: [u8; 4],
+        angle: f32,
+        distance: f32,
+        sigma: f32,
+        quality: u8,
+    ) -> Result<(), Error> {
+        self.get_animation_mut()?
+            .add_drop_shadow(color, angle, distance, sigma, quality)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
+    }
+
+    fn add_fill_effect(&mut self, color: [u8; 4]) -> Result<(), Error> {
+        self.get_animation_mut()?
+            .add_fill_effect(color)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
+    }
+
+    fn add_tint(&mut self, black: [u8; 3], white: [u8; 3], intensity: f32) -> Result<(), Error> {
+        self.get_animation_mut()?
+            .add_tint(black, white, intensity)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
+    }
+
+    fn add_tritone(
+        &mut self,
+        shadow: [u8; 3],
+        midtone: [u8; 3],
+        highlight: [u8; 3],
+        blend: u8,
+    ) -> Result<(), Error> {
+        self.get_animation_mut()?
+            .add_tritone(shadow, midtone, highlight, blend)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
+    }
+
+    fn set_layer_transform(
+        &mut self,
+        layer_name: &str,
+        transform: &[f32; 9],
+    ) -> Result<(), Error> {
+        if self.animation.is_none() {
+            return Err(Error::AnimationNotLoaded);
+        }
+        self.layer_props
+            .entry(layer_name.to_owned())
+            .or_default()
+            .transform = Some(*transform);
+        self.updated = true;
+        Ok(())
+    }
+
+    fn set_layer_opacity(&mut self, layer_name: &str, opacity: u8) -> Result<(), Error> {
+        if self.animation.is_none() {
+            return Err(Error::AnimationNotLoaded);
+        }
+        self.layer_props
+            .entry(layer_name.to_owned())
+            .or_default()
+            .opacity = Some(opacity);
+        self.updated = true;
+        Ok(())
+    }
+
+    fn clear_layer_props(&mut self, layer_name: &str) -> Result<(), Error> {
+        // Composing identity/full-opacity restores the layer's animated values,
+        // so a cleared layer keeps one restoring entry instead of a stale override.
+        if self.layer_props.contains_key(layer_name) {
+            self.layer_props.insert(
+                layer_name.to_owned(),
+                LayerProps {
+                    transform: Some(IDENTITY_TRANSFORM),
+                    opacity: Some(255),
+                },
+            );
+            self.updated = true;
+        }
         Ok(())
     }
 

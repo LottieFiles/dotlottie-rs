@@ -755,6 +755,121 @@ impl DotLottiePlayerWasm {
         self.player.set_transform(data.to_vec()).is_ok()
     }
 
+    // ── Paint-level ops (POC) ─────────────────────────────────────────────
+
+    /// Whole-animation opacity, 0-255.
+    pub fn set_opacity(&mut self, opacity: u8) -> bool {
+        self.player.set_opacity(opacity).is_ok()
+    }
+
+    /// Blend method against underlying canvas content (raw ThorVG value:
+    /// 0 normal, 1 multiply, 2 screen, 3 overlay, ... 16 add).
+    pub fn set_blend_mode(&mut self, mode: u8) -> bool {
+        self.player.set_blend_mode(mode).is_ok()
+    }
+
+    /// Remove all scene effects. Changing an effect's parameters means
+    /// clearing and re-adding the full effect list.
+    pub fn clear_effects(&mut self) -> bool {
+        self.player.clear_effects().is_ok()
+    }
+
+    /// direction: 0 both, 1 horizontal, 2 vertical; border: 0 duplicate,
+    /// 1 wrap; quality 0-100.
+    pub fn add_gaussian_blur(&mut self, sigma: f32, direction: u8, border: u8, quality: u8) -> bool {
+        self.player
+            .add_gaussian_blur(sigma, direction, border, quality)
+            .is_ok()
+    }
+
+    /// angle in degrees, distance in px, sigma is the shadow blur, quality 0-100.
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_drop_shadow(
+        &mut self,
+        r: u8,
+        g: u8,
+        b: u8,
+        a: u8,
+        angle: f32,
+        distance: f32,
+        sigma: f32,
+        quality: u8,
+    ) -> bool {
+        self.player
+            .add_drop_shadow(r, g, b, a, angle, distance, sigma, quality)
+            .is_ok()
+    }
+
+    pub fn add_fill_effect(&mut self, r: u8, g: u8, b: u8, a: u8) -> bool {
+        self.player.add_fill_effect(r, g, b, a).is_ok()
+    }
+
+    /// Maps black pixels to the black color, white pixels to the white color.
+    /// intensity 0-100.
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_tint(
+        &mut self,
+        black_r: u8,
+        black_g: u8,
+        black_b: u8,
+        white_r: u8,
+        white_g: u8,
+        white_b: u8,
+        intensity: f32,
+    ) -> bool {
+        self.player
+            .add_tint(black_r, black_g, black_b, white_r, white_g, white_b, intensity)
+            .is_ok()
+    }
+
+    /// Shadow/midtone/highlight color mapping; blend 0-255 mixes with the original.
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_tritone(
+        &mut self,
+        shadow_r: u8,
+        shadow_g: u8,
+        shadow_b: u8,
+        midtone_r: u8,
+        midtone_g: u8,
+        midtone_b: u8,
+        highlight_r: u8,
+        highlight_g: u8,
+        highlight_b: u8,
+        blend: u8,
+    ) -> bool {
+        self.player
+            .add_tritone(
+                shadow_r,
+                shadow_g,
+                shadow_b,
+                midtone_r,
+                midtone_g,
+                midtone_b,
+                highlight_r,
+                highlight_g,
+                highlight_b,
+                blend,
+            )
+            .is_ok()
+    }
+
+    /// Compose a 3x3 row-major transform onto a named layer's animated transform.
+    pub fn set_layer_transform(&mut self, layer_name: &str, data: &[f32]) -> bool {
+        self.player
+            .set_layer_transform(layer_name, data.to_vec())
+            .is_ok()
+    }
+
+    /// Multiply a named layer's animated opacity by `opacity`/255.
+    pub fn set_layer_opacity(&mut self, layer_name: &str, opacity: u8) -> bool {
+        self.player.set_layer_opacity(layer_name, opacity).is_ok()
+    }
+
+    /// Restore a layer to its animated transform/opacity.
+    pub fn clear_layer_props(&mut self, layer_name: &str) -> bool {
+        self.player.clear_layer_props(layer_name).is_ok()
+    }
+
     // ── Markers ───────────────────────────────────────────────────────────────
 
     /// Returns an array of `{ name, start, end }` objects.

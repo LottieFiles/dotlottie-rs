@@ -294,6 +294,56 @@ pub trait Animation: Default {
 
     fn set_transform(&mut self, matrix: &[f32; 9]) -> Result<(), Self::Error>;
 
+    // ── Paint-level ops (POC) ────────────────────────────────────────────
+
+    /// Whole-animation opacity (0-255), applied post-composition.
+    fn set_opacity(&mut self, opacity: u8) -> Result<(), Self::Error>;
+
+    /// Blend method against underlying canvas content (raw Tvg_Blend_Method value).
+    fn set_blend_method(&mut self, method: u8) -> Result<(), Self::Error>;
+
+    fn clear_effects(&mut self) -> Result<(), Self::Error>;
+
+    fn add_gaussian_blur(
+        &mut self,
+        sigma: f32,
+        direction: u8,
+        border: u8,
+        quality: u8,
+    ) -> Result<(), Self::Error>;
+
+    fn add_drop_shadow(
+        &mut self,
+        color: [u8; 4],
+        angle: f32,
+        distance: f32,
+        sigma: f32,
+        quality: u8,
+    ) -> Result<(), Self::Error>;
+
+    fn add_fill_effect(&mut self, color: [u8; 4]) -> Result<(), Self::Error>;
+
+    fn add_tint(&mut self, black: [u8; 3], white: [u8; 3], intensity: f32)
+        -> Result<(), Self::Error>;
+
+    fn add_tritone(
+        &mut self,
+        shadow: [u8; 3],
+        midtone: [u8; 3],
+        highlight: [u8; 3],
+        blend: u8,
+    ) -> Result<(), Self::Error>;
+
+    /// Compose user transform/opacity onto a named layer's animated values.
+    /// Must be re-applied after every frame change; a `None` leaves that
+    /// property at its animated value.
+    fn apply_layer_prop(
+        &mut self,
+        layer_name: &str,
+        transform: Option<&[f32; 9]>,
+        opacity: Option<u8>,
+    ) -> Result<(), Self::Error>;
+
     // ── Markers & Segments ───────────────────────────────────────────────
 
     fn markers(&self) -> &[Marker];

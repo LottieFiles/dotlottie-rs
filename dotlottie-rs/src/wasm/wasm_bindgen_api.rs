@@ -863,6 +863,13 @@ impl DotLottiePlayerWasm {
         self.player.set_clip_circle(cx, cy, rx, ry).is_ok()
     }
 
+    /// Clip the whole animation to a bezier path in canvas pixels. `cmds` are
+    /// Tvg_Path_Command values (0 Close, 1 MoveTo, 2 LineTo, 3 CubicTo) and
+    /// `pts` interleaved x,y coordinates.
+    pub fn set_clip_path(&mut self, cmds: &[u8], pts: &[f32]) -> bool {
+        self.player.set_clip_path(cmds.to_vec(), pts.to_vec()).is_ok()
+    }
+
     pub fn clear_clip(&mut self) -> bool {
         self.player.clear_clip().is_ok()
     }
@@ -920,6 +927,49 @@ impl DotLottiePlayerWasm {
         h: f32,
     ) -> bool {
         self.player.set_layer_clip_rect(layer_name, x, y, w, h).is_ok()
+    }
+
+    /// Clip a named layer to a bezier path in composition units; empty `cmds`
+    /// removes the clip.
+    pub fn set_layer_clip_path(&mut self, layer_name: &str, cmds: &[u8], pts: &[f32]) -> bool {
+        self.player
+            .set_layer_clip_path(layer_name, cmds.to_vec(), pts.to_vec())
+            .is_ok()
+    }
+
+    /// Create a procedural overlay shape in canvas pixels; `below` renders it
+    /// behind the animation. Returns the overlay id, or u32::MAX on failure.
+    pub fn add_overlay(&mut self, below: bool) -> u32 {
+        self.player.add_overlay(below).unwrap_or(u32::MAX)
+    }
+
+    /// Replace an overlay's geometry (same path encoding as `set_clip_path`).
+    pub fn set_overlay_path(&mut self, id: u32, cmds: &[u8], pts: &[f32]) -> bool {
+        self.player
+            .set_overlay_path(id, cmds.to_vec(), pts.to_vec())
+            .is_ok()
+    }
+
+    pub fn set_overlay_fill(&mut self, id: u32, r: u8, g: u8, b: u8, a: u8) -> bool {
+        self.player.set_overlay_fill(id, r, g, b, a).is_ok()
+    }
+
+    /// Stroke width and color for an overlay; width <= 0 removes the stroke.
+    pub fn set_overlay_stroke(&mut self, id: u32, width: f32, r: u8, g: u8, b: u8, a: u8) -> bool {
+        self.player.set_overlay_stroke(id, width, r, g, b, a).is_ok()
+    }
+
+    /// 3x3 row-major transform on an overlay shape (canvas space).
+    pub fn set_overlay_transform(&mut self, id: u32, data: &[f32]) -> bool {
+        self.player.set_overlay_transform(id, data.to_vec()).is_ok()
+    }
+
+    pub fn remove_overlay(&mut self, id: u32) -> bool {
+        self.player.remove_overlay(id).is_ok()
+    }
+
+    pub fn clear_overlays(&mut self) -> bool {
+        self.player.clear_overlays().is_ok()
     }
 
     /// Restore a layer to its animated transform/opacity/visibility.

@@ -12,8 +12,8 @@ use crate::renderer::fallback_font;
 
 use super::{
     Animation, ClipRegion, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, LayerProps,
-    Marker, Point, Renderer, Rgba, Segment, Shape, SpotMask, WgpuDevice, WgpuInstance, WgpuTarget,
-    WgpuTargetType,
+    Marker, OverlayProps, Point, Renderer, Rgba, Segment, Shape, SpotMask, WgpuDevice,
+    WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "audio")]
 use super::{AudioEvent, AudioResolver, AudioSource};
@@ -432,6 +432,15 @@ fn make_clip_shape(region: &ClipRegion) -> tvg::Tvg_Paint {
             ClipRegion::Circle { cx, cy, rx, ry } => {
                 let _ = tvg::tvg_shape_append_circle(shape, cx, cy, rx, ry, true);
             }
+            ClipRegion::Path { ref cmds, ref pts } => {
+                let _ = tvg::tvg_shape_append_path(
+                    shape,
+                    cmds.as_ptr(),
+                    cmds.len() as u32,
+                    pts.as_ptr() as *const tvg::Tvg_Point,
+                    (pts.len() / 2) as u32,
+                );
+            }
         }
         shape
     }
@@ -479,6 +488,8 @@ pub struct TvgAnimation {
     // Wrapper scene holding the picture; effects/opacity/blend target this.
     // TvgAnimation owns one ref so the pointer survives canvas clear.
     raw_scene: tvg::Tvg_Paint,
+    // Scene-owned procedural shapes; pointers stay valid until removed.
+    overlay_paints: FxHashMap<u32, tvg::Tvg_Paint>,
     layer_base: FxHashMap<String, LayerBase>,
     data: Option<CString>,
     segment: Option<Segment>,
@@ -547,6 +558,7 @@ impl Default for TvgAnimation {
             raw_animation,
             raw_paint,
             raw_scene,
+            overlay_paints: FxHashMap::default(),
             layer_base: FxHashMap::default(),
             data: None,
             segment: None,
@@ -976,6 +988,67 @@ impl Animation for TvgAnimation {
             None => (ptr::null_mut(), tvg::Tvg_Mask_Method_TVG_MASK_METHOD_NONE),
         };
         unsafe { tvg::tvg_paint_set_mask_method(self.raw_scene, target, method).into_result() }
+    }
+
+    fn sync_overlay(&mut self, id: u32, props: &OverlayProps) -> Result<(), TvgError> {
+        let shape = match self.overlay_paints.get(&id) {
+            Some(&shape) => {
+                unsafe { tvg::tvg_shape_reset(shape).into_result()? };
+                shape
+            }
+            None => unsafe {
+                let shape = tvg::tvg_shape_new();
+                let _ = tvg::tvg_shape_set_stroke_cap(shape, tvg::Tvg_Stroke_Cap_TVG_STROKE_CAP_ROUND);
+                let _ =
+                    tvg::tvg_shape_set_stroke_join(shape, tvg::Tvg_Stroke_Join_TVG_STROKE_JOIN_ROUND);
+                if props.below {
+                    tvg::tvg_scene_insert(self.raw_scene, shape, self.raw_paint).into_result()?;
+                } else {
+                    tvg::tvg_scene_add(self.raw_scene, shape).into_result()?;
+                }
+                self.overlay_paints.insert(id, shape);
+                shape
+            },
+        };
+        unsafe {
+            if !props.cmds.is_empty() {
+                tvg::tvg_shape_append_path(
+                    shape,
+                    props.cmds.as_ptr(),
+                    props.cmds.len() as u32,
+                    props.pts.as_ptr() as *const tvg::Tvg_Point,
+                    (props.pts.len() / 2) as u32,
+                )
+                .into_result()?;
+            }
+            let [r, g, b, a] = props.fill.unwrap_or([0, 0, 0, 0]);
+            tvg::tvg_shape_set_fill_color(shape, r, g, b, a).into_result()?;
+            let (width, [sr, sg, sb, sa]) = props.stroke.unwrap_or((0.0, [0, 0, 0, 0]));
+            tvg::tvg_shape_set_stroke_width(shape, width).into_result()?;
+            tvg::tvg_shape_set_stroke_color(shape, sr, sg, sb, sa).into_result()?;
+            let m = props
+                .transform
+                .unwrap_or([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]);
+            let matrix = tvg::Tvg_Matrix {
+                e11: m[0],
+                e12: m[1],
+                e13: m[2],
+                e21: m[3],
+                e22: m[4],
+                e23: m[5],
+                e31: m[6],
+                e32: m[7],
+                e33: m[8],
+            };
+            tvg::tvg_paint_set_transform(shape, &matrix).into_result()
+        }
+    }
+
+    fn remove_overlay(&mut self, id: u32) -> Result<(), TvgError> {
+        if let Some(shape) = self.overlay_paints.remove(&id) {
+            unsafe { tvg::tvg_scene_remove(self.raw_scene, shape).into_result()? };
+        }
+        Ok(())
     }
 
     // NOTE: callers must poke the picture (re-set its transform) once per

@@ -1704,6 +1704,14 @@ impl Player {
             .set_clip(Some(ClipRegion::Circle { cx, cy, rx, ry }))?)
     }
 
+    /// Clip the whole animation to a bezier path in canvas pixels. `cmds` are
+    /// Tvg_Path_Command values (0 Close, 1 MoveTo, 2 LineTo, 3 CubicTo) and
+    /// `pts` interleaved x,y coordinates.
+    pub fn set_clip_path(&mut self, cmds: Vec<u8>, pts: Vec<f32>) -> Result<()> {
+        use crate::renderer::ClipRegion;
+        Ok(self.renderer.set_clip(Some(ClipRegion::Path { cmds, pts }))?)
+    }
+
     pub fn clear_clip(&mut self) -> Result<()> {
         Ok(self.renderer.set_clip(None)?)
     }
@@ -1767,6 +1775,64 @@ impl Player {
         let region = (w > 0.0 && h > 0.0)
             .then_some(ClipRegion::Rect { x, y, w, h, rx: 0.0, ry: 0.0 });
         Ok(self.renderer.set_layer_clip(layer_name, region)?)
+    }
+
+    /// Clip a named layer to a bezier path in composition units; an empty
+    /// `cmds` removes the clip.
+    pub fn set_layer_clip_path(
+        &mut self,
+        layer_name: &str,
+        cmds: Vec<u8>,
+        pts: Vec<f32>,
+    ) -> Result<()> {
+        use crate::renderer::ClipRegion;
+        let region = (!cmds.is_empty()).then_some(ClipRegion::Path { cmds, pts });
+        Ok(self.renderer.set_layer_clip(layer_name, region)?)
+    }
+
+    /// Create a procedural overlay shape in canvas pixels; `below` renders it
+    /// behind the animation. Returns the overlay id.
+    pub fn add_overlay(&mut self, below: bool) -> Result<u32> {
+        Ok(self.renderer.add_overlay(below)?)
+    }
+
+    /// Replace an overlay's geometry (same path encoding as `set_clip_path`).
+    pub fn set_overlay_path(&mut self, id: u32, cmds: Vec<u8>, pts: Vec<f32>) -> Result<()> {
+        Ok(self.renderer.set_overlay_path(id, &cmds, &pts)?)
+    }
+
+    pub fn set_overlay_fill(&mut self, id: u32, r: u8, g: u8, b: u8, a: u8) -> Result<()> {
+        Ok(self.renderer.set_overlay_fill(id, [r, g, b, a])?)
+    }
+
+    /// Stroke width and color for an overlay; width <= 0 removes the stroke.
+    pub fn set_overlay_stroke(
+        &mut self,
+        id: u32,
+        width: f32,
+        r: u8,
+        g: u8,
+        b: u8,
+        a: u8,
+    ) -> Result<()> {
+        Ok(self.renderer.set_overlay_stroke(id, width, [r, g, b, a])?)
+    }
+
+    pub fn set_overlay_transform(&mut self, id: u32, transform: Vec<f32>) -> Result<()> {
+        if transform.len() != 9 {
+            return Err(Error::InvalidParameter);
+        }
+        let mut transform_array = [0.0f32; 9];
+        transform_array.copy_from_slice(&transform);
+        Ok(self.renderer.set_overlay_transform(id, &transform_array)?)
+    }
+
+    pub fn remove_overlay(&mut self, id: u32) -> Result<()> {
+        Ok(self.renderer.remove_overlay(id)?)
+    }
+
+    pub fn clear_overlays(&mut self) -> Result<()> {
+        Ok(self.renderer.clear_overlays()?)
     }
 
     pub fn clear_layer_props(&mut self, layer_name: &str) -> Result<()> {

@@ -11,7 +11,8 @@
   <h1>dotlottie-rs <em style="color:var(--accent);font-style:normal">paint-fx</em> examples</h1>
   <p class="lede">
     Use-case demos for the paint-level manipulation POC: transforms, opacity, blend
-    modes, scene effects, clipping &amp; masking, and per-layer control (transform /
+    modes, scene effects, clipping &amp; masking (rects, circles and arbitrary bezier
+    paths), procedural overlay shapes, and per-layer control (transform /
     opacity / visibility / blur / clip) on the rendered Lottie. Each page is one self-contained scenario with the
     exact API calls and a note on how it would land as state-machine actions.
     Serve the repo root and build with <code>make wasm</code> first.
@@ -73,6 +74,16 @@
     <span class="num">11</span><span class="name">Spotlight mask</span>
     <span class="ops">set_spot_mask · clear_mask</span>
     <span class="desc">A feathered radial alpha mask follows the cursor — spotlight or inverse cutout — with soft falloff no hard clip can give.</span>
+  </a></li>
+  <li><a href="path-clip-reveal.html">
+    <span class="num">12</span><span class="name">Path clip morph</span>
+    <span class="ops">parseSvgPath · set_clip_path</span>
+    <span class="desc">A designer-authored SVG path clips the scene, and its control points lerp live between a heart and a circle — arbitrary bezier clips from d-strings.</span>
+  </a></li>
+  <li><a href="ink-annotation.html">
+    <span class="num">13</span><span class="name">Ink annotation</span>
+    <span class="ops">add_overlay · set_overlay_path · set_overlay_stroke</span>
+    <span class="desc">Procedural capi-owned shapes beside the Lottie: draw smoothed ink strokes above the art, park a soft blob behind it, remove them by id.</span>
   </a></li>
 </ol>
 </body>

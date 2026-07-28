@@ -56,6 +56,63 @@ function startLoop() {
   requestAnimationFrame(frame);
 }
 
+// ── SVG path data → flat Tvg_Path_Command buffers ──────────────────────
+// Supports M/L/C/Z plus H/V/S (absolute and relative), i.e. what design
+// tools export for untransformed paths. Returns { cmds: Uint8Array,
+// pts: Float32Array } ready for set_clip_path / set_overlay_path.
+export function parseSvgPath(d, scale = 1) {
+  const CLOSE = 0, MOVE = 1, LINE = 2, CUBIC = 3;
+  const cmds = [], pts = [];
+  const tokens = d.match(/[a-df-z]|-?(?:\d*\.\d+|\d+)(?:e[-+]?\d+)?/gi) ?? [];
+  let i = 0, x = 0, y = 0, sx = 0, sy = 0, kx = 0, ky = 0, cmd = "", fresh = false;
+  const num = () => parseFloat(tokens[i++]);
+  const put = (px, py) => pts.push(px * scale, py * scale);
+  while (i < tokens.length) {
+    if (/[a-z]/i.test(tokens[i])) { cmd = tokens[i++]; fresh = true; }
+    const rel = cmd === cmd.toLowerCase();
+    const op = cmd.toUpperCase();
+    if (op === "Z") {
+      cmds.push(CLOSE);
+      x = sx; y = sy;
+      fresh = false;
+      continue;
+    }
+    if (op === "M" || op === "L") {
+      const nx = num() + (rel ? x : 0), ny = num() + (rel ? y : 0);
+      // Extra M coordinate pairs are implicit LineTos.
+      const isMove = op === "M" && fresh;
+      cmds.push(isMove ? MOVE : LINE);
+      if (isMove) { sx = nx; sy = ny; }
+      x = nx; y = ny;
+      put(x, y);
+      kx = x; ky = y;
+    } else if (op === "H" || op === "V") {
+      if (op === "H") x = num() + (rel ? x : 0);
+      else y = num() + (rel ? y : 0);
+      cmds.push(LINE);
+      put(x, y);
+      kx = x; ky = y;
+    } else if (op === "C" || op === "S") {
+      let c1x, c1y;
+      if (op === "C") {
+        c1x = num() + (rel ? x : 0); c1y = num() + (rel ? y : 0);
+      } else {
+        c1x = 2 * x - kx; c1y = 2 * y - ky; // reflect previous control
+      }
+      const c2x = num() + (rel ? x : 0), c2y = num() + (rel ? y : 0);
+      const nx = num() + (rel ? x : 0), ny = num() + (rel ? y : 0);
+      cmds.push(CUBIC);
+      put(c1x, c1y); put(c2x, c2y); put(nx, ny);
+      kx = c2x; ky = c2y;
+      x = nx; y = ny;
+    } else {
+      throw new Error(`parseSvgPath: unsupported command ${cmd}`);
+    }
+    fresh = false;
+  }
+  return { cmds: new Uint8Array(cmds), pts: new Float32Array(pts) };
+}
+
 // ── 3x3 row-major matrix helpers ───────────────────────────────────────
 export const I = () => [1, 0, 0, 0, 1, 0, 0, 0, 1];
 export const T = (x, y) => [1, 0, x, 0, 1, y, 0, 0, 1];

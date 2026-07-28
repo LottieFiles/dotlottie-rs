@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ink annotation · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 13</div>
+  <h1>Ink annotation — procedural shapes beside the Lottie</h1>
+  <p class="lede">
+    Overlay shapes are capi-owned geometry living in the same scene as the
+    animation: draw on the stage and each stroke becomes a smoothed cubic path
+    rendered <em>above</em> the running Lottie; the soft blob is the same API
+    with <code>below&nbsp;=&nbsp;true</code>, z-ordered <em>behind</em> the art.
+    Nothing here exists in the animation file.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <button id="clear" class="primary">clear ink</button>
+      <button id="backdrop">backdrop: on</button>
+      <span class="hint">draw on the stage</span>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>How it works</h2>
+    <p>
+      <code>add_overlay(below)</code> creates a retained shape in the wrapping
+      scene and hands back an id; the shape mutates in place with
+      <code>set_overlay_path / fill / stroke / transform</code> and needs no
+      re-add per frame — the scene traverses its children on every update,
+      unlike the Lottie picture (which skips when clean). Ownership stays with
+      the scene: <code>remove_overlay</code> drops the last reference.
+    </p>
+    <p>
+      Pointer samples are smoothed Catmull-Rom → cubic, so each move event just
+      rebuilds the current stroke's path buffers. Overlay coordinates are
+      canvas pixels; overlays inherit scene-level opacity, effects, clip and
+      blend by construction.
+    </p>
+    <h2>APIs used</h2>
+    <pre>const id = player.add_overlay(false);          // above the art
+player.set_overlay_stroke(id, 5, r, g, b, 255);
+player.set_overlay_path(id, cmds, pts);       // per pointermove
+
+const bg = player.add_overlay(true);          // behind the art
+player.set_overlay_fill(bg, r, g, b, a);
+player.remove_overlay(id); player.clear_overlays();</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>Overlay { id, path, style }</strong> — SM-declared decorations
+      (selection rings, drop-zone highlights, badges) that live outside the
+      animation file and react to state without touching the Lottie tree.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, parseSvgPath } from "./fx-common.js";
+
+const canvas = document.getElementById("cv");
+const entry = await initPlayer(canvas, "assets/heart.json");
+const { player } = entry;
+const SIZE = 512;
+
+// Soft backdrop blob behind the animation (below = true).
+const blob = parseSvgPath(
+  "M 256 96 C 372 80 448 160 436 262 C 426 352 352 428 248 420 " +
+  "C 148 412 72 340 84 240 C 96 152 156 110 256 96 Z"
+);
+let backdropId = null;
+function addBackdrop() {
+  backdropId = player.add_overlay(true);
+  player.set_overlay_path(backdropId, blob.cmds, blob.pts);
+  player.set_overlay_fill(backdropId, 51, 224, 176, 110);
+}
+addBackdrop();
+
+// Ink strokes: one overlay per stroke, path rebuilt as points arrive.
+const INK = [255, 180, 84];
+const strokes = [];
+let current = null;
+
+function strokePath(points) {
+  const cmds = [1], pts = [points[0].x, points[0].y];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)], p1 = points[i];
+    const p2 = points[i + 1], p3 = points[Math.min(points.length - 1, i + 2)];
+    cmds.push(3);
+    pts.push(
+      p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6,
+      p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6,
+      p2.x, p2.y,
+    );
+  }
+  return { cmds: new Uint8Array(cmds), pts: new Float32Array(pts) };
+}
+
+canvas.addEventListener("pointerdown", (e) => {
+  try { canvas.setPointerCapture(e.pointerId); } catch {}
+  const r = canvas.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width) * SIZE;
+  const y = ((e.clientY - r.top) / r.height) * SIZE;
+  const id = player.add_overlay(false);
+  player.set_overlay_stroke(id, 5, INK[0], INK[1], INK[2], 255);
+  current = { id, points: [{ x, y }] };
+  strokes.push(id);
+});
+canvas.addEventListener("pointermove", (e) => {
+  if (!current) return;
+  const r = canvas.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width) * SIZE;
+  const y = ((e.clientY - r.top) / r.height) * SIZE;
+  const last = current.points.at(-1);
+  if (Math.hypot(x - last.x, y - last.y) < 3) return;
+  current.points.push({ x, y });
+  if (current.points.length > 1) {
+    const { cmds, pts } = strokePath(current.points);
+    player.set_overlay_path(current.id, cmds, pts);
+  }
+});
+canvas.addEventListener("pointerup", () => (current = null));
+
+document.getElementById("clear").addEventListener("click", () => {
+  for (const id of strokes.splice(0)) player.remove_overlay(id);
+  current = null;
+});
+const backdropBtn = document.getElementById("backdrop");
+backdropBtn.addEventListener("click", () => {
+  if (backdropId === null) {
+    addBackdrop();
+  } else {
+    player.remove_overlay(backdropId);
+    backdropId = null;
+  }
+  backdropBtn.textContent = `backdrop: ${backdropId === null ? "off" : "on"}`;
+});
+</script>
+</body>
+</html>

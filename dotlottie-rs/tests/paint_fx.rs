@@ -284,6 +284,174 @@ mod tests {
     }
 
     #[test]
+    fn path_clip_scene_and_layer() {
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        let mut player = loaded_player(&mut buffer);
+        let baseline = buffer.clone();
+        let baseline_nonzero = baseline.iter().filter(|&&px| px != 0).count();
+
+        // Upper-left triangle in canvas px: M 0,0 L 100,0 L 0,100 Z.
+        let tri_cmds = vec![1u8, 2, 2, 0];
+        let tri_pts = vec![0.0f32, 0.0, 100.0, 0.0, 0.0, 100.0];
+        assert!(player.set_clip_path(tri_cmds.clone(), tri_pts).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline);
+        assert!(
+            buffer.iter().filter(|&&px| px != 0).count() < baseline_nonzero,
+            "path clip should discard pixels"
+        );
+        let triangle = buffer.clone();
+
+        // A path clip is not a rect clip of the same bounding box.
+        assert!(player.set_clip_rect(0.0, 0.0, 100.0, 100.0, 0.0, 0.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, triangle);
+
+        // Survives a frame change and clears back to baseline.
+        let tri_pts = vec![0.0f32, 0.0, 100.0, 0.0, 0.0, 100.0];
+        assert!(player.set_clip_path(tri_cmds, tri_pts).is_ok());
+        assert!(player.set_frame(22.0).is_ok());
+        assert!(player.render().is_ok());
+        assert!(
+            buffer.iter().filter(|&&px| px != 0).count() < baseline_nonzero,
+            "path clip must persist across frames"
+        );
+        assert!(player.set_frame(21.0).is_ok());
+        assert!(player.render().is_ok());
+        assert!(player.clear_clip().is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+
+        // Invalid paths error without touching state: no leading MoveTo,
+        // wrong point count, unknown command, non-finite coordinate.
+        assert!(player.set_clip_path(vec![2], vec![0.0, 0.0]).is_err());
+        assert!(player.set_clip_path(vec![1, 2], vec![0.0, 0.0]).is_err());
+        assert!(player.set_clip_path(vec![1, 9], vec![0.0, 0.0, 1.0, 1.0]).is_err());
+        assert!(player.set_clip_path(vec![1], vec![f32::NAN, 0.0]).is_err());
+        // Nothing changed, so render may legitimately report nothing-to-do.
+        let _ = player.render();
+        assert_eq!(buffer, baseline);
+
+        // Layer path clip in composition units (1500-unit comp): keep the
+        // upper-left triangle of layer "R".
+        let layer_cmds = vec![1u8, 2, 2, 0];
+        let layer_pts = vec![0.0f32, 0.0, 1500.0, 0.0, 0.0, 1500.0];
+        assert!(player
+            .set_layer_clip_path("R", layer_cmds, layer_pts)
+            .is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline);
+
+        // Empty cmds removes the layer clip.
+        assert!(player.set_layer_clip_path("R", vec![], vec![]).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+    }
+
+    #[test]
+    fn overlays_render_and_survive_reload() {
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        let mut player = loaded_player(&mut buffer);
+        let baseline = buffer.clone();
+
+        // Filled square over the canvas center, above the animation.
+        let square_cmds = vec![1u8, 2, 2, 2, 0];
+        let square_pts = vec![30.0f32, 30.0, 70.0, 30.0, 70.0, 70.0, 30.0, 70.0];
+        let above = player.add_overlay(false).unwrap();
+        assert!(player
+            .set_overlay_path(above, square_cmds.clone(), square_pts.clone())
+            .is_ok());
+        assert!(player.set_overlay_fill(above, 220, 40, 40, 255).is_ok());
+        assert!(player.render().is_ok());
+        let above_buf = buffer.clone();
+        assert_ne!(above_buf, baseline);
+
+        assert!(player.remove_overlay(above).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline, "remove must restore the baseline");
+
+        // Frame 21 is opaque edge-to-edge, which would hide anything below
+        // the picture — shrink the art so empty canvas surrounds it, then
+        // z-order a full-canvas square on both sides of it. Overlays live in
+        // the wrapping scene, so the picture transform doesn't move them.
+        let shrink = vec![0.6, 0.0, 20.0, 0.0, 0.6, 20.0, 0.0, 0.0, 1.0];
+        assert!(player.set_transform(shrink).is_ok());
+        assert!(player.render().is_ok());
+        let shrunk = buffer.clone();
+        assert_ne!(shrunk, baseline);
+
+        let full_cmds = vec![1u8, 2, 2, 2, 0];
+        let full_pts = vec![0.0f32, 0.0, 100.0, 0.0, 100.0, 100.0, 0.0, 100.0];
+        let below = player.add_overlay(true).unwrap();
+        assert!(player
+            .set_overlay_path(below, full_cmds.clone(), full_pts.clone())
+            .is_ok());
+        assert!(player.set_overlay_fill(below, 220, 40, 40, 255).is_ok());
+        assert!(player.render().is_ok());
+        let below_buf = buffer.clone();
+        assert_ne!(below_buf, shrunk, "below fills the empty surround");
+
+        let above2 = player.add_overlay(false).unwrap();
+        assert!(player.set_overlay_path(above2, full_cmds, full_pts).is_ok());
+        assert!(player.set_overlay_fill(above2, 220, 40, 40, 255).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, below_buf, "above covers the art, below does not");
+
+        assert!(player.remove_overlay(below).is_ok());
+        assert!(player.remove_overlay(above2).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, shrunk);
+        let identity = vec![1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+        assert!(player.set_transform(identity).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+
+        // Mutating geometry / transform re-renders without a frame change.
+        let id = player.add_overlay(false).unwrap();
+        assert!(player
+            .set_overlay_path(id, square_cmds.clone(), square_pts.clone())
+            .is_ok());
+        assert!(player.set_overlay_fill(id, 40, 220, 40, 255).is_ok());
+        assert!(player.render().is_ok());
+        let green_square = buffer.clone();
+        assert_ne!(green_square, baseline);
+
+        let tri_pts = vec![30.0f32, 30.0, 70.0, 30.0, 30.0, 70.0];
+        assert!(player.set_overlay_path(id, vec![1, 2, 2, 0], tri_pts).is_ok());
+        assert!(player.render().is_ok());
+        let green_triangle = buffer.clone();
+        assert_ne!(green_triangle, green_square);
+
+        let shift = vec![1.0f32, 0.0, 15.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+        assert!(player.set_overlay_transform(id, shift).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, green_triangle);
+
+        // Stroke-only shapes render too; width 0 removes the stroke.
+        assert!(player.set_overlay_fill(id, 0, 0, 0, 0).is_ok());
+        assert!(player.set_overlay_stroke(id, 6.0, 40, 40, 220, 255).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline);
+
+        // Overlays replay across an animation reload.
+        let before_reload = buffer.clone();
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path).is_ok());
+        assert!(player.set_frame(21.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, before_reload, "overlay must survive reload");
+
+        // Unknown ids error; invalid path errors without killing the overlay.
+        assert!(player.set_overlay_fill(999, 1, 2, 3, 4).is_err());
+        assert!(player.remove_overlay(999).is_err());
+        assert!(player.set_overlay_path(id, vec![2], vec![0.0, 0.0]).is_err());
+
+        assert!(player.clear_overlays().is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+    }
+
+    #[test]
     fn effects_persist_across_reload() {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
         let mut player = loaded_player(&mut buffer);

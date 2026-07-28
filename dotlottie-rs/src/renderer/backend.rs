@@ -217,7 +217,7 @@ pub enum Drawable<'d, R: Renderer> {
 /// every flush. Layers with masks/clips/mattes keep their mask geometry in
 /// sibling paints, so transforms move content but not the mask — per-layer
 /// overrides are only fully correct on unmasked layers.
-#[derive(Default, Clone, Copy, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct LayerProps {
     pub transform: Option<[f32; 9]>,
     pub opacity: Option<u8>,
@@ -233,10 +233,27 @@ pub struct LayerProps {
 
 /// Runtime clip geometry. On the wrapping scene the coordinates are canvas
 /// pixels; on a layer they are composition units.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum ClipRegion {
     Rect { x: f32, y: f32, w: f32, h: f32, rx: f32, ry: f32 },
     Circle { cx: f32, cy: f32, rx: f32, ry: f32 },
+    /// Bezier path as flat Tvg_Path_Command / point buffers
+    /// (0 Close, 1 MoveTo, 2 LineTo, 3 CubicTo; pts are interleaved x,y).
+    Path { cmds: Vec<u8>, pts: Vec<f32> },
+}
+
+/// A capi-owned procedural shape living in the wrapping scene, in canvas
+/// pixels. Inherits scene-level opacity/blend/effects/clip.
+#[derive(Default, Clone, PartialEq)]
+pub struct OverlayProps {
+    pub cmds: Vec<u8>,
+    pub pts: Vec<f32>,
+    pub fill: Option<[u8; 4]>,
+    /// (width, rgba)
+    pub stroke: Option<(f32, [u8; 4])>,
+    pub transform: Option<[f32; 9]>,
+    /// Render behind the animation instead of in front of it.
+    pub below: bool,
 }
 
 /// Soft circular mask over the whole animation, in canvas pixels.
@@ -377,6 +394,13 @@ pub trait Animation: Default {
 
     /// Alpha-mask the whole animation with a soft spot; `None` removes it.
     fn set_mask(&mut self, mask: Option<&SpotMask>) -> Result<(), Self::Error>;
+
+    /// Create or update a procedural shape in the wrapping scene. `below` is
+    /// honored only at creation time.
+    fn sync_overlay(&mut self, id: u32, props: &OverlayProps) -> Result<(), Self::Error>;
+
+    /// Remove a previously synced overlay shape; unknown ids are a no-op.
+    fn remove_overlay(&mut self, id: u32) -> Result<(), Self::Error>;
 
     /// Compose user overrides onto a named layer's animated values.
     /// Must be re-applied after every frame change (ThorVG rebuilds layer

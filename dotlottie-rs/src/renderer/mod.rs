@@ -13,8 +13,8 @@ mod thorvg;
 pub(crate) use backend::Point;
 pub use backend::{
     Animation, ClipRegion, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, LayerProps,
-    Marker, Renderer, Rgba, Segment, Shape, SpotMask, WgpuDevice, WgpuInstance, WgpuTarget,
-    WgpuTargetType,
+    Marker, OverlayProps, Renderer, Rgba, Segment, Shape, SpotMask, WgpuDevice, WgpuInstance,
+    WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "audio")]
 pub use backend::{AudioEvent, AudioResolver, AudioSource};
@@ -219,6 +219,25 @@ pub trait LottieRenderer {
     /// Soft circular alpha mask over the whole animation; `None` removes it.
     fn set_mask(&mut self, mask: Option<SpotMask>) -> Result<(), Error>;
 
+    /// Create an empty procedural shape in the wrapping scene (canvas px) and
+    /// return its id. `below` renders it behind the animation.
+    fn add_overlay(&mut self, below: bool) -> Result<u32, Error>;
+
+    /// Replace an overlay's geometry with flat Tvg_Path_Command buffers
+    /// (0 Close, 1 MoveTo, 2 LineTo, 3 CubicTo; pts interleaved x,y).
+    fn set_overlay_path(&mut self, id: u32, cmds: &[u8], pts: &[f32]) -> Result<(), Error>;
+
+    fn set_overlay_fill(&mut self, id: u32, color: [u8; 4]) -> Result<(), Error>;
+
+    /// Stroke width and color; width <= 0 removes the stroke.
+    fn set_overlay_stroke(&mut self, id: u32, width: f32, color: [u8; 4]) -> Result<(), Error>;
+
+    fn set_overlay_transform(&mut self, id: u32, transform: &[f32; 9]) -> Result<(), Error>;
+
+    fn remove_overlay(&mut self, id: u32) -> Result<(), Error>;
+
+    fn clear_overlays(&mut self) -> Result<(), Error>;
+
     fn set_layer_transform(&mut self, layer_name: &str, transform: &[f32; 9])
         -> Result<(), Error>;
 
@@ -279,11 +298,38 @@ impl dyn LottieRenderer {
             blend_mode: 0,
             clip: None,
             mask: None,
+            overlays: BTreeMap::new(),
+            next_overlay_id: 0,
         })
     }
 }
 
 const IDENTITY_TRANSFORM: [f32; 9] = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+
+/// Check flat path buffers against Tvg_Path_Command semantics: starts with a
+/// MoveTo, point count matches the commands, all coordinates finite.
+fn validate_path(cmds: &[u8], pts: &[f32]) -> Result<(), Error> {
+    const CLOSE: u8 = 0;
+    const MOVE_TO: u8 = 1;
+    const LINE_TO: u8 = 2;
+    const CUBIC_TO: u8 = 3;
+    if cmds.first() != Some(&MOVE_TO) {
+        return Err(Error::InvalidArgument);
+    }
+    let mut points_needed = 0usize;
+    for cmd in cmds {
+        points_needed += match *cmd {
+            CLOSE => 0,
+            MOVE_TO | LINE_TO => 1,
+            CUBIC_TO => 3,
+            _ => return Err(Error::InvalidArgument),
+        };
+    }
+    if pts.len() != points_needed * 2 || pts.iter().any(|v| !v.is_finite()) {
+        return Err(Error::InvalidArgument);
+    }
+    Ok(())
+}
 
 /// Scene-level effect, stored declaratively so the stack can be replayed on
 /// param change and re-applied after an animation reload.
@@ -326,6 +372,9 @@ struct LottieRendererImpl<R: Renderer> {
     blend_mode: u8,
     clip: Option<ClipRegion>,
     mask: Option<SpotMask>,
+    /// Procedural shapes in the wrapping scene, keyed by handed-out id.
+    overlays: BTreeMap<u32, OverlayProps>,
+    next_overlay_id: u32,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -554,7 +603,29 @@ impl<R: Renderer> LottieRendererImpl<R> {
                 .set_mask(self.mask.as_ref())
                 .map_err(into_lottie::<R>)?;
         }
+        for (id, props) in &self.overlays {
+            animation
+                .sync_overlay(*id, props)
+                .map_err(into_lottie::<R>)?;
+        }
         Self::replay_effects(animation, &self.effects)?;
+        Ok(())
+    }
+
+    /// Mutate an overlay's declarative props and push them to the live shape.
+    fn update_overlay(
+        &mut self,
+        id: u32,
+        f: impl FnOnce(&mut OverlayProps),
+    ) -> Result<(), Error> {
+        let props = self.overlays.get_mut(&id).ok_or(Error::InvalidArgument)?;
+        f(props);
+        self.animation
+            .as_mut()
+            .ok_or(Error::AnimationNotLoaded)?
+            .sync_overlay(id, props)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
         Ok(())
     }
 
@@ -1100,10 +1171,13 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn set_clip(&mut self, region: Option<ClipRegion>) -> Result<(), Error> {
-        self.clip = region;
+        if let Some(ClipRegion::Path { cmds, pts }) = &region {
+            validate_path(cmds, pts)?;
+        }
         self.get_animation_mut()?
             .set_clip(region.as_ref())
             .map_err(into_lottie::<R>)?;
+        self.clip = region;
         // The clip stack reaches children during the update traversal, which a
         // clean picture short-circuits — poke it so the subtree re-prepares.
         self.apply_user_transform()?;
@@ -1116,6 +1190,64 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .set_mask(mask.as_ref())
             .map_err(into_lottie::<R>)?;
         self.apply_user_transform()?;
+        Ok(())
+    }
+
+    fn add_overlay(&mut self, below: bool) -> Result<u32, Error> {
+        let animation = self.animation.as_mut().ok_or(Error::AnimationNotLoaded)?;
+        let id = self.next_overlay_id;
+        let props = OverlayProps { below, ..Default::default() };
+        animation
+            .sync_overlay(id, &props)
+            .map_err(into_lottie::<R>)?;
+        self.overlays.insert(id, props);
+        self.next_overlay_id += 1;
+        self.updated = true;
+        Ok(id)
+    }
+
+    fn set_overlay_path(&mut self, id: u32, cmds: &[u8], pts: &[f32]) -> Result<(), Error> {
+        validate_path(cmds, pts)?;
+        self.update_overlay(id, |props| {
+            props.cmds = cmds.to_vec();
+            props.pts = pts.to_vec();
+        })
+    }
+
+    fn set_overlay_fill(&mut self, id: u32, color: [u8; 4]) -> Result<(), Error> {
+        self.update_overlay(id, |props| props.fill = Some(color))
+    }
+
+    fn set_overlay_stroke(&mut self, id: u32, width: f32, color: [u8; 4]) -> Result<(), Error> {
+        self.update_overlay(id, |props| {
+            props.stroke = (width > 0.0).then_some((width, color));
+        })
+    }
+
+    fn set_overlay_transform(&mut self, id: u32, transform: &[f32; 9]) -> Result<(), Error> {
+        self.update_overlay(id, |props| props.transform = Some(*transform))
+    }
+
+    fn remove_overlay(&mut self, id: u32) -> Result<(), Error> {
+        self.overlays.remove(&id).ok_or(Error::InvalidArgument)?;
+        self.animation
+            .as_mut()
+            .ok_or(Error::AnimationNotLoaded)?
+            .remove_overlay(id)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
+    }
+
+    fn clear_overlays(&mut self) -> Result<(), Error> {
+        if self.overlays.is_empty() {
+            return Ok(());
+        }
+        let animation = self.animation.as_mut().ok_or(Error::AnimationNotLoaded)?;
+        for id in std::mem::take(&mut self.overlays).into_keys() {
+            animation.remove_overlay(id).map_err(into_lottie::<R>)?;
+        }
+        self.updated = true;
         Ok(())
     }
 
@@ -1181,6 +1313,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     ) -> Result<(), Error> {
         if self.animation.is_none() {
             return Err(Error::AnimationNotLoaded);
+        }
+        if let Some(ClipRegion::Path { cmds, pts }) = &region {
+            validate_path(cmds, pts)?;
         }
         let props = self.layer_props.entry(layer_name.to_owned()).or_default();
         props.clip = region;

@@ -212,15 +212,101 @@ TweenToLayerReference { target: String, reference: String, duration: f32, easing
 The SM stores two layer names; all design data stays in the .lottie, so designers
 iterate without touching the interaction graph.
 
-**Interpolation** (rack focus, fade-ins, springy hovers): two options, both grounded in
-existing machinery:
-1. Transition-level envelopes: reuse the tweened-transition driver to interpolate action
-   params (duration + easing per transition) — covers 80% of the examples.
-2. Continuous input binding (`$pointer.x` → layer transform factors) for parallax-class
-   interactions — same requirement pointer-driven frame tweening already has.
+### Envelope semantics — Spline as field evidence
 
-**Event envelope**: the badge-shake pattern (override for N ms, then auto-restore) suggests
-an optional `duration` on layer actions, after which `ClearLayerProps` fires implicitly.
+The Spline docs crawl (`docs/spline-interactions-mapping.md`) is a usage survey of what
+interaction designers are actually given, and therefore use. Mapped against what the SM
+already has (`Transition::Tweened { duration, easing: [f32; 4] }`, typed guards, the
+`Toggle`/`SetRandom`/`Increment` input actions, interruptible tweens from #592), the T3
+gaps rank as follows.
+
+**1. Auto-revert (held) semantics** — Spline's Mouse Press, Key Press and Mouse Hover all
+share one behavior: actions apply while the condition holds and *reverse themselves* when
+it ends. Designers get hover states without authoring the exit path. Today that's a
+hand-built pair of states; the sugar is one flag on entry actions:
+
+```
+entry_actions: [ { ...SetLayerBlur..., revert_on_exit: true } ]
+```
+
+Exit runs the stored inverse (`ClearLayerProps` / previous value) — cheap because every
+paint action already has identity-compose restore semantics (§4). Covers the
+badge-shake/"override for N ms" pattern too when combined with delay (below).
+
+**2. Toggle mode** — Spline supports alternating forward/reverse on Mouse Down/Up, Key
+Down/Up, Collision and Trigger Area; it's their most-documented interaction pattern. The
+SM already has `Action::Toggle` on a boolean input plus guards — a two-state toggle works
+today but takes four config blocks. Proposed sugar: `mode: "toggle"` on a transition,
+desugaring to exactly that pair internally. No engine change, parser-level only.
+
+**3. Delay, loop, cycle on tweens** — Spline's *only* sequencing primitives are per-action
+`delay` (present on nearly every action), transition `loop` (count | infinite) and `cycle`
+(ping-pong). No timeline, no sequence node — evidence that these three cover real
+choreography (our demo 06 entrance stagger is pure delay). Proposed:
+
+```
+Transition::Tweened { duration, easing, delay: f32, loop: LoopCount, cycle: bool }
+Action::*            { ..., delay: Option<f32> }
+```
+
+Delayed actions need a tick-driven scheduler in the engine (the tween driver already owns
+per-tick time); loop/cycle are envelope state on the existing tween.
+
+**4. Spring easing** — Spline ships `Spring` beside the five bezier presets, and every
+compelling pointer demo here (02, 14, 15) used the 6-line critically-damped spring, not a
+bezier. The deeper argument is interruption: #592 made tweens interruptible, and a spring
+carries velocity across interruption for free — retargeting mid-flight is its native
+operation, where bezier retargeting needs the tween-cache machinery. Proposed:
+
+```
+easing: [x1, y1, x2, y2]                 // today, stays the default
+easing: { spring: { stiffness, damping } }  // target-based, duration-free
+```
+
+Springs ignore `duration` (they settle); `cycle` still applies (retarget to origin).
+
+**5. Dynamic inputs** — Spline's Timer / Stopwatch / Counter / Clock / Random variables
+plus the Variable Control transport (play/pause/stop/restart/ping-pong). The SM's
+`SetRandom` already covers static Random; the rest is one new input family that the
+engine ticks:
+
+```
+Input::Timer   { name, from, to, interval, step, on_end: Restart | Stop }
+Action::TimeControl { input_name, op: Play | Pause | Stop | Restart | PingPong }
+```
+
+Value changes flow through existing guard evaluation — Spline's idle-timeout,
+countdown-UI and slideshow patterns fall out with no new transition machinery.
+
+**6. Continuous input binding** — parallax/look-at/scroll-scrub need per-tick value flow
+(`$pointer.x` → layer transform factors), not edge-triggered transitions. Spline models
+these as dedicated events (Look At, Follow, Scroll) rather than generic binding — worth
+copying, because it keeps configs declarative and bounded:
+
+```
+behaviors: [ { type: "FollowLayer", layer, rate_x, rate_y, damping },
+             { type: "LookAtLayer", layer, strength, damping },
+             { type: "ScrollScrub", from_frame, to_frame } ]
+```
+
+Behaviors are state-scoped (active while the state is), evaluated in the SM tick before
+render — demos 02/14 are the reference implementations, ~15 lines each over the wrapped
+surface. This subsumes the general binding design without an expression DSL.
+
+**7. Key events** — trivially missing: `Event::KeyDown/KeyUp { key }` beside the pointer
+events; hosts already own the event feed. Spline treats key and mouse as symmetric
+(same held/toggle modifiers), which the envelope flags above give us for free.
+
+**Deliberately not adopted**: Spline's expression language (arithmetic in conditionals /
+Set Variable). The existing guard set plus `Increment`/`Multiply`/`Clamp` actions covers
+Spline's documented examples (`A + B`, `A * 10 / 2`); a real DSL is a security and
+complexity cliff the SM's typed actions were designed to avoid — revisit only with
+concrete demand. Physics stays host-side (§7 of the mapping report).
+
+**Priority order** (engine-change size × Spline-evidenced usage): toggle sugar (parser
+only) → auto-revert flag → delay scheduler + loop/cycle → spring easing → key events →
+dynamic inputs → behaviors. The first two are config-format decisions and should land
+with the initial action set; behaviors can trail as a second round.
 
 **Blockers to close before landing:**
 1. C API parity (all ops are wasm/Rust-only today; SM runs on native).

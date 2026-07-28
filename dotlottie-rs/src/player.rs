@@ -1688,6 +1688,47 @@ impl Player {
         )?)
     }
 
+    /// Clip the whole animation to a (rounded) rectangle in canvas pixels.
+    pub fn set_clip_rect(&mut self, x: f32, y: f32, w: f32, h: f32, rx: f32, ry: f32) -> Result<()> {
+        use crate::renderer::ClipRegion;
+        Ok(self
+            .renderer
+            .set_clip(Some(ClipRegion::Rect { x, y, w, h, rx, ry }))?)
+    }
+
+    /// Clip the whole animation to an ellipse in canvas pixels.
+    pub fn set_clip_circle(&mut self, cx: f32, cy: f32, rx: f32, ry: f32) -> Result<()> {
+        use crate::renderer::ClipRegion;
+        Ok(self
+            .renderer
+            .set_clip(Some(ClipRegion::Circle { cx, cy, rx, ry }))?)
+    }
+
+    pub fn clear_clip(&mut self) -> Result<()> {
+        Ok(self.renderer.set_clip(None)?)
+    }
+
+    /// Soft circular alpha mask in canvas pixels. `feather` (0-1) is the
+    /// fraction of the radius fading to transparent; `inverse` cuts out the
+    /// spot instead of spotlighting it.
+    pub fn set_spot_mask(
+        &mut self,
+        cx: f32,
+        cy: f32,
+        radius: f32,
+        feather: f32,
+        inverse: bool,
+    ) -> Result<()> {
+        use crate::renderer::SpotMask;
+        Ok(self
+            .renderer
+            .set_mask(Some(SpotMask { cx, cy, radius, feather, inverse }))?)
+    }
+
+    pub fn clear_mask(&mut self) -> Result<()> {
+        Ok(self.renderer.set_mask(None)?)
+    }
+
     pub fn set_layer_transform(&mut self, layer_name: &str, transform: Vec<f32>) -> Result<()> {
         if transform.len() != 9 {
             return Err(Error::InvalidParameter);
@@ -1710,6 +1751,22 @@ impl Player {
     /// Per-layer gaussian blur; sigma <= 0 removes it.
     pub fn set_layer_blur(&mut self, layer_name: &str, sigma: f32, quality: u8) -> Result<()> {
         Ok(self.renderer.set_layer_blur(layer_name, sigma, quality)?)
+    }
+
+    /// Clip a named layer to a rectangle in composition units; w <= 0 or
+    /// h <= 0 removes the clip.
+    pub fn set_layer_clip_rect(
+        &mut self,
+        layer_name: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) -> Result<()> {
+        use crate::renderer::ClipRegion;
+        let region = (w > 0.0 && h > 0.0)
+            .then_some(ClipRegion::Rect { x, y, w, h, rx: 0.0, ry: 0.0 });
+        Ok(self.renderer.set_layer_clip(layer_name, region)?)
     }
 
     pub fn clear_layer_props(&mut self, layer_name: &str) -> Result<()> {

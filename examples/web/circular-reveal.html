@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Circular reveal · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 09</div>
+  <h1>Circular reveal — clip as a transition</h1>
+  <p class="lede">
+    The Material-style enter/exit transition, done with a runtime clip on the
+    wrapping scene: click anywhere on the stage and a circle expands from the
+    pointer to reveal the animation, or collapses back to hide it. The animation
+    keeps playing underneath the whole time — the clip only gates what's drawn.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <span class="hint">click the stage to reveal / hide from that point</span>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>How it works</h2>
+    <p>
+      <code>set_clip_circle</code> attaches a clipper shape to the scene that
+      wraps the Lottie picture. Scene-level clip coordinates are <em>canvas
+      pixels</em> (the clipper inherits only the parent chain's transform, not
+      the picture's layout matrix), so pointer coordinates map 1:1. ThorVG
+      frees the previous clipper on every replace, so animating the radius is
+      just calling the setter per frame.
+    </p>
+    <h2>APIs used</h2>
+    <pre>player.set_clip_circle(cx, cy, r, r); // canvas px, per frame
+player.clear_clip();                  // fully revealed — clip off</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>SetClip { shape, tween }</strong> — an enter/exit transition
+      action: the SM tweens the clip radius over a duration instead of the host
+      app driving it per frame. Pairs naturally with state entry/exit hooks.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, spring, trackPointer } from "./fx-common.js";
+
+const entry = await initPlayer(document.getElementById("cv"), "assets/scene.json");
+const { player } = entry;
+
+const SIZE = 512;
+const FULL = Math.hypot(SIZE, SIZE); // covers the stage from any corner
+let origin = { x: SIZE / 2, y: SIZE / 2 };
+let t = 1, v = 0, target = 1;
+
+document.getElementById("cv").addEventListener("pointerdown", (e) => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  origin = {
+    x: ((e.clientX - rect.left) / rect.width) * SIZE,
+    y: ((e.clientY - rect.top) / rect.height) * SIZE,
+  };
+  target = target ? 0 : 1;
+});
+
+entry.update = (dt) => {
+  [t, v] = spring(t, v, target, dt, 90, 13);
+  if (t > 0.998) {
+    player.clear_clip();
+    return;
+  }
+  const r = Math.max(0.5, t * FULL);
+  player.set_clip_circle(origin.x, origin.y, r, r);
+};
+</script>
+</body>
+</html>

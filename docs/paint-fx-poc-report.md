@@ -8,8 +8,8 @@ examples, and an assessment of landing these as state-machine actions.
 
 | Surface | Ops |
 |---|---|
-| Whole animation | `set_transform` (pre-existing) · `set_opacity` · `set_blend_mode` · effects: `add_gaussian_blur` / `add_drop_shadow` / `add_fill_effect` / `add_tint` / `add_tritone` / `clear_effects` |
-| Per layer (by name) | `set_layer_transform` · `set_layer_opacity` · `set_layer_visible` · `set_layer_blur` · `clear_layer_props` |
+| Whole animation | `set_transform` (pre-existing) · `set_opacity` · `set_blend_mode` · effects: `add_gaussian_blur` / `add_drop_shadow` / `add_fill_effect` / `add_tint` / `add_tritone` / `clear_effects` · clip: `set_clip_rect` / `set_clip_circle` / `clear_clip` · mask: `set_spot_mask` (feathered, alpha/inverse-alpha) / `clear_mask` |
+| Per layer (by name) | `set_layer_transform` · `set_layer_opacity` · `set_layer_visible` · `set_layer_blur` · `set_layer_clip_rect` · `clear_layer_props` |
 | Queries | `hit_test(layer, x, y)` · `get_layer_transform(layer)` / `get_layer_opacity(layer)` (animated values at the current frame, excluding user overrides) |
 
 Architecture: the Lottie Picture is wrapped in a `Tvg_Scene` (self-ref'd; validated safe
@@ -42,6 +42,17 @@ Demos: `examples/web/` — 7 use-case pages + index (see §5). Tests: `tests/pai
   behavior is arguably the better one (zoom-consistent).
 - **Refcounts**: wrapper scene owns picture ref via `scene_add`; TvgAnimation self-refs the
   scene; drop order verified safe in all orderings (adversarial review §"verified-sound").
+- **Clippers and mask targets update with the *parent* matrix** (`tvgPaint.cpp:242/256` pass
+  `pm`, the paint itself gets `pm × tr.m`) — so clip/mask coordinates on the wrapper scene
+  are canvas pixels, on a layer scene composition units. Same asymmetry as effect sigma.
+  The clip stack reaches children **during the update traversal**, so scene-level clip/mask
+  changes need the same picture poke as layer props (a clean picture short-circuits and its
+  render data never picks up the new clip — verified by a failing pixel test, fixed).
+- **Clip/mask ownership is hand-over**: `Paint::clip`/`mask` ref a fresh shape (0→1) and
+  free the previous one on replace or clear; a shape that already has a parent is rejected.
+  Fresh-shape-per-apply is therefore the only correct lifecycle — never retain the pointer.
+  A new shape carries a full renderFlag, so replacing a clipper per frame self-invalidates
+  (animating clip geometry needs no extra dirtying beyond the poke).
 
 ### Perf (release, 512² SW canvas, scene.json, 150-frame playback)
 
@@ -96,6 +107,9 @@ blur, ~2.4 ms per shadow at 512² SW; fine for one hero canvas, wrong for a grid
 | 06 | entrance-choreography | Staggered per-layer assembly the file never authored | layer opacity/transform |
 | 07 | like-button | Playback control and paint ops composed | tritone, layer transform, `set_frame`/`play` |
 | 08 | reference-morph | Designer-authored null layer as a queryable transform target; runtime morphs the bell onto it | `get_layer_transform`, `set_layer_transform` |
+| 09 | circular-reveal | Material-style enter/exit: clip circle expands from the click point | `set_clip_circle`, `clear_clip` |
+| 10 | progress-reveal | Rect clip on one layer turns the heart into a determinate progress meter | `set_layer_clip_rect` |
+| 11 | spotlight-mask | Feathered radial alpha mask follows the cursor; inverse = cutout | `set_spot_mask`, `clear_mask` |
 
 Assets are purpose-built (`examples/web/assets/`): semantic layer names, ambient loops,
 composition == canvas size so coordinates read 1:1. All pages browser-verified; no console
@@ -114,8 +128,11 @@ SetLayerOpacity   { layer: String, opacity: u8 }
 SetLayerVisible   { layer: String, visible: bool }
 SetLayerBlur      { layer: String, sigma: f32, quality: u8 }   // sigma 0 removes
 ClearLayerProps   { layer: String }
+SetLayerClip      { layer: String, rect: [f32; 4] }            // comp units; empty removes
 SetOpacity        { opacity: u8 }
 SetBlendMode      { mode: BlendMode }                          // named enum, not raw u8
+SetClip           { shape: ClipShape }                         // canvas px; None removes
+SetMask           { spot: SpotMask }                           // feather + inverse; None removes
 ```
 
 Semantics: state-entry actions; values persist until another state changes them (the
@@ -176,7 +193,7 @@ unwrapped but one vertical slice away. Mapped to the interaction use cases they 
 | `tvg_paint_intersects` / `intersects_region` | **Precise hit testing** against actual filled geometry (SW checks the RLE coverage), not the OBB box our `hit_test` uses — irregular-shape clicks, drag-over-target detection, collision between a dragged layer and drop zones | Requires prepared render data (post-update); same flush-ordering rules as everything per-layer. Combined with runtime-hidden layers (`set_layer_visible(false)` hides at draw phase, render data still prepared) this should give **invisible but hit-testable drop zones** — to validate |
 | `tvg_paint_get_aabb` | Canvas-space rects for drag constraints, snapping, layout-aware tooltips/popovers anchored to layers | We already wrap `get_obb` internally for `hit_test`; AABB is the cheap axis-aligned variant |
 | `tvg_paint_duplicate` | Drag ghosts/proxies, particle-style clones of a layer | Duplicated paint would need explicit scene insertion + lifecycle ownership |
-| `tvg_paint_set_mask_method` / `set_clip` | Runtime reveal/spotlight masks: mask one layer by another (or by a runtime shape) without authoring it | Same sibling-transform caveat as authored masks; clipper shapes live outside the Lottie tree |
+| `tvg_paint_set_mask_method` / `set_clip` | **Now wrapped** (scene clip/spot-mask + per-layer rect clip; demos 09–11). Still unwrapped: masking one *layer by another layer* (rejected today: a parented paint can't be a mask target) and non-rect/circle runtime shapes | Layer-as-mask would need duplication or upstream support |
 | `tvg_paint_get_parent` / `get_type` / `get_id` | Tree introspection — enumerate/validate layer targets, diagnostics for unknown names | Pairs with the layer-name diagnostics blocker (§6) |
 | `tvg_paint_ref/unref/get_ref/rel` | Lifecycle plumbing (already used for the wrapper scene) | Internal-only; not API surface |
 | `tvg_paint_translate/scale/rotate` | Convenience transforms | Redundant — they overwrite rather than compose; our matrix path is strictly more capable |

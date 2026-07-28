@@ -11,8 +11,9 @@ use rustc_hash::FxHashMap;
 use crate::renderer::fallback_font;
 
 use super::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, LayerProps, Marker, Point,
-    Renderer, Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, ClipRegion, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, LayerProps,
+    Marker, Point, Renderer, Rgba, Segment, Shape, SpotMask, WgpuDevice, WgpuInstance, WgpuTarget,
+    WgpuTargetType,
 };
 #[cfg(feature = "audio")]
 use super::{AudioEvent, AudioResolver, AudioSource};
@@ -415,6 +416,61 @@ struct LayerBase {
     opacity: u8,
     /// Whether a user blur is currently attached to this (still-live) scene.
     has_blur: bool,
+    /// Whether a user clip is currently attached to this (still-live) scene.
+    has_clip: bool,
+}
+
+/// Fresh clipper shape for `tvg_paint_set_clip`; ThorVG refs it on attach and
+/// frees it on replace/clear, so the caller must hand it over untouched.
+fn make_clip_shape(region: &ClipRegion) -> tvg::Tvg_Paint {
+    unsafe {
+        let shape = tvg::tvg_shape_new();
+        match *region {
+            ClipRegion::Rect { x, y, w, h, rx, ry } => {
+                let _ = tvg::tvg_shape_append_rect(shape, x, y, w, h, rx, ry, true);
+            }
+            ClipRegion::Circle { cx, cy, rx, ry } => {
+                let _ = tvg::tvg_shape_append_circle(shape, cx, cy, rx, ry, true);
+            }
+        }
+        shape
+    }
+}
+
+/// Circle whose alpha ramps from opaque to transparent over the feathered rim,
+/// used as the alpha-mask target.
+fn make_spot_mask_shape(mask: &SpotMask) -> tvg::Tvg_Paint {
+    unsafe {
+        let shape = tvg::tvg_shape_new();
+        let _ =
+            tvg::tvg_shape_append_circle(shape, mask.cx, mask.cy, mask.radius, mask.radius, true);
+        let feather = mask.feather.clamp(0.0, 1.0);
+        if feather > 0.0 {
+            let stop = |offset: f32, a: u8| tvg::Tvg_Color_Stop {
+                offset,
+                r: 255,
+                g: 255,
+                b: 255,
+                a,
+            };
+            let stops = [stop(0.0, 255), stop(1.0 - feather, 255), stop(1.0, 0)];
+            let grad = tvg::tvg_radial_gradient_new();
+            let _ = tvg::tvg_radial_gradient_set(
+                grad,
+                mask.cx,
+                mask.cy,
+                mask.radius,
+                mask.cx,
+                mask.cy,
+                0.0,
+            );
+            let _ = tvg::tvg_gradient_set_color_stops(grad, stops.as_ptr(), stops.len() as u32);
+            let _ = tvg::tvg_shape_set_gradient(shape, grad);
+        } else {
+            let _ = tvg::tvg_shape_set_fill_color(shape, 255, 255, 255, 255);
+        }
+        shape
+    }
 }
 
 pub struct TvgAnimation {
@@ -899,6 +955,29 @@ impl Animation for TvgAnimation {
         }
     }
 
+    fn set_clip(&mut self, region: Option<&ClipRegion>) -> Result<(), TvgError> {
+        let clipper = match region {
+            Some(region) => make_clip_shape(region),
+            None => ptr::null_mut(),
+        };
+        unsafe { tvg::tvg_paint_set_clip(self.raw_scene, clipper).into_result() }
+    }
+
+    fn set_mask(&mut self, mask: Option<&SpotMask>) -> Result<(), TvgError> {
+        let (target, method) = match mask {
+            Some(mask) => (
+                make_spot_mask_shape(mask),
+                if mask.inverse {
+                    tvg::Tvg_Mask_Method_TVG_MASK_METHOD_INVERSE_ALPHA
+                } else {
+                    tvg::Tvg_Mask_Method_TVG_MASK_METHOD_ALPHA
+                },
+            ),
+            None => (ptr::null_mut(), tvg::Tvg_Mask_Method_TVG_MASK_METHOD_NONE),
+        };
+        unsafe { tvg::tvg_paint_set_mask_method(self.raw_scene, target, method).into_result() }
+    }
+
     // NOTE: callers must poke the picture (re-set its transform) once per
     // flush batch — the update traversal short-circuits at a clean picture
     // (PictureImpl::skip) and never sees dirty children. The renderer does
@@ -937,6 +1016,7 @@ impl Animation for TvgAnimation {
                     matrix,
                     opacity: base_opacity,
                     has_blur: false,
+                    has_clip: false,
                 })
             }
         };
@@ -989,6 +1069,20 @@ impl Animation for TvgAnimation {
                 if base.has_blur {
                     unsafe { tvg::tvg_scene_clear_effects(layer_paint).into_result()? };
                     base.has_blur = false;
+                }
+            }
+        }
+
+        match props.clip.as_ref() {
+            Some(region) => unsafe {
+                tvg::tvg_paint_set_clip(layer_paint, make_clip_shape(region)).into_result()?;
+                base.has_clip = true;
+            },
+            None => {
+                // Remove a previously applied clip when the scene wasn't rebuilt.
+                if base.has_clip {
+                    unsafe { tvg::tvg_paint_set_clip(layer_paint, ptr::null_mut()).into_result()? };
+                    base.has_clip = false;
                 }
             }
         }

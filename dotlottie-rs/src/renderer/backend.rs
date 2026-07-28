@@ -224,8 +224,31 @@ pub struct LayerProps {
     pub visible: Option<bool>,
     /// (sigma, quality 0-100). Replaces the layer's effect list while active.
     pub blur: Option<(f32, u8)>,
+    /// Clip geometry in composition units (the clipper inherits the layout
+    /// transform from the parent chain, not the layer's own matrix).
+    pub clip: Option<ClipRegion>,
     /// One-shot restore: apply identity values once, then drop the entry.
     pub restore: bool,
+}
+
+/// Runtime clip geometry. On the wrapping scene the coordinates are canvas
+/// pixels; on a layer they are composition units.
+#[derive(Clone, Copy, PartialEq)]
+pub enum ClipRegion {
+    Rect { x: f32, y: f32, w: f32, h: f32, rx: f32, ry: f32 },
+    Circle { cx: f32, cy: f32, rx: f32, ry: f32 },
+}
+
+/// Soft circular mask over the whole animation, in canvas pixels.
+/// `feather` is the 0-1 fraction of the radius that fades to transparent;
+/// `inverse` turns the spotlight into a cutout.
+#[derive(Clone, Copy, PartialEq)]
+pub struct SpotMask {
+    pub cx: f32,
+    pub cy: f32,
+    pub radius: f32,
+    pub feather: f32,
+    pub inverse: bool,
 }
 
 pub trait Shape: Default {
@@ -348,6 +371,12 @@ pub trait Animation: Default {
         highlight: [u8; 3],
         blend: u8,
     ) -> Result<(), Self::Error>;
+
+    /// Clip the whole animation to a region in canvas pixels; `None` removes it.
+    fn set_clip(&mut self, region: Option<&ClipRegion>) -> Result<(), Self::Error>;
+
+    /// Alpha-mask the whole animation with a soft spot; `None` removes it.
+    fn set_mask(&mut self, mask: Option<&SpotMask>) -> Result<(), Self::Error>;
 
     /// Compose user overrides onto a named layer's animated values.
     /// Must be re-applied after every frame change (ThorVG rebuilds layer

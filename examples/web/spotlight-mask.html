@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Spotlight mask · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 11</div>
+  <h1>Spotlight mask — soft focus follows the cursor</h1>
+  <p class="lede">
+    A feathered radial alpha mask on the wrapping scene: the landscape is fully
+    visible under the cursor and fades smoothly to nothing away from it. Flip to
+    inverse and the same mask becomes a cutout — a hole in the animation that
+    tracks the pointer. Unlike a hard clip, the feather gives the falloff.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <button class="primary" id="mode">mode: spotlight</button>
+      <span class="hint">move the cursor over the stage</span>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>How it works</h2>
+    <p>
+      <code>set_spot_mask</code> builds a circle whose fill is a radial gradient
+      from opaque to transparent over the feathered rim and attaches it as an
+      alpha mask (<code>TVG_MASK_METHOD_ALPHA</code>) — or inverse-alpha for the
+      cutout. Mask coordinates are canvas pixels, same as scene clips. Leaving
+      the stage clears the mask, restoring the full scene.
+    </p>
+    <h2>APIs used</h2>
+    <pre>player.set_spot_mask(x, y, 150, 0.6, false); // spotlight, 60% feather
+player.set_spot_mask(x, y, 150, 0.6, true);  // inverse: cutout
+player.clear_mask();</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>SetMask { shape, feather, inverse, tracks: pointer }</strong> —
+      guided-attention interactions: onboarding highlights, "look here" states,
+      or dimming everything but the active region, driven from SM pointer
+      inputs instead of host JS.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, trackPointer } from "./fx-common.js";
+
+const canvas = document.getElementById("cv");
+const entry = await initPlayer(canvas, "assets/scene.json");
+const { player } = entry;
+
+let inverse = false;
+let pos = null;
+const btn = document.getElementById("mode");
+btn.onclick = () => {
+  inverse = !inverse;
+  btn.textContent = inverse ? "mode: cutout" : "mode: spotlight";
+};
+
+trackPointer(canvas, 512,
+  (x, y) => { pos = { x, y }; },
+  () => { pos = null; });
+
+entry.update = () => {
+  if (pos) player.set_spot_mask(pos.x, pos.y, 150, 0.6, inverse);
+  else player.clear_mask();
+};
+</script>
+</body>
+</html>

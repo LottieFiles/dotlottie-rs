@@ -11,8 +11,8 @@
   <h1>dotlottie-rs <em style="color:var(--accent);font-style:normal">paint-fx</em> examples</h1>
   <p class="lede">
     Use-case demos for the paint-level manipulation POC: transforms, opacity, blend
-    modes, scene effects, and per-layer control (transform / opacity / visibility /
-    blur) on the rendered Lottie. Each page is one self-contained scenario with the
+    modes, scene effects, clipping &amp; masking, and per-layer control (transform /
+    opacity / visibility / blur / clip) on the rendered Lottie. Each page is one self-contained scenario with the
     exact API calls and a note on how it would land as state-machine actions.
     Serve the repo root and build with <code>make wasm</code> first.
   </p>
@@ -58,6 +58,21 @@
     <span class="num">08</span><span class="name">Reference-layer morph</span>
     <span class="ops">get_layer_transform · set_layer_transform</span>
     <span class="desc">A designer-authored null layer carries the target transform; the runtime queries it and morphs the bell onto it — the design stays in the file.</span>
+  </a></li>
+  <li><a href="circular-reveal.html">
+    <span class="num">09</span><span class="name">Circular reveal</span>
+    <span class="ops">set_clip_circle · clear_clip</span>
+    <span class="desc">Material-style enter/exit transition: a clip circle expands from the click point to reveal or hide the whole animation.</span>
+  </a></li>
+  <li><a href="progress-reveal.html">
+    <span class="num">10</span><span class="name">Progress reveal</span>
+    <span class="ops">set_layer_clip_rect</span>
+    <span class="desc">A rect clip on one layer turns designer art into a determinate progress meter — the heart fills bottom-to-top, ring and burst play on.</span>
+  </a></li>
+  <li><a href="spotlight-mask.html">
+    <span class="num">11</span><span class="name">Spotlight mask</span>
+    <span class="ops">set_spot_mask · clear_mask</span>
+    <span class="desc">A feathered radial alpha mask follows the cursor — spotlight or inverse cutout — with soft falloff no hard clip can give.</span>
   </a></li>
 </ol>
 </body>

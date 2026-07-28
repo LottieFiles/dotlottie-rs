@@ -195,6 +195,95 @@ mod tests {
     }
 
     #[test]
+    fn scene_clip_and_mask_change_pixels() {
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        let mut player = loaded_player(&mut buffer);
+        let baseline = buffer.clone();
+        let baseline_nonzero = baseline.iter().filter(|&&px| px != 0).count();
+
+        // Clip to the center quarter (canvas px): fewer pixels survive.
+        assert!(player.set_clip_rect(25.0, 25.0, 50.0, 50.0, 0.0, 0.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline);
+        let clipped_nonzero = buffer.iter().filter(|&&px| px != 0).count();
+        assert!(clipped_nonzero < baseline_nonzero, "clip should discard pixels");
+
+        // Clip survives a frame change (the clipper lives on our wrapping
+        // scene, which ThorVG never rebuilds).
+        assert!(player.set_frame(22.0).is_ok());
+        assert!(player.render().is_ok());
+        assert!(
+            buffer.iter().filter(|&&px| px != 0).count() < baseline_nonzero,
+            "clip must persist across frames"
+        );
+        assert!(player.set_frame(21.0).is_ok());
+        assert!(player.render().is_ok());
+
+        assert!(player.set_clip_circle(50.0, 50.0, 30.0, 30.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline);
+
+        assert!(player.clear_clip().is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+
+        // Feathered spotlight vs inverse cutout: both differ from the
+        // baseline and from each other.
+        assert!(player.set_spot_mask(50.0, 50.0, 35.0, 0.5, false).is_ok());
+        assert!(player.render().is_ok());
+        let spotlight = buffer.clone();
+        assert_ne!(spotlight, baseline);
+
+        assert!(player.set_spot_mask(50.0, 50.0, 35.0, 0.5, true).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline);
+        assert_ne!(buffer, spotlight);
+
+        assert!(player.clear_mask().is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+    }
+
+    #[test]
+    fn layer_clip_survives_frames_and_clears() {
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        let mut player = loaded_player(&mut buffer);
+        let baseline = buffer.clone();
+
+        assert!(player.set_frame(22.0).is_ok());
+        assert!(player.render().is_ok());
+        let clean_frame22 = buffer.clone();
+        assert!(player.set_frame(21.0).is_ok());
+        assert!(player.render().is_ok());
+
+        // Layer clip coordinates are composition units (test.json is a
+        // 1500-unit comp): keep only the left half of layer "R".
+        assert!(player.set_layer_clip_rect("R", 0.0, 0.0, 750.0, 1500.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline);
+
+        // Survives the layer-scene rebuild on frame change.
+        assert!(player.set_frame(22.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, clean_frame22);
+        assert!(player.set_frame(21.0).is_ok());
+        assert!(player.render().is_ok());
+
+        // w <= 0 removes the clip — including on a paused (non-rebuilt) scene.
+        assert!(player.set_layer_clip_rect("R", 0.0, 0.0, 0.0, 0.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+
+        // clear_layer_props also drops an active clip.
+        assert!(player.set_layer_clip_rect("R", 0.0, 0.0, 750.0, 1500.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline);
+        assert!(player.clear_layer_props("R").is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+    }
+
+    #[test]
     fn effects_persist_across_reload() {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
         let mut player = loaded_player(&mut buffer);

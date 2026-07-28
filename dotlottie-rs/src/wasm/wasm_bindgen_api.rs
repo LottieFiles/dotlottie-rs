@@ -853,6 +853,39 @@ impl DotLottiePlayerWasm {
             .is_ok()
     }
 
+    /// Clip the whole animation to a (rounded) rectangle in canvas pixels.
+    pub fn set_clip_rect(&mut self, x: f32, y: f32, w: f32, h: f32, rx: f32, ry: f32) -> bool {
+        self.player.set_clip_rect(x, y, w, h, rx, ry).is_ok()
+    }
+
+    /// Clip the whole animation to an ellipse in canvas pixels.
+    pub fn set_clip_circle(&mut self, cx: f32, cy: f32, rx: f32, ry: f32) -> bool {
+        self.player.set_clip_circle(cx, cy, rx, ry).is_ok()
+    }
+
+    pub fn clear_clip(&mut self) -> bool {
+        self.player.clear_clip().is_ok()
+    }
+
+    /// Soft circular alpha mask in canvas pixels; feather 0-1, inverse cuts
+    /// out the spot instead of spotlighting it.
+    pub fn set_spot_mask(
+        &mut self,
+        cx: f32,
+        cy: f32,
+        radius: f32,
+        feather: f32,
+        inverse: bool,
+    ) -> bool {
+        self.player
+            .set_spot_mask(cx, cy, radius, feather, inverse)
+            .is_ok()
+    }
+
+    pub fn clear_mask(&mut self) -> bool {
+        self.player.clear_mask().is_ok()
+    }
+
     /// Compose a 3x3 row-major transform onto a named layer's animated transform.
     pub fn set_layer_transform(&mut self, layer_name: &str, data: &[f32]) -> bool {
         self.player
@@ -874,6 +907,19 @@ impl DotLottiePlayerWasm {
     /// While active it replaces the layer's own authored effect list.
     pub fn set_layer_blur(&mut self, layer_name: &str, sigma: f32, quality: u8) -> bool {
         self.player.set_layer_blur(layer_name, sigma, quality).is_ok()
+    }
+
+    /// Clip a named layer to a rectangle in composition units; w or h <= 0
+    /// removes the clip.
+    pub fn set_layer_clip_rect(
+        &mut self,
+        layer_name: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) -> bool {
+        self.player.set_layer_clip_rect(layer_name, x, y, w, h).is_ok()
     }
 
     /// Restore a layer to its animated transform/opacity/visibility.

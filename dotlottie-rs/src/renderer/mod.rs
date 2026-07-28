@@ -12,8 +12,9 @@ mod thorvg;
 
 pub(crate) use backend::Point;
 pub use backend::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, LayerProps, Marker, Renderer,
-    Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, ClipRegion, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, LayerProps,
+    Marker, Renderer, Rgba, Segment, Shape, SpotMask, WgpuDevice, WgpuInstance, WgpuTarget,
+    WgpuTargetType,
 };
 #[cfg(feature = "audio")]
 pub use backend::{AudioEvent, AudioResolver, AudioSource};
@@ -212,6 +213,12 @@ pub trait LottieRenderer {
         blend: u8,
     ) -> Result<(), Error>;
 
+    /// Clip the whole animation to a region in canvas pixels; `None` removes it.
+    fn set_clip(&mut self, region: Option<ClipRegion>) -> Result<(), Error>;
+
+    /// Soft circular alpha mask over the whole animation; `None` removes it.
+    fn set_mask(&mut self, mask: Option<SpotMask>) -> Result<(), Error>;
+
     fn set_layer_transform(&mut self, layer_name: &str, transform: &[f32; 9])
         -> Result<(), Error>;
 
@@ -222,6 +229,10 @@ pub trait LottieRenderer {
     /// Per-layer gaussian blur; sigma <= 0 removes it. While active it replaces
     /// the layer's own authored effect list.
     fn set_layer_blur(&mut self, layer_name: &str, sigma: f32, quality: u8) -> Result<(), Error>;
+
+    /// Per-layer clip in composition units; `None` removes it.
+    fn set_layer_clip(&mut self, layer_name: &str, region: Option<ClipRegion>)
+        -> Result<(), Error>;
 
     fn clear_layer_props(&mut self, layer_name: &str) -> Result<(), Error>;
 
@@ -266,6 +277,8 @@ impl dyn LottieRenderer {
             effects: Vec::new(),
             scene_opacity: 255,
             blend_mode: 0,
+            clip: None,
+            mask: None,
         })
     }
 }
@@ -311,6 +324,8 @@ struct LottieRendererImpl<R: Renderer> {
     effects: Vec<Effect>,
     scene_opacity: u8,
     blend_mode: u8,
+    clip: Option<ClipRegion>,
+    mask: Option<SpotMask>,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -527,6 +542,16 @@ impl<R: Renderer> LottieRendererImpl<R> {
         if self.blend_mode != 0 {
             animation
                 .set_blend_method(self.blend_mode)
+                .map_err(into_lottie::<R>)?;
+        }
+        if self.clip.is_some() {
+            animation
+                .set_clip(self.clip.as_ref())
+                .map_err(into_lottie::<R>)?;
+        }
+        if self.mask.is_some() {
+            animation
+                .set_mask(self.mask.as_ref())
                 .map_err(into_lottie::<R>)?;
         }
         Self::replay_effects(animation, &self.effects)?;
@@ -1074,6 +1099,26 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.push_effect(Effect::Tritone { shadow, midtone, highlight, blend })
     }
 
+    fn set_clip(&mut self, region: Option<ClipRegion>) -> Result<(), Error> {
+        self.clip = region;
+        self.get_animation_mut()?
+            .set_clip(region.as_ref())
+            .map_err(into_lottie::<R>)?;
+        // The clip stack reaches children during the update traversal, which a
+        // clean picture short-circuits — poke it so the subtree re-prepares.
+        self.apply_user_transform()?;
+        Ok(())
+    }
+
+    fn set_mask(&mut self, mask: Option<SpotMask>) -> Result<(), Error> {
+        self.mask = mask;
+        self.get_animation_mut()?
+            .set_mask(mask.as_ref())
+            .map_err(into_lottie::<R>)?;
+        self.apply_user_transform()?;
+        Ok(())
+    }
+
     fn set_layer_transform(
         &mut self,
         layer_name: &str,
@@ -1129,6 +1174,25 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
+    fn set_layer_clip(
+        &mut self,
+        layer_name: &str,
+        region: Option<ClipRegion>,
+    ) -> Result<(), Error> {
+        if self.animation.is_none() {
+            return Err(Error::AnimationNotLoaded);
+        }
+        let props = self.layer_props.entry(layer_name.to_owned()).or_default();
+        props.clip = region;
+        // Removing the last override leaves an all-None entry; flush it once
+        // (to detach any live clip) and then drop it.
+        if *props == LayerProps::default() {
+            props.restore = true;
+        }
+        self.updated = true;
+        Ok(())
+    }
+
     fn clear_layer_props(&mut self, layer_name: &str) -> Result<(), Error> {
         // Composing identity values restores the layer's animated state; the
         // entry is marked restore-once and dropped after the next flush.
@@ -1140,6 +1204,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
                     opacity: Some(255),
                     visible: Some(true),
                     blur: None,
+                    clip: None,
                     restore: true,
                 },
             );

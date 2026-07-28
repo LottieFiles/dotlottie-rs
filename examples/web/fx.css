@@ -62,6 +62,7 @@ canvas { width: 100%; height: auto; display: block; touch-action: none; }
   color: var(--muted);
 }
 .controls input[type="range"] { flex: 1; min-width: 120px; accent-color: var(--accent); }
+.controls .hint { margin-left: auto; font-size: 12px; }
 .controls select, .controls button {
   background: var(--ink);
   color: var(--text);

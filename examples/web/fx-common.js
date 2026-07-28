@@ -11,6 +11,7 @@ export async function loadWasm() {
 }
 
 const players = [];
+if (typeof window !== "undefined") window.__fxPlayers = players;
 
 export async function initPlayer(canvas, assetUrl, { size = 512, loop = true } = {}) {
   const m = await loadWasm();

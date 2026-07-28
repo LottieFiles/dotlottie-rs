@@ -12,9 +12,9 @@ mod thorvg;
 
 pub(crate) use backend::Point;
 pub use backend::{
-    Animation, ClipRegion, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, LayerProps,
-    Marker, OverlayProps, Renderer, Rgba, Segment, Shape, SpotMask, WgpuDevice, WgpuInstance,
-    WgpuTarget, WgpuTargetType,
+    Animation, ClipRegion, CloneProps, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface,
+    LayerProps, Marker, OverlayFill, OverlayProps, Renderer, Rgba, Segment, Shape, SpotMask,
+    WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "audio")]
 pub use backend::{AudioEvent, AudioResolver, AudioSource};
@@ -164,6 +164,31 @@ pub trait LottieRenderer {
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Error>;
 
+    /// Geometry-accurate point test against a layer's filled area (canvas px).
+    /// Unlike `hit_test` (OBB), this checks actual coverage; hidden layers
+    /// are included unless `visible_only`.
+    fn hit_test_precise(
+        &self,
+        point: Point,
+        layer_name: &str,
+        visible_only: bool,
+    ) -> Result<bool, Error>;
+
+    /// Geometry-accurate region test against a layer's filled area (canvas px).
+    fn intersects_layer(
+        &self,
+        layer_name: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        visible_only: bool,
+    ) -> Result<bool, Error>;
+
+    /// Canvas-space axis-aligned bounding box of a named layer as
+    /// [x, y, w, h]; `None` when the layer isn't in the tree.
+    fn get_layer_aabb(&self, layer_name: &str) -> Result<Option<[f32; 4]>, Error>;
+
     fn updated(&self) -> bool;
 
     fn tween_to(&mut self, to: f32) -> Result<(), Error>;
@@ -229,14 +254,51 @@ pub trait LottieRenderer {
 
     fn set_overlay_fill(&mut self, id: u32, color: [u8; 4]) -> Result<(), Error>;
 
+    /// Linear-gradient fill; stops are (offset 0-1, rgba), at least one.
+    fn set_overlay_fill_linear(
+        &mut self,
+        id: u32,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    ) -> Result<(), Error>;
+
+    /// Radial-gradient fill centered at (cx, cy) with radius r.
+    fn set_overlay_fill_radial(
+        &mut self,
+        id: u32,
+        cx: f32,
+        cy: f32,
+        r: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    ) -> Result<(), Error>;
+
     /// Stroke width and color; width <= 0 removes the stroke.
     fn set_overlay_stroke(&mut self, id: u32, width: f32, color: [u8; 4]) -> Result<(), Error>;
+
+    /// Stroke dash pattern in canvas px; an empty pattern restores a solid
+    /// stroke.
+    fn set_overlay_stroke_dash(&mut self, id: u32, pattern: Vec<f32>) -> Result<(), Error>;
 
     fn set_overlay_transform(&mut self, id: u32, transform: &[f32; 9]) -> Result<(), Error>;
 
     fn remove_overlay(&mut self, id: u32) -> Result<(), Error>;
 
     fn clear_overlays(&mut self) -> Result<(), Error>;
+
+    /// Duplicate a named layer into the wrapping scene as a frozen snapshot
+    /// (canvas space; does not animate) and return its clone id.
+    fn add_layer_clone(&mut self, layer_name: &str, below: bool) -> Result<u32, Error>;
+
+    fn set_clone_transform(&mut self, id: u32, transform: &[f32; 9]) -> Result<(), Error>;
+
+    fn set_clone_opacity(&mut self, id: u32, opacity: u8) -> Result<(), Error>;
+
+    fn remove_clone(&mut self, id: u32) -> Result<(), Error>;
+
+    fn clear_clones(&mut self) -> Result<(), Error>;
 
     fn set_layer_transform(&mut self, layer_name: &str, transform: &[f32; 9])
         -> Result<(), Error>;
@@ -300,11 +362,24 @@ impl dyn LottieRenderer {
             mask: None,
             overlays: BTreeMap::new(),
             next_overlay_id: 0,
+            clones: BTreeMap::new(),
+            next_clone_id: 0,
         })
     }
 }
 
 const IDENTITY_TRANSFORM: [f32; 9] = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+
+/// Gradient geometry finite, at least one stop, offsets finite in [0, 1].
+fn validate_gradient(geometry: &[f32], stops: &[(f32, [u8; 4])]) -> Result<(), Error> {
+    if geometry.iter().any(|v| !v.is_finite()) || stops.is_empty() {
+        return Err(Error::InvalidArgument);
+    }
+    if stops.iter().any(|(o, _)| !o.is_finite() || !(0.0..=1.0).contains(o)) {
+        return Err(Error::InvalidArgument);
+    }
+    Ok(())
+}
 
 /// Check flat path buffers against Tvg_Path_Command semantics: starts with a
 /// MoveTo, point count matches the commands, all coordinates finite.
@@ -375,6 +450,8 @@ struct LottieRendererImpl<R: Renderer> {
     /// Procedural shapes in the wrapping scene, keyed by handed-out id.
     overlays: BTreeMap<u32, OverlayProps>,
     next_overlay_id: u32,
+    clones: BTreeMap<u32, CloneProps>,
+    next_clone_id: u32,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -608,7 +685,40 @@ impl<R: Renderer> LottieRendererImpl<R> {
                 .sync_overlay(*id, props)
                 .map_err(into_lottie::<R>)?;
         }
+        // Best-effort: a clone's source layer may not exist in the newly
+        // loaded animation; sync_clone re-creates lazily on the next update.
+        for (id, props) in &self.clones {
+            let _ = animation.sync_clone(*id, props);
+        }
         Self::replay_effects(animation, &self.effects)?;
+        Ok(())
+    }
+
+    /// Re-create clones whose live paint is missing (reload replays run
+    /// before the layer tree is built); no-op when all clones are live.
+    fn heal_clones(&mut self) {
+        if self.clones.is_empty() {
+            return;
+        }
+        if let Some(animation) = self.animation.as_mut() {
+            for (id, props) in &self.clones {
+                if !animation.has_clone(*id) {
+                    let _ = animation.sync_clone(*id, props);
+                }
+            }
+        }
+    }
+
+    /// Mutate a clone's declarative props and push them to the live paint.
+    fn update_clone(&mut self, id: u32, f: impl FnOnce(&mut CloneProps)) -> Result<(), Error> {
+        let props = self.clones.get_mut(&id).ok_or(Error::InvalidArgument)?;
+        f(props);
+        self.animation
+            .as_mut()
+            .ok_or(Error::AnimationNotLoaded)?
+            .sync_clone(id, props)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
         Ok(())
     }
 
@@ -837,6 +947,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.flush_slots()?;
 
         if self.updated {
+            self.heal_clones();
             self.flush_layer_props()?;
 
             // Sync before update to ensure previous frame's rendering is complete
@@ -1082,6 +1193,54 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
+    fn hit_test_precise(
+        &self,
+        point: Point,
+        layer_name: &str,
+        visible_only: bool,
+    ) -> Result<bool, Error> {
+        self.get_animation()?
+            .intersects_layer(
+                layer_name,
+                point.x.floor() as i32,
+                point.y.floor() as i32,
+                1,
+                1,
+                visible_only,
+            )
+            .map_err(into_lottie::<R>)
+    }
+
+    fn intersects_layer(
+        &self,
+        layer_name: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        visible_only: bool,
+    ) -> Result<bool, Error> {
+        if !(w > 0.0 && h > 0.0) {
+            return Err(Error::InvalidArgument);
+        }
+        self.get_animation()?
+            .intersects_layer(
+                layer_name,
+                x.floor() as i32,
+                y.floor() as i32,
+                (w.ceil() as i32).max(1),
+                (h.ceil() as i32).max(1),
+                visible_only,
+            )
+            .map_err(into_lottie::<R>)
+    }
+
+    fn get_layer_aabb(&self, layer_name: &str) -> Result<Option<[f32; 4]>, Error> {
+        self.get_animation()?
+            .get_layer_aabb(layer_name)
+            .map_err(into_lottie::<R>)
+    }
+
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Error> {
         self.get_animation()?
             .hit_test(point, layer_name)
@@ -1215,7 +1374,46 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn set_overlay_fill(&mut self, id: u32, color: [u8; 4]) -> Result<(), Error> {
-        self.update_overlay(id, |props| props.fill = Some(color))
+        self.update_overlay(id, |props| props.fill = Some(OverlayFill::Solid(color)))
+    }
+
+    fn set_overlay_fill_linear(
+        &mut self,
+        id: u32,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    ) -> Result<(), Error> {
+        validate_gradient(&[x1, y1, x2, y2], &stops)?;
+        self.update_overlay(id, |props| {
+            props.fill = Some(OverlayFill::Linear { x1, y1, x2, y2, stops })
+        })
+    }
+
+    fn set_overlay_fill_radial(
+        &mut self,
+        id: u32,
+        cx: f32,
+        cy: f32,
+        r: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    ) -> Result<(), Error> {
+        if !r.is_finite() || r <= 0.0 {
+            return Err(Error::InvalidArgument);
+        }
+        validate_gradient(&[cx, cy, r], &stops)?;
+        self.update_overlay(id, |props| {
+            props.fill = Some(OverlayFill::Radial { cx, cy, r, stops })
+        })
+    }
+
+    fn set_overlay_stroke_dash(&mut self, id: u32, pattern: Vec<f32>) -> Result<(), Error> {
+        if pattern.iter().any(|v| !v.is_finite() || *v < 0.0) || pattern.iter().sum::<f32>() == 0.0 && !pattern.is_empty() {
+            return Err(Error::InvalidArgument);
+        }
+        self.update_overlay(id, |props| props.dash = pattern)
     }
 
     fn set_overlay_stroke(&mut self, id: u32, width: f32, color: [u8; 4]) -> Result<(), Error> {
@@ -1246,6 +1444,48 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         let animation = self.animation.as_mut().ok_or(Error::AnimationNotLoaded)?;
         for id in std::mem::take(&mut self.overlays).into_keys() {
             animation.remove_overlay(id).map_err(into_lottie::<R>)?;
+        }
+        self.updated = true;
+        Ok(())
+    }
+
+    fn add_layer_clone(&mut self, layer_name: &str, below: bool) -> Result<u32, Error> {
+        let animation = self.animation.as_mut().ok_or(Error::AnimationNotLoaded)?;
+        let id = self.next_clone_id;
+        let props = CloneProps { layer: layer_name.to_owned(), below, ..Default::default() };
+        animation.sync_clone(id, &props).map_err(into_lottie::<R>)?;
+        self.clones.insert(id, props);
+        self.next_clone_id += 1;
+        self.updated = true;
+        Ok(id)
+    }
+
+    fn set_clone_transform(&mut self, id: u32, transform: &[f32; 9]) -> Result<(), Error> {
+        self.update_clone(id, |props| props.transform = Some(*transform))
+    }
+
+    fn set_clone_opacity(&mut self, id: u32, opacity: u8) -> Result<(), Error> {
+        self.update_clone(id, |props| props.opacity = Some(opacity))
+    }
+
+    fn remove_clone(&mut self, id: u32) -> Result<(), Error> {
+        self.clones.remove(&id).ok_or(Error::InvalidArgument)?;
+        self.animation
+            .as_mut()
+            .ok_or(Error::AnimationNotLoaded)?
+            .remove_clone(id)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        Ok(())
+    }
+
+    fn clear_clones(&mut self) -> Result<(), Error> {
+        if self.clones.is_empty() {
+            return Ok(());
+        }
+        let animation = self.animation.as_mut().ok_or(Error::AnimationNotLoaded)?;
+        for id in std::mem::take(&mut self.clones).into_keys() {
+            animation.remove_clone(id).map_err(into_lottie::<R>)?;
         }
         self.updated = true;
         Ok(())

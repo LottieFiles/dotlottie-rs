@@ -492,4 +492,199 @@ mod tests {
         assert!(player.load_animation_path(&path2).is_ok());
         assert!(buffer.iter().any(|&px| px != 0));
     }
+
+    #[test]
+    fn precise_hit_test_and_aabb() {
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        let mut player = loaded_player(&mut buffer);
+        let baseline = buffer.clone();
+
+        // Derive layer "E"'s actual pixel coverage by hiding it.
+        assert!(player.set_layer_visible("E", false).is_ok());
+        assert!(player.render().is_ok());
+        let hidden = buffer.clone();
+        let coverage: Vec<usize> = (0..buffer.len())
+            .filter(|&i| hidden[i] != baseline[i])
+            .collect();
+        assert!(!coverage.is_empty(), "hiding E should change pixels");
+
+        // Hidden layers stay hit-testable (render data is prepared; hidden is
+        // draw-phase only) — the invisible-drop-zone lever.
+        let covered = coverage[coverage.len() / 2];
+        let (cx, cy) = ((covered % WIDTH as usize) as f32, (covered / WIDTH as usize) as f32);
+        assert!(player.hit_test_precise("E", cx, cy, false));
+        assert!(!player.hit_test_precise("E", cx, cy, true));
+
+        assert!(player.set_layer_visible("E", true).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+        assert!(player.hit_test_precise("E", cx, cy, true));
+
+        // AABB contains every covered pixel, in canvas space.
+        let aabb = player.get_layer_aabb("E").expect("E has an AABB");
+        let (ax, ay, aw, ah) = (aabb[0], aabb[1], aabb[2], aabb[3]);
+        assert!(aw > 0.0 && ah > 0.0);
+        for &i in &coverage {
+            let (px, py) = ((i % WIDTH as usize) as f32, (i / WIDTH as usize) as f32);
+            assert!(
+                px >= ax - 1.0 && px <= ax + aw + 1.0 && py >= ay - 1.0 && py <= ay + ah + 1.0,
+                "covered pixel ({px}, {py}) outside AABB {aabb:?}"
+            );
+        }
+
+        // Precise beats the box: some point inside the AABB isn't covered.
+        let mut uncovered = None;
+        'scan: for y in (ay as usize)..((ay + ah) as usize).min(HEIGHT as usize) {
+            for x in (ax as usize)..((ax + aw) as usize).min(WIDTH as usize) {
+                if !coverage.contains(&(y * WIDTH as usize + x)) {
+                    uncovered = Some((x as f32, y as f32));
+                    break 'scan;
+                }
+            }
+        }
+        let (ux, uy) = uncovered.expect("free path should not fill its AABB");
+        assert!(!player.hit_test_precise("E", ux, uy, false));
+
+        // Region test: the whole AABB intersects; a far-away region doesn't.
+        assert!(player.intersects_layer("E", ax, ay, aw, ah, false));
+        assert!(!player.intersects_layer("E", ax + aw + 5.0, ay + ah + 5.0, 3.0, 3.0, false));
+        assert!(!player.intersects_layer("E", 0.0, 0.0, 0.0, 5.0, false));
+
+        // Unknown layers: no AABB, no hit.
+        assert!(player.get_layer_aabb("nope").is_none());
+        assert!(!player.hit_test_precise("nope", cx, cy, false));
+    }
+
+    #[test]
+    fn layer_clones_render_and_replay() {
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        let mut player = loaded_player(&mut buffer);
+        let baseline = buffer.clone();
+
+        // A fresh clone overlaps its source exactly; moving it reveals it.
+        let id = player.add_layer_clone("E", false).unwrap();
+        assert!(player
+            .set_clone_transform(id, vec![1.0, 0.0, 25.0, 0.0, 1.0, 10.0, 0.0, 0.0, 1.0])
+            .is_ok());
+        assert!(player.render().is_ok());
+        let moved = buffer.clone();
+        assert_ne!(moved, baseline);
+
+        assert!(player.set_clone_opacity(id, 110).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, moved);
+
+        // The clone is a frozen snapshot: the source animates, the copy stays.
+        assert!(player.set_frame(30.0).is_ok());
+        assert!(player.render().is_ok());
+        assert!(buffer.iter().any(|&px| px != 0));
+
+        assert!(player.set_frame(21.0).is_ok());
+        assert!(player.remove_clone(id).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+
+        assert!(player.remove_clone(id).is_err());
+        assert!(player.add_layer_clone("nope", false).is_err());
+
+        // Clones replay across reloads (re-duplicated on the fresh tree).
+        // Above the art — frame 21 is opaque edge-to-edge, so a below-clone
+        // would be fully occluded.
+        let id2 = player.add_layer_clone("E", false).unwrap();
+        assert!(player
+            .set_clone_transform(id2, vec![1.0, 0.0, -20.0, 0.0, 1.0, -15.0, 0.0, 0.0, 1.0])
+            .is_ok());
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path).is_ok());
+        assert!(player.set_frame(21.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline, "replayed clone should still render");
+
+        assert!(player.clear_clones().is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+    }
+
+    #[test]
+    fn overlay_gradients_and_dash() {
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        let mut player = loaded_player(&mut buffer);
+        let baseline = buffer.clone();
+
+        let rect_cmds = vec![1u8, 2, 2, 2, 0];
+        let rect_pts = vec![10.0f32, 10.0, 90.0, 10.0, 90.0, 60.0, 10.0, 60.0];
+        let id = player.add_overlay(false).unwrap();
+        assert!(player.set_overlay_path(id, rect_cmds, rect_pts).is_ok());
+        assert!(player.set_overlay_fill(id, 200, 30, 30, 255).is_ok());
+        assert!(player.render().is_ok());
+        let solid = buffer.clone();
+        assert_ne!(solid, baseline);
+        // A solid fill is horizontally uniform inside the rect...
+        let row = 35 * WIDTH as usize;
+        assert_eq!(solid[row + 20], solid[row + 80]);
+
+        let stops = vec![0.0, 255.0, 0.0, 0.0, 255.0, 1.0, 0.0, 0.0, 255.0, 255.0];
+        assert!(player
+            .set_overlay_fill_linear(id, 10.0, 0.0, 90.0, 0.0, stops.clone())
+            .is_ok());
+        assert!(player.render().is_ok());
+        let linear = buffer.clone();
+        assert_ne!(linear, solid);
+        // ...a horizontal gradient is not.
+        assert_ne!(linear[row + 20], linear[row + 80]);
+
+        assert!(player
+            .set_overlay_fill_radial(id, 50.0, 35.0, 40.0, stops)
+            .is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, linear);
+
+        // Switching back to a solid fill fully clears the gradient.
+        assert!(player.set_overlay_fill(id, 200, 30, 30, 255).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, solid);
+
+        // Dash: a stroked line loses pixels when dashed, and an empty pattern
+        // restores the solid stroke byte-exactly.
+        let line = player.add_overlay(false).unwrap();
+        assert!(player
+            .set_overlay_path(line, vec![1, 2], vec![10.0, 80.0, 90.0, 80.0])
+            .is_ok());
+        assert!(player.set_overlay_stroke(line, 5.0, 30, 200, 30, 255).is_ok());
+        assert!(player.render().is_ok());
+        let solid_stroke = buffer.clone();
+        let stroke_px = (0..buffer.len()).filter(|&i| solid_stroke[i] != solid[i]).count();
+        assert!(stroke_px > 0);
+
+        assert!(player.set_overlay_stroke_dash(line, vec![6.0, 5.0]).is_ok());
+        assert!(player.render().is_ok());
+        let dashed_px = (0..buffer.len()).filter(|&i| buffer[i] != solid[i]).count();
+        assert!(dashed_px > 0 && dashed_px < stroke_px, "dashing should drop pixels");
+
+        assert!(player.set_overlay_stroke_dash(line, vec![]).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, solid_stroke);
+
+        // Validation: bad stops/patterns error and leave pixels untouched.
+        assert!(player
+            .set_overlay_fill_linear(id, 0.0, 0.0, 1.0, 1.0, vec![])
+            .is_err());
+        assert!(player
+            .set_overlay_fill_linear(id, 0.0, 0.0, 1.0, 1.0, vec![0.0, 1.0])
+            .is_err());
+        assert!(player
+            .set_overlay_fill_radial(id, 50.0, 50.0, 0.0, vec![0.0, 1.0, 1.0, 1.0, 255.0])
+            .is_err());
+        assert!(player
+            .set_overlay_fill_linear(id, f32::NAN, 0.0, 1.0, 1.0, vec![0.0, 1.0, 1.0, 1.0, 255.0])
+            .is_err());
+        assert!(player.set_overlay_stroke_dash(line, vec![-1.0, 4.0]).is_err());
+        assert!(player.set_overlay_stroke_dash(line, vec![0.0, 0.0]).is_err());
+        let _ = player.render();
+        assert_eq!(buffer, solid_stroke);
+
+        assert!(player.clear_overlays().is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+    }
 }

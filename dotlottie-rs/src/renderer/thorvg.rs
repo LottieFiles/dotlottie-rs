@@ -12,7 +12,8 @@ use crate::renderer::fallback_font;
 
 use super::{
     Animation, ClipRegion, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, LayerProps,
-    Marker, OverlayProps, Point, Renderer, Rgba, Segment, Shape, SpotMask, WgpuDevice,
+    CloneProps, Marker, OverlayFill, OverlayProps, Point, Renderer, Rgba, Segment, Shape,
+    SpotMask, WgpuDevice,
     WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "audio")]
@@ -490,6 +491,8 @@ pub struct TvgAnimation {
     raw_scene: tvg::Tvg_Paint,
     // Scene-owned procedural shapes; pointers stay valid until removed.
     overlay_paints: FxHashMap<u32, tvg::Tvg_Paint>,
+    // Scene-owned layer duplicates + their baked comp→canvas base matrix.
+    clone_paints: FxHashMap<u32, (tvg::Tvg_Paint, tvg::Tvg_Matrix)>,
     layer_base: FxHashMap<String, LayerBase>,
     data: Option<CString>,
     segment: Option<Segment>,
@@ -559,6 +562,7 @@ impl Default for TvgAnimation {
             raw_paint,
             raw_scene,
             overlay_paints: FxHashMap::default(),
+            clone_paints: FxHashMap::default(),
             layer_base: FxHashMap::default(),
             data: None,
             segment: None,
@@ -655,6 +659,53 @@ impl TvgAnimation {
             false,
         )
         .into_result()
+    }
+}
+
+const TVG_IDENTITY: tvg::Tvg_Matrix = tvg::Tvg_Matrix {
+    e11: 1.0,
+    e12: 0.0,
+    e13: 0.0,
+    e21: 0.0,
+    e22: 1.0,
+    e23: 0.0,
+    e31: 0.0,
+    e32: 0.0,
+    e33: 1.0,
+};
+
+fn tvg_mat_mul(a: &tvg::Tvg_Matrix, b: &tvg::Tvg_Matrix) -> tvg::Tvg_Matrix {
+    tvg::Tvg_Matrix {
+        e11: a.e11 * b.e11 + a.e12 * b.e21 + a.e13 * b.e31,
+        e12: a.e11 * b.e12 + a.e12 * b.e22 + a.e13 * b.e32,
+        e13: a.e11 * b.e13 + a.e12 * b.e23 + a.e13 * b.e33,
+        e21: a.e21 * b.e11 + a.e22 * b.e21 + a.e23 * b.e31,
+        e22: a.e21 * b.e12 + a.e22 * b.e22 + a.e23 * b.e32,
+        e23: a.e21 * b.e13 + a.e22 * b.e23 + a.e23 * b.e33,
+        e31: a.e31 * b.e11 + a.e32 * b.e21 + a.e33 * b.e31,
+        e32: a.e31 * b.e12 + a.e32 * b.e22 + a.e33 * b.e32,
+        e33: a.e31 * b.e13 + a.e32 * b.e23 + a.e33 * b.e33,
+    }
+}
+
+fn tvg_color_stops(stops: &[(f32, [u8; 4])]) -> Vec<tvg::Tvg_Color_Stop> {
+    stops
+        .iter()
+        .map(|&(offset, [r, g, b, a])| tvg::Tvg_Color_Stop { offset, r, g, b, a })
+        .collect()
+}
+
+fn tvg_mat_from(m: &[f32; 9]) -> tvg::Tvg_Matrix {
+    tvg::Tvg_Matrix {
+        e11: m[0],
+        e12: m[1],
+        e13: m[2],
+        e21: m[3],
+        e22: m[4],
+        e23: m[5],
+        e31: m[6],
+        e32: m[7],
+        e33: m[8],
     }
 }
 
@@ -990,6 +1041,108 @@ impl Animation for TvgAnimation {
         unsafe { tvg::tvg_paint_set_mask_method(self.raw_scene, target, method).into_result() }
     }
 
+    fn intersects_layer(
+        &self,
+        layer_name: &str,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+        visible_only: bool,
+    ) -> Result<bool, TvgError> {
+        let layer_id = self.layer_id_map.get_or_insert(layer_name)?;
+        let layer_paint = unsafe { tvg::tvg_picture_get_paint(self.raw_paint, layer_id) };
+        if layer_paint.is_null() {
+            return Ok(false);
+        }
+        Ok(unsafe {
+            tvg::tvg_paint_intersects_region(
+                layer_paint as tvg::Tvg_Paint,
+                x,
+                y,
+                w,
+                h,
+                visible_only,
+            )
+        })
+    }
+
+    fn get_layer_aabb(&self, layer_name: &str) -> Result<Option<[f32; 4]>, TvgError> {
+        let layer_id = self.layer_id_map.get_or_insert(layer_name)?;
+        unsafe {
+            let layer_paint = tvg::tvg_picture_get_paint(self.raw_paint, layer_id);
+            if layer_paint.is_null() {
+                return Ok(None);
+            }
+            let (mut x, mut y, mut w, mut h) = (0.0f32, 0.0f32, 0.0f32, 0.0f32);
+            tvg::tvg_paint_get_aabb(
+                layer_paint as tvg::Tvg_Paint,
+                &mut x,
+                &mut y,
+                &mut w,
+                &mut h,
+            )
+            .into_result()?;
+            Ok(Some([x, y, w, h]))
+        }
+    }
+
+    fn sync_clone(&mut self, id: u32, props: &CloneProps) -> Result<(), TvgError> {
+        let (paint, base) = match self.clone_paints.get(&id) {
+            Some(&entry) => entry,
+            None => {
+                let layer_id = self.layer_id_map.get_or_insert(&props.layer)?;
+                let layer_paint = unsafe { tvg::tvg_picture_get_paint(self.raw_paint, layer_id) };
+                if layer_paint.is_null() {
+                    return Err(TvgError::InvalidArgument);
+                }
+                let dup = unsafe { tvg::tvg_paint_duplicate(layer_paint as tvg::Tvg_Paint) };
+                if dup.is_null() {
+                    return Err(TvgError::Unknown);
+                }
+                // The duplicate leaves the picture's subtree, so it must carry
+                // the picture's comp→canvas transform itself.
+                let mut pm = TVG_IDENTITY;
+                let mut lm = TVG_IDENTITY;
+                unsafe {
+                    tvg::tvg_paint_get_transform(self.raw_paint, &mut pm).into_result()?;
+                    tvg::tvg_paint_get_transform(layer_paint as tvg::Tvg_Paint, &mut lm)
+                        .into_result()?;
+                    if props.below {
+                        tvg::tvg_scene_insert(self.raw_scene, dup, self.raw_paint).into_result()?;
+                    } else {
+                        tvg::tvg_scene_add(self.raw_scene, dup).into_result()?;
+                    }
+                }
+                let base = tvg_mat_mul(&pm, &lm);
+                self.clone_paints.insert(id, (dup, base));
+                (dup, base)
+            }
+        };
+        let composed = match props.transform.as_ref() {
+            Some(user) => tvg_mat_mul(&tvg_mat_from(user), &base),
+            None => base,
+        };
+        unsafe {
+            tvg::tvg_paint_set_transform(paint, &composed).into_result()?;
+            if let Some(opacity) = props.opacity {
+                tvg::tvg_paint_set_opacity(paint, opacity).into_result()?;
+            }
+        }
+        Ok(())
+    }
+
+    fn remove_clone(&mut self, id: u32) -> Result<(), TvgError> {
+        if let Some((paint, _)) = self.clone_paints.remove(&id) {
+            unsafe { tvg::tvg_scene_remove(self.raw_scene, paint).into_result()? };
+        }
+        Ok(())
+    }
+
+    fn has_clone(&self, id: u32) -> bool {
+        self.clone_paints.contains_key(&id)
+    }
+
     fn sync_overlay(&mut self, id: u32, props: &OverlayProps) -> Result<(), TvgError> {
         let shape = match self.overlay_paints.get(&id) {
             Some(&shape) => {
@@ -1021,11 +1174,51 @@ impl Animation for TvgAnimation {
                 )
                 .into_result()?;
             }
-            let [r, g, b, a] = props.fill.unwrap_or([0, 0, 0, 0]);
-            tvg::tvg_shape_set_fill_color(shape, r, g, b, a).into_result()?;
+            // Gradients are hand-over: the shape owns them and frees the
+            // previous fill on replace, same lifecycle as clip shapes.
+            match &props.fill {
+                Some(OverlayFill::Linear { x1, y1, x2, y2, stops }) => {
+                    let grad = tvg::tvg_linear_gradient_new();
+                    tvg::tvg_linear_gradient_set(grad, *x1, *y1, *x2, *y2).into_result()?;
+                    let stops = tvg_color_stops(stops);
+                    tvg::tvg_gradient_set_color_stops(grad, stops.as_ptr(), stops.len() as u32)
+                        .into_result()?;
+                    tvg::tvg_shape_set_gradient(shape, grad).into_result()?;
+                }
+                Some(OverlayFill::Radial { cx, cy, r, stops }) => {
+                    let grad = tvg::tvg_radial_gradient_new();
+                    tvg::tvg_radial_gradient_set(grad, *cx, *cy, *r, *cx, *cy, 0.0)
+                        .into_result()?;
+                    let stops = tvg_color_stops(stops);
+                    tvg::tvg_gradient_set_color_stops(grad, stops.as_ptr(), stops.len() as u32)
+                        .into_result()?;
+                    tvg::tvg_shape_set_gradient(shape, grad).into_result()?;
+                }
+                Some(OverlayFill::Solid([r, g, b, a])) => {
+                    tvg::tvg_shape_set_fill_color(shape, *r, *g, *b, *a).into_result()?;
+                }
+                None => {
+                    tvg::tvg_shape_set_fill_color(shape, 0, 0, 0, 0).into_result()?;
+                }
+            }
             let (width, [sr, sg, sb, sa]) = props.stroke.unwrap_or((0.0, [0, 0, 0, 0]));
             tvg::tvg_shape_set_stroke_width(shape, width).into_result()?;
             tvg::tvg_shape_set_stroke_color(shape, sr, sg, sb, sa).into_result()?;
+            if props.dash.is_empty() {
+                // Upstream: clearing with cnt=0 leaves a stale dash.length and
+                // the SW engine then dashes with a null pattern (segfault) —
+                // clear via a zero-length pattern instead.
+                let zero = [0.0f32];
+                tvg::tvg_shape_set_stroke_dash(shape, zero.as_ptr(), 1, 0.0).into_result()?;
+            } else {
+                tvg::tvg_shape_set_stroke_dash(
+                    shape,
+                    props.dash.as_ptr(),
+                    props.dash.len() as u32,
+                    0.0,
+                )
+                .into_result()?;
+            }
             let m = props
                 .transform
                 .unwrap_or([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]);

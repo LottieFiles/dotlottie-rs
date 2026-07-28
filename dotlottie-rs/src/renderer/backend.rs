@@ -248,10 +248,43 @@ pub enum ClipRegion {
 pub struct OverlayProps {
     pub cmds: Vec<u8>,
     pub pts: Vec<f32>,
-    pub fill: Option<[u8; 4]>,
+    pub fill: Option<OverlayFill>,
     /// (width, rgba)
     pub stroke: Option<(f32, [u8; 4])>,
+    /// Stroke dash pattern in canvas px; empty renders a solid stroke.
+    pub dash: Vec<f32>,
     pub transform: Option<[f32; 9]>,
+    /// Render behind the animation instead of in front of it.
+    pub below: bool,
+}
+
+/// Overlay fill paint. Gradient stops are (offset 0-1, rgba) pairs; gradient
+/// geometry is in the overlay's own (canvas px) coordinates.
+#[derive(Clone, PartialEq)]
+pub enum OverlayFill {
+    Solid([u8; 4]),
+    Linear {
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    },
+    Radial {
+        cx: f32,
+        cy: f32,
+        r: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    },
+}
+
+/// A frozen duplicate of a named layer, retained in the wrapping scene in
+/// canvas space. The snapshot is taken at clone time and does not animate.
+#[derive(Default, Clone, PartialEq)]
+pub struct CloneProps {
+    pub layer: String,
+    pub transform: Option<[f32; 9]>,
+    pub opacity: Option<u8>,
     /// Render behind the animation instead of in front of it.
     pub below: bool,
 }
@@ -321,6 +354,23 @@ pub trait Animation: Default {
     fn set_audio_resolver(&mut self, resolver: Option<AudioResolver>) -> Result<(), Self::Error>;
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Self::Error>;
+
+    /// Geometry-accurate region test against a named layer's filled area
+    /// (canvas px, RLE coverage). Requires prepared render data; hidden
+    /// layers are included unless `visible_only`.
+    fn intersects_layer(
+        &self,
+        layer_name: &str,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+        visible_only: bool,
+    ) -> Result<bool, Self::Error>;
+
+    /// Canvas-space axis-aligned bounding box of a named layer as
+    /// [x, y, w, h]. `None` when the layer isn't in the tree.
+    fn get_layer_aabb(&self, layer_name: &str) -> Result<Option<[f32; 4]>, Self::Error>;
 
     fn get_size(&self) -> Result<(f32, f32), Self::Error>;
 
@@ -401,6 +451,17 @@ pub trait Animation: Default {
 
     /// Remove a previously synced overlay shape; unknown ids are a no-op.
     fn remove_overlay(&mut self, id: u32) -> Result<(), Self::Error>;
+
+    /// Create or update a frozen duplicate of a named layer in the wrapping
+    /// scene. The source is duplicated only at creation time; later calls
+    /// just re-apply transform/opacity.
+    fn sync_clone(&mut self, id: u32, props: &CloneProps) -> Result<(), Self::Error>;
+
+    /// Remove a previously synced clone; unknown ids are a no-op.
+    fn remove_clone(&mut self, id: u32) -> Result<(), Self::Error>;
+
+    /// Whether a clone id has a live paint in the scene.
+    fn has_clone(&self, id: u32) -> bool;
 
     /// Compose user overrides onto a named layer's animated values.
     /// Must be re-applied after every frame change (ThorVG rebuilds layer

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Drag and drop · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 15</div>
+  <h1>Drag and drop — precise grabs, clone ghosts, live zones</h1>
+  <p class="lede">
+    Spline's relational events on a flat Lottie: grab any blob with a
+    geometry-accurate hit test (the click must land on the shape, not its box),
+    drag a translucent <em>clone ghost</em> rendered on top of everything, and
+    drop into gradient-filled, dash-outlined zones that light up when the
+    ghost's bounding box enters them. Miss a zone and the blob stays home —
+    Spline's "return to original" fallback.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <button id="reset" class="primary">reset blobs</button>
+      <span class="hint">drag a blob into a zone</span>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>How it works</h2>
+    <p>
+      <code>hit_test_precise</code> wraps <code>tvg_paint_intersects</code> —
+      the SW engine checks the actual rasterized coverage, so clicks between a
+      squircle's corner and its bounding box fall through to the blob beneath.
+      The ghost is <code>add_layer_clone</code>: a frozen
+      <code>tvg_paint_duplicate</code> of the layer, retained in the wrapping
+      scene above the picture — genuine render-on-top without touching Lottie
+      z-order. Zones are overlay shapes styled with radial/linear gradients and
+      dashed strokes; hover detection is <code>get_layer_aabb</code> plus the
+      drag delta against each zone's rect.
+    </p>
+    <p>
+      On drop, the real layer springs to the zone center via
+      <code>set_layer_transform</code> and the ghost is removed — the original
+      never moved during the drag, so a missed drop needs no cleanup at all.
+    </p>
+    <h2>APIs used</h2>
+    <pre>player.hit_test_precise(name, x, y, false);   // grab: real geometry
+const ghost = player.add_layer_clone(name, false);
+player.set_clone_transform(ghost, T(dx, dy)); // drag on top of all
+player.get_layer_aabb(name);                  // zone overlap + snap
+player.set_overlay_fill_radial(zone, cx, cy, r, stops);
+player.set_overlay_stroke_dash(zone, [8, 6]); // [] restores solid</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>DragLayer { layer, ghost, limits } · DropZone { id, shape, on_drop }</strong>
+      — the full Spline Drag &amp; Drop parameter table (damping, limits, snap,
+      fallback) maps onto these four primitives; zones can even be invisible
+      hit-testable layers (<code>visible_only: false</code>).
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, T, mul, spring, setLayerT, parseSvgPath } from "./fx-common.js";
+
+const canvas = document.getElementById("cv");
+const entry = await initPlayer(canvas, "assets/hero.json");
+const { player } = entry;
+const SIZE = 512;
+
+// Top-of-file layers first, so overlapping grabs pick the visually-top blob.
+const BLOBS = ["blob-orange", "blob-pink", "blob-indigo", "blob-violet", "blob-green", "blob-blue"];
+const offs = {};
+for (const b of BLOBS) offs[b] = { x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0 };
+
+function roundedRect(x, y, w, h, r) {
+  const k = r * 0.5523;
+  return parseSvgPath(
+    `M ${x + r} ${y} L ${x + w - r} ${y} C ${x + w - r + k} ${y} ${x + w} ${y + r - k} ${x + w} ${y + r} ` +
+    `L ${x + w} ${y + h - r} C ${x + w} ${y + h - r + k} ${x + w - r + k} ${y + h} ${x + w - r} ${y + h} ` +
+    `L ${x + r} ${y + h} C ${x + r - k} ${y + h} ${x} ${y + h - r + k} ${x} ${y + h - r} ` +
+    `L ${x} ${y + r} C ${x} ${y + r - k} ${x + r - k} ${y} ${x + r} ${y} Z`
+  );
+}
+
+// Two drop zones behind the art: radial-glow teal, linear-sweep violet.
+const ZONES = [
+  { x: 186, y: 190, w: 130, h: 130, rgb: [51, 224, 176], kind: "radial" },
+  { x: 360, y: 385, w: 120, h: 115, rgb: [141, 110, 245], kind: "linear" },
+];
+for (const z of ZONES) {
+  z.cx = z.x + z.w / 2;
+  z.cy = z.y + z.h / 2;
+  z.id = player.add_overlay(true);
+  const { cmds, pts } = roundedRect(z.x, z.y, z.w, z.h, 18);
+  player.set_overlay_path(z.id, cmds, pts);
+  styleZone(z, false);
+}
+
+function styleZone(z, hover) {
+  const [r, g, b] = z.rgb;
+  const inner = hover ? 130 : 55;
+  if (z.kind === "radial") {
+    player.set_overlay_fill_radial(z.id, z.cx, z.cy, z.w * 0.7,
+      new Float32Array([0, r, g, b, inner, 1, r, g, b, 0]));
+  } else {
+    player.set_overlay_fill_linear(z.id, z.x, z.y, z.x + z.w, z.y + z.h,
+      new Float32Array([0, r, g, b, inner, 1, r, g, b, 10]));
+  }
+  player.set_overlay_stroke(z.id, hover ? 3 : 2, r, g, b, 235);
+  player.set_overlay_stroke_dash(z.id, hover ? new Float32Array([]) : new Float32Array([8, 6]));
+}
+
+const toCanvas = (e) => {
+  const rect = canvas.getBoundingClientRect();
+  return { x: ((e.clientX - rect.left) / rect.width) * SIZE, y: ((e.clientY - rect.top) / rect.height) * SIZE };
+};
+
+let drag = null;
+let hovered = null;
+
+canvas.addEventListener("pointerdown", (e) => {
+  try { canvas.setPointerCapture(e.pointerId); } catch {}
+  const p = toCanvas(e);
+  for (const name of BLOBS) {
+    if (player.hit_test_precise(name, p.x, p.y, false)) {
+      const bb = player.get_layer_aabb(name);
+      const ghost = player.add_layer_clone(name, false);
+      player.set_clone_opacity(ghost, 150);
+      player.set_layer_opacity(name, 70);
+      drag = { name, ghost, sx: p.x, sy: p.y, cx: bb[0] + bb[2] / 2, cy: bb[1] + bb[3] / 2, dx: 0, dy: 0 };
+      break;
+    }
+  }
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const p = toCanvas(e);
+  drag.dx = p.x - drag.sx;
+  drag.dy = p.y - drag.sy;
+  player.set_clone_transform(drag.ghost, new Float32Array(T(drag.dx, drag.dy)));
+  const gx = drag.cx + drag.dx, gy = drag.cy + drag.dy;
+  const zone = ZONES.find((z) => gx >= z.x && gx <= z.x + z.w && gy >= z.y && gy <= z.y + z.h) ?? null;
+  if (zone !== hovered) {
+    if (hovered) styleZone(hovered, false);
+    if (zone) styleZone(zone, true);
+    hovered = zone;
+  }
+});
+
+function endDrag() {
+  if (!drag) return;
+  if (hovered) {
+    const o = offs[drag.name];
+    o.tx += hovered.cx - drag.cx;
+    o.ty += hovered.cy - drag.cy;
+    styleZone(hovered, false);
+    hovered = null;
+  }
+  player.remove_clone(drag.ghost);
+  player.set_layer_opacity(drag.name, 255);
+  drag = null;
+}
+canvas.addEventListener("pointerup", endDrag);
+canvas.addEventListener("pointercancel", endDrag);
+
+document.getElementById("reset").addEventListener("click", () => {
+  for (const b of BLOBS) { offs[b].tx = 0; offs[b].ty = 0; }
+});
+
+entry.update = (dt) => {
+  for (const name of BLOBS) {
+    const o = offs[name];
+    [o.x, o.vx] = spring(o.x, o.vx, o.tx, dt, 130, 15);
+    [o.y, o.vy] = spring(o.y, o.vy, o.ty, dt, 130, 15);
+    setLayerT(player, name, T(o.x, o.y));
+  }
+};
+</script>
+</body>
+</html>

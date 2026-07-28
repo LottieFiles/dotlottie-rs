@@ -1,6 +1,17 @@
 use std::ffi::{CStr, CString};
 use std::{fs, mem};
 
+/// Flat [offset, r, g, b, a] chunks → gradient stop tuples.
+fn parse_gradient_stops(flat: &[f32]) -> Result<Vec<(f32, [u8; 4])>> {
+    if flat.is_empty() || flat.len() % 5 != 0 {
+        return Err(Error::InvalidParameter);
+    }
+    Ok(flat
+        .chunks_exact(5)
+        .map(|c| (c[0], [c[1] as u8, c[2] as u8, c[3] as u8, c[4] as u8]))
+        .collect())
+}
+
 #[cfg(feature = "audio")]
 use crate::audio::AudioManager;
 use crate::player_state::{Resume, State, TweenOutcome};
@@ -1835,6 +1846,70 @@ impl Player {
         Ok(self.renderer.clear_overlays()?)
     }
 
+    /// Linear-gradient fill for an overlay. `stops` is flat
+    /// [offset, r, g, b, a] chunks (offset 0-1, colors 0-255).
+    pub fn set_overlay_fill_linear(
+        &mut self,
+        id: u32,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        stops: Vec<f32>,
+    ) -> Result<()> {
+        let stops = parse_gradient_stops(&stops)?;
+        Ok(self
+            .renderer
+            .set_overlay_fill_linear(id, x1, y1, x2, y2, stops)?)
+    }
+
+    /// Radial-gradient fill for an overlay (same flat `stops` encoding).
+    pub fn set_overlay_fill_radial(
+        &mut self,
+        id: u32,
+        cx: f32,
+        cy: f32,
+        r: f32,
+        stops: Vec<f32>,
+    ) -> Result<()> {
+        let stops = parse_gradient_stops(&stops)?;
+        Ok(self.renderer.set_overlay_fill_radial(id, cx, cy, r, stops)?)
+    }
+
+    /// Stroke dash pattern in canvas px; an empty pattern restores a solid
+    /// stroke.
+    pub fn set_overlay_stroke_dash(&mut self, id: u32, pattern: Vec<f32>) -> Result<()> {
+        Ok(self.renderer.set_overlay_stroke_dash(id, pattern)?)
+    }
+
+    /// Duplicate a named layer into the wrapping scene as a frozen snapshot
+    /// (canvas space; does not animate) and return its clone id.
+    pub fn add_layer_clone(&mut self, layer_name: &str, below: bool) -> Result<u32> {
+        Ok(self.renderer.add_layer_clone(layer_name, below)?)
+    }
+
+    /// Compose a canvas-space transform onto a clone's baked base.
+    pub fn set_clone_transform(&mut self, id: u32, transform: Vec<f32>) -> Result<()> {
+        if transform.len() != 9 {
+            return Err(Error::InvalidParameter);
+        }
+        let mut transform_array = [0.0f32; 9];
+        transform_array.copy_from_slice(&transform);
+        Ok(self.renderer.set_clone_transform(id, &transform_array)?)
+    }
+
+    pub fn set_clone_opacity(&mut self, id: u32, opacity: u8) -> Result<()> {
+        Ok(self.renderer.set_clone_opacity(id, opacity)?)
+    }
+
+    pub fn remove_clone(&mut self, id: u32) -> Result<()> {
+        Ok(self.renderer.remove_clone(id)?)
+    }
+
+    pub fn clear_clones(&mut self) -> Result<()> {
+        Ok(self.renderer.clear_clones()?)
+    }
+
     pub fn clear_layer_props(&mut self, layer_name: &str) -> Result<()> {
         Ok(self.renderer.clear_layer_props(layer_name)?)
     }
@@ -1860,6 +1935,40 @@ impl Player {
     }
 
     /// Test whether a canvas-space point hits the named layer's bounding box.
+    /// Geometry-accurate hit test against a layer's filled area (canvas px).
+    /// Hidden layers are still hit unless `visible_only` — runtime-hidden
+    /// layers make invisible drop zones.
+    pub fn hit_test_precise(&self, layer_name: &str, x: f32, y: f32, visible_only: bool) -> bool {
+        self.renderer
+            .hit_test_precise(crate::renderer::Point { x, y }, layer_name, visible_only)
+            .unwrap_or(false)
+    }
+
+    /// Geometry-accurate region test against a layer's filled area (canvas px).
+    pub fn intersects_layer(
+        &self,
+        layer_name: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        visible_only: bool,
+    ) -> bool {
+        self.renderer
+            .intersects_layer(layer_name, x, y, w, h, visible_only)
+            .unwrap_or(false)
+    }
+
+    /// Canvas-space axis-aligned bounding box of a named layer as
+    /// [x, y, w, h]; `None` when the layer isn't in the tree.
+    pub fn get_layer_aabb(&self, layer_name: &str) -> Option<Vec<f32>> {
+        self.renderer
+            .get_layer_aabb(layer_name)
+            .ok()
+            .flatten()
+            .map(|b| b.to_vec())
+    }
+
     pub fn hit_test(&self, layer_name: &str, x: f32, y: f32) -> bool {
         self.renderer
             .hit_test(crate::renderer::Point { x, y }, layer_name)

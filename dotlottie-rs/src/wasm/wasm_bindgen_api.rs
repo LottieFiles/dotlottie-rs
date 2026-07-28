@@ -972,6 +972,67 @@ impl DotLottiePlayerWasm {
         self.player.clear_overlays().is_ok()
     }
 
+    /// Linear-gradient fill; `stops` is flat [offset, r, g, b, a] chunks.
+    pub fn set_overlay_fill_linear(
+        &mut self,
+        id: u32,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        stops: &[f32],
+    ) -> bool {
+        self.player
+            .set_overlay_fill_linear(id, x1, y1, x2, y2, stops.to_vec())
+            .is_ok()
+    }
+
+    /// Radial-gradient fill; `stops` is flat [offset, r, g, b, a] chunks.
+    pub fn set_overlay_fill_radial(
+        &mut self,
+        id: u32,
+        cx: f32,
+        cy: f32,
+        r: f32,
+        stops: &[f32],
+    ) -> bool {
+        self.player
+            .set_overlay_fill_radial(id, cx, cy, r, stops.to_vec())
+            .is_ok()
+    }
+
+    /// Stroke dash pattern in canvas px; empty restores a solid stroke.
+    pub fn set_overlay_stroke_dash(&mut self, id: u32, pattern: &[f32]) -> bool {
+        self.player
+            .set_overlay_stroke_dash(id, pattern.to_vec())
+            .is_ok()
+    }
+
+    /// Duplicate a named layer into the wrapping scene as a frozen snapshot;
+    /// returns the clone id, or u32::MAX on failure.
+    pub fn add_layer_clone(&mut self, layer_name: &str, below: bool) -> u32 {
+        self.player
+            .add_layer_clone(layer_name, below)
+            .unwrap_or(u32::MAX)
+    }
+
+    /// 3x3 row-major canvas-space transform composed onto a clone.
+    pub fn set_clone_transform(&mut self, id: u32, data: &[f32]) -> bool {
+        self.player.set_clone_transform(id, data.to_vec()).is_ok()
+    }
+
+    pub fn set_clone_opacity(&mut self, id: u32, opacity: u8) -> bool {
+        self.player.set_clone_opacity(id, opacity).is_ok()
+    }
+
+    pub fn remove_clone(&mut self, id: u32) -> bool {
+        self.player.remove_clone(id).is_ok()
+    }
+
+    pub fn clear_clones(&mut self) -> bool {
+        self.player.clear_clones().is_ok()
+    }
+
     /// Restore a layer to its animated transform/opacity/visibility.
     pub fn clear_layer_props(&mut self, layer_name: &str) -> bool {
         self.player.clear_layer_props(layer_name).is_ok()
@@ -980,6 +1041,34 @@ impl DotLottiePlayerWasm {
     /// Test whether a canvas-space point hits the named layer's bounding box.
     pub fn hit_test(&self, layer_name: &str, x: f32, y: f32) -> bool {
         self.player.hit_test(layer_name, x, y)
+    }
+
+    /// Geometry-accurate hit test against the layer's filled area. Hidden
+    /// layers are still hit unless `visible_only`.
+    pub fn hit_test_precise(&self, layer_name: &str, x: f32, y: f32, visible_only: bool) -> bool {
+        self.player.hit_test_precise(layer_name, x, y, visible_only)
+    }
+
+    /// Geometry-accurate region test against the layer's filled area.
+    pub fn intersects_layer(
+        &self,
+        layer_name: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        visible_only: bool,
+    ) -> bool {
+        self.player
+            .intersects_layer(layer_name, x, y, w, h, visible_only)
+    }
+
+    /// Canvas-space AABB of a named layer as [x, y, w, h] Float32Array;
+    /// undefined when the layer isn't in the tree.
+    pub fn get_layer_aabb(&self, layer_name: &str) -> Option<Float32Array> {
+        self.player
+            .get_layer_aabb(layer_name)
+            .map(|b| vec_to_f32array(b))
     }
 
     /// Animated transform of a named layer at the current frame (row-major

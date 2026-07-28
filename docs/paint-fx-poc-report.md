@@ -10,8 +10,9 @@ examples, and an assessment of landing these as state-machine actions.
 |---|---|
 | Whole animation | `set_transform` (pre-existing) · `set_opacity` · `set_blend_mode` · effects: `add_gaussian_blur` / `add_drop_shadow` / `add_fill_effect` / `add_tint` / `add_tritone` / `clear_effects` · clip: `set_clip_rect` / `set_clip_circle` / `set_clip_path` (arbitrary bezier) / `clear_clip` · mask: `set_spot_mask` (feathered, alpha/inverse-alpha) / `clear_mask` |
 | Per layer (by name) | `set_layer_transform` · `set_layer_opacity` · `set_layer_visible` · `set_layer_blur` · `set_layer_clip_rect` / `set_layer_clip_path` · `clear_layer_props` |
-| Overlay shapes | `add_overlay(below)` → id · `set_overlay_path` (flat cmds/pts buffers) · `set_overlay_fill` / `set_overlay_stroke` / `set_overlay_transform` · `remove_overlay` / `clear_overlays` — capi-owned procedural geometry in the wrapping scene, z-ordered above or below the Lottie |
-| Queries | `hit_test(layer, x, y)` · `get_layer_transform(layer)` / `get_layer_opacity(layer)` (animated values at the current frame, excluding user overrides) |
+| Overlay shapes | `add_overlay(below)` → id · `set_overlay_path` (flat cmds/pts buffers) · `set_overlay_fill` / `set_overlay_fill_linear` / `set_overlay_fill_radial` (gradient stops) · `set_overlay_stroke` / `set_overlay_stroke_dash` / `set_overlay_transform` · `remove_overlay` / `clear_overlays` — capi-owned procedural geometry in the wrapping scene, z-ordered above or below the Lottie |
+| Layer clones | `add_layer_clone(layer, below)` → id · `set_clone_transform` / `set_clone_opacity` · `remove_clone` / `clear_clones` — frozen `tvg_paint_duplicate` snapshots retained in the wrapping scene (canvas space, don't animate); replayed across reloads via a render-time heal (drag ghosts, spawned copies) |
+| Queries | `hit_test(layer, x, y)` (OBB) · `hit_test_precise` / `intersects_layer` (RLE coverage via `tvg_paint_intersects_region`; hidden layers included unless `visible_only`) · `get_layer_aabb(layer)` (canvas-space box) · `get_layer_transform(layer)` / `get_layer_opacity(layer)` (animated values at the current frame, excluding user overrides) |
 
 Architecture: the Lottie Picture is wrapped in a `Tvg_Scene` (self-ref'd; validated safe
 against every canvas/drop interleaving). Whole-scene ops target the wrapper. Scene-level
@@ -62,6 +63,26 @@ Demos: `examples/web/` — 7 use-case pages + index (see §5). Tests: `tests/pai
   stays valid until `tvg_scene_remove`, and `insert(scene, shape, picture)` places it
   before the picture in paint order — genuine below-the-animation z-ordering (verified by
   a pixel test: a below-overlay is fully occluded by an opaque frame).
+- **Hidden layers stay hit-testable** — `set_layer_visible(false)` acts at draw
+  phase only; render data stays prepared, and `tvg_paint_intersects_region`
+  still reports coverage unless `visibleOnly` is set. Validated by pixel test:
+  invisible drop zones work. Intersects/AABB require prepared render data
+  (post-update); reads between renders are fine.
+- **A duplicated layer leaves the picture's subtree**, so `tvg_paint_duplicate`
+  clones must carry the picture's comp→canvas transform themselves (baked
+  `picture × layer` base; user transform composes on top). Clones are frozen
+  snapshots — the loader never rebuilds them — and reload replay runs before
+  the new layer tree exists, so the renderer re-creates missing clones lazily
+  at render time (`has_clone` heal).
+- **Upstream bug: clearing a stroke dash segfaults.** `strokeDash(nullptr, 0)`
+  frees the pattern but leaves the stale `dash.length`, and the SW engine's
+  dash guard checks `length > threshold` — the next stroke render dashes with
+  a null pattern (`tvgSwShape.cpp:229`). Workaround: clear via a one-element
+  zero pattern (length 0 → solid path). Worth an upstream fix.
+- **Gradient fills are hand-over like clips**: `tvg_shape_set_gradient` makes
+  the shape own the gradient and free the previous fill on replace; setting a
+  color fill deletes an existing gradient. Fresh gradient per sync, never
+  retain.
 - **The capi path surface maps 1:1 onto flat buffers**: `tvg_shape_append_path(cmds, pts)`
   takes a `Tvg_Path_Command` array (Close/MoveTo/LineTo/CubicTo) and an interleaved point
   array — exactly a `Uint8Array` + `Float32Array` across the wasm boundary. A ~50-line JS
@@ -128,6 +149,7 @@ blur, ~2.4 ms per shadow at 512² SW; fine for one hero canvas, wrong for a grid
 | 12 | path-clip-reveal | Designer-authored heart `d` string clips the scene; slider lerps its points into a circle (same cubic layout) | `parseSvgPath`, `set_clip_path` |
 | 13 | ink-annotation | Smoothed Catmull-Rom ink strokes drawn above the running art; soft blob parked behind it (`below`) | `add_overlay`, `set_overlay_path`/`stroke`/`fill`, `remove_overlay` |
 | 14 | look-at-hero | Spline-homepage choreography: multi-depth blobs follow the cursor at depth-scaled rates and turn to face it (damped look-at), byte-exact return on leave | `get_layer_transform`, `set_layer_transform` |
+| 15 | drag-and-drop | Geometry-accurate grabs, a frozen clone ghost dragged above everything, gradient/dashed drop zones that light up on approach, spring snap or return-to-original | `hit_test_precise`, `add_layer_clone`, `get_layer_aabb`, overlay gradients/dash |
 
 Assets are purpose-built (`examples/web/assets/`): semantic layer names, ambient loops,
 composition == canvas size so coordinates read 1:1. All pages browser-verified; no console
@@ -214,11 +236,11 @@ unwrapped but one vertical slice away. Mapped to the interaction use cases they 
 
 | capi | Unlocks | Notes |
 |---|---|---|
-| `tvg_paint_intersects` / `intersects_region` | **Precise hit testing** against actual filled geometry (SW checks the RLE coverage), not the OBB box our `hit_test` uses — irregular-shape clicks, drag-over-target detection, collision between a dragged layer and drop zones | Requires prepared render data (post-update); same flush-ordering rules as everything per-layer. Combined with runtime-hidden layers (`set_layer_visible(false)` hides at draw phase, render data still prepared) this should give **invisible but hit-testable drop zones** — to validate |
-| `tvg_paint_get_aabb` | Canvas-space rects for drag constraints, snapping, layout-aware tooltips/popovers anchored to layers | We already wrap `get_obb` internally for `hit_test`; AABB is the cheap axis-aligned variant |
-| `tvg_paint_duplicate` | Drag ghosts/proxies, particle-style clones of a layer | Duplicated paint would need explicit scene insertion + lifecycle ownership |
+| `tvg_paint_intersects` / `intersects_region` | **Now wrapped** (`hit_test_precise` / `intersects_layer`, demo 15): geometry-accurate grabs and region overlap. Hidden-layer drop zones **validated** — hidden is draw-phase only, coverage still reported unless `visible_only` | Requires prepared render data (post-update) |
+| `tvg_paint_get_aabb` | **Now wrapped** (`get_layer_aabb`, demo 15): zone overlap, snap targets, drag bounds | Canvas space, reflects composed user transforms |
+| `tvg_paint_duplicate` | **Now wrapped** (`add_layer_clone`, demo 15): drag ghosts rendered above everything, spawned copies | Frozen snapshot; comp→canvas base baked in; heal-on-render replay |
 | `tvg_paint_set_mask_method` / `set_clip` | **Now wrapped** (scene clip/spot-mask + per-layer clip; rect, circle and arbitrary bezier paths; demos 09–12). Still unwrapped: masking one *layer by another layer* (rejected today: a parented paint can't be a mask target) | Layer-as-mask would need duplication or upstream support |
-| `tvg_shape_*` path/fill/stroke surface | **Now wrapped** via `ClipRegion::Path` + overlay shapes (demos 12–13): append_path, fill color, stroke width/color, per-shape transform | Still unwrapped on overlays: gradients, dash, trim, fill rule, picture overlays; `tvg_shape_get_path` read-back unused |
+| `tvg_shape_*` path/fill/stroke surface | **Now wrapped** via `ClipRegion::Path` + overlay shapes (demos 12–13, 15): append_path, fill color, linear/radial gradients, stroke width/color/dash, per-shape transform | Still unwrapped on overlays: trim, fill rule, picture overlays; `tvg_shape_get_path` read-back unused. Dash-clear upstream bug worked around (§2) |
 | `tvg_paint_get_parent` / `get_type` / `get_id` | Tree introspection — enumerate/validate layer targets, diagnostics for unknown names | Pairs with the layer-name diagnostics blocker (§6) |
 | `tvg_paint_ref/unref/get_ref/rel` | Lifecycle plumbing (already used for the wrapper scene) | Internal-only; not API surface |
 | `tvg_paint_translate/scale/rotate` | Convenience transforms | Redundant — they overwrite rather than compose; our matrix path is strictly more capable |

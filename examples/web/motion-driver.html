@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Motion drives dotlottie · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+<style>
+  .strip {
+    margin-top: 10px; height: 110px; overflow-y: auto;
+    border: 1px solid var(--line, #2a2a33); border-radius: 10px;
+  }
+  .strip-inner {
+    height: 720px; display: flex; align-items: flex-start; justify-content: center;
+    padding-top: 12px; font-size: 12px; color: var(--muted);
+    background: linear-gradient(#33e0b01a, #8d6ef51a);
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 16</div>
+  <h1>Motion drives dotlottie — the real library, one tiny sink</h1>
+  <p class="lede">
+    This page imports the actual <a href="https://motion.dev">Motion</a> engine
+    from a CDN and points its reactive value graph at Lottie layers instead of
+    the DOM. One ~20-line <code>layerEffect</code> sink — the analog of
+    Motion's own <code>propEffect</code> — and suddenly
+    <code>springValue</code> follows, <code>animate()</code> sequences,
+    <code>press()</code> gestures and <code>scroll()</code> parallax all drive
+    the blobs. Zero renderer changes: Motion is just another host for the
+    per-layer API.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <button id="wave" class="primary">spin wave</button>
+      <span class="hint">move the cursor · press a blob · scroll the strip</span>
+    </div>
+    <div class="strip" id="strip"><div class="strip-inner">scroll me — Motion scroll() → parallax drift</div></div>
+  </div>
+
+  <div class="explain">
+    <h2>The sink</h2>
+    <p>
+      Motion's <code>propEffect</code> binds motion values to any JS object —
+      it's how Motion drives Three.js. <code>layerEffect</code> is the same
+      shape for a Lottie layer: subscribe to each channel, and on change
+      schedule one matrix write in Motion's <code>frame.render</code> phase
+      (the queue dedupes, so N channel updates collapse to one write per
+      frame). The write composes over the <em>animated</em> base — the idle
+      float keeps playing underneath, because per-layer props re-compose onto
+      the freshly-built layer every frame.
+    </p>
+    <pre>function layerEffect(player, layer, ch) {
+  const apply = () => {
+    const base = player.get_layer_transform(layer);
+    if (!base) return;
+    setLayerT(player, layer, mul(
+      T(ch.x?.get() ?? 0, ch.y?.get() ?? 0),
+      around(base[2], base[5],
+        mul(R(ch.rotate?.get() ?? 0),
+            S(ch.scale?.get() ?? 1, ch.scale?.get() ?? 1)))));
+  };
+  const stops = Object.values(ch)
+    .map((v) => v.on("change", () => frame.render(apply)));
+  apply();
+  return () => stops.forEach((s) => s());
+}</pre>
+    <h2>What's driving what</h2>
+    <p>
+      Pointer → <code>springValue</code> per blob (velocity-carrying follow)
+      → <code>transformValue</code> scales it by depth. The strip's
+      <code>scroll()</code> progress → <code>springValue</code> smoothing →
+      <code>mapValue</code> per-depth drift. <code>press()</code> hit-tests
+      with <code>hit_test_precise</code>, squashes the blob's scale value,
+      and the returned end-callback restores it — bouncy if
+      <code>info.success</code>, flat if the press was cancelled. The button
+      fires an <code>animate()</code> sequence with relative
+      <code>at: "&lt;+0.08"</code> offsets — a spring-eased spin wave.
+    </p>
+    <h2>Why this matters</h2>
+    <div class="sm-note">
+      <strong>Motion's whole ecosystem is a host driver for this surface.</strong>
+      Springs, sequences, stagger, gestures, scroll — none of it needs
+      reimplementing in Rust. The runtime keeps what must work without JS
+      (the state machine); the browser gets Motion's DX today.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, T, R, S, mul, around, setLayerT } from "./fx-common.js";
+import {
+  animate, press, scroll, frame,
+  motionValue, springValue, transformValue, mapValue,
+} from "https://cdn.jsdelivr.net/npm/motion@12/+esm";
+
+const entry = await initPlayer(document.getElementById("cv"), "assets/hero.json");
+const { player, canvas } = entry;
+const SIZE = 512;
+
+function layerEffect(player, layer, ch) {
+  const apply = () => {
+    const base = player.get_layer_transform(layer);
+    if (!base) return;
+    setLayerT(player, layer, mul(
+      T(ch.x?.get() ?? 0, ch.y?.get() ?? 0),
+      around(base[2], base[5],
+        mul(R(ch.rotate?.get() ?? 0), S(ch.scale?.get() ?? 1, ch.scale?.get() ?? 1)))));
+  };
+  const stops = Object.values(ch).map((v) => v.on("change", () => frame.render(apply)));
+  apply();
+  return () => stops.forEach((s) => s());
+}
+
+const px = motionValue(SIZE / 2), py = motionValue(SIZE / 2);
+const scrollP = motionValue(0);
+const smoothScroll = springValue(scrollP, { stiffness: 70, damping: 18 });
+
+const BLOBS = {
+  "blob-blue":   { rate: 0.16,  drift: 46 },
+  "blob-green":  { rate: 0.13,  drift: 36 },
+  "blob-pink":   { rate: 0.10,  drift: 26 },
+  "blob-orange": { rate: 0.075, drift: 18 },
+  "blob-violet": { rate: 0.05,  drift: 12 },
+  "blob-indigo": { rate: 0.045, drift: 8 },
+};
+
+const chans = {};
+for (const [name, b] of Object.entries(BLOBS)) {
+  const sx = springValue(px, { stiffness: 110, damping: 15 });
+  const sy = springValue(py, { stiffness: 110, damping: 15 });
+  const drift = mapValue(smoothScroll, [0, 1], [b.drift, -b.drift]);
+  const rotate = motionValue(0);
+  const scale = motionValue(1);
+  chans[name] = { rotate, scale };
+  layerEffect(player, name, {
+    x: transformValue(() => (sx.get() - SIZE / 2) * b.rate),
+    y: transformValue(() => (sy.get() - SIZE / 2) * b.rate + drift.get()),
+    rotate,
+    scale,
+  });
+}
+
+canvas.addEventListener("pointermove", (e) => {
+  const r = canvas.getBoundingClientRect();
+  px.set(((e.clientX - r.left) / r.width) * SIZE);
+  py.set(((e.clientY - r.top) / r.height) * SIZE);
+});
+canvas.addEventListener("pointerleave", () => { px.set(SIZE / 2); py.set(SIZE / 2); });
+
+press(canvas, (el, e) => {
+  const r = canvas.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width) * SIZE;
+  const y = ((e.clientY - r.top) / r.height) * SIZE;
+  const name = Object.keys(BLOBS).find((n) => player.hit_test_precise(n, x, y, false));
+  if (!name) return;
+  animate(chans[name].scale, 0.86, { type: "spring", visualDuration: 0.12, bounce: 0 });
+  return (endEvent, info) => {
+    animate(chans[name].scale, 1, {
+      type: "spring", visualDuration: 0.4, bounce: info.success ? 0.6 : 0.15,
+    });
+  };
+});
+
+scroll((progress) => scrollP.set(progress), { container: document.getElementById("strip") });
+
+document.getElementById("wave").addEventListener("click", () => {
+  const seq = Object.keys(BLOBS).map((name, i) => [
+    chans[name].rotate, [null, 360],
+    { type: "spring", visualDuration: 0.8, bounce: 0.3, at: i === 0 ? 0 : "<+0.08" },
+  ]);
+  animate(seq).then(() => Object.values(chans).forEach((c) => c.rotate.jump(0)));
+});
+
+window.__m16 = { px, py, scrollP, smoothScroll, chans, player };
+</script>
+</body>
+</html>

@@ -150,6 +150,7 @@ blur, ~2.4 ms per shadow at 512² SW; fine for one hero canvas, wrong for a grid
 | 13 | ink-annotation | Smoothed Catmull-Rom ink strokes drawn above the running art; soft blob parked behind it (`below`) | `add_overlay`, `set_overlay_path`/`stroke`/`fill`, `remove_overlay` |
 | 14 | look-at-hero | Spline-homepage choreography: multi-depth blobs follow the cursor at depth-scaled rates and turn to face it (damped look-at), byte-exact return on leave | `get_layer_transform`, `set_layer_transform` |
 | 15 | drag-and-drop | Geometry-accurate grabs, a frozen clone ghost dragged above everything, gradient/dashed drop zones that light up on approach, spring snap or return-to-original | `hit_test_precise`, `add_layer_clone`, `get_layer_aabb`, overlay gradients/dash |
+| 16 | motion-driver | The real motion.dev engine (CDN import) drives the blobs through a ~20-line `propEffect`-style sink: `springValue` pointer follows, an `animate()` sequence with relative `at` offsets, `press()` squash with `info.success` bounce, `scroll()` parallax — zero renderer changes | `layerEffect` (JS) over `get_layer_transform`, `set_layer_transform`, `hit_test_precise` |
 
 Assets are purpose-built (`examples/web/assets/`): semantic layer names, ambient loops,
 composition == canvas size so coordinates read 1:1. All pages browser-verified; no console

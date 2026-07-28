@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reference-layer morph · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 08</div>
+  <h1>Reference-layer morph — the design lives in the file</h1>
+  <p class="lede">
+    The runtime is not a design tool, so the target of an interaction shouldn't be a
+    hand-typed matrix. Here the designer authored a <em>null layer</em>
+    (<code>REF:dock</code>) — never rendered, but present in ThorVG's tree with its
+    animated transform. "Dock" morphs the bell onto whatever the reference currently
+    is; since the reference itself is animated, the docked bell keeps following it.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <button class="primary" id="toggle">dock bell</button>
+      <span id="ref-readout" style="margin-left:auto; font-family: ui-monospace, Menlo, monospace; font-size: 11px">—</span>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>Why a null layer</h2>
+    <p>
+      ThorVG's Lottie builder skips zero-opacity layers entirely (unqueryable) and
+      AE-hidden layers are dropped at parse — but <em>null layers are explicitly kept</em>:
+      they get a named scene carrying the animated transform, render nothing, and cost
+      nothing. That makes them the natural authoring vehicle for "where should this land"
+      references. (A normal layer hidden at runtime with <code>set_layer_visible(false)</code>
+      is the alternative when the reference must also carry opacity.)
+    </p>
+    <h2>APIs used</h2>
+    <pre>const R = player.get_layer_transform("REF:dock"); // sampled at current frame
+const B = player.get_layer_transform("bell");     // pristine animated value
+
+// morph matrix: at t=1 the bell's final transform equals R exactly
+const M = mul(R, invert(B));
+player.set_layer_transform("bell", lerp(IDENTITY, M, t));</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>TweenToLayerReference { target, reference, duration, easing }</strong> —
+      the SM never stores design data; it stores two layer names. Values come from the
+      file at runtime, so designers iterate on the .lottie without touching the state
+      machine. This is the missing piece that keeps the SM an interaction tool, not a
+      design tool.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, I, mul, spring } from "./fx-common.js";
+
+const entry = await initPlayer(document.getElementById("cv"), "assets/control.json");
+const { player } = entry;
+
+// Invert a row-major 3x3 affine matrix.
+function invert(m) {
+  const [a, b, tx, c, d, ty] = [m[0], m[1], m[2], m[3], m[4], m[5]];
+  const det = a * d - b * c;
+  const ia = d / det, ib = -b / det, ic = -c / det, id = a / det;
+  return [ia, ib, -(ia * tx + ib * ty), ic, id, -(ic * tx + id * ty), 0, 0, 1];
+}
+
+let t = 0, v = 0, target = 0;
+const btn = document.getElementById("toggle");
+const readout = document.getElementById("ref-readout");
+btn.onclick = () => {
+  target = target ? 0 : 1;
+  btn.textContent = target ? "release bell" : "dock bell";
+};
+
+entry.update = (dt) => {
+  [t, v] = spring(t, v, target, dt, 110, 14);
+  const R = player.get_layer_transform("REF:dock");
+  const B = player.get_layer_transform("bell");
+  if (!R || !B) return;
+  readout.textContent = `REF:dock @ (${R[2].toFixed(0)}, ${R[5].toFixed(0)}) s=${R[0].toFixed(2)}`;
+  if (t < 0.002) {
+    player.clear_layer_props("bell");
+    return;
+  }
+  const M = mul(Array.from(R), invert(Array.from(B)));
+  const identity = I();
+  const L = M.map((mv, i) => identity[i] + (mv - identity[i]) * t);
+  player.set_layer_transform("bell", new Float32Array(L));
+};
+</script>
+</body>
+</html>

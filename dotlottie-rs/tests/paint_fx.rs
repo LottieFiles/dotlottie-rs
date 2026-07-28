@@ -159,6 +159,42 @@ mod tests {
     }
 
     #[test]
+    fn null_reference_layer_is_queryable() {
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        let mut player = Player::new();
+        assert!(player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .is_ok());
+        let data = std::fs::read_to_string("../examples/web/assets/control.json").unwrap();
+        let c_data = CString::new(data).unwrap();
+        assert!(player.load_animation_data(&c_data).is_ok());
+
+        // The ty:3 null layer renders nothing but exists in the tree with its
+        // animated transform (builder exempts nulls from the opacity-0 skip).
+        let at_zero = player
+            .get_layer_transform("REF:dock")
+            .expect("null layer must be queryable");
+
+        // Its animated position must sample per-frame.
+        assert!(player.set_frame(45.0).is_ok());
+        assert!(player.render().is_ok());
+        let at_45 = player.get_layer_transform("REF:dock").unwrap();
+        assert_ne!(at_zero, at_45);
+
+        // Regular layers are queryable too; unknown names are None.
+        assert!(player.get_layer_transform("bell").is_some());
+        assert!(player.get_layer_opacity("bell").is_some());
+        assert!(player.get_layer_transform("no-such-layer").is_none());
+
+        // Query returns pristine values even while user overrides are active.
+        let pristine = player.get_layer_transform("bell").unwrap();
+        let shift = vec![1.0, 0.0, 300.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+        assert!(player.set_layer_transform("bell", shift).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(player.get_layer_transform("bell").unwrap(), pristine);
+    }
+
+    #[test]
     fn effects_persist_across_reload() {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
         let mut player = loaded_player(&mut buffer);

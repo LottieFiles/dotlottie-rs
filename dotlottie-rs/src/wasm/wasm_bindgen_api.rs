@@ -886,6 +886,20 @@ impl DotLottiePlayerWasm {
         self.player.hit_test(layer_name, x, y)
     }
 
+    /// Animated transform of a named layer at the current frame (row-major
+    /// 3x3 Float32Array), excluding user overrides; undefined if absent.
+    /// Works for null "reference" layers, which exist in the tree unrendered.
+    pub fn get_layer_transform(&self, layer_name: &str) -> Option<Float32Array> {
+        self.player
+            .get_layer_transform(layer_name)
+            .map(|m| vec_to_f32array(m))
+    }
+
+    /// Animated opacity (0-255) of a named layer, excluding user overrides.
+    pub fn get_layer_opacity(&self, layer_name: &str) -> Option<u8> {
+        self.player.get_layer_opacity(layer_name)
+    }
+
     // ── Markers ───────────────────────────────────────────────────────────────
 
     /// Returns an array of `{ name, start, end }` objects.

@@ -1716,6 +1716,26 @@ impl Player {
         Ok(self.renderer.clear_layer_props(layer_name)?)
     }
 
+    /// Animated transform of a named layer at the current frame (row-major
+    /// 3x3), excluding user overrides. Works for null "reference" layers too.
+    pub fn get_layer_transform(&self, layer_name: &str) -> Option<Vec<f32>> {
+        self.renderer
+            .get_layer_prop(layer_name)
+            .ok()
+            .flatten()
+            .map(|(m, _)| m.to_vec())
+    }
+
+    /// Animated opacity (0-255) of a named layer at the current frame,
+    /// excluding user overrides.
+    pub fn get_layer_opacity(&self, layer_name: &str) -> Option<u8> {
+        self.renderer
+            .get_layer_prop(layer_name)
+            .ok()
+            .flatten()
+            .map(|(_, o)| o)
+    }
+
     /// Test whether a canvas-space point hits the named layer's bounding box.
     pub fn hit_test(&self, layer_name: &str, x: f32, y: f32) -> bool {
         self.renderer

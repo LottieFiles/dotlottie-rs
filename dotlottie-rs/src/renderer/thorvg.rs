@@ -996,6 +996,44 @@ impl Animation for TvgAnimation {
         Ok(())
     }
 
+    fn get_layer_prop(&self, layer_name: &str) -> Result<Option<([f32; 9], u8)>, TvgError> {
+        // Pristine animated values were cached before any user compose.
+        if let Some(base) = self.layer_base.get(layer_name) {
+            let m = &base.matrix;
+            return Ok(Some((
+                [m.e11, m.e12, m.e13, m.e21, m.e22, m.e23, m.e31, m.e32, m.e33],
+                base.opacity,
+            )));
+        }
+
+        let layer_id = self.layer_id_map.get_or_insert(layer_name)?;
+        let layer_paint = unsafe { tvg::tvg_picture_get_paint(self.raw_paint, layer_id) };
+        if layer_paint.is_null() {
+            return Ok(None);
+        }
+
+        let mut m = tvg::Tvg_Matrix {
+            e11: 1.0,
+            e12: 0.0,
+            e13: 0.0,
+            e21: 0.0,
+            e22: 1.0,
+            e23: 0.0,
+            e31: 0.0,
+            e32: 0.0,
+            e33: 1.0,
+        };
+        let mut opacity: u8 = 255;
+        unsafe {
+            tvg::tvg_paint_get_transform(layer_paint, &mut m).into_result()?;
+            tvg::tvg_paint_get_opacity(layer_paint, &mut opacity).into_result()?;
+        }
+        Ok(Some((
+            [m.e11, m.e12, m.e13, m.e21, m.e22, m.e23, m.e31, m.e32, m.e33],
+            opacity,
+        )))
+    }
+
     // ── Markers & Segments ───────────────────────────────────────────────
 
     fn markers(&self) -> &[Marker] {

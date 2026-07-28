@@ -358,6 +358,11 @@ pub trait Animation: Default {
         props: &LayerProps,
     ) -> Result<(), Self::Error>;
 
+    /// Read a named layer's animated (transform, opacity) at the current
+    /// frame, excluding any user overrides. `None` when the layer is absent
+    /// from the tree (unknown name, out of frame range, or zero opacity).
+    fn get_layer_prop(&self, layer_name: &str) -> Result<Option<([f32; 9], u8)>, Self::Error>;
+
     // ── Markers & Segments ───────────────────────────────────────────────
 
     fn markers(&self) -> &[Marker];

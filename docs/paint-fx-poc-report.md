@@ -10,7 +10,7 @@ examples, and an assessment of landing these as state-machine actions.
 |---|---|
 | Whole animation | `set_transform` (pre-existing) · `set_opacity` · `set_blend_mode` · effects: `add_gaussian_blur` / `add_drop_shadow` / `add_fill_effect` / `add_tint` / `add_tritone` / `clear_effects` |
 | Per layer (by name) | `set_layer_transform` · `set_layer_opacity` · `set_layer_visible` · `set_layer_blur` · `clear_layer_props` |
-| Queries | `hit_test(layer, x, y)` (now on Player + wasm) |
+| Queries | `hit_test(layer, x, y)` · `get_layer_transform(layer)` / `get_layer_opacity(layer)` (animated values at the current frame, excluding user overrides) |
 
 Architecture: the Lottie Picture is wrapped in a `Tvg_Scene` (self-ref'd; validated safe
 against every canvas/drop interleaving). Whole-scene ops target the wrapper. Scene-level
@@ -95,6 +95,7 @@ blur, ~2.4 ms per shadow at 512² SW; fine for one hero canvas, wrong for a grid
 | 05 | button-states | 5 UI states as a declarative table of paint values | scene opacity/tritone/shadow/blur |
 | 06 | entrance-choreography | Staggered per-layer assembly the file never authored | layer opacity/transform |
 | 07 | like-button | Playback control and paint ops composed | tritone, layer transform, `set_frame`/`play` |
+| 08 | reference-morph | Designer-authored null layer as a queryable transform target; runtime morphs the bell onto it | `get_layer_transform`, `set_layer_transform` |
 
 Assets are purpose-built (`examples/web/assets/`): semantic layer names, ambient loops,
 composition == canvas size so coordinates read 1:1. All pages browser-verified; no console
@@ -127,6 +128,26 @@ paint values` — see the button-states example for the exact shape.
 Recommend a single **`SetEffects { effects: Vec<Effect> }`** action with replace-semantics
 over the stored effect stack; the renderer already holds the stack declaratively, so this
 is a thin wrapper. Keep `add_*` as imperative conveniences only.
+
+**Reference layers — keeping the SM an interaction tool, not a design tool:**
+
+Interaction targets should be *authored in the file*, not hand-typed into SM configs.
+Validated pattern: **null layers (ty:3)** are explicitly kept by ThorVG's builder
+(exempt from the opacity-0 skip, `tvgLottieBuilder.cpp:1557`) as named, unrendered
+scenes carrying their animated transform — a designer places `REF:dock` in AE, and the
+runtime queries it per frame via `get_layer_transform` and morphs a target layer onto
+it (`M = R·B⁻¹`, lerped; demo 08). Constraints discovered: zero-opacity normal layers
+are *skipped entirely* (unqueryable) and AE-hidden (`hd:true`) layers are deleted at
+parse — so references must be nulls (transform-only; null opacity is deliberately
+ignored by the builder), or normal layers hidden at runtime via
+`set_layer_visible(false)` when the reference must also carry opacity. Proposed action:
+
+```
+TweenToLayerReference { target: String, reference: String, duration: f32, easing: Easing }
+```
+
+The SM stores two layer names; all design data stays in the .lottie, so designers
+iterate without touching the interaction graph.
 
 **Interpolation** (rack focus, fade-ins, springy hovers): two options, both grounded in
 existing machinery:

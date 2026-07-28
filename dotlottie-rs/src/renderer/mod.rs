@@ -225,6 +225,10 @@ pub trait LottieRenderer {
 
     fn clear_layer_props(&mut self, layer_name: &str) -> Result<(), Error>;
 
+    /// Animated (transform, opacity) of a named layer at the current frame,
+    /// excluding user overrides. `None` if the layer isn't in the tree.
+    fn get_layer_prop(&self, layer_name: &str) -> Result<Option<([f32; 9], u8)>, Error>;
+
     fn load_font(&mut self, name: &str, data: &[u8]) -> Result<(), Error>;
 
     fn unload_font(&mut self, name: &str) -> Result<(), Error>;
@@ -1142,6 +1146,12 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             self.updated = true;
         }
         Ok(())
+    }
+
+    fn get_layer_prop(&self, layer_name: &str) -> Result<Option<([f32; 9], u8)>, Error> {
+        self.get_animation()?
+            .get_layer_prop(layer_name)
+            .map_err(into_lottie::<R>)
     }
 
     // ── Markers & Segments ───────────────────────────────────────────────

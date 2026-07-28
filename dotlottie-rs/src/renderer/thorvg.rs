@@ -11,8 +11,8 @@ use rustc_hash::FxHashMap;
 use crate::renderer::fallback_font;
 
 use super::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Point, Renderer,
-    Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, LayerProps, Marker, Point,
+    Renderer, Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "audio")]
 use super::{AudioEvent, AudioResolver, AudioSource};
@@ -413,6 +413,8 @@ impl LayerIdMap {
 struct LayerBase {
     matrix: tvg::Tvg_Matrix,
     opacity: u8,
+    /// Whether a user blur is currently attached to this (still-live) scene.
+    has_blur: bool,
 }
 
 pub struct TvgAnimation {
@@ -737,11 +739,18 @@ impl Animation for TvgAnimation {
     }
 
     fn apply_slot(&mut self, slot_code: u32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_code) }.into_result()
+        unsafe { tvg::tvg_lottie_animation_apply_slot(self.raw_animation, slot_code) }
+            .into_result()?;
+        // Slot application rebuilds the layer scenes on next sync.
+        self.layer_base.clear();
+        Ok(())
     }
 
     fn del_slot(&mut self, slot_code: u32) -> Result<(), TvgError> {
-        unsafe { tvg::tvg_lottie_animation_del_slot(self.raw_animation, slot_code) }.into_result()
+        unsafe { tvg::tvg_lottie_animation_del_slot(self.raw_animation, slot_code) }
+            .into_result()?;
+        self.layer_base.clear();
+        Ok(())
     }
 
     fn set_quality(&mut self, quality: u8) -> Result<(), TvgError> {
@@ -890,12 +899,11 @@ impl Animation for TvgAnimation {
         }
     }
 
-    fn apply_layer_prop(
-        &mut self,
-        layer_name: &str,
-        transform: Option<&[f32; 9]>,
-        opacity: Option<u8>,
-    ) -> Result<(), TvgError> {
+    // NOTE: callers must poke the picture (re-set its transform) once per
+    // flush batch — the update traversal short-circuits at a clean picture
+    // (PictureImpl::skip) and never sees dirty children. The renderer does
+    // this via apply_user_transform() after the flush loop.
+    fn apply_layer_prop(&mut self, layer_name: &str, props: &LayerProps) -> Result<(), TvgError> {
         let layer_id = self.layer_id_map.get_or_insert(layer_name)?;
         let layer_paint = unsafe { tvg::tvg_picture_get_paint(self.raw_paint, layer_id) };
         if layer_paint.is_null() {
@@ -906,7 +914,7 @@ impl Animation for TvgAnimation {
 
         // Read the pristine animated values once per rebuilt scene; user props
         // always compose against this base so re-applies stay idempotent.
-        let base = match self.layer_base.get(layer_name) {
+        let base = match self.layer_base.get_mut(layer_name) {
             Some(base) => base,
             None => {
                 let mut matrix = tvg::Tvg_Matrix {
@@ -928,11 +936,12 @@ impl Animation for TvgAnimation {
                 self.layer_base.entry(layer_name.to_owned()).or_insert(LayerBase {
                     matrix,
                     opacity: base_opacity,
+                    has_blur: false,
                 })
             }
         };
 
-        if let Some(user) = transform {
+        if let Some(user) = props.transform.as_ref() {
             let m = &base.matrix;
             let composed = tvg::Tvg_Matrix {
                 e11: user[0] * m.e11 + user[1] * m.e21 + user[2] * m.e31,
@@ -948,28 +957,40 @@ impl Animation for TvgAnimation {
             unsafe { tvg::tvg_paint_set_transform(layer_paint, &composed).into_result()? };
         }
 
-        if let Some(user_opacity) = opacity {
+        if let Some(user_opacity) = props.opacity {
             let composed = ((base.opacity as u16 * user_opacity as u16) / 255) as u8;
             unsafe { tvg::tvg_paint_set_opacity(layer_paint, composed).into_result()? };
         }
 
-        // Re-set the picture's own transform to mark it dirty: the update
-        // traversal short-circuits at a clean picture (PictureImpl::skip) and
-        // would never re-prepare the mutated layer subtree.
-        unsafe {
-            let mut picture_matrix = tvg::Tvg_Matrix {
-                e11: 1.0,
-                e12: 0.0,
-                e13: 0.0,
-                e21: 0.0,
-                e22: 1.0,
-                e23: 0.0,
-                e31: 0.0,
-                e32: 0.0,
-                e33: 1.0,
-            };
-            tvg::tvg_paint_get_transform(self.raw_paint, &mut picture_matrix).into_result()?;
-            tvg::tvg_paint_set_transform(self.raw_paint, &picture_matrix).into_result()?;
+        if let Some(visible) = props.visible {
+            unsafe { tvg::tvg_paint_set_visible(layer_paint, visible).into_result()? };
+        }
+
+        // Layer paints are id'd Scenes, so scene effects attach directly. A
+        // fresh (rebuilt) scene starts with only its authored effects; ours
+        // died with the old scene. Clear-then-add keeps exactly one user blur
+        // regardless of rebuilds, at the cost of suppressing authored layer
+        // effects while an override is active.
+        match props.blur {
+            Some((sigma, quality)) => unsafe {
+                tvg::tvg_scene_clear_effects(layer_paint).into_result()?;
+                tvg::tvg_scene_add_effect_gaussian_blur(
+                    layer_paint,
+                    sigma as f64,
+                    0,
+                    0,
+                    quality as c_int,
+                )
+                .into_result()?;
+                base.has_blur = true;
+            },
+            None => {
+                // Remove a previously applied blur when the scene wasn't rebuilt.
+                if base.has_blur {
+                    unsafe { tvg::tvg_scene_clear_effects(layer_paint).into_result()? };
+                    base.has_blur = false;
+                }
+            }
         }
 
         Ok(())
@@ -1106,7 +1127,8 @@ mod tests {
                 Some(cb),
                 std::ptr::null_mut(),
             );
-            tvg::tvg_canvas_add(canvas, anim.raw_paint);
+            // The picture is parented to the wrapper scene now; add the scene.
+            tvg::tvg_canvas_add(canvas, anim.raw_scene);
         }
 
         let mut f = 0.0;

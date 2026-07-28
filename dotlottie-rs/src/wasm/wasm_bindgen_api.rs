@@ -865,9 +865,25 @@ impl DotLottiePlayerWasm {
         self.player.set_layer_opacity(layer_name, opacity).is_ok()
     }
 
-    /// Restore a layer to its animated transform/opacity.
+    /// Show or hide a named layer.
+    pub fn set_layer_visible(&mut self, layer_name: &str, visible: bool) -> bool {
+        self.player.set_layer_visible(layer_name, visible).is_ok()
+    }
+
+    /// Gaussian-blur a single named layer; sigma <= 0 removes the blur.
+    /// While active it replaces the layer's own authored effect list.
+    pub fn set_layer_blur(&mut self, layer_name: &str, sigma: f32, quality: u8) -> bool {
+        self.player.set_layer_blur(layer_name, sigma, quality).is_ok()
+    }
+
+    /// Restore a layer to its animated transform/opacity/visibility.
     pub fn clear_layer_props(&mut self, layer_name: &str) -> bool {
         self.player.clear_layer_props(layer_name).is_ok()
+    }
+
+    /// Test whether a canvas-space point hits the named layer's bounding box.
+    pub fn hit_test(&self, layer_name: &str, x: f32, y: f32) -> bool {
+        self.player.hit_test(layer_name, x, y)
     }
 
     // ── Markers ───────────────────────────────────────────────────────────────

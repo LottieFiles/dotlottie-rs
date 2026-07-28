@@ -12,8 +12,8 @@ mod thorvg;
 
 pub(crate) use backend::Point;
 pub use backend::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Renderer, Rgba,
-    Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, LayerProps, Marker, Renderer,
+    Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "audio")]
 pub use backend::{AudioEvent, AudioResolver, AudioSource};
@@ -217,6 +217,12 @@ pub trait LottieRenderer {
 
     fn set_layer_opacity(&mut self, layer_name: &str, opacity: u8) -> Result<(), Error>;
 
+    fn set_layer_visible(&mut self, layer_name: &str, visible: bool) -> Result<(), Error>;
+
+    /// Per-layer gaussian blur; sigma <= 0 removes it. While active it replaces
+    /// the layer's own authored effect list.
+    fn set_layer_blur(&mut self, layer_name: &str, sigma: f32, quality: u8) -> Result<(), Error>;
+
     fn clear_layer_props(&mut self, layer_name: &str) -> Result<(), Error>;
 
     fn load_font(&mut self, name: &str, data: &[u8]) -> Result<(), Error>;
@@ -253,18 +259,24 @@ impl dyn LottieRenderer {
             slot_values: BTreeMap::new(),
             default_slots: BTreeMap::new(),
             layer_props: BTreeMap::new(),
+            effects: Vec::new(),
+            scene_opacity: 255,
+            blend_mode: 0,
         })
     }
 }
 
 const IDENTITY_TRANSFORM: [f32; 9] = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
 
-/// User-requested overrides for a named layer, composed onto the animated
-/// values on every frame (ThorVG rebuilds layer paints per frame).
-#[derive(Default, Clone, Copy)]
-struct LayerProps {
-    transform: Option<[f32; 9]>,
-    opacity: Option<u8>,
+/// Scene-level effect, stored declaratively so the stack can be replayed on
+/// param change and re-applied after an animation reload.
+#[derive(Clone, Copy, PartialEq)]
+enum Effect {
+    GaussianBlur { sigma: f32, direction: u8, border: u8, quality: u8 },
+    DropShadow { color: [u8; 4], angle: f32, distance: f32, sigma: f32, quality: u8 },
+    Fill { color: [u8; 4] },
+    Tint { black: [u8; 3], white: [u8; 3], intensity: f32 },
+    Tritone { shadow: [u8; 3], midtone: [u8; 3], highlight: [u8; 3], blend: u8 },
 }
 
 #[derive(Default)]
@@ -291,6 +303,10 @@ struct LottieRendererImpl<R: Renderer> {
     slot_values: BTreeMap<String, SlotType>,
     default_slots: BTreeMap<String, SlotType>,
     layer_props: BTreeMap<String, LayerProps>,
+    /// Scene-level paint state, persisted across animation reloads.
+    effects: Vec<Effect>,
+    scene_opacity: u8,
+    blend_mode: u8,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -481,10 +497,68 @@ impl<R: Renderer> LottieRendererImpl<R> {
 
         for (name, props) in &self.layer_props {
             animation
-                .apply_layer_prop(name, props.transform.as_ref(), props.opacity)
+                .apply_layer_prop(name, props)
                 .map_err(into_lottie::<R>)?;
         }
 
+        // Restore entries have now re-applied the animated values; drop them so
+        // playback stops paying the per-layer lookup cost.
+        self.layer_props.retain(|_, p| !p.restore);
+
+        // One poke for the whole batch: re-setting the picture's transform
+        // defeats PictureImpl::skip so the mutated subtree re-prepares.
+        self.apply_user_transform()?;
+
+        Ok(())
+    }
+
+    /// Replay stored scene-level paint state onto the (re)loaded animation.
+    fn apply_scene_state(&mut self) -> Result<(), Error> {
+        let animation = self.animation.as_mut().ok_or(Error::AnimationNotLoaded)?;
+        if self.scene_opacity != 255 {
+            animation
+                .set_opacity(self.scene_opacity)
+                .map_err(into_lottie::<R>)?;
+        }
+        if self.blend_mode != 0 {
+            animation
+                .set_blend_method(self.blend_mode)
+                .map_err(into_lottie::<R>)?;
+        }
+        Self::replay_effects(animation, &self.effects)?;
+        Ok(())
+    }
+
+    /// Clear + re-add the whole effect stack (capi has no param setters).
+    fn replay_effects(animation: &mut R::Animation, effects: &[Effect]) -> Result<(), Error> {
+        animation.clear_effects().map_err(into_lottie::<R>)?;
+        for effect in effects {
+            match *effect {
+                Effect::GaussianBlur { sigma, direction, border, quality } => animation
+                    .add_gaussian_blur(sigma, direction, border, quality)
+                    .map_err(into_lottie::<R>)?,
+                Effect::DropShadow { color, angle, distance, sigma, quality } => animation
+                    .add_drop_shadow(color, angle, distance, sigma, quality)
+                    .map_err(into_lottie::<R>)?,
+                Effect::Fill { color } => {
+                    animation.add_fill_effect(color).map_err(into_lottie::<R>)?
+                }
+                Effect::Tint { black, white, intensity } => animation
+                    .add_tint(black, white, intensity)
+                    .map_err(into_lottie::<R>)?,
+                Effect::Tritone { shadow, midtone, highlight, blend } => animation
+                    .add_tritone(shadow, midtone, highlight, blend)
+                    .map_err(into_lottie::<R>)?,
+            }
+        }
+        Ok(())
+    }
+
+    fn push_effect(&mut self, effect: Effect) -> Result<(), Error> {
+        self.effects.push(effect);
+        let animation = self.animation.as_mut().ok_or(Error::AnimationNotLoaded)?;
+        Self::replay_effects(animation, &self.effects)?;
+        self.updated = true;
         Ok(())
     }
 
@@ -608,6 +682,9 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.updated = true;
 
         self.store_default_slots(default_slots);
+
+        // Scene-level paint state (opacity/blend/effects) survives reloads.
+        self.apply_scene_state()?;
 
         Ok(())
     }
@@ -928,6 +1005,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     // ── Paint-level ops (POC) ────────────────────────────────────────────
 
     fn set_opacity(&mut self, opacity: u8) -> Result<(), Error> {
+        self.scene_opacity = opacity;
         self.get_animation_mut()?
             .set_opacity(opacity)
             .map_err(into_lottie::<R>)?;
@@ -936,6 +1014,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn set_blend_mode(&mut self, mode: u8) -> Result<(), Error> {
+        self.blend_mode = mode;
         self.get_animation_mut()?
             .set_blend_method(mode)
             .map_err(into_lottie::<R>)?;
@@ -944,6 +1023,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     }
 
     fn clear_effects(&mut self) -> Result<(), Error> {
+        self.effects.clear();
         self.get_animation_mut()?
             .clear_effects()
             .map_err(into_lottie::<R>)?;
@@ -958,11 +1038,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         border: u8,
         quality: u8,
     ) -> Result<(), Error> {
-        self.get_animation_mut()?
-            .add_gaussian_blur(sigma, direction, border, quality)
-            .map_err(into_lottie::<R>)?;
-        self.updated = true;
-        Ok(())
+        self.push_effect(Effect::GaussianBlur { sigma, direction, border, quality })
     }
 
     fn add_drop_shadow(
@@ -973,27 +1049,15 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         sigma: f32,
         quality: u8,
     ) -> Result<(), Error> {
-        self.get_animation_mut()?
-            .add_drop_shadow(color, angle, distance, sigma, quality)
-            .map_err(into_lottie::<R>)?;
-        self.updated = true;
-        Ok(())
+        self.push_effect(Effect::DropShadow { color, angle, distance, sigma, quality })
     }
 
     fn add_fill_effect(&mut self, color: [u8; 4]) -> Result<(), Error> {
-        self.get_animation_mut()?
-            .add_fill_effect(color)
-            .map_err(into_lottie::<R>)?;
-        self.updated = true;
-        Ok(())
+        self.push_effect(Effect::Fill { color })
     }
 
     fn add_tint(&mut self, black: [u8; 3], white: [u8; 3], intensity: f32) -> Result<(), Error> {
-        self.get_animation_mut()?
-            .add_tint(black, white, intensity)
-            .map_err(into_lottie::<R>)?;
-        self.updated = true;
-        Ok(())
+        self.push_effect(Effect::Tint { black, white, intensity })
     }
 
     fn add_tritone(
@@ -1003,11 +1067,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         highlight: [u8; 3],
         blend: u8,
     ) -> Result<(), Error> {
-        self.get_animation_mut()?
-            .add_tritone(shadow, midtone, highlight, blend)
-            .map_err(into_lottie::<R>)?;
-        self.updated = true;
-        Ok(())
+        self.push_effect(Effect::Tritone { shadow, midtone, highlight, blend })
     }
 
     fn set_layer_transform(
@@ -1038,15 +1098,45 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         Ok(())
     }
 
+    fn set_layer_visible(&mut self, layer_name: &str, visible: bool) -> Result<(), Error> {
+        if self.animation.is_none() {
+            return Err(Error::AnimationNotLoaded);
+        }
+        self.layer_props
+            .entry(layer_name.to_owned())
+            .or_default()
+            .visible = Some(visible);
+        self.updated = true;
+        Ok(())
+    }
+
+    fn set_layer_blur(&mut self, layer_name: &str, sigma: f32, quality: u8) -> Result<(), Error> {
+        if self.animation.is_none() {
+            return Err(Error::AnimationNotLoaded);
+        }
+        let props = self.layer_props.entry(layer_name.to_owned()).or_default();
+        props.blur = (sigma > 0.0).then_some((sigma, quality));
+        // Removing the last override leaves an all-None entry; flush it once
+        // (to detach any live blur) and then drop it.
+        if *props == LayerProps::default() {
+            props.restore = true;
+        }
+        self.updated = true;
+        Ok(())
+    }
+
     fn clear_layer_props(&mut self, layer_name: &str) -> Result<(), Error> {
-        // Composing identity/full-opacity restores the layer's animated values,
-        // so a cleared layer keeps one restoring entry instead of a stale override.
+        // Composing identity values restores the layer's animated state; the
+        // entry is marked restore-once and dropped after the next flush.
         if self.layer_props.contains_key(layer_name) {
             self.layer_props.insert(
                 layer_name.to_owned(),
                 LayerProps {
                     transform: Some(IDENTITY_TRANSFORM),
                     opacity: Some(255),
+                    visible: Some(true),
+                    blur: None,
+                    restore: true,
                 },
             );
             self.updated = true;

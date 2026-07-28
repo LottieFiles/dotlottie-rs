@@ -213,6 +213,21 @@ pub enum Drawable<'d, R: Renderer> {
     Animation(&'d R::Animation),
 }
 
+/// User overrides for a named layer, composed onto the animated values on
+/// every flush. Layers with masks/clips/mattes keep their mask geometry in
+/// sibling paints, so transforms move content but not the mask — per-layer
+/// overrides are only fully correct on unmasked layers.
+#[derive(Default, Clone, Copy, PartialEq)]
+pub struct LayerProps {
+    pub transform: Option<[f32; 9]>,
+    pub opacity: Option<u8>,
+    pub visible: Option<bool>,
+    /// (sigma, quality 0-100). Replaces the layer's effect list while active.
+    pub blur: Option<(f32, u8)>,
+    /// One-shot restore: apply identity values once, then drop the entry.
+    pub restore: bool,
+}
+
 pub trait Shape: Default {
     type Error: error::Error;
 
@@ -334,14 +349,13 @@ pub trait Animation: Default {
         blend: u8,
     ) -> Result<(), Self::Error>;
 
-    /// Compose user transform/opacity onto a named layer's animated values.
-    /// Must be re-applied after every frame change; a `None` leaves that
-    /// property at its animated value.
+    /// Compose user overrides onto a named layer's animated values.
+    /// Must be re-applied after every frame change (ThorVG rebuilds layer
+    /// paints); a `None` field leaves that property at its animated value.
     fn apply_layer_prop(
         &mut self,
         layer_name: &str,
-        transform: Option<&[f32; 9]>,
-        opacity: Option<u8>,
+        props: &LayerProps,
     ) -> Result<(), Self::Error>;
 
     // ── Markers & Segments ───────────────────────────────────────────────

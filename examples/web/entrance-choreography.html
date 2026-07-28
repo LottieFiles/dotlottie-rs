@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Entrance choreography · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 06</div>
+  <h1>Entrance choreography</h1>
+  <p class="lede">
+    The scene doesn't pop in — it assembles. Each named layer fades and slides in on
+    its own schedule, staggered back-to-front, all driven from outside the animation
+    file. The Lottie author never keyframed an entrance.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <button class="primary" id="replay">replay entrance</button>
+      <label>stagger <input type="range" id="stagger" min="60" max="400" value="180" /></label>
+      <span id="stagger-val">180ms</span>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>What this shows</h2>
+    <p>
+      Per-layer <code>set_layer_opacity</code> and <code>set_layer_transform</code>
+      driven by a stagger timeline: sky first, then far hills, near hills, sun, clouds.
+      Each layer starts transparent and offset downward, then eases up to identity —
+      which restores the authored animation exactly (compose-with-identity is a perfect
+      restore, no snap).
+    </p>
+    <h2>APIs used</h2>
+    <pre>// per layer i, with delay = i * stagger
+const t = easeOut(clamp((now - start - delay) / 600));
+player.set_layer_opacity(name, Math.round(t * 255));
+player.set_layer_transform(name, T(0, (1 - t) * 60)); // slide up 60px</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>Timeline of actions</strong>: entrance = a list of
+      <code>SetLayerOpacity</code>/<code>SetLayerTransform</code> actions with
+      per-action delay + duration + easing. This is exactly the shape of the SM's
+      tweened transitions, applied to layer props instead of frames — the strongest
+      argument for landing layer props as first-class SM targets.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, T } from "./fx-common.js";
+
+const entry = await initPlayer(document.getElementById("cv"), "assets/scene.json");
+const { player } = entry;
+
+// back-to-front assembly order
+const ORDER = ["sky", "hills-far", "hills-near", "sun", "clouds"];
+const DURATION = 600;
+let start = performance.now();
+let stagger = 180;
+
+const staggerEl = document.getElementById("stagger");
+const staggerVal = document.getElementById("stagger-val");
+staggerEl.oninput = () => {
+  stagger = parseInt(staggerEl.value, 10);
+  staggerVal.textContent = stagger + "ms";
+};
+document.getElementById("replay").onclick = () => (start = performance.now());
+
+const easeOut = (t) => 1 - (1 - t) * (1 - t) * (1 - t);
+
+entry.update = (_dt, now) => {
+  ORDER.forEach((name, i) => {
+    const raw = (now - start - i * stagger) / DURATION;
+    const t = easeOut(Math.min(1, Math.max(0, raw)));
+    player.set_layer_opacity(name, Math.round(t * 255));
+    player.set_layer_transform(name, new Float32Array(T(0, (1 - t) * 60)));
+  });
+};
+</script>
+</body>
+</html>

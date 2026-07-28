@@ -84,6 +84,14 @@ mod tests {
         let baseline = buffer.clone();
         assert!(baseline.iter().any(|&px| px != 0));
 
+        // Clean frame-22 reference for the survival assertion below.
+        assert!(player.set_frame(22.0).is_ok());
+        assert!(player.render().is_ok());
+        let clean_frame22 = buffer.clone();
+        assert!(player.set_frame(21.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+
         let shift = vec![1.0, 0.0, 200.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
         assert!(player.set_layer_transform("R", shift).is_ok());
         assert!(player.render().is_ok());
@@ -92,10 +100,11 @@ mod tests {
         assert!(player.set_layer_opacity("E", 128).is_ok());
         assert!(player.render().is_ok());
 
-        // Re-apply must survive a frame change (ThorVG rebuilds layer paints).
+        // Re-apply must survive a frame change (ThorVG rebuilds layer paints):
+        // frame 22 with props active must differ from the clean frame 22.
         assert!(player.set_frame(22.0).is_ok());
         assert!(player.render().is_ok());
-        let shifted_frame22 = buffer.clone();
+        assert_ne!(buffer, clean_frame22);
         assert!(player.set_frame(21.0).is_ok());
         assert!(player.render().is_ok());
 
@@ -104,11 +113,73 @@ mod tests {
         assert!(player.render().is_ok());
         assert_eq!(buffer, baseline);
 
+        // Restore entries are dropped after one flush; playback then renders
+        // identically to a prop-free player.
+        assert!(player.set_frame(22.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, clean_frame22);
+
         // Unknown layer name is a no-op, not an error.
         assert!(player.set_layer_opacity("no-such-layer", 0).is_ok());
         assert!(player.render().is_ok());
+    }
 
-        let _ = shifted_frame22;
+    #[test]
+    fn layer_blur_and_visibility() {
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        let mut player = loaded_player(&mut buffer);
+        let baseline = buffer.clone();
+
+        // NOTE: per-layer sigma is in composition units (scaled by the layout
+        // transform), unlike whole-scene blur which is in canvas pixels.
+        // test.json is a 1500-unit comp on a 100px canvas → scale ≈ 0.067.
+        assert!(player.set_layer_blur("R", 90.0, 100).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline);
+
+        // Survives frame changes (fresh scene, blur re-attached).
+        assert!(player.set_frame(22.0).is_ok());
+        assert!(player.render().is_ok());
+        assert!(player.set_frame(21.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline);
+
+        // Removing blur on a paused (non-rebuilt) scene detaches it.
+        assert!(player.set_layer_blur("R", 0.0, 0).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+
+        assert!(player.set_layer_visible("E", false).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, baseline);
+
+        assert!(player.set_layer_visible("E", true).is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, baseline);
+    }
+
+    #[test]
+    fn effects_persist_across_reload() {
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        let mut player = loaded_player(&mut buffer);
+        let clean = buffer.clone();
+
+        assert!(player.add_gaussian_blur(8.0, 0, 0, 100).is_ok());
+        assert!(player.render().is_ok());
+        let blurred = buffer.clone();
+        assert_ne!(blurred, clean);
+
+        // Reload: stored effects replay onto the new animation automatically.
+        let path = CString::new("assets/animations/lottie/test.json").unwrap();
+        assert!(player.load_animation_path(&path).is_ok());
+        assert!(player.set_frame(21.0).is_ok());
+        assert!(player.render().is_ok());
+        assert_ne!(buffer, clean);
+
+        // clear_effects also persists (empty stack) across reloads.
+        assert!(player.clear_effects().is_ok());
+        assert!(player.render().is_ok());
+        assert_eq!(buffer, clean);
     }
 
     #[test]

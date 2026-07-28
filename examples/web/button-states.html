@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Button states · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 05</div>
+  <h1>Button states — a state table of paint ops</h1>
+  <p class="lede">
+    One animated control, five UI states. Each state is a plain declarative record of
+    paint values — scale, blur, grayscale, opacity, shadow — and a spring interpolates
+    between them. This page is deliberately shaped like a future state machine:
+    the state table below is the action list an SM would own.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <button class="primary" data-state="enabled">enabled</button>
+      <button data-state="loading">loading</button>
+      <button data-state="disabled">disabled</button>
+      <span id="state-label">state: enabled (hover / press the canvas)</span>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>What this shows</h2>
+    <p>
+      The whole-animation ops as a state system: <code>hover</code> lifts the control
+      (drop shadow + scale), <code>pressed</code> compresses it, <code>loading</code>
+      blurs and dims it, <code>disabled</code> drains color with a tritone ramp.
+      Transitions are continuous — a spring drives every parameter toward the active
+      state's targets, and effects are re-issued per frame (measured: free — ThorVG
+      re-prepares effects on every update anyway).
+    </p>
+    <h2>The state table</h2>
+    <pre>const STATES = {
+  enabled:  { scale: 1.00, blur: 0, gray: 0, opacity: 255, shadow: 0.25 },
+  hover:    { scale: 1.05, blur: 0, gray: 0, opacity: 255, shadow: 1.00 },
+  pressed:  { scale: 0.95, blur: 0, gray: 0, opacity: 255, shadow: 0.05 },
+  loading:  { scale: 1.00, blur: 5, gray: 0, opacity: 215, shadow: 0.15 },
+  disabled: { scale: 1.00, blur: 0, gray: 1, opacity: 150, shadow: 0.00 },
+};
+// per frame: spring params → targets, then
+player.set_transform(around(256, 256, S(p.scale, p.scale)));
+player.clear_effects();
+if (p.gray > 0)   player.add_tritone(40,40,40, 128,128,128, 225,225,225, (1-p.gray)*255);
+if (p.shadow > 0) player.add_drop_shadow(0,0,0, p.shadow*170, 90, 4+p.shadow*10, 4+p.shadow*8, 50);
+if (p.blur > 0.05) player.add_gaussian_blur(p.blur, 0, 0, 50);
+player.set_opacity(p.opacity);</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>States own paint values; transitions interpolate them.</strong> The SM
+      already has states, transitions and tweening for <em>frames</em> — this table is
+      the same idea for <em>paint props</em>. A natural landing: state entry actions
+      (<code>SetOpacity</code>, <code>SetEffect…</code>) plus transition-level
+      easing/duration, reusing the existing tween machinery as the interpolation driver.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, S, around, setT, spring } from "./fx-common.js";
+
+const entry = await initPlayer(document.getElementById("cv"), "assets/control.json");
+const { player, canvas } = entry;
+
+const STATES = {
+  enabled:  { scale: 1.00, blur: 0, gray: 0, opacity: 255, shadow: 0.25 },
+  hover:    { scale: 1.05, blur: 0, gray: 0, opacity: 255, shadow: 1.00 },
+  pressed:  { scale: 0.95, blur: 0, gray: 0, opacity: 255, shadow: 0.05 },
+  loading:  { scale: 1.00, blur: 5, gray: 0, opacity: 215, shadow: 0.15 },
+  disabled: { scale: 1.00, blur: 0, gray: 1, opacity: 150, shadow: 0.00 },
+};
+
+let base = "enabled";      // set by the buttons
+let pointer = null;        // "hover" | "pressed" | null, only meaningful when enabled
+const label = document.getElementById("state-label");
+
+const active = () => (base === "enabled" && pointer) ? pointer : base;
+
+document.querySelectorAll("[data-state]").forEach((b) => {
+  b.onclick = () => { base = b.dataset.state; label.textContent = "state: " + active(); };
+});
+canvas.addEventListener("pointerenter", () => { pointer = "hover"; label.textContent = "state: " + active(); });
+canvas.addEventListener("pointerleave", () => { pointer = null; label.textContent = "state: " + active(); });
+canvas.addEventListener("pointerdown", () => { pointer = "pressed"; label.textContent = "state: " + active(); });
+canvas.addEventListener("pointerup", () => { pointer = "hover"; label.textContent = "state: " + active(); });
+
+// current interpolated params + velocities
+const p = { ...STATES.enabled };
+const v = { scale: 0, blur: 0, gray: 0, opacity: 0, shadow: 0 };
+
+entry.update = (dt) => {
+  const target = STATES[active()];
+  for (const k of Object.keys(v)) {
+    [p[k], v[k]] = spring(p[k], v[k], target[k], dt, 140, 16);
+  }
+  setT(player, around(256, 256, S(p.scale, p.scale)));
+  player.clear_effects();
+  if (p.gray > 0.01)
+    player.add_tritone(40, 40, 40, 128, 128, 128, 225, 225, 225, Math.round((1 - Math.min(1, p.gray)) * 255));
+  if (p.shadow > 0.01)
+    player.add_drop_shadow(0, 0, 0, Math.round(p.shadow * 170), 90, 4 + p.shadow * 10, 4 + p.shadow * 8, 50);
+  if (p.blur > 0.05)
+    player.add_gaussian_blur(p.blur, 0, 0, 50);
+  player.set_opacity(Math.round(Math.max(0, Math.min(255, p.opacity))));
+};
+</script>
+</body>
+</html>

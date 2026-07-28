@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cursor parallax · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 02</div>
+  <h1>Cursor parallax</h1>
+  <p class="lede">
+    One animation, five named layers, five different motion rates. Moving the cursor
+    translates each layer by a different factor — depth emerges from a flat Lottie
+    without touching the animation file.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <span>move the cursor over the scene — layers follow at different rates, springs return them</span>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>What this shows</h2>
+    <p>
+      <code>set_layer_transform(name, matrix)</code> composes a translation onto each
+      layer's animated transform, in composition space. The ambient animation
+      (drifting clouds, pulsing sun) keeps playing underneath — user motion and
+      authored motion stack cleanly because the override is composed, not overwritten.
+    </p>
+    <h2>APIs used</h2>
+    <pre>// per pointer-move, per layer (depth = motion factor)
+player.set_layer_transform("clouds",     T(dx * 0.10, dy * 0.06));
+player.set_layer_transform("sun",        T(dx * 0.05, dy * 0.03));
+player.set_layer_transform("hills-far",  T(dx * 0.16, dy * 0.08));
+player.set_layer_transform("hills-near", T(dx * 0.30, dy * 0.14));
+// on leave: springs ease dx/dy back to 0</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>SetLayerTransform</strong> as a numeric-input-driven action: bind
+      <code>$pointer.x/y</code> inputs to per-layer translation factors. Needs the SM to
+      support continuous (per-tick) actions, not just edge-triggered ones — the same
+      requirement pointer-driven tweening already has.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, T, spring, trackPointer } from "./fx-common.js";
+
+const entry = await initPlayer(document.getElementById("cv"), "assets/scene.json");
+const { player, canvas } = entry;
+
+const RATES = { "clouds": [0.10, 0.06], "sun": [0.05, 0.03], "hills-far": [0.16, 0.08], "hills-near": [0.30, 0.14] };
+let x = 0, y = 0, vx = 0, vy = 0, tx = 0, ty = 0;
+
+trackPointer(canvas, 512, (mx, my) => { tx = mx - 256; ty = my - 256; }, () => { tx = 0; ty = 0; });
+
+entry.update = (dt) => {
+  [x, vx] = spring(x, vx, tx, dt, 120, 14);
+  [y, vy] = spring(y, vy, ty, dt, 120, 14);
+  for (const [name, [rx, ry]] of Object.entries(RATES)) {
+    player.set_layer_transform(name, new Float32Array(T(x * rx, y * ry)));
+  }
+};
+</script>
+</body>
+</html>

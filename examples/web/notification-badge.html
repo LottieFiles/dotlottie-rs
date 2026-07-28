@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Notification badge · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 04</div>
+  <h1>Notification badge</h1>
+  <p class="lede">
+    A bell control with three independent layers: <code>button</code>, <code>bell</code>,
+    <code>badge</code>. Events drive layer-scoped reactions — the bell shakes, the badge
+    pops or clears — while the authored idle animation keeps breathing underneath.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <button class="primary" id="notify">new notification</button>
+      <button id="clear">mark read</button>
+      <span id="state">1 unread</span>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>What this shows</h2>
+    <p>
+      Layer-scoped reactions to app events. "New notification" spins up a decaying
+      shake on the <code>bell</code> layer (rotation around its hinge) and a pop on the
+      <code>badge</code> layer (scale around the badge center). "Mark read" fades just
+      the badge with <code>set_layer_opacity</code> — the bell and button are untouched.
+    </p>
+    <p>
+      Pivots are plain composition-space coordinates: the bell hinge is
+      <code>(256,172)</code>, the badge center <code>(346,168)</code> — rotate/scale
+      matrices are conjugated around those points.
+    </p>
+    <h2>APIs used</h2>
+    <pre>// decaying bell shake, per frame while active
+const a = Math.sin(t * 34) * 14 * Math.exp(-t * 4.5);
+player.set_layer_transform("bell", around(256, 172, R(a)));
+
+// badge pop (spring overshoot), badge clear
+player.set_layer_transform("badge", around(346, 168, S(s, s)));
+player.set_layer_opacity("badge", read ? 0 : 255);</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>Event-triggered layer actions</strong>: an SM event fires a
+      time-bounded layer override (shake for 900ms, then auto-restore via
+      <code>clear_layer_props</code>). Suggests SM actions need an optional
+      <em>duration + easing envelope</em>, after which the layer returns to authored
+      values — restore semantics the compose-don't-overwrite design gives for free.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, R, S, around, spring } from "./fx-common.js";
+
+const entry = await initPlayer(document.getElementById("cv"), "assets/control.json");
+const { player } = entry;
+
+let unread = 1;
+let shakeStart = -1;
+let badgeScale = 1, badgeVel = 0, badgeTarget = 1;
+const stateEl = document.getElementById("state");
+
+document.getElementById("notify").onclick = () => {
+  unread++;
+  shakeStart = performance.now();
+  badgeScale = 0.4; badgeVel = 6;             // pop from small with velocity
+  player.set_layer_opacity("badge", 255);
+  stateEl.textContent = unread + " unread";
+};
+
+document.getElementById("clear").onclick = () => {
+  unread = 0;
+  player.set_layer_opacity("badge", 0);
+  stateEl.textContent = "all read";
+};
+
+entry.update = (dt, now) => {
+  // decaying bell shake
+  if (shakeStart > 0) {
+    const t = (now - shakeStart) / 1000;
+    if (t > 1.2) {
+      shakeStart = -1;
+      player.clear_layer_props("bell");
+    } else {
+      const a = Math.sin(t * 34) * 14 * Math.exp(-t * 4.5);
+      player.set_layer_transform("bell", new Float32Array(around(256, 172, R(a))));
+    }
+  }
+  // springy badge scale
+  [badgeScale, badgeVel] = spring(badgeScale, badgeVel, badgeTarget, dt, 220, 12);
+  if (unread > 0) {
+    player.set_layer_transform("badge", new Float32Array(around(346, 168, S(badgeScale, badgeScale))));
+  }
+};
+</script>
+</body>
+</html>

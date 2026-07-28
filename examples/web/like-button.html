@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Like button · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 07</div>
+  <h1>Like button — playback + paint ops together</h1>
+  <p class="lede">
+    The authored animation carries the celebration (heartbeat, ring, burst); paint ops
+    carry the interaction state. Unliked is a desaturated, paused heart. Press squashes
+    the <code>heart</code> layer only. Liking restores color and replays the authored
+    burst from frame zero.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <span>press and release the heart</span>
+      <span id="liked-label" style="margin-left:auto">♡ not liked</span>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>What this shows</h2>
+    <p>
+      Paint ops and playback control are orthogonal and compose. The unliked state is
+      <em>not authored</em> — it's the same animation paused at a quiet frame with a
+      tritone ramp draining its color. The press feedback squashes only the
+      <code>heart</code> layer (the ring and burst layers are untouched), and the like
+      moment is pure playback: <code>set_frame(0); play()</code>.
+    </p>
+    <h2>APIs used</h2>
+    <pre>// unliked: paused + desaturated
+player.pause(); player.set_frame(150);
+player.add_tritone(60,60,60, 150,150,150, 235,235,235, 40);
+
+// press: squash just the heart layer
+player.set_layer_transform("heart", around(256, 240, S(0.85, 0.82)));
+
+// like: color back + authored celebration
+player.clear_effects();
+player.set_frame(0); player.play();   // burst + ring + double-beat
+// when current_frame() passes the celebration, pause on the quiet tail</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>Mixed action lists</strong>: one SM transition fires playback actions
+      (<code>SetFrame</code>, <code>Play</code> — which exist today) alongside paint
+      actions (<code>ClearEffects</code>, <code>SetLayerTransform</code>). No new
+      orchestration is needed — paint ops slot into the existing action list concept.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, S, around, spring } from "./fx-common.js";
+
+const entry = await initPlayer(document.getElementById("cv"), "assets/heart.json");
+const { player, canvas } = entry;
+
+const REST_FRAME = 150;
+let liked = false;
+let pressed = false;
+let squash = 1, squashV = 0;
+const label = document.getElementById("liked-label");
+
+function applyUnliked() {
+  player.clear_effects();
+  player.add_tritone(60, 60, 60, 150, 150, 150, 235, 235, 235, 40);
+  player.pause();
+  player.set_frame(REST_FRAME);
+}
+applyUnliked();
+
+canvas.addEventListener("pointerdown", () => (pressed = true));
+canvas.addEventListener("pointerup", () => {
+  if (!pressed) return;
+  pressed = false;
+  liked = !liked;
+  if (liked) {
+    player.clear_effects();
+    player.set_frame(0);
+    player.play();
+    label.textContent = "♥ liked";
+  } else {
+    applyUnliked();
+    label.textContent = "♡ not liked";
+  }
+});
+canvas.addEventListener("pointercancel", () => (pressed = false));
+
+entry.update = (dt) => {
+  [squash, squashV] = spring(squash, squashV, pressed ? 0.85 : 1, dt, 260, 14);
+  player.set_layer_transform("heart", new Float32Array(around(256, 240, S(squash, squash * 0.97 + 0.03))));
+  // after the celebration, settle on the quiet tail so the beat doesn't loop forever
+  if (liked && player.current_frame() >= REST_FRAME) {
+    player.pause();
+    player.set_frame(REST_FRAME);
+  }
+};
+</script>
+</body>
+</html>

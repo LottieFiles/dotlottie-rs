@@ -1703,8 +1703,24 @@ impl Player {
         Ok(self.renderer.set_layer_opacity(layer_name, opacity)?)
     }
 
+    pub fn set_layer_visible(&mut self, layer_name: &str, visible: bool) -> Result<()> {
+        Ok(self.renderer.set_layer_visible(layer_name, visible)?)
+    }
+
+    /// Per-layer gaussian blur; sigma <= 0 removes it.
+    pub fn set_layer_blur(&mut self, layer_name: &str, sigma: f32, quality: u8) -> Result<()> {
+        Ok(self.renderer.set_layer_blur(layer_name, sigma, quality)?)
+    }
+
     pub fn clear_layer_props(&mut self, layer_name: &str) -> Result<()> {
         Ok(self.renderer.clear_layer_props(layer_name)?)
+    }
+
+    /// Test whether a canvas-space point hits the named layer's bounding box.
+    pub fn hit_test(&self, layer_name: &str, x: f32, y: f32) -> bool {
+        self.renderer
+            .hit_test(crate::renderer::Point { x, y }, layer_name)
+            .unwrap_or(false)
     }
 
     /// Poll for the next event from the event queue

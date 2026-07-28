@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>paint-fx examples · dotlottie-rs</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <h1>dotlottie-rs <em style="color:var(--accent);font-style:normal">paint-fx</em> examples</h1>
+  <p class="lede">
+    Use-case demos for the paint-level manipulation POC: transforms, opacity, blend
+    modes, scene effects, and per-layer control (transform / opacity / visibility /
+    blur) on the rendered Lottie. Each page is one self-contained scenario with the
+    exact API calls and a note on how it would land as state-machine actions.
+    Serve the repo root and build with <code>make wasm</code> first.
+  </p>
+</header>
+
+<ol class="case-list">
+  <li><a href="depth-of-field.html">
+    <span class="num">01</span><span class="name">Depth of field</span>
+    <span class="ops">set_layer_blur · set_layer_opacity</span>
+    <span class="desc">Rack focus between foreground and background by blurring individual layers — the flagship per-layer effect.</span>
+  </a></li>
+  <li><a href="parallax.html">
+    <span class="num">02</span><span class="name">Cursor parallax</span>
+    <span class="ops">set_layer_transform</span>
+    <span class="desc">Five layers translate at different rates under the cursor; depth from a flat file.</span>
+  </a></li>
+  <li><a href="layer-spotlight.html">
+    <span class="num">03</span><span class="name">Layer spotlight</span>
+    <span class="ops">hit_test · set_layer_opacity · set_layer_blur</span>
+    <span class="desc">Renderer-side hit testing finds the hovered layer; everything else dims and softens.</span>
+  </a></li>
+  <li><a href="notification-badge.html">
+    <span class="num">04</span><span class="name">Notification badge</span>
+    <span class="ops">set_layer_transform · set_layer_opacity · clear_layer_props</span>
+    <span class="desc">Events shake the bell and pop or clear the badge — layer-scoped reactions over an idle loop.</span>
+  </a></li>
+  <li><a href="button-states.html">
+    <span class="num">05</span><span class="name">Button states</span>
+    <span class="ops">set_opacity · add_tritone · add_drop_shadow · add_gaussian_blur</span>
+    <span class="desc">Enabled / hover / pressed / loading / disabled as a declarative table of paint values — a state machine in miniature.</span>
+  </a></li>
+  <li><a href="entrance-choreography.html">
+    <span class="num">06</span><span class="name">Entrance choreography</span>
+    <span class="ops">set_layer_opacity · set_layer_transform</span>
+    <span class="desc">Layers assemble back-to-front on a stagger timeline the animation file never authored.</span>
+  </a></li>
+  <li><a href="like-button.html">
+    <span class="num">07</span><span class="name">Like button</span>
+    <span class="ops">add_tritone · set_layer_transform · set_frame · play</span>
+    <span class="desc">Playback control and paint ops composed: desaturated idle, layer-scoped press squash, authored celebration.</span>
+  </a></li>
+</ol>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Depth of field · paint-fx</title>
+<link rel="stylesheet" href="fx.css" />
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">paint-fx examples</a> / 01</div>
+  <h1>Depth of field — blur a single layer</h1>
+  <p class="lede">
+    Rack focus on a flat Lottie. Each focus target blurs the <em>other</em> layers with
+    per-layer gaussian blur and gently dims them — the focused plane stays untouched.
+    The animation keeps playing throughout; blur re-attaches on every rebuilt frame.
+  </p>
+</header>
+
+<div class="demo">
+  <div class="stage-card">
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="controls">
+      <button class="primary" data-focus="near">focus foreground</button>
+      <button data-focus="far">focus background</button>
+      <button data-focus="all">all sharp</button>
+      <label>max blur <input type="range" id="sigma" min="2" max="24" value="10" /></label>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>What this shows</h2>
+    <p>
+      <code>set_layer_blur(name, sigma, quality)</code> attaches a gaussian blur to one
+      layer's scene. ThorVG rebuilds layer scenes on every frame change, so the player
+      re-attaches active layer effects on each flush — set it once, it persists.
+      A spring animates sigma for the rack-focus feel; parameter changes are free
+      (effects re-prepare every update regardless).
+    </p>
+    <p>
+      Sigma is in <em>composition units</em>: it scales with the layout transform, so
+      the depth effect keeps its proportions when the canvas resizes.
+    </p>
+    <h2>APIs used</h2>
+    <pre>// focus foreground: blur + dim everything behind it
+for (const name of ["sky", "sun", "clouds", "hills-far"]) {
+  player.set_layer_blur(name, sigma, 60);
+  player.set_layer_opacity(name, 215);
+}
+player.set_layer_blur("hills-near", 0, 0);   // focused plane: sharp
+player.set_layer_opacity("hills-near", 255);</pre>
+    <h2>State-machine shape</h2>
+    <div class="sm-note">
+      <strong>SetLayerBlur { layer, sigma, quality }</strong> — declarative and
+      idempotent (set-semantics, sigma 0 removes), so it maps directly onto SM state
+      entry actions: a "focused-foreground" state simply owns a list of layer-blur
+      values. Smooth rack-focus needs transition-level interpolation of
+      <code>sigma</code> — same driver tweened transitions already use for frames.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initPlayer, spring } from "./fx-common.js";
+
+const entry = await initPlayer(document.getElementById("cv"), "assets/scene.json");
+const { player } = entry;
+
+const PLANES = {
+  near: ["hills-near"],
+  far: ["sky", "sun", "clouds", "hills-far"],
+};
+const ALL = [...PLANES.near, ...PLANES.far];
+
+let focus = "near";
+let maxSigma = 10;
+// per-layer springs so focus changes rack smoothly
+const state = Object.fromEntries(ALL.map((n) => [n, { s: 0, v: 0 }]));
+
+document.querySelectorAll("[data-focus]").forEach((b) => (b.onclick = () => (focus = b.dataset.focus)));
+const sigmaEl = document.getElementById("sigma");
+sigmaEl.oninput = () => (maxSigma = parseFloat(sigmaEl.value));
+
+entry.update = (dt) => {
+  for (const name of ALL) {
+    const blurred = focus !== "all" && !PLANES[focus].includes(name);
+    const st = state[name];
+    [st.s, st.v] = spring(st.s, st.v, blurred ? 1 : 0, dt, 90, 13);
+    const sigma = st.s * maxSigma;
+    player.set_layer_blur(name, sigma > 0.15 ? sigma : 0, 60);
+    player.set_layer_opacity(name, Math.round(255 - st.s * 40));
+  }
+};
+</script>
+</body>
+</html>

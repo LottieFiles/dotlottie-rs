@@ -916,6 +916,47 @@ pub unsafe extern "C" fn dotlottie_set_theme(
     }
 }
 
+/// Like `dotlottie_set_theme`, but lerps each overridden slot from its current value to the
+/// new theme's value over `duration` milliseconds instead of snapping instantly.
+///
+/// # Parameters
+/// - `ptr`: Pointer to the Player instance
+/// - `theme_id`: Null-terminated C string with the theme ID, or empty to reset to defaults
+/// - `duration`: Tween duration in milliseconds; `<= 0.0` behaves like `dotlottie_set_theme`
+/// - `x1`, `y1`, `x2`, `y2`: Cubic bezier easing control points (CSS convention);
+///   `(0.0, 0.0, 1.0, 1.0)` is linear
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `theming` feature
+/// - `DotLottieResult::InvalidParameter` if the theme doesn't exist or the pointer is invalid
+#[cfg_attr(not(feature = "theming"), allow(unused_variables))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_theme_tweened(
+    ptr: *mut Player,
+    theme_id: *const c_char,
+    duration: f32,
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+) -> DotLottieResult {
+    #[cfg(not(feature = "theming"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "theming")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+            if theme_id.is_null() {
+                return DotLottieResult::InvalidParameter;
+            }
+            let id = CStr::from_ptr(theme_id);
+            dotlottie_player.set_theme_tweened(id, duration, [x1, y1, x2, y2])
+        })
+    }
+}
+
 #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut Player) -> DotLottieResult {
@@ -926,6 +967,29 @@ pub unsafe extern "C" fn dotlottie_reset_theme(ptr: *mut Player) -> DotLottieRes
     #[cfg(feature = "theming")]
     {
         exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player.reset_theme())
+    }
+}
+
+/// Like `dotlottie_reset_theme`, but lerps every current slot back to its default value
+/// over `duration` milliseconds instead of snapping instantly.
+#[cfg_attr(not(feature = "theming"), allow(unused_variables))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_reset_theme_tweened(
+    ptr: *mut Player,
+    duration: f32,
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+) -> DotLottieResult {
+    #[cfg(not(feature = "theming"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "theming")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player
+            .reset_theme_tweened(duration, [x1, y1, x2, y2]))
     }
 }
 
@@ -961,6 +1025,47 @@ pub unsafe extern "C" fn dotlottie_set_theme_data(
     }
 }
 
+/// Like `dotlottie_set_theme_data`, but lerps each overridden slot toward the new value
+/// over `duration` milliseconds instead of snapping instantly.
+///
+/// # Parameters
+/// - `ptr`: Pointer to the Player instance
+/// - `theme_data`: Null-terminated C string containing the theme JSON data
+/// - `duration`: Tween duration in milliseconds; `<= 0.0` behaves like `dotlottie_set_theme_data`
+/// - `x1`, `y1`, `x2`, `y2`: Cubic bezier easing control points (CSS convention);
+///   `(0.0, 0.0, 1.0, 1.0)` is linear
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `theming` feature
+/// - `DotLottieResult::InvalidParameter` if the data is invalid or pointer is invalid
+#[cfg_attr(not(feature = "theming"), allow(unused_variables))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_theme_data_tweened(
+    ptr: *mut Player,
+    theme_data: *const c_char,
+    duration: f32,
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+) -> DotLottieResult {
+    #[cfg(not(feature = "theming"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "theming")]
+    {
+        exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+            if theme_data.is_null() {
+                return DotLottieResult::InvalidParameter;
+            }
+            let data = CStr::from_ptr(theme_data);
+            dotlottie_player.set_theme_data_tweened(data, duration, [x1, y1, x2, y2])
+        })
+    }
+}
+
 // ============================================================================
 // SLOTS C API
 // Functions for manipulating animation slots
@@ -990,6 +1095,33 @@ pub unsafe extern "C" fn dotlottie_set_slots_str(
         let json = CStr::from_ptr(slots_json);
         match json.to_str() {
             Ok(json_str) => dotlottie_player.set_slots_str(json_str),
+            Err(_) => Err(PlayerError::InvalidParameter),
+        }
+    })
+}
+
+/// Like `dotlottie_set_slots_str`, but lerps each slot toward the new value over `duration`
+/// milliseconds, eased by the given cubic bezier control points, instead of snapping
+/// instantly. A `duration <= 0.0` behaves exactly like `dotlottie_set_slots_str`.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_slots_str_tweened(
+    ptr: *mut Player,
+    slots_json: *const c_char,
+    duration: f32,
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if slots_json.is_null() {
+            return DotLottieResult::InvalidParameter;
+        }
+        let json = CStr::from_ptr(slots_json);
+        match json.to_str() {
+            Ok(json_str) => {
+                dotlottie_player.set_slots_str_tweened(json_str, duration, [x1, y1, x2, y2])
+            }
             Err(_) => Err(PlayerError::InvalidParameter),
         }
     })
@@ -1369,6 +1501,22 @@ pub unsafe extern "C" fn dotlottie_reset_slots(ptr: *mut Player) -> DotLottieRes
             Err(PlayerError::Unknown)
         }
     })
+}
+
+/// Like `dotlottie_reset_slots`, but lerps every current slot back to its default value
+/// over `duration` milliseconds instead of snapping instantly. A `duration <= 0.0` behaves
+/// exactly like `dotlottie_reset_slots`.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_reset_slots_tweened(
+    ptr: *mut Player,
+    duration: f32,
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| dotlottie_player
+        .reset_slots_tweened(duration, [x1, y1, x2, y2]))
 }
 
 /// Gets the number of markers in the current animation.

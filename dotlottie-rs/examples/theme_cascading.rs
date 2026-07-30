@@ -37,10 +37,28 @@ fn main() {
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
     player
-        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ARGB8888)
         .unwrap();
 
-    let dotlottie_data = include_bytes!("../assets/animations/dotlottie/v2/multi_themes.lottie");
+    // let dotlottie_data = include_bytes!("../assets/animations/dotlottie/v2/theme_cascading.lottie");
+    // let themes = [
+    //     "main_theme",
+    //     "stroke_only",
+    //     "stroke_opacity",
+    //     "position",
+    // ];
+
+    let dotlottie_data = include_bytes!("../assets/animations/dotlottie/v2/star_pos_themed.lottie");
+
+    let themes = [
+        "bot_center",
+        "bot_right",
+        "mid_right",
+        "top_right",
+        "top_center",
+        "top_left",
+        "mid_left",
+    ];
 
     if player.load_dotlottie_data(dotlottie_data).is_err() {
         eprintln!("Failed to load .lottie file");
@@ -54,42 +72,36 @@ fn main() {
     println!("Press ESC to quit");
     println!();
 
-    let themes = [
-        "light",
-        "dark",
-        "sky",
-        "animated_light",
-        "animated_dark",
-        "animated_sky",
-    ];
-
     let mut current_theme_index = 0;
     let mut last_space_press = std::time::Instant::now();
     let mut clock = common::Clock::new();
 
-    println!("Attempting to set theme: '{}'", themes[current_theme_index]);
-    let current_theme =
-        CString::new(themes[current_theme_index]).expect("Failed to create CString");
-    if player
-        .set_theme_tweened(&current_theme, 5000.0, [0.0, 0.0, 1.0, 1.0])
-        .is_ok()
-    {
-        println!("✓ Theme set: {}", themes[current_theme_index]);
-    } else {
-        println!("✗ Failed to set theme: {}", themes[current_theme_index]);
-    }
+    // println!("Attempting to set theme: '{}'", themes[current_theme_index]);
+    // let current_theme =
+    //     CString::new(themes[current_theme_index]).expect("Failed to create CString");
+    // if player.set_theme(&current_theme).is_ok() {
+    //     println!("✓ Theme set: {}", themes[current_theme_index]);
+    // } else {
+    //     println!("✗ Failed to set theme: {}", themes[current_theme_index]);
+    // }
 
+    let mut clicked = false;
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let dt = clock.dt();
         if window.is_key_down(Key::Space) {
             let now = std::time::Instant::now();
             if now.duration_since(last_space_press).as_millis() > 300 {
-                current_theme_index = (current_theme_index + 1) % themes.len();
+                current_theme_index =
+                    (current_theme_index + if !clicked { 0 } else { 1 }) % themes.len();
 
+                clicked = true;
                 // Switch to the new theme
                 let new_theme =
                     CString::new(themes[current_theme_index]).expect("Failed to create CString");
-                if player.set_theme(&new_theme).is_ok() {
+                if player
+                    .set_theme_tweened(&new_theme, 1000.0, [0.0, 0.5, 1.0, 1.0])
+                    .is_ok()
+                {
                     println!("✓ Theme set: {}", themes[current_theme_index]);
                 } else {
                     println!("✗ Failed to set theme: {}", themes[current_theme_index]);

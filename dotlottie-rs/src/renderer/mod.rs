@@ -1,3 +1,4 @@
+use crate::tween::{EasingTimer, TweenStatus};
 use crate::Layout;
 use std::ffi::CStr;
 
@@ -157,6 +158,28 @@ pub trait LottieRenderer {
 
     fn reset_slots(&mut self) -> bool;
 
+    /// Starts a lerp from the current effective slot values toward `to` over `duration`
+    /// milliseconds, eased by `easing`. Entries that can't be smoothly interpolated (new
+    /// keys with no current/default value, keyframed/expression values, mismatched
+    /// gradients, Text, Image) are applied immediately instead. If `replace` is set, any
+    /// currently active slot not present in `to` is dropped (matching `set_slots`'s
+    /// full-replace semantics); otherwise unmentioned slots are left untouched (matching
+    /// `set_theme`'s merge semantics). Replaces any tween already in progress.
+    fn start_theme_tween(
+        &mut self,
+        to: BTreeMap<String, SlotType>,
+        duration: f32,
+        easing: [f32; 4],
+        replace: bool,
+    ) -> Result<(), Error>;
+
+    /// Advances the in-flight theme tween (if any) by `dt` milliseconds. Returns `true`
+    /// if a tween was active (and thus `slot_values` may have changed).
+    fn advance_theme_tween(&mut self, dt: f32) -> bool;
+
+    /// Tweens every current slot back to its stored default value.
+    fn reset_slots_tweened(&mut self, duration: f32, easing: [f32; 4]) -> Result<(), Error>;
+
     fn set_quality(&mut self, quality: u8) -> Result<(), Error>;
 
     fn set_layout(&mut self, layout: &Layout) -> Result<(), Error>;
@@ -208,8 +231,17 @@ impl dyn LottieRenderer {
             slot_json_buffer: Vec::with_capacity(512),
             slot_values: BTreeMap::new(),
             default_slots: BTreeMap::new(),
+            theme_tween: None,
         })
     }
+}
+
+/// An in-flight lerp from one set of slot values to another, driven by wall-clock time.
+/// Only entries that were actually interpolable (see `slots::lerp_slot`) are tracked here;
+/// everything else was already applied instantly when the tween started.
+struct ThemeTween {
+    entries: BTreeMap<String, (SlotType, SlotType)>,
+    timer: EasingTimer,
 }
 
 #[derive(Default)]
@@ -235,6 +267,8 @@ struct LottieRendererImpl<R: Renderer> {
     /// Maps slot_id -> SlotType for value retrieval (get operations)
     slot_values: BTreeMap<String, SlotType>,
     default_slots: BTreeMap<String, SlotType>,
+    /// In-flight theme/slot tween, if any (see `start_theme_tween`/`advance_theme_tween`)
+    theme_tween: Option<ThemeTween>,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -251,6 +285,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
         self.slot_json_buffer.clear();
         self.slot_values.clear();
         self.default_slots.clear();
+        self.theme_tween = None;
         Ok(())
     }
 
@@ -784,6 +819,71 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.slot_values = self.default_slots.clone();
         self.slots_dirty = true;
         true
+    }
+
+    fn start_theme_tween(
+        &mut self,
+        to: BTreeMap<String, SlotType>,
+        duration: f32,
+        easing: [f32; 4],
+        replace: bool,
+    ) -> Result<(), Error> {
+        let timer = EasingTimer::new(duration, easing).ok_or(Error::InvalidArgument)?;
+
+        if replace {
+            self.slot_values.retain(|id, _| to.contains_key(id));
+        }
+
+        let mut entries = BTreeMap::new();
+        for (id, target) in to {
+            let current = self
+                .slot_values
+                .get(&id)
+                .or_else(|| self.default_slots.get(&id))
+                .cloned();
+
+            let lerpable = current
+                .as_ref()
+                .is_some_and(|from| slots::lerp_slot(from, &target, 0.0).is_some());
+
+            if lerpable {
+                entries.insert(id, (current.unwrap(), target));
+            } else {
+                self.slot_values.insert(id, target);
+            }
+        }
+
+        self.slots_dirty = true;
+        self.updated = true;
+        self.theme_tween = Some(ThemeTween { entries, timer });
+        Ok(())
+    }
+
+    fn advance_theme_tween(&mut self, dt: f32) -> bool {
+        let Some(tween) = self.theme_tween.as_mut() else {
+            return false;
+        };
+
+        let (status, progress) = tween.timer.advance(dt);
+        for (id, (from, to)) in tween.entries.iter() {
+            if let Some(value) = slots::lerp_slot(from, to, progress) {
+                self.slot_values.insert(id.clone(), value);
+            }
+        }
+
+        self.slots_dirty = true;
+        self.updated = true;
+
+        if status == TweenStatus::Completed {
+            self.theme_tween = None;
+        }
+
+        true
+    }
+
+    fn reset_slots_tweened(&mut self, duration: f32, easing: [f32; 4]) -> Result<(), Error> {
+        let to = self.default_slots.clone();
+        self.start_theme_tween(to, duration, easing, true)
     }
 
     fn set_quality(&mut self, quality: u8) -> Result<(), Error> {

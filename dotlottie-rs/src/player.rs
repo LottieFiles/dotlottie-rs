@@ -1147,18 +1147,14 @@ impl Player {
         }
     }
 
+    /// Validates `theme_id` against the manifest and returns the slot overrides it produces
+    /// for the active animation, without applying them. Shared by `set_theme` and
+    /// `set_theme_tweened`.
     #[cfg(feature = "theming")]
-    pub fn set_theme(&mut self, theme_id: &CStr) -> Result<()> {
-        if self.theme_id.as_deref() == Some(theme_id) {
-            return Ok(());
-        }
-
-        if theme_id.is_empty() {
-            self.theme_id = None;
-            self.renderer.reset_slots();
-            return Ok(());
-        }
-
+    fn theme_slots_for(
+        &mut self,
+        theme_id: &CStr,
+    ) -> Result<std::collections::BTreeMap<String, crate::renderer::SlotType>> {
         if self.dotlottie_manager.is_none() {
             return Err(Error::InsufficientCondition);
         }
@@ -1193,8 +1189,7 @@ impl Player {
             return Err(Error::InvalidParameter);
         };
 
-        let result = self
-            .dotlottie_manager
+        self.dotlottie_manager
             .as_mut()
             .and_then(|manager| manager.get_theme(theme_id_str).ok())
             .map(|theme| {
@@ -1204,22 +1199,79 @@ impl Player {
                     .and_then(|c| c.to_str().ok())
                     .unwrap_or("");
 
-                let slots = theme.to_slot_types(anim_id_str);
-                self.apply_slot_types(slots)
+                theme.to_slot_types(anim_id_str)
             })
-            .unwrap_or(Err(Error::Unknown));
+            .ok_or(Error::Unknown)
+    }
 
-        if result.is_ok() {
-            self.theme_id = Some(theme_id.to_owned());
+    #[cfg(feature = "theming")]
+    pub fn set_theme(&mut self, theme_id: &CStr) -> Result<()> {
+        if self.theme_id.as_deref() == Some(theme_id) {
+            return Ok(());
         }
 
-        result
+        if theme_id.is_empty() {
+            self.theme_id = None;
+            self.renderer.reset_slots();
+            return Ok(());
+        }
+
+        let slots = self.theme_slots_for(theme_id)?;
+        self.apply_slot_types(slots)?;
+        self.theme_id = Some(theme_id.to_owned());
+        Ok(())
+    }
+
+    /// Like `set_theme`, but lerps each overridden slot from its current value to the new
+    /// theme's value over `duration` milliseconds, eased by `easing`. Slots that can't be
+    /// smoothly interpolated (no current value, keyframed/expression rules, mismatched
+    /// gradients, Text, Image) are applied immediately, same as `set_theme`. A
+    /// `duration <= 0.0` behaves exactly like `set_theme`. `easing` follows the CSS cubic
+    /// bezier convention (`[x1, y1, x2, y2]`); `[0.0, 0.0, 1.0, 1.0]` is linear.
+    #[cfg(feature = "theming")]
+    pub fn set_theme_tweened(
+        &mut self,
+        theme_id: &CStr,
+        duration: f32,
+        easing: [f32; 4],
+    ) -> Result<()> {
+        if duration <= 0.0 {
+            return self.set_theme(theme_id);
+        }
+
+        if self.theme_id.as_deref() == Some(theme_id) {
+            return Ok(());
+        }
+
+        if theme_id.is_empty() {
+            return self.reset_theme_tweened(duration, easing);
+        }
+
+        let mut slots = self.theme_slots_for(theme_id)?;
+        self.normalize_image_slots(&mut slots)?;
+        self.renderer
+            .start_theme_tween(slots, duration, easing, false)?;
+        self.theme_id = Some(theme_id.to_owned());
+        Ok(())
     }
 
     #[cfg(feature = "theming")]
     pub fn reset_theme(&mut self) -> Result<()> {
         self.theme_id = None;
         self.renderer.reset_slots();
+        Ok(())
+    }
+
+    /// Like `reset_theme`, but lerps every current slot back to its default value over
+    /// `duration` milliseconds. A `duration <= 0.0` behaves exactly like `reset_theme`.
+    #[cfg(feature = "theming")]
+    pub fn reset_theme_tweened(&mut self, duration: f32, easing: [f32; 4]) -> Result<()> {
+        if duration <= 0.0 {
+            return self.reset_theme();
+        }
+
+        self.theme_id = None;
+        self.renderer.reset_slots_tweened(duration, easing)?;
         Ok(())
     }
 
@@ -1240,6 +1292,38 @@ impl Player {
         let slots = theme.to_slot_types(anim_id_str);
 
         self.apply_slot_types(slots)
+    }
+
+    /// Like `set_theme_data`, but lerps each overridden slot toward the new value over
+    /// `duration` milliseconds. A `duration <= 0.0` behaves exactly like `set_theme_data`.
+    #[cfg(feature = "theming")]
+    pub fn set_theme_data_tweened(
+        &mut self,
+        theme_data: &CStr,
+        duration: f32,
+        easing: [f32; 4],
+    ) -> Result<()> {
+        if duration <= 0.0 {
+            return self.set_theme_data(theme_data);
+        }
+
+        let theme_data_str = theme_data.to_str().map_err(|_| Error::InvalidParameter)?;
+
+        let theme = theme_data_str
+            .parse::<crate::theme::Theme>()
+            .map_err(|_| Error::InvalidParameter)?;
+
+        let anim_id_str = self
+            .animation_id
+            .as_deref()
+            .and_then(|c| c.to_str().ok())
+            .unwrap_or("");
+
+        let mut slots = theme.to_slot_types(anim_id_str);
+        self.normalize_image_slots(&mut slots)?;
+        self.renderer
+            .start_theme_tween(slots, duration, easing, false)?;
+        Ok(())
     }
 
     #[cfg(feature = "theming")]
@@ -1408,6 +1492,26 @@ impl Player {
         Ok(())
     }
 
+    /// Like `set_slots`, but lerps each slot from its current value to the given value over
+    /// `duration` milliseconds, eased by `easing`. Unlike `set_theme`, this fully replaces
+    /// the active slot set: any currently active slot not present in `slots` is dropped. A
+    /// `duration <= 0.0` behaves exactly like `set_slots`.
+    pub fn set_slots_tweened(
+        &mut self,
+        mut slots: std::collections::BTreeMap<String, crate::renderer::SlotType>,
+        duration: f32,
+        easing: [f32; 4],
+    ) -> Result<()> {
+        if duration <= 0.0 {
+            return self.set_slots(slots);
+        }
+
+        self.normalize_image_slots(&mut slots)?;
+        self.renderer
+            .start_theme_tween(slots, duration, easing, true)?;
+        Ok(())
+    }
+
     pub fn set_slots_str(&mut self, slots_json: &str) -> Result<()> {
         use crate::renderer::slots::slots_from_json_string;
 
@@ -1441,6 +1545,33 @@ impl Player {
             }
             Err(_) => Err(Error::InvalidParameter),
         }
+    }
+
+    /// Like `set_slots_str`, but lerps each slot toward the new value over `duration`
+    /// milliseconds, eased by `easing`. Merges into the active slot set like `set_slots_str`
+    /// (unmentioned slots are left untouched). A `duration <= 0.0` behaves exactly like
+    /// `set_slots_str`.
+    pub fn set_slots_str_tweened(
+        &mut self,
+        slots_json: &str,
+        duration: f32,
+        easing: [f32; 4],
+    ) -> Result<()> {
+        if duration <= 0.0 {
+            return self.set_slots_str(slots_json);
+        }
+
+        if slots_json.is_empty() {
+            return self.clear_slots();
+        }
+
+        use crate::renderer::slots::slots_from_json_string;
+
+        let mut slots = slots_from_json_string(slots_json).map_err(|_| Error::InvalidParameter)?;
+        self.normalize_image_slots(&mut slots)?;
+        self.renderer
+            .start_theme_tween(slots, duration, easing, false)?;
+        Ok(())
     }
 
     pub fn get_slot_ids(&self) -> Vec<String> {
@@ -1483,6 +1614,18 @@ impl Player {
 
     pub fn reset_slots(&mut self) -> bool {
         self.renderer.reset_slots()
+    }
+
+    /// Like `reset_slots`, but lerps every current slot back to its default value over
+    /// `duration` milliseconds. A `duration <= 0.0` behaves exactly like `reset_slots`.
+    pub fn reset_slots_tweened(&mut self, duration: f32, easing: [f32; 4]) -> Result<()> {
+        if duration <= 0.0 {
+            self.reset_slots();
+            return Ok(());
+        }
+
+        self.renderer.reset_slots_tweened(duration, easing)?;
+        Ok(())
     }
 
     pub fn set_quality(&mut self, quality: u8) -> Result<()> {
@@ -1616,6 +1759,8 @@ impl Player {
     /// frame was unchanged and rendering was skipped.
     pub fn tick(&mut self, dt: f32) -> Result<bool> {
         let dt = dt.max(0.0);
+
+        self.renderer.advance_theme_tween(dt);
 
         if matches!(self.state, State::Tweening { .. }) {
             match self.tween_advance(dt) {

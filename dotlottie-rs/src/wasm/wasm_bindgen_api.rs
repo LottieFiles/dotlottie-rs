@@ -695,6 +695,25 @@ impl DotLottiePlayerWasm {
         self.player.set_slots_str(json).is_ok()
     }
 
+    /// Like `set_slots_str`, but lerps each slot toward the new value over `duration`
+    /// milliseconds instead of snapping instantly. `x1`/`y1`/`x2`/`y2` are cubic bezier
+    /// easing control points (CSS convention); `(0, 0, 1, 1)` is linear. A `duration <= 0.0`
+    /// behaves exactly like `set_slots_str`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_slots_str_tweened(
+        &mut self,
+        json: &str,
+        duration: f32,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+    ) -> bool {
+        self.player
+            .set_slots_str_tweened(json, duration, [x1, y1, x2, y2])
+            .is_ok()
+    }
+
     /// Set a single slot by ID from a JSON value string.
     pub fn set_slot_str(&mut self, id: &str, json: &str) -> bool {
         self.player.set_slot_str(id, json).is_ok()
@@ -742,6 +761,22 @@ impl DotLottiePlayerWasm {
     /// Reset all slots to their default values from the animation.
     pub fn reset_slots(&mut self) -> bool {
         self.player.reset_slots()
+    }
+
+    /// Like `reset_slots`, but lerps every current slot back to its default value over
+    /// `duration` milliseconds instead of snapping instantly. A `duration <= 0.0` behaves
+    /// exactly like `reset_slots`.
+    pub fn reset_slots_tweened(
+        &mut self,
+        duration: f32,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+    ) -> bool {
+        self.player
+            .reset_slots_tweened(duration, [x1, y1, x2, y2])
+            .is_ok()
     }
 
     // ── Transform ─────────────────────────────────────────────────────────────
@@ -888,6 +923,36 @@ impl DotLottiePlayerWasm {
         }
     }
 
+    /// Like `set_theme`, but lerps each overridden slot from its current value to the new
+    /// theme's value over `duration` milliseconds instead of snapping instantly. `x1`/`y1`/
+    /// `x2`/`y2` are cubic bezier easing control points (CSS convention); `(0, 0, 1, 1)` is
+    /// linear. A `duration <= 0.0` behaves exactly like `set_theme`.
+    #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_theme_tweened(
+        &mut self,
+        id: &str,
+        duration: f32,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+    ) -> bool {
+        #[cfg(not(feature = "theming"))]
+        {
+            return false;
+        }
+        #[cfg(feature = "theming")]
+        {
+            let Ok(c) = CString::new(id) else {
+                return false;
+            };
+            self.player
+                .set_theme_tweened(&c, duration, [x1, y1, x2, y2])
+                .is_ok()
+        }
+    }
+
     pub fn reset_theme(&mut self) -> bool {
         #[cfg(not(feature = "theming"))]
         {
@@ -896,6 +961,29 @@ impl DotLottiePlayerWasm {
         #[cfg(feature = "theming")]
         {
             self.player.reset_theme().is_ok()
+        }
+    }
+
+    /// Like `reset_theme`, but lerps every current slot back to its default value over
+    /// `duration` milliseconds instead of snapping instantly.
+    #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
+    pub fn reset_theme_tweened(
+        &mut self,
+        duration: f32,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+    ) -> bool {
+        #[cfg(not(feature = "theming"))]
+        {
+            return false;
+        }
+        #[cfg(feature = "theming")]
+        {
+            self.player
+                .reset_theme_tweened(duration, [x1, y1, x2, y2])
+                .is_ok()
         }
     }
 
@@ -911,6 +999,34 @@ impl DotLottiePlayerWasm {
                 return false;
             };
             self.player.set_theme_data(&c).is_ok()
+        }
+    }
+
+    /// Like `set_theme_data`, but lerps each overridden slot toward the new value over
+    /// `duration` milliseconds instead of snapping instantly.
+    #[cfg_attr(not(feature = "theming"), allow(unused_variables))]
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_theme_data_tweened(
+        &mut self,
+        data: &str,
+        duration: f32,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+    ) -> bool {
+        #[cfg(not(feature = "theming"))]
+        {
+            return false;
+        }
+        #[cfg(feature = "theming")]
+        {
+            let Ok(c) = CString::new(data) else {
+                return false;
+            };
+            self.player
+                .set_theme_data_tweened(&c, duration, [x1, y1, x2, y2])
+                .is_ok()
         }
     }
 
